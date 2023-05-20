@@ -15,11 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod check;
-
 mod switch;
-
-#[cfg(all(test, console))]
-use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::prelude::*;
 
@@ -29,29 +25,28 @@ use core::marker::PhantomData;
 /// See "On Arbitrary Waksman Networks and their Vulnerability" - https://hal.inria.fr/inria-00072871/document
 pub struct ASWaksman<E: Environment> {
     /// The number of inputs to the network.
-    // TODO: u32?
-    num_inputs: u64,
+    num_inputs: usize,
     _phantom: PhantomData<E>,
 }
 
 impl<E: Environment> ASWaksman<E> {
-    /// Initializes a new `ASWaksman` network of the given size.
-    pub fn new(size: u64) -> Self {
-        match size != 0 {
-            true => Self { num_inputs: size, _phantom: Default::default() },
-            false => E::halt("The size of a Waksman network must be greater than zero."),
+    /// Initializes a new `ASWaksman` network with the given number of inputs.
+    pub fn new(num_inputs: usize) -> Self {
+        match num_inputs != 0 {
+            true => Self { num_inputs, _phantom: Default::default() },
+            false => E::halt("A Waksman network must have at least one input."),
         }
     }
 
     /// Runs the network on the given sequence of `inputs` using the given `selectors`.
     pub fn run(&self, inputs: &[Field<E>], selectors: &[Boolean<E>]) -> Vec<Field<E>> {
         // Check that the number of inputs is correct.
-        if inputs.len() as u64 != self.num_inputs {
+        if inputs.len() != self.num_inputs {
             return E::halt(format!("The number of inputs must be exactly {}.", self.num_inputs));
         }
 
         // Check that the number of selectors is correct.
-        if selectors.len() as u64 != self.num_selectors() {
+        if selectors.len() != self.num_selectors() {
             return E::halt(format!("The number of selectors must be exactly {}.", self.num_selectors()));
         }
 
@@ -66,7 +61,6 @@ impl<E: Environment> ASWaksman<E> {
                 vec![result.0, result.1]
             }
             _ => {
-                // TODO: Fix casts.
                 // Initialize a counter for the selector bit.
                 let mut selector_counter = 0;
 
@@ -102,20 +96,20 @@ impl<E: Environment> ASWaksman<E> {
                 // Note that if the number of inputs is odd, the last input is not paired with anything.
                 let (upper_inputs, lower_inputs) = {
                     // Initialize a vector for the upper subnetwork.
-                    let mut upper_inputs = Vec::with_capacity(upper_num_inputs as usize);
+                    let mut upper_inputs = Vec::with_capacity(upper_num_inputs);
                     // Initialize a vector for the lower subnetwork.
-                    let mut lower_inputs = Vec::with_capacity(lower_num_inputs as usize);
+                    let mut lower_inputs = Vec::with_capacity(lower_num_inputs);
                     // Initialize a counter to track where we are in the input vector.
                     let mut input_counter = 0;
                     // Run each pair of inputs through a switch, and write the outputs to the appropriate subnetwork.
                     while input_counter < self.num_inputs {
                         if input_counter == self.num_inputs - 1 {
                             // If we are at the last input, write it to the lower subnetwork.
-                            lower_inputs.push(inputs[input_counter as usize].clone());
+                            lower_inputs.push(inputs[input_counter].clone());
                             break;
                         } else {
-                            let first = &inputs[input_counter as usize];
-                            let second = &inputs[(input_counter + 1) as usize];
+                            let first = &inputs[input_counter];
+                            let second = &inputs[input_counter + 1];
                             let (upper, lower) = Self::switch(&selectors[selector_counter], first, second);
                             upper_inputs.push(upper);
                             lower_inputs.push(lower);
@@ -129,16 +123,14 @@ impl<E: Environment> ASWaksman<E> {
                 // Run the upper subnetwork.
                 let mut upper_outputs = upper_network.run(
                     &upper_inputs,
-                    &selectors[(num_input_switches as usize)
-                        ..((num_input_switches + upper_network.num_selectors()) as usize)],
+                    &selectors[num_input_switches..(num_input_switches + upper_network.num_selectors())],
                 );
 
                 // Run the lower subnetwork.
                 let mut lower_outputs = lower_network.run(
                     &lower_inputs,
-                    &selectors[((num_input_switches + upper_network.num_selectors()) as usize)
-                        ..((num_input_switches + upper_network.num_selectors() + lower_network.num_selectors())
-                            as usize)],
+                    &selectors[(num_input_switches + upper_network.num_selectors())
+                        ..(num_input_switches + upper_network.num_selectors() + lower_network.num_selectors())],
                 );
 
                 // Combine the outputs of the subnetworks.
@@ -163,9 +155,9 @@ impl<E: Environment> ASWaksman<E> {
                 let mut outputs = {
                     // Set the selector counter.
                     selector_counter =
-                        (num_input_switches + upper_network.num_selectors() + lower_network.num_selectors()) as usize;
+                        num_input_switches + upper_network.num_selectors() + lower_network.num_selectors();
                     // TODO: Off by a few
-                    let mut outputs = Vec::with_capacity(self.num_inputs as usize);
+                    let mut outputs = Vec::with_capacity(self.num_inputs);
                     for (first, second) in pairs {
                         let (upper, lower) = Self::switch(&selectors[selector_counter], &first, &second);
                         outputs.push(upper);
@@ -184,9 +176,8 @@ impl<E: Environment> ASWaksman<E> {
     }
 
     /// Returns the exact number of selector bits required to program the network.
-    // TODO: Can this be a const fn?
-    pub fn num_selectors(&self) -> u64 {
-        (1..=self.num_inputs).map(|i| i.next_power_of_two().ilog2() as u64).sum()
+    pub fn num_selectors(&self) -> usize {
+        (1..=self.num_inputs).map(|i| i.next_power_of_two().ilog2() as usize).sum()
     }
 }
 
@@ -194,42 +185,49 @@ impl<E: Environment> ASWaksman<E> {
 mod test {
     use super::*;
 
-    use snarkvm_circuit_types::environment::Circuit;
+    use snarkvm_circuit_types::environment::{assert_scope, Circuit};
     use snarkvm_utilities::{TestRng, Uniform};
 
     use std::iter;
 
-    const ITERATIONS: u64 = 10;
+    const ITERATIONS: usize = 10;
+
+    type CurrentEnvironment = Circuit;
 
     #[test]
     #[should_panic]
     fn test_zero_size_network_fails() {
-        ASWaksman::<Circuit>::new(0);
+        ASWaksman::<CurrentEnvironment>::new(0);
     }
 
     #[test]
     fn test_identity_network() {
-        fn run_test(num_inputs: u64, rng: &mut TestRng) {
+        fn run_test(num_inputs: usize, rng: &mut TestRng) {
             for mode in [Mode::Constant, Mode::Public, Mode::Public] {
                 for i in 0..ITERATIONS {
                     let network = ASWaksman::new(num_inputs);
 
-                    let inputs = iter::repeat_with(|| Field::<Circuit>::new(mode, Uniform::rand(rng)))
-                        .take(num_inputs as usize)
+                    let inputs = iter::repeat_with(|| Field::<CurrentEnvironment>::new(mode, Uniform::rand(rng)))
+                        .take(num_inputs)
                         .collect::<Vec<_>>();
 
-                    let selectors = vec![Boolean::new(mode, false); network.num_selectors() as usize];
+                    let selectors = vec![Boolean::new(mode, false); network.num_selectors()];
 
                     let name = format!("ASWaksman({}, {}, {})", mode, num_inputs, i);
 
-                    Circuit::scope(name, || {
+                    CurrentEnvironment::scope(name, || {
                         let outputs = network.run(&inputs, &selectors);
                         for (input, output) in inputs.iter().zip_eq(outputs.iter()) {
                             assert_eq!(input.eject_value(), output.eject_value());
                         }
                         match mode {
                             Mode::Constant => assert_scope!(0, 0, 0, 0),
-                            _ => assert_scope!(0, 0, 2 * network.num_selectors(), 2 * network.num_selectors()),
+                            _ => assert_scope!(
+                                0,
+                                0,
+                                2 * network.num_selectors() as u64,
+                                2 * network.num_selectors() as u64
+                            ),
                         }
                     });
                 }
@@ -275,18 +273,18 @@ mod test {
 
     #[test]
     fn test_reverse_network() {
-        fn compute_selectors(mode: Mode, num_inputs: u64) -> Vec<Boolean<Circuit>> {
+        fn compute_selectors(mode: Mode, num_inputs: usize) -> Vec<Boolean<CurrentEnvironment>> {
             match num_inputs {
                 0 => panic!("num_inputs must be greater than 0"),
                 1 => vec![],
                 2 => vec![Boolean::new(mode, true)],
                 _ => {
-                    let mut input_selectors = vec![Boolean::new(mode, true); (num_inputs / 2) as usize];
+                    let mut input_selectors = vec![Boolean::new(mode, true); num_inputs / 2];
                     let upper_selectors = compute_selectors(mode, num_inputs / 2);
                     let lower_selectors = compute_selectors(mode, num_inputs - num_inputs / 2);
                     let output_selectors = match num_inputs % 2 == 0 {
-                        true => vec![Boolean::new(mode, false); (num_inputs / 2 - 1) as usize],
-                        false => vec![Boolean::new(mode, true); ((num_inputs - 1) / 2) as usize],
+                        true => vec![Boolean::new(mode, false); num_inputs / 2 - 1],
+                        false => vec![Boolean::new(mode, true); (num_inputs - 1) / 2],
                     };
                     input_selectors.extend(upper_selectors);
                     input_selectors.extend(lower_selectors);
@@ -296,26 +294,31 @@ mod test {
             }
         }
 
-        fn run_test(num_inputs: u64, rng: &mut TestRng) {
+        fn run_test(num_inputs: usize, rng: &mut TestRng) {
             for mode in [Mode::Constant, Mode::Public, Mode::Public] {
                 for i in 0..ITERATIONS {
                     let network = ASWaksman::new(num_inputs);
 
-                    let inputs = iter::repeat_with(|| Field::<Circuit>::new(mode, Uniform::rand(rng)))
-                        .take(num_inputs as usize)
+                    let inputs = iter::repeat_with(|| Field::<CurrentEnvironment>::new(mode, Uniform::rand(rng)))
+                        .take(num_inputs)
                         .collect::<Vec<_>>();
                     let selectors = compute_selectors(mode, num_inputs);
 
                     let name = format!("ASWaksman({}, {}, {})", mode, num_inputs, i);
 
-                    Circuit::scope(name, || {
+                    CurrentEnvironment::scope(name, || {
                         let outputs = network.run(&inputs, &selectors);
                         for (input, output) in inputs.iter().zip_eq(outputs.iter().rev()) {
                             assert_eq!(input.eject_value(), output.eject_value());
                         }
                         match mode {
                             Mode::Constant => assert_scope!(0, 0, 0, 0),
-                            _ => assert_scope!(0, 0, 2 * network.num_selectors(), 2 * network.num_selectors()),
+                            _ => assert_scope!(
+                                0,
+                                0,
+                                2 * network.num_selectors() as u64,
+                                2 * network.num_selectors() as u64
+                            ),
                         }
                     });
                 }

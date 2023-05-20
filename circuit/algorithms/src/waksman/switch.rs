@@ -31,20 +31,22 @@ impl<E: Environment> ASWaksman<E> {
 mod tests {
     use super::*;
 
-    use snarkvm_circuit_types::environment::Circuit;
+    use snarkvm_circuit_types::environment::{assert_scope, Circuit};
     use snarkvm_utilities::{TestRng, Uniform};
+
+    type CurrentEnvironment = Circuit;
 
     fn check_switch(
         name: &str,
         expected: (
-            console::Field<<Circuit as Environment>::Network>,
-            console::Field<<Circuit as Environment>::Network>,
+            console::Field<<CurrentEnvironment as Environment>::Network>,
+            console::Field<<CurrentEnvironment as Environment>::Network>,
         ),
-        selector: Boolean<Circuit>,
-        a: Field<Circuit>,
-        b: Field<Circuit>,
+        selector: Boolean<CurrentEnvironment>,
+        a: Field<CurrentEnvironment>,
+        b: Field<CurrentEnvironment>,
     ) {
-        Circuit::scope(name, || {
+        CurrentEnvironment::scope(name, || {
             let case = format!("switch({}, {}, {})", selector.eject_value(), a.eject_value(), b.eject_value());
             let candidate = ASWaksman::switch(&selector, &a, &b);
             assert_eq!(expected.0, candidate.0.eject_value(), "Unexpected first output for {}", case);
@@ -67,86 +69,86 @@ mod tests {
 
         // switch(false, Constant, Constant)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(false, Constant, Constant)", expected, condition, a, b);
 
         // switch(false, Constant, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Constant, Public)", expected, condition, a, b);
 
         // switch(false, Public, Constant)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(false, Public, Constant)", expected, condition, a, b);
 
         // switch(false, Public, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Public, Public)", expected, condition, a, b);
 
         // switch(false, Public, Private)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(false, Public, Private)", expected, condition, a, b);
 
         // switch(false, Private, Private)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(false, Private, Private)", expected, condition, a, b);
 
         // switch(true, Constant, Constant)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(true, Constant, Constant)", expected, condition, a, b);
 
         // switch(true, Constant, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Constant, Public)", expected, condition, a, b);
 
         // switch(true, Public, Constant)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(true, Public, Constant)", expected, condition, a, b);
 
         // switch(true, Public, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Public, Public)", expected, condition, a, b);
 
         // switch(true, Public, Private)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(true, Public, Private)", expected, condition, a, b);
 
         // switch(true, Private, Private)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Constant, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(true, Private, Private)", expected, condition, a, b);
     }
 
@@ -159,16 +161,16 @@ mod tests {
 
         // switch(false, Constant, Constant)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(false, Constant, Constant)", expected, condition, a, b);
 
         // switch(true, Constant, Constant)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(true, Constant, Constant)", expected, condition, a, b);
     }
 
@@ -181,30 +183,30 @@ mod tests {
 
         // switch(false, Constant, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Constant, Public)", expected, condition, a, b);
 
         // switch(false, Public, Constant)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(false, Public, Constant)", expected, condition, a, b);
 
         // switch(true, Constant, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Constant, Public)", expected, condition, a, b);
 
         // switch(true, Public, Constant)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(true, Public, Constant)", expected, condition, a, b);
     }
 
@@ -217,16 +219,16 @@ mod tests {
 
         // switch(false, Constant, Constant)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(false, Constant, Constant)", expected, condition, a, b);
 
         // switch(true, Constant, Constant)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(true, Constant, Constant)", expected, condition, a, b);
     }
 
@@ -239,30 +241,30 @@ mod tests {
 
         // switch(false, Constant, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Constant, Public)", expected, condition, a, b);
 
         // switch(false, Public, Constant)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(false, Public, Constant)", expected, condition, a, b);
 
         // switch(true, Constant, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Field::<Circuit>::new(Mode::Constant, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Constant, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Constant, Public)", expected, condition, a, b);
 
         // switch(true, Public, Constant)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Constant, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Constant, second);
         check_switch("switch(true, Public, Constant)", expected, condition, a, b);
     }
 
@@ -275,58 +277,58 @@ mod tests {
 
         // switch(false, Public, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Public, Public)", expected, condition, a, b);
 
         // switch(false, Public, Private)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(false, Public, Private)", expected, condition, a, b);
 
         // switch(false, Private, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Private, Public)", expected, condition, a, b);
 
         // switch(false, Private, Private)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(false, Private, Private)", expected, condition, a, b);
 
         // switch(true, Public, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Public, Public)", expected, condition, a, b);
 
         // switch(true, Public, Private)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(true, Public, Private)", expected, condition, a, b);
 
         // switch(true, Private, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Private, Public)", expected, condition, a, b);
 
         // switch(true, Private, Private)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Public, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(true, Private, Private)", expected, condition, a, b);
     }
 
@@ -339,58 +341,58 @@ mod tests {
 
         // switch(false, Public, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Public, Public)", expected, condition, a, b);
 
         // switch(false, Public, Private)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(false, Public, Private)", expected, condition, a, b);
 
         // switch(false, Private, Public)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(false, Private, Public)", expected, condition, a, b);
 
         // switch(false, Private, Private)
         let expected = (first, second);
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, false);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(false, Private, Private)", expected, condition, a, b);
 
         // switch(true, Public, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Public, Public)", expected, condition, a, b);
 
         // switch(true, Public, Private)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Field::<Circuit>::new(Mode::Public, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Public, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(true, Public, Private)", expected, condition, a, b);
 
         // switch(true, Private, Public)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Public, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Public, second);
         check_switch("switch(true, Private, Public)", expected, condition, a, b);
 
         // switch(true, Private, Private)
         let expected = (second, first);
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Field::<Circuit>::new(Mode::Private, first);
-        let b = Field::<Circuit>::new(Mode::Private, second);
+        let condition = Boolean::<CurrentEnvironment>::new(Mode::Private, true);
+        let a = Field::<CurrentEnvironment>::new(Mode::Private, first);
+        let b = Field::<CurrentEnvironment>::new(Mode::Private, second);
         check_switch("switch(true, Private, Private)", expected, condition, a, b);
     }
 }
