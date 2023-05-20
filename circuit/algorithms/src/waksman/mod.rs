@@ -135,9 +135,10 @@ impl<E: Environment> ASWaksman<E> {
 
                 // Combine the outputs of the subnetworks.
                 let (pairs, additional) = {
+                    // Note that the unwraps are safe since, since there are at least 3 inputs to the network, which implies that there is at
+                    // least one input/output in each of the subnetworks.
                     match self.num_inputs % 2 == 0 {
                         true => {
-                            // TODO: Unwrap safety
                             let second_to_last = upper_outputs.pop().unwrap();
                             let last = lower_outputs.pop().unwrap();
                             let pairs = upper_outputs.into_iter().zip_eq(lower_outputs.into_iter()).collect::<Vec<_>>();
@@ -156,7 +157,6 @@ impl<E: Environment> ASWaksman<E> {
                     // Set the selector counter.
                     selector_counter =
                         num_input_switches + upper_network.num_selectors() + lower_network.num_selectors();
-                    // TODO: Off by a few
                     let mut outputs = Vec::with_capacity(self.num_inputs);
                     for (first, second) in pairs {
                         let (upper, lower) = Self::switch(&selectors[selector_counter], &first, &second);
