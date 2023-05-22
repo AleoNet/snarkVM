@@ -3,7 +3,7 @@ name = "snarkvm-circuit-environment"
 version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Circuit environment for a decentralized virtual machine"
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
