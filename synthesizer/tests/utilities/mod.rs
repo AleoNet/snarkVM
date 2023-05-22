@@ -14,49 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// This module defines a set of utilities for testing Aleo programs.
-///
-/// Users define tests in the `tests/tests` directory, and the expected output in the `tests/expectations` directory.
-/// Users should separate their tests into different files, and name the expectation files with the same name as the test files.
-/// Tests should also be separated into different directories depending on the type of test.
-///
-/// When the `TEST_FILTER` environment variable is set, then only the tests whose filenames match the filter are run.
-/// When the `REWRITE_EXPECTATIONS` environment variable is set, then the expectation files are rewritten.
-/// Otherwise, the output is compared against the expectation files.
-pub mod expectations;
-pub use expectations::*;
+//! This module defines a set of utilities for testing Aleo programs.
+//!
+//! Users define tests in the `tests/tests` directory, and the expected output in the `tests/expectations` directory.
+//! Users should separate their tests into different files, and name the expectation files with the same name as the test files.
+//! Tests should also be separated into different directories depending on the type of test.
+//!
+//! When the `TEST_FILTER` environment variable is set, then only the tests whose filenames match the filter are run.
+//! When the `REWRITE_EXPECTATIONS` environment variable is set, then the expectation files are rewritten.
+//! Otherwise, the output is compared against the expectation files.
 
-pub mod runners;
-pub use runners::*;
+#![allow(unused)]
 
-use console::network::prelude::*;
+pub type CurrentAleo = circuit::network::AleoV0;
+pub type CurrentNetwork = console::network::Testnet3;
 
-use std::{
-    env::current_dir,
-    path::{Path, PathBuf},
-};
-use walkdir::WalkDir;
+pub mod expectation;
+pub use expectation::*;
 
-/// A general interface for a test.
-pub trait Test: Sized {
-    /// Loads the test from the given path.
-    fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
-
-    /// Runs the test.
-    fn run(&self);
-}
-
-/// A general interface for an expectation.
-pub trait Expectation: Sized {
-    type Test;
-    type Output;
-
-    /// Loads the expectation from the given path.
-    fn load<P: AsRef<Path>>(input: P) -> Result<Self>;
-
-    /// Checks the expectation against the given output.
-    fn check(&self, test: &Self::Test, output: &Self::Output) -> Result<()>;
-
-    /// Saves the test output.
-    fn save(&self, output: &Self::Output) -> Result<()>;
-}
+pub mod tests;
+pub use tests::*;
