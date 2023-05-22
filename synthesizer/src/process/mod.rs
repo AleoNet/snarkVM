@@ -29,10 +29,9 @@ mod tests;
 
 use crate::{
     atomic_batch_scope,
-    block::{Input, Transition},
+    block::{Deployment, Execution, Fee, FinalizeOperation, Input, Transition},
     program::{Instruction, Program},
-    snark::{ProvingKey, UniversalSRS, VerifyingKey},
-    store::{FinalizeOperation, FinalizeStorage, FinalizeStore},
+    store::{FinalizeStorage, FinalizeStore},
 };
 use console::{
     account::PrivateKey,
@@ -40,6 +39,7 @@ use console::{
     program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
     types::{U16, U64},
 };
+use snarkvm_synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -306,8 +306,8 @@ impl<N: Network> Process<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
     use super::*;
     use crate::{Process, Program, Transition};
     use console::{account::PrivateKey, network::Testnet3, program::Identifier};
@@ -317,8 +317,7 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
-    pub(crate) fn sample_key() -> (Identifier<CurrentNetwork>, ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)
-    {
+    pub fn sample_key() -> (Identifier<CurrentNetwork>, ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>) {
         static INSTANCE: OnceCell<(
             Identifier<CurrentNetwork>,
             ProvingKey<CurrentNetwork>,
@@ -410,7 +409,7 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
+    pub fn sample_transition() -> Transition<CurrentNetwork> {
         // Retrieve the execution.
         let mut execution = sample_execution();
         // Ensure the execution is not empty.

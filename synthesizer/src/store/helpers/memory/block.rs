@@ -16,7 +16,6 @@
 
 use crate::{
     block::Header,
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
     store::{
         helpers::memory::{MemoryMap, TransactionMemory, TransitionMemory},
         BlockStorage,
@@ -26,6 +25,7 @@ use crate::{
     },
 };
 use console::{account::Signature, prelude::*};
+use snarkvm_synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// An in-memory block storage.
 #[derive(Clone)]

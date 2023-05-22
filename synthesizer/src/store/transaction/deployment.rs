@@ -16,10 +16,9 @@
 
 use crate::{
     atomic_batch_scope,
-    block::Transaction,
+    block::{Deployment, Fee, Transaction},
     cow_to_cloned,
     cow_to_copied,
-    process::{Deployment, Fee},
     program::Program,
     snark::{Certificate, VerifyingKey},
     store::{

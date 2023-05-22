@@ -264,7 +264,7 @@ mod tests {
         let program = crate::vm::test_helpers::sample_program();
 
         // Deploy the program.
-        let deployment = vm.deploy(&program, rng).unwrap();
+        let deployment = vm.deploy_raw(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
         assert!(vm.check_deployment(&deployment).is_ok());
@@ -385,7 +385,7 @@ mod tests {
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
-        let deployment_transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
+        let deployment_transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
 
         // Construct the new block header.
         let transactions = vm.speculate([deployment_transaction].iter()).unwrap();
@@ -429,7 +429,7 @@ mod tests {
         let fee_in_microcredits = 10;
 
         // Execute the fee.
-        let fee = Transaction::execute_fee(&vm, &caller_private_key, credits, fee_in_microcredits, None, rng).unwrap();
+        let fee = vm.execute_fee_raw(&caller_private_key, credits, fee_in_microcredits, None, rng).unwrap().1;
 
         // Prepare the inputs.
         let inputs = [
@@ -443,7 +443,7 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
+        let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction).is_ok());

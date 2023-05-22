@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Load, LoadCircuit, Opcode, Operand, Stack};
+use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
@@ -67,7 +67,11 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut impl Load<N>) -> Result<()> {
+    pub fn evaluate(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
@@ -98,8 +102,8 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut impl LoadCircuit<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoadCircuit<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
@@ -121,13 +125,21 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut impl Load<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
         self.evaluate(stack, registers)
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 2 {
             bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
@@ -242,16 +254,15 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 mod tests {
     use super::*;
     use crate::{
+        process::Stack,
         program::test_helpers::{sample_finalize_registers, sample_registers},
-        ProvingKey,
-        VerifyingKey,
     };
-
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
         program::{Identifier, Literal, LiteralType},
     };
+    use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
 
     use std::collections::HashMap;
 

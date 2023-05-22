@@ -14,8 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FinalizeRegisters, Load, LoadCircuit, Opcode, Operand, Registers, Stack, Store, StoreCircuit};
-
+use crate::{
+    Opcode,
+    Operand,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{
@@ -78,10 +88,10 @@ impl<N: Network> Cast<N> {
 impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
@@ -170,8 +180,8 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         use circuit::{Eject, Inject};
 
@@ -315,7 +325,11 @@ impl<N: Network> Cast<N> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
@@ -335,7 +349,11 @@ impl<N: Network> Cast<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -450,8 +468,8 @@ impl<N: Network> Cast<N> {
     /// A helper method to handle casting to a struct.
     fn cast_to_struct(
         &self,
-        stack: &Stack<N>,
-        registers: &mut impl Store<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersStore<N>,
         struct_name: Identifier<N>,
         inputs: Vec<Value<N>>,
     ) -> Result<()> {

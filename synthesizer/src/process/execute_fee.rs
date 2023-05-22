@@ -170,7 +170,7 @@ impl<N: Network> Process<N> {
         let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
         // Ensure the transition proof is valid.
         ensure!(
-            verifying_key.verify(function.name(), &inputs, fee.proof()),
+            verifying_key.verify(&function.name().to_string(), &inputs, fee.proof()),
             "Fee is invalid - failed to verify transition proof"
         );
         lap!(timer, "Verify the transition proof");

@@ -64,7 +64,7 @@ version = "1.9"
 version = "0.10.3"
 
 [dependencies.js-sys]
-version = "0.3.61"
+version = "0.3.63"
 optional = true
 
 [dependencies.lazy_static]
@@ -91,7 +91,7 @@ default-features = false
 version = "1.0"
 
 [dependencies.web-sys]
-version = "0.3.61"
+version = "0.3.63"
 features = [ "XmlHttpRequest" ]
 optional = true
 
@@ -113,7 +113,7 @@ path = "../console"
 path = "../synthesizer"
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.34"
+version = "0.3.36"
 
 [dev-dependencies.hex]
 version = "0.4.3"

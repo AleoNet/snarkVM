@@ -405,7 +405,7 @@ finalize transfer_public:
         let additional_fee = (credits, 10);
 
         // Deploy.
-        let transaction = Transaction::deploy(vm, private_key, &program, additional_fee, None, rng)?;
+        let transaction = vm.deploy(private_key, &program, additional_fee, None, rng)?;
 
         // Construct the new block.
         let next_block = sample_next_block(vm, private_key, &[transaction], previous_block, unspent_records, rng)?;
@@ -490,8 +490,7 @@ finalize transfer_public:
             .into_iter();
 
             // Execute.
-            let transaction =
-                Transaction::execute(vm, private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+            let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
 
             transactions.push(transaction);
         }
@@ -518,16 +517,16 @@ finalize transfer_public:
         let additional_fee = (credits, 1);
 
         // Execute.
-        let transaction = Transaction::execute(
-            vm,
-            &caller_private_key,
-            (program_id, function_name),
-            inputs.into_iter(),
-            Some(additional_fee),
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                (program_id, function_name),
+                inputs.into_iter(),
+                Some(additional_fee),
+                None,
+                rng,
+            )
+            .unwrap();
         // Verify.
         assert!(vm.verify_transaction(&transaction));
 
@@ -838,8 +837,7 @@ function ped_hash:
             let additional_fee = (credits, 10);
 
             // Deploy the program.
-            let deployment_transaction =
-                Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
+            let deployment_transaction = vm.deploy(&caller_private_key, &program, additional_fee, None, rng).unwrap();
 
             // Construct the deployment block.
             let deployment_block = sample_next_block(

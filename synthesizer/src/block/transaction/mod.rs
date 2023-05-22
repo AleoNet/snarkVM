@@ -14,35 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
+mod fee;
+pub use fee::*;
+
 mod bytes;
 mod merkle;
 mod serialize;
 mod string;
 
-use crate::{
-    block::Transition,
-    process::{Authorization, Deployment, Execution, Fee},
-    program::Program,
-    vm::VM,
-    ConsensusStorage,
-    Query,
-};
+use crate::block::Transition;
 use console::{
-    account::PrivateKey,
     network::prelude::*,
-    program::{
-        Ciphertext,
-        Identifier,
-        Plaintext,
-        ProgramID,
-        ProgramOwner,
-        Record,
-        TransactionLeaf,
-        TransactionPath,
-        TransactionTree,
-        Value,
-        TRANSACTION_DEPTH,
-    },
+    program::{Ciphertext, ProgramOwner, Record, TransactionLeaf, TransactionPath, TransactionTree, TRANSACTION_DEPTH},
     types::{Field, Group, U64},
 };
 
@@ -87,104 +76,6 @@ impl<N: Network> Transaction<N> {
         let id = *Self::fee_tree(&fee)?.root();
         // Construct the execution transaction.
         Ok(Self::Fee(id.into(), fee))
-    }
-}
-
-impl<N: Network> Transaction<N> {
-    /// The maximum number of transitions allowed in a transaction.
-    const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
-
-    /// Initializes a new deployment transaction.
-    ///
-    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn deploy<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        program: &Program<N>,
-        (fee_record, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the deployment.
-        let deployment = vm.deploy(program, rng)?;
-        // Ensure the transaction is not empty.
-        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
-
-        // Determine the fee.
-        let fee_in_microcredits = deployment
-            .size_in_bytes()?
-            .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
-            .and_then(|deployment_fee| deployment_fee.checked_add(priority_fee_in_microcredits))
-            .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
-
-        // Compute the fee.
-        let (_, fee, _) = vm.execute_fee(private_key, fee_record, fee_in_microcredits, query, rng)?;
-
-        // Construct the owner.
-        let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
-
-        // Initialize the transaction.
-        Self::from_deployment(owner, deployment, fee)
-    }
-
-    /// Initializes a new execution transaction.
-    ///
-    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
-        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        fee: Option<(Record<N, Plaintext<N>>, u64)>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the authorization.
-        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
-        // Compute the fee.
-        let fee = match fee {
-            None => None,
-            Some((credits, priority_fee_in_microcredits)) => {
-                // Determine the fee.
-                let fee_in_microcredits = execution
-                    .size_in_bytes()?
-                    .checked_add(priority_fee_in_microcredits)
-                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
-                // Compute the fee.
-                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
-            }
-        };
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
-    }
-
-    /// Initializes a new fee.
-    pub fn execute_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Fee<N>> {
-        Ok(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
-    }
-
-    /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        authorization: Authorization<N>,
-        fee: Option<Fee<N>>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
     }
 }
 

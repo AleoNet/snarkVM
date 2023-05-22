@@ -629,7 +629,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, Execution, Inclusion};
+    use crate::{CallStack, Execution, Inclusion, StackEvaluate, StackExecute};
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey},

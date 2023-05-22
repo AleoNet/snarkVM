@@ -19,24 +19,13 @@ mod fee;
 
 #[cfg(debug_assertions)]
 use crate::Stack;
-use crate::{
-    BlockStorage,
-    Execution,
-    Fee,
-    Input,
-    Output,
-    Proof,
-    ProvingKey,
-    Query,
-    Transaction,
-    Transition,
-    VerifyingKey,
-};
+use crate::{BlockStorage, Execution, Fee, Input, Output, Query, Transaction, Transition};
 use console::{
     network::prelude::*,
     program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
+use snarkvm_synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
 use std::collections::HashMap;
 

@@ -31,16 +31,13 @@ mod genesis;
 mod serialize;
 mod string;
 
-use crate::{
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
-    vm::VM,
-};
 use console::{
-    account::{Address, PrivateKey, Signature},
+    account::{PrivateKey, Signature},
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
 };
+use snarkvm_synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -401,7 +398,8 @@ impl<N: Network> Block<N> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::vm::test_helpers::CurrentNetwork;
-    use console::account::ViewKey;
+    use console::account::{Address, ViewKey};
+
     use once_cell::sync::OnceCell;
 
     /// Samples a random block,
@@ -422,8 +420,7 @@ pub(crate) mod test_helpers {
                 let inputs = [address.to_string(), "1_u64".to_string()].into_iter();
 
                 // Construct the transaction.
-                let transaction =
-                    Transaction::execute(&vm, &private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+                let transaction = vm.execute(&private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 // Construct the transactions.
                 let transactions =
                     Transactions::from(&[

@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<N: Network> Stack<N> {
+impl<N: Network> StackMatches<N> for Stack<N> {
     /// Checks that the given value matches the layout of the value type.
-    pub fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
+    fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the value matches the declared value type in the register.
         match (value, value_type) {
             (Value::Plaintext(plaintext), ValueType::Constant(plaintext_type))
@@ -35,7 +35,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given stack value matches the layout of the register type.
-    pub fn matches_register_type(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn matches_register_type(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
         match (stack_value, register_type) {
             (Value::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
                 self.matches_plaintext(plaintext, plaintext_type)
@@ -49,7 +49,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given record matches the layout of the external record type.
-    pub fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()> {
+    fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()> {
         // Retrieve the record name.
         let record_name = locator.resource();
 
@@ -71,7 +71,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    pub fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
+    fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
         // Ensure the record name is valid.
         ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
@@ -90,7 +90,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
-    pub fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
+    fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
         self.matches_plaintext_internal(plaintext, plaintext_type, 0)
     }
 }

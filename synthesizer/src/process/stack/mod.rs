@@ -17,15 +17,6 @@
 mod authorization;
 pub use authorization::*;
 
-mod deployment;
-pub use deployment::*;
-
-mod execution;
-pub use execution::*;
-
-mod fee;
-pub use fee::*;
-
 mod finalize_registers;
 pub use finalize_registers::*;
 
@@ -54,18 +45,14 @@ mod execute;
 mod helpers;
 
 use crate::{
+    block::{Deployment, Execution, Transition},
     CallOperator,
-    Certificate,
     Closure,
     Function,
     Instruction,
     Operand,
     Process,
     Program,
-    ProvingKey,
-    Transition,
-    UniversalSRS,
-    VerifyingKey,
 };
 use console::{
     account::{Address, PrivateKey},
@@ -82,6 +69,7 @@ use console::{
         ProgramID,
         Record,
         RecordType,
+        Register,
         RegisterType,
         Request,
         Response,
@@ -90,6 +78,7 @@ use console::{
     },
     types::{Field, Group},
 };
+use snarkvm_synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -242,22 +231,24 @@ impl<N: Network> Stack<N> {
         // Return the stack.
         Stack::initialize(process, program)
     }
+}
 
+impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the program.
     #[inline]
-    pub const fn program(&self) -> &Program<N> {
+    fn program(&self) -> &Program<N> {
         &self.program
     }
 
     /// Returns the program ID.
     #[inline]
-    pub const fn program_id(&self) -> &ProgramID<N> {
+    fn program_id(&self) -> &ProgramID<N> {
         self.program.id()
     }
 
     /// Returns `true` if the stack contains the external record.
     #[inline]
-    pub fn contains_external_record(&self, locator: &Locator<N>) -> bool {
+    fn contains_external_record(&self, locator: &Locator<N>) -> bool {
         // Retrieve the external program.
         match self.get_external_program(locator.program_id()) {
             // Return `true` if the external record exists.
@@ -269,14 +260,14 @@ impl<N: Network> Stack<N> {
 
     /// Returns the external stack for the given program ID.
     #[inline]
-    pub fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
         // Retrieve the external stack.
         self.external_stacks.get(program_id).ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
     }
 
     /// Returns the external program for the given program ID.
     #[inline]
-    pub fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+    fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
         match self.program.id() == program_id {
             true => bail!("Attempted to get the main program '{}' as an external program", self.program.id()),
             // Retrieve the external stack, and return the external program.
@@ -286,7 +277,7 @@ impl<N: Network> Stack<N> {
 
     /// Returns `true` if the stack contains the external record.
     #[inline]
-    pub fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
+    fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
         // Retrieve the external program.
         let external_program = self.get_external_program(locator.program_id())?;
         // Return the external record, if it exists.
@@ -295,7 +286,7 @@ impl<N: Network> Stack<N> {
 
     /// Returns the function with the given function name.
     #[inline]
-    pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
+    fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
         // Ensure the function exists.
         match self.program.contains_function(function_name) {
             true => self.program.get_function(function_name),
@@ -305,7 +296,7 @@ impl<N: Network> Stack<N> {
 
     /// Returns the expected number of calls for the given function name.
     #[inline]
-    pub fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
+    fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
         // Determine the number of calls for this function (including the function itself).
         let mut num_calls = 1;
         for instruction in self.get_function(function_name)?.instructions() {
@@ -327,18 +318,20 @@ impl<N: Network> Stack<N> {
 
     /// Returns the register types for the given closure or function name.
     #[inline]
-    pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
+    fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
         // Retrieve the register types.
         self.register_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' do not exist"))
     }
 
     /// Returns the register types for the given finalize name.
     #[inline]
-    pub fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>> {
+    fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>> {
         // Retrieve the finalize types.
         self.finalize_types.get(name).ok_or_else(|| anyhow!("Finalize types for '{name}' do not exist"))
     }
+}
 
+impl<N: Network> Stack<N> {
     /// Returns `true` if the proving key for the given function name exists.
     #[inline]
     pub fn contains_proving_key(&self, function_name: &Identifier<N>) -> bool {

@@ -25,7 +25,6 @@ mod merkle;
 mod serialize;
 mod string;
 
-use crate::snark::Proof;
 use console::{
     network::prelude::*,
     program::{
@@ -47,6 +46,7 @@ use console::{
     },
     types::{Field, Group},
 };
+use snarkvm_synthesizer_snark::Proof;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {

@@ -14,10 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod call;
+mod caller;
 mod load;
 mod store;
 
-use crate::{CallStack, Load, LoadCircuit, Operand, RegisterTypes, Stack, Store, StoreCircuit};
+use crate::{
+    CallStack,
+    Operand,
+    RegisterTypes,
+    RegistersCall,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Entry, Literal, Plaintext, Register, Value},
@@ -60,60 +75,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             tvk: None,
             tvk_circuit: None,
         }
-    }
-
-    /// Returns the current call stack.
-    #[inline]
-    pub fn call_stack(&self) -> CallStack<N> {
-        self.call_stack.clone()
-    }
-
-    /// Returns the transition caller.
-    #[inline]
-    pub fn caller(&self) -> Result<Address<N>> {
-        self.caller.ok_or_else(|| anyhow!("Caller address (console) is not set in the registers."))
-    }
-
-    /// Returns the transition caller, as a circuit.
-    #[inline]
-    pub fn caller_circuit(&self) -> Result<circuit::Address<A>> {
-        self.caller_circuit.clone().ok_or_else(|| anyhow!("Caller address (circuit) is not set in the registers."))
-    }
-
-    /// Sets the transition caller.
-    #[inline]
-    pub fn set_caller(&mut self, caller: Address<N>) {
-        self.caller = Some(caller);
-    }
-
-    /// Sets the transition caller, as a circuit.
-    #[inline]
-    pub fn set_caller_circuit(&mut self, caller_circuit: circuit::Address<A>) {
-        self.caller_circuit = Some(caller_circuit);
-    }
-
-    /// Returns the transition view key.
-    #[inline]
-    pub fn tvk(&self) -> Result<Field<N>> {
-        self.tvk.ok_or_else(|| anyhow!("Transition view key (console) is not set in the registers."))
-    }
-
-    /// Returns the transition view key, as a circuit.
-    #[inline]
-    pub fn tvk_circuit(&self) -> Result<circuit::Field<A>> {
-        self.tvk_circuit.clone().ok_or_else(|| anyhow!("Transition view key (circuit) is not set in the registers."))
-    }
-
-    /// Sets the transition view key.
-    #[inline]
-    pub fn set_tvk(&mut self, tvk: Field<N>) {
-        self.tvk = Some(tvk);
-    }
-
-    /// Sets the transition view key, as a circuit.
-    #[inline]
-    pub fn set_tvk_circuit(&mut self, tvk_circuit: circuit::Field<A>) {
-        self.tvk_circuit = Some(tvk_circuit);
     }
 
     /// Ensure the console and circuit registers match.

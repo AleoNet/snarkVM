@@ -17,7 +17,7 @@
 mod initialize;
 mod matches;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, Stack};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{
@@ -47,14 +47,14 @@ impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
     /// Checks that the given closure is well-formed for the given stack.
     #[inline]
-    pub fn from_closure(stack: &Stack<N>, closure: &Closure<N>) -> Result<Self> {
+    pub fn from_closure(stack: &(impl StackMatches<N> + StackProgram<N>), closure: &Closure<N>) -> Result<Self> {
         Self::initialize_closure_types(stack, closure)
     }
 
     /// Initializes a new instance of `RegisterTypes` for the given function.
     /// Checks that the given function is well-formed for the given stack.
     #[inline]
-    pub fn from_function(stack: &Stack<N>, function: &Function<N>) -> Result<Self> {
+    pub fn from_function(stack: &(impl StackMatches<N> + StackProgram<N>), function: &Function<N>) -> Result<Self> {
         Self::initialize_function_types(stack, function)
     }
 
@@ -73,7 +73,11 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the register type of the given operand.
-    pub fn get_type_from_operand(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<RegisterType<N>> {
+    pub fn get_type_from_operand(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<RegisterType<N>> {
         Ok(match operand {
             Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
             Operand::Register(register) => self.get_type(stack, register)?,
@@ -83,7 +87,11 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the register type of the given register.
-    pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<RegisterType<N>> {
+    pub fn get_type(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+    ) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.

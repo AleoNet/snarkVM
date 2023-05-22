@@ -14,7 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CallStack, FinalizeRegisters, Load, LoadCircuit, Opcode, Operand, Registers, Stack, Store, StoreCircuit};
+use crate::{
+    CallStack,
+    Opcode,
+    Operand,
+    Registers,
+    RegistersCall,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackEvaluate,
+    StackExecute,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
@@ -147,7 +163,7 @@ impl<N: Network> Call<N> {
 impl<N: Network> Call<N> {
     /// Returns `true` if the instruction is a function call.
     #[inline]
-    pub fn is_function_call(&self, stack: &Stack<N>) -> Result<bool> {
+    pub fn is_function_call(&self, stack: &impl StackProgram<N>) -> Result<bool> {
         match self.operator() {
             // Check if the locator is for a function.
             CallOperator::Locator(locator) => {
@@ -165,7 +181,7 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackEvaluate<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Load the operands values.
@@ -233,8 +249,13 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
+        registers: &mut (
+                 impl RegistersCall<N>
+                 + RegistersCallerCircuit<N, A>
+                 + RegistersLoadCircuit<N, A>
+                 + RegistersStoreCircuit<N, A>
+             ),
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> =
@@ -444,13 +465,21 @@ impl<N: Network> Call<N> {
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, _stack: &Stack<N>, _registers: &mut FinalizeRegisters<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        _stack: &(impl StackMatches<N> + StackProgram<N>),
+        _registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
         bail!("Forbidden operation: Finalize cannot invoke a 'call'")
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the program and resource.
         let (is_external, program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
