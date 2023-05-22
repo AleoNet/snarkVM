@@ -65,6 +65,7 @@ impl Mode {
         //   - If `current_mode == Mode::Public` && `next_mode == Mode::Private`, then `current_mode = next_mode`.
         //   - Otherwise, do nothing.
         for next_mode in modes {
+            // If the current mode is `Mode::Private`, we can return early.
             if current_mode.is_private() {
                 break;
             }
