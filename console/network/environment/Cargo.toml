@@ -3,7 +3,7 @@ name = "snarkvm-console-network-environment"
 version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Environment console library for a decentralized virtual machine"
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [dependencies.snarkvm-curves]
