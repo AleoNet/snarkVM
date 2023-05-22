@@ -13,7 +13,6 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
 use crate::{
     BlockStorage,
     BlockStore,
@@ -102,7 +101,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             #[cfg(feature = "request")]
             #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.json()?),
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/program/{program_id}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
@@ -115,13 +114,14 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
             #[cfg(not(feature = "request"))]
+            #[cfg(not(feature = "wasm"))]
             _ => {
                 bail!("Unsupported request")
             }
             #[cfg(feature = "request")]
             #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.json()?),
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
@@ -140,7 +140,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             #[cfg(feature = "request")]
             #[cfg(not(feature = "wasm"))]
             Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.json()?),
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
             #[cfg(feature = "wasm")]
@@ -151,9 +151,9 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     #[cfg(feature = "request")]
     /// Performs a GET request to the given URL.
     #[cfg(not(feature = "wasm"))]
-    fn get_request(url: &str) -> Result<reqwest::blocking::Response> {
-        let response = reqwest::blocking::get(url)?;
-        if response.status().is_success() { Ok(response) } else { bail!("Failed to fetch from {}", url) }
+    fn get_request(url: &str) -> Result<ureq::Response> {
+        let response = ureq::get(url).call()?;
+        if response.status() == 200 { Ok(response) } else { bail!("Failed to fetch from {}", url) }
     }
 }
 
@@ -686,7 +686,7 @@ mod tests {
     fn test_inclusion_verify_execution() {
         let rng = &mut TestRng::default();
         // Fetch an execution transaction.
-        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         match execution_transaction {
             Transaction::Execute(_, execution, _) => {
@@ -703,7 +703,7 @@ mod tests {
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
 
         match deployment_transaction {
-            Transaction::Deploy(_, _, fee) => {
+            Transaction::Deploy(_, _, _, fee) => {
                 assert!(Inclusion::verify_fee(&fee).is_ok());
             }
             _ => panic!("Expected a deployment transaction"),

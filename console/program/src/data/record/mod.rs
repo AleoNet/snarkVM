@@ -18,7 +18,7 @@ mod entry;
 pub use entry::Entry;
 
 mod helpers;
-pub use helpers::{Balance, Owner};
+pub use helpers::Owner;
 
 mod bytes;
 mod decrypt;
@@ -39,7 +39,7 @@ mod to_fields;
 use crate::{Ciphertext, Identifier, Literal, Plaintext, ProgramID};
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Boolean, Field, Group, Scalar, U64};
+use snarkvm_console_types::{Boolean, Field, Group, Scalar};
 
 use indexmap::IndexMap;
 
@@ -48,8 +48,6 @@ use indexmap::IndexMap;
 pub struct Record<N: Network, Private: Visibility> {
     /// The owner of the program record.
     owner: Owner<N, Private>,
-    /// The Aleo balance (in gates) of the program record.
-    gates: Balance<N, Private>,
     /// The program data.
     data: IndexMap<Identifier<N>, Entry<N, Private>>,
     /// The nonce of the program record.
@@ -60,33 +58,31 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Initializes a new record plaintext.
     pub fn from_plaintext(
         owner: Owner<N, Plaintext<N>>,
-        gates: Balance<N, Plaintext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Plaintext<N>>>,
         nonce: Group<N>,
     ) -> Result<Record<N, Plaintext<N>>> {
-        let reserved = [Identifier::from_str("owner")?, Identifier::from_str("gates")?];
+        let reserved = [Identifier::from_str("owner")?];
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
-        // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Record { owner, gates, data, nonce })
+        Ok(Record { owner, data, nonce })
     }
 
     /// Initializes a new record ciphertext.
     pub fn from_ciphertext(
         owner: Owner<N, Ciphertext<N>>,
-        gates: Balance<N, Ciphertext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Ciphertext<N>>>,
         nonce: Group<N>,
     ) -> Result<Record<N, Ciphertext<N>>> {
-        let reserved = [Identifier::from_str("owner")?, Identifier::from_str("gates")?];
+        let reserved = [Identifier::from_str("owner")?];
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
-        // Ensure the number of structs is within `N::MAX_DATA_ENTRIES`.
+        // Ensure the number of entries is within the maximum limit.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Record { owner, gates, data, nonce })
+        Ok(Record { owner, data, nonce })
     }
 }
 
@@ -94,11 +90,6 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Returns the owner of the program record.
     pub const fn owner(&self) -> &Owner<N, Private> {
         &self.owner
-    }
-
-    /// Returns the gates of the program record.
-    pub const fn gates(&self) -> &Balance<N, Private> {
-        &self.gates
     }
 
     /// Returns the program data.
@@ -116,11 +107,6 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Returns the owner of the program record, and consumes `self`.
     pub fn into_owner(self) -> Owner<N, Private> {
         self.owner
-    }
-
-    /// Returns the gates of the program record, and consumes `self`.
-    pub fn into_gates(self) -> Balance<N, Private> {
-        self.gates
     }
 
     /// Returns the program data, and consumes `self`.

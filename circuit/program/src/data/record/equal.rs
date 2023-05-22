@@ -29,11 +29,8 @@ impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Record<A, Private> {
             equal = equal & name_a.is_equal(name_b) & entry_a.is_equal(entry_b);
         }
 
-        // Check the `owner`, `gates`, `data`, and `nonce`.
-        self.owner.is_equal(&other.owner)
-            & self.gates.is_equal(&other.gates)
-            & equal
-            & self.nonce.is_equal(&other.nonce)
+        // Check the `owner`, `data`, and `nonce`.
+        self.owner.is_equal(&other.owner) & equal & self.nonce.is_equal(&other.nonce)
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
@@ -46,11 +43,8 @@ impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Record<A, Private> {
             not_equal = not_equal | name_a.is_not_equal(name_b) | entry_a.is_not_equal(entry_b);
         }
 
-        // Check the `owner`, `gates`, `data`, and `nonce`.
-        self.owner.is_not_equal(&other.owner)
-            | self.gates.is_not_equal(&other.gates)
-            | not_equal
-            | self.nonce.is_not_equal(&other.nonce)
+        // Check the `owner`, `data`, and `nonce`.
+        self.owner.is_not_equal(&other.owner) | not_equal | self.nonce.is_not_equal(&other.nonce)
     }
 }
 
@@ -66,7 +60,6 @@ mod tests {
         >::from_str(
             r"{
     owner: aleo14tlamssdmg3d0p5zmljma573jghe2q9n6wz29qf36re2glcedcpqfg4add.private,
-    gates: 0u64.private,
     a: true.private,
     b: 123456789field.public,
     c: 0group.private,
@@ -89,7 +82,6 @@ mod tests {
         >::from_str(
             r"{
     owner: aleo14tlamssdmg3d0p5zmljma573jghe2q9n6wz29qf36re2glcedcpqfg4add.private,
-    gates: 0u64.private,
     a: true.public,
     b: 123456789field.public,
     c: 0group.private,
@@ -159,31 +151,35 @@ mod tests {
 
     #[test]
     fn test_is_equal_constant() -> Result<()> {
-        check_is_equal(Mode::Constant, 7, 0, 36, 47)
+        // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
+        // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
+        check_is_equal(Mode::Constant, 7, 0, 33, 43)
     }
 
     #[test]
     fn test_is_equal_public() -> Result<()> {
-        check_is_equal(Mode::Public, 7, 0, 36, 47)
+        check_is_equal(Mode::Public, 7, 0, 33, 43)
     }
 
     #[test]
     fn test_is_equal_private() -> Result<()> {
-        check_is_equal(Mode::Private, 7, 0, 36, 47)
+        check_is_equal(Mode::Private, 7, 0, 33, 43)
     }
 
     #[test]
     fn test_is_not_equal_constant() -> Result<()> {
-        check_is_not_equal(Mode::Constant, 7, 0, 30, 41)
+        // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
+        // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
+        check_is_not_equal(Mode::Constant, 7, 0, 27, 37)
     }
 
     #[test]
     fn test_is_not_equal_public() -> Result<()> {
-        check_is_not_equal(Mode::Public, 7, 0, 30, 41)
+        check_is_not_equal(Mode::Public, 7, 0, 27, 37)
     }
 
     #[test]
     fn test_is_not_equal_private() -> Result<()> {
-        check_is_not_equal(Mode::Private, 7, 0, 30, 41)
+        check_is_not_equal(Mode::Private, 7, 0, 27, 37)
     }
 }

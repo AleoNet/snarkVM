@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod finalize_type;
-pub use finalize_type::FinalizeType;
-
 mod literal_type;
 pub use literal_type::LiteralType;
 

@@ -366,7 +366,7 @@ impl<E: PairingEngine> CommitterKey<E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
@@ -385,6 +385,68 @@ pub struct VerifierKey<E: PairingEngine> {
     /// The maximum degree supported by the `UniversalParams` `self` was derived
     /// from.
     pub max_degree: usize,
+}
+
+impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        self.vk.serialize_with_mode(&mut writer, compress)?;
+        self.degree_bounds_and_neg_powers_of_h.serialize_with_mode(&mut writer, compress)?;
+        self.supported_degree.serialize_with_mode(&mut writer, compress)?;
+        self.max_degree.serialize_with_mode(&mut writer, compress)?;
+        Ok(())
+    }
+
+    fn serialized_size(&self, compress: Compress) -> usize {
+        self.vk.serialized_size(compress)
+            + self.degree_bounds_and_neg_powers_of_h.serialized_size(compress)
+            + self.supported_degree.serialized_size(compress)
+            + self.max_degree.serialized_size(compress)
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>> =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            degree_bounds_and_neg_powers_of_h.as_ref().map(|v| v.iter().map(|(b, pow)| (*b, pow.prepare())).collect());
+        Ok(VerifierKey {
+            vk,
+            degree_bounds_and_neg_powers_of_h,
+            degree_bounds_and_prepared_neg_powers_of_h,
+            supported_degree,
+            max_degree,
+        })
+    }
+}
+
+impl<E: PairingEngine> Valid for VerifierKey<E> {
+    fn check(&self) -> Result<(), SerializationError> {
+        Valid::check(&self.vk)?;
+        Valid::check(&self.degree_bounds_and_neg_powers_of_h)?;
+        Valid::check(&self.supported_degree)?;
+        Valid::check(&self.max_degree)?;
+        Ok(())
+    }
+
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        let batch: Vec<_> = batch.collect();
+        Valid::batch_check(batch.iter().map(|v| &v.vk))?;
+        Valid::batch_check(batch.iter().map(|v| &v.degree_bounds_and_neg_powers_of_h))?;
+        Valid::batch_check(batch.iter().map(|v| &v.supported_degree))?;
+        Valid::batch_check(batch.iter().map(|v| &v.max_degree))?;
+        Ok(())
+    }
 }
 
 impl<E: PairingEngine> FromBytes for VerifierKey<E> {

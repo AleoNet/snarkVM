@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.9.13"
+version = "0.10.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,12 +25,12 @@ edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.13"
+version = "0.10.3"
 
 
 [target."cfg(not(target_vendor = \"fortanix\"))".dependencies.aleo-std-storage]
@@ -91,8 +91,9 @@ version = "1.0"
 version = "0.4"
 optional = true
 
-[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.curl]
+[dependencies.curl]
 version = "0.4.43"
+optional = true
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
@@ -117,7 +118,7 @@ version = "0.4.3"
 version = "0.8"
 
 [features]
-default = [ "no_std_out", "remote"]
+default = [ "no_std_out", "remote", "curl"]
 no_std_out = [ ]
 remote = [ ]
 wasm = [ "reqwest", "wasm-bindgen-futures" ]

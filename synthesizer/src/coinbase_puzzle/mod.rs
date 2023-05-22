@@ -36,10 +36,13 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::cfg_zip_fold;
 
 use std::sync::Arc;
 
-#[cfg(feature = "parallel")]
+#[cfg(feature = "serial")]
+use itertools::Itertools;
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 #[derive(Clone)]
@@ -208,15 +211,19 @@ impl<N: Network> CoinbasePuzzle<N> {
             None => bail!("Missing the accumulator challenge point"),
         };
 
-        // Construct the provers polynomial.
-        let accumulated_prover_polynomial = cfg_into_iter!(prover_polynomials)
-            .zip_eq(challenges)
-            .fold(DensePolynomial::zero, |mut accumulator, (mut prover_polynomial, challenge)| {
+        // Accumulate the prover polynomial.
+        let zero = DensePolynomial::zero;
+        let accumulated_prover_polynomial = cfg_zip_fold!(
+            cfg_into_iter!(prover_polynomials),
+            challenges,
+            zero,
+            |mut accumulator, (mut prover_polynomial, challenge)| {
                 prover_polynomial *= challenge;
                 accumulator += &prover_polynomial;
                 accumulator
-            })
-            .sum::<DensePolynomial<_>>();
+            },
+            DensePolynomial<_>
+        );
         let product_eval_at_challenge_point = accumulated_prover_polynomial.evaluate(accumulator_point)
             * epoch_challenge.epoch_polynomial().evaluate(accumulator_point);
 
@@ -310,12 +317,15 @@ impl<N: Network> CoinbasePuzzle<N> {
         };
 
         // Compute the accumulator evaluation.
-        let mut accumulator_evaluation = cfg_iter!(prover_polynomials)
-            .zip_eq(&challenge_points)
-            .fold(<N::PairingCurve as PairingEngine>::Fr::zero, |accumulator, (prover_polynomial, challenge_point)| {
+        let mut accumulator_evaluation = cfg_zip_fold!(
+            cfg_iter!(prover_polynomials),
+            &challenge_points,
+            <N::PairingCurve as PairingEngine>::Fr::zero,
+            |accumulator, (prover_polynomial, challenge_point)| {
                 accumulator + (prover_polynomial.evaluate(accumulator_point) * challenge_point)
-            })
-            .sum();
+            },
+            _
+        );
         accumulator_evaluation *= &epoch_challenge.epoch_polynomial().evaluate(accumulator_point);
 
         // Compute the accumulator commitment.

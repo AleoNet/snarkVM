@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U8};
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
 
 #[derive(Clone)]
 pub struct TransitionLeaf<A: Aleo> {
@@ -24,7 +24,7 @@ pub struct TransitionLeaf<A: Aleo> {
     /// The index of the Merkle leaf.
     index: U8<A>,
     /// The variant of the Merkle leaf.
-    variant: U16<A>,
+    variant: U8<A>,
     /// The ID.
     id: Field<A>,
 }
@@ -41,7 +41,7 @@ impl<A: Aleo> TransitionLeaf<A> {
     }
 
     /// Returns the variant of the Merkle leaf.
-    pub const fn variant(&self) -> &U16<A> {
+    pub const fn variant(&self) -> &U8<A> {
         &self.variant
     }
 
@@ -59,7 +59,7 @@ impl<A: Aleo> Inject for TransitionLeaf<A> {
         Self {
             version: U8::new(mode, console::U8::new(transition_leaf.version())),
             index: U8::new(mode, console::U8::new(transition_leaf.index())),
-            variant: U16::new(mode, console::U16::new(transition_leaf.variant())),
+            variant: U8::new(mode, console::U8::new(transition_leaf.variant())),
             id: Field::new(mode, transition_leaf.id()),
         }
     }

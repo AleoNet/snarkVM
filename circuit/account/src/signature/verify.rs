@@ -135,12 +135,12 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 1757, 0, 7031, 7037)
+        check_verify(Mode::Public, 1757, 0, 7783, 7792)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 1757, 0, 7031, 7037)
+        check_verify(Mode::Private, 1757, 0, 7783, 7792)
     }
 
     #[test]
@@ -150,11 +150,11 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_large_public() -> Result<()> {
-        check_verify_large(Mode::Public, 1757, 0, 7556, 7562)
+        check_verify_large(Mode::Public, 1757, 0, 8308, 8317)
     }
 
     #[test]
     fn test_verify_large_private() -> Result<()> {
-        check_verify_large(Mode::Private, 1757, 0, 7556, 7562)
+        check_verify_large(Mode::Private, 1757, 0, 8308, 8317)
     }
 }

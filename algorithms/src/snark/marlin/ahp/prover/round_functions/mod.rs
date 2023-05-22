@@ -27,7 +27,7 @@ use snarkvm_utilities::cfg_iter;
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 mod first;

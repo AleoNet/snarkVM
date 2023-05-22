@@ -28,9 +28,9 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
         // Case 2: Constant < Variable
         else if self.is_constant() {
             // See the `else` case below for the truth table and description of the logic.
-            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+            self.eject_value().to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
-                |is_less_than, (this, that)| match this.eject_value() {
+                |is_less_than, (this, that)| match this {
                     true => that.bitand(&is_less_than),
                     false => that.bitor(&is_less_than),
                 },
@@ -39,9 +39,9 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
         // Case 3: Variable < Constant
         else if other.is_constant() {
             // See the `else` case below for the truth table and description of the logic.
-            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+            self.to_bits_le().into_iter().zip_eq(other.eject_value().to_bits_le()).fold(
                 Boolean::constant(false),
-                |is_less_than, (this, that)| match that.eject_value() {
+                |is_less_than, (this, that)| match that {
                     true => (!this).bitor(is_less_than),
                     false => (!this).bitand(&is_less_than),
                 },
@@ -171,41 +171,41 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_public() {
-        run_test(Mode::Constant, Mode::Public, 253, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Public, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_constant_is_less_than_private() {
-        run_test(Mode::Constant, Mode::Private, 253, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Private, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_public_is_less_than_constant() {
-        run_test(Mode::Public, Mode::Constant, 253, 0, 506, 507);
+        run_test(Mode::Public, Mode::Constant, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_public_is_less_than_public() {
-        run_test(Mode::Public, Mode::Public, 0, 0, 1012, 1014);
+        run_test(Mode::Public, Mode::Public, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        run_test(Mode::Public, Mode::Private, 0, 0, 1012, 1014);
+        run_test(Mode::Public, Mode::Private, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_private_is_less_than_constant() {
-        run_test(Mode::Private, Mode::Constant, 253, 0, 506, 507);
+        run_test(Mode::Private, Mode::Constant, 0, 0, 757, 759);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        run_test(Mode::Private, Mode::Public, 0, 0, 1012, 1014);
+        run_test(Mode::Private, Mode::Public, 0, 0, 1516, 1520);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        run_test(Mode::Private, Mode::Private, 0, 0, 1012, 1014);
+        run_test(Mode::Private, Mode::Private, 0, 0, 1516, 1520);
     }
 }

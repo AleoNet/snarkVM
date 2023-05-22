@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-r1cs"
-version = "0.9.13"
+version = "0.10.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "R1CS for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,20 +25,20 @@ edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.13"
+version = "0.10.3"
 
 [dependencies.anyhow]
-version = "1.0.69"
+version = "1.0.71"
 
 [dependencies.cfg-if]
 version = "1.0.0"
@@ -47,7 +47,7 @@ version = "1.0.0"
 version = "0.2.1"
 
 [dependencies.indexmap]
-version = "1.9.2"
+version = "1.9.3"
 
 [dependencies.itertools]
 version = "0.10.3"

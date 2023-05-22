@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-circuit-environment"
-version = "0.9.13"
+version = "0.10.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Circuit environment for a decentralized virtual machine"
 license = "GPL-3.0"
@@ -14,35 +14,35 @@ harness = false
 [dependencies.console]
 package = "snarkvm-console-network"
 path = "../../console/network"
-version = "0.9.13"
+version = "0.10.3"
 
 [dependencies.snarkvm-circuit-environment-witness]
 path = "./witness"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../../r1cs"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "0.9.13"
+version = "0.10.3"
 default-features = false
 
 [dependencies.indexmap]
-version = "1.9.2"
+version = "1.9.3"
 
 [dependencies.itertools]
 version = "0.10.1"
@@ -54,11 +54,10 @@ version = "7.1"
 version = "0.2"
 
 [dependencies.once_cell]
-version = "1.17.0"
+version = "1.17.1"
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-default-features = false
 features = [ "polycommit_full", "snark" ]
 
 [dev-dependencies.snarkvm-circuit]
@@ -71,4 +70,4 @@ path = "../../console/types"
 version = "0.4"
 
 [features]
-default = [ "snarkvm-curves/default", "snarkvm-r1cs/default" ]
+default = [ "snarkvm-curves/default" ]

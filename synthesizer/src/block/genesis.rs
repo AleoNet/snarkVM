@@ -18,6 +18,9 @@ use super::*;
 use crate::ConsensusStorage;
 
 impl<N: Network> Block<N> {
+    /// Specifies the number of genesis transactions.
+    const NUM_GENESIS_TRANSACTIONS: usize = 4;
+
     /// Initializes a new genesis block.
     pub fn genesis<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
         vm: &VM<N, C>,
@@ -26,15 +29,19 @@ impl<N: Network> Block<N> {
     ) -> Result<Self> {
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
+        // Prepare the locator.
+        let locator = ("credits.aleo", "mint");
+        // Prepare the amount for each call to the mint function.
+        let amount = N::STARTING_SUPPLY.saturating_div(Self::NUM_GENESIS_TRANSACTIONS as u64);
         // Prepare the function inputs.
-        let inputs = [caller.to_string(), format!("{}_u64", N::STARTING_SUPPLY)];
-        // Authorize the call to start.
-        let authorization = vm.authorize(private_key, "credits.aleo", "mint", inputs, rng)?;
-        // Execute the genesis function.
-        let transaction = Transaction::execute_authorization(vm, authorization, None, rng)?;
+        let inputs = [caller.to_string(), format!("{amount}_u64")];
+        // Execute the mint function.
+        let mint_transactions = (0..Self::NUM_GENESIS_TRANSACTIONS)
+            .map(|_| Transaction::execute(vm, private_key, locator, inputs.iter(), None, None, rng))
+            .collect::<Result<Vec<_>>>()?;
 
         // Prepare the transactions.
-        let transactions = Transactions::from(&[transaction]);
+        let transactions = Transactions::from(&mint_transactions);
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.
@@ -59,7 +66,7 @@ impl<N: Network> Block<N> {
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
             // Ensure there is 1 transaction in the genesis block.
-            && self.transactions.len() == 1
+            && self.transactions.len() == Self::NUM_GENESIS_TRANSACTIONS
             // Ensure the coinbase solution does not exist.
             && self.coinbase.is_none()
     }

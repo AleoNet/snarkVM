@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.9.13"
+version = "0.10.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -82,8 +82,8 @@ default = [
   "console",
   "synthesizer",
   "cli",
-  "parallel",
-  "parameters"
+  "parameters",
+  "utilities"
 ]
 full = [
   "algorithms",
@@ -108,13 +108,6 @@ cli = [
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
 cuda = [ "snarkvm-algorithms/cuda", "snarkvm-synthesizer/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
-parallel = [
-  "rayon",
-  "snarkvm-algorithms/parallel",
-  "snarkvm-fields/parallel",
-  "snarkvm-synthesizer/parallel",
-  "snarkvm-utilities/parallel"
-]
 noconfig = [ ]
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
@@ -129,57 +122,57 @@ wasm = [ "snarkvm-wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
-default-features = false
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "0.9.13"
+version = "0.10.3"
+# default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "0.9.13"
+version = "0.10.3"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.69"
+version = "1.0.71"
 optional = true
 
 [dependencies.clap]
@@ -195,6 +188,9 @@ optional = true
 version = "1.9"
 features = [ "rayon" ]
 
+[dependencies.num-format]
+version = "0.4.4"
+
 [dependencies.once_cell]
 version = "1.17"
 
@@ -207,10 +203,9 @@ optional = true
 
 [dependencies.rayon]
 version = "1"
-optional = true
 
 [dependencies.self_update]
-version = "0.35"
+version = "0.36"
 optional = true
 
 [dependencies.serde_json]
@@ -233,7 +228,7 @@ version = "1.3"
 version = "0.11.2"
 
 [dev-dependencies.tempfile]
-version = "3.3"
+version = "3.5"
 
 [build-dependencies.walkdir]
 version = "2"

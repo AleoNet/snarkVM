@@ -55,7 +55,8 @@ impl<F: PrimeField> From<&crate::LinearCombination<F>> for AssignmentLC<F> {
     }
 }
 
-/// A struct for tracking the mapping of variables from the virtual machine (first) to the gadget constraint system (second).
+/// A struct that contains public variable assignments, private variable assignments,
+/// and constraint assignments.
 #[derive(Clone)]
 pub struct Assignment<F: PrimeField> {
     public: IndexMap<Index, F>,

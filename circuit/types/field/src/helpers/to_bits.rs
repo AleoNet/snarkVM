@@ -33,33 +33,53 @@ impl<E: Environment> ToBits for Field<E> {
 impl<E: Environment> ToBits for &Field<E> {
     type Boolean = Boolean<E>;
 
-    /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
+    /// Outputs the unique, minimal little-endian bit representation of `self` *without* trailing zeros.
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
         self.bits_le
             .get_or_init(|| {
-                // Construct a vector of `Boolean`s comprising the bits of the field value.
-                let bits_le = witness!(|self| self.to_bits_le());
+                // Extract a non-unique little-endian bit representation of `self`.
+                let bits_le = self.to_non_unique_bits_le();
 
-                // Reconstruct the bits as a linear combination representing the original field value.
-                let mut accumulator = Field::zero();
-                let mut coefficient = Field::one();
-                for bit in &bits_le {
-                    accumulator += Field::from_boolean(bit) * &coefficient;
-                    coefficient = coefficient.double();
+                // Ensure the bit representation is unique.
+                {
+                    // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
+                    // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
+                    let modulus_minus_one = -E::BaseField::one();
+                    // Assert `bits_le <= (BaseField::MODULUS - 1)`, which is equivalent to `bits_le < BaseField::MODULUS`.
+                    Boolean::assert_less_than_or_equal_constant(&bits_le, &modulus_minus_one.to_bits_le())
                 }
-
-                // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
-                E::assert_eq(*self, accumulator);
 
                 bits_le
             })
             .clone()
     }
 
-    /// Outputs the big-endian bit representation of `self` *without* leading zeros.
+    /// Outputs the unique, minimal big-endian bit representation of `self` *without* leading zeros.
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
         let mut bits_le = self.to_bits_le();
         bits_le.reverse();
+        bits_le
+    }
+}
+
+impl<E: Environment> Field<E> {
+    /// Outputs a non-unique little-endian bit representation of `self` *without* trailing zeros.
+    #[doc(hidden)]
+    fn to_non_unique_bits_le(&self) -> Vec<Boolean<E>> {
+        // Construct a vector of `Boolean`s comprising the bits of the field value.
+        let bits_le = witness!(|self| self.to_bits_le());
+
+        // Reconstruct the bits as a linear combination representing the original field value.
+        let mut accumulator = Field::zero();
+        let mut coefficient = Field::one();
+        for bit in &bits_le {
+            accumulator += Field::from_boolean(bit) * &coefficient;
+            coefficient = coefficient.double();
+        }
+
+        // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
+        E::assert_eq(self, accumulator);
+
         bits_le
     }
 }
@@ -70,7 +90,7 @@ impl<E: Environment> Metrics<dyn ToBits<Boolean = Boolean<E>>> for Field<E> {
     fn count(case: &Self::Case) -> Count {
         match case {
             Mode::Constant => Count::is(253, 0, 0, 0),
-            _ => Count::is(0, 0, 253, 254),
+            _ => Count::is(0, 0, 505, 507),
         }
     }
 }

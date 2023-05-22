@@ -41,7 +41,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompr
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_curves::ProjectiveCurve;
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
@@ -98,11 +98,11 @@ mod tests {
 
     #[test]
     fn test_commit_uncompressed_public() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10279, 10281)
+        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10781, 10785)
     }
 
     #[test]
     fn test_commit_uncompressed_private() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10279, 10281)
+        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10781, 10785)
     }
 }
