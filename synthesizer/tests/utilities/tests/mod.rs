@@ -20,6 +20,9 @@ pub use file_parse_test::*;
 pub mod line_parse_test;
 pub use line_parse_test::*;
 
+pub mod program_test;
+pub use program_test::*;
+
 use anyhow::Result;
 use std::path::Path;
 use walkdir::WalkDir;

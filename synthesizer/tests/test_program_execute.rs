@@ -17,20 +17,37 @@
 mod utilities;
 use utilities::*;
 
-use console::network::prelude::*;
-use snarkvm_synthesizer::Instruction;
+use console::{account::PrivateKey, network::prelude::*};
+use snarkvm_synthesizer::Process;
 
 #[test]
-fn test_instruction_parse() {
+fn test_program_execute() {
     // Load the tests.
-    let tests = load_tests::<_, LineParseTest>("./tests/parser/instruction", "./expectations/parser/instruction");
+    let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/program/execute");
+    // Initialize a process.
+    let mut process = Process::<CurrentNetwork>::load().unwrap();
+    // Initialize an RNG.
+    let rng = &mut TestRng::default();
+    // Initialize a private key.
+    let private_key = PrivateKey::new(rng).unwrap();
     // Run each test and compare it against its corresponding expectation.
     for test in &tests {
-        // Run the parser on each of the test strings.
+        // Add the program into the process.
+        let program = test.test_program();
+        process.add_program(program).unwrap();
         let outputs = test
-            .test_strings()
+            .test_cases()
             .iter()
-            .map(|test_string| convert_result(Instruction::<CurrentNetwork>::parse(test_string), test_string))
+            .map(|(function_name, inputs)| {
+                // Authorize the execution.
+                let authorization = process
+                    .authorize::<CurrentAleo, _>(&private_key, program.id(), function_name, inputs.iter(), rng)
+                    .unwrap();
+                // Execute the authorization.
+                let (response, _, _, _) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                // Extract the output.
+                response.outputs().to_vec()
+            })
             .collect::<Vec<_>>();
         // Check against the expected output.
         test.check(&outputs).unwrap();
