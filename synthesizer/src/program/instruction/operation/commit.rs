@@ -489,7 +489,7 @@ mod tests {
 
     // Note this test must be explicitly written, instead of using the macro, because CommitPED64 fails on certain input types.
     #[test]
-    fn test_hash_ped64_is_consistent() {
+    fn test_commit_ped64_is_consistent() {
         // Initialize the operation.
         let operation = |operands, destination| CommitPED64::<CurrentNetwork> { operands, destination };
         // Initialize the opcode.
@@ -531,7 +531,7 @@ mod tests {
 
     // Note this test must be explicitly written, instead of using the macro, because CommitPED128 fails on certain input types.
     #[test]
-    fn test_hash_ped128_is_consistent() {
+    fn test_commit_ped128_is_consistent() {
         // Initialize the operation.
         let operation = |operands, destination| CommitPED128::<CurrentNetwork> { operands, destination };
         // Initialize the opcode.
