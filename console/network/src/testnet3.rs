@@ -231,12 +231,12 @@ impl Network for Testnet3 {
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+    fn commit_to_group_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
         PEDERSEN_64.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+    fn commit_to_group_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
         PEDERSEN_128.commit_uncompressed(input, randomizer)
     }
 

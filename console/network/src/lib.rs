@@ -197,10 +197,10 @@ pub trait Network:
     fn commit_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+    fn commit_to_group_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+    fn commit_to_group_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
 
     /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[bool]) -> Result<Field<Self>>;

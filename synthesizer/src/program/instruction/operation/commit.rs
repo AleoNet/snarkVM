@@ -118,8 +118,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             1 => Literal::Field(N::commit_bhp512(&input.to_bits_le(), &randomizer)?),
             2 => Literal::Field(N::commit_bhp768(&input.to_bits_le(), &randomizer)?),
             3 => Literal::Field(N::commit_bhp1024(&input.to_bits_le(), &randomizer)?),
-            4 => Literal::Group(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
-            5 => Literal::Group(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
+            4 => Literal::Group(N::commit_to_group_ped64(&input.to_bits_le(), &randomizer)?),
+            5 => Literal::Group(N::commit_to_group_ped128(&input.to_bits_le(), &randomizer)?),
             _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Store the output.
