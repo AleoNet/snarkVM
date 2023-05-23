@@ -234,9 +234,9 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0 | 1 | 2 | 3 | 4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
-            6 | 7 | 8 | 9 | 10 | 11 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
-            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+            0..=5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            6..=11 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
+            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         }
     }
 }
