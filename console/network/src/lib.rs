@@ -184,17 +184,35 @@ pub trait Network:
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
 
-    /// Returns a BHP commitment with an input hasher of 256-bits.
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
-    /// Returns a BHP commitment with an input hasher of 512-bits.
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
     fn commit_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
-    /// Returns a BHP commitment with an input hasher of 768-bits.
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
     fn commit_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
-    /// Returns a BHP commitment with an input hasher of 1024-bits.
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
     fn commit_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
+
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
+    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
+
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
+    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
+    fn commit_to_group_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
+    fn commit_to_group_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
+    fn commit_to_group_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
+
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
+    fn commit_to_group_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
     fn commit_to_group_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
