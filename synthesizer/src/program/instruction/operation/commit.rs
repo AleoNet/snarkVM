@@ -157,8 +157,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             1 => circuit::Literal::Field(A::commit_bhp512(&input.to_bits_le(), &randomizer)),
             2 => circuit::Literal::Field(A::commit_bhp768(&input.to_bits_le(), &randomizer)),
             3 => circuit::Literal::Field(A::commit_bhp1024(&input.to_bits_le(), &randomizer)),
-            4 => circuit::Literal::Group(A::commit_ped64(&input.to_bits_le(), &randomizer)),
-            5 => circuit::Literal::Group(A::commit_ped128(&input.to_bits_le(), &randomizer)),
+            4 => circuit::Literal::Group(A::commit_to_group_ped64(&input.to_bits_le(), &randomizer)),
+            5 => circuit::Literal::Group(A::commit_to_group_ped128(&input.to_bits_le(), &randomizer)),
             _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Convert the output to a stack value.

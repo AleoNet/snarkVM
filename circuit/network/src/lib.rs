@@ -50,10 +50,10 @@ pub trait Aleo: Environment {
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self>;
+    fn commit_to_group_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self>;
+    fn commit_to_group_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self>;
 
     /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self>;

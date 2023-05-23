@@ -127,12 +127,12 @@ impl Aleo for AleoV0 {
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+    fn commit_to_group_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
         PEDERSEN_64.with(|pedersen| pedersen.commit_uncompressed(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+    fn commit_to_group_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
         PEDERSEN_128.with(|pedersen| pedersen.commit_uncompressed(input, randomizer))
     }
 
