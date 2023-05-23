@@ -384,8 +384,8 @@ impl<N: Network> FinalizeTypes<N> {
                     "commit.bhp512",
                     "commit.bhp768",
                     "commit.bhp1024",
-                    "commit.ped64",
-                    "commit.ped128",
+                    "commit_to_group.ped64",
+                    "commit_to_group.ped128",
                 ]
                 .contains(&opcode)
                 {
@@ -409,12 +409,12 @@ impl<N: Network> FinalizeTypes<N> {
                         matches!(instruction, Instruction::CommitBHP1024(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "commit.ped64" => ensure!(
-                        matches!(instruction, Instruction::CommitPED64(..)),
+                    "commit_to_group.ped64" => ensure!(
+                        matches!(instruction, Instruction::CommitToGroupPED64(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    "commit.ped128" => ensure!(
-                        matches!(instruction, Instruction::CommitPED128(..)),
+                    "commit_to_group.ped128" => ensure!(
+                        matches!(instruction, Instruction::CommitToGroupPED128(..)),
                         "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),

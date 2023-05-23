@@ -28,26 +28,26 @@ use console::{
 };
 
 /// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
-pub type CommitBHP256<N> = CommitInstruction<N, { Committer::BHP256 as u8 }>;
+pub type CommitBHP256<N> = CommitInstruction<N, { Committer::CommitBHP256 as u8 }>;
 /// BHP512 is a collision-resistant function that processes inputs in 512-bit chunks.
-pub type CommitBHP512<N> = CommitInstruction<N, { Committer::BHP512 as u8 }>;
+pub type CommitBHP512<N> = CommitInstruction<N, { Committer::CommitBHP512 as u8 }>;
 /// BHP768 is a collision-resistant function that processes inputs in 768-bit chunks.
-pub type CommitBHP768<N> = CommitInstruction<N, { Committer::BHP768 as u8 }>;
+pub type CommitBHP768<N> = CommitInstruction<N, { Committer::CommitBHP768 as u8 }>;
 /// BHP1024 is a collision-resistant function that processes inputs in 1024-bit chunks.
-pub type CommitBHP1024<N> = CommitInstruction<N, { Committer::BHP1024 as u8 }>;
+pub type CommitBHP1024<N> = CommitInstruction<N, { Committer::CommitBHP1024 as u8 }>;
 
 /// Pedersen64 is a collision-resistant function that processes inputs in 64-bit chunks.
-pub type CommitPED64<N> = CommitInstruction<N, { Committer::PED64 as u8 }>;
+pub type CommitToGroupPED64<N> = CommitInstruction<N, { Committer::CommitToGroupPED64 as u8 }>;
 /// Pedersen128 is a collision-resistant function that processes inputs in 128-bit chunks.
-pub type CommitPED128<N> = CommitInstruction<N, { Committer::PED128 as u8 }>;
+pub type CommitToGroupPED128<N> = CommitInstruction<N, { Committer::CommitToGroupPED128 as u8 }>;
 
 enum Committer {
-    BHP256,
-    BHP512,
-    BHP768,
-    BHP1024,
-    PED64,
-    PED128,
+    CommitBHP256,
+    CommitBHP512,
+    CommitBHP768,
+    CommitBHP1024,
+    CommitToGroupPED64,
+    CommitToGroupPED128,
 }
 
 /// Commits the operand into the declared type.
@@ -68,8 +68,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             1 => Opcode::Commit("commit.bhp512"),
             2 => Opcode::Commit("commit.bhp768"),
             3 => Opcode::Commit("commit.bhp1024"),
-            4 => Opcode::Commit("commit.ped64"),
-            5 => Opcode::Commit("commit.ped128"),
+            4 => Opcode::Commit("commit_to_group.ped64"),
+            5 => Opcode::Commit("commit_to_group.ped128"),
             _ => panic!("Invalid 'commit' instruction opcode"),
         }
     }
@@ -491,9 +491,9 @@ mod tests {
     #[test]
     fn test_commit_ped64_is_consistent() {
         // Initialize the operation.
-        let operation = |operands, destination| CommitPED64::<CurrentNetwork> { operands, destination };
+        let operation = |operands, destination| CommitToGroupPED64::<CurrentNetwork> { operands, destination };
         // Initialize the opcode.
-        let opcode = CommitPED128::<CurrentNetwork>::opcode();
+        let opcode = CommitToGroupPED128::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
         let mut rng = TestRng::default();
@@ -533,9 +533,9 @@ mod tests {
     #[test]
     fn test_commit_ped128_is_consistent() {
         // Initialize the operation.
-        let operation = |operands, destination| CommitPED128::<CurrentNetwork> { operands, destination };
+        let operation = |operands, destination| CommitToGroupPED128::<CurrentNetwork> { operands, destination };
         // Initialize the opcode.
-        let opcode = CommitPED128::<CurrentNetwork>::opcode();
+        let opcode = CommitToGroupPED128::<CurrentNetwork>::opcode();
 
         // Prepare the rng.
         let mut rng = TestRng::default();

@@ -84,9 +84,9 @@ pub enum Instruction<N: Network> {
     /// Performs a BHP commitment on inputs of 1024-bit chunks.
     CommitBHP1024(CommitBHP1024<N>),
     /// Performs a Pedersen commitment on up to a 64-bit input.
-    CommitPED64(CommitPED64<N>),
+    CommitToGroupPED64(CommitToGroupPED64<N>),
     /// Performs a Pedersen commitment on up to a 128-bit input.
-    CommitPED128(CommitPED128<N>),
+    CommitToGroupPED128(CommitToGroupPED128<N>),
     /// Divides `first` by `second`, storing the outcome in `destination`.
     Div(Div<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -213,8 +213,8 @@ macro_rules! instruction {
             CommitBHP512,
             CommitBHP768,
             CommitBHP1024,
-            CommitPED64,
-            CommitPED128,
+            CommitToGroupPED64,
+            CommitToGroupPED128,
             Div,
             DivWrapped,
             Double,
