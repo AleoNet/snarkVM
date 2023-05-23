@@ -133,6 +133,14 @@ pub enum Instruction<N: Network> {
     HashManyPSD4(HashManyPSD4<N>),
     /// Performs a Poseidon hash with an input rate of 8.
     HashManyPSD8(HashManyPSD8<N>),
+    /// Performs a BHP hash on inputs of 256-bit chunks.
+    HashToGroupBHP256(HashToGroupBHP256<N>),
+    /// Performs a BHP hash on inputs of 512-bit chunks.
+    HashToGroupBHP512(HashToGroupBHP512<N>),
+    /// Performs a BHP hash on inputs of 768-bit chunks.
+    HashToGroupBHP768(HashToGroupBHP768<N>),
+    /// Performs a BHP hash on inputs of 1024-bit chunks.
+    HashToGroupBHP1024(HashToGroupBHP1024<N>),
     /// Performs a Poseidon hash with an input rate of 2.
     HashToGroupPSD2(HashToGroupPSD2<N>),
     /// Performs a Poseidon hash with an input rate of 4.
@@ -268,6 +276,10 @@ macro_rules! instruction {
             HashManyPSD2,
             HashManyPSD4,
             HashManyPSD8,
+            HashToGroupBHP256,
+            HashToGroupBHP512,
+            HashToGroupBHP768,
+            HashToGroupBHP1024,
             HashToGroupPSD2,
             HashToGroupPSD4,
             HashToGroupPSD8,

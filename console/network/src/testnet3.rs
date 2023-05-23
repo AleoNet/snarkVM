@@ -330,6 +330,26 @@ impl Network for Testnet3 {
         POSEIDON_8.hash_many(input, num_outputs)
     }
 
+    /// Returns the BHP hash with an input hasher of 256-bits.
+    fn hash_to_group_bhp256(input: &[bool]) -> Result<Group<Self>> {
+        BHP_256.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 512-bits.
+    fn hash_to_group_bhp512(input: &[bool]) -> Result<Group<Self>> {
+        BHP_512.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 768-bits.
+    fn hash_to_group_bhp768(input: &[bool]) -> Result<Group<Self>> {
+        BHP_768.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 1024-bits.
+    fn hash_to_group_bhp1024(input: &[bool]) -> Result<Group<Self>> {
+        BHP_1024.hash_uncompressed(input)
+    }
+
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
     fn hash_to_group_psd2(input: &[Field<Self>]) -> Result<Group<Self>> {
         POSEIDON_2.hash_to_group(input)

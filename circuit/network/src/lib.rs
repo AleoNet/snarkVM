@@ -109,6 +109,18 @@ pub trait Aleo: Environment {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
+    /// Returns the BHP hash with an input hasher of 256-bits.
+    fn hash_to_group_bhp256(input: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns the BHP hash with an input hasher of 512-bits.
+    fn hash_to_group_bhp512(input: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns the BHP hash with an input hasher of 768-bits.
+    fn hash_to_group_bhp768(input: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns the BHP hash with an input hasher of 1024-bits.
+    fn hash_to_group_bhp1024(input: &[Boolean<Self>]) -> Group<Self>;
+
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
     fn hash_to_group_psd2(input: &[Field<Self>]) -> Group<Self>;
 
