@@ -27,7 +27,7 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
     /// The tracker for whether a database transaction is in progress.
     pub(super) batch_in_progress: Arc<AtomicBool>,
     /// The database transaction.
-    pub(super) atomic_batch: Arc<Mutex<IndexMap<K, Option<V>>>>,
+    pub(super) atomic_batch: Arc<Mutex<Vec<(K, Option<V>)>>>,
     /// The checkpoint for the atomic batch.
     pub(super) checkpoint: Arc<Mutex<VecDeque<usize>>>,
 }
@@ -46,7 +46,7 @@ impl<
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key-value pair to the batch.
             true => {
-                self.atomic_batch.lock().insert(key, Some(value));
+                self.atomic_batch.lock().push((key, Some(value)));
             }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
@@ -68,7 +68,7 @@ impl<
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key to the batch.
             true => {
-                self.atomic_batch.lock().insert(*key, None);
+                self.atomic_batch.lock().push((*key, None));
             }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
@@ -149,6 +149,9 @@ impl<
         // Retrieve the atomic batch.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
+        // Insert the operations into an index map to remove any operations that would have been overwritten.
+        let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
+
         if !operations.is_empty() {
             // Prepare the key and value for each queued operation.
             //
@@ -224,7 +227,7 @@ impl<
         // If a batch is in progress, check the atomic batch first.
         if self.is_atomic_in_progress() {
             // If the key is present in the atomic batch, then check if the value is 'Some(V)'.
-            if let Some(value) = self.atomic_batch.lock().get(key) {
+            if let Some((_, value)) = self.atomic_batch.lock().iter().rev().find(|&(k, _)| k.borrow() == key) {
                 // If the value is 'Some(V)', then the key exists.
                 // If the value is 'Some(None)', then the key is scheduled to be removed.
                 return Ok(value.is_some());
@@ -263,14 +266,20 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        if self.is_atomic_in_progress() { self.atomic_batch.lock().get(key).cloned() } else { None }
+        // Return early if there is no atomic batch in progress.
+        if self.is_atomic_in_progress() {
+            self.atomic_batch.lock().iter().rev().find(|&(k, _)| k.borrow() == key).map(|(_, value)| value).cloned()
+        } else {
+            None
+        }
     }
 
     ///
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
     fn iter_pending(&'a self) -> Self::PendingIterator {
-        self.atomic_batch.lock().clone().into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
+        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone().into_iter());
+        filtered_atomic_batch.into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
     }
 
     ///
@@ -1066,9 +1075,10 @@ mod tests {
                 });
                 assert!(result.is_ok());
 
+                // Simulates an instruction that fails.
                 let result: Result<()> = atomic_batch_scope!(map, {
-                    // Make sure the checkpoint index is 1.
-                    assert_eq!(map.checkpoint.lock().back(), Some(&1));
+                    // Make sure the checkpoint index is 2.
+                    assert_eq!(map.checkpoint.lock().back(), Some(&2));
 
                     // Update the key.
                     map.insert(0, "3".to_string()).unwrap();
