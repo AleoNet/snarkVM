@@ -377,49 +377,7 @@ impl<N: Network> FinalizeTypes<N> {
             Opcode::Command(opcode) => {
                 bail!("Fatal error: Cannot check command '{opcode}' as an instruction in 'finalize {finalize_name}'.")
             }
-            Opcode::Commit(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if ![
-                    "commit.bhp256",
-                    "commit.bhp512",
-                    "commit.bhp768",
-                    "commit.bhp1024",
-                    "commit_to_group.ped64",
-                    "commit_to_group.ped128",
-                ]
-                .contains(&opcode)
-                {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
-                // Ensure the instruction is the correct one.
-                match opcode {
-                    "commit.bhp256" => ensure!(
-                        matches!(instruction, Instruction::CommitBHP256(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "commit.bhp512" => ensure!(
-                        matches!(instruction, Instruction::CommitBHP512(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "commit.bhp768" => ensure!(
-                        matches!(instruction, Instruction::CommitBHP768(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "commit.bhp1024" => ensure!(
-                        matches!(instruction, Instruction::CommitBHP1024(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "commit_to_group.ped64" => ensure!(
-                        matches!(instruction, Instruction::CommitToGroupPED64(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "commit_to_group.ped128" => ensure!(
-                        matches!(instruction, Instruction::CommitToGroupPED128(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
-                }
-            }
+            Opcode::Commit(opcode) => Self::check_commit_opcode(opcode, instruction)?,
             Opcode::Finalize(opcode) => {
                 bail!("Forbidden operation: Cannot invoke '{opcode}' in a `finalize` scope.");
             }
