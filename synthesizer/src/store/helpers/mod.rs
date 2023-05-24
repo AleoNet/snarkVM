@@ -220,6 +220,8 @@ macro_rules! atomic_batch_scope {
     }};
 }
 
+/// A mid-level helper macro to execute batches of `atomic_batch_scopes` by defining a checkpoint milestone. If the internal
+/// operation fails, then the map rewinds to the start of the checkpoint milestone.
 #[macro_export]
 macro_rules! atomic_wrapped_batch_scope {
     ($self:expr, $ops:block) => {{

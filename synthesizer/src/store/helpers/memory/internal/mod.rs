@@ -1053,9 +1053,8 @@ mod tests {
         assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
     }
 
-    // TODO (raychu86): Use the new macro here to simulate the finalize calls.
     #[test]
-    fn test_atomic_checkpoint_nested() -> Result<()> {
+    fn test_atomic_wrapped_batch_scope() -> Result<()> {
         // Initialize a map.
         let map: MemoryMap<usize, String> = Default::default();
         // Sanity check.

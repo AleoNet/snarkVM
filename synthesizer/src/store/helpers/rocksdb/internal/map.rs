@@ -1070,7 +1070,7 @@ mod tests {
     }
 
     #[test]
-    fn test_atomic_checkpoint_nested() -> Result<()> {
+    fn test_atomic_wrapped_batch_scope() -> Result<()> {
         // Initialize a map.
         let map: DataMap<usize, String> =
             RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
