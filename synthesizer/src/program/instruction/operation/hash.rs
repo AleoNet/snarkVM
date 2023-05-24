@@ -607,73 +607,87 @@ mod tests {
     // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
     #[test]
     fn test_hash_ped64_is_consistent() {
-        // Initialize the operation.
-        let operation = |operands, destination| HashPED64::<CurrentNetwork> { operands, destination };
-        // Initialize the opcode.
-        let opcode = HashPED64::<CurrentNetwork>::opcode();
-
         // Prepare the rng.
         let mut rng = TestRng::default();
 
         // Prepare the test.
         let modes = [circuit::Mode::Public, circuit::Mode::Private];
 
-        // Prepare the key cache.
-        let mut cache = Default::default();
+        macro_rules! check_hash {
+            ($operation:tt) => {
+                // Prepare the key cache.
+                let mut cache = Default::default();
 
-        for _ in 0..ITERATIONS {
-            let literals = [
-                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                Literal::I8(console::types::I8::rand(&mut rng)),
-                Literal::I16(console::types::I16::rand(&mut rng)),
-                Literal::I32(console::types::I32::rand(&mut rng)),
-                Literal::U8(console::types::U8::rand(&mut rng)),
-                Literal::U16(console::types::U16::rand(&mut rng)),
-                Literal::U32(console::types::U32::rand(&mut rng)),
-            ];
-            for literal in literals.iter() {
-                for mode in modes.iter() {
-                    check_hash(operation, opcode, literal, mode, &mut cache);
+                for _ in 0..ITERATIONS {
+                    let literals = [
+                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                        Literal::I8(console::types::I8::rand(&mut rng)),
+                        Literal::I16(console::types::I16::rand(&mut rng)),
+                        Literal::I32(console::types::I32::rand(&mut rng)),
+                        Literal::U8(console::types::U8::rand(&mut rng)),
+                        Literal::U16(console::types::U16::rand(&mut rng)),
+                        Literal::U32(console::types::U32::rand(&mut rng)),
+                    ];
+                    for literal in literals.iter() {
+                        for mode in modes.iter() {
+                            check_hash(
+                                |operands, destination| $operation::<CurrentNetwork> { operands, destination },
+                                $operation::<CurrentNetwork>::opcode(),
+                                literal,
+                                mode,
+                                &mut cache,
+                            );
+                        }
+                    }
                 }
-            }
+            };
         }
+        check_hash!(HashPED64);
+        check_hash!(HashToGroupPED64);
     }
 
     // Note this test must be explicitly written, instead of using the macro, because HashPED128 fails on certain input types.
     #[test]
     fn test_hash_ped128_is_consistent() {
-        // Initialize the operation.
-        let operation = |operands, destination| HashPED128::<CurrentNetwork> { operands, destination };
-        // Initialize the opcode.
-        let opcode = HashPED128::<CurrentNetwork>::opcode();
-
         // Prepare the rng.
         let mut rng = TestRng::default();
 
         // Prepare the test.
         let modes = [circuit::Mode::Public, circuit::Mode::Private];
 
-        // Prepare the key cache.
-        let mut cache = Default::default();
+        macro_rules! check_hash {
+            ($operation:tt) => {
+                // Prepare the key cache.
+                let mut cache = Default::default();
 
-        for _ in 0..ITERATIONS {
-            let literals = [
-                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                Literal::I8(console::types::I8::rand(&mut rng)),
-                Literal::I16(console::types::I16::rand(&mut rng)),
-                Literal::I32(console::types::I32::rand(&mut rng)),
-                Literal::I64(console::types::I64::rand(&mut rng)),
-                Literal::U8(console::types::U8::rand(&mut rng)),
-                Literal::U16(console::types::U16::rand(&mut rng)),
-                Literal::U32(console::types::U32::rand(&mut rng)),
-                Literal::U64(console::types::U64::rand(&mut rng)),
-            ];
-            for literal in literals.iter() {
-                for mode in modes.iter() {
-                    check_hash(operation, opcode, literal, mode, &mut cache);
+                for _ in 0..ITERATIONS {
+                    let literals = [
+                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                        Literal::I8(console::types::I8::rand(&mut rng)),
+                        Literal::I16(console::types::I16::rand(&mut rng)),
+                        Literal::I32(console::types::I32::rand(&mut rng)),
+                        Literal::I64(console::types::I64::rand(&mut rng)),
+                        Literal::U8(console::types::U8::rand(&mut rng)),
+                        Literal::U16(console::types::U16::rand(&mut rng)),
+                        Literal::U32(console::types::U32::rand(&mut rng)),
+                        Literal::U64(console::types::U64::rand(&mut rng)),
+                    ];
+                    for literal in literals.iter() {
+                        for mode in modes.iter() {
+                            check_hash(
+                                |operands, destination| $operation::<CurrentNetwork> { operands, destination },
+                                $operation::<CurrentNetwork>::opcode(),
+                                literal,
+                                mode,
+                                &mut cache,
+                            );
+                        }
+                    }
                 }
-            }
+            };
         }
+        check_hash!(HashPED128);
+        check_hash!(HashToGroupPED128);
     }
 
     #[test]
