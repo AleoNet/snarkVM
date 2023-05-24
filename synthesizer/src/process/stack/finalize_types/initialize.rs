@@ -13,7 +13,10 @@
 // limitations under the License.
 
 use super::*;
-use crate::finalize::{Get, GetOrInit, Set};
+use crate::{
+    finalize::{Get, GetOrInit, Set},
+    RegisterTypes,
+};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -377,7 +380,7 @@ impl<N: Network> FinalizeTypes<N> {
             Opcode::Command(opcode) => {
                 bail!("Fatal error: Cannot check command '{opcode}' as an instruction in 'finalize {finalize_name}'.")
             }
-            Opcode::Commit(opcode) => Self::check_commit_opcode(opcode, instruction)?,
+            Opcode::Commit(opcode) => RegisterTypes::check_commit_opcode(opcode, instruction)?,
             Opcode::Finalize(opcode) => {
                 bail!("Forbidden operation: Cannot invoke '{opcode}' in a `finalize` scope.");
             }
