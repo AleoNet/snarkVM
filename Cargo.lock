@@ -2812,7 +2812,6 @@ dependencies = [
  "itertools",
  "js-sys",
  "lazy_static",
- "parking_lot",
  "paste",
  "rand",
  "serde_json",
