@@ -70,7 +70,7 @@ impl<C: Inject<Primitive = P>, P> Inject for Vec<C> {
 
 /// A helper macro to implement `Inject` for a tuple of `Inject` circuits.
 macro_rules! inject_tuple {
-    (($t0:ident, $i0:expr), $(($ty:ident, $idx:tt)),*) => {
+    (($t0:ident, 0), $(($ty:ident, $idx:tt)),*) => {
         impl<$t0: Inject, $($ty: Inject),*> Inject for ($t0, $($ty),*) {
             type Primitive = ($t0::Primitive, $( $ty::Primitive ),*);
 
