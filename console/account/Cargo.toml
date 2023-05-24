@@ -22,7 +22,7 @@ default-features = false
 features = [ "address", "field", "group", "scalar" ]
 
 [dependencies.bs58]
-version = "0.4"
+version = "0.5"
 
 [dev-dependencies.bincode]
 version = "1.3"
