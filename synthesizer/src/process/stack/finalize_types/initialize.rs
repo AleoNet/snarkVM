@@ -303,10 +303,6 @@ impl<N: Network> FinalizeTypes<N> {
                 );
             }
             Opcode::Assert(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if !["assert.eq", "assert.neq"].contains(&opcode) {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
                 // Ensure the instruction is the correct one.
                 match opcode {
                     "assert.eq" => ensure!(
@@ -363,19 +359,6 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Fatal error: Cannot check command '{opcode}' as an instruction in 'finalize {finalize_name}'.")
             }
             Opcode::Commit(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if ![
-                    "commit.bhp256",
-                    "commit.bhp512",
-                    "commit.bhp768",
-                    "commit.bhp1024",
-                    "commit.ped64",
-                    "commit.ped128",
-                ]
-                .contains(&opcode)
-                {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
                 // Ensure the instruction is the correct one.
                 match opcode {
                     "commit.bhp256" => ensure!(
@@ -409,22 +392,6 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Forbidden operation: Cannot invoke '{opcode}' in a `finalize` scope.");
             }
             Opcode::Hash(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if ![
-                    "hash.bhp256",
-                    "hash.bhp512",
-                    "hash.bhp768",
-                    "hash.bhp1024",
-                    "hash.ped64",
-                    "hash.ped128",
-                    "hash.psd2",
-                    "hash.psd4",
-                    "hash.psd8",
-                ]
-                .contains(&opcode)
-                {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
                 // Ensure the instruction is the correct one.
                 match opcode {
                     "hash.bhp256" => ensure!(
@@ -467,10 +434,6 @@ impl<N: Network> FinalizeTypes<N> {
                 }
             }
             Opcode::Is(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if !["is.eq", "is.neq"].contains(&opcode) {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
                 // Ensure the instruction is the correct one.
                 match opcode {
                     "is.eq" => ensure!(
