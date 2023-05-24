@@ -935,7 +935,7 @@ finalize compute:
             let additional_fee = (credits, 10);
 
             // Deploy.
-            let transaction = Transaction::deploy(&vm, &private_key, &program, additional_fee, None, rng).unwrap();
+            let transaction = vm.deploy(&private_key, &program, additional_fee, None, rng).unwrap();
 
             // Construct the new block.
             sample_next_block(&vm, &private_key, &[transaction], &splits_block, &mut unspent_records, rng).unwrap()
