@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[macro_use]
 extern crate criterion;
@@ -23,12 +21,10 @@ use console::{
     program::{Plaintext, Record, Value},
 };
 use snarkvm_synthesizer::{
+    store::helpers::memory::ConsensusMemory,
     Authorization,
-    Block,
-    ConsensusMemory,
     ConsensusStore,
     Program,
-    Transaction,
     Transition,
     VM,
 };
@@ -44,7 +40,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
-    let genesis = Block::genesis(&vm, private_key, rng).unwrap();
+    let genesis = vm.genesis(private_key, rng).unwrap();
 
     // Fetch the unspent records.
     let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
@@ -83,12 +79,11 @@ function hello:
     .unwrap();
 
     c.bench_function("Transaction - deploy", |b| {
-        b.iter(|| Transaction::deploy(&vm, &private_key, &program, (record.clone(), 600000), None, rng).unwrap())
+        b.iter(|| vm.deploy(&private_key, &program, (record.clone(), 600000), None, rng).unwrap())
     });
 
     c.bench_function("Transaction verify - deployment", |b| {
-        let transaction =
-            Transaction::deploy(&vm, &private_key, &program, (record.clone(), 600000), None, rng).unwrap();
+        let transaction = vm.deploy(&private_key, &program, (record.clone(), 600000), None, rng).unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction)))
     });
 }
@@ -116,8 +111,7 @@ fn execute(c: &mut Criterion) {
 
     c.bench_function("Transaction - execution (transfer)", |b| {
         b.iter(|| {
-            Transaction::execute_authorization(
-                &vm,
+            vm.execute_authorization(
                 Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
                 None,
                 None,
@@ -128,14 +122,14 @@ fn execute(c: &mut Criterion) {
     });
 
     c.bench_function("Transaction verify - execution (transfer)", |b| {
-        let transaction = Transaction::execute_authorization(
-            &vm,
-            Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
-            None,
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm
+            .execute_authorization(
+                Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
+                None,
+                None,
+                rng,
+            )
+            .unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction)))
     });
 }

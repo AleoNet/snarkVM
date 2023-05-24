@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod input;
 use input::*;
@@ -109,7 +107,7 @@ impl<N: Network> Closure<N> {
 
         // Ensure the maximum number of instructions has not been exceeded.
         ensure!(
-            self.instructions.len() <= N::MAX_INSTRUCTIONS,
+            self.instructions.len() < N::MAX_INSTRUCTIONS,
             "Cannot add more than {} instructions",
             N::MAX_INSTRUCTIONS
         );
@@ -131,7 +129,7 @@ impl<N: Network> Closure<N> {
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
         // Ensure the maximum number of outputs has not been exceeded.
-        ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
+        ensure!(self.outputs.len() < N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
 
         // Ensure the closure output register is not a record.
         ensure!(!matches!(output.register_type(), RegisterType::Record(..)), "Output register cannot be a record");

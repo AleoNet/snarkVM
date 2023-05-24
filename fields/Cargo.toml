@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-fields"
-version = "0.10.3"
+version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Fields for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,16 +20,16 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.10.3"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
@@ -61,6 +61,6 @@ version = "1.0"
 
 [features]
 default = [ "parallel", "snarkvm-utilities/default" ]
-parallel = [ "snarkvm-utilities/parallel" ]
+parallel = [ ]
 profiler = [ "aleo-std/profiler" ]
 serial = [ ]

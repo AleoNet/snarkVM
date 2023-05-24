@@ -1,23 +1,21 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod initialize;
 mod matches;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, Stack};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{
@@ -47,14 +45,14 @@ impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
     /// Checks that the given closure is well-formed for the given stack.
     #[inline]
-    pub fn from_closure(stack: &Stack<N>, closure: &Closure<N>) -> Result<Self> {
+    pub fn from_closure(stack: &(impl StackMatches<N> + StackProgram<N>), closure: &Closure<N>) -> Result<Self> {
         Self::initialize_closure_types(stack, closure)
     }
 
     /// Initializes a new instance of `RegisterTypes` for the given function.
     /// Checks that the given function is well-formed for the given stack.
     #[inline]
-    pub fn from_function(stack: &Stack<N>, function: &Function<N>) -> Result<Self> {
+    pub fn from_function(stack: &(impl StackMatches<N> + StackProgram<N>), function: &Function<N>) -> Result<Self> {
         Self::initialize_function_types(stack, function)
     }
 
@@ -73,7 +71,11 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the register type of the given operand.
-    pub fn get_type_from_operand(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<RegisterType<N>> {
+    pub fn get_type_from_operand(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<RegisterType<N>> {
         Ok(match operand {
             Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
             Operand::Register(register) => self.get_type(stack, register)?,
@@ -83,7 +85,11 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the register type of the given register.
-    pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<RegisterType<N>> {
+    pub fn get_type(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+    ) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.

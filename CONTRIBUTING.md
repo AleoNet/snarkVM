@@ -4,7 +4,7 @@ Thank you for your interest in contributing to snarkVM! Below you can find some 
 
 ## Pull requests
 
-Please follow the instructions below when filing pull requests:
+Please follow the instructions below when filing a pull request:
 
 - ensure that your branch is forked from the current [master](https://github.com/AleoHQ/snarkVM/tree/master) branch
 - run `cargo fmt` before you commit; we use the `nightly` version of `rustfmt` to format the code, so you'll need to have the `nightly` toolchain installed on your machine; there's a [git hook](https://git-scm.com/docs/githooks) that ensures proper formatting before any commits can be made, and [`.rustfmt.toml`](https://github.com/AleoHQ/snarkVM/blob/master/.rustfmt.toml) specifies some of the formatting conventions

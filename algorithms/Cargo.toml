@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.10.3"
+version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
@@ -45,40 +45,44 @@ harness = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.10.3"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.10.3"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.10.3"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.10.3"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.snarkvm-algorithms-cuda]
 path = "./cuda"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
 version = "1.0"
+
+[dependencies.blake2]
+version = "0.10"
+default-features = true
 
 [dependencies.crossbeam-channel]
 version = "0.5"
@@ -174,8 +178,7 @@ wasm = [
 ]
 cuda = [ "snarkvm-algorithms-cuda" ]
 parallel = [
-  "snarkvm-fields/parallel",
-  "snarkvm-utilities/parallel"
+  "snarkvm-fields/parallel"
 ]
 profiler = [ "aleo-std/profiler" ]
 crypto_hash = [ ]

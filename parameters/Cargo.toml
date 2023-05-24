@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.10.3"
+version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,20 +20,20 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.10.3"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.10.3"
+version = "=0.11.2"
 
 
-[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.aleo-std-storage]
+[dependencies.aleo-std-storage]
 version = "0.1.3"
 default-features = false
 
@@ -51,6 +51,10 @@ version = "1.0"
 version = "2"
 optional = true
 
+[dependencies.encoding]
+version = "0.2"
+optional = true
+
 [dependencies.hex]
 version = "0.4.3"
 
@@ -59,6 +63,10 @@ version = "1.9"
 
 [dependencies.itertools]
 version = "0.10.3"
+
+[dependencies.js-sys]
+version = "0.3.63"
+optional = true
 
 [dependencies.lazy_static]
 version = "1.4"
@@ -72,10 +80,6 @@ version = "1"
 [dependencies.rand]
 version = "0.8"
 
-[dependencies.reqwest]
-version = "0.11"
-optional = true
-
 [dependencies.serde_json]
 version = "1"
 features = [ "preserve_order" ]
@@ -87,8 +91,9 @@ default-features = false
 [dependencies.thiserror]
 version = "1.0"
 
-[dependencies.wasm-bindgen-futures]
-version = "0.4"
+[dependencies.web-sys]
+version = "0.3.63"
+features = [ "XmlHttpRequest" ]
 optional = true
 
 [dependencies.curl]
@@ -108,8 +113,8 @@ path = "../console"
 [dev-dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
 
-[dev-dependencies.curl]
-version = "0.4.34"
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3.36"
 
 [dev-dependencies.hex]
 version = "0.4.3"
@@ -120,5 +125,5 @@ version = "0.8"
 [features]
 default = [ "no_std_out", "remote", "curl"]
 no_std_out = [ ]
-remote = [ ]
-wasm = [ "reqwest", "wasm-bindgen-futures" ]
+remote = [ "curl" ]
+wasm = [ "encoding", "js-sys", "web-sys" ]

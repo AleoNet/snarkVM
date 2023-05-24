@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -212,7 +210,7 @@ impl<N: Network> Process<N> {
             let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
             // Ensure the transition proof is valid.
             ensure!(
-                verifying_key.verify(function.name(), &inputs, transition.proof()),
+                verifying_key.verify(&function.name().to_string(), &inputs, transition.proof()),
                 "Transition is invalid - failed to verify transition proof"
             );
 
@@ -220,81 +218,6 @@ impl<N: Network> Process<N> {
         }
 
         finish!(timer);
-        Ok(())
-    }
-
-    /// Finalizes the execution.
-    /// This method assumes the given execution **is valid**.
-    #[inline]
-    pub fn finalize_execution<P: ProgramStorage<N>>(
-        &self,
-        store: &ProgramStore<N, P>,
-        execution: &Execution<N>,
-    ) -> Result<()> {
-        let timer = timer!("Program::finalize_execution");
-
-        // Ensure the execution contains transitions.
-        ensure!(!execution.is_empty(), "There are no transitions in the execution");
-
-        // Ensure the number of transitions matches the program function.
-        {
-            // Retrieve the transition (without popping it).
-            let transition = execution.peek()?;
-            // Retrieve the stack.
-            let stack = self.get_stack(transition.program_id())?;
-            // Ensure the number of calls matches the number of transitions.
-            let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
-            ensure!(
-                number_of_calls == execution.len(),
-                "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
-                execution.len()
-            );
-        }
-        lap!(timer, "Verify the number of transitions");
-
-        // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
-        //  Currently this loop assumes a linearly execution stack.
-        // Finalize each transition, starting from the last one.
-        for transition in execution.transitions().rev() {
-            #[cfg(debug_assertions)]
-            println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
-
-            // Retrieve the stack.
-            let stack = self.get_stack(transition.program_id())?;
-            // Retrieve the function name.
-            let function_name = transition.function_name();
-
-            // If there is a finalize scope, finalize the function.
-            if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
-                // Retrieve the finalize inputs.
-                let inputs = match transition.finalize() {
-                    Some(inputs) => inputs,
-                    // Ensure the transition contains finalize inputs.
-                    None => bail!("The transition is missing inputs for 'finalize'"),
-                };
-
-                // Initialize the registers.
-                let mut registers = FinalizeRegisters::<N>::new(stack.get_finalize_types(finalize.name())?.clone());
-
-                // Store the inputs.
-                finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
-                    // Assign the input value to the register.
-                    registers.store(stack, register, input.clone())
-                })?;
-
-                // Evaluate the commands.
-                for command in finalize.commands() {
-                    // If the evaluation fails, bail and return the error.
-                    if let Err(error) = command.finalize(stack, store, &mut registers) {
-                        bail!("'finalize' failed to evaluate command ({command}): {error}");
-                    }
-                }
-
-                lap!(timer, "Finalize transition for {function_name}");
-            }
-        }
-        finish!(timer);
-
         Ok(())
     }
 }

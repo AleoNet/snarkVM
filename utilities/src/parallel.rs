@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{boxed::Box, vec::Vec};
 
@@ -61,18 +59,18 @@ pub fn max_available_threads() -> usize {
 }
 
 #[inline(always)]
-#[cfg(not(feature = "serial"))]
+#[cfg(not(any(feature = "serial", feature = "wasm")))]
 pub fn execute_with_max_available_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send) -> T {
     execute_with_threads(f, max_available_threads())
 }
 
 #[inline(always)]
-#[cfg(feature = "serial")]
+#[cfg(any(feature = "serial", feature = "wasm"))]
 pub fn execute_with_max_available_threads<T>(f: impl FnOnce() -> T + Send) -> T {
     f()
 }
 
-#[cfg(not(feature = "serial"))]
+#[cfg(not(any(feature = "serial", feature = "wasm")))]
 #[inline(always)]
 fn execute_with_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send, num_threads: usize) -> T {
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();
@@ -195,7 +193,7 @@ macro_rules! cfg_values {
 /// Finds the first element that satisfies the predicate function
 #[macro_export]
 macro_rules! cfg_find {
-    ($self:ident, $object:expr, $func:ident) => {{
+    ($self:expr, $object:expr, $func:ident) => {{
         #[cfg(not(feature = "serial"))]
         let result = $self.par_values().find_any(|tx| tx.$func($object));
 
@@ -209,7 +207,7 @@ macro_rules! cfg_find {
 /// Applies a function and returns the first value that is not None
 #[macro_export]
 macro_rules! cfg_find_map {
-    ($self:ident, $object:expr, $func:ident) => {{
+    ($self:expr, $object:expr, $func:ident) => {{
         #[cfg(not(feature = "serial"))]
         let result = $self.par_values().filter_map(|tx| tx.$func($object)).find_any(|_| true);
 
@@ -225,9 +223,11 @@ macro_rules! cfg_find_map {
 macro_rules! cfg_zip_fold {
     ($self: expr, $other: expr, $init: expr, $op: expr, $type: ty) => {{
         let default = $init;
+
         #[cfg(feature = "serial")]
         let default = $init();
         let result = $self.zip_eq($other).fold(default, $op);
+
         #[cfg(not(feature = "serial"))]
         let result = result.sum::<$type>();
 

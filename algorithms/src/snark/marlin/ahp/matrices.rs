@@ -1,25 +1,26 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![allow(non_snake_case)]
 
 use crate::{
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::marlin::ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
+    snark::marlin::{
+        ahp::{indexer::Matrix, AHPForR1CS, CircuitId, UnnormalizedBivariateLagrangePoly},
+        MarlinHidingMode,
+    },
 };
 use itertools::Itertools;
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
@@ -201,7 +202,11 @@ pub(crate) fn matrix_evals<F: PrimeField>(
 }
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
-pub(crate) fn arithmetize_matrix<F: PrimeField>(label: &str, matrix_evals: MatrixEvals<F>) -> MatrixArithmetization<F> {
+pub(crate) fn arithmetize_matrix<F: PrimeField>(
+    id: &CircuitId,
+    label: &str,
+    matrix_evals: MatrixEvals<F>,
+) -> MatrixArithmetization<F> {
     let matrix_time = start_timer!(|| "Computing row, col, and val LDEs");
 
     let interpolate_time = start_timer!(|| "Interpolating on K");
@@ -213,11 +218,14 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(label: &str, matrix_evals: Matri
 
     end_timer!(matrix_time);
 
+    let label = &[label];
+    let mut labels = AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(label, std::iter::once(id));
+
     MatrixArithmetization {
-        row: LabeledPolynomial::new("row_".to_string() + label, row, None, None),
-        col: LabeledPolynomial::new("col_".to_string() + label, col, None, None),
-        val: LabeledPolynomial::new("val_".to_string() + label, val, None, None),
-        row_col: LabeledPolynomial::new("row_col_".to_string() + label, row_col, None, None),
+        row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
+        col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
+        val: LabeledPolynomial::new(labels.next().unwrap(), val, None, None),
+        row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
         evals_on_K: matrix_evals,
     }
 }
@@ -288,7 +296,8 @@ mod tests {
                 &constraint_domain_elements,
                 &constraint_domain_eq_poly_vals,
             );
-            let arith = arithmetize_matrix(label, evals);
+            let dummy_id = CircuitId([0; 32]);
+            let arith = arithmetize_matrix(&dummy_id, label, evals);
 
             for (k_index, k) in interpolation_domain.elements().enumerate() {
                 let row_val = arith.row.evaluate(k);

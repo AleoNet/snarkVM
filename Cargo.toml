@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.10.3"
+version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [workspace]
@@ -60,9 +60,12 @@ members = [
   "console/types/string",
   "curves",
   "fields",
+  "ledger",
   "parameters",
   "r1cs",
   "synthesizer",
+  "synthesizer/coinbase",
+  "synthesizer/snark",
   "utilities",
   "utilities/derives",
   "wasm"
@@ -82,6 +85,7 @@ default = [
   "console",
   "synthesizer",
   "cli",
+  "ledger",
   "parameters",
   "utilities"
 ]
@@ -91,6 +95,7 @@ full = [
   "console",
   "curves",
   "fields",
+  "ledger",
   "parameters",
   "r1cs",
   "synthesizer",
@@ -114,61 +119,69 @@ circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
+ledger = [ "snarkvm-ledger" ]
 parameters = [ "snarkvm-parameters" ]
 r1cs = [ "snarkvm-r1cs" ]
+rocks = [ "snarkvm-synthesizer/rocks" ]
 synthesizer = [ "snarkvm-synthesizer" ]
+timer = [ "snarkvm-ledger/timer" ]
 utilities = [ "snarkvm-utilities" ]
 wasm = [ "snarkvm-wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.10.3"
+version = "=0.11.2"
+optional = true
+
+[dependencies.snarkvm-ledger]
+path = "./ledger"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "0.10.3"
-# default-features = false
+version = "=0.11.2"
+default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "0.10.3"
+version = "=0.11.2"
 optional = true
 
 [dependencies.anyhow]

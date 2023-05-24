@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.10.3"
+version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
@@ -29,65 +29,82 @@ path = "benches/block.rs"
 harness = false
 
 [[bench]]
-name = "coinbase_puzzle"
-path = "benches/coinbase_puzzle.rs"
-harness = false
-required-features = [ "setup" ]
-
-[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ "request" ]
-parallel = [
-  "snarkvm-fields/parallel",
-  "snarkvm-utilities/parallel"
-]
+default = [ "coinbase", "snark", "request" ]
+
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
+rocks = [ "rocksdb" ]
 serial = [
   "console/serial",
   "snarkvm-algorithms/serial",
   "snarkvm-curves/serial",
   "snarkvm-fields/serial",
+  "snarkvm-synthesizer-coinbase/serial",
+  "snarkvm-synthesizer-snark/serial",
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
+test = [ ]
 timer = [ "aleo-std/timer" ]
 request = ["reqwest"] # reqwest cannot compile in fortanix, so when using fortanix target use default-features = false
-wasm = [ ]
+wasm = [
+  "coinbase",
+  "snark",
+  "console/wasm",
+  "snarkvm-algorithms/wasm",
+  "snarkvm-synthesizer-coinbase/wasm",
+  "snarkvm-synthesizer-snark/wasm",
+  "snarkvm-utilities/wasm"
+]
+
+coinbase = [ "snarkvm-synthesizer-coinbase" ]
+snark = [ "snarkvm-synthesizer-snark" ]
+
+[dependencies.snarkvm-synthesizer-coinbase]
+path = "./coinbase"
+version = "=0.11.2"
+optional = true
+
+[dependencies.snarkvm-synthesizer-snark]
+path = "./snark"
+version = "=0.11.2"
+optional = true
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "0.10.3"
+version = "=0.11.2"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "0.10.3"
+version = "=0.11.2"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.10.3"
+version = "=0.11.2"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.10.3"
+version = "=0.11.2"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.10.3"
+version = "=0.11.2"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.10.3"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
+features = ["storage"]
 default-features = false
 
 [dependencies.anyhow]
@@ -132,6 +149,16 @@ default-features = false
 features = [ "blocking", "json" ]
 optional = true
 
+[dependencies.rocksdb]
+version = "0.21"
+default-features = false
+features = [ "lz4" ]
+optional = true
+
+[dependencies.reqwest]
+version = "0.11.18"
+features = [ "json" ]
+
 [dependencies.serde]
 version = "1.0"
 
@@ -157,3 +184,18 @@ version = "1.3"
 
 [dev-dependencies.criterion]
 version = "0.4.0"
+
+[dev-dependencies.serde_yaml]
+version = "0.9"
+
+[dev-dependencies.serial_test]
+version = "2"
+
+[dev-dependencies.tempfile]
+version = "3.4"
+
+[dev-dependencies.tracing-test]
+version = "0.2"
+
+[dev-dependencies.walkdir]
+version = "2"
