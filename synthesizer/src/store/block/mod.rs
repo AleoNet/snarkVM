@@ -240,6 +240,36 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.signature_map().atomic_rewind();
     }
 
+    /// Starts the checkpoint milestone.
+    fn start_checkpoint_milestone(&self) {
+        self.state_root_map().start_checkpoint_milestone();
+        self.reverse_state_root_map().start_checkpoint_milestone();
+        self.id_map().start_checkpoint_milestone();
+        self.reverse_id_map().start_checkpoint_milestone();
+        self.header_map().start_checkpoint_milestone();
+        self.transactions_map().start_checkpoint_milestone();
+        self.confirmed_transactions_map().start_checkpoint_milestone();
+        self.transaction_store().start_checkpoint_milestone();
+        self.coinbase_solution_map().start_checkpoint_milestone();
+        self.coinbase_puzzle_commitment_map().start_checkpoint_milestone();
+        self.signature_map().start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    fn atomic_rewind_milestone(&self) {
+        self.state_root_map().atomic_rewind_milestone();
+        self.reverse_state_root_map().atomic_rewind_milestone();
+        self.id_map().atomic_rewind_milestone();
+        self.reverse_id_map().atomic_rewind_milestone();
+        self.header_map().atomic_rewind_milestone();
+        self.transactions_map().atomic_rewind_milestone();
+        self.confirmed_transactions_map().atomic_rewind_milestone();
+        self.transaction_store().atomic_rewind_milestone();
+        self.coinbase_solution_map().atomic_rewind_milestone();
+        self.coinbase_puzzle_commitment_map().atomic_rewind_milestone();
+        self.signature_map().atomic_rewind_milestone();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.state_root_map().abort_atomic();
@@ -764,6 +794,16 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Rewinds the atomic batch to the previous checkpoint.
     pub fn atomic_rewind(&self) {
         self.storage.atomic_rewind();
+    }
+
+    /// Starts the checkpoint milestone.
+    pub fn start_checkpoint_milestone(&self) {
+        self.storage.start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    pub fn atomic_rewind_milestone(&self) {
+        self.storage.atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.

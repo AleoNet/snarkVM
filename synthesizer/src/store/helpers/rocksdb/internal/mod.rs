@@ -129,6 +129,7 @@ impl Database for RocksDB {
             batch_in_progress: Default::default(),
             atomic_batch: Default::default(),
             checkpoint: Default::default(),
+            checkpoint_depth: Default::default(),
         })
     }
 }
@@ -189,6 +190,7 @@ impl RocksDB {
             batch_in_progress: Default::default(),
             atomic_batch: Default::default(),
             checkpoint: Default::default(),
+            checkpoint_depth: Default::default(),
         })
     }
 }

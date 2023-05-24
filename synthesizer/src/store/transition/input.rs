@@ -116,6 +116,30 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
         self.external_record_map().atomic_rewind();
     }
 
+    /// Starts the checkpoint milestone.
+    fn start_checkpoint_milestone(&self) {
+        self.id_map().start_checkpoint_milestone();
+        self.reverse_id_map().start_checkpoint_milestone();
+        self.constant_map().start_checkpoint_milestone();
+        self.public_map().start_checkpoint_milestone();
+        self.private_map().start_checkpoint_milestone();
+        self.record_map().start_checkpoint_milestone();
+        self.record_tag_map().start_checkpoint_milestone();
+        self.external_record_map().start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    fn atomic_rewind_milestone(&self) {
+        self.id_map().atomic_rewind_milestone();
+        self.reverse_id_map().atomic_rewind_milestone();
+        self.constant_map().atomic_rewind_milestone();
+        self.public_map().atomic_rewind_milestone();
+        self.private_map().atomic_rewind_milestone();
+        self.record_map().atomic_rewind_milestone();
+        self.record_tag_map().atomic_rewind_milestone();
+        self.external_record_map().atomic_rewind_milestone();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -349,6 +373,16 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Rewinds the atomic batch to the previous checkpoint.
     pub fn atomic_rewind(&self) {
         self.storage.atomic_rewind();
+    }
+
+    /// Starts the checkpoint milestone.
+    pub fn start_checkpoint_milestone(&self) {
+        self.storage.start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    pub fn atomic_rewind_milestone(&self) {
+        self.storage.atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.

@@ -82,6 +82,20 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
         self.transition_store().atomic_rewind();
     }
 
+    /// Starts the checkpoint milestone.
+    fn start_checkpoint_milestone(&self) {
+        self.fee_map().start_checkpoint_milestone();
+        self.reverse_fee_map().start_checkpoint_milestone();
+        self.transition_store().start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    fn atomic_rewind_milestone(&self) {
+        self.fee_map().atomic_rewind_milestone();
+        self.reverse_fee_map().atomic_rewind_milestone();
+        self.transition_store().atomic_rewind_milestone();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.fee_map().abort_atomic();
@@ -216,6 +230,16 @@ impl<N: Network, F: FeeStorage<N>> FeeStore<N, F> {
     /// Rewinds the atomic batch to the previous checkpoint.
     pub fn atomic_rewind(&self) {
         self.storage.atomic_rewind();
+    }
+
+    /// Starts the checkpoint milestone.
+    pub fn start_checkpoint_milestone(&self) {
+        self.storage.start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    pub fn atomic_rewind_milestone(&self) {
+        self.storage.atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.

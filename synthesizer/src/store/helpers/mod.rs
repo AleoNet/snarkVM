@@ -64,6 +64,19 @@ pub trait Map<
     fn atomic_rewind(&self);
 
     ///
+    /// Initialize the checkpoint depth to zero.
+    /// Each `atomic_checkpoint` will increment the checkpoint depth.
+    /// Each `atomic_rewind` will decrement the checkpoint depth.
+    ///
+    fn start_checkpoint_milestone(&self);
+
+    ///
+    /// Removes pending operations by calling `atomic_rewind`
+    /// until the map returns to the start of the milestone.
+    ///
+    fn atomic_rewind_milestone(&self);
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self);
@@ -201,6 +214,45 @@ macro_rules! atomic_batch_scope {
             // Rewind this atomic batch scope.
             Err(err) => {
                 $self.atomic_rewind();
+                Err(err)
+            }
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! atomic_wrapped_batch_scope {
+    ($self:expr, $ops:block) => {{
+        // Check if an atomic batch write is already in progress. If there isn't one, this means
+        // this operation is a "top-level" one and is the one to start and finalize the batch.
+        let is_atomic_in_progress = $self.is_atomic_in_progress();
+
+        // Start an atomic batch write operation IFF it's not already part of one.
+        match is_atomic_in_progress {
+            true => {
+                // Initialize the checkpoint milestone.
+                $self.start_checkpoint_milestone();
+                $self.atomic_checkpoint()
+            }
+            false => $self.start_atomic(),
+        }
+
+        // Wrap the operations that should be batched in a closure to be able to rewind the batch on error.
+        let run_atomic_ops = || -> Result<_> { $ops };
+
+        // Run the atomic operations.
+        match run_atomic_ops() {
+            // Save this atomic batch scope and return.
+            Ok(result) => match is_atomic_in_progress {
+                // A 'true' implies this is a nested atomic batch scope.
+                true => Ok(result),
+                // A 'false' implies this is the top-level calling scope.
+                // Commit the atomic batch IFF it's the top-level calling scope.
+                false => $self.finish_atomic().map(|_| result),
+            },
+            // Rewind this atomic batch to the start of the milestone.
+            Err(err) => {
+                $self.atomic_rewind_milestone();
                 Err(err)
             }
         }

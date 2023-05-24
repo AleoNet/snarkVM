@@ -136,6 +136,32 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tcm_map().atomic_rewind();
     }
 
+    /// Starts the checkpoint milestone.
+    fn start_checkpoint_milestone(&self) {
+        self.locator_map().start_checkpoint_milestone();
+        self.input_store().start_checkpoint_milestone();
+        self.output_store().start_checkpoint_milestone();
+        self.finalize_map().start_checkpoint_milestone();
+        self.proof_map().start_checkpoint_milestone();
+        self.tpk_map().start_checkpoint_milestone();
+        self.reverse_tpk_map().start_checkpoint_milestone();
+        self.tcm_map().start_checkpoint_milestone();
+        self.reverse_tcm_map().start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    fn atomic_rewind_milestone(&self) {
+        self.locator_map().atomic_rewind_milestone();
+        self.input_store().atomic_rewind_milestone();
+        self.output_store().atomic_rewind_milestone();
+        self.finalize_map().atomic_rewind_milestone();
+        self.proof_map().atomic_rewind_milestone();
+        self.tpk_map().atomic_rewind_milestone();
+        self.reverse_tpk_map().atomic_rewind_milestone();
+        self.tcm_map().atomic_rewind_milestone();
+        self.reverse_tcm_map().atomic_rewind_milestone();
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.locator_map().abort_atomic();
@@ -355,6 +381,16 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Starts the checkpoint milestone.
+    pub fn start_checkpoint_milestone(&self) {
+        self.storage.start_checkpoint_milestone();
+    }
+
+    /// Rewinds the atomic batch to the checkpoint milestone.
+    pub fn atomic_rewind_milestone(&self) {
+        self.storage.atomic_rewind_milestone();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
