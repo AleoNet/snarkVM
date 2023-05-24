@@ -140,20 +140,18 @@ impl<
                 *checkpoint_depth = Some(depth.saturating_sub(1));
             }
         }
-
-        // If the atomic batch is now empty, set the atomic batch flag to `false`.
-        if atomic_batch.is_empty() {
-            self.batch_in_progress.store(false, Ordering::SeqCst);
-        }
     }
 
     ///
-    /// Initialize the checkpoint depth to zero.
+    /// Initialize the checkpoint depth to zero. If the checkpoint depth is already set,
+    /// this call does nothing.
     /// Each `atomic_checkpoint` will increment the checkpoint depth.
     /// Each `atomic_rewind` will decrement the checkpoint depth.
     ///
     fn start_checkpoint_milestone(&self) {
-        *self.checkpoint_depth.lock() = Some(0);
+        if self.checkpoint_depth.lock().is_none() {
+            *self.checkpoint_depth.lock() = Some(0);
+        }
     }
 
     ///
@@ -162,6 +160,8 @@ impl<
     ///
     fn atomic_rewind_milestone(&self) {
         // Rewind the atomic batch until the checkpoint depth is zero.
+        let x = self.checkpoint_depth.lock().unwrap_or(0);
+        println!("CHECKPOINT DEPTH: {:?}-------------------------------------------------------------", x);
         while self.checkpoint_depth.lock().unwrap_or(0) > 0 {
             self.atomic_rewind();
         }
