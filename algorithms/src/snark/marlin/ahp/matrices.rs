@@ -26,7 +26,7 @@ use crate::{
 };
 use itertools::Itertools;
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
+use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex, SynthesisError};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
 use hashbrown::HashMap;
@@ -75,7 +75,10 @@ pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSyst
     }
 }
 
-pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut CS, num_formatted_variables: usize) {
+pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(
+    cs: &mut CS,
+    num_formatted_variables: usize,
+) -> Result<(), SynthesisError> {
     let num_constraints = cs.num_constraints();
     let matrix_padding = ((num_formatted_variables as isize) - (num_constraints as isize)).abs();
 
@@ -83,14 +86,15 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
         use core::convert::identity as iden;
         // Add dummy constraints of the form 0 * 0 == 0
         for i in 0..matrix_padding {
-            cs.enforce(|| format!("pad_constraint_{i}"), iden, iden, iden);
+            cs.enforce(|| format!("pad_constraint_{i}"), iden, iden, iden)?;
         }
     } else {
         // Add dummy unconstrained variables
         for i in 0..matrix_padding {
-            let _ = cs.alloc(|| format!("pad_variable_{i}"), || Ok(F::one())).expect("alloc failed");
+            let _ = cs.alloc(|| format!("pad_variable_{i}"), || Ok(F::one()))?;
         }
     }
+    Ok(())
 }
 
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]

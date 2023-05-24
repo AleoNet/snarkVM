@@ -52,7 +52,7 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
     }
 
     #[inline]
-    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC)
+    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,

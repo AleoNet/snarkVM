@@ -206,7 +206,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                 |lc| lc + convert_linear_combination(a),
                 |lc| lc + convert_linear_combination(b),
                 |lc| lc + convert_linear_combination(c),
-            );
+            )?;
         }
 
         // Ensure the given `cs` matches in size with the first system.

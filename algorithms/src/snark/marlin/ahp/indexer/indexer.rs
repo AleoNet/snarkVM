@@ -136,7 +136,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let padding_time = start_timer!(|| "Padding matrices to make them square");
         crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
-        ics.make_matrices_square();
+        ics.make_matrices_square()?;
 
         let a = ics.a_matrix();
         let b = ics.b_matrix();

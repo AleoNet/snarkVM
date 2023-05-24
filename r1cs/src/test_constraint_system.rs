@@ -409,7 +409,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
         Ok(var)
     }
 
-    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC)
+    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,
@@ -438,6 +438,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
         let c = intern_fields(c(LinearCombination::zero()).0);
 
         self.constraints.insert(TestConstraint { interned_path, a, b, c });
+        Ok(())
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {

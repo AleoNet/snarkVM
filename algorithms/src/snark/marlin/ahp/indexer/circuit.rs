@@ -160,15 +160,14 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
 
     #[allow(unused_mut, unused_variables)]
     fn serialized_size(&self, mode: Compress) -> usize {
-        let mut size = 0;
-        size += self.index_info.serialized_size(mode);
-        size += self.a.serialized_size(mode);
-        size += self.b.serialized_size(mode);
-        size += self.c.serialized_size(mode);
-        size += self.a_arith.serialized_size(mode);
-        size += self.b_arith.serialized_size(mode);
-        size += self.c_arith.serialized_size(mode);
-        size
+        0usize
+            .saturating_add(self.index_info.serialized_size(mode))
+            .saturating_add(self.a.serialized_size(mode))
+            .saturating_add(self.b.serialized_size(mode))
+            .saturating_add(self.c.serialized_size(mode))
+            .saturating_add(self.a_arith.serialized_size(mode))
+            .saturating_add(self.b_arith.serialized_size(mode))
+            .saturating_add(self.c_arith.serialized_size(mode))
     }
 }
 

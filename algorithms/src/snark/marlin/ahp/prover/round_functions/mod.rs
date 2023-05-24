@@ -64,7 +64,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                             circuit.id
                         ));
                         crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
-                        pcs.make_matrices_square();
+                        pcs.make_matrices_square()?;
                         end_timer!(padding_time);
 
                         let prover::ConstraintSystem {

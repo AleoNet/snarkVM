@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
+use anyhow::anyhow;
 use snarkvm_fields::Field;
 
 /// Constraint counter for testing purposes.
@@ -35,7 +36,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         AR: AsRef<str>,
     {
         let var = Variable::new_unchecked(Index::Private(self.num_private_variables));
-        self.num_private_variables += 1;
+        self.num_private_variables = self.num_private_variables.checked_add(1).ok_or_else(|| anyhow!("overflow"))?;
         Ok(var)
     }
 
@@ -46,12 +47,12 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         AR: AsRef<str>,
     {
         let var = Variable::new_unchecked(Index::Public(self.num_public_variables));
-        self.num_public_variables += 1;
+        self.num_public_variables = self.num_public_variables.checked_add(1).ok_or_else(|| anyhow!("overflow"))?;
 
         Ok(var)
     }
 
-    fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, _: LA, _: LB, _: LC)
+    fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, _: LA, _: LB, _: LC) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,
@@ -59,7 +60,8 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         LB: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
         LC: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
     {
-        self.num_constraints += 1;
+        self.num_constraints = self.num_constraints.checked_add(1).ok_or_else(|| anyhow!("overflow"))?;
+        Ok(())
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

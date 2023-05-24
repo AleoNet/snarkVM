@@ -60,7 +60,7 @@ pub trait ConstraintSystem<F: Field>: Sized {
     /// Enforce that `A` * `B` = `C`. The `annotation` function is invoked in
     /// testing contexts in order to derive a unique name for the constraint
     /// in the current namespace.
-    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC)
+    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,
@@ -138,7 +138,7 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
     }
 
     #[inline]
-    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC)
+    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,

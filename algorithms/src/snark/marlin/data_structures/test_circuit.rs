@@ -67,11 +67,16 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
 
         let mul_constraints = self.mul_depth - 1;
         for i in 0..(self.num_constraints - mul_constraints) {
-            cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + mul_vars[0]);
+            cs.enforce(|| format!("constraint {i}"), |lc| lc + a, |lc| lc + b, |lc| lc + mul_vars[0])?;
         }
 
         for i in 0..mul_constraints {
-            cs.enforce(|| format!("constraint_mul {i}"), |lc| lc + mul_vars[i], |lc| lc + b, |lc| lc + mul_vars[i + 1]);
+            cs.enforce(
+                || format!("constraint_mul {i}"),
+                |lc| lc + mul_vars[i],
+                |lc| lc + b,
+                |lc| lc + mul_vars[i + 1],
+            )?;
         }
 
         Ok(())

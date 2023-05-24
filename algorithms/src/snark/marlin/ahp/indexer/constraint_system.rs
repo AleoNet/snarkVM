@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::snark::marlin::ahp::matrices::{make_matrices_square, padded_matrix_dim, to_matrix_helper};
+use anyhow::anyhow;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
 use snarkvm_utilities::serialize::*;
@@ -58,16 +59,16 @@ impl<F: Field> ConstraintSystem<F> {
     }
 
     #[inline]
-    pub(crate) fn make_matrices_square(&mut self) {
-        let num_variables = self.num_public_variables + self.num_private_variables;
+    pub(crate) fn make_matrices_square(&mut self) -> Result<(), SynthesisError> {
+        let num_variables =
+            self.num_public_variables.checked_add(self.num_private_variables).ok_or_else(|| anyhow!("overflow"))?;
         let matrix_dim = padded_matrix_dim(num_variables, self.num_constraints);
-        make_matrices_square(self, num_variables);
-        assert_eq!(self.num_public_variables + self.num_private_variables, self.num_constraints, "padding failed!");
-        assert_eq!(
-            self.num_public_variables + self.num_private_variables,
-            matrix_dim,
-            "padding does not result in expected matrix size!"
-        );
+        make_matrices_square(self, num_variables)?;
+        let num_variables =
+            self.num_public_variables.checked_add(self.num_private_variables).ok_or_else(|| anyhow!("overflow"))?;
+        assert_eq!(num_variables, self.num_constraints, "padding failed!");
+        assert_eq!(num_variables, matrix_dim, "padding does not result in expected matrix size!");
+        Ok(())
     }
 
     #[inline]
@@ -90,7 +91,7 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         // function for obtaining one.
 
         let index = self.num_private_variables;
-        self.num_private_variables += 1;
+        self.num_private_variables = self.num_private_variables.checked_add(1).ok_or_else(|| anyhow!("overflow"))?;
 
         Ok(Variable::new_unchecked(VarIndex::Private(index)))
     }
@@ -106,12 +107,12 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         // function for obtaining one.
 
         let index = self.num_public_variables;
-        self.num_public_variables += 1;
+        self.num_public_variables = self.num_public_variables.checked_add(1).ok_or_else(|| anyhow!("overflow"))?;
 
         Ok(Variable::new_unchecked(VarIndex::Public(index)))
     }
 
-    fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
+    fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,
@@ -123,7 +124,8 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         self.b.push(Self::make_row(&b(LinearCombination::zero())));
         self.c.push(Self::make_row(&c(LinearCombination::zero())));
 
-        self.num_constraints += 1;
+        self.num_constraints = self.num_constraints.checked_add(1).ok_or_else(|| anyhow!("overflow"))?;
+        Ok(())
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

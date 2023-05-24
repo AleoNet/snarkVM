@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
+use anyhow::anyhow;
 use snarkvm_fields::Field;
 
 /// Constraint system for testing purposes.
@@ -100,7 +101,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         Ok(var)
     }
 
-    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC)
+    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC) -> Result<(), SynthesisError>
     where
         A: FnOnce() -> AR,
         AR: AsRef<str>,
@@ -108,7 +109,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
-        self.num_constraints += 1;
+        self.num_constraints = self.num_constraints.checked_add(1).ok_or_else(|| anyhow!("overflow"))?;
 
         let eval_lc = |lc: Vec<(Variable, F)>| -> F {
             lc.into_iter()
@@ -136,6 +137,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
             path.push(new);
             self.first_unsatisfied_constraint = Some(path.join("/"));
         }
+        Ok(())
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {

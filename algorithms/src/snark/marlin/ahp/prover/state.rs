@@ -101,7 +101,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     ) -> Result<Self, AHPError> {
         let mut max_constraint_domain: Option<EvaluationDomain<F>> = None;
         let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
-        let mut total_instances = 0;
+        let mut total_instances: u32 = 0;
         let circuit_specific_states = indices_and_assignments
             .into_iter()
             .map(|(circuit, variable_assignments)| {
@@ -115,7 +115,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                 let first_padded_public_inputs = &variable_assignments[0].0;
                 let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
                 let batch_size = variable_assignments.len().try_into()?;
-                total_instances += batch_size;
+                total_instances =
+                    total_instances.checked_add(batch_size).ok_or_else(|| anyhow::anyhow!("Batch size too large"))?;
                 let batch_size_usize = batch_size as usize;
                 let mut z_as = Vec::with_capacity(batch_size_usize);
                 let mut z_bs = Vec::with_capacity(batch_size_usize);

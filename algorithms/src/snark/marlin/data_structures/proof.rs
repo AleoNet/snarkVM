@@ -72,16 +72,15 @@ impl<E: PairingEngine> Commitments<E> {
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        let mut size = 0;
-        size += serialized_vec_size_without_len(&self.witness_commitments, compress);
-        size += CanonicalSerialize::serialized_size(&self.mask_poly, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_1, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_1, compress);
-        size += serialized_vec_size_without_len(&self.g_a_commitments, compress);
-        size += serialized_vec_size_without_len(&self.g_b_commitments, compress);
-        size += serialized_vec_size_without_len(&self.g_c_commitments, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_2, compress);
-        size
+        0usize
+            .saturating_add(serialized_vec_size_without_len(&self.witness_commitments, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.mask_poly, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.g_1, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_1, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_a_commitments, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_b_commitments, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_c_commitments, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_2, compress))
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
@@ -148,15 +147,14 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        let mut size = 0;
+        let mut size = 0usize;
         for z_b_eval_circuit in &self.z_b_evals {
-            size += serialized_vec_size_without_len(z_b_eval_circuit, compress);
+            size = size.saturating_add(serialized_vec_size_without_len(z_b_eval_circuit, compress));
         }
-        size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
-        size += serialized_vec_size_without_len(&self.g_a_evals, compress);
-        size += serialized_vec_size_without_len(&self.g_b_evals, compress);
-        size += serialized_vec_size_without_len(&self.g_c_evals, compress);
-        size
+        size.saturating_add(CanonicalSerialize::serialized_size(&self.g_1_eval, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_a_evals, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_b_evals, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_c_evals, compress))
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
@@ -283,10 +281,10 @@ impl<E: PairingEngine> Proof<E> {
         msg: ahp::prover::ThirdMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
-        let mut total_instances = 0;
+        let mut total_instances = 0usize;
         let mut batch_sizes = Vec::with_capacity(batch_sizes_in.len());
         for (z_b_evals, batch_size) in evaluations.z_b_evals.iter().zip(batch_sizes_in.values()) {
-            total_instances += batch_size;
+            total_instances = total_instances.saturating_add(*batch_size);
             batch_sizes.push(u32::try_from(*batch_size)?);
             if z_b_evals.len() != *batch_size {
                 return Err(SNARKError::BatchSizeMismatch);
@@ -299,9 +297,9 @@ impl<E: PairingEngine> Proof<E> {
     }
 
     pub fn batch_sizes(&self) -> Result<&[u32], SNARKError> {
-        let mut total_instances = 0;
+        let mut total_instances = 0u32;
         for (z_b_evals_i, &batch_size) in self.evaluations.z_b_evals.iter().zip(self.batch_sizes.iter()) {
-            total_instances += batch_size;
+            total_instances = total_instances.saturating_add(batch_size);
             if u32::try_from(z_b_evals_i.len())? != batch_size {
                 return Err(SNARKError::BatchSizeMismatch);
             }
