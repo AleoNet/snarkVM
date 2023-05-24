@@ -70,9 +70,6 @@ optional = true
 [dependencies.lazy_static]
 version = "1.4"
 
-[dependencies.parking_lot]
-version = "0.12"
-
 [dependencies.paste]
 version = "1"
 
