@@ -247,6 +247,16 @@ impl Aleo for AleoV0 {
         BHP_1024.with(|bhp| bhp.hash_uncompressed(input))
     }
 
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_to_group_ped64(input: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.hash_uncompressed(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_to_group_ped128(input: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.hash_uncompressed(input))
+    }
+
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
     fn hash_to_group_psd2(input: &[Field<Self>]) -> Group<Self> {
         POSEIDON_2.with(|poseidon| poseidon.hash_to_group(input))

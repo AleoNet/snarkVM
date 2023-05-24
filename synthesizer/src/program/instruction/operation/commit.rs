@@ -96,7 +96,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             9 => Opcode::Commit("commit_to_group.bhp1024"),
             10 => Opcode::Commit("commit_to_group.ped64"),
             11 => Opcode::Commit("commit_to_group.ped128"),
-            _ => panic!("Invalid 'commit' instruction opcode"),
+            12.. => panic!("Invalid 'commit' instruction opcode"),
         }
     }
 
@@ -152,7 +152,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             9 => Literal::Group(N::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)?),
             10 => Literal::Group(N::commit_to_group_ped64(&input.to_bits_le(), &randomizer)?),
             11 => Literal::Group(N::commit_to_group_ped128(&input.to_bits_le(), &randomizer)?),
-            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
@@ -197,7 +197,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             9 => circuit::Literal::Group(A::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)),
             10 => circuit::Literal::Group(A::commit_to_group_ped64(&input.to_bits_le(), &randomizer)),
             11 => circuit::Literal::Group(A::commit_to_group_ped128(&input.to_bits_le(), &randomizer)),
-            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));

@@ -350,6 +350,16 @@ impl Network for Testnet3 {
         BHP_1024.hash_uncompressed(input)
     }
 
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_to_group_ped64(input: &[bool]) -> Result<Group<Self>> {
+        PEDERSEN_64.hash_uncompressed(input)
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_to_group_ped128(input: &[bool]) -> Result<Group<Self>> {
+        PEDERSEN_128.hash_uncompressed(input)
+    }
+
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
     fn hash_to_group_psd2(input: &[Field<Self>]) -> Result<Group<Self>> {
         POSEIDON_2.hash_to_group(input)

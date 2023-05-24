@@ -64,6 +64,11 @@ pub type HashToGroupBHP768<N> = HashInstruction<N, { Hasher::HashToGroupBHP768 a
 /// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
 pub type HashToGroupBHP1024<N> = HashInstruction<N, { Hasher::HashToGroupBHP1024 as u8 }>;
 
+/// Pedersen64 is a collision-resistant hash function that processes inputs in 64-bit chunks.
+pub type HashToGroupPED64<N> = HashInstruction<N, { Hasher::HashToGroupPED64 as u8 }>;
+/// Pedersen128 is a collision-resistant hash function that processes inputs in 128-bit chunks.
+pub type HashToGroupPED128<N> = HashInstruction<N, { Hasher::HashToGroupPED128 as u8 }>;
+
 /// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
 pub type HashToGroupPSD2<N> = HashInstruction<N, { Hasher::HashToGroupPSD2 as u8 }>;
 /// Poseidon4 is a cryptographic hash function that processes inputs in 4-field chunks.
@@ -95,6 +100,8 @@ enum Hasher {
     HashToGroupBHP512,
     HashToGroupBHP768,
     HashToGroupBHP1024,
+    HashToGroupPED64,
+    HashToGroupPED128,
     HashToGroupPSD2,
     HashToGroupPSD4,
     HashToGroupPSD8,
@@ -151,13 +158,15 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             13 => Opcode::Hash("hash_to_group.bhp512"),
             14 => Opcode::Hash("hash_to_group.bhp768"),
             15 => Opcode::Hash("hash_to_group.bhp1024"),
-            16 => Opcode::Hash("hash_to_group.psd2"),
-            17 => Opcode::Hash("hash_to_group.psd4"),
-            18 => Opcode::Hash("hash_to_group.psd8"),
-            19 => Opcode::Hash("hash_to_scalar.psd2"),
-            20 => Opcode::Hash("hash_to_scalar.psd4"),
-            21 => Opcode::Hash("hash_to_scalar.psd8"),
-            _ => panic!("Invalid 'hash' instruction opcode"),
+            16 => Opcode::Hash("hash_to_group.ped64"),
+            17 => Opcode::Hash("hash_to_group.ped128"),
+            18 => Opcode::Hash("hash_to_group.psd2"),
+            19 => Opcode::Hash("hash_to_group.psd4"),
+            20 => Opcode::Hash("hash_to_group.psd8"),
+            21 => Opcode::Hash("hash_to_scalar.psd2"),
+            22 => Opcode::Hash("hash_to_scalar.psd4"),
+            23 => Opcode::Hash("hash_to_scalar.psd8"),
+            24.. => panic!("Invalid 'hash' instruction opcode"),
         }
     }
 
@@ -212,13 +221,15 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             13 => Literal::Group(N::hash_to_group_bhp512(&input.to_bits_le())?),
             14 => Literal::Group(N::hash_to_group_bhp768(&input.to_bits_le())?),
             15 => Literal::Group(N::hash_to_group_bhp1024(&input.to_bits_le())?),
-            16 => Literal::Group(N::hash_to_group_psd2(&input.to_fields()?)?),
-            17 => Literal::Group(N::hash_to_group_psd4(&input.to_fields()?)?),
-            18 => Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?),
-            19 => Literal::Scalar(N::hash_to_scalar_psd2(&input.to_fields()?)?),
-            20 => Literal::Scalar(N::hash_to_scalar_psd4(&input.to_fields()?)?),
-            21 => Literal::Scalar(N::hash_to_scalar_psd8(&input.to_fields()?)?),
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
+            16 => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
+            17 => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
+            18 => Literal::Group(N::hash_to_group_psd2(&input.to_fields()?)?),
+            19 => Literal::Group(N::hash_to_group_psd4(&input.to_fields()?)?),
+            20 => Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?),
+            21 => Literal::Scalar(N::hash_to_scalar_psd2(&input.to_fields()?)?),
+            22 => Literal::Scalar(N::hash_to_scalar_psd4(&input.to_fields()?)?),
+            23 => Literal::Scalar(N::hash_to_scalar_psd8(&input.to_fields()?)?),
+            24.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
@@ -256,13 +267,15 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             13 => circuit::Literal::Group(A::hash_to_group_bhp512(&input.to_bits_le())),
             14 => circuit::Literal::Group(A::hash_to_group_bhp768(&input.to_bits_le())),
             15 => circuit::Literal::Group(A::hash_to_group_bhp1024(&input.to_bits_le())),
-            16 => circuit::Literal::Group(A::hash_to_group_psd2(&input.to_fields())),
-            17 => circuit::Literal::Group(A::hash_to_group_psd4(&input.to_fields())),
-            18 => circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields())),
-            19 => circuit::Literal::Scalar(A::hash_to_scalar_psd2(&input.to_fields())),
-            20 => circuit::Literal::Scalar(A::hash_to_scalar_psd4(&input.to_fields())),
-            21 => circuit::Literal::Scalar(A::hash_to_scalar_psd8(&input.to_fields())),
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
+            16 => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
+            17 => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
+            18 => circuit::Literal::Group(A::hash_to_group_psd2(&input.to_fields())),
+            19 => circuit::Literal::Group(A::hash_to_group_psd4(&input.to_fields())),
+            20 => circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields())),
+            21 => circuit::Literal::Scalar(A::hash_to_scalar_psd2(&input.to_fields())),
+            22 => circuit::Literal::Scalar(A::hash_to_scalar_psd4(&input.to_fields())),
+            23 => circuit::Literal::Scalar(A::hash_to_scalar_psd8(&input.to_fields())),
+            24.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
@@ -297,9 +310,9 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         match VARIANT {
             0..=8 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
             9..=11 => bail!("'hash_many' is not yet implemented"),
-            12..=18 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
-            19..=21 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Scalar))]),
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
+            12..=20 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
+            21..=23 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Scalar))]),
+            24.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         }
     }
 }

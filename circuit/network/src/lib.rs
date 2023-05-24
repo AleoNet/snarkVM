@@ -121,6 +121,12 @@ pub trait Aleo: Environment {
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_to_group_bhp1024(input: &[Boolean<Self>]) -> Group<Self>;
 
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_to_group_ped64(input: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_to_group_ped128(input: &[Boolean<Self>]) -> Group<Self>;
+
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
     fn hash_to_group_psd2(input: &[Field<Self>]) -> Group<Self>;
 

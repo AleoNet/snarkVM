@@ -141,6 +141,10 @@ pub enum Instruction<N: Network> {
     HashToGroupBHP768(HashToGroupBHP768<N>),
     /// Performs a BHP hash on inputs of 1024-bit chunks.
     HashToGroupBHP1024(HashToGroupBHP1024<N>),
+    /// Performs a Pedersen hash on up to a 64-bit input.
+    HashToGroupPED64(HashToGroupPED64<N>),
+    /// Performs a Pedersen hash on up to a 128-bit input.
+    HashToGroupPED128(HashToGroupPED128<N>),
     /// Performs a Poseidon hash with an input rate of 2.
     HashToGroupPSD2(HashToGroupPSD2<N>),
     /// Performs a Poseidon hash with an input rate of 4.
@@ -280,6 +284,8 @@ macro_rules! instruction {
             HashToGroupBHP512,
             HashToGroupBHP768,
             HashToGroupBHP1024,
+            HashToGroupPED64,
+            HashToGroupPED128,
             HashToGroupPSD2,
             HashToGroupPSD4,
             HashToGroupPSD8,
@@ -473,7 +479,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            71,
+            77,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
