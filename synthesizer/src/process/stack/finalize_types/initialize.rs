@@ -384,64 +384,7 @@ impl<N: Network> FinalizeTypes<N> {
             Opcode::Finalize(opcode) => {
                 bail!("Forbidden operation: Cannot invoke '{opcode}' in a `finalize` scope.");
             }
-            Opcode::Hash(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if ![
-                    "hash.bhp256",
-                    "hash.bhp512",
-                    "hash.bhp768",
-                    "hash.bhp1024",
-                    "hash.ped64",
-                    "hash.ped128",
-                    "hash.psd2",
-                    "hash.psd4",
-                    "hash.psd8",
-                ]
-                .contains(&opcode)
-                {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
-                // Ensure the instruction is the correct one.
-                match opcode {
-                    "hash.bhp256" => ensure!(
-                        matches!(instruction, Instruction::HashBHP256(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.bhp512" => ensure!(
-                        matches!(instruction, Instruction::HashBHP512(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.bhp768" => ensure!(
-                        matches!(instruction, Instruction::HashBHP768(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.bhp1024" => ensure!(
-                        matches!(instruction, Instruction::HashBHP1024(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.ped64" => ensure!(
-                        matches!(instruction, Instruction::HashPED64(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.ped128" => ensure!(
-                        matches!(instruction, Instruction::HashPED128(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.psd2" => ensure!(
-                        matches!(instruction, Instruction::HashPSD2(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.psd4" => ensure!(
-                        matches!(instruction, Instruction::HashPSD4(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "hash.psd8" => ensure!(
-                        matches!(instruction, Instruction::HashPSD8(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
-                }
-            }
+            Opcode::Hash(opcode) => RegisterTypes::check_hash_opcode(opcode, instruction)?,
             Opcode::Is(opcode) => {
                 // Ensure the instruction belongs to the defined set.
                 if !["is.eq", "is.neq"].contains(&opcode) {
