@@ -34,7 +34,7 @@ mod marlin {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
             struct $test_struct {}
             impl $test_struct {
-                pub(crate) fn test_circuit<'a>(num_constraints: usize, num_variables: usize) {
+                pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
                     let rng = &mut snarkvm_utilities::rand::TestRng::default();
                     let random = Fr::rand(rng);
 

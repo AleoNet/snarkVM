@@ -576,7 +576,7 @@ pub fn sqrt_field_test<F: SquareRootField>(elem: F, rng: &mut TestRng) {
     let sqrt = square.sqrt().unwrap();
     assert!(sqrt == elem || sqrt == -elem);
     if let Some(sqrt) = elem.sqrt() {
-        assert!(sqrt.square() == elem || sqrt.square() == -elem);
+        assert!(sqrt.square() == elem);
     }
     random_sqrt_tests::<F>(rng);
 }

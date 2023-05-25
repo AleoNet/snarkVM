@@ -22,7 +22,7 @@ default-features = false
 features = [ "field", "integers" ]
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.rayon]
@@ -32,7 +32,7 @@ version = "1"
 path = "../network"
 
 [dev-dependencies.criterion]
-version = "0.4.0"
+version = "0.5.0"
 
 [dev-dependencies.indexmap]
 version = "1.9.2"

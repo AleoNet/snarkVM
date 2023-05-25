@@ -22,8 +22,8 @@ pub(crate) struct Counter<F: PrimeField> {
     constants: u64,
     public: u64,
     private: u64,
-    gates: u64,
-    parents: Vec<(Scope, Vec<Constraint<F>>, u64, u64, u64, u64)>,
+    nonzeros: (u64, u64, u64),
+    parents: Vec<(Scope, Vec<Constraint<F>>, u64, u64, u64, (u64, u64, u64))>,
 }
 
 impl<F: PrimeField> Counter<F> {
@@ -46,7 +46,7 @@ impl<F: PrimeField> Counter<F> {
                     self.constants,
                     self.public,
                     self.private,
-                    self.gates,
+                    self.nonzeros,
                 ));
 
                 // Initialize the new scope members.
@@ -55,7 +55,7 @@ impl<F: PrimeField> Counter<F> {
                 self.constants = 0;
                 self.public = 0;
                 self.private = 0;
-                self.gates = 0;
+                self.nonzeros = (0, 0, 0);
 
                 Ok(())
             }
@@ -73,13 +73,13 @@ impl<F: PrimeField> Counter<F> {
         // Ensure the current scope is the last pushed scope.
         match current_scope == name.into() {
             true => {
-                if let Some((scope, constraints, constants, public, private, gates)) = self.parents.pop() {
+                if let Some((scope, constraints, constants, public, private, nonzeros)) = self.parents.pop() {
                     self.scope = scope;
                     self.constraints = constraints;
                     self.constants = constants;
                     self.public = public;
                     self.private = private;
-                    self.gates = gates;
+                    self.nonzeros = nonzeros;
                 }
             }
             false => {
@@ -92,7 +92,11 @@ impl<F: PrimeField> Counter<F> {
 
     /// Increments the number of constraints by 1.
     pub(crate) fn add_constraint(&mut self, constraint: Constraint<F>) {
-        self.gates += constraint.num_gates();
+        let (a_nonzeros, b_nonzeros, c_nonzeros) = constraint.num_nonzeros();
+        self.nonzeros.0 += a_nonzeros;
+        self.nonzeros.1 += b_nonzeros;
+        self.nonzeros.2 += c_nonzeros;
+
         self.constraints.push(constraint);
     }
 
@@ -141,8 +145,8 @@ impl<F: PrimeField> Counter<F> {
         self.constraints.len() as u64
     }
 
-    /// Returns the number of gates in scope.
-    pub(crate) fn num_gates_in_scope(&self) -> u64 {
-        self.gates
+    /// Returns the number of nonzeros in scope.
+    pub(crate) fn num_nonzeros_in_scope(&self) -> (u64, u64, u64) {
+        self.nonzeros
     }
 }

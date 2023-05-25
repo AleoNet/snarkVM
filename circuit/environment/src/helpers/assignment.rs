@@ -162,13 +162,13 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                 // Initialize a linear combination for the second system.
                 let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
 
-                // Keep an accumulator for constant values in the linear combination.
-                let mut constant_accumulator = lc.constant;
                 // Process every term in the linear combination.
                 for (variable, coefficient) in lc.terms.iter() {
                     match variable {
-                        AssignmentVariable::Constant(value) => {
-                            constant_accumulator += *value;
+                        AssignmentVariable::Constant(_) => {
+                            unreachable!(
+                                "Failed during constraint translation. The first system by definition cannot have constant variables in the terms"
+                            )
                         }
                         AssignmentVariable::Public(index) => {
                             let gadget = converter.public.get(index).unwrap();
@@ -193,7 +193,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
 
                 // Finally, add the accumulated constant value to the linear combination.
                 linear_combination +=
-                    (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                    (lc.constant, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
 
                 // Return the linear combination of the second system.
                 linear_combination
