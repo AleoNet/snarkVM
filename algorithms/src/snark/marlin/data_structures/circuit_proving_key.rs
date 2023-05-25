@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     polycommit::sonic_pc,
@@ -26,7 +24,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use std::sync::Arc;
+use std::{cmp::Ordering, sync::Arc};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,6 +33,7 @@ pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     pub circuit_verifying_key: CircuitVerifyingKey<E, MM>,
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<sonic_pc::Randomness<E>>,
+    // NOTE: The circuit verifying key's circuit_info and circuit id are also stored in Circuit for convenience.
     /// The circuit itself.
     pub circuit: Arc<Circuit<E::Fr, MM>>,
     /// The committer key for this index, trimmed from the universal SRS.
@@ -60,5 +59,17 @@ impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
         let committer_key = Arc::new(FromBytes::read_le(&mut reader)?);
 
         Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuit, committer_key })
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitProvingKey<E, MM> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.circuit.id.cmp(&other.circuit.id)
+    }
+}
+
+impl<E: PairingEngine, MM: MarlinMode> PartialOrd for CircuitProvingKey<E, MM> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

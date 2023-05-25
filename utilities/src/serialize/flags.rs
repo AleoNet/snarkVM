@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::serialize::Flags;
 
@@ -36,10 +34,11 @@ impl Flags for EmptyFlags {
 
 /// Flags to be encoded into the serialization.
 /// The default flags (empty) should not change the binary representation.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub enum SWFlags {
     Infinity,
     PositiveY,
+    #[default]
     NegativeY,
 }
 
@@ -66,14 +65,6 @@ impl SWFlags {
             SWFlags::PositiveY => Some(true),
             SWFlags::NegativeY => Some(false),
         }
-    }
-}
-
-impl Default for SWFlags {
-    #[inline]
-    fn default() -> Self {
-        // NegativeY doesn't change the serialization
-        SWFlags::NegativeY
     }
 }
 
@@ -108,9 +99,10 @@ impl Flags for SWFlags {
 
 /// Flags to be encoded into the serialization.
 /// The default flags (empty) should not change the binary representation.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub enum EdwardsFlags {
     PositiveY,
+    #[default]
     NegativeY,
 }
 
@@ -126,14 +118,6 @@ impl EdwardsFlags {
             EdwardsFlags::PositiveY => true,
             EdwardsFlags::NegativeY => false,
         }
-    }
-}
-
-impl Default for EdwardsFlags {
-    #[inline]
-    fn default() -> Self {
-        // NegativeY doesn't change the serialization
-        EdwardsFlags::NegativeY
     }
 }
 

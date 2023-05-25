@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -201,8 +199,8 @@ mod tests {
             let output_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str(&format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}")).unwrap());
-            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
+            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str(&format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, token_amount: 100u64.private, _nonce: {nonce}.public }}")).unwrap());
+            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
             let outputs = vec![output_constant, output_public, output_private, output_record, output_external_record];
 
             // Construct the output types.
@@ -295,16 +293,16 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 20695, 5, 4257, 4262)
+        check_from_callback(Mode::Constant, 20788, 5, 4922, 4931)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 20695, 5, 5552, 5557)
+        check_from_callback(Mode::Public, 20788, 5, 6217, 6226)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 20695, 5, 5552, 5557)
+        check_from_callback(Mode::Private, 20788, 5, 6217, 6226)
     }
 }

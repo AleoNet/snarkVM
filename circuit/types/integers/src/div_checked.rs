@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -130,18 +128,21 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivChecked<Integer<E, I>, Outpu
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
-        match I::is_signed() {
-            true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(9 * I::BITS, 0, (8 * I::BITS) + 2, (8 * I::BITS) + 12)
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
+                match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                    (true, true) => Count::less_than(7 * I::BITS + 1, 0, (9 * I::BITS) + 11, (9 * I::BITS) + 20),
+                    (true, false) => Count::less_than(7 * I::BITS + 1, 0, 1616, 1822),
+                    (false, true) => Count::less_than(I::BITS + 1, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                    (false, false) => Count::less_than(I::BITS + 1, 0, 839, 1039),
                 }
-                (_, _) => Count::is(8 * I::BITS, 0, (10 * I::BITS) + 15, (10 * I::BITS) + 27),
-            },
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 1, (3 * I::BITS) + 4),
-                (Mode::Constant, _) | (_, _) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 4, (3 * I::BITS) + 9),
+            }
+            (_, _) => match (I::is_signed(), 2 * I::BITS < E::BaseField::size_in_data_bits() as u64) {
+                (true, true) => Count::is(6 * I::BITS, 0, (9 * I::BITS) + 11, (9 * I::BITS) + 20),
+                (true, false) => Count::is(6 * I::BITS, 0, 1616, 1822),
+                (false, true) => Count::is(I::BITS, 0, (3 * I::BITS) + 2, (3 * I::BITS) + 5),
+                (false, false) => Count::is(I::BITS, 0, 839, 1039),
             },
         }
     }
@@ -185,8 +186,7 @@ mod tests {
                 Mode::Constant => check_operation_halts(&a, &b, Integer::div_checked),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.div_checked(&b);
-                    // assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                    assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
+                    assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                 }),
             }
         } else {
@@ -195,16 +195,14 @@ mod tests {
                     let candidate = a.div_checked(&b);
                     assert_eq!(expected, *candidate.eject_value());
                     assert_eq!(console::Integer::new(expected), candidate.eject_value());
-                    // assert_count!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                    // assert_output_mode!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
-                    assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                    assert_count!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                    assert_output_mode!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
                 }),
                 None => match (mode_a, mode_b) {
                     (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::div_checked),
                     _ => Circuit::scope(name, || {
                         let _candidate = a.div_checked(&b);
-                        // assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                        assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
+                        assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                     }),
                 },
             }

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
@@ -25,7 +23,7 @@ use snarkvm_utilities::{
     borrow::Cow,
     error,
     io::{Read, Write},
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
+    serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, SerializationError, Valid, Validate},
     FromBytes,
     ToBytes,
     ToMinimalBits,
@@ -190,7 +188,7 @@ impl<E: PairingEngine> LagrangeBasis<'_, E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The generator of G1.
     pub g: E::G1Affine,
@@ -204,6 +202,61 @@ pub struct VerifierKey<E: PairingEngine> {
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
+}
+
+impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        self.g.serialize_with_mode(&mut writer, compress)?;
+        self.gamma_g.serialize_with_mode(&mut writer, compress)?;
+        self.h.serialize_with_mode(&mut writer, compress)?;
+        self.beta_h.serialize_with_mode(&mut writer, compress)?;
+        Ok(())
+    }
+
+    fn serialized_size(&self, compress: Compress) -> usize {
+        self.g.serialized_size(compress)
+            + self.gamma_g.serialized_size(compress)
+            + self.h.serialized_size(compress)
+            + self.beta_h.serialized_size(compress)
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let g = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let gamma_g = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let beta_h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let prepared_h = h.prepare();
+        let prepared_beta_h = beta_h.prepare();
+        Ok(VerifierKey { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h })
+    }
+}
+
+impl<E: PairingEngine> Valid for VerifierKey<E> {
+    fn check(&self) -> Result<(), SerializationError> {
+        Valid::check(&self.g)?;
+        Valid::check(&self.gamma_g)?;
+        Valid::check(&self.h)?;
+        Valid::check(&self.beta_h)?;
+        Ok(())
+    }
+
+    fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        let batch: Vec<_> = batch.collect();
+        Valid::batch_check(batch.iter().map(|v| &v.g))?;
+        Valid::batch_check(batch.iter().map(|v| &v.gamma_g))?;
+        Valid::batch_check(batch.iter().map(|v| &v.h))?;
+        Valid::batch_check(batch.iter().map(|v| &v.beta_h))?;
+        Ok(())
+    }
 }
 
 impl<E: PairingEngine> FromBytes for VerifierKey<E> {

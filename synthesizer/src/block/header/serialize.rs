@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -23,9 +21,10 @@ impl<N: Network> Serialize for Header<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("Header", 4)?;
+                let mut header = serializer.serialize_struct("Header", 5)?;
                 header.serialize_field("previous_state_root", &self.previous_state_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
+                header.serialize_field("finalize_root", &self.finalize_root)?;
                 header.serialize_field("coinbase_accumulator_point", &self.coinbase_accumulator_point)?;
                 header.serialize_field("metadata", &self.metadata)?;
                 header.end()
@@ -44,6 +43,7 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
                 Ok(Self::from(
                     DeserializeExt::take_from_value::<D>(&mut header, "previous_state_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "transactions_root")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "finalize_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "coinbase_accumulator_point")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "metadata")?,
                 )

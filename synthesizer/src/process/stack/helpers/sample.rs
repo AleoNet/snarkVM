@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -69,7 +67,6 @@ impl<N: Network> Stack<N> {
 
 impl<N: Network> Stack<N> {
     /// Returns a record for the given record name.
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_record_internal<R: Rng + CryptoRng>(
         &self,
         burner_address: &Address<N>,
@@ -85,15 +82,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the owner based on the visibility.
         let owner = match record_type.owner().is_public() {
-            true => Owner::Public(*burner_address),
-            false => Owner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
-        };
-
-        // Initialize the gates based on the visibility.
-        let amount = U64::new(rng.gen_range(0..(1 << 52)));
-        let gates = match record_type.gates().is_public() {
-            true => Balance::Public(amount),
-            false => Balance::Private(Plaintext::Literal(Literal::U64(amount), Default::default())),
+            true => RecordOwner::Public(*burner_address),
+            false => RecordOwner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
         };
 
         // Initialize the record data according to the defined type.
@@ -112,12 +102,10 @@ impl<N: Network> Stack<N> {
         let nonce = Group::rand(rng);
 
         // Return the record.
-        Record::<N, Plaintext<N>>::from_plaintext(owner, gates, data, nonce)
+        Record::<N, Plaintext<N>>::from_plaintext(owner, data, nonce)
     }
 
     /// Samples an entry according to the given entry type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_entry_internal<R: Rng + CryptoRng>(
         &self,
         entry_type: &EntryType<N>,
@@ -144,8 +132,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Samples a plaintext value according to the given plaintext type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_plaintext_internal<R: Rng + CryptoRng>(
         &self,
         plaintext_type: &PlaintextType<N>,

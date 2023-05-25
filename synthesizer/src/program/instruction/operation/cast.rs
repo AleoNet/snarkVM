@@ -1,26 +1,35 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{
+    Opcode,
+    Operand,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{
-        Balance,
         Entry,
         EntryType,
+        Identifier,
         Literal,
         LiteralType,
         Owner,
@@ -77,10 +86,10 @@ impl<N: Network> Cast<N> {
 impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
@@ -88,43 +97,26 @@ impl<N: Network> Cast<N> {
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
-
-                // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_name)?;
-
-                // Initialize the struct members.
-                let mut members = IndexMap::new();
-                for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
-                    // Compute the register type.
-                    let register_type = RegisterType::Plaintext(*member_type);
-                    // Retrieve the plaintext value from the entry.
-                    let plaintext = match member {
-                        Value::Plaintext(plaintext) => {
-                            // Ensure the member matches the register type.
-                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
-                            // Output the plaintext.
-                            plaintext.clone()
-                        }
-                        // Ensure the struct member is not a record.
-                        Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
-                    };
-                    // Append the member to the struct members.
-                    members.insert(*member_name, plaintext);
-                }
-
-                // Construct the struct.
-                let struct_ = Plaintext::Struct(members, Default::default());
-                // Store the struct.
-                registers.store(stack, &self.destination, Value::Plaintext(struct_))
+                self.cast_to_struct(stack, registers, struct_name, inputs)
             }
             RegisterType::Record(record_name) => {
-                // Ensure the operands length is at least 2.
-                ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_RECORD_ENTRIES {
+                    bail!("Casting to a record requires at least {} operand", N::MIN_RECORD_ENTRIES)
+                }
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
+
+                // Ensure that the number of operands is equal to the number of record entries, including the `owner`.
+                if inputs.len() != record_type.entries().len() + 1 {
+                    bail!(
+                        "Casting to the record {} requires {} operands, but {} were provided",
+                        record_type.name(),
+                        record_type.entries().len() + 1,
+                        inputs.len()
+                    )
+                }
 
                 // Initialize the record owner.
                 let owner: Owner<N, Plaintext<N>> = match &inputs[0] {
@@ -138,27 +130,11 @@ impl<N: Network> Cast<N> {
                     _ => bail!("Invalid record 'owner'"),
                 };
 
-                // Initialize the record gates.
-                let gates: Balance<N, Plaintext<N>> = match &inputs[1] {
-                    // Ensure the entry is a u64.
-                    Value::Plaintext(Plaintext::Literal(Literal::U64(gates), ..)) => {
-                        // Ensure the gates is less than or equal to 2^52.
-                        ensure!(
-                            gates.to_bits_le()[52..].iter().all(|bit| !bit),
-                            "Attempted to initialize an invalid Aleo balance (in gates)"
-                        );
-                        // Construct the record gates.
-                        match record_type.gates().is_public() {
-                            true => Balance::Public(*gates),
-                            false => Balance::Private(Plaintext::Literal(Literal::U64(*gates), Default::default())),
-                        }
-                    }
-                    _ => bail!("Invalid record 'gates'"),
-                };
-
                 // Initialize the record entries.
                 let mut entries = IndexMap::new();
-                for (entry, (entry_name, entry_type)) in inputs.iter().skip(2).zip_eq(record_type.entries()) {
+                for (entry, (entry_name, entry_type)) in
+                    inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
+                {
                     // Compute the register type.
                     let register_type = RegisterType::from(ValueType::from(*entry_type));
                     // Retrieve the plaintext value from the entry.
@@ -188,7 +164,7 @@ impl<N: Network> Cast<N> {
                 let nonce = N::g_scalar_multiply(&randomizer);
 
                 // Construct the record.
-                let record = Record::<N, Plaintext<N>>::from_plaintext(owner, gates, entries, nonce)?;
+                let record = Record::<N, Plaintext<N>>::from_plaintext(owner, entries, nonce)?;
                 // Store the record.
                 registers.store(stack, &self.destination, Value::Record(record))
             }
@@ -202,10 +178,10 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
-        use circuit::{Eject, Inject, ToBits};
+        use circuit::{Eject, Inject};
 
         // Load the operands values.
         let inputs: Vec<_> =
@@ -214,11 +190,23 @@ impl<N: Network> Cast<N> {
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Struct(struct_)) => {
-                // Ensure the operands is not empty.
-                ensure!(!inputs.is_empty(), "Casting to a struct requires at least one operand");
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_STRUCT_ENTRIES {
+                    bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+                }
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_)?;
+
+                // Ensure that the number of operands is equal to the number of struct members.
+                if inputs.len() != struct_.members().len() {
+                    bail!(
+                        "Casting to the struct {} requires {} operands, but {} were provided",
+                        struct_.name(),
+                        struct_.members().len(),
+                        inputs.len()
+                    )
+                }
 
                 // Initialize the struct members.
                 let mut members = IndexMap::new();
@@ -251,11 +239,23 @@ impl<N: Network> Cast<N> {
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
             }
             RegisterType::Record(record_name) => {
-                // Ensure the operands length is at least 2.
-                ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_RECORD_ENTRIES {
+                    bail!("Casting to a record requires at least {} operand", N::MIN_RECORD_ENTRIES)
+                }
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
+
+                // Ensure that the number of operands is equal to the number of record entries, including the `owner`.
+                if inputs.len() != record_type.entries().len() + 1 {
+                    bail!(
+                        "Casting to the record {} requires {} operands, but {} were provided",
+                        record_type.name(),
+                        record_type.entries().len() + 1,
+                        inputs.len()
+                    )
+                }
 
                 // Initialize the record owner.
                 let owner: circuit::Owner<A, circuit::Plaintext<A>> = match &inputs[0] {
@@ -272,31 +272,11 @@ impl<N: Network> Cast<N> {
                     _ => bail!("Invalid record 'owner'"),
                 };
 
-                // Initialize the record gates.
-                let gates: circuit::Balance<A, circuit::Plaintext<A>> = match &inputs[1] {
-                    // Ensure the entry is a u64.
-                    circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::U64(gates), ..)) => {
-                        // Ensure the gates is less than or equal to 2^52.
-                        A::assert(
-                            !gates.to_bits_le()[52..]
-                                .iter()
-                                .fold(circuit::Boolean::constant(false), |acc, bit| acc | bit),
-                        );
-                        // Construct the record gates.
-                        match record_type.gates().is_public() {
-                            true => circuit::Balance::Public(gates.clone()),
-                            false => circuit::Balance::Private(circuit::Plaintext::Literal(
-                                circuit::Literal::U64(gates.clone()),
-                                Default::default(),
-                            )),
-                        }
-                    }
-                    _ => bail!("Invalid record 'gates'"),
-                };
-
                 // Initialize the record entries.
                 let mut entries = IndexMap::new();
-                for (entry, (entry_name, entry_type)) in inputs.iter().skip(2).zip_eq(record_type.entries()) {
+                for (entry, (entry_name, entry_type)) in
+                    inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
+                {
                     // Compute the register type.
                     let register_type = RegisterType::from(ValueType::from(*entry_type));
                     // Retrieve the plaintext value from the entry.
@@ -331,7 +311,7 @@ impl<N: Network> Cast<N> {
                 let nonce = A::g_scalar_multiply(&randomizer);
 
                 // Construct the record.
-                let record = circuit::Record::<A, circuit::Plaintext<A>>::from_plaintext(owner, gates, entries, nonce)?;
+                let record = circuit::Record::<A, circuit::Plaintext<A>>::from_plaintext(owner, entries, nonce)?;
                 // Store the record.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Record(record))
             }
@@ -341,9 +321,37 @@ impl<N: Network> Cast<N> {
         }
     }
 
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
+        // Load the operands values.
+        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
+
+        match self.register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                self.cast_to_struct(stack, registers, struct_name, inputs)
+            }
+            RegisterType::Record(_record_name) => {
+                bail!("Illegal operation: Cannot cast to a record in a finalize block.")
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
+            }
+        }
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -359,6 +367,20 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_name)?;
+                // Ensure that the input types length is at least the minimum.
+                ensure!(
+                    input_types.len() >= N::MIN_STRUCT_ENTRIES,
+                    "Casting to a struct requires at least {} operand",
+                    N::MIN_STRUCT_ENTRIES
+                );
+                // Ensure that the number of input types is equal to the number of struct members.
+                ensure!(
+                    input_types.len() == struct_.members().len(),
+                    "Casting to the struct {} requires {} operands, but {} were provided",
+                    struct_.name(),
+                    struct_.members().len(),
+                    input_types.len()
+                );
                 // Ensure the input types match the struct.
                 for ((_, member_type), input_type) in struct_.members().iter().zip_eq(input_types) {
                     match input_type {
@@ -384,21 +406,30 @@ impl<N: Network> Cast<N> {
                 // Retrieve the record type and ensure is defined in the program.
                 let record = stack.program().get_record(&record_name)?;
 
-                // Ensure the input types length is at least 2.
-                ensure!(input_types.len() >= 2, "Casting to a record requires at least two operands");
+                // Ensure the input types length is at least the minimum.
+                ensure!(
+                    input_types.len() >= N::MIN_RECORD_ENTRIES,
+                    "Casting to a record requires at least {} operands",
+                    N::MIN_RECORD_ENTRIES
+                );
+                // Ensure that the number of input types is equal to the number of record entries, including the `owner`.
+                ensure!(
+                    input_types.len() == record.entries().len() + 1,
+                    "Casting to the record {} requires {} operands, but {} were provided",
+                    record.name(),
+                    record.entries().len() + 1,
+                    input_types.len()
+                );
                 // Ensure the first input type is an address.
                 ensure!(
                     input_types[0] == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
                     "Casting to a record requires the first operand to be an address"
                 );
-                // Ensure the second input type is a u64.
-                ensure!(
-                    input_types[1] == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64)),
-                    "Casting to a record requires the second operand to be a u64"
-                );
 
                 // Ensure the input types match the record.
-                for (input_type, (_, entry_type)) in input_types.iter().skip(2).zip_eq(record.entries()) {
+                for (input_type, (_, entry_type)) in
+                    input_types.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record.entries())
+                {
                     match input_type {
                         // Ensure the plaintext type matches the entry type.
                         RegisterType::Plaintext(plaintext_type) => match entry_type {
@@ -428,6 +459,58 @@ impl<N: Network> Cast<N> {
         }
 
         Ok(vec![self.register_type])
+    }
+}
+
+impl<N: Network> Cast<N> {
+    /// A helper method to handle casting to a struct.
+    fn cast_to_struct(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersStore<N>,
+        struct_name: Identifier<N>,
+        inputs: Vec<Value<N>>,
+    ) -> Result<()> {
+        // Ensure the operands length is at least the minimum.
+        if inputs.len() < N::MIN_STRUCT_ENTRIES {
+            bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+        }
+
+        // Retrieve the struct and ensure it is defined in the program.
+        let struct_ = stack.program().get_struct(&struct_name)?;
+
+        // Ensure that the number of operands is equal to the number of struct members.
+        if inputs.len() != struct_.members().len() {
+            bail!(
+                "Casting to the struct {} requires {} operands, but {} were provided",
+                struct_.name(),
+                struct_.members().len(),
+                inputs.len()
+            )
+        }
+
+        // Initialize the struct members.
+        let mut members = IndexMap::new();
+        for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
+            // Retrieve the plaintext value from the entry.
+            let plaintext = match member {
+                Value::Plaintext(plaintext) => {
+                    // Ensure the plaintext matches the member type.
+                    stack.matches_plaintext(plaintext, member_type)?;
+                    // Output the plaintext.
+                    plaintext.clone()
+                }
+                // Ensure the struct member is not a record.
+                Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
+            };
+            // Append the member to the struct members.
+            members.insert(*member_name, plaintext);
+        }
+
+        // Construct the struct.
+        let struct_ = Plaintext::Struct(members, Default::default());
+        // Store the struct.
+        registers.store(stack, &self.destination, Value::Plaintext(struct_))
     }
 }
 
@@ -465,9 +548,8 @@ impl<N: Network> Parser for Cast<N> {
         let (string, register_type) = RegisterType::parse(string)?;
         // Check that the number of operands does not exceed the maximum number of data entries.
         let max_operands = match register_type {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         match operands.len() <= max_operands {
             true => Ok((string, Self { operands, destination, register_type })),
@@ -510,9 +592,8 @@ impl<N: Network> Display for Cast<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
             eprintln!("The number of operands must be nonzero and <= {max_operands}");
@@ -532,9 +613,10 @@ impl<N: Network> FromBytes for Cast<N> {
         let num_operands = u8::read_le(&mut reader)? as usize;
 
         // Ensure that the number of operands does not exceed the upper bound.
-        // Note: although a similar check is performed later, this check is performed to ensure that an exceedingly large number of operands is not allocated.
-        if num_operands.is_zero() || num_operands > N::MAX_DATA_ENTRIES + 2 {
-            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_DATA_ENTRIES + 2)));
+        // Note: Although a similar check is performed later, this check is performed to ensure that an exceedingly large number of operands is not allocated.
+        // Note: This check is purely a sanity check, as it is not type-aware.
+        if num_operands.is_zero() || num_operands > N::MAX_RECORD_ENTRIES {
+            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_RECORD_ENTRIES)));
         }
 
         // Initialize the vector for the operands.
@@ -552,9 +634,8 @@ impl<N: Network> FromBytes for Cast<N> {
 
         // Ensure the number of operands is within the bounds for the register type.
         let max_operands = match register_type {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if num_operands.is_zero() || num_operands > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
@@ -570,9 +651,8 @@ impl<N: Network> ToBytes for Cast<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
         let max_operands = match self.register_type() {
-            RegisterType::Plaintext(_) => N::MAX_DATA_ENTRIES,
-            // Note that if the register type is a record, then we must account for `owner` and `gates` which are not data entries.
-            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_DATA_ENTRIES + 2,
+            RegisterType::Plaintext(_) => N::MAX_STRUCT_ENTRIES,
+            RegisterType::Record(_) | RegisterType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if self.operands.len().is_zero() || self.operands.len() > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
@@ -599,9 +679,9 @@ mod tests {
     #[test]
     fn test_parse() {
         let (string, cast) =
-            Cast::<CurrentNetwork>::parse("cast r0.owner r0.gates r0.token_amount into r1 as token.record").unwrap();
+            Cast::<CurrentNetwork>::parse("cast r0.owner r0.token_amount into r1 as token.record").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(cast.operands.len(), 3, "The number of operands is incorrect");
+        assert_eq!(cast.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(
             cast.operands[0],
             Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
@@ -609,13 +689,8 @@ mod tests {
         );
         assert_eq!(
             cast.operands[1],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("gates").unwrap()])),
-            "The second operand is incorrect"
-        );
-        assert_eq!(
-            cast.operands[2],
             Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
-            "The third operand is incorrect"
+            "The second operand is incorrect"
         );
         assert_eq!(cast.destination, Register::Locator(1), "The destination register is incorrect");
         assert_eq!(
@@ -628,19 +703,19 @@ mod tests {
     #[test]
     fn test_parse_cast_into_plaintext_max_operands() {
         let mut string = "cast ".to_string();
-        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES);
-        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES {
+        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_STRUCT_ENTRIES);
+        for i in 0..CurrentNetwork::MAX_STRUCT_ENTRIES {
             string.push_str(&format!("r{i} "));
             operands.push(Operand::Register(Register::Locator(i as u64)));
         }
-        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES));
+        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_STRUCT_ENTRIES));
         let (string, cast) = Cast::<CurrentNetwork>::parse(&string).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES, "The number of operands is incorrect");
+        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_STRUCT_ENTRIES, "The number of operands is incorrect");
         assert_eq!(cast.operands, operands, "The operands are incorrect");
         assert_eq!(
             cast.destination,
-            Register::Locator(CurrentNetwork::MAX_DATA_ENTRIES as u64),
+            Register::Locator(CurrentNetwork::MAX_STRUCT_ENTRIES as u64),
             "The destination register is incorrect"
         );
         assert_eq!(
@@ -653,19 +728,19 @@ mod tests {
     #[test]
     fn test_parse_cast_into_record_max_operands() {
         let mut string = "cast ".to_string();
-        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_DATA_ENTRIES + 2);
-        for i in 0..CurrentNetwork::MAX_DATA_ENTRIES + 2 {
+        let mut operands = Vec::with_capacity(CurrentNetwork::MAX_RECORD_ENTRIES);
+        for i in 0..CurrentNetwork::MAX_RECORD_ENTRIES {
             string.push_str(&format!("r{i} "));
             operands.push(Operand::Register(Register::Locator(i as u64)));
         }
-        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 2));
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_RECORD_ENTRIES));
         let (string, cast) = Cast::<CurrentNetwork>::parse(&string).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_DATA_ENTRIES + 2, "The number of operands is incorrect");
+        assert_eq!(cast.operands.len(), CurrentNetwork::MAX_RECORD_ENTRIES, "The number of operands is incorrect");
         assert_eq!(cast.operands, operands, "The operands are incorrect");
         assert_eq!(
             cast.destination,
-            Register::Locator((CurrentNetwork::MAX_DATA_ENTRIES + 2) as u64),
+            Register::Locator((CurrentNetwork::MAX_RECORD_ENTRIES) as u64),
             "The destination register is incorrect"
         );
         assert_eq!(
@@ -678,20 +753,20 @@ mod tests {
     #[test]
     fn test_parse_cast_into_record_too_many_operands() {
         let mut string = "cast ".to_string();
-        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES + 2 {
+        for i in 0..=CurrentNetwork::MAX_RECORD_ENTRIES {
             string.push_str(&format!("r{i} "));
         }
-        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_DATA_ENTRIES + 3));
+        string.push_str(&format!("into r{} as token.record", CurrentNetwork::MAX_RECORD_ENTRIES + 1));
         assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
     }
 
     #[test]
     fn test_parse_cast_into_plaintext_too_many_operands() {
         let mut string = "cast ".to_string();
-        for i in 0..=CurrentNetwork::MAX_DATA_ENTRIES {
+        for i in 0..=CurrentNetwork::MAX_STRUCT_ENTRIES {
             string.push_str(&format!("r{i} "));
         }
-        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_DATA_ENTRIES + 1));
+        string.push_str(&format!("into r{} as foo", CurrentNetwork::MAX_STRUCT_ENTRIES + 1));
         assert!(Cast::<CurrentNetwork>::parse(&string).is_err(), "Parser did not error");
     }
 }

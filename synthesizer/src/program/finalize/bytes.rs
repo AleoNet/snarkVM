@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -40,18 +38,10 @@ impl<N: Network> FromBytes for Finalize<N> {
             commands.push(Command::read_le(&mut reader)?);
         }
 
-        // Read the outputs.
-        let num_outputs = u16::read_le(&mut reader)?;
-        let mut outputs = Vec::with_capacity(num_outputs as usize);
-        for _ in 0..num_outputs {
-            outputs.push(Output::read_le(&mut reader)?);
-        }
-
         // Initialize a new finalize.
         let mut finalize = Self::new(name);
         inputs.into_iter().try_for_each(|input| finalize.add_input(input)).map_err(|e| error(e.to_string()))?;
         commands.into_iter().try_for_each(|command| finalize.add_command(command)).map_err(|e| error(e.to_string()))?;
-        outputs.into_iter().try_for_each(|output| finalize.add_output(output)).map_err(|e| error(e.to_string()))?;
 
         Ok(finalize)
     }
@@ -88,18 +78,6 @@ impl<N: Network> ToBytes for Finalize<N> {
             command.write_le(&mut writer)?;
         }
 
-        // Write the number of outputs for the finalize.
-        let num_outputs = self.outputs.len();
-        match num_outputs <= N::MAX_OUTPUTS {
-            true => (num_outputs as u16).write_le(&mut writer)?,
-            false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
-        }
-
-        // Write the outputs.
-        for output in self.outputs.iter() {
-            output.write_le(&mut writer)?;
-        }
-
         Ok(())
     }
 }
@@ -126,8 +104,7 @@ finalize main:
     add r0 r1 into r8;
     add r0 r1 into r9;
     add r0 r1 into r10;
-    add r0 r1 into r11;
-    output r11 as field.public;";
+    add r0 r1 into r11;";
 
         let expected = Finalize::<CurrentNetwork>::from_str(finalize_string)?;
         let expected_bytes = expected.to_bytes_le()?;

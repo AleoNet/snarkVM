@@ -1,29 +1,27 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<N: Network> Process<N> {
-    /// Executes the fee given the credits record and the fee amount (in gates).
+    /// Executes the fee given the credits record and the fee amount (in microcredits).
     #[inline]
     pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
-        fee_in_gates: u64,
+        fee_in_microcredits: u64,
         rng: &mut R,
     ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute_fee");
@@ -36,7 +34,7 @@ impl<N: Network> Process<N> {
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
         // Construct the inputs.
-        let inputs = [Value::Record(credits), Value::from_str(&format!("{}", U64::<N>::new(fee_in_gates)))?];
+        let inputs = [Value::Record(credits), Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?];
         lap!(timer, "Construct the inputs");
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
@@ -133,9 +131,6 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the outputs");
 
-        // Ensure the fee is not negative.
-        ensure!(fee.fee() >= &0, "The fee must be zero or positive");
-
         // Ensure the inclusion proof is valid.
         Inclusion::verify_fee(fee)?;
         lap!(timer, "Verify the inclusion proof");
@@ -149,8 +144,6 @@ impl<N: Network> Process<N> {
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the inputs with the output IDs.
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
-        // Extend the inputs with the fee.
-        inputs.push(*I64::<N>::new(*fee.fee()).to_field()?);
         lap!(timer, "Construct the verifier inputs");
 
         // Retrieve the stack.
@@ -175,7 +168,7 @@ impl<N: Network> Process<N> {
         let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
         // Ensure the transition proof is valid.
         ensure!(
-            verifying_key.verify(function.name(), &inputs, fee.proof()),
+            verifying_key.verify(&function.name().to_string(), &inputs, fee.proof()),
             "Fee is invalid - failed to verify transition proof"
         );
         lap!(timer, "Verify the transition proof");

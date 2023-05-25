@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod build;
 mod clean;
@@ -39,7 +37,15 @@ use crate::{
         Serializer,
         Value,
     },
-    synthesizer::{CallOperator, Execution, Inclusion, Instruction, Process, Program, ProvingKey, VerifyingKey},
+    synthesizer::{
+        snark::{ProvingKey, VerifyingKey},
+        CallOperator,
+        Execution,
+        Inclusion,
+        Instruction,
+        Process,
+        Program,
+    },
 };
 
 use anyhow::{bail, ensure, Error, Result};
@@ -203,13 +209,12 @@ program {program_id};
 
 record token:
     owner as address.private;
-    gates as u64.private;
     amount as u64.private;
 
 function mint:
     input r0 as address.private;
     input r1 as u64.private;
-    cast r0 0u64 r1 into r2 as token.record;
+    cast r0 r1 into r2 as token.record;
     output r2 as token.record;
 
 function transfer:
@@ -217,8 +222,8 @@ function transfer:
     input r1 as address.private;
     input r2 as u64.private;
     sub r0.amount r2 into r3;
-    cast r1 0u64 r2 into r4 as token.record;
-    cast r0.owner r0.gates r3 into r5 as token.record;
+    cast r1 r2 into r4 as token.record;
+    cast r0.owner r3 into r5 as token.record;
     output r4 as token.record;
     output r5 as token.record;"
         );
@@ -253,13 +258,12 @@ program {imported_program_id};
 
 record token:
     owner as address.private;
-    gates as u64.private;
     amount as u64.private;
 
 function mint:
     input r0 as address.private;
     input r1 as u64.private;
-    cast r0 0u64 r1 into r2 as token.record;
+    cast r0 r1 into r2 as token.record;
     output r2 as token.record;
 
 function transfer:
@@ -267,8 +271,8 @@ function transfer:
     input r1 as address.private;
     input r2 as u64.private;
     sub r0.amount r2 into r3;
-    cast r1 0u64 r2 into r4 as token.record;
-    cast r0.owner r0.gates r3 into r5 as token.record;
+    cast r1 r2 into r4 as token.record;
+    cast r0.owner r3 into r5 as token.record;
     output r4 as token.record;
     output r5 as token.record;"
         ))
@@ -354,7 +358,7 @@ function transfer:
 
                 // Initialize the function inputs.
                 let r0 = Value::<CurrentNetwork>::from_str(&format!(
-                    "{{ owner: {caller0}.private, gates: 0u64.private, amount: 100u64.private, _nonce: 0group.public }}"
+                    "{{ owner: {caller0}.private, amount: 100u64.private, _nonce: 0group.public }}"
                 ))
                 .unwrap();
                 let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();

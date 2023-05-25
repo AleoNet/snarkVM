@@ -1,20 +1,34 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-use crate::{CallStack, Opcode, Operand, Registers, Stack};
+use crate::{
+    CallStack,
+    Opcode,
+    Operand,
+    Registers,
+    RegistersCall,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackEvaluate,
+    StackExecute,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
@@ -147,7 +161,7 @@ impl<N: Network> Call<N> {
 impl<N: Network> Call<N> {
     /// Returns `true` if the instruction is a function call.
     #[inline]
-    pub fn is_function_call(&self, stack: &Stack<N>) -> Result<bool> {
+    pub fn is_function_call(&self, stack: &impl StackProgram<N>) -> Result<bool> {
         match self.operator() {
             // Check if the locator is for a function.
             CallOperator::Locator(locator) => {
@@ -165,7 +179,7 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackEvaluate<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Load the operands values.
@@ -233,8 +247,13 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
+        registers: &mut (
+                 impl RegistersCall<N>
+                 + RegistersCallerCircuit<N, A>
+                 + RegistersLoadCircuit<N, A>
+                 + RegistersStoreCircuit<N, A>
+             ),
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> =
@@ -442,9 +461,23 @@ impl<N: Network> Call<N> {
         Ok(())
     }
 
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(
+        &self,
+        _stack: &(impl StackMatches<N> + StackProgram<N>),
+        _registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
+        bail!("Forbidden operation: Finalize cannot invoke a 'call'")
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the program and resource.
         let (is_external, program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
@@ -708,7 +741,6 @@ mod tests {
         "call foo r0",
         "call foo r0.owner",
         "call foo r0 r1",
-        "call foo r0.owner r0.gates",
         "call foo into r0",
         "call foo into r0 r1",
         "call foo into r0 r1 r2",
@@ -750,11 +782,10 @@ mod tests {
     #[test]
     fn test_parse() {
         check_parser(
-            "call transfer r0.owner r0.gates r0.token_amount into r1 r2 r3",
+            "call transfer r0.owner r0.token_amount into r1 r2 r3",
             CallOperator::from_str("transfer").unwrap(),
             vec![
                 Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
-                Operand::Register(Register::Member(0, vec![Identifier::from_str("gates").unwrap()])),
                 Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
             ],
             vec![Register::Locator(1), Register::Locator(2), Register::Locator(3)],

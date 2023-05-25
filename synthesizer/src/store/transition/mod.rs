@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod input;
 pub use input::*;
@@ -21,11 +19,12 @@ mod output;
 pub use output::*;
 
 use crate::{
+    atomic_batch_scope,
     block::{Input, Output, Transition},
     cow_to_cloned,
     cow_to_copied,
     snark::Proof,
-    store::helpers::{memory_map::MemoryMap, Map, MapRead},
+    store::helpers::{Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -56,8 +55,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type TCMMap: for<'a> Map<'a, N::TransitionID, Field<N>>;
     /// The mapping of `transition commitment` to `transition ID`.
     type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-    /// The transition fees.
-    type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
     /// Initializes the transition storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -80,8 +77,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn tcm_map(&self) -> &Self::TCMMap;
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
-    /// Returns the transition fees.
-    fn fee_map(&self) -> &Self::FeeMap;
 
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16> {
@@ -100,7 +95,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().start_atomic();
         self.tcm_map().start_atomic();
         self.reverse_tcm_map().start_atomic();
-        self.fee_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -114,7 +108,32 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             || self.reverse_tpk_map().is_atomic_in_progress()
             || self.tcm_map().is_atomic_in_progress()
             || self.reverse_tcm_map().is_atomic_in_progress()
-            || self.fee_map().is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    fn atomic_checkpoint(&self) {
+        self.locator_map().atomic_checkpoint();
+        self.input_store().atomic_checkpoint();
+        self.output_store().atomic_checkpoint();
+        self.finalize_map().atomic_checkpoint();
+        self.proof_map().atomic_checkpoint();
+        self.tpk_map().atomic_checkpoint();
+        self.reverse_tpk_map().atomic_checkpoint();
+        self.tcm_map().atomic_checkpoint();
+        self.reverse_tcm_map().atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    fn atomic_rewind(&self) {
+        self.locator_map().atomic_rewind();
+        self.input_store().atomic_rewind();
+        self.output_store().atomic_rewind();
+        self.finalize_map().atomic_rewind();
+        self.proof_map().atomic_rewind();
+        self.tpk_map().atomic_rewind();
+        self.reverse_tpk_map().atomic_rewind();
+        self.tcm_map().atomic_rewind();
+        self.reverse_tcm_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -128,7 +147,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().abort_atomic();
         self.tcm_map().abort_atomic();
         self.reverse_tcm_map().abort_atomic();
-        self.fee_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -141,21 +159,12 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.tpk_map().finish_atomic()?;
         self.reverse_tpk_map().finish_atomic()?;
         self.tcm_map().finish_atomic()?;
-        self.reverse_tcm_map().finish_atomic()?;
-        self.fee_map().finish_atomic()
+        self.reverse_tcm_map().finish_atomic()
     }
 
     /// Stores the given `transition` into storage.
     fn insert(&self, transition: &Transition<N>) -> Result<()> {
-        // Check if an atomic batch write is already in progress.
-        let is_part_of_atomic_batch = self.is_atomic_in_progress();
-
-        // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.start_atomic();
-        }
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_batch_scope!(self, {
             // Retrieve the transition ID.
             let transition_id = *transition.id();
             // Store the program ID and function name.
@@ -176,48 +185,25 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.tcm_map().insert(transition_id, *transition.tcm())?;
             // Store the reverse `tcm` entry.
             self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
-            // Store the fee.
-            self.fee_map().insert(transition_id, *transition.fee())?;
 
             Ok(())
-        };
-
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.finish_atomic()?;
-        }
-
-        Ok(())
+        })
     }
 
     /// Removes the input for the given `transition ID`.
     fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
         // Retrieve the `tpk`.
-        let tpk = match self.tpk_map().get(transition_id)? {
+        let tpk = match self.tpk_map().get_confirmed(transition_id)? {
             Some(tpk) => cow_to_copied!(tpk),
             None => return Ok(()),
         };
         // Retrieve the `tcm`.
-        let tcm = match self.tcm_map().get(transition_id)? {
+        let tcm = match self.tcm_map().get_confirmed(transition_id)? {
             Some(tcm) => cow_to_copied!(tcm),
             None => return Ok(()),
         };
 
-        // Check if an atomic batch write is already in progress.
-        let is_part_of_atomic_batch = self.is_atomic_in_progress();
-
-        // Start an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.start_atomic();
-        }
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_batch_scope!(self, {
             // Remove the program ID and function name.
             self.locator_map().remove(transition_id)?;
             // Remove the inputs.
@@ -236,30 +222,15 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.tcm_map().remove(transition_id)?;
             // Remove the reverse `tcm` entry.
             self.reverse_tcm_map().remove(&tcm)?;
-            // Remove the fee.
-            self.fee_map().remove(transition_id)?;
 
             Ok(())
-        };
-
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish an atomic batch write operation IFF it's not already part of one.
-        if !is_part_of_atomic_batch {
-            self.finish_atomic()?;
-        }
-
-        Ok(())
+        })
     }
 
     /// Returns the transition for the given `transition ID`.
     fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
         // Retrieve the program ID and function name.
-        let (program_id, function_name) = match self.locator_map().get(transition_id)? {
+        let (program_id, function_name) = match self.locator_map().get_confirmed(transition_id)? {
             Some(locator) => cow_to_cloned!(locator),
             None => return Ok(None),
         };
@@ -268,18 +239,16 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         // Retrieve the outputs.
         let outputs = self.output_store().get_outputs(transition_id)?;
         // Retrieve the finalize inputs.
-        let finalize = self.finalize_map().get(transition_id)?;
+        let finalize = self.finalize_map().get_confirmed(transition_id)?;
         // Retrieve the proof.
-        let proof = self.proof_map().get(transition_id)?;
+        let proof = self.proof_map().get_confirmed(transition_id)?;
         // Retrieve `tpk`.
-        let tpk = self.tpk_map().get(transition_id)?;
+        let tpk = self.tpk_map().get_confirmed(transition_id)?;
         // Retrieve `tcm`.
-        let tcm = self.tcm_map().get(transition_id)?;
-        // Retrieve the fee.
-        let fee = self.fee_map().get(transition_id)?;
+        let tcm = self.tcm_map().get_confirmed(transition_id)?;
 
-        match (finalize, proof, tpk, tcm, fee) {
-            (Some(finalize), Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
+        match (finalize, proof, tpk, tcm) {
+            (Some(finalize), Some(proof), Some(tpk), Some(tcm)) => {
                 // Construct the transition.
                 let transition = Transition::new(
                     program_id,
@@ -290,7 +259,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
                     cow_to_cloned!(proof),
                     cow_to_cloned!(tpk),
                     cow_to_cloned!(tcm),
-                    cow_to_cloned!(fee),
                 )?;
                 // Ensure the transition ID matches.
                 match transition.id() == transition_id {
@@ -300,111 +268,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             }
             _ => bail!("Transition '{transition_id}' is missing some data (possible corruption)"),
         }
-    }
-}
-
-/// An in-memory transition storage.
-#[derive(Clone)]
-pub struct TransitionMemory<N: Network> {
-    /// The transition program IDs and function names.
-    locator_map: MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>,
-    /// The transition input store.
-    input_store: InputStore<N, InputMemory<N>>,
-    /// The transition output store.
-    output_store: OutputStore<N, OutputMemory<N>>,
-    /// The transition finalize inputs.
-    finalize_map: MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>,
-    /// The transition proofs.
-    proof_map: MemoryMap<N::TransitionID, Proof<N>>,
-    /// The transition public keys.
-    tpk_map: MemoryMap<N::TransitionID, Group<N>>,
-    /// The reverse `tpk` map.
-    reverse_tpk_map: MemoryMap<Group<N>, N::TransitionID>,
-    /// The transition commitments.
-    tcm_map: MemoryMap<N::TransitionID, Field<N>>,
-    /// The reverse `tcm` map.
-    reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
-    /// The transition fees.
-    fee_map: MemoryMap<N::TransitionID, i64>,
-}
-
-#[rustfmt::skip]
-impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
-    type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
-    type InputStorage = InputMemory<N>;
-    type OutputStorage = OutputMemory<N>;
-    type FinalizeMap = MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>;
-    type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
-    type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
-    type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
-    type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
-    type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
-    type FeeMap = MemoryMap<N::TransitionID, i64>;
-
-    /// Initializes the transition storage.
-    fn open(dev: Option<u16>) -> Result<Self> {
-        Ok(Self {
-            locator_map: MemoryMap::default(),
-            input_store: InputStore::open(dev)?,
-            output_store: OutputStore::open(dev)?,
-            finalize_map: MemoryMap::default(),
-            proof_map: MemoryMap::default(),
-            tpk_map: MemoryMap::default(),
-            reverse_tpk_map: MemoryMap::default(),
-            tcm_map: MemoryMap::default(),
-            reverse_tcm_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
-        })
-    }
-
-    /// Returns the transition program IDs and function names.
-    fn locator_map(&self) -> &Self::LocatorMap {
-        &self.locator_map
-    }
-
-    /// Returns the transition input store.
-    fn input_store(&self) -> &InputStore<N, Self::InputStorage> {
-        &self.input_store
-    }
-
-    /// Returns the transition output store.
-    fn output_store(&self) -> &OutputStore<N, Self::OutputStorage> {
-        &self.output_store
-    }
-
-    /// Returns the transition finalize inputs.
-    fn finalize_map(&self) -> &Self::FinalizeMap {
-        &self.finalize_map
-    }
-
-    /// Returns the transition proofs.
-    fn proof_map(&self) -> &Self::ProofMap {
-        &self.proof_map
-    }
-
-    /// Returns the transition public keys.
-    fn tpk_map(&self) -> &Self::TPKMap {
-        &self.tpk_map
-    }
-
-    /// Returns the reverse `tpk` map.
-    fn reverse_tpk_map(&self) -> &Self::ReverseTPKMap {
-        &self.reverse_tpk_map
-    }
-
-    /// Returns the transition commitments.
-    fn tcm_map(&self) -> &Self::TCMMap {
-        &self.tcm_map
-    }
-
-    /// Returns the reverse `tcm` map.
-    fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap {
-        &self.reverse_tcm_map
-    }
-
-    /// Returns the transition fees.
-    fn fee_map(&self) -> &Self::FeeMap {
-        &self.fee_map
     }
 }
 
@@ -429,8 +292,6 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     tcm: T::TCMMap,
     /// The reverse `tcm` map.
     reverse_tcm: T::ReverseTCMMap,
-    /// The map of transition fees.
-    fee: T::FeeMap,
     /// The transition storage.
     storage: T,
 }
@@ -451,7 +312,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
             reverse_tcm: storage.reverse_tcm_map().clone(),
-            fee: storage.fee_map().clone(),
             storage,
         })
     }
@@ -468,7 +328,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
             reverse_tcm: storage.reverse_tcm_map().clone(),
-            fee: storage.fee_map().clone(),
             storage,
         }
     }
@@ -491,6 +350,16 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Checks if an atomic batch is in progress.
     pub fn is_atomic_in_progress(&self) -> bool {
         self.storage.is_atomic_in_progress()
+    }
+
+    /// Checkpoints the atomic batch.
+    pub fn atomic_checkpoint(&self) {
+        self.storage.atomic_checkpoint();
+    }
+
+    /// Rewinds the atomic batch to the previous checkpoint.
+    pub fn atomic_rewind(&self) {
+        self.storage.atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -533,7 +402,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 
     /// Returns the program ID for the given `transition ID`.
     pub fn get_program_id(&self, transition_id: &N::TransitionID) -> Result<Option<ProgramID<N>>> {
-        Ok(self.locator.get(transition_id)?.map(|locator| match locator {
+        Ok(self.locator.get_confirmed(transition_id)?.map(|locator| match locator {
             Cow::Borrowed((program_id, _)) => *program_id,
             Cow::Owned((program_id, _)) => program_id,
         }))
@@ -541,7 +410,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 
     /// Returns the function name for the given `transition ID`.
     pub fn get_function_name(&self, transition_id: &N::TransitionID) -> Result<Option<Identifier<N>>> {
-        Ok(self.locator.get(transition_id)?.map(|locator| match locator {
+        Ok(self.locator.get_confirmed(transition_id)?.map(|locator| match locator {
             Cow::Borrowed((_, function_name)) => *function_name,
             Cow::Owned((_, function_name)) => function_name,
         }))
@@ -569,7 +438,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 
     /// Returns the finalize inputs for the given `transition ID`.
     pub fn get_finalize(&self, transition_id: &N::TransitionID) -> Result<Option<Vec<Value<N>>>> {
-        match self.finalize.get(transition_id)? {
+        match self.finalize.get_confirmed(transition_id)? {
             Some(finalize) => Ok(cow_to_cloned!(finalize)),
             None => bail!("Missing transition '{transition_id}' - cannot get finalize inputs"),
         }
@@ -588,7 +457,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns `true` if the given transition ID exists.
     pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> Result<bool> {
-        self.locator.contains_key(transition_id)
+        self.locator.contains_key_confirmed(transition_id)
     }
 
     /* Input */
@@ -634,19 +503,19 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 
     /// Returns `true` if the given transition public key exists.
     pub fn contains_tpk(&self, tpk: &Group<N>) -> Result<bool> {
-        self.reverse_tpk.contains_key(tpk)
+        self.reverse_tpk.contains_key_confirmed(tpk)
     }
 
     /// Returns `true` if the given transition commitment exists.
     pub fn contains_tcm(&self, tcm: &Field<N>) -> Result<bool> {
-        self.reverse_tcm.contains_key(tcm)
+        self.reverse_tcm.contains_key_confirmed(tcm)
     }
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransitionID>> {
-        self.fee.keys()
+        self.tcm.keys_confirmed()
     }
 
     /* Input */
@@ -773,35 +642,31 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 
     /// Returns an iterator over the proofs, for all transitions.
     pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, Proof<N>>> {
-        self.proof.values()
+        self.proof.values_confirmed()
     }
 
     /// Returns an iterator over the transition public keys, for all transitions.
     pub fn tpks(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
-        self.tpk.values()
+        self.tpk.values_confirmed()
     }
 
     /// Returns an iterator over the transition commitments, for all transitions.
     pub fn tcms(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.tcm.values()
-    }
-
-    /// Returns an iterator over the transition fees, for all transitions.
-    pub fn fees(&self) -> impl '_ + Iterator<Item = Cow<'_, i64>> {
-        self.fee.values()
+        self.tcm.values_confirmed()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::helpers::memory::TransitionMemory;
 
     #[test]
     fn test_insert_get_remove() {
         let rng = &mut TestRng::default();
 
         // Sample the transitions.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
         let transitions = transaction
             .transitions()
             .chain([crate::process::test_helpers::sample_transition()].iter())

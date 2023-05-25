@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -22,11 +20,13 @@ impl<N: Network> Header<N> {
         // Prepare a genesis block header.
         let previous_state_root = Field::zero();
         let transactions_root = transactions.to_root()?;
+        // TODO (raychu86): Update this to consider the transactions in the genesis block.
+        let finalize_root = Field::zero();
         let coinbase_accumulator_point = Field::zero();
         let metadata = Metadata::genesis()?;
 
         // Return the genesis block header.
-        Self::from(previous_state_root, transactions_root, coinbase_accumulator_point, metadata)
+        Self::from(previous_state_root, transactions_root, finalize_root, coinbase_accumulator_point, metadata)
     }
 
     /// Returns `true` if the block header is a genesis block header.
@@ -35,6 +35,8 @@ impl<N: Network> Header<N> {
         self.previous_state_root == Field::zero()
             // Ensure the transactions root is nonzero.
             && self.transactions_root != Field::zero()
+            // Ensure the finalize root is zero.
+            && self.finalize_root == Field::zero()
             // Ensure the coinbase accumulator point is zero.
             && self.coinbase_accumulator_point == Field::zero()
             // Ensure the metadata is a genesis metadata.
@@ -52,12 +54,12 @@ mod tests {
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
-        // Previous state root, transactions root, and accumulator point size.
-        (Field::<N>::size_in_bytes() * 3)
+        // Previous state root, transactions root, finalize root, and accumulator point size.
+        (Field::<N>::size_in_bytes() * 4)
             // Metadata size.
-            + 2 + 4 + 8 + 8 + 8 + 8 + 8 + 8
-            // Add an additional 4 bytes for versioning.
-            + 2 + 2
+            + 1 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
+            // Add an additional 3 bytes for versioning.
+            + 1 + 2
     }
 
     #[test]
@@ -85,8 +87,10 @@ mod tests {
         assert_eq!(header.previous_state_root(), Field::zero());
         assert_eq!(header.coinbase_accumulator_point(), Field::zero());
         assert_eq!(header.network(), CurrentNetwork::ID);
-        assert_eq!(header.height(), 0);
         assert_eq!(header.round(), 0);
+        assert_eq!(header.height(), 0);
+        assert_eq!(header.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
+        assert_eq!(header.cumulative_weight(), 0);
         assert_eq!(header.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(header.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(header.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);

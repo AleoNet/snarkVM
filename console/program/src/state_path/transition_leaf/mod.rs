@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod bytes;
 mod serialize;
@@ -32,19 +30,19 @@ pub struct TransitionLeaf<N: Network> {
     /// The index of the Merkle leaf.
     index: u8,
     /// The variant of the Merkle leaf.
-    variant: u16,
+    variant: u8,
     /// The ID.
     id: Field<N>,
 }
 
 impl<N: Network> TransitionLeaf<N> {
     /// Initializes a new instance of `TransitionLeaf`.
-    pub const fn new_with_version(index: u8, variant: u16, id: Field<N>) -> Self {
+    pub const fn new_with_version(index: u8, variant: u8, id: Field<N>) -> Self {
         Self { version: VERSION, index, variant, id }
     }
 
     /// Initializes a new instance of `TransitionLeaf`.
-    pub const fn from(version: u8, index: u8, variant: u16, id: Field<N>) -> Self {
+    pub const fn from(version: u8, index: u8, variant: u8, id: Field<N>) -> Self {
         Self { version, index, variant, id }
     }
 
@@ -59,7 +57,7 @@ impl<N: Network> TransitionLeaf<N> {
     }
 
     /// Returns the variant of the Merkle leaf.
-    pub const fn variant(&self) -> u16 {
+    pub const fn variant(&self) -> u8 {
         self.variant
     }
 

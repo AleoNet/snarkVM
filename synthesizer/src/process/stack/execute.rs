@@ -1,28 +1,26 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
-impl<N: Network> Stack<N> {
+impl<N: Network> StackExecute<N> for Stack<N> {
     /// Executes a program closure on the given inputs.
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_closure<A: circuit::Aleo<Network = N>>(
+    fn execute_closure<A: circuit::Aleo<Network = N>>(
         &self,
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
@@ -122,7 +120,7 @@ impl<N: Network> Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         mut call_stack: CallStack<N>,
         rng: &mut R,
@@ -336,18 +334,11 @@ impl<N: Network> Stack<N> {
                 for operand in command.operands() {
                     // Retrieve the finalize input.
                     let value = registers.load_circuit(self, operand)?;
-                    // TODO (howardwu): Expand the scope of 'finalize' to support other register types.
-                    //  See `RegisterTypes::initialize_function_types()` for the same set of checks.
-                    // Ensure the value is a literal (for now).
+                    // Ensure the value is a literal or a struct.
+                    // See `RegisterTypes::initialize_function_types()` for the same set of checks.
                     match value {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
-                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => {
-                            bail!(
-                                "'{}/{}' attempts to pass an 'struct' into 'finalize'",
-                                self.program_id(),
-                                function.name()
-                            );
-                        }
+                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => (),
                         circuit::Value::Record(..) => {
                             bail!(
                                 "'{}/{}' attempts to pass a 'record' into 'finalize'",
@@ -384,78 +375,9 @@ impl<N: Network> Stack<N> {
             None
         };
 
-        use circuit::{ToField, Zero};
-
-        let mut i64_gates = circuit::I64::zero();
-        let mut field_gates = circuit::Field::zero();
-
-        // Increment the gates by the amount in each record input.
-        for input in request.inputs() {
-            match input {
-                // Dereference the record gates to retrieve the u64 gates.
-                circuit::Value::Record(record) => {
-                    // Retrieve the record gates.
-                    let record_gates = &**record.gates();
-                    // Increment the i64 gates.
-                    i64_gates += record_gates.clone().cast_as_dual();
-                    // Increment the field gates.
-                    field_gates += record_gates.to_field();
-                }
-                // Skip iterations that are not records.
-                _ => continue,
-            }
-        }
-
-        // Ensure the i64 gates matches the field gates.
-        A::assert_eq(i64_gates.to_field(), &field_gates);
-
-        // Decrement the gates by the amount in each record output.
-        for output in response.outputs() {
-            match output {
-                // Dereference the gates to retrieve the u64 gates.
-                circuit::Value::Record(record) => {
-                    // Retrieve the record gates.
-                    let record_gates = &**record.gates();
-                    // Decrement the i64 gates.
-                    i64_gates -= record_gates.clone().cast_as_dual();
-                    // Decrement the field gates.
-                    field_gates -= record_gates.to_field();
-                }
-                // Skip iterations that are not records.
-                _ => continue,
-            }
-        }
-
-        // If the program and function is not a coinbase function, then ensure the i64 gates is positive.
-        if !Program::is_coinbase(self.program.id(), function.name()) {
-            use circuit::MSB;
-
-            // Ensure the i64 gates MSB is false.
-            A::assert(!i64_gates.msb());
-            // Ensure the i64 gates matches the field gates.
-            A::assert_eq(i64_gates.to_field(), &field_gates);
-
-            // Inject the field gates as `Mode::Public`.
-            let public_gates = circuit::Field::<A>::new(circuit::Mode::Public, field_gates.eject_value());
-            // Ensure the injected field gates matches.
-            A::assert_eq(public_gates, field_gates);
-
-            #[cfg(debug_assertions)]
-            println!("Logging fee: {}", i64_gates.eject_value());
-        } else {
-            // Inject the field gates as `Mode::Public`.
-            let public_gates = circuit::Field::<A>::new(circuit::Mode::Public, i64_gates.to_field().eject_value());
-            // Ensure the injected i64 gates matches.
-            A::assert_eq(public_gates, &i64_gates);
-        }
-
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Complete");
 
-        lap!(timer, "Perform the fee operations");
-
-        // Eject the fee.
-        let fee = i64_gates.eject_value();
         // Eject the response.
         let response = response.eject_value();
 
@@ -505,7 +427,7 @@ impl<N: Network> Stack<N> {
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
-            let proof = match proving_key.prove(function.name(), &assignment, rng) {
+            let proof = match proving_key.prove(&function.name().to_string(), &assignment, rng) {
                 Ok(proof) => proof,
                 Err(error) => bail!("Execution proof failed - {error}"),
             };
@@ -513,7 +435,7 @@ impl<N: Network> Stack<N> {
 
             // Construct the transition.
             let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof, *fee)?;
+                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof)?;
 
             // Add the transition commitments.
             inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
@@ -536,7 +458,9 @@ impl<N: Network> Stack<N> {
         // Return the response.
         Ok(response)
     }
+}
 
+impl<N: Network> Stack<N> {
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
     pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
@@ -545,11 +469,11 @@ impl<N: Network> Stack<N> {
         // Determine if the circuit is satisfied.
         let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
         // Determine the count.
-        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+        let (num_constant, num_public, num_private, num_constraints, num_nonzeros) = A::count();
 
         // Print the log.
         println!(
-            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
+            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, NonZeros: {num_nonzeros:?})",
             scope.into().bold(),
             width = 20
         );

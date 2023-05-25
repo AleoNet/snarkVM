@@ -1,25 +1,23 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{cfg_iter_mut, rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -30,6 +28,8 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Copy, Clone, Debug)]
@@ -208,28 +208,13 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             g.z = tmp * s;
             tmp = newtmp;
         }
-        #[cfg(not(feature = "parallel"))]
-        {
+        cfg_iter_mut!(v).filter(|g| !g.is_normalized()).for_each(|g| {
             // Perform affine transformations
-            for g in v.iter_mut().filter(|g| !g.is_normalized()) {
-                let z2 = g.z.square(); // 1/z
-                g.x *= &z2; // x/z^2
-                g.y *= &(z2 * g.z); // y/z^3
-                g.z = P::BaseField::one(); // z = 1
-            }
-        }
-
-        #[cfg(feature = "parallel")]
-        {
-            use rayon::prelude::*;
-            // Perform affine transformations
-            v.par_iter_mut().filter(|g| !g.is_normalized()).for_each(|g| {
-                let z2 = g.z.square(); // 1/z
-                g.x *= &z2; // x/z^2
-                g.y *= &(z2 * g.z); // y/z^3
-                g.z = P::BaseField::one(); // z = 1
-            });
-        }
+            let z2 = g.z.square(); // 1/z
+            g.x *= &z2; // x/z^2
+            g.y *= &(z2 * g.z); // y/z^3
+            g.z = P::BaseField::one(); // z = 1
+        });
     }
 
     #[allow(clippy::many_single_char_names)]

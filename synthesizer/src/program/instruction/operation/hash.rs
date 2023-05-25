@@ -1,20 +1,27 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{
+    Opcode,
+    Operand,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
@@ -99,10 +106,10 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 1 {
@@ -131,8 +138,8 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         use circuit::{ToBits, ToFields};
 
@@ -162,9 +169,23 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         registers.store_circuit(stack, &self.destination, output)
     }
 
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
+        self.evaluate(stack, registers)
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 1 {
             bail!("Instruction '{}' expects 1 inputs, found {} inputs", Self::opcode(), input_types.len())
@@ -277,9 +298,243 @@ impl<N: Network, const VARIANT: u8> ToBytes for HashInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use crate::{
+        process::Stack,
+        program::test_helpers::{sample_finalize_registers, sample_registers},
+    };
+    use circuit::{AleoV0, Eject};
+    use console::{network::Testnet3, program::Identifier};
+    use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
+
+    use std::collections::HashMap;
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
+
+    const ITERATIONS: usize = 100;
+
+    /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
+    #[allow(clippy::type_complexity)]
+    fn sample_stack(
+        opcode: Opcode,
+        type_: LiteralType,
+        mode: circuit::Mode,
+        cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
+    ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
+        use crate::{Process, Program};
+
+        // Initialize the opcode.
+        let opcode = opcode.to_string();
+
+        // Initialize the function name.
+        let function_name = Identifier::<CurrentNetwork>::from_str("run")?;
+
+        // Initialize the registers.
+        let r0 = Register::Locator(0);
+        let r1 = Register::Locator(1);
+
+        // Initialize the program.
+        let program = Program::from_str(&format!(
+            "program testing.aleo;
+            function {function_name}:
+                input {r0} as {type_}.{mode};
+                {opcode} {r0} into {r1};
+                finalize {r0};
+            finalize {function_name}:
+                input {r0} as {type_}.public;
+                {opcode} {r0} into {r1};
+        "
+        ))?;
+
+        // Initialize the operands.
+        let operands = vec![Operand::Register(r0)];
+
+        // Initialize the stack.
+        let stack = Stack::new(&Process::load_with_cache(cache)?, &program)?;
+
+        Ok((stack, operands, r1))
+    }
+
+    fn check_hash<const VARIANT: u8>(
+        operation: impl FnOnce(
+            Vec<Operand<CurrentNetwork>>,
+            Register<CurrentNetwork>,
+        ) -> HashInstruction<CurrentNetwork, VARIANT>,
+        opcode: Opcode,
+        literal: &Literal<CurrentNetwork>,
+        mode: &circuit::Mode,
+        cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
+    ) {
+        println!("Checking '{opcode}' for '{literal}.{mode}'");
+
+        // Initialize the types.
+        let type_ = literal.to_type();
+
+        // Initialize the stack.
+        let (stack, operands, destination) = sample_stack(opcode, type_, *mode, cache).unwrap();
+
+        // Initialize the operation.
+        let operation = operation(operands, destination.clone());
+        // Initialize the function name.
+        let function_name = Identifier::from_str("run").unwrap();
+        // Initialize a destination operand.
+        let destination_operand = Operand::Register(destination);
+
+        // Attempt to evaluate the valid operand case.
+        let mut evaluate_registers = sample_registers(&stack, &function_name, &[(literal, None)]).unwrap();
+        let result_a = operation.evaluate(&stack, &mut evaluate_registers);
+
+        // Attempt to execute the valid operand case.
+        let mut execute_registers = sample_registers(&stack, &function_name, &[(literal, Some(*mode))]).unwrap();
+        let result_b = operation.execute::<CurrentAleo>(&stack, &mut execute_registers);
+
+        // Attempt to finalize the valid operand case.
+        let mut finalize_registers = sample_finalize_registers(&stack, &function_name, &[literal]).unwrap();
+        let result_c = operation.finalize(&stack, &mut finalize_registers);
+
+        // Check that either all operations failed, or all operations succeeded.
+        let all_failed = result_a.is_err() && result_b.is_err() && result_c.is_err();
+        let all_succeeded = result_a.is_ok() && result_b.is_ok() && result_c.is_ok();
+        assert!(
+            all_failed || all_succeeded,
+            "The results of the evaluation, execution, and finalization should either all succeed or all fail"
+        );
+
+        // If all operations succeeded, check that the outputs are consistent.
+        if all_succeeded {
+            // Retrieve the output of evaluation.
+            let output_a = evaluate_registers.load(&stack, &destination_operand).unwrap();
+
+            // Retrieve the output of execution.
+            let output_b = execute_registers.load_circuit(&stack, &destination_operand).unwrap();
+
+            // Retrieve the output of finalization.
+            let output_c = finalize_registers.load(&stack, &destination_operand).unwrap();
+
+            // Check that the outputs are consistent.
+            assert_eq!(
+                output_a,
+                output_b.eject_value(),
+                "The results of the evaluation and execution are inconsistent"
+            );
+            assert_eq!(output_a, output_c, "The results of the evaluation and finalization are inconsistent");
+        }
+
+        // Reset the circuit.
+        <CurrentAleo as circuit::Environment>::reset();
+    }
+
+    macro_rules! test_hash {
+        ($name: tt, $hash:ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $name _ is _ consistent>]() {
+                    // Initialize the operation.
+                    let operation = |operands, destination| $hash::<CurrentNetwork> { operands, destination };
+                    // Initialize the opcode.
+                    let opcode = $hash::<CurrentNetwork>::opcode();
+
+                    // Prepare the rng.
+                    let mut rng = TestRng::default();
+
+                    // Prepare the test.
+                    let modes = [circuit::Mode::Public, circuit::Mode::Private];
+
+                    // Prepare the key cache.
+                    let mut cache = Default::default();
+
+                    for _ in 0..ITERATIONS {
+                        let literals = crate::sample_literals!(CurrentNetwork, &mut rng);
+                        for literal in literals.iter() {
+                            for mode in modes.iter() {
+                                check_hash(operation, opcode, literal, mode, &mut cache);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    test_hash!(hash_bhp256, HashBHP256);
+    test_hash!(hash_bhp512, HashBHP512);
+    test_hash!(hash_bhp768, HashBHP768);
+    test_hash!(hash_bhp1024, HashBHP1024);
+    test_hash!(hash_psd2, HashPSD2);
+    test_hash!(hash_psd4, HashPSD4);
+    test_hash!(hash_psd8, HashPSD8);
+
+    // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
+    #[test]
+    fn test_hash_ped64_is_consistent() {
+        // Initialize the operation.
+        let operation = |operands, destination| HashPED64::<CurrentNetwork> { operands, destination };
+        // Initialize the opcode.
+        let opcode = HashPED64::<CurrentNetwork>::opcode();
+
+        // Prepare the rng.
+        let mut rng = TestRng::default();
+
+        // Prepare the test.
+        let modes = [circuit::Mode::Public, circuit::Mode::Private];
+
+        // Prepare the key cache.
+        let mut cache = Default::default();
+
+        for _ in 0..ITERATIONS {
+            let literals = [
+                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                Literal::I8(console::types::I8::rand(&mut rng)),
+                Literal::I16(console::types::I16::rand(&mut rng)),
+                Literal::I32(console::types::I32::rand(&mut rng)),
+                Literal::U8(console::types::U8::rand(&mut rng)),
+                Literal::U16(console::types::U16::rand(&mut rng)),
+                Literal::U32(console::types::U32::rand(&mut rng)),
+            ];
+            for literal in literals.iter() {
+                for mode in modes.iter() {
+                    check_hash(operation, opcode, literal, mode, &mut cache);
+                }
+            }
+        }
+    }
+
+    // Note this test must be explicitly written, instead of using the macro, because HashPED128 fails on certain input types.
+    #[test]
+    fn test_hash_ped128_is_consistent() {
+        // Initialize the operation.
+        let operation = |operands, destination| HashPED128::<CurrentNetwork> { operands, destination };
+        // Initialize the opcode.
+        let opcode = HashPED128::<CurrentNetwork>::opcode();
+
+        // Prepare the rng.
+        let mut rng = TestRng::default();
+
+        // Prepare the test.
+        let modes = [circuit::Mode::Public, circuit::Mode::Private];
+
+        // Prepare the key cache.
+        let mut cache = Default::default();
+
+        for _ in 0..ITERATIONS {
+            let literals = [
+                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                Literal::I8(console::types::I8::rand(&mut rng)),
+                Literal::I16(console::types::I16::rand(&mut rng)),
+                Literal::I32(console::types::I32::rand(&mut rng)),
+                Literal::I64(console::types::I64::rand(&mut rng)),
+                Literal::U8(console::types::U8::rand(&mut rng)),
+                Literal::U16(console::types::U16::rand(&mut rng)),
+                Literal::U32(console::types::U32::rand(&mut rng)),
+                Literal::U64(console::types::U64::rand(&mut rng)),
+            ];
+            for literal in literals.iter() {
+                for mode in modes.iter() {
+                    check_hash(operation, opcode, literal, mode, &mut cache);
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_parse() {

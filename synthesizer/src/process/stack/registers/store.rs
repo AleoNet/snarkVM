@@ -1,33 +1,20 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
-    /// Assigns the given literal to the given register, assuming the register is not already assigned.
-    ///
-    /// # Errors
-    /// This method will halt if the given register is a register member.
-    /// This method will halt if the given register is an input register.
-    /// This method will halt if the register is already used.
-    #[inline]
-    pub fn store_literal(&mut self, stack: &Stack<N>, register: &Register<N>, literal: Literal<N>) -> Result<()> {
-        self.store(stack, register, Value::Plaintext(Plaintext::from(literal)))
-    }
-
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStore<N> for Registers<N, A> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -35,7 +22,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store(&mut self, stack: &Stack<N>, register: &Register<N>, stack_value: Value<N>) -> Result<()> {
+    fn store(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        stack_value: Value<N>,
+    ) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
@@ -69,23 +61,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
-    /// Assigns the given literal to the given register, assuming the register is not already assigned.
-    ///
-    /// # Errors
-    /// This method will halt if the given register is a register member.
-    /// This method will halt if the given register is an input register.
-    /// This method will halt if the register is already used.
-    #[inline]
-    pub fn store_literal_circuit(
-        &mut self,
-        stack: &Stack<N>,
-        register: &Register<N>,
-        literal: circuit::Literal<A>,
-    ) -> Result<()> {
-        self.store_circuit(stack, register, circuit::Value::Plaintext(circuit::Plaintext::from(literal)))
-    }
-
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStoreCircuit<N, A> for Registers<N, A> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -93,9 +69,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store_circuit(
+    fn store_circuit(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         register: &Register<N>,
         circuit_value: circuit::Value<A>,
     ) -> Result<()> {

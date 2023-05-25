@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -97,11 +95,15 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             let (product, carry) = Self::mul_with_carry(&self.abs_wrapped(), &other.abs_wrapped());
 
             // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
-            let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
+            // We do this by checking that none of the carry bits are set.
+            for bit in carry.iter() {
+                E::assert_eq(bit, E::zero());
+            }
 
             // If the product should be positive, then it cannot exceed the signed maximum.
             let operands_same_sign = &self.msb().is_equal(other.msb());
             let positive_product_overflows = operands_same_sign & product.msb();
+            E::assert_eq(positive_product_overflows, E::zero());
 
             // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
             let negative_product_underflows = {
@@ -111,11 +113,9 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                     !product.msb() | (product.msb() & !lower_product_bits_nonzero);
                 !operands_same_sign & !negative_product_lt_or_eq_signed_min
             };
+            E::assert_eq(negative_product_underflows, E::zero());
 
-            // Ensure there are no overflows.
-            let overflow = carry_bits_nonzero | positive_product_overflows | negative_product_underflows;
-            E::assert_eq(overflow, E::zero());
-
+            // Note that the relevant overflow cases are checked independently above.
             // Return the product of `self` and `other` with the appropriate sign.
             Self::ternary(operands_same_sign, &product, &Self::zero().sub_wrapped(&product))
         } else {
@@ -123,8 +123,9 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             let (product, carry) = Self::mul_with_carry(self, other);
 
             // For unsigned multiplication, check that none of the carry bits are set.
-            let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
-            E::assert_eq(overflow, E::zero());
+            for bit in carry.iter() {
+                E::assert_eq(bit, E::zero());
+            }
 
             // Return the product of `self` and `other`.
             product
@@ -195,15 +196,15 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => {
-                        Count::is(4 * I::BITS, 0, (8 * I::BITS) + 5, (8 * I::BITS) + 9)
+                        Count::is(4 * I::BITS, 0, (7 * I::BITS) + 4, (8 * I::BITS) + 9)
                     }
-                    (_, _) => Count::is(3 * I::BITS, 0, (10 * I::BITS) + 8, (10 * I::BITS) + 13),
+                    (_, _) => Count::is(3 * I::BITS, 0, (9 * I::BITS) + 7, (10 * I::BITS) + 13),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (3 * I::BITS) - 1, (3 * I::BITS) + 1),
-                    (_, _) => Count::is(0, 0, 3 * I::BITS, (3 * I::BITS) + 2),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (3 * I::BITS) + 1),
+                    (_, _) => Count::is(0, 0, 2 * I::BITS + 1, (3 * I::BITS) + 2),
                 },
             }
         }
@@ -213,16 +214,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 // Signed case
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
-                        Count::is(4 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 12)
-                    }
-                    (_, _) => Count::is(3 * I::BITS, 0, (11 * I::BITS) + 13, (11 * I::BITS) + 19),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(4 * I::BITS, 0, 965, 1164),
+                    (_, _) => Count::is(3 * I::BITS, 0, 1227, 1427),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (4 * I::BITS) + 1, (4 * I::BITS) + 4),
-                    (_, _) => Count::is(0, 0, (4 * I::BITS) + 5, (4 * I::BITS) + 8),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 321, 516),
+                    (_, _) => Count::is(0, 0, 325, 520),
                 },
             }
         } else {

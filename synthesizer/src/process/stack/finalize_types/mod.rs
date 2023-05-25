@@ -1,33 +1,33 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod initialize;
 mod matches;
 
 use crate::{
-    finalize::{Command, Decrement, Finalize, Increment},
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
-    Stack,
+    process::{StackMatches, StackProgram},
+    program::{
+        finalize::{Command, Finalize},
+        Instruction,
+        Opcode,
+        Operand,
+        Program,
+    },
 };
 use console::{
     network::prelude::*,
-    program::{EntryType, Identifier, LiteralType, PlaintextType, RecordType, Register, RegisterType, Struct},
+    program::{Identifier, LiteralType, PlaintextType, Register, RegisterType, Struct},
 };
 
 use indexmap::IndexMap;
@@ -35,16 +35,18 @@ use indexmap::IndexMap;
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct FinalizeTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
-    inputs: IndexMap<u64, RegisterType<N>>,
+    /// Note that in a finalize context, all registers are plaintext types.
+    inputs: IndexMap<u64, PlaintextType<N>>,
     /// The mapping of all destination registers to their defined types.
-    destinations: IndexMap<u64, RegisterType<N>>,
+    /// Note that in a finalize context, all registers are plaintext types.
+    destinations: IndexMap<u64, PlaintextType<N>>,
 }
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
     /// Checks that the given finalize is well-formed for the given stack.
     #[inline]
-    pub fn from_finalize(stack: &Stack<N>, finalize: &Finalize<N>) -> Result<Self> {
+    pub fn from_finalize(stack: &(impl StackMatches<N> + StackProgram<N>), finalize: &Finalize<N>) -> Result<Self> {
         Self::initialize_finalize_types(stack, finalize)
     }
 
@@ -62,20 +64,28 @@ impl<N: Network> FinalizeTypes<N> {
         self.inputs.contains_key(&register.locator())
     }
 
-    /// Returns the register type of the given operand.
-    pub fn get_type_from_operand(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<RegisterType<N>> {
+    /// Returns the type of the given operand.
+    pub fn get_type_from_operand(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+    ) -> Result<PlaintextType<N>> {
         Ok(match operand {
-            Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
+            Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
             Operand::Register(register) => self.get_type(stack, register)?,
-            Operand::ProgramID(_) => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
-            Operand::Caller => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+            Operand::ProgramID(_) => PlaintextType::Literal(LiteralType::Address),
+            Operand::Caller => PlaintextType::Literal(LiteralType::Address),
         })
     }
 
-    /// Returns the register type of the given register.
-    pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<RegisterType<N>> {
-        // Initialize a tracker for the register type.
-        let mut register_type = if self.is_input(register) {
+    /// Returns the type of the given register.
+    pub fn get_type(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+    ) -> Result<PlaintextType<N>> {
+        // Initialize a tracker for the type of the register.
+        let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
             *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         } else {
@@ -86,10 +96,10 @@ impl<N: Network> FinalizeTypes<N> {
                 .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         };
 
-        // Retrieve the member path if the register is a member. Otherwise, return the register type.
+        // Retrieve the member path if the register is a member. Otherwise, return the type.
         let path = match &register {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => return Ok(register_type),
+            Register::Locator(..) => return Ok(plaintext_type),
             // If the register is a member, then traverse the member path to output the register type.
             Register::Member(_, path) => {
                 // Ensure the member path is valid.
@@ -102,67 +112,21 @@ impl<N: Network> FinalizeTypes<N> {
         // Traverse the member path to find the register type.
         for path_name in path.iter() {
             // Update the register type at each step.
-            register_type = match &register_type {
+            plaintext_type = match &plaintext_type {
                 // Ensure the plaintext type is not a literal, as the register references a member.
-                RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
+                PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
                 // Traverse the member path to output the register type.
-                RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                PlaintextType::Struct(struct_name) => {
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
-                        Some(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
+                        Some(plaintext_type) => *plaintext_type,
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
-                    }
-                }
-                RegisterType::Record(record_name) => {
-                    // Ensure the record type exists.
-                    ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");
-                    // Retrieve the member type from the record.
-                    if path_name == &Identifier::from_str("owner")? {
-                        // If the member is the owner, then output the address type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else if path_name == &Identifier::from_str("gates")? {
-                        // If the member is the gates, then output the u64 type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
-                    } else {
-                        // Retrieve the entry type from the record.
-                        match stack.program().get_record(record_name)?.entries().get(path_name) {
-                            // Update the entry type.
-                            Some(entry_type) => match entry_type {
-                                EntryType::Constant(plaintext_type)
-                                | EntryType::Public(plaintext_type)
-                                | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                            },
-                            None => bail!("'{path_name}' does not exist in record '{record_name}'"),
-                        }
-                    }
-                }
-                RegisterType::ExternalRecord(locator) => {
-                    // Ensure the external record type exists.
-                    ensure!(stack.contains_external_record(locator), "External record '{locator}' does not exist");
-                    // Retrieve the member type from the external record.
-                    if path_name == &Identifier::from_str("owner")? {
-                        // If the member is the owner, then output the address type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else if path_name == &Identifier::from_str("gates")? {
-                        // If the member is the gates, then output the u64 type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
-                    } else {
-                        // Retrieve the entry type from the external record.
-                        match stack.get_external_record(locator)?.entries().get(path_name) {
-                            // Update the entry type.
-                            Some(entry_type) => match entry_type {
-                                EntryType::Constant(plaintext_type)
-                                | EntryType::Public(plaintext_type)
-                                | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                            },
-                            None => bail!("'{path_name}' does not exist in external record '{locator}'"),
-                        }
                     }
                 }
             }
         }
         // Output the member type.
-        Ok(register_type)
+        Ok(plaintext_type)
     }
 }

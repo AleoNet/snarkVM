@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -218,15 +216,17 @@ impl<A: Aleo> Request<A> {
                         // Compute the record commitment.
                         let candidate_commitment = record.to_commitment(program_id, &record_name);
                         // Compute the `candidate_serial_number` from `gamma`.
-                        let candidate_serial_number = Record::<A, Plaintext<A>>::serial_number_from_gamma(gamma, candidate_commitment.clone());
+                        let candidate_serial_number =
+                            Record::<A, Plaintext<A>>::serial_number_from_gamma(gamma, candidate_commitment.clone());
                         // Compute the tag.
-                        let candidate_tag = Record::<A, Plaintext<A>>::tag(sk_tag.clone(), candidate_commitment.clone());
+                        let candidate_tag =
+                            Record::<A, Plaintext<A>>::tag(sk_tag.clone(), candidate_commitment.clone());
 
                         if CREATE_MESSAGE {
                             // Ensure the signature is declared.
                             let signature = match signature {
                                 Some(signature) => signature,
-                                None => A::halt("Missing signature in logic to check input IDs")
+                                None => A::halt("Missing signature in logic to check input IDs"),
                             };
                             // Retrieve the challenge from the signature.
                             let challenge = signature.challenge();
@@ -251,8 +251,6 @@ impl<A: Aleo> Request<A> {
                             & tag.is_equal(&candidate_tag)
                             // Ensure the record belongs to the caller.
                             & record.owner().deref().is_equal(caller)
-                            // Ensure the record gates is less than or equal to 2^52.
-                            & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }
                     // An external record input is hashed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_hash) => {
@@ -265,7 +263,9 @@ impl<A: Aleo> Request<A> {
                         let record = match &input {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
-                            Value::Plaintext(..) => A::halt("Expected an external record input, found a plaintext input"),
+                            Value::Plaintext(..) => {
+                                A::halt("Expected an external record input, found a plaintext input")
+                            }
                         };
 
                         // Prepare the index as a constant field element.
@@ -323,9 +323,8 @@ mod tests {
             let function_name = console::Identifier::from_str("transfer")?;
 
             // Prepare a record belonging to the address.
-            let record_string = format!(
-                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
-            );
+            let record_string =
+                format!("{{ owner: {address}.private, token_amount: 100u64.private, _nonce: 0group.public }}");
 
             // Construct the inputs.
             let input_constant =
@@ -395,16 +394,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 46000, 0, 15100, 15100)
+        check_verify(Mode::Constant, 48000, 0, 17000, 17000)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 41170, 0, 28119, 28153)
+        check_verify(Mode::Public, 41268, 0, 30403, 30447)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 41170, 0, 28119, 28153)
+        check_verify(Mode::Private, 41268, 0, 30403, 30447)
     }
 }

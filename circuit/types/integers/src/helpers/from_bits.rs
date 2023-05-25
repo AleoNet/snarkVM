@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -24,11 +22,10 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
         // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len() as u64;
         if num_bits > I::BITS {
-            // Check if all excess bits are zero.
-            let should_be_zero =
-                bits_le[I::BITS as usize..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
-            // Ensure `should_be_zero` is zero.
-            E::assert_eq(E::zero(), should_be_zero);
+            // Check that all excess bits are zero.
+            for bit in &bits_le[I::BITS as usize..] {
+                E::assert_eq(E::zero(), bit);
+            }
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.
@@ -87,10 +84,9 @@ mod tests {
                 assert_eq!(expected_size_in_bits, candidate.bits_le.len());
                 match mode.is_constant() {
                     true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
                     }
                 };
             });
@@ -128,10 +124,9 @@ mod tests {
                 assert_eq!(expected_size_in_bits, candidate.bits_le.len());
                 match mode.is_constant() {
                     true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
                     // `num_constraints` is incremented by one for each excess bit.
                     false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                        assert_scope!(num_constants, num_public, num_private, num_constraints + i)
                     }
                 };
             });

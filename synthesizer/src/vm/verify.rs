@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -107,30 +105,40 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         lap!(timer, "Check for duplicate elements");
 
         match transaction {
-            Transaction::Deploy(_, deployment, fee) => {
+            Transaction::Deploy(id, owner, deployment, fee) => {
                 // Check the deployment size.
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     bail!("Invalid transaction size (deployment): {error}");
                 }
-                // Verify the deployment.
-                self.check_deployment(deployment)?;
-
+                // Verify the signature corresponds to the transaction ID.
+                ensure!(owner.verify(*id), "Invalid signature for the deployment transaction '{id}'");
                 // Verify the fee.
                 self.check_fee(fee)?;
+                // Verify the deployment.
+                self.check_deployment(deployment)?;
             }
-            Transaction::Execute(_, execution, additional_fee) => {
-                // Check the deployment size.
+            Transaction::Execute(_, execution, fee) => {
+                // Check the execution size.
                 if let Err(error) = Transaction::check_execution_size(execution) {
                     bail!("Invalid transaction size (execution): {error}");
                 }
-
-                // Verify the additional fee, if it exists.
-                if let Some(additional_fee) = additional_fee {
-                    self.check_fee(additional_fee)?
+                // TODO (raychu86): Remove `is_split` check once batch executions are supported.
+                // Ensure the fee is present, if the transaction is not a coinbase or split.
+                if !transaction.is_coinbase() && !transaction.is_split() && fee.is_none() {
+                    bail!("Transaction is missing a fee (execution)");
                 }
-
+                // Verify the fee.
+                if let Some(fee) = fee {
+                    self.check_fee(fee)?;
+                }
                 // Verify the execution.
                 self.check_execution(execution)?;
+            }
+            Transaction::Fee(_, fee) => {
+                // Ensure the fee is nonzero.
+                ensure!(!fee.is_zero()?, "Invalid fee (zero)");
+                // Verify the fee.
+                self.check_fee(fee)?;
             }
         };
 
@@ -219,7 +227,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{Block, Header, Inclusion, Metadata, Transaction, Transactions};
+    use crate::{Block, Header, Inclusion, Metadata, Transaction};
     use console::{
         account::{Address, ViewKey},
         types::Field,
@@ -239,7 +247,7 @@ mod tests {
         assert!(vm.verify_transaction(&deployment_transaction));
 
         // Fetch an execution transaction.
-        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
         // Ensure the transaction verifies.
         assert!(vm.check_transaction(&execution_transaction).is_ok());
         assert!(vm.verify_transaction(&execution_transaction));
@@ -254,7 +262,7 @@ mod tests {
         let program = crate::vm::test_helpers::sample_program();
 
         // Deploy the program.
-        let deployment = vm.deploy(&program, rng).unwrap();
+        let deployment = vm.deploy_raw(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
         assert!(vm.check_deployment(&deployment).is_ok());
@@ -273,12 +281,12 @@ mod tests {
         let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
         // Fetch a execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction(rng);
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         match transaction {
             Transaction::Execute(_, execution, _) => {
-                // Ensure the inclusion proof exists.
-                assert!(execution.inclusion_proof().is_some());
+                // Ensure the inclusion proof *does not* exist.
+                assert!(execution.inclusion_proof().is_none()); // This is 'None', because this execution called 'credits.aleo/mint'.
                 // Verify the inclusion.
                 assert!(Inclusion::verify_execution(&execution).is_ok());
                 // Verify the execution.
@@ -287,13 +295,65 @@ mod tests {
 
                 // Ensure that deserialization doesn't break the transaction verification.
                 let serialized_execution = execution.to_string();
-                let execution_transaction: Execution<CurrentNetwork> =
+                let recovered_execution: Execution<CurrentNetwork> =
                     serde_json::from_str(&serialized_execution).unwrap();
-                assert!(vm.check_execution(&execution_transaction).is_ok());
-                assert!(vm.verify_execution(&execution_transaction));
+                assert!(vm.check_execution(&recovered_execution).is_ok());
+                assert!(vm.verify_execution(&recovered_execution));
             }
             _ => panic!("Expected an execution transaction"),
         }
+    }
+
+    #[test]
+    fn test_verify_fee() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
+
+        // Fetch a execution transaction.
+        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+
+        match transaction {
+            Transaction::Execute(_, _, Some(fee)) => {
+                // Ensure the inclusion proof exists.
+                assert!(fee.inclusion_proof().is_some());
+                // Verify the inclusion.
+                assert!(Inclusion::verify_fee(&fee).is_ok());
+                // Verify the fee.
+                assert!(vm.check_fee(&fee).is_ok());
+                assert!(vm.verify_fee(&fee));
+
+                // Ensure that deserialization doesn't break the transaction verification.
+                let serialized_fee = fee.to_string();
+                let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
+                assert!(vm.check_fee(&recovered_fee).is_ok());
+                assert!(vm.verify_fee(&recovered_fee));
+            }
+            _ => panic!("Expected an execution with a fee"),
+        }
+    }
+
+    #[test]
+    fn test_check_transaction_execution() -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Fetch a valid execution transaction.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        assert!(vm.check_transaction(&valid_transaction).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction));
+
+        // Fetch an invalid execution transaction.
+        let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
+        assert!(vm.check_transaction(&invalid_transaction).is_err());
+        assert!(!vm.verify_transaction(&invalid_transaction));
+
+        Ok(())
     }
 
     #[test]
@@ -312,9 +372,9 @@ mod tests {
         // Fetch the unspent records.
         let records = genesis.records().collect::<indexmap::IndexMap<_, _>>();
 
-        // Prepare the additional fee.
+        // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let additional_fee = (credits, 10);
+        let fee = (credits, 10);
 
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
@@ -323,16 +383,18 @@ mod tests {
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
-        let deployment_transaction =
-            Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, None, rng).unwrap();
+        let deployment_transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
 
         // Construct the new block header.
-        let transactions = Transactions::from(&[deployment_transaction]);
+        let transactions = vm.speculate([deployment_transaction].iter()).unwrap();
+
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
             CurrentNetwork::ID,
             1,
             1,
+            CurrentNetwork::STARTING_SUPPLY,
+            0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
@@ -344,6 +406,7 @@ mod tests {
         let deployment_header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
+            Field::zero(),
             Field::zero(),
             deployment_metadata,
         )
@@ -359,36 +422,26 @@ mod tests {
         // Fetch the unspent records.
         let records = deployment_block.records().collect::<indexmap::IndexMap<_, _>>();
 
-        // Prepare the additional fee.
+        // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let additional_fee = (credits, 10);
+        let fee_in_microcredits = 10;
+
+        // Execute the fee.
+        let fee = vm.execute_fee_raw(&caller_private_key, credits, fee_in_microcredits, None, rng).unwrap().1;
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("10u64").unwrap(),
+        ]
+        .into_iter();
 
         // Authorize.
-        let authorization = vm
-            .authorize(
-                &caller_private_key,
-                "testing.aleo",
-                "mint",
-                [
-                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                    Value::<CurrentNetwork>::from_str("10u64").unwrap(),
-                ]
-                .into_iter(),
-                rng,
-            )
-            .unwrap();
+        let authorization = vm.authorize(&caller_private_key, "testing.aleo", "mint", inputs, rng).unwrap();
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization_with_additional_fee(
-            &vm,
-            &caller_private_key,
-            authorization,
-            Some(additional_fee),
-            None,
-            rng,
-        )
-        .unwrap();
+        let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction).is_ok());

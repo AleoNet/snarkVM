@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod bytes;
 mod genesis;
@@ -33,6 +31,10 @@ pub struct Metadata<N: Network> {
     round: u64,
     /// The height of this block - 4 bytes.
     height: u32,
+    /// The total supply of microcredits - 8 bytes.
+    total_supply_in_microcredits: u64,
+    /// The cumulative weight for this block - 16 bytes.
+    cumulative_weight: u128,
     /// The coinbase target for this block - 8 bytes.
     coinbase_target: u64,
     /// The proof target for this block - 8 bytes.
@@ -54,6 +56,8 @@ impl<N: Network> Metadata<N> {
         network: u16,
         round: u64,
         height: u32,
+        total_supply_in_microcredits: u64,
+        cumulative_weight: u128,
         coinbase_target: u64,
         proof_target: u64,
         last_coinbase_target: u64,
@@ -65,6 +69,8 @@ impl<N: Network> Metadata<N> {
             network,
             round,
             height,
+            total_supply_in_microcredits,
+            cumulative_weight,
             coinbase_target,
             proof_target,
             last_coinbase_target,
@@ -90,6 +96,8 @@ impl<N: Network> Metadata<N> {
                     && self.round != 0u64
                     // Ensure the height is nonzero.
                     && self.height != 0u32
+                    // Ensure the total supply is nonzero.
+                    && self.total_supply_in_microcredits != 0u64
                     // Ensure the coinbase target is at or above the minimum.
                     && self.coinbase_target >= N::GENESIS_COINBASE_TARGET
                     // Ensure the proof target is at or above the minimum.
@@ -121,6 +129,16 @@ impl<N: Network> Metadata<N> {
     /// Returns the height of the block.
     pub const fn height(&self) -> u32 {
         self.height
+    }
+
+    /// Returns the total supply of microcredits at this block.
+    pub const fn total_supply_in_microcredits(&self) -> u64 {
+        self.total_supply_in_microcredits
+    }
+
+    /// Returns the cumulative weight for this block.
+    pub const fn cumulative_weight(&self) -> u128 {
+        self.cumulative_weight
     }
 
     /// Returns the coinbase target for this block.

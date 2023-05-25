@@ -1,20 +1,18 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
@@ -67,10 +65,10 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoad<N>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
@@ -102,8 +100,8 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoadCircuit<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
@@ -123,9 +121,23 @@ impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
         Ok(())
     }
 
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
+        self.evaluate(stack, registers)
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 2 {
             bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
@@ -239,17 +251,23 @@ impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ProvingKey, VerifyingKey};
+    use crate::{
+        process::Stack,
+        program::test_helpers::{sample_finalize_registers, sample_registers},
+    };
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
-        program::{Literal, LiteralType},
+        program::{Identifier, Literal, LiteralType},
     };
+    use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
 
     use std::collections::HashMap;
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
+
+    const ITERATIONS: usize = 100;
 
     /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
     fn sample_stack(
@@ -261,7 +279,6 @@ mod tests {
         cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>)> {
         use crate::{Process, Program};
-        use console::program::Identifier;
 
         // Initialize the opcode.
         let opcode = opcode.to_string();
@@ -280,6 +297,12 @@ mod tests {
                 input {r0} as {type_a}.{mode_a};
                 input {r1} as {type_b}.{mode_b};
                 {opcode} {r0} {r1};
+                finalize {r0} {r1};
+
+            finalize {function_name}:
+                input {r0} as {type_a}.public;
+                input {r1} as {type_b}.public;
+                {opcode} {r0} {r1};
         "
         ))?;
 
@@ -292,53 +315,6 @@ mod tests {
         let stack = Stack::new(&Process::load_with_cache(cache)?, &program)?;
 
         Ok((stack, operands))
-    }
-
-    /// Samples the registers. Note: Do not replicate this for real program use, it is insecure.
-    fn sample_registers(
-        stack: &Stack<CurrentNetwork>,
-        literal_a: &Literal<CurrentNetwork>,
-        literal_b: &Literal<CurrentNetwork>,
-        mode_a: Option<circuit::Mode>,
-        mode_b: Option<circuit::Mode>,
-    ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
-        use crate::{Authorization, CallStack};
-        use console::program::{Identifier, Plaintext, Value};
-
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run")?;
-
-        // Initialize the registers.
-        let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
-            CallStack::evaluate(Authorization::new(&[]))?,
-            stack.get_register_types(&function_name)?.clone(),
-        );
-
-        // Initialize the registers.
-        let r0 = Register::Locator(0);
-        let r1 = Register::Locator(1);
-
-        // Initialize the console values.
-        let value_a = Value::Plaintext(Plaintext::from(literal_a));
-        let value_b = Value::Plaintext(Plaintext::from(literal_b));
-
-        // Store the values in the console registers.
-        registers.store(stack, &r0, value_a.clone())?;
-        registers.store(stack, &r1, value_b.clone())?;
-
-        if let (Some(mode_a), Some(mode_b)) = (mode_a, mode_b) {
-            use circuit::Inject;
-
-            // Initialize the circuit values.
-            let circuit_a = circuit::Value::new(mode_a, value_a);
-            let circuit_b = circuit::Value::new(mode_b, value_b);
-
-            // Store the values in the circuit registers.
-            registers.store_circuit(stack, &r0, circuit_a)?;
-            registers.store_circuit(stack, &r1, circuit_b)?;
-        }
-
-        Ok(registers)
     }
 
     fn check_assert<const VARIANT: u8>(
@@ -361,11 +337,14 @@ mod tests {
         let (stack, operands) = sample_stack(opcode, type_a, type_b, *mode_a, *mode_b, cache).unwrap();
         // Initialize the operation.
         let operation = operation(operands);
+        // Initialize the function name.
+        let function_name = Identifier::from_str("run").unwrap();
 
         /* First, check the operation *succeeds* when both operands are `literal_a.mode_a`. */
         {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_a, None, None).unwrap();
+            let values = [(literal_a, None), (literal_a, None)];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -379,7 +358,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_a, Some(*mode_a), Some(*mode_a)).unwrap();
+            let values = [(literal_a, Some(*mode_a)), (literal_a, Some(*mode_a))];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -410,11 +390,26 @@ mod tests {
 
             // Reset the circuit.
             <CurrentAleo as circuit::Environment>::reset();
+
+            // Attempt to finalize the valid operand case.
+            let mut registers = sample_finalize_registers(&stack, &function_name, &[literal_a, literal_a]).unwrap();
+            let result_c = operation.finalize(&stack, &mut registers);
+
+            // Ensure the result is correct.
+            match VARIANT {
+                0 => assert!(result_c.is_ok(), "Instruction '{operation}' failed (console): {literal_a} {literal_a}"),
+                1 => assert!(
+                    result_c.is_err(),
+                    "Instruction '{operation}' should have failed (console): {literal_a} {literal_a}"
+                ),
+                _ => panic!("Found an invalid 'assert' variant in the test"),
+            }
         }
         /* Next, check the mismatching literals *fail*. */
         if literal_a != literal_b {
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_b, None, None).unwrap();
+            let values = [(literal_a, None), (literal_b, None)];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_a = operation.evaluate(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -428,7 +423,8 @@ mod tests {
             }
 
             // Attempt to compute the valid operand case.
-            let mut registers = sample_registers(&stack, literal_a, literal_b, Some(*mode_a), Some(*mode_b)).unwrap();
+            let values = [(literal_a, Some(*mode_a)), (literal_b, Some(*mode_b))];
+            let mut registers = sample_registers(&stack, &function_name, &values).unwrap();
             let result_b = operation.execute::<CurrentAleo>(&stack, &mut registers);
 
             // Ensure the result is correct.
@@ -459,6 +455,20 @@ mod tests {
 
             // Reset the circuit.
             <CurrentAleo as circuit::Environment>::reset();
+
+            // Attempt to finalize the valid operand case.
+            let mut registers = sample_finalize_registers(&stack, &function_name, &[literal_a, literal_b]).unwrap();
+            let result_c = operation.finalize(&stack, &mut registers);
+
+            // Ensure the result is correct.
+            match VARIANT {
+                0 => assert!(
+                    result_c.is_err(),
+                    "Instruction '{operation}' should have failed (console): {literal_a} {literal_b}"
+                ),
+                1 => assert!(result_c.is_ok(), "Instruction '{operation}' failed (console): {literal_a} {literal_b}"),
+                _ => panic!("Found an invalid 'assert' variant in the test"),
+            }
         }
     }
 
@@ -494,19 +504,21 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
-            for mode_a in &modes_a {
-                for mode_b in &modes_b {
-                    // Check the operation.
-                    check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
+                for mode_a in &modes_a {
+                    for mode_b in &modes_b {
+                        // Check the operation.
+                        check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                    }
                 }
             }
         }
@@ -521,21 +533,23 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                if literal_a.to_type() != literal_b.to_type() {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            // Check the operation fails.
-                            check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                            }
                         }
                     }
                 }
@@ -554,19 +568,21 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
-            for mode_a in &modes_a {
-                for mode_b in &modes_b {
-                    // Check the operation.
-                    check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for (literal_a, literal_b) in literals_a.iter().zip_eq(literals_b.iter()) {
+                for mode_a in &modes_a {
+                    for mode_b in &modes_b {
+                        // Check the operation.
+                        check_assert(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                    }
                 }
             }
         }
@@ -581,21 +597,23 @@ mod tests {
         let mut rng = TestRng::default();
 
         // Prepare the test.
-        let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
-        let modes_a = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
-        let modes_b = [/* circuit::Mode::Constant, */ circuit::Mode::Public, circuit::Mode::Private];
+        let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
+        let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
         // Prepare the key cache.
         let mut cache = Default::default();
 
-        for literal_a in &literals_a {
-            for literal_b in &literals_b {
-                if literal_a.to_type() != literal_b.to_type() {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            // Check the operation fails.
-                            check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        for _ in 0..ITERATIONS {
+            let literals_a = crate::sample_literals!(CurrentNetwork, &mut rng);
+            let literals_b = crate::sample_literals!(CurrentNetwork, &mut rng);
+            for literal_a in &literals_a {
+                for literal_b in &literals_b {
+                    if literal_a.to_type() != literal_b.to_type() {
+                        for mode_a in &modes_a {
+                            for mode_b in &modes_b {
+                                // Check the operation fails.
+                                check_assert_fails(opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                            }
                         }
                     }
                 }

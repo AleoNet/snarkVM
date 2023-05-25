@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -34,13 +32,17 @@ impl<N: Network> Header<N> {
         if id == &self.previous_state_root {
             Ok(HeaderLeaf::<N>::new(0, self.previous_state_root))
         }
-        // If the ID is the previous state root, return the 1st leaf.
+        // If the ID is the transactions root, return the 1st leaf.
         else if id == &self.transactions_root {
             Ok(HeaderLeaf::<N>::new(1, self.transactions_root))
         }
-        // If the ID is the coinbase accumulator point, return the 2nd leaf.
+        // If the ID is the finalize root, return the 2nd leaf.
+        else if id == &self.finalize_root {
+            Ok(HeaderLeaf::<N>::new(2, self.finalize_root))
+        }
+        // If the ID is the coinbase accumulator point, return the 3rd leaf.
         else if id == &self.coinbase_accumulator_point {
-            Ok(HeaderLeaf::<N>::new(2, self.coinbase_accumulator_point))
+            Ok(HeaderLeaf::<N>::new(3, self.coinbase_accumulator_point))
         }
         // If the ID is the metadata hash, then return the 7th leaf.
         else if id == &self.metadata.to_hash()? {
@@ -61,8 +63,9 @@ impl<N: Network> Header<N> {
         let mut leaves: Vec<Vec<bool>> = Vec::with_capacity(num_leaves);
         leaves.push(HeaderLeaf::<N>::new(0, self.previous_state_root).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(1, self.transactions_root).to_bits_le());
-        leaves.push(HeaderLeaf::<N>::new(2, self.coinbase_accumulator_point).to_bits_le());
-        for i in 3..7 {
+        leaves.push(HeaderLeaf::<N>::new(2, self.finalize_root).to_bits_le());
+        leaves.push(HeaderLeaf::<N>::new(3, self.coinbase_accumulator_point).to_bits_le());
+        for i in 4..7 {
             leaves.push(HeaderLeaf::<N>::new(i, Field::zero()).to_bits_le());
         }
         leaves.push(HeaderLeaf::<N>::new(7, self.metadata.to_hash()?).to_bits_le());
@@ -108,10 +111,13 @@ mod tests {
                 Field::rand(rng),
                 Field::rand(rng),
                 Field::rand(rng),
+                Field::rand(rng),
                 Metadata::new(
                     CurrentNetwork::ID,
                     u64::rand(rng),
                     u32::rand(rng),
+                    u64::rand(rng),
+                    u128::rand(rng),
                     coinbase_target,
                     proof_target,
                     u64::rand(rng),
@@ -134,8 +140,13 @@ mod tests {
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 2nd leaf.
-            let leaf = header.to_leaf(&header.coinbase_accumulator_point())?;
+            let leaf = header.to_leaf(&header.finalize_root())?;
             assert_eq!(leaf.index(), 2);
+            check_path(header.to_path(&leaf)?, root, &leaf)?;
+
+            // Check the 3rd leaf.
+            let leaf = header.to_leaf(&header.coinbase_accumulator_point())?;
+            assert_eq!(leaf.index(), 3);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 7th leaf.

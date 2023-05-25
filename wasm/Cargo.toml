@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-wasm"
-version = "0.9.13"
+version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [lib]
@@ -28,41 +28,38 @@ crate-type = [ "cdylib", "rlib" ]
 
 [dependencies.snarkvm-console]
 path = "../console"
-version = "0.9.13"
+version = "=0.11.2"
 features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.9.13"
+version = "=0.11.2"
 optional = true
-default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.9.13"
+version = "=0.11.2"
 optional = true
-default-features = false
 
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
-version = "0.9.12"
+version = "=0.11.2"
 features = [ "wasm" ]
 optional = true
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.9.13"
+version = "=0.11.2"
 optional = true
-default-features = false
 
 [dependencies.rand]
 version = "0.8"
 default-features = false
 
 [dependencies.serde]
-version = "1.0.152"
+version = "1.0.163"
 default-features = false
 features = [ "derive" ]
 
@@ -75,17 +72,11 @@ version = "0.2"
 features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.34"
+version = "0.3.36"
 
 [features]
-default = [ "full", "parallel" ]
+default = [ "full" ]
 full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
-parallel = [
-  "snarkvm-console/parallel",
-  "snarkvm-fields/parallel",
-  "snarkvm-synthesizer/parallel",
-  "snarkvm-utilities/parallel"
-]
 console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]

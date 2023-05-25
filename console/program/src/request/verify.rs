@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -159,16 +157,13 @@ impl<N: Network> Request<N> {
                             // Ensure the input type is a record.
                             _ => bail!("Expected a record type at input {index}"),
                         };
+                        // Ensure the record belongs to the caller.
+                        ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
+
                         // Compute the record commitment.
                         let candidate_cm = record.to_commitment(&self.program_id, record_name)?;
                         // Ensure the commitment matches.
                         ensure!(*commitment == candidate_cm, "Expected a record input with the same commitment");
-                        // Ensure the record belongs to the caller.
-                        ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
-                        // Ensure the record gates is less than or equal to 2^52.
-                        if !(**record.gates()).to_bits_le()[52..].iter().all(|bit| !bit) {
-                            bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
-                        }
 
                         // Compute the `candidate_sn` from `gamma`.
                         let candidate_sn = Record::<N, Plaintext<N>>::serial_number_from_gamma(gamma, *commitment)?;
@@ -247,7 +242,7 @@ mod tests {
 
             // Prepare a record belonging to the address.
             let record_string = format!(
-                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}"
+                "{{ owner: {address}.private, token_amount: 100u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}"
             );
 
             // Construct four inputs.

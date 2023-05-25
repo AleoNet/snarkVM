@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 //! This module contains an `EvaluationDomain` abstraction for
 //! performing various kinds of polynomial arithmetic on top of
@@ -34,17 +32,17 @@ use crate::{
     fft::{DomainCoeff, SparsePolynomial},
 };
 use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use snarkvm_utilities::max_available_threads;
 use snarkvm_utilities::{execute_with_max_available_threads, serialize::*};
 
 use rand::Rng;
 use std::{borrow::Cow, fmt};
 
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-#[cfg(not(feature = "parallel"))]
+#[cfg(feature = "serial")]
 use itertools::Itertools;
 
 /// Returns the ceiling of the base-2 logarithm of `x`.
@@ -72,7 +70,7 @@ pub fn log2(x: usize) -> u32 {
 
 // minimum size of a parallelized chunk
 #[allow(unused)]
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 const MIN_PARALLEL_CHUNK_SIZE: usize = 1 << 7;
 
 /// Defines a domain over which finite field (I)FFTs can be performed. Works
@@ -225,7 +223,7 @@ impl<F: FftField> EvaluationDomain<F> {
     }
 
     /// Multiply the `i`-th element of `coeffs` with `c*g^i`.
-    #[cfg(not(feature = "parallel"))]
+    #[cfg(feature = "serial")]
     fn distribute_powers_and_mul_by_const<T: DomainCoeff<F>>(coeffs: &mut [T], g: F, c: F) {
         // invariant: pow = c*g^i at the ith iteration of the loop
         let mut pow = c;
@@ -236,7 +234,7 @@ impl<F: FftField> EvaluationDomain<F> {
     }
 
     /// Multiply the `i`-th element of `coeffs` with `c*g^i`.
-    #[cfg(feature = "parallel")]
+    #[cfg(not(feature = "serial"))]
     fn distribute_powers_and_mul_by_const<T: DomainCoeff<F>>(coeffs: &mut [T], g: F, c: F) {
         let min_parallel_chunk_size = 1024;
         let num_cpus_available = max_available_threads();
@@ -583,13 +581,13 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Computes the first `self.size / 2` roots of unity for the entire domain.
     /// e.g. for the domain [1, g, g^2, ..., g^{n - 1}], it computes
     // [1, g, g^2, ..., g^{(n/2) - 1}]
-    #[cfg(not(feature = "parallel"))]
+    #[cfg(feature = "serial")]
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
         compute_powers_serial((self.size as usize) / 2, root)
     }
 
     /// Computes the first `self.size / 2` roots of unity.
-    #[cfg(feature = "parallel")]
+    #[cfg(not(feature = "serial"))]
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
         // TODO: check if this method can replace parallel compute powers.
         let log_size = log2(self.size as usize);
@@ -614,7 +612,7 @@ impl<F: FftField> EvaluationDomain<F> {
         }
     }
 
-    #[cfg(feature = "parallel")]
+    #[cfg(not(feature = "serial"))]
     fn roots_of_unity_recursive(out: &mut [F], log_powers: &[F]) {
         assert_eq!(out.len(), 1 << log_powers.len());
         // base case: just compute the powers sequentially,
@@ -686,15 +684,16 @@ impl<F: FftField> EvaluationDomain<F> {
         });
     }
 
+    #[allow(clippy::unnecessary_to_owned)]
     fn io_helper_with_roots<T: DomainCoeff<F>>(&self, xi: &mut [T], roots: &[F]) {
         let mut roots = std::borrow::Cow::Borrowed(roots);
 
         let mut step = 1;
         let mut first = true;
 
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let max_threads = snarkvm_utilities::parallel::max_available_threads();
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let max_threads = 1;
 
         let mut gap = xi.len() / 2;
@@ -741,9 +740,9 @@ impl<F: FftField> EvaluationDomain<F> {
             core::cmp::min(roots_cache.len() / 2, roots_cache.len() / MIN_NUM_CHUNKS_FOR_COMPACTION);
         let mut compacted_roots = vec![F::default(); compaction_max_size];
 
-        #[cfg(feature = "parallel")]
+        #[cfg(not(feature = "serial"))]
         let max_threads = snarkvm_utilities::parallel::max_available_threads();
-        #[cfg(not(feature = "parallel"))]
+        #[cfg(feature = "serial")]
         let max_threads = 1;
 
         let mut gap = 1;
@@ -780,7 +779,7 @@ const MIN_NUM_CHUNKS_FOR_COMPACTION: usize = 1 << 7;
 const MIN_GAP_SIZE_FOR_PARALLELISATION: usize = 1 << 10;
 
 // minimum size at which to parallelize.
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 const LOG_ROOTS_OF_UNITY_PARALLEL_SIZE: u32 = 7;
 
 #[inline]
@@ -829,7 +828,7 @@ pub(crate) fn compute_powers_and_mul_by_const_serial<F: Field>(size: usize, root
 }
 
 #[allow(unused)]
-#[cfg(feature = "parallel")]
+#[cfg(not(feature = "serial"))]
 pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
     if size < MIN_PARALLEL_CHUNK_SIZE {
         return compute_powers_serial(size, g);

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use snarkvm_console_collections::merkle_tree::MerklePath;
 use snarkvm_console_network::BHPMerkleTree;
@@ -24,9 +22,9 @@ pub const HEADER_DEPTH: u8 = 3;
 /// The depth of the Merkle tree for transactions in a block.
 pub const TRANSACTIONS_DEPTH: u8 = 16;
 /// The depth of the Merkle tree for the transaction.
-pub const TRANSACTION_DEPTH: u8 = 4;
+pub const TRANSACTION_DEPTH: u8 = 5;
 /// The depth of the Merkle tree for the transition.
-pub const TRANSITION_DEPTH: u8 = 4;
+pub const TRANSITION_DEPTH: u8 = 5;
 
 /// The Merkle tree for the block state.
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;

@@ -1,23 +1,21 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<N: Network> Parser for MapValue<N> {
-    /// Parses a string into the value statement of the form `value {name} as {register_type};`.
+    /// Parses a string into the value statement of the form `value {name} as {plaintext_type}.public;`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -34,14 +32,14 @@ impl<N: Network> Parser for MapValue<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the finalize type from the string.
-        let (string, finalize_type) = FinalizeType::parse(string)?;
+        // Parse the plaintext type from the string.
+        let (string, (plaintext_type, _)) = pair(PlaintextType::parse, tag(".public"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the value statement.
-        Ok((string, Self { name, finalize_type }))
+        Ok((string, Self { name, plaintext_type }))
     }
 }
 
@@ -75,10 +73,10 @@ impl<N: Network> Display for MapValue<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {name} as {finalize_type};",
+            "{type_} {name} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             name = self.name,
-            finalize_type = self.finalize_type
+            plaintext_type = self.plaintext_type
         )
     }
 }
@@ -95,7 +93,7 @@ mod tests {
         // Literal
         let value = MapValue::<CurrentNetwork>::parse("value abcd as field.public;").unwrap().1;
         assert_eq!(value.name(), &Identifier::<CurrentNetwork>::from_str("abcd")?);
-        assert_eq!(value.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("field.public")?);
+        assert_eq!(value.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
 
         Ok(())
     }
