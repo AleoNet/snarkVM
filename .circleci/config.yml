@@ -137,9 +137,10 @@ jobs:
       - image: cimg/rust:1.69
     resource_class: 2xlarge
     steps:
-      - run_serial:
-          workspace_member: .
-          cache_key: snarkvm-stable-cache
+      - checkout
+      - run:
+          no_output_timeout: 30m
+          command: RUST_MIN_STACK=67108864 cargo test
 
   algorithms:
     docker:
