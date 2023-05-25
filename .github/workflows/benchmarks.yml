@@ -2,7 +2,7 @@ name: Run snarkVM Benchmarks
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [closed]
     branches:
       - 'testnet3'
   push:
@@ -13,6 +13,7 @@ jobs:
   # Run benchmarks and stores the output to a file
   benchmark:
     name: Benchmark
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
