@@ -1503,7 +1503,7 @@ function fee:
         let r2 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
 
         // Compute the assignment.
-        let assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        let _assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
         // assert_eq!(12, assignment.num_public());
         // assert_eq!(54246, assignment.num_private());
         // assert_eq!(54304, assignment.num_constraints());
@@ -1527,7 +1527,7 @@ function fee:
         let r2 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
 
         // Compute the assignment.
-        let assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        let _assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
         // assert_eq!(10, assignment.num_public());
         // assert_eq!(40934, assignment.num_private());
         // assert_eq!(40981, assignment.num_constraints());
@@ -1537,7 +1537,7 @@ function fee:
 
 fn get_assignment(
     stack: &Stack<CurrentNetwork>,
-    caller_private_key: &PrivateKey<CurrentNetwork>,
+    private_key: &PrivateKey<CurrentNetwork>,
     function_name: Identifier<CurrentNetwork>,
     inputs: &[Value<CurrentNetwork>],
     rng: &mut TestRng,
@@ -1547,12 +1547,11 @@ fn get_assignment(
     // Retrieve the input types.
     let input_types = program.get_function(&function_name).unwrap().input_types();
     // Compute the request.
-    let request =
-        Request::sign(&caller_private_key, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
+    let request = Request::sign(private_key, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
     // Initialize the assignments.
     let assignments = Assignments::<CurrentNetwork>::default();
     // Initialize the call stack.
-    let call_stack = CallStack::CheckDeployment(vec![request], *caller_private_key, assignments.clone());
+    let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
     // Synthesize the circuit.
     let _response = stack.execute_function::<CurrentAleo, _>(call_stack, rng).unwrap();
     // Retrieve the assignment.
