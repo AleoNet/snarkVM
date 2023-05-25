@@ -34,7 +34,7 @@ path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ "coinbase", "snark", "request" ]
+default = [ "coinbase", "snark", "request", "aleo-std/storage" ]
 
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
@@ -106,6 +106,7 @@ default-features = false
 version = "0.1.18"
 features = ["storage"]
 default-features = false
+optional = false
 
 [dependencies.anyhow]
 version = "1.0.71"
