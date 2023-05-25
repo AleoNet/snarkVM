@@ -152,7 +152,7 @@ impl<
         // Retrieve the atomic batch.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
-        // Insert the operations into an index map to remove any operations that would have been overwritten.
+        // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
         let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
 
         if !operations.is_empty() {

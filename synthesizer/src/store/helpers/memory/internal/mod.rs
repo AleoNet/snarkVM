@@ -191,7 +191,7 @@ impl<
         // Retrieve the atomic batch.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
-        // Insert the operations into an index map to remove any operations that would have been overwritten.
+        // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
         let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
 
         if !operations.is_empty() {
@@ -263,6 +263,7 @@ impl<
         // If a batch is in progress, check the atomic batch first.
         if self.is_atomic_in_progress() {
             // If the key is present in the atomic batch, then check if the value is 'Some(V)'.
+            // We iterate from the back of the `atomic_batch` to find the latest value.
             if let Some((_, value)) = self.atomic_batch.lock().iter().rev().find(|&(k, _)| k.borrow() == key) {
                 // If the value is 'Some(V)', then the key exists.
                 // If the value is 'Some(None)', then the key is scheduled to be removed.
@@ -300,6 +301,7 @@ impl<
     {
         // Return early if there is no atomic batch in progress.
         if self.is_atomic_in_progress() {
+            // We iterate from the back of the `atomic_batch` to find the latest value.
             self.atomic_batch.lock().iter().rev().find(|&(k, _)| k.borrow() == key).map(|(_, value)| value).cloned()
         } else {
             None
