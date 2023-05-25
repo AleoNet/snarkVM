@@ -16,8 +16,6 @@
 
 use super::*;
 
-use std::collections::HashMap;
-
 impl<E: Environment> ASWaksman<E> {
     /// Returns the sorted `inputs` sequence and the associated `selectors` for the switches in the network.
     pub fn sort(&self, inputs: &[Field<E>]) -> (Vec<Field<E>>, Vec<Boolean<E>>) {
@@ -26,27 +24,21 @@ impl<E: Environment> ASWaksman<E> {
             return E::halt(format!("The number of inputs must be exactly {}.", self.num_inputs));
         }
 
-        // TODO: Condense sorting logic
         // Sort the inputs.
-        let mut sorted = inputs.to_vec();
-        sorted.sort();
-
-        // Map each element in the sorted sequence to its index in the sorted sequence, accounting for duplicates.
-        let mut element_counts = HashMap::new();
-        let mut indexes = HashMap::new();
-        for (i, element) in sorted.iter().enumerate() {
-            let count = *element_counts.entry(element).and_modify(|count| *count += 1).or_insert(0usize);
-            indexes.insert((element, count), i);
-        }
-
-        // Construct a vector representing the permutation.
-        let mut element_counts = HashMap::new();
-        let mut permutation = Vec::with_capacity(self.num_inputs);
-        for input in inputs.iter() {
-            let count = *element_counts.entry(input).and_modify(|count| *count += 1).or_insert(0usize);
-            permutation.push(indexes[&(input, count)]);
-        }
-
+        // `sorted_with_original_index` is a sorted vector of tuples where the first element is the input and the second element is the original index of the input.
+        let sorted_with_original_index =
+            inputs.iter().enumerate().map(|(i, input)| (*input, i)).sorted().collect::<Vec<_>>();
+        // Get the sorted sequence.
+        // `sorted` is a vector of the sorted inputs.
+        let sorted = sorted_with_original_index.iter().map(|(input, _)| *input).collect::<Vec<_>>();
+        // Get the permutation, which is a mapping from the original index to the sorted index.
+        let permutation = sorted_with_original_index
+            .iter()
+            .enumerate()
+            .map(|(j, (_, i))| (*i, j))
+            .sorted()
+            .map(|(_, j)| j)
+            .collect::<Vec<_>>();
         // Construct the selectors for the switches in the network.
         let selectors = self.assign_selectors(&permutation);
 
