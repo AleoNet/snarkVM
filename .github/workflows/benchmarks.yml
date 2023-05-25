@@ -77,8 +77,14 @@ jobs:
         run: |
           cd synthesizer
           cargo bench --bench block --output-format bencher | tee -a ../output.txt
-          cargo bench --bench coinbase_puzzle --features "setup" -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench transaction --output-format bencher | tee -a ../output.txt
           cd ..
+
+      - name: Benchmark coinbase
+        run: |
+          cd synthesizer/coinbase
+          cargo bench --bench coinbase_puzzle --features "setup" -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
 
       # Clean benchmark output to remove unnecessary lines
       - name: Clean benchmark output
