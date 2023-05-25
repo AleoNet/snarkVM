@@ -34,6 +34,9 @@ version = "=0.11.2"
 [dependencies.blake2s_simd]
 version = "1.0"
 
+[dependencies.petgraph]
+version = "0.6.3"
+
 [dependencies.smallvec]
 version = "1.10"
 default-features = false
@@ -51,6 +54,9 @@ version = "1.4"
 
 [dev-dependencies.hex]
 version = "0.4"
+
+[dev-dependencies.rand]
+version = "0.8.5"
 
 [dev-dependencies.serde]
 version = "1.0"

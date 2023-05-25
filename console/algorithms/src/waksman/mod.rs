@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod assign;
 mod check;
+mod sort;
 mod switch;
 
 use snarkvm_console_types::prelude::*;
@@ -179,22 +181,95 @@ impl<E: Environment> ASWaksman<E> {
     }
 }
 
+/// A helper function to invert a permutation.
+/// `inverse[i] = j` indicates `permutation` maps the element in the i-th position of the j-th position.
+fn invert_permutation(permutation: &[usize]) -> Vec<usize> {
+    permutation.iter().enumerate().map(|(i, &j)| (j, i)).sorted().map(|(_, i)| i).collect()
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     use snarkvm_utilities::{TestRng, Uniform};
 
+    use rand::seq::SliceRandom;
     use std::iter;
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: usize = 100;
 
     type CurrentEnvironment = Console;
 
     #[test]
-    #[should_panic]
-    fn test_zero_size_network_fails() {
-        ASWaksman::<CurrentEnvironment>::new(0);
+    fn test_random_networks() {
+        // A helper function to run a test that samples random permutations, assigns selectors, and checks that the Waksman network computes the correct permutation.
+        fn run_test(n: usize, iterations: usize, rng: &mut TestRng) {
+            for i in 0..iterations {
+                // Sample a random permutation.
+                let mut permutation: Vec<usize> = (0..n).collect();
+                permutation.shuffle(rng);
+                // Compute the inverse permutation.
+                let inverse_permutation = invert_permutation(&permutation);
+                // Sample a random sequence of inputs.
+                let inputs: Vec<Field<CurrentEnvironment>> = iter::repeat_with(|| Uniform::rand(rng)).take(n).collect();
+                // Instantiate the Waksman network.
+                let network = ASWaksman::<CurrentEnvironment>::new(n);
+                // Compute the selectors.
+                let selectors = network.assign_selectors(&permutation);
+                assert_eq!(selectors.len(), network.num_selectors());
+                // Apply the permutation to the inputs.
+                let mut expected_outputs = Vec::with_capacity(n);
+                for i in 0..inputs.len() {
+                    expected_outputs.push(inputs[inverse_permutation[i]]);
+                }
+                // Run the Waksman network.
+                let actual_outputs = network.run(&inputs, &selectors);
+                // Check that the outputs are correct.
+                assert_eq!(
+                    actual_outputs,
+                    expected_outputs,
+                    "AssignSelectors(Iteration: {}, Inputs: {})",
+                    i,
+                    inputs.len()
+                )
+            }
+        }
+
+        let mut rng = TestRng::default();
+
+        run_test(1, ITERATIONS, &mut rng);
+        run_test(2, ITERATIONS, &mut rng);
+        run_test(3, ITERATIONS, &mut rng);
+        run_test(4, ITERATIONS, &mut rng);
+        run_test(5, ITERATIONS, &mut rng);
+        run_test(6, ITERATIONS, &mut rng);
+        run_test(7, ITERATIONS, &mut rng);
+        run_test(8, ITERATIONS, &mut rng);
+        run_test(9, ITERATIONS, &mut rng);
+        run_test(10, ITERATIONS, &mut rng);
+        run_test(11, ITERATIONS, &mut rng);
+        run_test(12, ITERATIONS, &mut rng);
+        run_test(13, ITERATIONS, &mut rng);
+        run_test(14, ITERATIONS, &mut rng);
+        run_test(15, ITERATIONS, &mut rng);
+        run_test(16, ITERATIONS, &mut rng);
+        run_test(17, ITERATIONS, &mut rng);
+        run_test(32, ITERATIONS, &mut rng);
+        run_test(33, ITERATIONS, &mut rng);
+        run_test(64, ITERATIONS, &mut rng);
+        run_test(65, ITERATIONS, &mut rng);
+        run_test(128, ITERATIONS, &mut rng);
+        run_test(129, ITERATIONS, &mut rng);
+        run_test(256, ITERATIONS, &mut rng);
+        run_test(257, ITERATIONS, &mut rng);
+        run_test(512, ITERATIONS, &mut rng);
+        run_test(513, ITERATIONS, &mut rng);
+        run_test(1024, ITERATIONS, &mut rng);
+        run_test(1025, ITERATIONS, &mut rng);
+        run_test(2048, ITERATIONS, &mut rng);
+        run_test(2049, ITERATIONS, &mut rng);
+        run_test(4096, ITERATIONS, &mut rng);
+        run_test(4097, ITERATIONS, &mut rng);
     }
 
     #[test]
@@ -255,27 +330,6 @@ mod test {
 
     #[test]
     fn test_reverse_network() {
-        fn compute_selectors(num_inputs: usize) -> Vec<Boolean<CurrentEnvironment>> {
-            match num_inputs {
-                0 => panic!("num_inputs must be greater than 0"),
-                1 => vec![],
-                2 => vec![Boolean::new(true)],
-                _ => {
-                    let mut input_selectors = vec![Boolean::new(true); num_inputs / 2];
-                    let upper_selectors = compute_selectors(num_inputs / 2);
-                    let lower_selectors = compute_selectors(num_inputs - num_inputs / 2);
-                    let output_selectors = match num_inputs % 2 == 0 {
-                        true => vec![Boolean::new(false); num_inputs / 2 - 1],
-                        false => vec![Boolean::new(true); (num_inputs - 1) / 2],
-                    };
-                    input_selectors.extend(upper_selectors);
-                    input_selectors.extend(lower_selectors);
-                    input_selectors.extend(output_selectors);
-                    input_selectors
-                }
-            }
-        }
-
         fn run_test(num_inputs: usize, rng: &mut TestRng) {
             for _ in 0..ITERATIONS {
                 let network = ASWaksman::new(num_inputs);
@@ -283,7 +337,7 @@ mod test {
                 let inputs = iter::repeat_with(|| Field::<CurrentEnvironment>::new(Uniform::rand(rng)))
                     .take(num_inputs)
                     .collect::<Vec<_>>();
-                let selectors = compute_selectors(num_inputs);
+                let selectors = network.assign_selectors(&(0..num_inputs).rev().collect::<Vec<_>>());
 
                 let outputs = network.run(&inputs, &selectors);
                 for (input, output) in inputs.iter().zip_eq(outputs.iter().rev()) {
@@ -327,5 +381,11 @@ mod test {
         run_test(2049, &mut rng);
         run_test(4096, &mut rng);
         run_test(4097, &mut rng);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_zero_size_network_fails() {
+        ASWaksman::<CurrentEnvironment>::new(0);
     }
 }

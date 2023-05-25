@@ -15,18 +15,32 @@
 use super::*;
 
 impl<E: Environment> ASWaksman<E> {
-    /// Returns `true` if `first` is a permutation of `second`, given the `selectors` for the switches in the network.
-    pub fn check_permutation(&self, first: &[Field<E>], second: &[Field<E>], selectors: &[Boolean<E>]) -> Boolean<E> {
-        // Check that the two sequences are the same length.
-        if first.len() != second.len() {
-            return E::halt("The two sequences must be the same length.");
+    /// Returns the sorted `inputs` sequence and the associated `selectors` for the switches in the network.
+    pub fn sort(&self, inputs: &[Field<E>]) -> (Vec<Field<E>>, Vec<Boolean<E>>) {
+        // Check that the number of inputs is correct.
+        if inputs.len() != self.num_inputs {
+            return E::halt(format!("The number of inputs must be exactly {}.", self.num_inputs));
         }
 
-        // Run the network on the first sequence, using the given selectors.
-        let output = self.run(first, selectors);
+        // Sort the inputs.
+        // `sorted_with_original_index` is a sorted vector of tuples where the first element is the input and the second element is the original index of the input.
+        let sorted_with_original_index =
+            inputs.iter().enumerate().map(|(i, input)| (*input, i)).sorted().collect::<Vec<_>>();
+        // Get the sorted sequence.
+        // `sorted` is a vector of the sorted inputs.
+        let sorted = sorted_with_original_index.iter().map(|(input, _)| *input).collect::<Vec<_>>();
+        // Get the permutation, which is a mapping from the original index to the sorted index.
+        let permutation = sorted_with_original_index
+            .iter()
+            .enumerate()
+            .map(|(j, (_, i))| (*i, j))
+            .sorted()
+            .map(|(_, j)| j)
+            .collect::<Vec<_>>();
+        // Construct the selectors for the switches in the network.
+        let selectors = self.assign_selectors(&permutation);
 
-        // Check that the output of the network is element-wise equal to the second sequence.
-        output.iter().zip_eq(second).fold(Boolean::new(true), |acc, (a, b)| acc & a.is_equal(b))
+        (sorted, selectors)
     }
 }
 
@@ -34,48 +48,28 @@ impl<E: Environment> ASWaksman<E> {
 mod test {
     use super::*;
 
-    use snarkvm_utilities::{TestRng, Uniform};
-
-    use rand::seq::SliceRandom;
     use std::iter;
-
-    const ITERATIONS: usize = 100;
 
     type CurrentEnvironment = Console;
 
+    const ITERATIONS: usize = 100;
+
     #[test]
-    fn test_check_permutation() {
-        // A helper function to check that `check_permutation` returns the expected result.
+    fn test_sort() {
+        // A helper function to run a test that samples a random set of inputs, computes the , and checks that the Waksman network computes the correct permutation.
         fn run_test(n: usize, iterations: usize, rng: &mut TestRng) {
-            for _ in 0..iterations {
-                // Sample a random permutation.
-                let mut permutation: Vec<usize> = (0..n).collect();
-                permutation.shuffle(rng);
-                // Compute the inverse permutation.
-                let inverse_permutation = invert_permutation(&permutation);
+            for i in 0..iterations {
                 // Sample a random sequence of inputs.
                 let inputs: Vec<Field<CurrentEnvironment>> = iter::repeat_with(|| Uniform::rand(rng)).take(n).collect();
                 // Instantiate the Waksman network.
                 let network = ASWaksman::<CurrentEnvironment>::new(n);
-                // Compute the selectors.
-                let selectors = network.assign_selectors(&permutation);
-                assert_eq!(selectors.len(), network.num_selectors());
-                // Apply the permutation to the inputs.
-                let mut outputs = Vec::with_capacity(n);
-                for i in 0..inputs.len() {
-                    outputs.push(inputs[inverse_permutation[i]]);
-                }
-                // Check the permutation.
-                assert!(*network.check_permutation(&inputs, &outputs, &selectors));
-                // Check that a randomly sampled set of selectors does not work, as long as the selectors produce a different output.
-                // Note that there are multiple sets of selectors that produce the same output.
-                let mut bad_selectors = Vec::with_capacity(n);
-                for _ in 0..selectors.len() {
-                    bad_selectors.push(Boolean::rand(rng));
-                }
-                if network.run(&inputs, &bad_selectors) != outputs {
-                    assert!(!*network.check_permutation(&inputs, &outputs, &bad_selectors));
-                }
+                // Use the network to sort the inputs.
+                let (sorted, selectors) = network.sort(&inputs);
+                // Check that the sorted sequence is correct.
+                let expected_outputs: Vec<Field<CurrentEnvironment>> = inputs.iter().cloned().sorted().collect();
+                assert_eq!(sorted, expected_outputs, "Sort(Iteration: {}, Inputs: {})", i, inputs.len());
+                // Check that the network "checks" the permutation correctly.
+                assert!(*network.check_permutation(&inputs, &sorted, &selectors));
             }
         }
 
