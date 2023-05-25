@@ -206,15 +206,15 @@ impl<N: Network> Process<N> {
             #[cfg(debug_assertions)]
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
-            // Retrieve the verifying key.
-            let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-            // Ensure the transition proof is valid.
-            ensure!(
-                verifying_key.verify(&function.name().to_string(), &inputs, transition.proof()),
-                "Transition is invalid - failed to verify transition proof"
-            );
-
-            lap!(timer, "Verify transition proof for {}", function.name());
+            // // Retrieve the verifying key.
+            // let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
+            // // Ensure the transition proof is valid.
+            // ensure!(
+            //     verifying_key.verify(&function.name().to_string(), &inputs, transition.proof()),
+            //     "Transition is invalid - failed to verify transition proof"
+            // );
+            //
+            // lap!(timer, "Verify transition proof for {}", function.name());
         }
 
         finish!(timer);

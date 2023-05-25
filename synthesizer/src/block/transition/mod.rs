@@ -44,7 +44,6 @@ use console::{
     },
     types::{Field, Group},
 };
-use snarkvm_synthesizer_snark::Proof;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
@@ -60,8 +59,6 @@ pub struct Transition<N: Network> {
     outputs: Vec<Output<N>>,
     /// The inputs for finalize.
     finalize: Option<Vec<Value<N>>>,
-    /// The transition proof.
-    proof: Proof<N>,
     /// The transition public key.
     tpk: Group<N>,
     /// The transition commitment.
@@ -77,14 +74,13 @@ impl<N: Network> Transition<N> {
         inputs: Vec<Input<N>>,
         outputs: Vec<Output<N>>,
         finalize: Option<Vec<Value<N>>>,
-        proof: Proof<N>,
         tpk: Group<N>,
         tcm: Field<N>,
     ) -> Result<Self> {
         // Compute the transition ID.
         let id = *Self::function_tree(&inputs, &outputs)?.root();
         // Return the transition.
-        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, tpk, tcm })
     }
 
     /// Initializes a new transition from a request and response.
@@ -94,7 +90,6 @@ impl<N: Network> Transition<N> {
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Option<Register<N>>],
-        proof: Proof<N>,
     ) -> Result<Self> {
         let network_id = *request.network_id();
         let program_id = *request.program_id();
@@ -254,7 +249,7 @@ impl<N: Network> Transition<N> {
         // Retrieve the `tcm`.
         let tcm = *request.tcm();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm)
+        Self::new(program_id, function_name, inputs, outputs, finalize, tpk, tcm)
     }
 }
 
@@ -287,11 +282,6 @@ impl<N: Network> Transition<N> {
     /// Return the inputs for finalize, if they exist.
     pub const fn finalize(&self) -> Option<&Vec<Value<N>>> {
         self.finalize.as_ref()
-    }
-
-    /// Returns the proof.
-    pub const fn proof(&self) -> &Proof<N> {
-        &self.proof
     }
 
     /// Returns the transition public key.

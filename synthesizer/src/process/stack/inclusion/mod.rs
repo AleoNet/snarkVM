@@ -18,6 +18,7 @@ mod fee;
 #[cfg(debug_assertions)]
 use crate::Stack;
 use crate::{BlockStorage, Execution, Fee, Input, Output, Query, Transaction, Transition};
+use circuit::Assignment;
 use console::{
     network::prelude::*,
     program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
@@ -25,6 +26,7 @@ use console::{
 };
 use snarkvm_synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
+use console::program::Locator;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -47,16 +49,23 @@ pub struct Inclusion<N: Network> {
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
     /// A map of commitments to (transition ID, output index) pairs.
     output_commitments: HashMap<Field<N>, (N::TransitionID, u8)>,
+    /// A map of locators to (proving key, assignments) pairs.
+    proving_tasks: HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
 }
 
 impl<N: Network> Inclusion<N> {
     /// Initializes a new `Inclusion` instance.
     pub fn new() -> Self {
-        Self { input_tasks: HashMap::new(), output_commitments: HashMap::new() }
+        Self { input_tasks: HashMap::new(), output_commitments: HashMap::new(), proving_tasks: HashMap::new() }
     }
 
     /// Inserts the transition to build state for the inclusion proof.
-    pub fn insert_transition(&mut self, input_ids: &[InputID<N>], transition: &Transition<N>) -> Result<()> {
+    pub fn insert_transition(
+        &mut self,
+        input_ids: &[InputID<N>],
+        transition: &Transition<N>,
+        (proving_key, assignment): (ProvingKey<N>, Assignment<N::Field>),
+    ) -> Result<()> {
         // Ensure the transition inputs and input IDs are the same length.
         if input_ids.len() != transition.inputs().len() {
             bail!("Inclusion expected the same number of input IDs as transition inputs")
@@ -88,6 +97,11 @@ impl<N: Network> Inclusion<N> {
                 self.output_commitments.insert(*commitment, (*transition.id(), (input_ids.len() + index) as u8));
             }
         }
+
+        // Construct the locator.
+        let locator = Locator::new(*transition.program_id(), *transition.function_name());
+        // Insert the assignment (and proving key if the entry does not exist), for the specified locator.
+        self.proving_tasks.entry(locator).or_insert((proving_key, vec![])).1.push(assignment);
 
         Ok(())
     }

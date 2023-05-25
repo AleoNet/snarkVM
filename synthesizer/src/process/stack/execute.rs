@@ -426,19 +426,19 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
-            // Execute the circuit.
-            let proof = match proving_key.prove(&function.name().to_string(), &assignment, rng) {
-                Ok(proof) => proof,
-                Err(error) => bail!("Execution proof failed - {error}"),
-            };
-            lap!(timer, "Execute the circuit");
+
+            // // Execute the circuit.
+            // let proof = match proving_key.prove(&function.name().to_string(), &assignment, rng) {
+            //     Ok(proof) => proof,
+            //     Err(error) => bail!("Execution proof failed - {error}"),
+            // };
+            // lap!(timer, "Execute the circuit");
 
             // Construct the transition.
-            let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof)?;
+            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
 
             // Add the transition commitments.
-            inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
+            inclusion.write().insert_transition(console_request.input_ids(), &transition, (proving_key, assignment))?;
             // Add the transition to the execution.
             execution.write().push(transition);
 

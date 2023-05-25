@@ -17,7 +17,7 @@ use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum AssignmentVariable<F: PrimeField> {
     Constant(F),
     Public(Index),
@@ -35,7 +35,7 @@ impl<F: PrimeField> From<&crate::Variable<F>> for AssignmentVariable<F> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct AssignmentLC<F: PrimeField> {
     constant: F,
     terms: IndexMap<AssignmentVariable<F>, F>,
@@ -55,7 +55,7 @@ impl<F: PrimeField> From<&crate::LinearCombination<F>> for AssignmentLC<F> {
 
 /// A struct that contains public variable assignments, private variable assignments,
 /// and constraint assignments.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Assignment<F: PrimeField> {
     public: IndexMap<Index, F>,
     private: IndexMap<Index, F>,
