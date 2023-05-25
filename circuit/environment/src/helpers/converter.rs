@@ -104,13 +104,13 @@ impl<F: PrimeField> R1CS<F> {
                 // Initialize a linear combination for the second system.
                 let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
 
-                // Keep an accumulator for constant values in the linear combination.
-                let mut constant_accumulator = lc.to_constant();
                 // Process every term in the linear combination.
                 for (variable, coefficient) in lc.to_terms() {
                     match variable {
-                        Variable::Constant(value) => {
-                            constant_accumulator += **value;
+                        Variable::Constant(_) => {
+                            unreachable!(
+                                "Failed during constraint translation. The first system by definition cannot have constant variables in the terms"
+                            )
                         }
                         Variable::Public(index, _) => {
                             let gadget = converter.public.get(index).unwrap();
@@ -135,7 +135,7 @@ impl<F: PrimeField> R1CS<F> {
 
                 // Finally, add the accumulated constant value to the linear combination.
                 linear_combination +=
-                    (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                    (lc.to_constant(), snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
 
                 // Return the linear combination of the second system.
                 linear_combination

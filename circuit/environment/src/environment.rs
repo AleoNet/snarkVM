@@ -121,12 +121,12 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the number of constraints in the entire environment.
     fn num_constraints() -> u64;
 
-    /// Returns the number of gates in the entire environment.
-    fn num_gates() -> u64;
+    /// Returns the number of nonzeros in the entire circuit.
+    fn num_nonzeros() -> (u64, u64, u64);
 
-    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates in the entire environment.
-    fn count() -> (u64, u64, u64, u64, u64) {
-        (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_gates())
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and nonzeros in the entire environment.
+    fn count() -> (u64, u64, u64, u64, (u64, u64, u64)) {
+        (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_nonzeros())
     }
 
     /// Returns the number of constants for the current scope.
@@ -141,17 +141,17 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> u64;
 
-    /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> u64;
+    /// Returns the number of nonzeros for the current scope.
+    fn num_nonzeros_in_scope() -> (u64, u64, u64);
 
-    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates for the current scope.
-    fn count_in_scope() -> (u64, u64, u64, u64, u64) {
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and nonzeros for the current scope.
+    fn count_in_scope() -> (u64, u64, u64, u64, (u64, u64, u64)) {
         (
             Self::num_constants_in_scope(),
             Self::num_public_in_scope(),
             Self::num_private_in_scope(),
             Self::num_constraints_in_scope(),
-            Self::num_gates_in_scope(),
+            Self::num_nonzeros_in_scope(),
         )
     }
 

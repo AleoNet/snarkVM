@@ -24,10 +24,10 @@ pub(crate) struct Constraint<F: PrimeField>(
 );
 
 impl<F: PrimeField> Constraint<F> {
-    /// Returns the number of gates consumed by this constraint.
-    pub(crate) fn num_gates(&self) -> u64 {
+    /// Returns the number of non-zero terms required by this constraint.
+    pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
         let (a, b, c) = (&self.1, &self.2, &self.3);
-        1 + a.num_additions() + b.num_additions() + c.num_additions()
+        (a.num_nonzeros(), b.num_nonzeros(), c.num_nonzeros())
     }
 
     /// Returns `true` if the constraint is satisfied.
