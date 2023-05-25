@@ -32,6 +32,9 @@ default-features = false
 [dev-dependencies.anyhow]
 version = "1.0.71"
 
+[dev-dependencies.rand]
+version = "0.8.5"
+
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]

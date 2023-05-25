@@ -186,11 +186,104 @@ mod test {
     use snarkvm_circuit_types::environment::{assert_scope, Circuit};
     use snarkvm_utilities::{TestRng, Uniform};
 
+    use rand::seq::SliceRandom;
     use std::iter;
 
     const ITERATIONS: usize = 10;
 
     type CurrentEnvironment = Circuit;
+
+    #[test]
+    fn test_random_networks() {
+        // A helper function to run a test that samples random permutations, assigns selectors, and checks that the Waksman network computes the correct permutation.
+        fn run_test(n: usize, iterations: usize, rng: &mut TestRng) {
+            for mode in [Mode::Constant, Mode::Public, Mode::Private] {
+                for i in 0..iterations {
+                    // Sample a random permutation.
+                    let mut permutation: Vec<usize> = (0..n).collect();
+                    permutation.shuffle(rng);
+                    // Compute the inverse permutation.
+                    let inverse_permutation = permutation
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &j)| (j, i))
+                        .sorted()
+                        .map(|(_, i)| i)
+                        .collect::<Vec<_>>();
+                    // Sample a random sequence of inputs.
+                    let inputs: Vec<console::Field<<CurrentEnvironment as Environment>::Network>> =
+                        iter::repeat_with(|| Uniform::rand(rng)).take(n).collect();
+                    // Instantiate the Waksman network.
+                    let network = console::ASWaksman::<<CurrentEnvironment as Environment>::Network>::new(n);
+                    // Compute the selectors.
+                    let selectors = network.assign_selectors(&permutation);
+                    assert_eq!(selectors.len(), network.num_selectors());
+                    // Apply the permutation to the inputs.
+                    let mut expected_outputs = Vec::with_capacity(n);
+                    for i in 0..inputs.len() {
+                        expected_outputs.push(inputs[inverse_permutation[i]]);
+                    }
+                    // Inject the inputs.
+                    let inputs = inputs
+                        .into_iter()
+                        .map(|input| Field::<CurrentEnvironment>::new(mode, input))
+                        .collect::<Vec<_>>();
+                    // Inject the selectors.
+                    let selectors = selectors
+                        .into_iter()
+                        .map(|selector| Boolean::<CurrentEnvironment>::new(mode, *selector))
+                        .collect::<Vec<_>>();
+                    // Initialize the network.
+                    let network = ASWaksman::<_>::new(n);
+                    CurrentEnvironment::scope(format!("TestRandomRun(Mode: {mode}, Iteration: {i})"), || {
+                        let outputs = network.run(&inputs, &selectors);
+                        // Check that the outputs are correct.
+                        for (expected, actual) in expected_outputs.iter().zip_eq(outputs.iter()) {
+                            assert_eq!(*expected, actual.eject_value());
+                        }
+                        assert!(Circuit::is_satisfied());
+                    });
+                    Circuit::reset();
+                }
+            }
+        }
+
+        let mut rng = TestRng::default();
+
+        run_test(1, ITERATIONS, &mut rng);
+        run_test(2, ITERATIONS, &mut rng);
+        run_test(3, ITERATIONS, &mut rng);
+        run_test(4, ITERATIONS, &mut rng);
+        run_test(5, ITERATIONS, &mut rng);
+        run_test(6, ITERATIONS, &mut rng);
+        run_test(7, ITERATIONS, &mut rng);
+        run_test(8, ITERATIONS, &mut rng);
+        run_test(9, ITERATIONS, &mut rng);
+        run_test(10, ITERATIONS, &mut rng);
+        run_test(11, ITERATIONS, &mut rng);
+        run_test(12, ITERATIONS, &mut rng);
+        run_test(13, ITERATIONS, &mut rng);
+        run_test(14, ITERATIONS, &mut rng);
+        run_test(15, ITERATIONS, &mut rng);
+        run_test(16, ITERATIONS, &mut rng);
+        run_test(17, ITERATIONS, &mut rng);
+        run_test(32, ITERATIONS, &mut rng);
+        run_test(33, ITERATIONS, &mut rng);
+        run_test(64, ITERATIONS, &mut rng);
+        run_test(65, ITERATIONS, &mut rng);
+        run_test(128, ITERATIONS, &mut rng);
+        run_test(129, ITERATIONS, &mut rng);
+        run_test(256, ITERATIONS, &mut rng);
+        run_test(257, ITERATIONS, &mut rng);
+        run_test(512, ITERATIONS, &mut rng);
+        run_test(513, ITERATIONS, &mut rng);
+        run_test(1024, ITERATIONS, &mut rng);
+        run_test(1025, ITERATIONS, &mut rng);
+        run_test(2048, ITERATIONS, &mut rng);
+        run_test(2049, ITERATIONS, &mut rng);
+        run_test(4096, ITERATIONS, &mut rng);
+        run_test(4097, ITERATIONS, &mut rng);
+    }
 
     #[test]
     #[should_panic]
@@ -228,6 +321,7 @@ mod test {
                             ),
                         }
                     });
+                    Circuit::reset();
                 }
             }
         }
@@ -319,6 +413,7 @@ mod test {
                             ),
                         }
                     });
+                    Circuit::reset();
                 }
             }
         }
