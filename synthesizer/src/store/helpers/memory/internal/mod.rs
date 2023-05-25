@@ -183,15 +183,12 @@ impl<
     }
 
     ///
-    /// Initialize the checkpoint depth to zero. If the checkpoint depth is already set,
-    /// this call does nothing.
+    /// Initialize the checkpoint depth to zero.
     /// Each `atomic_checkpoint` will increment the checkpoint depth.
     /// Each `atomic_rewind` will decrement the checkpoint depth.
     ///
     fn start_checkpoint_milestone(&self) {
-        if self.checkpoint_depth.lock().is_none() {
-            *self.checkpoint_depth.lock() = Some(0);
-        }
+        *self.checkpoint_depth.lock() = Some(0);
     }
 
     ///
