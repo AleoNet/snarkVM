@@ -79,7 +79,7 @@ jobs:
           cargo bench --bench transaction --output-format bencher | tee -a ../output.txt
           cd ..
 
-      - name: Benchmark coinbase
+      - name: Benchmark synthesizer/coinbase
         run: |
           cd synthesizer/coinbase
           cargo bench --bench coinbase_puzzle --features "setup" -- --output-format bencher | tee -a ../../output.txt
