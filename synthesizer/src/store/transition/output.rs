@@ -104,6 +104,18 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.external_record_map().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.id_map().clear_latest_checkpoint();
+        self.reverse_id_map().clear_latest_checkpoint();
+        self.constant_map().clear_latest_checkpoint();
+        self.public_map().clear_latest_checkpoint();
+        self.private_map().clear_latest_checkpoint();
+        self.record_map().clear_latest_checkpoint();
+        self.record_nonce_map().clear_latest_checkpoint();
+        self.external_record_map().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.id_map().atomic_rewind();
@@ -114,30 +126,6 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
         self.record_map().atomic_rewind();
         self.record_nonce_map().atomic_rewind();
         self.external_record_map().atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    fn start_checkpoint_milestone(&self) {
-        self.id_map().start_checkpoint_milestone();
-        self.reverse_id_map().start_checkpoint_milestone();
-        self.constant_map().start_checkpoint_milestone();
-        self.public_map().start_checkpoint_milestone();
-        self.private_map().start_checkpoint_milestone();
-        self.record_map().start_checkpoint_milestone();
-        self.record_nonce_map().start_checkpoint_milestone();
-        self.external_record_map().start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    fn atomic_rewind_milestone(&self) {
-        self.id_map().atomic_rewind_milestone();
-        self.reverse_id_map().atomic_rewind_milestone();
-        self.constant_map().atomic_rewind_milestone();
-        self.public_map().atomic_rewind_milestone();
-        self.private_map().atomic_rewind_milestone();
-        self.record_map().atomic_rewind_milestone();
-        self.record_nonce_map().atomic_rewind_milestone();
-        self.external_record_map().atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.
@@ -374,19 +362,14 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
         self.storage.atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     pub fn atomic_rewind(&self) {
         self.storage.atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    pub fn start_checkpoint_milestone(&self) {
-        self.storage.start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    pub fn atomic_rewind_milestone(&self) {
-        self.storage.atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.

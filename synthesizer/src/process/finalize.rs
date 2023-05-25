@@ -40,7 +40,7 @@ impl<N: Network> Process<N> {
         let program_id = deployment.program_id();
 
         // Initialize the mappings, and store their finalize operations.
-        atomic_wrapped_batch_scope!(store, {
+        atomic_batch_scope!(store, {
             // Initialize a list for the finalize operations.
             let mut finalize_operations = Vec::with_capacity(deployment.program().mappings().len());
 
@@ -88,7 +88,7 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the number of transitions");
 
-        atomic_wrapped_batch_scope!(store, {
+        atomic_batch_scope!(store, {
             // Initialize a list for finalize operations.
             let mut finalize_operations = Vec::new();
 

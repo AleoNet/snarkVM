@@ -77,22 +77,16 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
         self.block_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.finalize_store().clear_latest_checkpoint();
+        self.block_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.finalize_store().atomic_rewind();
         self.block_store().atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    fn start_checkpoint_milestone(&self) {
-        self.finalize_store().start_checkpoint_milestone();
-        self.block_store().start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    fn atomic_rewind_milestone(&self) {
-        self.finalize_store().atomic_rewind_milestone();
-        self.block_store().atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.
@@ -166,19 +160,14 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
         self.storage.atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     pub fn atomic_rewind(&self) {
         self.storage.atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    pub fn start_checkpoint_milestone(&self) {
-        self.storage.start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    pub fn atomic_rewind_milestone(&self) {
-        self.storage.atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.

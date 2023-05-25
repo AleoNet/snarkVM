@@ -75,25 +75,18 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
         self.transition_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.fee_map().clear_latest_checkpoint();
+        self.reverse_fee_map().clear_latest_checkpoint();
+        self.transition_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.fee_map().atomic_rewind();
         self.reverse_fee_map().atomic_rewind();
         self.transition_store().atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    fn start_checkpoint_milestone(&self) {
-        self.fee_map().start_checkpoint_milestone();
-        self.reverse_fee_map().start_checkpoint_milestone();
-        self.transition_store().start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    fn atomic_rewind_milestone(&self) {
-        self.fee_map().atomic_rewind_milestone();
-        self.reverse_fee_map().atomic_rewind_milestone();
-        self.transition_store().atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.
@@ -227,19 +220,14 @@ impl<N: Network, F: FeeStorage<N>> FeeStore<N, F> {
         self.storage.atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     pub fn atomic_rewind(&self) {
         self.storage.atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    pub fn start_checkpoint_milestone(&self) {
-        self.storage.start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    pub fn atomic_rewind_milestone(&self) {
-        self.storage.atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.

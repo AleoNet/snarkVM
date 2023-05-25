@@ -30,8 +30,6 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
     pub(super) atomic_batch: Arc<Mutex<Vec<(K, Option<V>)>>>,
     /// The checkpoint for the atomic batch.
     pub(super) checkpoint: Arc<Mutex<VecDeque<usize>>>,
-    /// The checkpoint depth since the last milestone.
-    pub(super) checkpoint_depth: Arc<Mutex<Option<usize>>>,
 }
 
 impl<
@@ -110,12 +108,14 @@ impl<
     fn atomic_checkpoint(&self) {
         // Push the current length of the atomic batch to the checkpoint stack.
         self.checkpoint.lock().push_back(self.atomic_batch.lock().len());
+    }
 
-        // Increment the checkpoint depth, if it is set.
-        let mut checkpoint_depth = self.checkpoint_depth.lock();
-        if let Some(depth) = *checkpoint_depth {
-            *checkpoint_depth = Some(depth.saturating_add(1));
-        }
+    ///
+    /// Removes the latest atomic checkpoint.
+    ///
+    fn clear_latest_checkpoint(&self) {
+        // Removes the latest checkpoint.
+        let _ = self.checkpoint.lock().pop_back();
     }
 
     ///
@@ -131,38 +131,6 @@ impl<
 
         // Remove all operations after the checkpoint.
         atomic_batch.truncate(checkpoint);
-
-        // Decrement the checkpoint depth, if it is set.
-        let mut checkpoint_depth = self.checkpoint_depth.lock();
-        if let Some(depth) = *checkpoint_depth {
-            // Decrement the checkpoint depth, if it is greater than zero.
-            if depth > 0 {
-                *checkpoint_depth = Some(depth.saturating_sub(1));
-            }
-        }
-    }
-
-    ///
-    /// Initialize the checkpoint depth to zero.
-    /// Each `atomic_checkpoint` will increment the checkpoint depth.
-    /// Each `atomic_rewind` will decrement the checkpoint depth.
-    ///
-    fn start_checkpoint_milestone(&self) {
-        *self.checkpoint_depth.lock() = Some(0);
-    }
-
-    ///
-    /// Removes pending operations by calling `atomic_rewind`
-    /// until the map returns to the start of the milestone.
-    ///
-    fn atomic_rewind_milestone(&self) {
-        // Rewind the atomic batch until the checkpoint depth is zero.
-        while self.checkpoint_depth.lock().unwrap_or(0) > 0 {
-            self.atomic_rewind();
-        }
-
-        // Set the checkpoint depth to None.
-        *self.checkpoint_depth.lock() = Default::default();
     }
 
     ///
@@ -173,8 +141,6 @@ impl<
         *self.atomic_batch.lock() = Default::default();
         // Clear the checkpoint stack.
         *self.checkpoint.lock() = Default::default();
-        // Clear the checkpoint depth.
-        *self.checkpoint_depth.lock() = Default::default();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
     }
@@ -222,8 +188,6 @@ impl<
 
         // Clear the checkpoint stack.
         *self.checkpoint.lock() = Default::default();
-        // Clear the checkpoint depth.
-        *self.checkpoint_depth.lock() = Default::default();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
 
@@ -382,7 +346,6 @@ mod tests {
     use crate::{
         atomic_batch_scope,
         atomic_finalize,
-        atomic_wrapped_batch_scope,
         store::helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap},
         FinalizeMode,
     };
@@ -1067,7 +1030,7 @@ mod tests {
     }
 
     #[test]
-    fn test_atomic_wrapped_batch_scope() -> Result<()> {
+    fn test_atomic_finalize_with_nested_batch_scope() -> Result<()> {
         // Initialize a map.
         let map: DataMap<usize, String> =
             RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
@@ -1083,7 +1046,7 @@ mod tests {
         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
             // Create an atomic batch scope that will complete correctly.
             // Simulates an accepted transaction.
-            let result: Result<()> = atomic_wrapped_batch_scope!(map, {
+            let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 0.
                 assert_eq!(map.checkpoint.lock().back(), Some(&0));
 
@@ -1104,7 +1067,7 @@ mod tests {
 
             // Create a failing atomic batch scope that will reset the checkpoint.
             // Simulates a rejected transaction.
-            let result: Result<()> = atomic_wrapped_batch_scope!(map, {
+            let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 1.
                 assert_eq!(map.checkpoint.lock().back(), Some(&1));
 

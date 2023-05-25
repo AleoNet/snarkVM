@@ -87,28 +87,20 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         self.fee_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.id_map().clear_latest_checkpoint();
+        self.reverse_id_map().clear_latest_checkpoint();
+        self.inclusion_map().clear_latest_checkpoint();
+        self.fee_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.id_map().atomic_rewind();
         self.reverse_id_map().atomic_rewind();
         self.inclusion_map().atomic_rewind();
         self.fee_store().atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    fn start_checkpoint_milestone(&self) {
-        self.id_map().start_checkpoint_milestone();
-        self.reverse_id_map().start_checkpoint_milestone();
-        self.inclusion_map().start_checkpoint_milestone();
-        self.fee_store().start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    fn atomic_rewind_milestone(&self) {
-        self.id_map().atomic_rewind_milestone();
-        self.reverse_id_map().atomic_rewind_milestone();
-        self.inclusion_map().atomic_rewind_milestone();
-        self.fee_store().atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.
@@ -343,14 +335,9 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
         self.storage.atomic_checkpoint();
     }
 
-    /// Starts the checkpoint milestone.
-    pub fn start_checkpoint_milestone(&self) {
-        self.storage.start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    pub fn atomic_rewind_milestone(&self) {
-        self.storage.atomic_rewind_milestone();
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

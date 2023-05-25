@@ -123,6 +123,19 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tcm_map().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.locator_map().clear_latest_checkpoint();
+        self.input_store().clear_latest_checkpoint();
+        self.output_store().clear_latest_checkpoint();
+        self.finalize_map().clear_latest_checkpoint();
+        self.proof_map().clear_latest_checkpoint();
+        self.tpk_map().clear_latest_checkpoint();
+        self.reverse_tpk_map().clear_latest_checkpoint();
+        self.tcm_map().clear_latest_checkpoint();
+        self.reverse_tcm_map().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.locator_map().atomic_rewind();
@@ -134,32 +147,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tpk_map().atomic_rewind();
         self.tcm_map().atomic_rewind();
         self.reverse_tcm_map().atomic_rewind();
-    }
-
-    /// Starts the checkpoint milestone.
-    fn start_checkpoint_milestone(&self) {
-        self.locator_map().start_checkpoint_milestone();
-        self.input_store().start_checkpoint_milestone();
-        self.output_store().start_checkpoint_milestone();
-        self.finalize_map().start_checkpoint_milestone();
-        self.proof_map().start_checkpoint_milestone();
-        self.tpk_map().start_checkpoint_milestone();
-        self.reverse_tpk_map().start_checkpoint_milestone();
-        self.tcm_map().start_checkpoint_milestone();
-        self.reverse_tcm_map().start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    fn atomic_rewind_milestone(&self) {
-        self.locator_map().atomic_rewind_milestone();
-        self.input_store().atomic_rewind_milestone();
-        self.output_store().atomic_rewind_milestone();
-        self.finalize_map().atomic_rewind_milestone();
-        self.proof_map().atomic_rewind_milestone();
-        self.tpk_map().atomic_rewind_milestone();
-        self.reverse_tpk_map().atomic_rewind_milestone();
-        self.tcm_map().atomic_rewind_milestone();
-        self.reverse_tcm_map().atomic_rewind_milestone();
     }
 
     /// Aborts an atomic batch write operation.
@@ -383,14 +370,9 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.storage.atomic_checkpoint();
     }
 
-    /// Starts the checkpoint milestone.
-    pub fn start_checkpoint_milestone(&self) {
-        self.storage.start_checkpoint_milestone();
-    }
-
-    /// Rewinds the atomic batch to the checkpoint milestone.
-    pub fn atomic_rewind_milestone(&self) {
-        self.storage.atomic_rewind_milestone();
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
