@@ -770,7 +770,7 @@ mod tests {
     }
 
     #[test]
-    fn test_atomic_finalize_a() -> Result<()> {
+    fn test_atomic_finalize() -> Result<()> {
         // The number of items that will be queued to be inserted into the map.
         const NUM_ITEMS: usize = 10;
 
