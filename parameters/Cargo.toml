@@ -33,7 +33,7 @@ path = "../utilities"
 version = "=0.11.2"
 
 
-[dependencies.aleo-std-storage]
+[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.aleo-std-storage]
 version = "0.1.3"
 default-features = false
 
@@ -124,5 +124,6 @@ version = "0.8"
 [features]
 default = [ "no_std_out", "remote", "curl"]
 no_std_out = [ ]
-remote = [ "curl" ]
+# remote = [ "curl" ] # :TODO Curl cant be used in sgx, a solution is needed here
+remote = []
 wasm = [ "encoding", "js-sys", "web-sys" ]
