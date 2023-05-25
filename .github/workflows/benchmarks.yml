@@ -5,11 +5,9 @@ on:
     types: [opened, synchronize]
     branches:
       - 'testnet3'
-      - 'testnet3.3'
   push:
     branches:
       - 'testnet3'
-      - 'testnet3.3'
 
 jobs:
   # Run benchmarks and stores the output to a file
