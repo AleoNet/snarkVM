@@ -160,8 +160,6 @@ impl<
     ///
     fn atomic_rewind_milestone(&self) {
         // Rewind the atomic batch until the checkpoint depth is zero.
-        let x = self.checkpoint_depth.lock().unwrap_or(0);
-        println!("CHECKPOINT DEPTH: {:?}-------------------------------------------------------------", x);
         while self.checkpoint_depth.lock().unwrap_or(0) > 0 {
             self.atomic_rewind();
         }
