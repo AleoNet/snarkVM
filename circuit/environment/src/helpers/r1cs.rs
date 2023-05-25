@@ -29,7 +29,7 @@ pub struct R1CS<F: PrimeField> {
     private: Vec<Variable<F>>,
     constraints: Vec<Constraint<F>>,
     counter: Counter<F>,
-    gates: u64,
+    nonzeros: (u64, u64, u64),
 }
 
 impl<F: PrimeField> R1CS<F> {
@@ -41,7 +41,7 @@ impl<F: PrimeField> R1CS<F> {
             private: Default::default(),
             constraints: Default::default(),
             counter: Default::default(),
-            gates: 0,
+            nonzeros: (0, 0, 0),
         }
     }
 
@@ -81,7 +81,11 @@ impl<F: PrimeField> R1CS<F> {
 
     /// Adds one constraint enforcing that `(A * B) == C`.
     pub(crate) fn enforce(&mut self, constraint: Constraint<F>) {
-        self.gates += constraint.num_gates();
+        let (a_nonzeros, b_nonzeros, c_nonzeros) = constraint.num_nonzeros();
+        self.nonzeros.0 += a_nonzeros;
+        self.nonzeros.1 += b_nonzeros;
+        self.nonzeros.2 += c_nonzeros;
+
         self.constraints.push(constraint.clone());
         self.counter.add_constraint(constraint);
     }
@@ -121,9 +125,9 @@ impl<F: PrimeField> R1CS<F> {
         self.constraints.len() as u64
     }
 
-    /// Returns the number of gates in the constraint system.
-    pub(crate) fn num_gates(&self) -> u64 {
-        self.gates
+    /// Returns the number of nonzeros in the constraint system.
+    pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
+        self.nonzeros
     }
 
     /// Returns the number of constants for the current scope.
@@ -146,9 +150,9 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.num_constraints_in_scope()
     }
 
-    /// Returns the number of gates for the current scope.
-    pub(crate) fn num_gates_in_scope(&self) -> u64 {
-        self.counter.num_gates_in_scope()
+    /// Returns the number of nonzeros for the current scope.
+    pub(crate) fn num_nonzeros_in_scope(&self) -> (u64, u64, u64) {
+        self.counter.num_nonzeros_in_scope()
     }
 
     /// Returns the public variables in the constraint system.

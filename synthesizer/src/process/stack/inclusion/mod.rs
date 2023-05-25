@@ -166,7 +166,7 @@ impl<N: Network> InclusionAssignment<N> {
         use circuit::Inject;
 
         // Ensure the circuit environment is clean.
-        assert_eq!(A::count(), (0, 1, 0, 0, 0));
+        assert_eq!(A::count(), (0, 1, 0, 0, (0, 0, 0)));
         A::reset();
 
         // Inject the state path as `Mode::Private` (with a global state root as `Mode::Public`).
