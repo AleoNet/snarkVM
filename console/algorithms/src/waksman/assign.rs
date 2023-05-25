@@ -235,8 +235,8 @@ mod test {
 
     // A helper function to test that selectors are computed correctly.
     fn test_selectors(permutation: &[usize], expected_selectors: &[bool]) {
-        let waksman = ASWaksman::<CurrentEnvironment>::new(permutation.len());
-        let selectors = waksman.assign_selectors(permutation);
+        let network = ASWaksman::<CurrentEnvironment>::new(permutation.len());
+        let selectors = network.assign_selectors(permutation);
         assert_eq!(&selectors.into_iter().map(|b| *b).collect_vec(), expected_selectors);
     }
 

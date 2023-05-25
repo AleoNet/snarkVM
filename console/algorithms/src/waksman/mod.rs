@@ -213,17 +213,17 @@ mod test {
                 // Sample a random sequence of inputs.
                 let inputs: Vec<Field<CurrentEnvironment>> = iter::repeat_with(|| Uniform::rand(rng)).take(n).collect();
                 // Instantiate the Waksman network.
-                let waskman = ASWaksman::<CurrentEnvironment>::new(n);
+                let network = ASWaksman::<CurrentEnvironment>::new(n);
                 // Compute the selectors.
-                let selectors = waskman.assign_selectors(&permutation);
-                assert_eq!(selectors.len(), waskman.num_selectors());
+                let selectors = network.assign_selectors(&permutation);
+                assert_eq!(selectors.len(), network.num_selectors());
                 // Apply the permutation to the inputs.
                 let mut expected_outputs = Vec::with_capacity(n);
                 for i in 0..inputs.len() {
                     expected_outputs.push(inputs[inverse_permutation[i]]);
                 }
                 // Run the Waksman network.
-                let actual_outputs = waskman.run(&inputs, &selectors);
+                let actual_outputs = network.run(&inputs, &selectors);
                 // Check that the outputs are correct.
                 assert_eq!(
                     actual_outputs,
