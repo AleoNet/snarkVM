@@ -44,7 +44,7 @@ path = "../../curves"
 default-features = false
 
 [dev-dependencies.criterion]
-version = "0.5.0"
+version = "0.5.1"
 
 [dev-dependencies.expect-test]
 version = "1.4"

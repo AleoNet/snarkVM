@@ -98,7 +98,7 @@ path = "../../console"
 features = [ "test" ]
 
 [dev-dependencies.criterion]
-version = "0.5.0"
+version = "0.5.1"
 
 [dev-dependencies.rand]
 version = "0.8"

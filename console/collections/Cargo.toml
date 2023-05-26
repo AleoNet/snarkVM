@@ -32,7 +32,7 @@ version = "1"
 path = "../network"
 
 [dev-dependencies.criterion]
-version = "0.5.0"
+version = "0.5.1"
 
 [dev-dependencies.indexmap]
 version = "1.9.2"
