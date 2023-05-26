@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use console::types::Group;
 
 impl<N: Network> Parser for Operand<N> {
     /// Parses a string into a operand.
