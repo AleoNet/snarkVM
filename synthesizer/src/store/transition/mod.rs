@@ -123,6 +123,19 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.reverse_tcm_map().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.locator_map().clear_latest_checkpoint();
+        self.input_store().clear_latest_checkpoint();
+        self.output_store().clear_latest_checkpoint();
+        self.finalize_map().clear_latest_checkpoint();
+        self.proof_map().clear_latest_checkpoint();
+        self.tpk_map().clear_latest_checkpoint();
+        self.reverse_tpk_map().clear_latest_checkpoint();
+        self.tcm_map().clear_latest_checkpoint();
+        self.reverse_tcm_map().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.locator_map().atomic_rewind();
@@ -355,6 +368,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

@@ -225,6 +225,21 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.signature_map().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.state_root_map().clear_latest_checkpoint();
+        self.reverse_state_root_map().clear_latest_checkpoint();
+        self.id_map().clear_latest_checkpoint();
+        self.reverse_id_map().clear_latest_checkpoint();
+        self.header_map().clear_latest_checkpoint();
+        self.transactions_map().clear_latest_checkpoint();
+        self.confirmed_transactions_map().clear_latest_checkpoint();
+        self.transaction_store().clear_latest_checkpoint();
+        self.coinbase_solution_map().clear_latest_checkpoint();
+        self.coinbase_puzzle_commitment_map().clear_latest_checkpoint();
+        self.signature_map().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.state_root_map().atomic_rewind();
@@ -759,6 +774,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

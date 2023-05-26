@@ -112,6 +112,14 @@ pub trait TransactionStorage<N: Network>: Clone + Send + Sync {
         self.fee_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.id_map().clear_latest_checkpoint();
+        self.deployment_store().clear_latest_checkpoint();
+        self.execution_store().clear_latest_checkpoint();
+        self.fee_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.id_map().atomic_rewind();
@@ -273,6 +281,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
