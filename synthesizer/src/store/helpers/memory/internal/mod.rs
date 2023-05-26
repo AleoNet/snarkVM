@@ -908,7 +908,7 @@ mod tests {
 
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
-            // The pending batch should contain NUM_ITEMS items.
+            // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
             assert_eq!(map.checkpoint.lock().last(), None);
@@ -991,7 +991,7 @@ mod tests {
 
             // Ensure that the batch scope failed.
             assert!(result.is_err());
-            // The map should still contain no items.
+            // The map should contain 1 item.
             assert_eq!(map.iter_confirmed().count(), 1);
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
@@ -1043,7 +1043,7 @@ mod tests {
 
             // The atomic finalize should have succeeded.
             assert!(result.is_ok());
-            // The map should still contain no items.
+            // The map should contain 1 item.
             assert_eq!(map.iter_confirmed().count(), 1);
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
@@ -1082,7 +1082,7 @@ mod tests {
 
             // Ensure that the batch scope failed.
             assert!(result.is_err());
-            // The map should still contain no items.
+            // The map should contain 1 item.
             assert_eq!(map.iter_confirmed().count(), 1);
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
