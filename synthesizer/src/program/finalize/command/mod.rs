@@ -56,6 +56,9 @@ pub enum Command<N: Network> {
     Remove(Remove<N>),
     /// Sets the value stored at the `key` operand in the `mapping` to `value`.
     Set(Set<N>),
+    // TODO: Should this be in alphabetical order (though it breaks serialization)?
+    /// Indicates a position to which the program can branch to.
+    Position(Position<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -82,6 +85,8 @@ impl<N: Network> Command<N> {
             Command::Remove(remove) => remove.finalize(stack, store, registers).map(Some),
             // Finalize the 'set' command, and return the finalize operation.
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
+            // Finalize the `position` command, and return no finalize operation.
+            Command::Position(position) => position.finalize().map(|_| None),
         }
     }
 }
@@ -106,8 +111,10 @@ impl<N: Network> FromBytes for Command<N> {
             5 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
             // Read the `set` operation.
             6 => Ok(Self::Set(Set::read_le(&mut reader)?)),
+            // Read the `position` command.
+            7 => Ok(Self::Position(Position::read_le(&mut reader)?)),
             // Invalid variant.
-            7.. => Err(error(format!("Invalid command variant: {variant}"))),
+            8.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -158,6 +165,12 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the set.
                 set.write_le(&mut writer)
             }
+            Self::Position(position) => {
+                // Write the variant.
+                4u8.write_le(&mut writer)?;
+                // Write the position command.
+                position.write_le(&mut writer)
+            }
         }
     }
 }
@@ -175,6 +188,7 @@ impl<N: Network> Parser for Command<N> {
             map(RandChaCha::parse, |rand_chacha| Self::RandChaCha(rand_chacha)),
             map(Remove::parse, |remove| Self::Remove(remove)),
             map(Set::parse, |set| Self::Set(set)),
+            map(Position::parse, |position| Self::Position(position)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -216,6 +230,7 @@ impl<N: Network> Display for Command<N> {
             Self::RandChaCha(rand_chacha) => Display::fmt(rand_chacha, f),
             Self::Remove(remove) => Display::fmt(remove, f),
             Self::Set(set) => Display::fmt(set, f),
+            Self::Position(position) => Display::fmt(position, f),
         }
     }
 }
@@ -284,6 +299,12 @@ mod tests {
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Position
+        let expected = "position exit;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
     }
 
     #[test]
@@ -342,6 +363,12 @@ mod tests {
         let expected = "set r0 into object[r1];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Set(Set::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Position
+        let expected = "position exit;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }

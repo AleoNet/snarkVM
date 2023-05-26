@@ -141,6 +141,8 @@ impl<N: Network> FinalizeTypes<N> {
             Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize_name, rand_chacha)?,
             Command::Set(set) => self.check_set(stack, finalize_name, set)?,
             Command::Remove(remove) => self.check_remove(stack, finalize_name, remove)?,
+            // Note that the label in a `Position` command is checked to be unique, when constructing a `Finalize`.
+            Command::Position(_) => (),
         }
         Ok(())
     }

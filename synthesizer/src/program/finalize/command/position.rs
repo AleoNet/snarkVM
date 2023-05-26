@@ -16,7 +16,7 @@ use crate::Opcode;
 use console::{network::prelude::*, program::Identifier};
 
 /// A position command, e.g. `position exit`.
-/// Indicates a point to which the program can branch to.
+/// Indicates a position to which the program can branch to.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Position<N: Network> {
     /// The label to reference when branching to this position.

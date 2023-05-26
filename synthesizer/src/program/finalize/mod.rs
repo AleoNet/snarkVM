@@ -27,7 +27,7 @@ use console::{
     program::{Identifier, LiteralType, PlaintextType, Register, RegisterType},
 };
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Finalize<N: Network> {
@@ -40,12 +40,14 @@ pub struct Finalize<N: Network> {
     commands: Vec<Command<N>>,
     /// The number of write commands.
     num_writes: u16,
+    /// A mapping from labels defined in `Position` commands to their index in `commands`.
+    label_indices: IndexMap<Identifier<N>, usize>,
 }
 
 impl<N: Network> Finalize<N> {
     /// Initializes a new finalize with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), commands: Vec::new(), num_writes: 0 }
+        Self { name, inputs: IndexSet::new(), commands: Vec::new(), num_writes: 0, label_indices: IndexMap::new() }
     }
 
     /// Returns the name of the associated function.
@@ -159,6 +161,7 @@ impl<N: Network> Finalize<N> {
             Command::RandChaCha(_) => Ok(500_000),
             Command::Remove(_) => Ok(10_000),
             Command::Set(_) => Ok(1_000_000),
+            Command::Position(_) => Ok(1_000),
         };
         self.commands.iter().map(|command| cost(command)).sum()
     }
@@ -249,6 +252,15 @@ impl<N: Network> Finalize<N> {
             Command::Set(_) => {
                 // Increment the number of write commands.
                 self.num_writes += 1;
+            }
+            Command::Position(position) => {
+                // Ensure that the label is not already defined.
+                ensure!(
+                    self.label_indices.get(position.label()).is_none(),
+                    format!(" The label `{}` is not unique.", position.label())
+                );
+                // Add the label to mapping of labels to their index in `self.commands`.
+                self.label_indices.insert(*position.label(), self.commands.len());
             }
         }
 
