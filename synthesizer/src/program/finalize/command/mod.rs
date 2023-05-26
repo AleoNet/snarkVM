@@ -21,6 +21,9 @@ pub use get::*;
 mod get_or_init;
 pub use get_or_init::*;
 
+mod position;
+pub use position::*;
+
 mod set;
 pub use set::*;
 
