@@ -20,9 +20,12 @@ impl<N: Network> Parser for Operand<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the operand (order matters).
         alt((
+            // Parse special operands before literals, registers, and program IDs.
+            // This ensures correctness in the case where a special operand is a prefix of, or could be parsed as, a literal, register, or program ID.
+            map(tag("group::GEN"), |_| Self::Literal(Literal::Group(Group::generator()))),
+            map(tag("self.caller"), |_| Self::Caller),
             map(Literal::parse, |literal| Self::Literal(literal)),
             map(Register::parse, |register| Self::Register(register)),
-            map(tag("self.caller"), |_| Self::Caller),
             map(ProgramID::parse, |program_id| Self::ProgramID(program_id)),
         ))(string)
     }
@@ -93,6 +96,9 @@ mod tests {
         let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
         assert_eq!(Operand::Caller, operand);
 
+        let operand = Operand::<CurrentNetwork>::parse("group::GEN").unwrap().1;
+        assert_eq!(Operand::Literal(Literal::Group(Group::generator())), operand);
+
         // Sanity check a failure case.
         let (remainder, operand) = Operand::<CurrentNetwork>::parse("1field.private").unwrap();
         assert_eq!(Operand::Literal(Literal::from_str("1field")?), operand);
@@ -117,6 +123,12 @@ mod tests {
 
         let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
         assert_eq!(format!("{operand}"), "self.caller");
+
+        let operand = Operand::<CurrentNetwork>::parse("group::GEN").unwrap().1;
+        assert_eq!(
+            format!("{operand}"),
+            "1540945439182663264862696551825005342995406165131907382295858612069623286213group"
+        );
     }
 
     #[test]
