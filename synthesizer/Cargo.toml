@@ -34,7 +34,7 @@ path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ "coinbase", "snark", "request" ]
+default = [ "coinbase", "snark", "request", "aleo-std/storage" ]
 
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
@@ -102,7 +102,7 @@ path = "../utilities"
 version = "=0.11.2"
 default-features = false
 
-[target."cfg(not(target_vendor = \"fortanix\"))".dependencies.aleo-std]
+[dependencies.aleo-std]
 version = "0.1.18"
 features = ["storage"]
 default-features = false
@@ -145,9 +145,9 @@ version = "1"
 # optional = true
 
 [target."cfg(not(target_vendor = \"fortanix\"))".dependencies.reqwest]
-version = "0.11.18"
+version = "0.11"
 default-features = false
-features = [ "json" ]
+features = [ "blocking", "json" ]
 optional = true
 
 [dependencies.rocksdb]
