@@ -41,6 +41,9 @@ pub enum Command<N: Network> {
     GetOrInit(GetOrInit<N>),
     /// Sets the value stored at the `key` operand in the `mapping` to `value`.
     Set(Set<N>),
+    // TODO: Should this be in alphabetical order (though it breaks serialization)?
+    /// Indicates a position to which the program can branch to.
+    Position(Position<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -61,6 +64,8 @@ impl<N: Network> Command<N> {
             Command::GetOrInit(get_or_init) => get_or_init.finalize(stack, store, registers),
             // Finalize the 'set' command, and return the finalize operation.
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
+            // Finalize the `position` command, and return no finalize operation.
+            Command::Position(position) => position.finalize().map(|_| None),
         }
     }
 }
@@ -79,8 +84,10 @@ impl<N: Network> FromBytes for Command<N> {
             2 => Ok(Self::GetOrInit(GetOrInit::read_le(&mut reader)?)),
             // Read the `set` operation.
             3 => Ok(Self::Set(Set::read_le(&mut reader)?)),
+            // Read the `position` command.
+            4 => Ok(Self::Position(Position::read_le(&mut reader)?)),
             // Invalid variant.
-            4.. => Err(error(format!("Invalid command variant: {variant}"))),
+            5.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -113,6 +120,12 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the set.
                 set.write_le(&mut writer)
             }
+            Self::Position(position) => {
+                // Write the variant.
+                4u8.write_le(&mut writer)?;
+                // Write the position command.
+                position.write_le(&mut writer)
+            }
         }
     }
 }
@@ -127,6 +140,7 @@ impl<N: Network> Parser for Command<N> {
             map(GetOrInit::parse, |get_or_init| Self::GetOrInit(get_or_init)),
             map(Get::parse, |get| Self::Get(get)),
             map(Set::parse, |set| Self::Set(set)),
+            map(Position::parse, |position| Self::Position(position)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -165,6 +179,7 @@ impl<N: Network> Display for Command<N> {
             Self::Get(get) => Display::fmt(get, f),
             Self::GetOrInit(get_or_init) => Display::fmt(get_or_init, f),
             Self::Set(set) => Display::fmt(set, f),
+            Self::Position(position) => Display::fmt(position, f),
         }
     }
 }
@@ -209,6 +224,12 @@ mod tests {
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Position
+        let expected = "position exit;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
     }
 
     #[test]
@@ -243,6 +264,12 @@ mod tests {
         let expected = "set r0 into object[r1];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Set(Set::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Position
+        let expected = "position exit;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }
