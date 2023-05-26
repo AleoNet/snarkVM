@@ -20,7 +20,7 @@ use core::{borrow::Borrow, hash::Hash};
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,
-    collections::{btree_map, BTreeMap, VecDeque},
+    collections::{btree_map, BTreeMap},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -38,7 +38,7 @@ pub struct MemoryMap<
     map: Arc<RwLock<BTreeMap<Vec<u8>, V>>>,
     batch_in_progress: Arc<AtomicBool>,
     atomic_batch: Arc<Mutex<Vec<(K, Option<V>)>>>,
-    checkpoint: Arc<Mutex<VecDeque<usize>>>,
+    checkpoint: Arc<Mutex<Vec<usize>>>,
 }
 
 impl<
@@ -146,7 +146,7 @@ impl<
     ///
     fn atomic_checkpoint(&self) {
         // Push the current length of the atomic batch to the checkpoint stack.
-        self.checkpoint.lock().push_back(self.atomic_batch.lock().len());
+        self.checkpoint.lock().push(self.atomic_batch.lock().len());
     }
 
     ///
@@ -154,7 +154,7 @@ impl<
     ///
     fn clear_latest_checkpoint(&self) {
         // Removes the latest checkpoint.
-        let _ = self.checkpoint.lock().pop_back();
+        let _ = self.checkpoint.lock().pop();
     }
 
     ///
@@ -166,7 +166,7 @@ impl<
         let mut atomic_batch = self.atomic_batch.lock();
 
         // Retrieve the last checkpoint.
-        let checkpoint = self.checkpoint.lock().pop_back().unwrap_or(0);
+        let checkpoint = self.checkpoint.lock().pop().unwrap_or(0);
 
         // Remove all operations after the checkpoint.
         atomic_batch.truncate(checkpoint);
@@ -594,7 +594,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Start an atomic write batch.
         map.start_atomic();
@@ -609,7 +609,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
         }
 
         // Run the same sequence of checks 3 times.
@@ -617,7 +617,7 @@ mod tests {
             // Perform a checkpoint.
             map.atomic_checkpoint();
             // Make sure the checkpoint index is NUM_ITEMS / 2.
-            assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+            assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
 
             {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
@@ -629,13 +629,13 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
             }
 
             // Abort the current atomic write batch.
             map.atomic_rewind();
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
 
             {
                 // The map should still contain no items.
@@ -643,7 +643,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is None.
-                assert_eq!(map.checkpoint.lock().back(), None);
+                assert_eq!(map.checkpoint.lock().last(), None);
             }
         }
 
@@ -654,7 +654,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
     }
 
     #[test]
@@ -667,7 +667,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Start a nested atomic batch scope that completes successfully.
         atomic_batch_scope!(map, {
@@ -680,7 +680,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
 
             // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
@@ -693,7 +693,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
             })?;
@@ -703,7 +703,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
 
             Ok(())
         })?;
@@ -713,7 +713,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         Ok(())
     }
@@ -728,7 +728,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Start an atomic write batch.
         let run_nested_atomic_batch_scope = || -> Result<()> {
@@ -743,7 +743,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is None.
-                assert_eq!(map.checkpoint.lock().back(), None);
+                assert_eq!(map.checkpoint.lock().last(), None);
 
                 // Start a nested atomic write batch that completes correctly.
                 atomic_batch_scope!(map, {
@@ -756,7 +756,7 @@ mod tests {
                     // The pending batch should contain NUM_ITEMS items.
                     assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                     // Make sure the checkpoint index is NUM_ITEMS / 2.
-                    assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+                    assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                     bail!("This batch should fail.");
                 })?;
@@ -781,7 +781,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
@@ -796,7 +796,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is 0.
-                assert_eq!(map.checkpoint.lock().back(), Some(&0));
+                assert_eq!(map.checkpoint.lock().last(), Some(&0));
 
                 Ok(())
             })
@@ -807,7 +807,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
 
             // Start a nested atomic write batch that completes correctly.
             atomic_batch_scope!(map, {
@@ -820,7 +820,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
             })
@@ -831,7 +831,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
 
             Ok((true, 0, "a"))
         });
@@ -844,7 +844,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         Ok(())
     }
@@ -859,7 +859,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
@@ -874,7 +874,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is 0.
-                assert_eq!(map.checkpoint.lock().back(), Some(&0));
+                assert_eq!(map.checkpoint.lock().last(), Some(&0));
 
                 Ok(())
             })
@@ -885,7 +885,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
 
             // Start a nested atomic write batch that fails.
             let result: Result<()> = atomic_batch_scope!(map, {
@@ -898,7 +898,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().back(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                 bail!("This batch scope should fail.");
             });
@@ -911,7 +911,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().back(), None);
+            assert_eq!(map.checkpoint.lock().last(), None);
 
             Ok(())
         });
@@ -924,7 +924,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         Ok(())
     }
@@ -936,7 +936,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Construct an atomic batch scope.
         let outcome: Result<()> = atomic_batch_scope!(map, {
@@ -968,7 +968,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Insert the key.
         map.insert(0, "0".to_string()).unwrap();
@@ -981,7 +981,7 @@ mod tests {
             // Create a failing atomic batch scope that will reset the checkpoint.
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 1.
-                assert_eq!(map.checkpoint.lock().back(), Some(&1));
+                assert_eq!(map.checkpoint.lock().last(), Some(&1));
 
                 // Update the key.
                 map.insert(0, "2".to_string()).unwrap();
@@ -1009,7 +1009,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Ensure that the map value is correct.
         assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
@@ -1022,7 +1022,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Insert the key.
         map.insert(0, "0".to_string()).unwrap();
@@ -1033,7 +1033,7 @@ mod tests {
             // Simulates an accepted transaction.
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 0.
-                assert_eq!(map.checkpoint.lock().back(), Some(&0));
+                assert_eq!(map.checkpoint.lock().last(), Some(&0));
 
                 // Insert the key.
                 map.insert(0, "1".to_string()).unwrap();
@@ -1054,7 +1054,7 @@ mod tests {
             // Simulates a rejected transaction.
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 1.
-                assert_eq!(map.checkpoint.lock().back(), Some(&1));
+                assert_eq!(map.checkpoint.lock().last(), Some(&1));
 
                 // Simulate an instruction
                 let result: Result<()> = atomic_batch_scope!(map, {
@@ -1068,7 +1068,7 @@ mod tests {
                 // Simulates an instruction that fails.
                 let result: Result<()> = atomic_batch_scope!(map, {
                     // Make sure the checkpoint index is 2.
-                    assert_eq!(map.checkpoint.lock().back(), Some(&2));
+                    assert_eq!(map.checkpoint.lock().last(), Some(&2));
 
                     // Update the key.
                     map.insert(0, "3".to_string()).unwrap();
@@ -1098,7 +1098,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().back(), None);
+        assert_eq!(map.checkpoint.lock().last(), None);
 
         // Ensure that the map value is correct.
         assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
