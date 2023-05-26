@@ -30,6 +30,9 @@ pub use crate::program::finalize::command::rand_chacha::*;
 mod remove;
 pub use remove::*;
 
+mod position;
+pub use position::*;
+
 mod set;
 pub use set::*;
 
