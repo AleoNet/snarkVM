@@ -47,8 +47,8 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
             let mul_var = cs.alloc_input(
                 || format!("mul_var {i}"),
                 || {
-                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
-                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+                    let mut a = self.a.unwrap();
+                    let b = self.b.unwrap();
 
                     for _ in 0..(1 + i) {
                         a.mul_assign(&b);
@@ -60,7 +60,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
         }
 
         for i in 0..(self.num_variables - 2 - self.mul_depth) {
-            let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            let _ = cs.alloc(|| format!("var {i}"), || Ok(self.a.unwrap()))?;
         }
 
         let mul_constraints = self.mul_depth - 1;
