@@ -20,10 +20,8 @@ pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
 #[derive(Debug, Parser)]
 pub struct Run {
     /// The function name.
-    #[clap(long)]
     function: Identifier<CurrentNetwork>,
     /// The function inputs.
-    #[clap(long)]
     inputs: Vec<Value<CurrentNetwork>>,
     /// Uses the specified endpoint.
     #[clap(long)]
