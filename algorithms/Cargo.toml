@@ -56,6 +56,7 @@ default-features = false
 [dependencies.snarkvm-parameters]
 path = "../parameters"
 version = "=0.11.2"
+default-features = false
 optional = true
 
 [dependencies.snarkvm-r1cs]
