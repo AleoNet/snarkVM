@@ -25,10 +25,10 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod integers {
-    use snarkvm_circuit::{FromStr, U64};
+    use snarkvm_circuit::{FromStr, U64, U8};
     use snarkvm_circuit_environment::{Environment, FormalCircuit, FromBits, Inject, Mode, ToBits, Transcribe};
     use snarkvm_circuit_types::Modulo;
-    use snarkvm_console_types_integers::{AddWrapped, MulWrapped, One, SubWrapped, Zero, U64 as ConsoleU64};
+    use snarkvm_console_types_integers::{AddWrapped, MulWrapped, PowChecked, PowWrapped, One, SubWrapped, Zero, U64 as ConsoleU64, U8 as ConsoleU8};
 
     // for ops see circuit/types/integers/{add_checked,add_wrapped}.rs
 
@@ -396,6 +396,96 @@ mod integers {
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
         println!("// mul (checked) u64 private with u64 private ");
+        println!("{}", output);
+    }
+
+    // var.pow_checked(var) i.e., the `pow` opcode
+    #[test]
+    fn pow_checked_var_var() {
+        // Note that the exponent type is limited to u8, u16, or u32.
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a.pow_checked(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// pow_checked u64 private var with u8 private var");
+        println!("{}", output);
+    }
+
+    // const.pow_checked(var) 10**var
+    #[test]
+    fn pow_checked_const_var() {
+        // Note that the exponent type is limited to u8, u16, or u32.
+        let a = U64::<FormalCircuit>::new(Mode::Constant, ConsoleU64::new(10u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a.pow_checked(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// pow_checked u64 const with u8 private var");
+        println!("{}", output);
+    }
+
+    // var.pow_checked(const) var**10
+    #[test]
+    fn pow_checked_var_const() {
+        // Note that the exponent type is limited to u8, u16, or u32.
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U8::<FormalCircuit>::new(Mode::Constant, ConsoleU8::new(10u8));
+        let _candidate = &a.pow_checked(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// pow_checked u64 private var with u8 const");
+        println!("{}", output);
+    }
+
+    // var.pow_wrapped(var)
+    #[test]
+    fn pow_wrapped_var_var() {
+        // Note that the exponent type is limited to u8, u16, or u32.
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a.pow_wrapped(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// pow_wrapped u64 private var with u8 private var");
+        println!("{}", output);
+    }
+
+    // const.pow_wrapped(var)
+    #[test]
+    fn pow_wrapped_const_var() {
+        // Note that the exponent type is limited to u8, u16, or u32.
+        let a = U64::<FormalCircuit>::new(Mode::Constant, ConsoleU64::new(10u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a.pow_wrapped(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// pow_wrapped u64 const with u8 private var");
+        println!("{}", output);
+    }
+
+    // var.pow_wrapped(const)
+    #[test]
+    fn pow_wrapped_var_const() {
+        // Note that the exponent type is limited to u8, u16, or u32.
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U8::<FormalCircuit>::new(Mode::Constant, ConsoleU8::new(10u8));
+        let _candidate = &a.pow_wrapped(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// pow_wrapped u64 private var with u8 const");
         println!("{}", output);
     }
 
