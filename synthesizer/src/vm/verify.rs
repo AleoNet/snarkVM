@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -112,19 +110,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if let Err(error) = Transaction::check_deployment_size(deployment) {
                     bail!("Invalid transaction size (deployment): {error}");
                 }
-                // TODO (howardwu): Remove during Phase 3.
-                {
-                    // Temporarily restrict programs that contain mappings.
-                    if !deployment.program().mappings().is_empty() {
-                        bail!("Cannot deploy a program that contains a mapping (yet)")
-                    }
-                    // Temporarily restrict programs that contain finalize.
-                    for function in deployment.program().functions().values() {
-                        if function.finalize().is_some() {
-                            bail!("Cannot deploy a program that contains a finalize scope (yet)")
-                        }
-                    }
-                }
                 // Verify the signature corresponds to the transaction ID.
                 ensure!(owner.verify(*id), "Invalid signature for the deployment transaction '{id}'");
                 // Verify the fee.
@@ -137,8 +122,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 if let Err(error) = Transaction::check_execution_size(execution) {
                     bail!("Invalid transaction size (execution): {error}");
                 }
-                // Ensure the fee is present, if the transaction is not a coinbase.
-                if !transaction.is_coinbase() && fee.is_none() {
+                // TODO (raychu86): Remove `is_split` check once batch executions are supported.
+                // Ensure the fee is present, if the transaction is not a coinbase or split.
+                if !transaction.is_coinbase() && !transaction.is_split() && fee.is_none() {
                     bail!("Transaction is missing a fee (execution)");
                 }
                 // Verify the fee.
@@ -147,6 +133,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the execution.
                 self.check_execution(execution)?;
+            }
+            Transaction::Fee(_, fee) => {
+                // Ensure the fee is nonzero.
+                ensure!(!fee.is_zero()?, "Invalid fee (zero)");
+                // Verify the fee.
+                self.check_fee(fee)?;
             }
         };
 
@@ -235,7 +227,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{Block, Header, Inclusion, Metadata, Transaction, Transactions};
+    use crate::{Block, Header, Inclusion, Metadata, Transaction};
     use console::{
         account::{Address, ViewKey},
         types::Field,
@@ -270,7 +262,7 @@ mod tests {
         let program = crate::vm::test_helpers::sample_program();
 
         // Deploy the program.
-        let deployment = vm.deploy(&program, rng).unwrap();
+        let deployment = vm.deploy_raw(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
         assert!(vm.check_deployment(&deployment).is_ok());
@@ -391,10 +383,11 @@ mod tests {
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
-        let deployment_transaction = Transaction::deploy(&vm, &caller_private_key, &program, fee, None, rng).unwrap();
+        let deployment_transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
 
         // Construct the new block header.
-        let transactions = Transactions::from(&[deployment_transaction]);
+        let transactions = vm.speculate([deployment_transaction].iter()).unwrap();
+
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
             CurrentNetwork::ID,
@@ -434,7 +427,7 @@ mod tests {
         let fee_in_microcredits = 10;
 
         // Execute the fee.
-        let fee = Transaction::execute_fee(&vm, &caller_private_key, credits, fee_in_microcredits, None, rng).unwrap();
+        let fee = vm.execute_fee_raw(&caller_private_key, credits, fee_in_microcredits, None, rng).unwrap().1;
 
         // Prepare the inputs.
         let inputs = [
@@ -448,7 +441,7 @@ mod tests {
         assert_eq!(authorization.len(), 1);
 
         // Execute.
-        let transaction = Transaction::execute_authorization(&vm, authorization, Some(fee), None, rng).unwrap();
+        let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction).is_ok());

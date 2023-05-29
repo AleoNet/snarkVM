@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod header;
 pub use header::*;
@@ -31,17 +29,13 @@ mod genesis;
 mod serialize;
 mod string;
 
-use crate::{
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
-    process::{Deployment, Execution},
-    vm::VM,
-};
 use console::{
-    account::{Address, PrivateKey, Signature},
+    account::{PrivateKey, Signature},
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
 };
+use snarkvm_synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -184,9 +178,9 @@ impl<N: Network> Block<N> {
         self.header.total_supply_in_microcredits()
     }
 
-    /// Returns the cumulative proof target for this block.
-    pub const fn cumulative_proof_target(&self) -> u128 {
-        self.header.cumulative_proof_target()
+    /// Returns the cumulative weight for this block.
+    pub const fn cumulative_weight(&self) -> u128 {
+        self.header.cumulative_weight()
     }
 
     /// Returns the coinbase target for this block.
@@ -285,13 +279,13 @@ impl<N: Network> Block<N> {
         self.transactions.transaction_ids()
     }
 
-    /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
+    /// Returns an iterator over all transactions in `self` that are accepted deploy transactions.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.deployments()
     }
 
-    /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
+    /// Returns an iterator over all transactions in `self` that are accepted execute transactions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.executions()
     }
 
@@ -347,13 +341,13 @@ impl<N: Network> Block<N> {
         self.transactions.into_transaction_ids()
     }
 
-    /// Returns a consuming iterator over all transactions in `self` that are deployments.
-    pub fn into_deployments(self) -> impl Iterator<Item = Deployment<N>> {
+    /// Returns a consuming iterator over all transactions in `self` that are accepted deploy transactions.
+    pub fn into_deployments(self) -> impl Iterator<Item = ConfirmedTransaction<N>> {
         self.transactions.into_deployments()
     }
 
-    /// Returns a consuming iterator over all transactions in `self` that are executions.
-    pub fn into_executions(self) -> impl Iterator<Item = Execution<N>> {
+    /// Returns a consuming iterator over all transactions in `self` that are accepted execute transactions.
+    pub fn into_executions(self) -> impl Iterator<Item = ConfirmedTransaction<N>> {
         self.transactions.into_executions()
     }
 
@@ -402,7 +396,8 @@ impl<N: Network> Block<N> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::vm::test_helpers::CurrentNetwork;
-    use console::account::ViewKey;
+    use console::account::{Address, ViewKey};
+
     use once_cell::sync::OnceCell;
 
     /// Samples a random block,
@@ -423,10 +418,12 @@ pub(crate) mod test_helpers {
                 let inputs = [address.to_string(), "1_u64".to_string()].into_iter();
 
                 // Construct the transaction.
-                let transaction =
-                    Transaction::execute(&vm, &private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+                let transaction = vm.execute(&private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 // Construct the transactions.
-                let transactions = Transactions::from(&[transaction.clone()]);
+                let transactions =
+                    Transactions::from(&[
+                        ConfirmedTransaction::accepted_execute(0, transaction.clone(), vec![]).unwrap()
+                    ]);
                 // Construct the block.
                 let block = Block::new(
                     &private_key,

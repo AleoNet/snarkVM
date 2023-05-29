@@ -1,29 +1,30 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use std::collections::BTreeMap;
 
 use snarkvm_fields::PrimeField;
 
-use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel};
+use crate::{
+    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel},
+    snark::marlin::CircuitId,
+};
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
 pub struct FirstOracles<F: PrimeField> {
-    pub(in crate::snark::marlin) batches: Vec<SingleEntry<F>>,
+    pub(in crate::snark::marlin) batches: BTreeMap<CircuitId, Vec<SingleEntry<F>>>,
     /// The sum-check hiding polynomial.
     pub mask_poly: Option<LabeledPolynomial<F>>,
 }
@@ -33,18 +34,19 @@ impl<F: PrimeField> FirstOracles<F> {
     /// Intended for use when committing.
     #[allow(clippy::needless_collect)]
     pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'static, F>> {
-        let t = self.batches.iter_mut().flat_map(|b| b.iter_for_commit()).collect::<Vec<_>>();
+        let t =
+            self.batches.values_mut().flat_map(|b| b.iter_mut()).flat_map(|b| b.iter_for_commit()).collect::<Vec<_>>();
         t.into_iter().chain(self.mask_poly.clone().map(Into::into))
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
     pub fn iter_for_open(&self) -> impl Iterator<Item = &'_ LabeledPolynomial<F>> {
-        self.batches.iter().flat_map(|b| b.iter_for_open()).chain(self.mask_poly.as_ref())
+        self.batches.values().flat_map(|b| b.iter()).flat_map(|b| b.iter_for_open()).chain(self.mask_poly.as_ref())
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.batches.iter().all(|b| b.matches_info(info))
+        self.batches.values().all(|b| b.iter().all(|b| b.matches_info(info)))
             && self.mask_poly.as_ref().map_or(true, |p| Some(p.info()) == info.get(p.label()))
     }
 }
@@ -115,24 +117,35 @@ impl<F: PrimeField> SecondOracles<F> {
 /// The third set of prover oracles.
 #[derive(Debug)]
 pub struct ThirdOracles<F: PrimeField> {
+    pub(super) gs: BTreeMap<CircuitId, MatrixGs<F>>,
+}
+
+#[derive(Debug)]
+pub(super) struct MatrixGs<F: PrimeField> {
     /// The polynomial `g_a` resulting from the second sumcheck.
-    pub g_a: LabeledPolynomial<F>,
+    pub(super) g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
-    pub g_b: LabeledPolynomial<F>,
+    pub(super) g_b: LabeledPolynomial<F>,
     /// The polynomial `g_c` resulting from the second sumcheck.
-    pub g_c: LabeledPolynomial<F>,
+    pub(super) g_c: LabeledPolynomial<F>,
+}
+
+impl<F: PrimeField> MatrixGs<F> {
+    pub fn matches_matrix_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        Some(self.g_a.info()) == info.get(self.g_a.label())
+            && Some(self.g_b.info()) == info.get(self.g_b.label())
+            && Some(self.g_c.info()) == info.get(self.g_c.label())
+    }
 }
 
 impl<F: PrimeField> ThirdOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [&self.g_a, &self.g_b, &self.g_c].into_iter()
+        self.gs.values().flat_map(|gs| [&gs.g_a, &gs.g_b, &gs.g_c].into_iter())
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        Some(self.g_a.info()) == info.get(self.g_a.label())
-            && Some(self.g_b.info()) == info.get(self.g_b.label())
-            && Some(self.g_c.info()) == info.get(self.g_c.label())
+        self.gs.values().all(|b| b.matches_matrix_info(info))
     }
 }
 

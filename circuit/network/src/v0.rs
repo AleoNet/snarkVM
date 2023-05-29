@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::Aleo;
 use snarkvm_circuit_algorithms::{
@@ -49,16 +47,10 @@ thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().to_vec());
 
-    /// The balance commitment domain as a constant field element.
-    static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
     /// The graph key domain as a constant field element.
     static GRAPH_KEY_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::graph_key_domain());
-    /// The randomizer domain as a constant field element.
-    static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
-    /// The balance commitment randomizer domain as a constant field element.
-    static R_BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::r_bcm_domain());
     /// The serial number domain as a constant field element.
     static SERIAL_NUMBER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::serial_number_domain());
 
@@ -88,11 +80,6 @@ thread_local! {
 pub struct AleoV0;
 
 impl Aleo for AleoV0 {
-    /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Field<Self> {
-        BCM_DOMAIN.with(|domain| domain.clone())
-    }
-
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self> {
         ENCRYPTION_DOMAIN.with(|domain| domain.clone())
@@ -101,16 +88,6 @@ impl Aleo for AleoV0 {
     /// Returns the graph key domain as a constant field element.
     fn graph_key_domain() -> Field<Self> {
         GRAPH_KEY_DOMAIN.with(|domain| domain.clone())
-    }
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self> {
-        RANDOMIZER_DOMAIN.with(|domain| domain.clone())
-    }
-
-    /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Field<Self> {
-        R_BCM_DOMAIN.with(|domain| domain.clone())
     }
 
     /// Returns the serial number domain as a constant field element.
@@ -343,9 +320,9 @@ impl Environment for AleoV0 {
         E::num_constraints()
     }
 
-    /// Returns the number of gates in the entire circuit.
-    fn num_gates() -> u64 {
-        E::num_gates()
+    /// Returns the number of nonzeros in the entire circuit.
+    fn num_nonzeros() -> (u64, u64, u64) {
+        E::num_nonzeros()
     }
 
     /// Returns the number of constants for the current scope.
@@ -368,9 +345,9 @@ impl Environment for AleoV0 {
         E::num_constraints_in_scope()
     }
 
-    /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> u64 {
-        E::num_gates_in_scope()
+    /// Returns the number of nonzeros for the current scope.
+    fn num_nonzeros_in_scope() -> (u64, u64, u64) {
+        E::num_nonzeros_in_scope()
     }
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.

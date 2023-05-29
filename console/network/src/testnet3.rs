@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 use snarkvm_console_algorithms::{
@@ -35,16 +33,10 @@ lazy_static! {
     /// The Marlin sponge parameters.
     pub static ref MARLIN_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
 
-    /// The balance commitment domain as a constant field element.
-    pub static ref BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
     /// The graph key domain as a constant field element.
     pub static ref GRAPH_KEY_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoGraphKey0");
-    /// The randomizer domain as a constant field element.
-    pub static ref RANDOMIZER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoRandomizer0");
-    /// The balance commitment randomizer domain as a constant field element.
-    pub static ref R_BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceRandomizer0");
     /// The serial number domain as a constant field element.
     pub static ref SERIAL_NUMBER_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSerialNumber0");
 
@@ -161,9 +153,9 @@ impl Network for Testnet3 {
     fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
         static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            // Skipping the first 2 bytes, which is the encoded version.
+            // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[2..])
+                CircuitProvingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_PROVING_KEY[1..])
                     .expect("Failed to load inclusion proving key."),
             )
         })
@@ -173,9 +165,9 @@ impl Network for Testnet3 {
     fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
         static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            // Skipping the first 2 bytes, which is the encoded version.
+            // Skipping the first byte, which is the encoded version.
             Arc::new(
-                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[2..])
+                CircuitVerifyingKey::from_bytes_le(&snarkvm_parameters::testnet3::INCLUSION_VERIFYING_KEY[1..])
                     .expect("Failed to load inclusion verifying key."),
             )
         })
@@ -203,11 +195,6 @@ impl Network for Testnet3 {
         &MARLIN_FS_PARAMETERS
     }
 
-    /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Field<Self> {
-        *BCM_DOMAIN
-    }
-
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self> {
         *ENCRYPTION_DOMAIN
@@ -216,16 +203,6 @@ impl Network for Testnet3 {
     /// Returns the graph key domain as a constant field element.
     fn graph_key_domain() -> Field<Self> {
         *GRAPH_KEY_DOMAIN
-    }
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self> {
-        *RANDOMIZER_DOMAIN
-    }
-
-    /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Field<Self> {
-        *R_BCM_DOMAIN
     }
 
     /// Returns the serial number domain as a constant field element.

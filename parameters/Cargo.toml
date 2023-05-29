@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.10.1"
+version = "0.11.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,20 +20,20 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.10.1"
+version = "=0.11.2"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.10.1"
+version = "=0.11.2"
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 features = [ "storage" ]
 
@@ -50,6 +50,10 @@ version = "1.0"
 version = "2"
 optional = true
 
+[dependencies.encoding]
+version = "0.2"
+optional = true
+
 [dependencies.hex]
 version = "0.4.3"
 
@@ -59,21 +63,18 @@ version = "1.9"
 [dependencies.itertools]
 version = "0.10.3"
 
+[dependencies.js-sys]
+version = "0.3.63"
+optional = true
+
 [dependencies.lazy_static]
 version = "1.4"
-
-[dependencies.parking_lot]
-version = "0.12"
 
 [dependencies.paste]
 version = "1"
 
 [dependencies.rand]
 version = "0.8"
-
-[dependencies.reqwest]
-version = "0.11"
-optional = true
 
 [dependencies.serde_json]
 version = "1"
@@ -86,8 +87,9 @@ default-features = false
 [dependencies.thiserror]
 version = "1.0"
 
-[dependencies.wasm-bindgen-futures]
-version = "0.4"
+[dependencies.web-sys]
+version = "0.3.63"
+features = [ "XmlHttpRequest" ]
 optional = true
 
 [target."cfg(not(target_family = \"wasm\"))".dependencies.curl]
@@ -107,8 +109,8 @@ path = "../console"
 [dev-dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
 
-[dev-dependencies.curl]
-version = "0.4.34"
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3.36"
 
 [dev-dependencies.hex]
 version = "0.4.3"
@@ -120,4 +122,4 @@ version = "0.8"
 default = [ "colored", "remote" ]
 no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [ "reqwest", "wasm-bindgen-futures" ]
+wasm = [ "encoding", "js-sys", "web-sys" ]

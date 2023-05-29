@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[macro_export]
 macro_rules! checksum {
@@ -26,6 +24,20 @@ macro_rules! checksum {
 macro_rules! checksum_error {
     ($expected: expr, $candidate: expr) => {
         Err($crate::errors::ParameterError::ChecksumMismatch($expected, $candidate))
+    };
+}
+
+#[macro_export]
+macro_rules! remove_file {
+    ($filepath:expr) => {
+        // Safely remove the corrupt file, if it exists.
+        #[cfg(not(feature = "wasm"))]
+        if std::path::PathBuf::from(&$filepath).exists() {
+            match std::fs::remove_file(&$filepath) {
+                Ok(()) => println!("Removed {:?}. Please retry the command.", $filepath),
+                Err(err) => eprintln!("Failed to remove {:?}: {err}", $filepath),
+            }
+        }
     };
 }
 
@@ -90,28 +102,57 @@ macro_rules! impl_store_and_remote_fetch {
         }
 
         #[cfg(feature = "wasm")]
-        fn remote_fetch(
-            buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>,
-            url: &'static str,
-        ) -> Result<(), $crate::errors::ParameterError> {
-            // NOTE(julesdesmit): We spawn a local thread here in order to be
-            // able to accommodate the async syntax from reqwest.
-            wasm_bindgen_futures::spawn_local(async move {
-                let content = reqwest::get(url).await.unwrap().text().await.unwrap();
+        fn remote_fetch(url: &str) -> Result<Vec<u8>, $crate::errors::ParameterError> {
+            // Use the browser's XmlHttpRequest object to download the parameter file synchronously.
+            //
+            // This method blocks the event loop while the parameters are downloaded, and should be
+            // executed in a web worker to prevent the main browser window from freezing.
+            let xhr = web_sys::XmlHttpRequest::new().map_err(|_| {
+                $crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest object not found".to_string())
+            })?;
 
-                let buffer = buffer.upgrade().unwrap();
-                buffer.write().extend_from_slice(content.as_bytes());
-                drop(buffer);
-            });
-            Ok(())
+            // XmlHttpRequest if specified as synchronous cannot use the responseType property. It
+            // cannot thus download bytes directly and enforces a text encoding. To get back the
+            // original binary, a charset that does not corrupt the original bytes must be used.
+            xhr.override_mime_type("octet/binary; charset=ISO-8859-5").unwrap();
+
+            // Initialize and send the request.
+            xhr.open_with_async("GET", url, false).map_err(|_| {
+                $crate::errors::ParameterError::Wasm(
+                    "Download failed - This browser does not support synchronous requests".to_string(),
+                )
+            })?;
+            xhr.send().map_err(|_| {
+                $crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest failed".to_string())
+            })?;
+
+            // Wait for the response in a blocking fashion.
+            if xhr.response().is_ok() && xhr.status().unwrap() == 200 {
+                // Get the text from the response.
+                let rust_text = xhr
+                    .response_text()
+                    .map_err(|_| $crate::errors::ParameterError::Wasm("XMLHttpRequest failed".to_string()))?
+                    .ok_or($crate::errors::ParameterError::Wasm(
+                        "The request was successful but no parameters were received".to_string(),
+                    ))?;
+
+                // Re-encode the text back into bytes using the chosen encoding.
+                use encoding::Encoding;
+                encoding::all::ISO_8859_5
+                    .encode(&rust_text, encoding::EncoderTrap::Strict)
+                    .map_err(|_| $crate::errors::ParameterError::Wasm("Parameter decoding failed".to_string()))
+            } else {
+                Err($crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest failed".to_string()))
+            }
         }
     };
 }
 
 macro_rules! impl_load_bytes_logic_local {
-    ($buffer: expr, $expected_size: expr, $expected_checksum: expr) => {
+    ($filepath: expr, $buffer: expr, $expected_size: expr, $expected_checksum: expr) => {
         // Ensure the size matches.
         if $expected_size != $buffer.len() {
+            remove_file!($filepath);
             return Err($crate::errors::ParameterError::SizeMismatch($expected_size, $buffer.len()));
         }
 
@@ -134,7 +175,7 @@ macro_rules! impl_load_bytes_logic_remote {
 
         let buffer = if file_path.exists() {
             // Attempts to load the parameter file locally with an absolute path.
-            std::fs::read(file_path)?
+            std::fs::read(&file_path)?
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
              #[cfg(not(feature = "no_std_out"))]
@@ -173,19 +214,7 @@ macro_rules! impl_load_bytes_logic_remote {
                         }
                     }
                 } else if #[cfg(feature = "wasm")] {
-                    let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
-
-                    // NOTE(julesdesmit): I'm leaking memory here so that I can get a
-                    // static reference to the url, which is needed to pass it into
-                    // the local thread which downloads the file.
-                    let url = Box::leak(url.into_boxed_str());
-
-                    let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
-                    Self::remote_fetch(buffer_clone, url)?;
-
-                    // Recover the bytes.
-                    let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
-                    let buffer = buffer.write().clone();
+                    let buffer = Self::remote_fetch(&url)?;
 
                     // Ensure the checksum matches.
                     let candidate_checksum = checksum!(&buffer);
@@ -202,6 +231,7 @@ macro_rules! impl_load_bytes_logic_remote {
 
         // Ensure the size matches.
         if $expected_size != buffer.len() {
+            remove_file!(file_path);
             return Err($crate::errors::ParameterError::SizeMismatch($expected_size, buffer.len()));
         }
 
@@ -232,9 +262,10 @@ macro_rules! impl_local {
                 let expected_size: usize =
                     metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
 
+                let _filepath = concat!($local_dir, $fname, ".", "usrs");
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", "usrs"));
 
-                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+                impl_load_bytes_logic_local!(_filepath, buffer, expected_size, expected_checksum);
             }
         }
 
@@ -261,9 +292,10 @@ macro_rules! impl_local {
                 let expected_size: usize =
                     metadata[concat!($ftype, "_size")].to_string().parse().expect("Failed to retrieve the file size");
 
+                let _filepath = concat!($local_dir, $fname, ".", $ftype);
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype));
 
-                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+                impl_load_bytes_logic_local!(_filepath, buffer, expected_size, expected_checksum);
             }
         }
 

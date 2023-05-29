@@ -1,57 +1,46 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
+mod fee;
+pub use fee::*;
 
 mod bytes;
 mod merkle;
 mod serialize;
 mod string;
 
-use crate::{
-    block::Transition,
-    process::{Authorization, Deployment, Execution, Fee},
-    program::Program,
-    vm::VM,
-    ConsensusStorage,
-    Query,
-};
+use crate::block::Transition;
 use console::{
-    account::PrivateKey,
     network::prelude::*,
-    program::{
-        Ciphertext,
-        Identifier,
-        Plaintext,
-        ProgramID,
-        ProgramOwner,
-        Record,
-        TransactionLeaf,
-        TransactionPath,
-        TransactionTree,
-        Value,
-        TRANSACTION_DEPTH,
-    },
+    program::{Ciphertext, ProgramOwner, Record, TransactionLeaf, TransactionPath, TransactionTree, TRANSACTION_DEPTH},
     types::{Field, Group, U64},
 };
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
-    /// The transaction deployment publishes an Aleo program to the network.
+    /// The deploy transaction publishes an Aleo program to the network.
     Deploy(N::TransactionID, ProgramOwner<N>, Box<Deployment<N>>, Fee<N>),
-    /// The transaction execution represents a call to an Aleo program.
+    /// The execute transaction represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>, Option<Fee<N>>),
+    /// The fee transaction represents a fee paid to the network, used for rejected transactions.
+    Fee(N::TransactionID, Fee<N>),
 }
 
 impl<N: Network> Transaction<N> {
@@ -76,88 +65,37 @@ impl<N: Network> Transaction<N> {
         // Construct the execution transaction.
         Ok(Self::Execute(id.into(), execution, fee))
     }
-}
 
-impl<N: Network> Transaction<N> {
-    /// The maximum number of transitions allowed in a transaction.
-    const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
-
-    /// Initializes a new deployment transaction.
-    pub fn deploy<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        program: &Program<N>,
-        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the deployment.
-        let deployment = vm.deploy(program, rng)?;
-        // Ensure the transaction is not empty.
-        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
-        // Compute the fee.
-        let (_, fee, _) = vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?;
-        // Construct the owner.
-        let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
-
-        // Initialize the transaction.
-        Self::from_deployment(owner, deployment, fee)
-    }
-
-    /// Initializes a new execution transaction.
-    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
-        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        fee: Option<(Record<N, Plaintext<N>>, u64)>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the authorization.
-        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
-        // Compute the fee.
-        let fee = match fee {
-            None => None,
-            Some((credits, fee_in_microcredits)) => {
-                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
-            }
-        };
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
-    }
-
-    /// Initializes a new fee.
-    pub fn execute_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Fee<N>> {
-        Ok(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
-    }
-
-    /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        authorization: Authorization<N>,
-        fee: Option<Fee<N>>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
+    /// Initializes a new fee transaction.
+    pub fn from_fee(fee: Fee<N>) -> Result<Self> {
+        // Ensure the fee is nonzero.
+        ensure!(!fee.is_zero()?, "Attempted to create a zero fee transaction");
+        // Compute the transaction ID.
+        let id = *Self::fee_tree(&fee)?.root();
+        // Construct the execution transaction.
+        Ok(Self::Fee(id.into(), fee))
     }
 }
 
 impl<N: Network> Transaction<N> {
+    /// Returns `true` if the transaction is a deploy transaction.
+    #[inline]
+    pub fn is_deploy(&self) -> bool {
+        matches!(self, Self::Deploy(..))
+    }
+
+    /// Returns `true` if the transaction is an execute transaction.
+    #[inline]
+    pub fn is_execute(&self) -> bool {
+        matches!(self, Self::Execute(..))
+    }
+
+    /// Returns `true` if the transaction is a fee transaction.
+    #[inline]
+    pub fn is_fee(&self) -> bool {
+        matches!(self, Self::Fee(..))
+    }
+
     /// Returns `true` if this is a coinbase transaction.
     #[inline]
     pub fn is_coinbase(&self) -> bool {
@@ -179,21 +117,45 @@ impl<N: Network> Transaction<N> {
         // Otherwise, return 'false'.
         false
     }
+
+    /// Returns `true` if this is a `split` transaction.
+    #[inline]
+    pub fn is_split(&self) -> bool {
+        // Case 1 - The transaction contains 1 transition, which calls 'credits.aleo/split'.
+        if let Self::Execute(_, execution, _) = self {
+            // Ensure there is 1 transition.
+            if execution.len() == 1 {
+                // Retrieve the transition.
+                if let Ok(transition) = execution.get(0) {
+                    // Check if it calls 'credits.aleo/split'.
+                    if transition.program_id().to_string() == "credits.aleo"
+                        && transition.function_name().to_string() == "split"
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Otherwise, return 'false'.
+        false
+    }
 }
 
 /// A helper enum for iterators and consuming iterators over a transaction.
-enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
+enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> {
     Deploy(I1),
     Execute(I2),
+    Fee(I3),
 }
 
-impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2> {
+impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2, I3> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Deploy(iter) => iter.next(),
             Self::Execute(iter) => iter.next(),
+            Self::Fee(iter) => iter.next(),
         }
     }
 }
@@ -204,6 +166,7 @@ impl<N: Network> Transaction<N> {
         match self {
             Self::Deploy(id, ..) => *id,
             Self::Execute(id, ..) => *id,
+            Self::Fee(id, ..) => *id,
         }
     }
 
@@ -213,6 +176,16 @@ impl<N: Network> Transaction<N> {
             Self::Deploy(_, _, _, fee) => fee.amount(),
             Self::Execute(_, _, Some(fee)) => fee.amount(),
             Self::Execute(_, _, None) => Ok(U64::zero()),
+            Self::Fee(_, fee) => fee.amount(),
+        }
+    }
+
+    /// Returns the fee transition.
+    pub fn fee_transition(&self) -> Option<Fee<N>> {
+        match self {
+            Self::Deploy(_, _, _, fee) => Some(fee.clone()),
+            Self::Execute(_, _, fee) => fee.clone(),
+            Self::Fee(_, fee) => Some(fee.clone()),
         }
     }
 }
@@ -228,6 +201,8 @@ impl<N: Network> Transaction<N> {
                 execution.contains_transition(transition_id)
                     || fee.as_ref().map_or(false, |fee| fee.id() == transition_id)
             }
+            // Check the fee.
+            Self::Fee(_, fee) => fee.id() == transition_id,
         }
     }
 
@@ -258,6 +233,11 @@ impl<N: Network> Transaction<N> {
                     false => None,
                 })
             }),
+            // Check the fee.
+            Self::Fee(_, fee) => match fee.id() == transition_id {
+                true => Some(fee.transition()),
+                false => None,
+            },
         }
     }
 
@@ -290,6 +270,7 @@ impl<N: Network> Transaction<N> {
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.transitions().chain(fee.as_ref().map(|fee| fee.transition())))
             }
+            Self::Fee(_, fee) => IterWrap::Fee(Some(fee.transition()).into_iter()),
         }
     }
 
@@ -356,6 +337,7 @@ impl<N: Network> Transaction<N> {
             Self::Execute(_, execution, fee) => {
                 IterWrap::Execute(execution.into_transitions().chain(fee.map(|fee| fee.into_transition())))
             }
+            Self::Fee(_, fee) => IterWrap::Fee(Some(fee.into_transition()).into_iter()),
         }
     }
 
