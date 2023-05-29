@@ -104,7 +104,6 @@ default-features = false
 
 [dependencies.aleo-std]
 version = "0.1.18"
-features = ["storage"]
 default-features = false
 optional = false
 
