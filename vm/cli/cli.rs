@@ -62,3 +62,32 @@ impl Command {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // A test case recommended by clap (https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#testing).
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        CLI::command().debug_assert()
+    }
+
+    #[test]
+    fn clap_snarkvm_run() {
+        use crate::prelude::{Identifier, Value};
+
+        let arg_vec = vec!["snarkvm", "run", "hello", "1u32", "2u32", "--endpoint", "ENDPOINT", "--offline"];
+        let cli = CLI::parse_from(&arg_vec);
+
+        if let Command::Run(run) = cli.command {
+            assert_eq!(run.function(), Identifier::try_from(arg_vec[2]).unwrap());
+            assert_eq!(run.inputs(), vec![Value::try_from(arg_vec[3]).unwrap(), Value::try_from(arg_vec[4]).unwrap()]);
+            assert_eq!(run.endpoint(), Some("ENDPOINT"));
+            assert!(run.offline());
+        } else {
+            panic!("Unexpected result of clap parsing!");
+        }
+    }
+}
