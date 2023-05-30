@@ -82,7 +82,7 @@ pub mod prelude {
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;
     #[cfg(feature = "synthesizer")]
-    pub use crate::synthesizer::*;
+    pub use crate::synthesizer::prelude::*;
     #[cfg(feature = "utilities")]
     pub use crate::utilities::*;
 }
