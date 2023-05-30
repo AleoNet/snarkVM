@@ -20,14 +20,16 @@ use console::{
     network::prelude::*,
     program::{Identifier, Value},
 };
-use snarkvm_synthesizer::{ConsensusStore, Process, VM};
-use snarkvm_synthesizer::helpers::memory::ConsensusMemory;
+use snarkvm_synthesizer::{helpers::memory::ConsensusMemory, ConsensusStore, VM};
 
 #[test]
 fn test_vm_execute_and_finalize() {
     // Load the tests.
     let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/vm/execute_and_finalize");
 
+    // Initialize a VM.
+    let vm: VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> =
+        VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Run each test and compare it against its corresponding expectation.
     for test in &tests {
@@ -36,27 +38,6 @@ fn test_vm_execute_and_finalize() {
             None => TestRng::default(),
             Some(randomness) => TestRng::fixed(randomness),
         };
-
-        // Sample a private key.
-        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-
-        // Initialize a VM.
-        let vm: VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
-
-        // Initialize the genesis block.
-        let genesis = vm.genesis(&private_key, rng).unwrap();
-
-        // Fetch the unspent records.
-        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-
-        // Select a record to spend.
-        let view_key = ViewKey::try_from(private_key).unwrap();
-        let records = records.values().map(|record| record.decrypt(&view_key).unwrap()).collect();
-
-        // Calculate the number of transactions and create records for each.
-
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
 
         let outputs = test
             .cases()
@@ -92,31 +73,92 @@ fn test_vm_execute_and_finalize() {
                 };
 
                 let mut run_test = || -> serde_yaml::Value {
-                    // Authorize the execution.
-                    let authorization = match process.authorize::<CurrentAleo, _>(
+                    let mut output = serde_yaml::Mapping::new();
+                    // Execute the function.
+                    let transaction = match vm.execute(
                         &private_key,
-                        program.id(),
-                        function_name,
+                        (test.program().id(), function_name),
                         inputs.iter(),
+                        None,
+                        None,
                         rng,
                     ) {
-                        Ok(authorization) => authorization,
-                        Err(err) => return serde_yaml::Value::String(err.to_string()),
+                        Ok(transaction) => transaction,
+                        Err(err) => {
+                            output.insert(
+                                serde_yaml::Value::String("execute".to_string()),
+                                serde_yaml::Value::String(err.to_string()),
+                            );
+                            return serde_yaml::Value::Mapping(output);
+                        }
                     };
-                    // Execute the authorization.
-                    let response = match process.execute::<CurrentAleo, _>(authorization, rng) {
-                        Ok((response, _, _, _)) => response,
-                        Err(err) => return serde_yaml::Value::String(err.to_string()),
-                    };
-                    // Extract the output.
-                    serde_yaml::Value::Sequence(
-                        response
+                    // For each transition in the transaction, extract the transition outputs and the inputs for finalize.
+                    let mut execute = serde_yaml::Mapping::new();
+                    for transition in transaction.transitions() {
+                        let mut transition_output = serde_yaml::Mapping::new();
+                        let outputs = transition
                             .outputs()
                             .iter()
-                            .cloned()
                             .map(|output| serde_yaml::Value::String(output.to_string()))
-                            .collect_vec(),
-                    )
+                            .collect::<Vec<_>>();
+                        transition_output.insert(
+                            serde_yaml::Value::String("outputs".to_string()),
+                            serde_yaml::Value::Sequence(outputs),
+                        );
+                        let finalize = match transition.finalize() {
+                            None => vec![],
+                            Some(finalize) => finalize
+                                .iter()
+                                .map(|input| serde_yaml::Value::String(input.to_string()))
+                                .collect::<Vec<_>>(),
+                        };
+                        transition_output.insert(
+                            serde_yaml::Value::String("finalize".to_string()),
+                            serde_yaml::Value::Sequence(finalize),
+                        );
+                        execute.insert(
+                            serde_yaml::Value::String(format!(
+                                "{}/{}",
+                                transition.program_id(),
+                                transition.function_name()
+                            )),
+                            serde_yaml::Value::Mapping(transition_output),
+                        );
+                    }
+                    output
+                        .insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
+                    // Finalize the transaction.
+                    let transactions = match vm.speculate([transaction].iter()) {
+                        Ok(transactions) => {
+                            output.insert(
+                                serde_yaml::Value::String("speculate".to_string()),
+                                serde_yaml::Value::String("`speculate` succeeded.".to_string()),
+                            );
+                            transactions
+                        }
+                        Err(err) => {
+                            output.insert(
+                                serde_yaml::Value::String("speculate".to_string()),
+                                serde_yaml::Value::String(err.to_string()),
+                            );
+                            return serde_yaml::Value::Mapping(output);
+                        }
+                    };
+                    match vm.finalize(&transactions) {
+                        Ok(_) => {
+                            output.insert(
+                                serde_yaml::Value::String("finalize".to_string()),
+                                serde_yaml::Value::String("`finalize` succeeded.".to_string()),
+                            );
+                        }
+                        Err(err) => {
+                            output.insert(
+                                serde_yaml::Value::String("finalize".to_string()),
+                                serde_yaml::Value::String(err.to_string()),
+                            );
+                        }
+                    };
+                    serde_yaml::Value::Mapping(output)
                 };
 
                 run_test()
