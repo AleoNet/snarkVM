@@ -53,7 +53,7 @@ pub mod prelude {
 
     // TODO (howardwu): These will be refactored into their own modules.
     //  Config flags should be added to these after modularization so that they can be disabled.
-    pub use crate::{block::*, process::*, program::*, store::*, vm::*};
+    pub use crate::{block::*, cow_to_cloned, cow_to_copied, process::*, program::*, store::*, vm::*};
 }
 
 // /// Initializes a new **testing-only** instance of the ledger.
