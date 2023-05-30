@@ -14,15 +14,12 @@
 
 use crate::{get_expectation_path, print_difference, CurrentNetwork, ExpectedTest};
 
-use console::{
-    account::PrivateKey,
-    program::{Identifier, Value},
-};
+use console::{account::PrivateKey, program::Identifier};
 use snarkvm_synthesizer::Program;
 
 use anyhow::{bail, Result};
 use itertools::Itertools;
-use serde_yaml::{Mapping, Sequence};
+use serde_yaml::{Mapping, Sequence, Value};
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
@@ -37,9 +34,9 @@ pub struct ProgramTest {
     /// The program.
     program: Program<CurrentNetwork>,
     /// The set of test cases.
-    cases: Vec<Mapping>,
+    cases: Vec<Value>,
     /// The set of expected outputs for each test case.
-    expected: Vec<Mapping>,
+    expected: Vec<Value>,
     /// The path to the expectation file.
     path: PathBuf,
     /// Whether the expectation file should be rewritten.
@@ -55,14 +52,19 @@ impl ProgramTest {
     }
 
     /// Returns the test cases.
-    pub fn cases(&self) -> &[Mapping] {
+    pub fn cases(&self) -> &[Value] {
         &self.cases
+    }
+
+    /// Returns the optional seed for the RNG.
+    pub fn randomness(&self) -> Option<u64> {
+        self.randomness
     }
 }
 
 impl ExpectedTest for ProgramTest {
-    type Output = Vec<Mapping>;
-    type Test = Vec<Mapping>;
+    type Output = Vec<Value>;
+    type Test = Vec<Value>;
 
     /// Loads the test from a given path.
     fn load<P: AsRef<Path>>(test_path: P, expectation_dir: P) -> Self {
@@ -89,36 +91,24 @@ impl ExpectedTest for ProgramTest {
             .expect("configuration must contain `cases`")
             .as_sequence()
             .expect("cases must be a sequence")
-            .iter()
-            .map(|value| match value {
-                serde_yaml::Value::Mapping(mapping) => mapping.clone(),
-                _ => panic!("invalid case"),
-            })
-            .collect_vec();
+            .clone();
 
         // Parse the remainder of the test file into a program.
         let program = Program::<CurrentNetwork>::from_str(&source[first_comment_start + 2 + end_first_comment + 2..])
             .expect("Failed to parse program.");
 
         // Construct the path to the expectation file.
-        let expectation_path = get_expectation_path(&test_path, &expectation_dir);
+        let path = get_expectation_path(&test_path, &expectation_dir);
         // If the expectation file should be rewritten, then there is no need to read the expectation file.
-        let expected_results = match rewrite {
+        let expected = match rewrite {
             true => vec![],
             false => {
-                let source = std::fs::read_to_string(&expectation_path).expect("Failed to read expectation file.");
-                serde_yaml::from_str::<Sequence>(&source)
-                    .expect("invalid expectation")
-                    .into_iter()
-                    .map(|value| match value {
-                        serde_yaml::Value::Mapping(mapping) => mapping,
-                        _ => panic!("invalid expectation case"),
-                    })
-                    .collect_vec()
+                let source = std::fs::read_to_string(&path).expect("Failed to read expectation file.");
+                serde_yaml::from_str::<Sequence>(&source).expect("invalid expectation")
             }
         };
 
-        Self { program, cases, expected: expected_results, path: expectation_path, rewrite, randomness }
+        Self { program, cases, expected, path, rewrite, randomness }
     }
 
     fn check(&self, output: &Self::Output) -> Result<()> {
