@@ -72,16 +72,18 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     }
 
     /// Returns the program for the given program ID.
-    #[cfg(not(target_vendor = "fortanix"))]
     pub async fn get_program_async(&self, program_id: &ProgramID<N>) -> Result<Program<N>> {
         match self {
             Self::VM(block_store) => {
                 block_store.get_program(program_id)?.ok_or_else(|| anyhow!("Program {program_id} not found in storage"))
             }
+            #[cfg(not(target_vendor = "fortanix"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request_async(&format!("{url}/testnet3/program/{program_id}")).await?.json().await?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(target_vendor = "fortanix")]
+            _ => bail!("Reqwest is not supported in enclave. Failed to get_program_async"),
         }
     }
 
@@ -97,14 +99,17 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     }
 
     /// Returns the current state root.
-    #[cfg(not(target_vendor = "fortanix"))]
+
     pub async fn current_state_root_async(&self) -> Result<N::StateRoot> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
+            #[cfg(not(target_vendor = "fortanix"))]
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request_async(&format!("{url}/testnet3/latest/stateRoot")).await?.json().await?),
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(target_vendor = "fortanix")]
+            _ => bail!("Reqwest is not supported in enclave. Failed to current_state_root_async"),
         }
     }
 
@@ -120,16 +125,19 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     }
 
     /// Returns a state path for the given `commitment`.
-    #[cfg(not(target_vendor = "fortanix"))]
+
     pub async fn get_state_path_for_commitment_async(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            #[cfg(not(target_vendor = "fortanix"))]
             Self::REST(url) => match N::ID {
                 3 => {
                     Ok(Self::get_request_async(&format!("{url}/testnet3/statePath/{commitment}")).await?.json().await?)
                 }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
+            #[cfg(target_vendor = "fortanix")]
+            _ => bail!("Reqwest is not supported in enclave. Failed to get_state_path_for_commitment_async"),
         }
     }
 
