@@ -74,21 +74,35 @@ fn test_program_execute() {
                     None => PrivateKey::new(rng).unwrap(),
                 };
 
-                // Authorize the execution.
-                let authorization = process
-                    .authorize::<CurrentAleo, _>(&private_key, program.id(), function_name, inputs.iter(), rng)
-                    .unwrap();
-                // Execute the authorization.
-                let (response, _, _, _) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
-                // Extract the output.
-                serde_yaml::Value::Sequence(
-                    response
-                        .outputs()
-                        .iter()
-                        .cloned()
-                        .map(|output| serde_yaml::Value::String(output.to_string()))
-                        .collect_vec(),
-                )
+                let mut run_test = || -> serde_yaml::Value {
+                    // Authorize the execution.
+                    let authorization = match process.authorize::<CurrentAleo, _>(
+                        &private_key,
+                        program.id(),
+                        function_name,
+                        inputs.iter(),
+                        rng,
+                    ) {
+                        Ok(authorization) => authorization,
+                        Err(err) => return serde_yaml::Value::String(err.to_string()),
+                    };
+                    // Execute the authorization.
+                    let response = match process.execute::<CurrentAleo, _>(authorization, rng) {
+                        Ok((response, _, _, _)) => response,
+                        Err(err) => return serde_yaml::Value::String(err.to_string()),
+                    };
+                    // Extract the output.
+                    serde_yaml::Value::Sequence(
+                        response
+                            .outputs()
+                            .iter()
+                            .cloned()
+                            .map(|output| serde_yaml::Value::String(output.to_string()))
+                            .collect_vec(),
+                    )
+                };
+
+                run_test()
             })
             .collect::<Vec<_>>();
         // Check against the expected output.
