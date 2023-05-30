@@ -33,6 +33,50 @@ pub enum FinalizeOperation<N: Network> {
     RemoveMapping(Field<N>),
 }
 
+impl<N: Network> FinalizeOperation<N> {
+    ///
+    /// Returns the *non-unique* identifier for the finalize operation.
+    /// This is used to simplify the serialization of the preimage for the `finalize_root`.
+    ///
+    /// The identifier is a byte vector with the following format (for each case):
+    ///  - InitializeMapping -> variant || Mapping ID
+    ///  - InsertKeyValue -> variant || Value ID
+    ///  - UpdateKeyValue -> variant || index || Value ID
+    ///  - RemoveKeyValue -> variant || Mapping ID || index
+    ///  - RemoveMapping -> variant || Mapping ID
+    ///
+    pub fn identifier(&self) -> Result<Vec<u8>> {
+        // Serialize the identifier based on the finalize operation type.
+        let mut identifier = Vec::new();
+        match self {
+            Self::InitializeMapping(mapping_id) => {
+                identifier.push(0);
+                identifier.extend_from_slice(&mapping_id.to_bytes_le()?);
+            }
+            Self::InsertKeyValue(_, _, value_id) => {
+                identifier.push(1);
+                identifier.extend_from_slice(&value_id.to_bytes_le()?);
+            }
+            Self::UpdateKeyValue(_, index, _, value_id) => {
+                identifier.push(2);
+                identifier.extend_from_slice(&index.to_bytes_le()?);
+                identifier.extend_from_slice(&value_id.to_bytes_le()?);
+            }
+            Self::RemoveKeyValue(mapping_id, index) => {
+                identifier.push(3);
+                identifier.extend_from_slice(&mapping_id.to_bytes_le()?);
+                identifier.extend_from_slice(&index.to_bytes_le()?);
+            }
+            Self::RemoveMapping(mapping_id) => {
+                identifier.push(4);
+                identifier.extend_from_slice(&mapping_id.to_bytes_le()?);
+            }
+        }
+
+        Ok(identifier)
+    }
+}
+
 impl<N: Network> FromBytes for FinalizeOperation<N> {
     /// Reads the finalize operation from buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
