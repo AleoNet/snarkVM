@@ -34,9 +34,10 @@ path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ "coinbase", "snark", "request", "aleo-std/storage" ]
+default = [ "async", "coinbase", "snark", "request", "aleo-std/storage" ]
 
 aleo-cli = [ ]
+async = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 rocks = [ "rocksdb" ]
 serial = [

@@ -121,6 +121,7 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns the inclusion assignments for the given execution.
+    #[cfg(feature = "async")]
     pub async fn prepare_execution_async<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
         &self,
         execution: &Execution<N>,
