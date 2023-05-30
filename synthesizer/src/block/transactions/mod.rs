@@ -99,7 +99,7 @@ impl<N: Network> Transactions<N> {
     pub fn to_finalize_root(&self) -> Result<Field<N>> {
         // Extract the finalize operations from the transactions and convert them to bytes.
         let finalize_operations_bytes =
-            self.finalize_operations().map(|operations| operations.to_bytes_le()).collect::<Result<Vec<_>>>()?;
+            self.finalize_operations().map(|operation| operation.identifier()).collect::<Result<Vec<_>>>()?;
 
         // Construct the preimage for the finalize root.
         let preimage = finalize_operations_bytes.iter().flat_map(|op| op.to_bits_le()).collect::<Vec<_>>();
