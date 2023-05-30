@@ -16,3 +16,4 @@
       microcredits: 50u64.private,
       _nonce: 1934010419170189618788494556114317443625926726858803523368268025659981886589group.public
     }
+- Input record for 'mint_and_split.aleo' must belong to the signer
