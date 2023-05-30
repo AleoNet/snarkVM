@@ -184,6 +184,15 @@ impl<N: Network> ConfirmedTransaction<N> {
             ConfirmedTransaction::RejectedDeploy(..) | ConfirmedTransaction::RejectedExecute(..) => 0,
         }
     }
+
+    /// Returns the finalize operations for the confirmed transaction.
+    pub fn finalize_operations(&self) -> Option<&Vec<FinalizeOperation<N>>> {
+        match self {
+            Self::AcceptedDeploy(_, _, operations) => Some(operations),
+            Self::AcceptedExecute(_, _, operations) => Some(operations),
+            _ => None,
+        }
+    }
 }
 
 impl<N: Network> Deref for ConfirmedTransaction<N> {
