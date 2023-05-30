@@ -26,7 +26,17 @@ mod integers {
     use snarkvm_circuit::{FromStr, U64, U8};
     use snarkvm_circuit_environment::{Environment, FormalCircuit, FromBits, Inject, Mode, ToBits, Transcribe};
     use snarkvm_circuit_types::Modulo;
-    use snarkvm_console_types_integers::{AddWrapped, MulWrapped, PowChecked, PowWrapped, One, SubWrapped, Zero, U64 as ConsoleU64, U8 as ConsoleU8};
+    use snarkvm_console_types_integers::{
+        AddWrapped,
+        MulWrapped,
+        One,
+        PowChecked,
+        PowWrapped,
+        SubWrapped,
+        Zero,
+        U64 as ConsoleU64,
+        U8 as ConsoleU8,
+    };
 
     // for ops see circuit/types/integers/{add_checked,add_wrapped}.rs
 

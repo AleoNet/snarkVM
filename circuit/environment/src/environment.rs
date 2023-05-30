@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{witness_mode, Assignment, CircuitJSON, Inject, LinearCombination, Mode, Transcribe, Variable, R1CS};
+use crate::{witness_mode, Assignment, Inject, LinearCombination, Mode, Transcribe, Variable, R1CS};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::traits::*;
 

@@ -101,7 +101,7 @@ impl Environment for FormalCircuit {
         // Log constraint if all terms are not constant.
         if !a.is_constant() || !b.is_constant() || !c.is_constant() {
             let constraint_json = ConstraintJSON::new(&a, &b, &c);
-            Self::log(format!("{}", serde_json::to_string_pretty(&constraint_json).unwrap()));
+            Self::log(serde_json::to_string_pretty(&constraint_json).unwrap());
         }
         Circuit::enforce(|| (a, b, c))
     }
@@ -136,9 +136,9 @@ impl Environment for FormalCircuit {
         Circuit::num_constraints()
     }
 
-    /// Returns the number of gates in the entire circuit.
-    fn num_gates() -> u64 {
-        Circuit::num_gates()
+    /// Returns the number of nonzeros in the entire circuit.
+    fn num_nonzeros() -> (u64, u64, u64) {
+        Circuit::num_nonzeros()
     }
 
     /// Returns the number of constants for the current scope.
@@ -161,9 +161,9 @@ impl Environment for FormalCircuit {
         Circuit::num_constants_in_scope()
     }
 
-    /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> u64 {
-        Circuit::num_gates_in_scope()
+    /// Returns the number of nonzeros for the current scope.
+    fn num_nonzeros_in_scope() -> (u64, u64, u64) {
+        Circuit::num_nonzeros_in_scope()
     }
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
