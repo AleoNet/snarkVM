@@ -23,9 +23,9 @@ use console::{
 use snarkvm_synthesizer::Process;
 
 #[test]
-fn test_program_execute() {
+fn test_process_execute() {
     // Load the tests.
-    let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/program/execute");
+    let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/process/execute");
     // Initialize a process.
     let mut process = Process::<CurrentNetwork>::load().unwrap();
 
