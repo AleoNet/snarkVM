@@ -1,6 +1,9 @@
 /*
-- [hello, 0u32, 1u32]
-- [hello, 1u32, 2u32]
+cases:
+  - function: hello
+    inputs: [0u32, 1u32]
+  - function: hello
+    inputs: [1u32, 2u32]
 */
 
 program hello.aleo;
