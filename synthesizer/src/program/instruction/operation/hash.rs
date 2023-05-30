@@ -400,8 +400,10 @@ impl<N: Network, const VARIANT: u8> Display for HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> FromBytes for HashInstruction<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Prepare the number of operands.
+        let num_operands = expected_num_operands(VARIANT);
         // Read the operands.
-        let operands = vec![Operand::read_le(&mut reader)?; expected_num_operands(VARIANT)];
+        let operands = (0..num_operands).map(|_| Operand::read_le(&mut reader)).collect::<Result<_, _>>()?;
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Return the operation.
