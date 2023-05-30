@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[macro_use]
 extern crate criterion;
@@ -25,6 +23,7 @@ use snarkvm_console_network::{
 use snarkvm_console_types::Field;
 
 use criterion::{BatchSize, BenchmarkId, Criterion};
+use std::collections::BTreeMap;
 
 const DEPTH: u8 = 32;
 const MAX_INSTANTIATED_DEPTH: u8 = 16;
@@ -134,11 +133,12 @@ fn update_many(c: &mut Criterion) {
             // Construct a Merkle tree with the specified number of leaves.
             let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves[..*num_leaves]).unwrap();
             let num_new_leaves = std::cmp::min(*num_new_leaves, updates.len());
+            let updates = BTreeMap::from_iter(updates[..num_new_leaves].iter().cloned());
             c.bench_function(&format!("MerkleTree/update_many/{num_leaves}/{num_new_leaves}",), |b| {
                 b.iter_batched(
                     || merkle_tree.clone(),
                     |mut merkle_tree| {
-                        merkle_tree.update_many(&updates[..num_new_leaves]).unwrap();
+                        merkle_tree.update_many(&updates).unwrap();
                     },
                     BatchSize::SmallInput,
                 )
@@ -169,7 +169,7 @@ fn update_vs_update_many(c: &mut Criterion) {
         // Benchmark the `update_many` operation.
         group.bench_with_input(
             BenchmarkId::new("Batch", &format!("{depth}")),
-            &vec![(index, new_leaf)],
+            &BTreeMap::from([(index, new_leaf)]),
             |b, updates| b.iter_batched(|| tree.clone(), |mut tree| tree.update_many(updates), BatchSize::SmallInput),
         );
     }

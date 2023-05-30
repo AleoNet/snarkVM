@@ -1,22 +1,23 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<N: Network> Transaction<N> {
+    /// The maximum number of transitions allowed in a transaction.
+    const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
+
     /// Returns the transaction root, by computing the root for a Merkle tree of the transition IDs.
     pub fn to_root(&self) -> Result<Field<N>> {
         Ok(*self.to_tree()?.root())
@@ -29,7 +30,7 @@ impl<N: Network> Transaction<N> {
                 // Check if the ID is the transition ID for the fee.
                 if *id == **fee.id() {
                     // Return the transaction leaf.
-                    return Ok(TransactionLeaf::new_deployment_fee(
+                    return Ok(TransactionLeaf::new_fee(
                         deployment.program().functions().len() as u16, // The last index.
                         *id,
                     ));
@@ -69,6 +70,10 @@ impl<N: Network> Transaction<N> {
                 // Error if the transition ID was not found.
                 bail!("Transition ID not found in execution transaction");
             }
+            Self::Fee(_, fee) => {
+                // Return the transaction leaf.
+                Ok(TransactionLeaf::new_fee(0, **fee.id()))
+            }
         }
     }
 
@@ -85,13 +90,15 @@ impl<N: Network> Transaction<N> {
             Transaction::Deploy(_, _, deployment, fee) => Self::deployment_tree(deployment, fee),
             // Compute the execution tree.
             Transaction::Execute(_, execution, fee) => Self::execution_tree(execution, fee),
+            // Compute the fee tree.
+            Transaction::Fee(_, fee) => Self::fee_tree(fee),
         }
     }
 }
 
 impl<N: Network> Transaction<N> {
     /// Returns the Merkle tree for the given deployment.
-    pub(super) fn deployment_tree(deployment: &Deployment<N>, fee: &Fee<N>) -> Result<TransactionTree<N>> {
+    pub fn deployment_tree(deployment: &Deployment<N>, fee: &Fee<N>) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
         Self::check_deployment_size(deployment)?;
         // Retrieve the program.
@@ -111,7 +118,7 @@ impl<N: Network> Transaction<N> {
             })
             .chain(
                 // Add the transaction fee to the leaves.
-                [Ok(TransactionLeaf::new_deployment_fee(
+                [Ok(TransactionLeaf::new_fee(
                     program.functions().len() as u16, // The last index.
                     **fee.transition_id(),
                 )
@@ -135,7 +142,7 @@ impl<N: Network> Transaction<N> {
         let leaves = match fee {
             Some(fee) => {
                 // Construct the transaction leaf.
-                let leaf = TransactionLeaf::new_execution(
+                let leaf = TransactionLeaf::new_fee(
                     execution.len() as u16, // The last index.
                     **fee.transition_id(),
                 )
@@ -148,6 +155,14 @@ impl<N: Network> Transaction<N> {
 
         // Compute the execution tree.
         N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves)
+    }
+
+    /// Returns the Merkle tree for the given fee.
+    pub fn fee_tree(fee: &Fee<N>) -> Result<TransactionTree<N>> {
+        // Construct the transaction leaf.
+        let leaf = TransactionLeaf::new_fee(0u16, **fee.transition_id()).to_bits_le();
+        // Compute the execution tree.
+        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[leaf])
     }
 
     /// Returns `true` if the deployment is within the size bounds.

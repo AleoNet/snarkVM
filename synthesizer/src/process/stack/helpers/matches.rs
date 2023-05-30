@@ -1,24 +1,22 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
-impl<N: Network> Stack<N> {
+impl<N: Network> StackMatches<N> for Stack<N> {
     /// Checks that the given value matches the layout of the value type.
-    pub fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
+    fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the value matches the declared value type in the register.
         match (value, value_type) {
             (Value::Plaintext(plaintext), ValueType::Constant(plaintext_type))
@@ -35,7 +33,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given stack value matches the layout of the register type.
-    pub fn matches_register_type(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn matches_register_type(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
         match (stack_value, register_type) {
             (Value::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
                 self.matches_plaintext(plaintext, plaintext_type)
@@ -49,7 +47,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given record matches the layout of the external record type.
-    pub fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()> {
+    fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()> {
         // Retrieve the record name.
         let record_name = locator.resource();
 
@@ -71,7 +69,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    pub fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
+    fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
         // Ensure the record name is valid.
         ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
@@ -90,7 +88,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
-    pub fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
+    fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
         self.matches_plaintext_internal(plaintext, plaintext_type, 0)
     }
 }

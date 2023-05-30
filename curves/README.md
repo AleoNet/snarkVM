@@ -7,7 +7,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)](https://crates.io/crates/snarkvm-curves)
 [![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](https://aleo.org)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
+[![License: GPL v3](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE.md)
 
 ## Overview
 Aleo uses a tailored set of pairing-friendly elliptic curves to perform efficient proof generation and verification.
