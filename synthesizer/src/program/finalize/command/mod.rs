@@ -56,7 +56,6 @@ pub enum Command<N: Network> {
     Remove(Remove<N>),
     /// Sets the value stored at the `key` operand in the `mapping` to `value`.
     Set(Set<N>),
-    // TODO: Should this be in alphabetical order (though it breaks serialization)?
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
 }

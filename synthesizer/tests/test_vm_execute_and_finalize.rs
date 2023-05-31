@@ -49,7 +49,7 @@ fn test_vm_execute_and_finalize() {
     tests.par_iter().for_each(|test| {
         // Initialize the RNG.
         let rng = &mut match test.randomness() {
-            None => TestRng::default(),
+            None => TestRng::fixed(123456789),
             Some(randomness) => TestRng::fixed(randomness),
         };
 
