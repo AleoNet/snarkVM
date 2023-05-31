@@ -13,32 +13,113 @@
 // limitations under the License.
 
 mod utilities;
+
+use indexmap::IndexMap;
+use std::borrow::Borrow;
 use utilities::*;
 
 use console::{
-    account::PrivateKey,
-    network::prelude::*,
-    program::{Identifier, Value},
+    account::{PrivateKey, ViewKey},
+    network::{prelude::*, Testnet3},
+    program::{Entry, Identifier, Literal, Plaintext, Record, Value, U64},
+    types::Field,
 };
-use snarkvm_synthesizer::{helpers::memory::ConsensusMemory, ConsensusStore, VM};
+use snarkvm_synthesizer::{
+    helpers::memory::ConsensusMemory,
+    Block,
+    ConfirmedTransaction,
+    ConsensusStorage,
+    ConsensusStore,
+    Header,
+    Metadata,
+    Transaction,
+    Transactions,
+    Transition,
+    VM,
+};
 
 #[test]
 fn test_vm_execute_and_finalize() {
     // Load the tests.
     let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/vm/execute_and_finalize");
 
-    // Initialize a VM.
-    let vm: VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> =
-        VM::from(ConsensusStore::open(None).unwrap()).unwrap();
-
     // Run each test and compare it against its corresponding expectation.
     for test in &tests {
+        // Initialize a VM.
+        let vm: VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> =
+            VM::from(ConsensusStore::open(None).unwrap()).unwrap();
+
         // Initialize the RNG.
         let rng = &mut match test.randomness() {
             None => TestRng::default(),
             Some(randomness) => TestRng::fixed(randomness),
         };
 
+        // Initialize a private key.
+        let genesis_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = vm.genesis(&genesis_private_key, rng).unwrap();
+
+        // Select a record to spend.
+        let view_key = ViewKey::try_from(genesis_private_key).unwrap();
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
+
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Calculate the number of fee records needed for the workload.
+        let num_fee_records = 1 + test.cases().len();
+        let num_levels_of_splits = num_fee_records.next_power_of_two().ilog2();
+
+        // Helper function to get the balance of a `credits.aleo` record.
+        let get_balance = |record: &Record<Testnet3, Plaintext<Testnet3>>| -> u64 {
+            match record.data().get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
+                Entry::Private(Plaintext::Literal(Literal::U64(amount), ..)) => **amount,
+                _ => unreachable!("Invalid entry type for credits.aleo."),
+            }
+        };
+
+        println!("Splitting the initial fee record into {} fee records.", num_fee_records);
+
+        // Construct fee records for the workload, storing the relevant data in the object store.
+        let balance = get_balance(&record);
+        let mut fee_records = vec![(record, balance)];
+        let mut fee_counter = 1;
+        for _ in 0..num_levels_of_splits {
+            let mut transactions = Vec::with_capacity(fee_records.len());
+            for (fee_record, balance) in fee_records.drain(..).collect_vec() {
+                if fee_counter < num_fee_records {
+                    println!("Splitting out the {}-th record of size {}.", fee_counter, balance / 2);
+                    let (first, second, fee_transaction) =
+                        split(&vm, &genesis_private_key, fee_record, balance / 2, rng);
+                    let balance = get_balance(&first);
+                    fee_records.push((first, balance));
+                    let balance = get_balance(&second);
+                    fee_records.push((second, balance));
+                    transactions.push(fee_transaction);
+                    fee_counter += 1;
+                } else {
+                    fee_records.push((fee_record, balance));
+                }
+            }
+            // Create a block for the fee transactions and add them to the VM.
+            let transactions = vm.speculate(transactions.iter()).unwrap();
+            let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
+            vm.add_next_block(&block).unwrap();
+        }
+
+        println!("Constructed fee records for the workload.");
+
+        // Deploy the program.
+        let transaction =
+            vm.deploy(&genesis_private_key, test.program(), (fee_records.pop().unwrap().0, 0), None, rng).unwrap();
+        let transactions = vm.speculate([transaction].iter()).unwrap();
+        let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
+        vm.add_next_block(&block).unwrap();
+
+        // Run each test case, aggregating the outputs.
         let outputs = test
             .cases()
             .iter()
@@ -69,7 +150,7 @@ fn test_vm_execute_and_finalize() {
                         private_key.as_str().expect("expected string for private key"),
                     )
                     .expect("unable to parse private key"),
-                    None => PrivateKey::new(rng).unwrap(),
+                    None => genesis_private_key,
                 };
 
                 let mut run_test = || -> serde_yaml::Value {
@@ -79,7 +160,7 @@ fn test_vm_execute_and_finalize() {
                         &private_key,
                         (test.program().id(), function_name),
                         inputs.iter(),
-                        None,
+                        Some((fee_records.pop().unwrap().0, 0u64)),
                         None,
                         rng,
                     ) {
@@ -132,8 +213,20 @@ fn test_vm_execute_and_finalize() {
                         Ok(transactions) => {
                             output.insert(
                                 serde_yaml::Value::String("speculate".to_string()),
-                                serde_yaml::Value::String("`speculate` succeeded.".to_string()),
+                                serde_yaml::Value::String(match transactions.iter().next().unwrap() {
+                                    ConfirmedTransaction::AcceptedExecute(_, _, _) => {
+                                        "the execution was accepted".to_string()
+                                    }
+                                    ConfirmedTransaction::RejectedExecute(_, _, _) => {
+                                        "the execution was rejected".to_string()
+                                    }
+                                    ConfirmedTransaction::AcceptedDeploy(_, _, _)
+                                    | ConfirmedTransaction::RejectedDeploy(_, _, _) => {
+                                        unreachable!("unexpected deployment transaction")
+                                    }
+                                }),
                             );
+
                             transactions
                         }
                         Err(err) => {
@@ -144,20 +237,14 @@ fn test_vm_execute_and_finalize() {
                             return serde_yaml::Value::Mapping(output);
                         }
                     };
-                    match vm.finalize(&transactions) {
-                        Ok(_) => {
-                            output.insert(
-                                serde_yaml::Value::String("finalize".to_string()),
-                                serde_yaml::Value::String("`finalize` succeeded.".to_string()),
-                            );
-                        }
-                        Err(err) => {
-                            output.insert(
-                                serde_yaml::Value::String("finalize".to_string()),
-                                serde_yaml::Value::String(err.to_string()),
-                            );
-                        }
-                    };
+                    let block = construct_next_block(&vm, &private_key, transactions, rng).unwrap();
+                    output.insert(
+                        serde_yaml::Value::String("add_next_block".to_string()),
+                        serde_yaml::Value::String(match vm.add_next_block(&block) {
+                            Ok(_) => "succeeded.".to_string(),
+                            Err(err) => err.to_string(),
+                        }),
+                    );
                     serde_yaml::Value::Mapping(output)
                 };
 
@@ -169,4 +256,63 @@ fn test_vm_execute_and_finalize() {
         // Save the output.
         test.save(&outputs).unwrap();
     }
+}
+
+// A helper function to construct the next block.
+fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
+    vm: &VM<CurrentNetwork, C>,
+    private_key: &PrivateKey<CurrentNetwork>,
+    transactions: Transactions<CurrentNetwork>,
+    rng: &mut R,
+) -> Result<Block<CurrentNetwork>> {
+    // Get the most recent block.
+    let block_hash =
+        vm.block_store().get_block_hash(*vm.block_store().heights().max().unwrap().borrow()).unwrap().unwrap();
+    let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
+
+    // Construct the metadata associated with the block.
+    let metadata = Metadata::new(
+        CurrentNetwork::ID,
+        previous_block.round() + 1,
+        previous_block.height() + 1,
+        CurrentNetwork::STARTING_SUPPLY,
+        0,
+        CurrentNetwork::GENESIS_COINBASE_TARGET,
+        CurrentNetwork::GENESIS_PROOF_TARGET,
+        previous_block.last_coinbase_target(),
+        previous_block.last_coinbase_timestamp(),
+        CurrentNetwork::GENESIS_TIMESTAMP + 1,
+    )?;
+    // Construct the block header.
+    let header = Header::from(
+        *vm.block_store().current_state_root(),
+        transactions.to_root().unwrap(),
+        Field::zero(),
+        Field::zero(),
+        metadata,
+    )?;
+
+    // Construct the new block.
+    Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
+}
+
+type SplitOutput =
+    (Record<Testnet3, Plaintext<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>, Transaction<Testnet3>);
+
+// A helper function to invoke the `split` function an a credits.aleo record.
+fn split<C: ConsensusStorage<Testnet3>>(
+    vm: &VM<Testnet3, C>,
+    private_key: &PrivateKey<Testnet3>,
+    record: Record<Testnet3, Plaintext<Testnet3>>,
+    amount: u64,
+    rng: &mut TestRng,
+) -> SplitOutput {
+    let inputs = vec![Value::Record(record), Value::Plaintext(Plaintext::from(Literal::U64(U64::new(amount))))];
+    let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, None, rng).unwrap();
+    let mut records = transaction
+        .records()
+        .map(|(_, record)| record.decrypt(&ViewKey::try_from(private_key).unwrap()).unwrap())
+        .collect_vec();
+    assert_eq!(records.len(), 2);
+    (records.pop().unwrap(), records.pop().unwrap(), transaction)
 }
