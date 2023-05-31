@@ -167,7 +167,7 @@ impl<N: Network> ToBytes for Command<N> {
             }
             Self::Position(position) => {
                 // Write the variant.
-                4u8.write_le(&mut writer)?;
+                7u8.write_le(&mut writer)?;
                 // Write the position command.
                 position.write_le(&mut writer)
             }

@@ -1,0 +1,10 @@
+- execute:
+    unused_position.aleo/foo:
+      outputs: []
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"5454303846510544188387617639022305309900911203389804722678406027570158446747field","checksum":"3475811325524744590020825023156442647950636922626652462912816742324399021118field","value":"record1qyqsq258t6xgflyj050cnuwhmqeaz8qf7yp7wnr5fu2dvgyls4x276g2qyxx66trwfhkxun9v35hguerqqpqzqq6s9p3rqef3lh9eg0gr4qw8dpg3l8c8gj2p7jc5m6lmvpxmu6cpy6kv3gglfywqw27du4f98467g9aqphdy5lm7w3nznc3y5c9mlcsxmuelcd"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.

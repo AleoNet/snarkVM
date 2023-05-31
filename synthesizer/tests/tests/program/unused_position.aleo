@@ -1,6 +1,7 @@
 /*
-- [foo]
-
+cases:
+  - function: foo
+    inputs: []
 */
 
 program unused_position.aleo;
