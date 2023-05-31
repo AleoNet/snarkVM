@@ -128,6 +128,7 @@ synthesizer = [ "snarkvm-synthesizer" ]
 timer = [ "snarkvm-ledger/timer" ]
 utilities = [ "snarkvm-utilities" ]
 wasm = [ "snarkvm-wasm" ]
+ed25519 = [ "snarkvm-console/ed25519" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
