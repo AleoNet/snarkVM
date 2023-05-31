@@ -1,8 +1,13 @@
 /*
-- [generator, 1scalar]
-- [generator, 2scalar]
-- [generator, 3scalar]
-- [constant_ops]
+cases:
+  - function: generator
+    inputs: [1scalar]
+  - function: generator
+    inputs: [2scalar]
+  - function: generator
+    inputs: [3scalar]
+  - function: constant_ops
+    inputs: []
 */
 
 program group_operations.aleo;
