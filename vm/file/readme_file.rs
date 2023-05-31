@@ -45,7 +45,12 @@ impl README {
 
 To compile this Aleo program, run:
 ```bash
-aleo build
+snarkvm build
+```
+
+To execute this Aleo program, run:
+```bash
+snarkvm run hello
 ```
 "
         );

@@ -75,6 +75,13 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
         self.transition_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.fee_map().clear_latest_checkpoint();
+        self.reverse_fee_map().clear_latest_checkpoint();
+        self.transition_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.fee_map().atomic_rewind();
@@ -211,6 +218,11 @@ impl<N: Network, F: FeeStorage<N>> FeeStore<N, F> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

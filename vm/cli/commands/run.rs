@@ -20,10 +20,8 @@ pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
 #[derive(Debug, Parser)]
 pub struct Run {
     /// The function name.
-    #[clap(long)]
     function: Identifier<CurrentNetwork>,
     /// The function inputs.
-    #[clap(long)]
     inputs: Vec<Value<CurrentNetwork>>,
     /// Uses the specified endpoint.
     #[clap(long)]
@@ -107,5 +105,25 @@ impl Run {
         let path_string = format!("(in \"{}\")", path.display());
 
         Ok(format!("✅ Executed '{}' {}", locator.to_string().bold(), path_string.dimmed()))
+    }
+
+    #[cfg(test)]
+    pub fn function(&self) -> Identifier<CurrentNetwork> {
+        self.function
+    }
+
+    #[cfg(test)]
+    pub fn inputs(&self) -> &[Value<CurrentNetwork>] {
+        &self.inputs
+    }
+
+    #[cfg(test)]
+    pub fn endpoint(&self) -> Option<&str> {
+        self.endpoint.as_deref()
+    }
+
+    #[cfg(test)]
+    pub fn offline(&self) -> bool {
+        self.offline
     }
 }

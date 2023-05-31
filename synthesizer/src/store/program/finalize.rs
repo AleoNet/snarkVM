@@ -96,6 +96,15 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.value_map().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.program_id_map().clear_latest_checkpoint();
+        self.mapping_id_map().clear_latest_checkpoint();
+        self.key_value_id_map().clear_latest_checkpoint();
+        self.key_map().clear_latest_checkpoint();
+        self.value_map().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.program_id_map().atomic_rewind();
@@ -624,6 +633,11 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

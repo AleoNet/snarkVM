@@ -28,9 +28,9 @@ use std::collections::BTreeMap;
 const DEPTH: u8 = 32;
 const MAX_INSTANTIATED_DEPTH: u8 = 16;
 
-const NUM_LEAVES: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000, 1_000_000];
-const APPEND_SIZES: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000, 1_000_000];
-const UPDATE_SIZES: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000, 1_000_000];
+const NUM_LEAVES: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000];
+const APPEND_SIZES: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000];
+const UPDATE_SIZES: &[usize] = &[1, 10, 100, 1_000, 10_000];
 
 /// Generates the specified number of random Merkle tree leaves.
 macro_rules! generate_leaves {

@@ -1,10 +1,6 @@
 name: Run snarkVM Benchmarks
 
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - 'testnet3'
   push:
     branches:
       - 'testnet3'
@@ -13,7 +9,6 @@ jobs:
   # Run benchmarks and stores the output to a file
   benchmark:
     name: Benchmark
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -75,8 +70,8 @@ jobs:
       - name: Benchmark synthesizer
         run: |
           cd synthesizer
-          cargo bench --bench block --output-format bencher | tee -a ../output.txt
-          cargo bench --bench transaction --output-format bencher | tee -a ../output.txt
+          cargo bench --bench block -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench transaction -- --output-format bencher | tee -a ../output.txt
           cd ..
 
       - name: Benchmark synthesizer/coinbase

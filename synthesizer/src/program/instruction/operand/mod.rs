@@ -18,6 +18,7 @@ mod parse;
 use console::{
     network::prelude::*,
     program::{Literal, ProgramID, Register},
+    types::Group,
 };
 
 /// The `Operand` enum represents the options for an operand in an instruction.
