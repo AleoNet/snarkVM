@@ -73,6 +73,7 @@ fn test_vm_execute_and_finalize() {
             .cases()
             .iter()
             .map(|value| {
+                // TODO: Dedup from other integration tests.
                 // Extract the function name, inputs, and optional private key.
                 let value = value.as_mapping().expect("expected mapping for test case");
                 let function_name = Identifier::<CurrentNetwork>::from_str(
