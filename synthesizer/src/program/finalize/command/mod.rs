@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod branch;
+pub use branch::*;
+
 mod contains;
 pub use contains::*;
 
@@ -58,6 +61,10 @@ pub enum Command<N: Network> {
     Set(Set<N>),
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
+    /// Jumps to the position indicated by `label`, if `first` equals `second`.
+    BranchEq(BranchEq<N>),
+    /// Jumps to the position indicated by `label`, if `first` does **not** equal `second`.
+    BranchNeq(BranchNeq<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -86,6 +93,9 @@ impl<N: Network> Command<N> {
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
             // Finalize the `position` command, and return no finalize operation.
             Command::Position(position) => position.finalize().map(|_| None),
+            Command::BranchEq(_) | Command::BranchNeq(_) => {
+                bail!("`branch` instructions cannot be finalized directly.")
+            }
         }
     }
 }
@@ -112,8 +122,12 @@ impl<N: Network> FromBytes for Command<N> {
             6 => Ok(Self::Set(Set::read_le(&mut reader)?)),
             // Read the `position` command.
             7 => Ok(Self::Position(Position::read_le(&mut reader)?)),
+            // Read the `branch.eq` command.
+            8 => Ok(Self::BranchEq(BranchEq::read_le(&mut reader)?)),
+            // Read the `branch.neq` command.
+            9 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
             // Invalid variant.
-            8.. => Err(error(format!("Invalid command variant: {variant}"))),
+            10.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -170,6 +184,18 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the position command.
                 position.write_le(&mut writer)
             }
+            Self::BranchEq(branch_eq) => {
+                // Write the variant.
+                5u8.write_le(&mut writer)?;
+                // Write the `branch.eq` command.
+                branch_eq.write_le(&mut writer)
+            }
+            Self::BranchNeq(branch_neq) => {
+                // Write the variant.
+                6u8.write_le(&mut writer)?;
+                // Write the `branch.neq` command.
+                branch_neq.write_le(&mut writer)
+            }
         }
     }
 }
@@ -188,6 +214,8 @@ impl<N: Network> Parser for Command<N> {
             map(Remove::parse, |remove| Self::Remove(remove)),
             map(Set::parse, |set| Self::Set(set)),
             map(Position::parse, |position| Self::Position(position)),
+            map(BranchEq::parse, |branch_eq| Self::BranchEq(branch_eq)),
+            map(BranchNeq::parse, |branch_neq| Self::BranchNeq(branch_neq)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -230,6 +258,8 @@ impl<N: Network> Display for Command<N> {
             Self::Remove(remove) => Display::fmt(remove, f),
             Self::Set(set) => Display::fmt(set, f),
             Self::Position(position) => Display::fmt(position, f),
+            Self::BranchEq(branch_eq) => Display::fmt(branch_eq, f),
+            Self::BranchNeq(branch_neq) => Display::fmt(branch_neq, f),
         }
     }
 }
@@ -304,6 +334,18 @@ mod tests {
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // BranchEq
+        let expected = "branch.eq r0 r1 to exit;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // BranchNeq
+        let expected = "branch.neq r2 r3 to start;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
     }
 
     #[test]
@@ -368,6 +410,18 @@ mod tests {
         let expected = "position exit;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // BranchEq
+        let expected = "branch.eq r0 r1 to exit;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::BranchEq(BranchEq::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // BranchNeq
+        let expected = "branch.neq r2 r3 to start;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::BranchNeq(BranchNeq::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }
