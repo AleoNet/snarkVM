@@ -7,7 +7,7 @@
       outputs:
       - '{"type":"record","id":"3809383602283120733697234413285621335674857283111730682361358137318083952133field","checksum":"7640239696954274436906141999898565654233580936791234385708196250387006225738field","value":"record1qyqsp7he9d7m9k96r68sq0j2ww0k3jrve0pl3xjhnkjkwee6e68ec3s9qyxx66trwfhkxun9v35hguerqqpqzqynzn0ynl6pjv7ddh894jjmfgsrew0mx46d6qqfkgxegn097xyyqjqsd8kmwq6quzlmek0dgyrm0n03j8tlw55kz3mnquumucqqfm8syx08h4z"}'
       finalize: []
-  speculate: '`speculate` succeeded.'
-  finalize: '`finalize` succeeded.'
+  speculate: the execution was accepted
+  add_next_block: succeeded.
 - execute: Commitment '1266307482263846358970326041806201638141701138269282465033372005968041137990field' does not exist
 - execute: Input record for 'mint_and_split.aleo' must belong to the signer
