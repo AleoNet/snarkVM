@@ -24,8 +24,8 @@ features = [ "address", "field", "group", "scalar" ]
 [dependencies.bs58]
 version = "0.4"
 
-[dependencies.fastcrypto]
-version = "0.1.5"
+[dependencies.ed25519-dalek]
+version = "1.0"
 optional = true
 
 [dev-dependencies.bincode]
@@ -51,4 +51,4 @@ graph_key = [ "private_key" ]
 private_key = [ "compute_key" ]
 signature = [ "compute_key" ]
 view_key = [ ]
-ed25519 = [ "fastcrypto" ]
+ed25519 = [ "ed25519-dalek" ]

@@ -16,13 +16,13 @@
 
 use super::*;
 
-use fastcrypto::traits::ToFromBytes;
+use ed25519_dalek::{PublicKey, SecretKey};
 
 pub const ACCOUNT_ED25519_DOMAIN: &str = "AleoAccountEd25519_0";
 
 impl<N: Network> PrivateKey<N> {
     /// Returns the Ed25519 private key for this account private key.
-    pub fn to_ed25519(&self, counter: u32) -> Result<fastcrypto::ed25519::Ed25519KeyPair> {
+    pub fn to_ed25519(&self, counter: u32) -> Result<ed25519_dalek::Keypair> {
         // Prepare the domain separator.
         let domain = Field::new_domain_separator(ACCOUNT_ED25519_DOMAIN);
         // Prepare the counter.
@@ -30,8 +30,12 @@ impl<N: Network> PrivateKey<N> {
         // Construct the preimage.
         let preimage = [domain, self.sk_sig.to_field()?, self.r_sig.to_field()?, counter];
         // Hash the preimage.
-        let hash = N::hash_to_scalar_psd4(&preimage)?;
-        // Construct the private key.
-        Ok(fastcrypto::ed25519::Ed25519KeyPair::from_bytes(&hash.to_bytes_le()?)?)
+        let hash = N::hash_psd4(&preimage)?;
+        // Construct the ed25519 secret key.
+        let secret_key = SecretKey::from_bytes(&hash.to_bytes_le()?)?;
+        // Construct the ed25519 public key.
+        let public_key = PublicKey::from(&secret_key);
+        // Construct the ed25519 keypair.
+        Ok(ed25519_dalek::Keypair { secret: secret_key, public: public_key })
     }
 }
