@@ -157,9 +157,10 @@ impl<N: Network> Inclusion<N> {
                 let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
 
                 // Compute the inclusion batch proof.
-                let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
+                let (global_state_root, proof) =
+                    Self::prove_batch::<A, R>(&self.proving_tasks, &proving_key, assignments, rng)?;
                 // Return the execution.
-                Execution::from(execution.into_transitions(), global_state_root, Some(inclusion_proof))
+                Execution::from(execution.into_transitions(), global_state_root, Some(proof))
             }
         }
     }

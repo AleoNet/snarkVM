@@ -18,9 +18,10 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use std::collections::BTreeMap;
+use console::program::Locator;
+use std::collections::{BTreeMap, HashMap};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
     proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
@@ -53,24 +54,24 @@ impl<N: Network> ProvingKey<N> {
     /// Returns a proof for the given batch of assignments on the circuit.
     pub fn prove_batch<R: Rng + CryptoRng>(
         &self,
-        function_name: &str,
-        assignments: &[circuit::Assignment<N::Field>],
+        assignments: &HashMap<Locator<N>, (ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        // Compute the batch proof.
-        let mut assignment_refs: Vec<&circuit::Assignment<N::Field>> = vec![];
-        for assignment in assignments {
-            assignment_refs.push(assignment);
-        }
-        let mut keys_to_constraints = BTreeMap::new();
-        keys_to_constraints.insert(self.deref(), assignment_refs.as_slice());
+        let keys_to_constraints: BTreeMap<_, _> = assignments
+            .values()
+            .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
+            .collect();
+
         let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &keys_to_constraints, rng)?);
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        {
+            // TODO (howardwu): Make a bulleted list of the functions that were executed.
+            println!("{}", format!(" • Executed '' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        }
         Ok(batch_proof)
     }
 }

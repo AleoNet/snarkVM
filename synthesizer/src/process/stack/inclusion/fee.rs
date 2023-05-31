@@ -126,9 +126,10 @@ impl<N: Network> Inclusion<N> {
         let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
 
         // Compute the inclusion batch proof.
-        let (global_state_root, inclusion_proof) = Self::prove_batch::<A, R>(&proving_key, assignments, rng)?;
+        let (global_state_root, proof) =
+            Self::prove_batch::<A, R>(&self.proving_tasks, &proving_key, assignments, rng)?;
         // Return the fee.
-        Ok(Fee::from(fee_transition, global_state_root, Some(inclusion_proof)))
+        Ok(Fee::from(fee_transition, global_state_root, Some(proof)))
     }
 
     /// Checks the inclusion proof for the fee.

@@ -121,7 +121,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.input_store().clear_latest_checkpoint();
         self.output_store().clear_latest_checkpoint();
         self.finalize_map().clear_latest_checkpoint();
-        self.proof_map().clear_latest_checkpoint();
         self.tpk_map().clear_latest_checkpoint();
         self.reverse_tpk_map().clear_latest_checkpoint();
         self.tcm_map().clear_latest_checkpoint();

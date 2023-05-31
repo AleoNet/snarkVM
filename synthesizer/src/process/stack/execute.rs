@@ -427,11 +427,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
 
-            // // Execute the circuit.
-            // let proof = match proving_key.prove(&function.name().to_string(), &assignment, rng) {
-            //     Ok(proof) => proof,
-            //     Err(error) => bail!("Execution proof failed - {error}"),
-            // };
             // lap!(timer, "Execute the circuit");
 
             // Construct the transition.

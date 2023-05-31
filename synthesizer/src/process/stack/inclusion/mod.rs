@@ -108,6 +108,7 @@ impl<N: Network> Inclusion<N> {
 
     /// Returns the global state root and inclusion proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        proving_tasks: &HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
         proving_key: &ProvingKey<N>,
         assignments: &[InclusionAssignment<N>],
         rng: &mut R,
@@ -134,8 +135,12 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
+        let mut proving_tasks = proving_tasks.clone();
+        proving_tasks
+            .insert(Locator::from_str("aleo.aleo/inclusion")?, (proving_key.clone(), batch_assignments.clone()));
+
         // Generate the inclusion batch proof.
-        let inclusion_proof = proving_key.prove_batch(N::INCLUSION_FUNCTION_NAME, &batch_assignments, rng)?;
+        let inclusion_proof = proving_key.prove_batch(&proving_tasks, rng)?;
         // Return the global state root and inclusion proof.
         Ok((global_state_root, inclusion_proof))
     }
