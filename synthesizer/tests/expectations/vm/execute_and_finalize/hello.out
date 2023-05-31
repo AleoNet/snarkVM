@@ -1,28 +1,48 @@
 - execute:
     hello.aleo/hello:
       outputs:
-      - '{"type":"private","id":"7973620044957553265919721103430895575715472534546869042774126356779537586739field","value":"ciphertext1qyqr77r4anlv736tpcdjl5dj0ut08nuya0mg23tl8jnv9gf6z6hw6rsvrjsuf"}'
-      finalize_inputs: []
-  speculate: The execution was accepted.
+      - '{"type":"private","id":"3453179927593591774423510741317599633663284346682519395586736663237096314347field","value":"ciphertext1qyq9qjghesze6vwxdux7r3hza7j47jh9zgt6kz8uju8wyl6nvz5c5pgxc3k30"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"5021875910599117733396869158362834102441399096314813580929903031046185578494field","checksum":"1729726169556426949374255236588917865871890383520993493943670235325407260876field","value":"record1qyqsq77a2n23frevqsck8yrr0f56x2xpxaccgvkgr40tra0mcsxdn0crqyxx66trwfhkxun9v35hguerqqpqzqy8v4c2hfpy6jerveu6629y2hwyrmp58ht8xx2vzl88yhpxdz2eqsrg6a95vn8vzc0emlzggkse9x7r38np0kjtv8yj0jghgvphh8qsyqwg7ap"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
 - execute:
     hello.aleo/hello:
       outputs:
-      - '{"type":"private","id":"5692186089747864125140175198772433746243958793979947737690368110233249342410field","value":"ciphertext1qyqwhmcqjhptvth6d28s5qedmtym5u9w5m8jkg7s4cxg6l7u34gdvzqkvd7uh"}'
-      finalize_inputs: []
-  speculate: The execution was accepted.
+      - '{"type":"private","id":"3480794932442572965580513768417459038934420397761712981013747600300121773420field","value":"ciphertext1qyq2y0s4847xm2nxgxuetc6nvaa4cg9yz4m5lmgn9459efr94aqk2qgp2hefl"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"451976053432969195829543128056187582029010581762088927259003611089541583793field","checksum":"4419161994899322552290046625252490919659934529942848744565753150295519556921field","value":"record1qyqsq0f0ds08uml48nlg9ya9uay3vvym85ekkg6z2tkr7pe0acmqjfqgqyxx66trwfhkxun9v35hguerqqpqzqp0ky4t0qllcaavcfttjfzjm8dcmwymjfjmfyjmpqzl9eur09k2qv6chlmyqegy5yp3wetk2rxfu7lfr0unzc99yeyde6y3q068r73szdttldj"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
 - execute:
     hello.aleo/goodbye:
       outputs:
-      - '{"type":"public","id":"2300589325850041642842975033143015372682682785486247049935725021436174585735field","value":"1u32"}'
-      finalize_inputs:
+      - '{"type":"public","id":"4899330761683225227632931426550135574734463755947744233969804030624101044684field","value":"1u32"}'
+      finalize:
       - 1u32
       - 1u32
-  speculate: The execution was accepted.
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"595830658976273223517678205872431182603838810843665155234991526082542549414field","checksum":"3361506276410223737229228687214534068275799565034645561302882823661070930325field","value":"record1qyqsp9kzup4zx698xll7kqwjcu7m6fvuk7yu02zmk5sd2gqhqur32rcvqyxx66trwfhkxun9v35hguerqqpqzqp9x7xnv02ap6clldszs7896rxa7s4n36qhcwxeeamjwdpl44eepttw7myxhpsyd0l3ds9qsezll2d2cgtnvp0yfmu5cdv3rrj0p25scpvq5q5"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
 - execute:
     hello.aleo/goodbye:
       outputs:
-      - '{"type":"public","id":"1811357681288246271550931978686345496354634011774178626063699329927598929043field","value":"1u32"}'
-      finalize_inputs:
+      - '{"type":"public","id":"1750921684671298685850976535519193128341009274632580633252959888944125690445field","value":"1u32"}'
+      finalize:
       - 0u32
       - 1u32
-  speculate: 'Failed to finalize transactions: Failed to speculate on transaction - Rejected execute transaction has no fee'
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"649253008275733805145915947277682054902068476505284786416253533209604310475field","checksum":"4700422695576783717903870072421871334476078087969291189936123137099602702990field","value":"record1qyqspklfe92cxly7gvm0mls7pzka8sqrdst2c9rdfz2z9yurnuj0sqqqqyxx66trwfhkxun9v35hguerqqpqzqpkc59xna9fq4sg2tc36gjsthwk5lwa2zjwt4qw8k8hydf6t4cyqyq26qxy0z6dfg62t20x0wrale8m9r8lnltd0kgpqns7nuwcf3usynhg73z"}'
+      finalize: []
+  speculate: the execution was rejected
+  add_next_block: succeeded.
