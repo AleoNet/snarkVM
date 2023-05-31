@@ -50,25 +50,25 @@ impl<N: Network> FinalizeOperation<N> {
         let mut identifier = Vec::new();
         match self {
             Self::InitializeMapping(mapping_id) => {
-                identifier.push(0);
+                identifier.push(0u8);
                 identifier.extend_from_slice(&mapping_id.to_bytes_le()?);
             }
             Self::InsertKeyValue(_, _, value_id) => {
-                identifier.push(1);
+                identifier.push(1u8);
                 identifier.extend_from_slice(&value_id.to_bytes_le()?);
             }
             Self::UpdateKeyValue(_, index, _, value_id) => {
-                identifier.push(2);
+                identifier.push(2u8);
                 identifier.extend_from_slice(&index.to_bytes_le()?);
                 identifier.extend_from_slice(&value_id.to_bytes_le()?);
             }
             Self::RemoveKeyValue(mapping_id, index) => {
-                identifier.push(3);
+                identifier.push(3u8);
                 identifier.extend_from_slice(&mapping_id.to_bytes_le()?);
                 identifier.extend_from_slice(&index.to_bytes_le()?);
             }
             Self::RemoveMapping(mapping_id) => {
-                identifier.push(4);
+                identifier.push(4u8);
                 identifier.extend_from_slice(&mapping_id.to_bytes_le()?);
             }
         }
