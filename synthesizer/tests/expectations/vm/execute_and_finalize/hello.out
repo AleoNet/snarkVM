@@ -1,0 +1,28 @@
+- execute:
+    hello.aleo/hello:
+      outputs:
+      - '{"type":"private","id":"7973620044957553265919721103430895575715472534546869042774126356779537586739field","value":"ciphertext1qyqr77r4anlv736tpcdjl5dj0ut08nuya0mg23tl8jnv9gf6z6hw6rsvrjsuf"}'
+      finalize_inputs: []
+  speculate: The execution was accepted.
+- execute:
+    hello.aleo/hello:
+      outputs:
+      - '{"type":"private","id":"5692186089747864125140175198772433746243958793979947737690368110233249342410field","value":"ciphertext1qyqwhmcqjhptvth6d28s5qedmtym5u9w5m8jkg7s4cxg6l7u34gdvzqkvd7uh"}'
+      finalize_inputs: []
+  speculate: The execution was accepted.
+- execute:
+    hello.aleo/goodbye:
+      outputs:
+      - '{"type":"public","id":"2300589325850041642842975033143015372682682785486247049935725021436174585735field","value":"1u32"}'
+      finalize_inputs:
+      - 1u32
+      - 1u32
+  speculate: The execution was accepted.
+- execute:
+    hello.aleo/goodbye:
+      outputs:
+      - '{"type":"public","id":"1811357681288246271550931978686345496354634011774178626063699329927598929043field","value":"1u32"}'
+      finalize_inputs:
+      - 0u32
+      - 1u32
+  speculate: 'Failed to finalize transactions: Failed to speculate on transaction - Rejected execute transaction has no fee'
