@@ -269,6 +269,10 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
                 bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot update key-value.");
             }
         }
+
+        // Retrieve the previous value if it exists.
+        let previous_value = self.get_value_from_key_id_speculative(&key_id)?;
+
         // Insert the new key-value ID.
         key_value_ids.insert(key_id, value_id);
 
@@ -290,7 +294,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id))
+        Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id, previous_value))
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -320,7 +324,15 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Retrieve the index of the key ID in the key-value ID map.
         let index = match key_value_ids.get_index_of(&key_id) {
             Some(index) => u64::try_from(index)?,
-            None => bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot finalize."),
+            None => bail!("Illegal operation: key ID '{key_id}' does not exist in storage - remove key-value."),
+        };
+
+        // Retrieve the previous value if it exists.
+        let previous_value = match self.get_value_from_key_id_speculative(&key_id)? {
+            Some(previous_value) => previous_value,
+            None => bail!(
+                "Illegal operation: the value for key ID '{key_id}' does not exist in storage - cannot key-value."
+            ),
         };
 
         // Remove the key ID.
@@ -338,7 +350,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index))
+        Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index, previous_value))
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,

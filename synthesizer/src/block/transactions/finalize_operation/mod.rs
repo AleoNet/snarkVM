@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::{network::prelude::*, types::Field};
+use console::{network::prelude::*, program::Value, types::Field};
 use snarkvm_utilities::DeserializeExt;
 
 /// Enum to represent the allowed set of Merkle tree operations.
@@ -24,11 +24,11 @@ pub enum FinalizeOperation<N: Network> {
     /// as (`mapping ID`, `key ID`, `value ID`).
     InsertKeyValue(Field<N>, Field<N>, Field<N>),
     /// Updates the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`, `key ID`, `value ID`).
-    UpdateKeyValue(Field<N>, u64, Field<N>, Field<N>),
+    /// as (`mapping ID`, `index`, `key ID`, `value ID`, `previous value`).
+    UpdateKeyValue(Field<N>, u64, Field<N>, Field<N>, Option<Value<N>>),
     /// Removes the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`).
-    RemoveKeyValue(Field<N>, u64),
+    /// as (`mapping ID`, `index`, `previous value`).
+    RemoveKeyValue(Field<N>, u64, Value<N>),
     /// Removes a mapping from the program tree, as (`mapping ID`).
     RemoveMapping(Field<N>),
 }
@@ -65,16 +65,26 @@ impl<N: Network> FromBytes for FinalizeOperation<N> {
                 let key_id = Field::read_le(&mut reader)?;
                 // Read the value ID.
                 let value_id = Field::read_le(&mut reader)?;
+                // Read the previous value.
+                let previous_value_variant = u8::read_le(&mut reader)?;
+                let previous_value = match previous_value_variant {
+                    0 => None,
+                    1 => Some(Value::read_le(&mut reader)?),
+                    _ => return Err(error("Invalid previous value variant")),
+                };
+
                 // Return the finalize operation.
-                Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id))
+                Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id, previous_value))
             }
             3 => {
                 // Read the mapping ID.
                 let mapping_id = Field::read_le(&mut reader)?;
                 // Read the index.
                 let index = u64::read_le(&mut reader)?;
+                // Read the previous value.
+                let previous_value = Value::read_le(&mut reader)?;
                 // Return the finalize operation.
-                Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index))
+                Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index, previous_value))
             }
             4 => {
                 // Read the mapping ID.
@@ -107,7 +117,7 @@ impl<N: Network> ToBytes for FinalizeOperation<N> {
                 // Write the value ID.
                 value_id.write_le(&mut writer)?;
             }
-            FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
+            FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id, previous_value) => {
                 // Write the variant.
                 2u8.write_le(&mut writer)?;
                 // Write the mapping ID.
@@ -118,14 +128,24 @@ impl<N: Network> ToBytes for FinalizeOperation<N> {
                 key_id.write_le(&mut writer)?;
                 // Write the value ID.
                 value_id.write_le(&mut writer)?;
+                // Write the previous value.
+                match previous_value {
+                    None => 0u8.write_le(&mut writer)?,
+                    Some(ref value) => {
+                        1u8.write_le(&mut writer)?;
+                        value.write_le(&mut writer)?;
+                    }
+                }
             }
-            FinalizeOperation::RemoveKeyValue(mapping_id, index) => {
+            FinalizeOperation::RemoveKeyValue(mapping_id, index, previous_value) => {
                 // Write the variant.
                 3u8.write_le(&mut writer)?;
                 // Write the mapping ID.
                 mapping_id.write_le(&mut writer)?;
                 // Write the index.
                 index.write_le(&mut writer)?;
+                // Write the previous value.
+                previous_value.write_le(&mut writer)?;
             }
             FinalizeOperation::RemoveMapping(mapping_id) => {
                 // Write the variant.
@@ -156,17 +176,19 @@ impl<N: Network> Serialize for FinalizeOperation<N> {
                         operation.serialize_field("key_id", key_id)?;
                         operation.serialize_field("value_id", value_id)?;
                     }
-                    FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
+                    FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id, previous_value) => {
                         operation.serialize_field("type", "update_key_value")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
                         operation.serialize_field("index", index)?;
                         operation.serialize_field("key_id", key_id)?;
                         operation.serialize_field("value_id", value_id)?;
+                        operation.serialize_field("previous_value", previous_value)?;
                     }
-                    FinalizeOperation::RemoveKeyValue(mapping_id, index) => {
+                    FinalizeOperation::RemoveKeyValue(mapping_id, index, previous_value) => {
                         operation.serialize_field("type", "remove_key_value")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
                         operation.serialize_field("index", index)?;
+                        operation.serialize_field("previous_value", previous_value)?;
                     }
                     FinalizeOperation::RemoveMapping(mapping_id) => {
                         operation.serialize_field("type", "remove_mapping")?;
@@ -213,16 +235,20 @@ impl<'de, N: Network> Deserialize<'de> for FinalizeOperation<N> {
                         let key_id = DeserializeExt::take_from_value::<D>(&mut operation, "key_id")?;
                         // Deserialize the value ID.
                         let value_id = DeserializeExt::take_from_value::<D>(&mut operation, "value_id")?;
+                        // Deserialize the previous value.
+                        let previous_value = DeserializeExt::take_from_value::<D>(&mut operation, "previous_value")?;
                         // Return the operation.
-                        Self::UpdateKeyValue(mapping_id, index, key_id, value_id)
+                        Self::UpdateKeyValue(mapping_id, index, key_id, value_id, previous_value)
                     }
                     Some("remove_key_value") => {
                         // Deserialize the mapping ID.
                         let mapping_id = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_id")?;
                         // Deserialize the index.
                         let index = DeserializeExt::take_from_value::<D>(&mut operation, "index")?;
+                        // Deserialize the previous value.
+                        let previous_value = DeserializeExt::take_from_value::<D>(&mut operation, "previous_value")?;
                         // Return the operation.
-                        Self::RemoveKeyValue(mapping_id, index)
+                        Self::RemoveKeyValue(mapping_id, index, previous_value)
                     }
                     Some("remove_mapping") => {
                         // Deserialize the mapping ID.
