@@ -1,48 +1,35 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
+mod fee;
+pub use fee::*;
 
 mod bytes;
 mod merkle;
 mod serialize;
 mod string;
 
-use crate::{
-    block::Transition,
-    process::{Authorization, Deployment, Execution, Fee},
-    program::Program,
-    vm::VM,
-    ConsensusStorage,
-    Query,
-};
+use crate::block::Transition;
 use console::{
-    account::PrivateKey,
     network::prelude::*,
-    program::{
-        Ciphertext,
-        Identifier,
-        Plaintext,
-        ProgramID,
-        ProgramOwner,
-        Record,
-        TransactionLeaf,
-        TransactionPath,
-        TransactionTree,
-        Value,
-        TRANSACTION_DEPTH,
-    },
+    program::{Ciphertext, ProgramOwner, Record, TransactionLeaf, TransactionPath, TransactionTree, TRANSACTION_DEPTH},
     types::{Field, Group, U64},
 };
 
@@ -87,104 +74,6 @@ impl<N: Network> Transaction<N> {
         let id = *Self::fee_tree(&fee)?.root();
         // Construct the execution transaction.
         Ok(Self::Fee(id.into(), fee))
-    }
-}
-
-impl<N: Network> Transaction<N> {
-    /// The maximum number of transitions allowed in a transaction.
-    const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
-
-    /// Initializes a new deployment transaction.
-    ///
-    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn deploy<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        program: &Program<N>,
-        (fee_record, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the deployment.
-        let deployment = vm.deploy(program, rng)?;
-        // Ensure the transaction is not empty.
-        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
-
-        // Determine the fee.
-        let fee_in_microcredits = deployment
-            .size_in_bytes()?
-            .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
-            .and_then(|deployment_fee| deployment_fee.checked_add(priority_fee_in_microcredits))
-            .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
-
-        // Compute the fee.
-        let (_, fee, _) = vm.execute_fee(private_key, fee_record, fee_in_microcredits, query, rng)?;
-
-        // Construct the owner.
-        let id = *Self::deployment_tree(&deployment, &fee)?.root();
-        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
-
-        // Initialize the transaction.
-        Self::from_deployment(owner, deployment, fee)
-    }
-
-    /// Initializes a new execution transaction.
-    ///
-    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
-    pub fn execute<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
-        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        fee: Option<(Record<N, Plaintext<N>>, u64)>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the authorization.
-        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query.clone(), rng)?;
-        // Compute the fee.
-        let fee = match fee {
-            None => None,
-            Some((credits, priority_fee_in_microcredits)) => {
-                // Determine the fee.
-                let fee_in_microcredits = execution
-                    .size_in_bytes()?
-                    .checked_add(priority_fee_in_microcredits)
-                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
-                // Compute the fee.
-                Some(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
-            }
-        };
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
-    }
-
-    /// Initializes a new fee.
-    pub fn execute_fee<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        private_key: &PrivateKey<N>,
-        credits: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Fee<N>> {
-        Ok(vm.execute_fee(private_key, credits, fee_in_microcredits, query, rng)?.1)
-    }
-
-    /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization<C: ConsensusStorage<N>, R: Rng + CryptoRng>(
-        vm: &VM<N, C>,
-        authorization: Authorization<N>,
-        fee: Option<Fee<N>>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Self> {
-        // Compute the execution.
-        let (_response, execution, _metrics) = vm.execute(authorization, query, rng)?;
-        // Initialize the transaction.
-        Self::from_execution(execution, fee)
     }
 }
 
@@ -249,6 +138,35 @@ impl<N: Network> Transaction<N> {
         }
         // Otherwise, return 'false'.
         false
+    }
+}
+
+impl<N: Network> Transaction<N> {
+    /// Returns `Some(owner)` if the transaction is a deployment. Otherwise, returns `None`.
+    #[inline]
+    pub fn owner(&self) -> Option<&ProgramOwner<N>> {
+        match self {
+            Self::Deploy(_, owner, _, _) => Some(owner),
+            _ => None,
+        }
+    }
+
+    /// Returns `Some(deployment)` if the transaction is a deployment. Otherwise, returns `None`.
+    #[inline]
+    pub fn deployment(&self) -> Option<&Deployment<N>> {
+        match self {
+            Self::Deploy(_, _, deployment, _) => Some(deployment.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Returns `Some(execution)` if the transaction is an execution. Otherwise, returns `None`.
+    #[inline]
+    pub fn execution(&self) -> Option<&Execution<N>> {
+        match self {
+            Self::Execute(_, execution, _) => Some(execution),
+            _ => None,
+        }
     }
 }
 

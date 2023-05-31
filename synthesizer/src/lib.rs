@@ -1,21 +1,20 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
+#![allow(clippy::too_many_arguments)]
+// #![warn(clippy::cast_possible_truncation)]
 #![allow(clippy::single_element_loop)]
 // TODO (howardwu): Remove me after tracing.
 #![allow(clippy::print_in_format_impl)]
@@ -25,11 +24,14 @@
 #[macro_use]
 extern crate tracing;
 
+#[cfg(feature = "coinbase")]
+pub use snarkvm_synthesizer_coinbase as coinbase;
+
+#[cfg(feature = "snark")]
+pub use snarkvm_synthesizer_snark as snark;
+
 pub mod block;
 pub use block::*;
-
-pub mod coinbase_puzzle;
-pub use coinbase_puzzle::*;
 
 pub mod process;
 pub use process::*;
@@ -37,14 +39,22 @@ pub use process::*;
 pub mod program;
 pub use program::*;
 
-pub mod snark;
-pub use snark::*;
-
 pub mod store;
 pub use store::*;
 
 pub mod vm;
 pub use vm::*;
+
+pub mod prelude {
+    #[cfg(feature = "coinbase")]
+    pub use crate::coinbase::*;
+    #[cfg(feature = "snark")]
+    pub use crate::snark::*;
+
+    // TODO (howardwu): These will be refactored into their own modules.
+    //  Config flags should be added to these after modularization so that they can be disabled.
+    pub use crate::{block::*, cow_to_cloned, cow_to_copied, process::*, program::*, store::*, vm::*};
+}
 
 // /// Initializes a new **testing-only** instance of the ledger.
 // pub fn new(rng: &mut TestRng) -> Result<Self> {
@@ -102,8 +112,8 @@ pub use vm::*;
 //
 //         // Construct the proving and verifying keys.
 //         let universal_srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
-//         let function_name = console::Identifier::<CurrentNetwork>::from_str(&format!("state_paths_{batch_size}")).unwrap();
-//         let (proving_key, verifying_key) = universal_srs.to_circuit_key(&function_name, &assignments[0]).unwrap();
+//         let function_name = format!("state_paths_{batch_size}");
+//         let (proving_key, verifying_key) = universal_srs.to_circuit_key(function_name, &assignments[0]).unwrap();
 //
 //         // Generate the batch proof.
 //         let batch_proof = proving_key.prove_batch(&function_name, &assignments, rng).unwrap();

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.11.2"
+version = "0.11.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
@@ -29,18 +29,12 @@ path = "benches/block.rs"
 harness = false
 
 [[bench]]
-name = "coinbase_puzzle"
-path = "benches/coinbase_puzzle.rs"
-harness = false
-required-features = [ "setup" ]
-
-[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ ]
+default = [ "coinbase", "snark" ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 rocks = [ "rocksdb" ]
@@ -49,45 +43,64 @@ serial = [
   "snarkvm-algorithms/serial",
   "snarkvm-curves/serial",
   "snarkvm-fields/serial",
+  "snarkvm-synthesizer-coinbase/serial",
+  "snarkvm-synthesizer-snark/serial",
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
+test = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [
+  "coinbase",
+  "snark",
   "console/wasm",
   "snarkvm-algorithms/wasm",
+  "snarkvm-synthesizer-coinbase/wasm",
+  "snarkvm-synthesizer-snark/wasm",
   "snarkvm-utilities/wasm"
 ]
+coinbase = [ "snarkvm-synthesizer-coinbase" ]
+snark = [ "snarkvm-synthesizer-snark" ]
+
+[dependencies.snarkvm-synthesizer-coinbase]
+path = "./coinbase"
+version = "=0.11.5"
+optional = true
+
+[dependencies.snarkvm-synthesizer-snark]
+path = "./snark"
+version = "=0.11.5"
+optional = true
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "=0.11.2"
+version = "=0.11.5"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "=0.11.2"
+version = "=0.11.5"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "=0.11.2"
+version = "=0.11.5"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.11.2"
+version = "=0.11.5"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.11.2"
+version = "=0.11.5"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.11.2"
+version = "=0.11.5"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
@@ -132,7 +145,7 @@ features = [ "lz4" ]
 optional = true
 
 [dependencies.reqwest]
-version = "0.11.16"
+version = "0.11.18"
 features = [ "json" ]
 
 [dependencies.serde]
@@ -158,7 +171,7 @@ features = [ "test" ]
 version = "1.3"
 
 [dev-dependencies.criterion]
-version = "0.4.0"
+version = "0.5.1"
 
 [dev-dependencies.serde_yaml]
 version = "0.9"

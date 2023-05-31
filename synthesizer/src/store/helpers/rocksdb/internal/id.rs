@@ -1,19 +1,19 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
+/// The RocksDB map prefix broken down into the entry category and the specific type of the entry.
+// Note: the order of these variants can be changed at any point in time.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum MapID {
@@ -48,6 +48,9 @@ impl From<MapID> for u16 {
     }
 }
 
+/// The RocksDB map prefix for block-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum BlockMap {
@@ -63,6 +66,9 @@ pub enum BlockMap {
     Signature = DataID::BlockSignatureMap as u16,
 }
 
+/// The RocksDB map prefix for deployment-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum DeploymentMap {
@@ -75,6 +81,9 @@ pub enum DeploymentMap {
     Certificate = DataID::DeploymentCertificateMap as u16,
 }
 
+/// The RocksDB map prefix for execution-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum ExecutionMap {
@@ -83,6 +92,9 @@ pub enum ExecutionMap {
     Inclusion = DataID::ExecutionInclusionMap as u16,
 }
 
+/// The RocksDB map prefix for fee-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum FeeMap {
@@ -90,6 +102,9 @@ pub enum FeeMap {
     ReverseFee = DataID::FeeReverseFeeMap as u16,
 }
 
+/// The RocksDB map prefix for transition input entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum TransitionInputMap {
@@ -103,6 +118,9 @@ pub enum TransitionInputMap {
     ExternalRecord = DataID::InputExternalRecordMap as u16,
 }
 
+/// The RocksDB map prefix for transition output entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum TransitionOutputMap {
@@ -116,12 +134,18 @@ pub enum TransitionOutputMap {
     ExternalRecord = DataID::OutputExternalRecordMap as u16,
 }
 
+/// The RocksDB map prefix for transaction-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum TransactionMap {
     ID = DataID::TransactionIDMap as u16,
 }
 
+/// The RocksDB map prefix for transition-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum TransitionMap {
@@ -134,6 +158,9 @@ pub enum TransitionMap {
     ReverseTCM = DataID::TransitionReverseTCMMap as u16,
 }
 
+/// The RocksDB map prefix for program-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum ProgramMap {
@@ -144,6 +171,8 @@ pub enum ProgramMap {
     Value = DataID::ValueMap as u16,
 }
 
+/// The RocksDB map prefix for test-related entries.
+// Note: the order of these variants can be changed at any point in time.
 #[cfg(test)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
@@ -151,6 +180,10 @@ pub enum TestMap {
     Test = DataID::Test as u16,
 }
 
+/// The RocksDB map prefix.
+// Note: the order of these variants can NOT be changed once the database is populated:
+// - any new variant MUST be added as the last one (ignoring the Test one)
+// - any deprecated variant MUST remain in its position (it can't be removed)
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -22,9 +20,12 @@ impl<N: Network> Parser for Operand<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the operand (order matters).
         alt((
+            // Parse special operands before literals, registers, and program IDs.
+            // This ensures correctness in the case where a special operand is a prefix of, or could be parsed as, a literal, register, or program ID.
+            map(tag("group::GEN"), |_| Self::Literal(Literal::Group(Group::generator()))),
+            map(tag("self.caller"), |_| Self::Caller),
             map(Literal::parse, |literal| Self::Literal(literal)),
             map(Register::parse, |register| Self::Register(register)),
-            map(tag("self.caller"), |_| Self::Caller),
             map(ProgramID::parse, |program_id| Self::ProgramID(program_id)),
         ))(string)
     }
@@ -95,6 +96,9 @@ mod tests {
         let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
         assert_eq!(Operand::Caller, operand);
 
+        let operand = Operand::<CurrentNetwork>::parse("group::GEN").unwrap().1;
+        assert_eq!(Operand::Literal(Literal::Group(Group::generator())), operand);
+
         // Sanity check a failure case.
         let (remainder, operand) = Operand::<CurrentNetwork>::parse("1field.private").unwrap();
         assert_eq!(Operand::Literal(Literal::from_str("1field")?), operand);
@@ -119,6 +123,12 @@ mod tests {
 
         let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
         assert_eq!(format!("{operand}"), "self.caller");
+
+        let operand = Operand::<CurrentNetwork>::parse("group::GEN").unwrap().1;
+        assert_eq!(
+            format!("{operand}"),
+            "1540945439182663264862696551825005342995406165131907382295858612069623286213group"
+        );
     }
 
     #[test]

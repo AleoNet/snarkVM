@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod assert;
 pub use assert::*;
@@ -773,8 +771,16 @@ crate::operation!(
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Authorization, CallStack, Registers, Stack, Store, StoreCircuit};
-
+    use crate::{
+        Authorization,
+        CallStack,
+        FinalizeRegisters,
+        Registers,
+        RegistersStore,
+        RegistersStoreCircuit,
+        Stack,
+        StackProgram,
+    };
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
@@ -788,10 +794,7 @@ pub(crate) mod test_helpers {
     pub fn sample_registers(
         stack: &Stack<CurrentNetwork>,
         function_name: &Identifier<CurrentNetwork>,
-        literal_a: &Literal<CurrentNetwork>,
-        literal_b: &Literal<CurrentNetwork>,
-        mode_a: Option<circuit::Mode>,
-        mode_b: Option<circuit::Mode>,
+        values: &[(&Literal<CurrentNetwork>, Option<circuit::Mode>)],
     ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
         // Initialize the registers.
         let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
@@ -799,30 +802,47 @@ pub(crate) mod test_helpers {
             stack.get_register_types(function_name)?.clone(),
         );
 
+        // For each value, store the register and value.
+        for (index, (literal, mode)) in values.iter().enumerate() {
+            // Initialize the register.
+            let register = Register::Locator(index as u64);
+            // Initialize the console value.
+            let value = Value::Plaintext(Plaintext::from(*literal));
+            // Store the value in the console registers.
+            registers.store(stack, &register, value.clone())?;
+            // If the mode is not `None`,
+            if let Some(mode) = mode {
+                use circuit::Inject;
+
+                // Initialize the circuit value.
+                let circuit_value = circuit::Value::new(*mode, value);
+                // Store the value in the circuit registers.
+                registers.store_circuit(stack, &register, circuit_value)?;
+            }
+        }
+        Ok(registers)
+    }
+
+    /// Samples the finalize registers. Note: Do not replicate this for real program use, it is insecure.
+    pub(crate) fn sample_finalize_registers(
+        stack: &Stack<CurrentNetwork>,
+        function_name: &Identifier<CurrentNetwork>,
+        literals: &[&Literal<CurrentNetwork>],
+    ) -> Result<FinalizeRegisters<CurrentNetwork>> {
         // Initialize the registers.
-        let r0 = Register::Locator(0);
-        let r1 = Register::Locator(1);
+        let mut finalize_registers =
+            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(function_name)?.clone());
 
-        // Initialize the console values.
-        let value_a = Value::Plaintext(Plaintext::from(literal_a));
-        let value_b = Value::Plaintext(Plaintext::from(literal_b));
-
-        // Store the values in the console registers.
-        registers.store(stack, &r0, value_a.clone())?;
-        registers.store(stack, &r1, value_b.clone())?;
-
-        if let (Some(mode_a), Some(mode_b)) = (mode_a, mode_b) {
-            use circuit::Inject;
-
-            // Initialize the circuit values.
-            let circuit_a = circuit::Value::new(mode_a, value_a);
-            let circuit_b = circuit::Value::new(mode_b, value_b);
-
-            // Store the values in the circuit registers.
-            registers.store_circuit(stack, &r0, circuit_a)?;
-            registers.store_circuit(stack, &r1, circuit_b)?;
+        // For each literal,
+        for (index, literal) in literals.iter().enumerate() {
+            // Initialize the register
+            let register = Register::Locator(index as u64);
+            // Initialize the console value.
+            let value = Value::Plaintext(Plaintext::from(*literal));
+            // Store the value in the console registers.
+            finalize_registers.store(stack, &register, value)?;
         }
 
-        Ok(registers)
+        Ok(finalize_registers)
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.11.2"
+version = "0.11.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,8 +20,9 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
+rust-version = "1.66"
 
 [workspace]
 members = [
@@ -64,6 +65,8 @@ members = [
   "parameters",
   "r1cs",
   "synthesizer",
+  "synthesizer/coinbase",
+  "synthesizer/snark",
   "utilities",
   "utilities/derives",
   "wasm"
@@ -129,67 +132,70 @@ ed25519 = [ "snarkvm-console/ed25519" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "=0.11.2"
+version = "=0.11.5"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "=0.11.2"
+version = "=0.11.5"
 optional = true
+
+[dependencies.anstyle]
+version = "1"
 
 [dependencies.anyhow]
 version = "1.0.71"
 optional = true
 
 [dependencies.clap]
-version = "3.2"
-features = [ "derive" ]
+version = "4.3"
+features = [ "derive", "color", "unstable-styles" ]
 optional = true
 
 [dependencies.colored]

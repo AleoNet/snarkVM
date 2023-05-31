@@ -1,28 +1,28 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
-
 use crate::finalize::{Get, GetOrInit, Set};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
     /// Checks that the given finalize is well-formed for the given stack.
     #[inline]
-    pub(super) fn initialize_finalize_types(stack: &Stack<N>, finalize: &Finalize<N>) -> Result<Self> {
+    pub(super) fn initialize_finalize_types(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize: &Finalize<N>,
+    ) -> Result<Self> {
         // Initialize a map of registers to their types.
         let mut finalize_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
@@ -97,7 +97,7 @@ impl<N: Network> FinalizeTypes<N> {
     #[inline]
     fn check_input(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         register: &Register<N>,
         plaintext_type: &PlaintextType<N>,
     ) -> Result<()> {
@@ -124,7 +124,12 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensures the given command is well-formed.
     #[inline]
-    fn check_command(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, command: &Command<N>) -> Result<()> {
+    fn check_command(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize_name: &Identifier<N>,
+        command: &Command<N>,
+    ) -> Result<()> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
             Command::Get(get) => self.check_get(stack, finalize_name, get)?,
@@ -136,7 +141,12 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensures the given `get` command is well-formed.
     #[inline]
-    fn check_get(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, get: &Get<N>) -> Result<()> {
+    fn check_get(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize_name: &Identifier<N>,
+        get: &Get<N>,
+    ) -> Result<()> {
         // Ensure the declared mapping in `get` is defined in the program.
         if !stack.program().contains_mapping(get.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", get.mapping_name(), stack.program_id())
@@ -167,7 +177,7 @@ impl<N: Network> FinalizeTypes<N> {
     #[inline]
     fn check_get_or_init(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         finalize_name: &Identifier<N>,
         get_or_init: &GetOrInit<N>,
     ) -> Result<()> {
@@ -213,7 +223,12 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensures the given `set` command is well-formed.
     #[inline]
-    fn check_set(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, set: &Set<N>) -> Result<()> {
+    fn check_set(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize_name: &Identifier<N>,
+        set: &Set<N>,
+    ) -> Result<()> {
         // Ensure the declared mapping in `set` is defined in the program.
         if !stack.program().contains_mapping(set.mapping_name()) {
             bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", set.mapping_name(), stack.program_id())
@@ -246,7 +261,7 @@ impl<N: Network> FinalizeTypes<N> {
     #[inline]
     fn check_instruction(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         finalize_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {
@@ -286,7 +301,7 @@ impl<N: Network> FinalizeTypes<N> {
     #[inline]
     fn check_instruction_opcode(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         finalize_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {

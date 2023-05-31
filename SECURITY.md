@@ -2,7 +2,7 @@
 
 The following describes our procedure for addressing major and minor security concerns in snarkVM.
 
-## Testnet I
+## Testnet
 
 As Aleo is currently in the prototype stage and does not operate a platform intended for production use,
 our security procedures are designed to promote public disclosure and quick security resolution.
@@ -12,6 +12,6 @@ issue new procedures for addressing the disclosure of sensitive security vulnera
 
 ### Reporting a Bug
 
-During Testnet I, all software bugs should be reported by filing a Github issue.
+During Testnet, all software bugs should be reported by filing a Github issue.
 
 If you are unsure and would like to reach out to us directly, please email security \_at\_ aleo.org to elaborate on the issue.

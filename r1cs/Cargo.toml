@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-r1cs"
-version = "0.11.2"
+version = "0.11.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "R1CS for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,22 +20,22 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.11.2"
+version = "=0.11.5"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.11.2"
+version = "=0.11.5"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.11.2"
+version = "=0.11.5"
 
 [dependencies.anyhow]
 version = "1.0.71"

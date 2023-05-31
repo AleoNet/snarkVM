@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[macro_export]
 macro_rules! checksum {
@@ -26,6 +24,20 @@ macro_rules! checksum {
 macro_rules! checksum_error {
     ($expected: expr, $candidate: expr) => {
         Err($crate::errors::ParameterError::ChecksumMismatch($expected, $candidate))
+    };
+}
+
+#[macro_export]
+macro_rules! remove_file {
+    ($filepath:expr) => {
+        // Safely remove the corrupt file, if it exists.
+        #[cfg(not(feature = "wasm"))]
+        if std::path::PathBuf::from(&$filepath).exists() {
+            match std::fs::remove_file(&$filepath) {
+                Ok(()) => println!("Removed {:?}. Please retry the command.", $filepath),
+                Err(err) => eprintln!("Failed to remove {:?}: {err}", $filepath),
+            }
+        }
     };
 }
 
@@ -137,9 +149,10 @@ macro_rules! impl_store_and_remote_fetch {
 }
 
 macro_rules! impl_load_bytes_logic_local {
-    ($buffer: expr, $expected_size: expr, $expected_checksum: expr) => {
+    ($filepath: expr, $buffer: expr, $expected_size: expr, $expected_checksum: expr) => {
         // Ensure the size matches.
         if $expected_size != $buffer.len() {
+            remove_file!($filepath);
             return Err($crate::errors::ParameterError::SizeMismatch($expected_size, $buffer.len()));
         }
 
@@ -162,7 +175,7 @@ macro_rules! impl_load_bytes_logic_remote {
 
         let buffer = if file_path.exists() {
             // Attempts to load the parameter file locally with an absolute path.
-            std::fs::read(file_path)?
+            std::fs::read(&file_path)?
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
              #[cfg(not(feature = "no_std_out"))]
@@ -218,6 +231,7 @@ macro_rules! impl_load_bytes_logic_remote {
 
         // Ensure the size matches.
         if $expected_size != buffer.len() {
+            remove_file!(file_path);
             return Err($crate::errors::ParameterError::SizeMismatch($expected_size, buffer.len()));
         }
 
@@ -248,9 +262,10 @@ macro_rules! impl_local {
                 let expected_size: usize =
                     metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
 
+                let _filepath = concat!($local_dir, $fname, ".", "usrs");
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", "usrs"));
 
-                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+                impl_load_bytes_logic_local!(_filepath, buffer, expected_size, expected_checksum);
             }
         }
 
@@ -277,9 +292,10 @@ macro_rules! impl_local {
                 let expected_size: usize =
                     metadata[concat!($ftype, "_size")].to_string().parse().expect("Failed to retrieve the file size");
 
+                let _filepath = concat!($local_dir, $fname, ".", $ftype);
                 let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype));
 
-                impl_load_bytes_logic_local!(buffer, expected_size, expected_checksum);
+                impl_load_bytes_logic_local!(_filepath, buffer, expected_size, expected_checksum);
             }
         }
 

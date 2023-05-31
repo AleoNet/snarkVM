@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -20,7 +18,10 @@ impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
     /// Checks that the given closure is well-formed for the given stack.
     #[inline]
-    pub(super) fn initialize_closure_types(stack: &Stack<N>, closure: &Closure<N>) -> Result<Self> {
+    pub(super) fn initialize_closure_types(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        closure: &Closure<N>,
+    ) -> Result<Self> {
         // Initialize a map of registers to their types.
         let mut register_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
@@ -56,7 +57,10 @@ impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given function.
     /// Checks that the given function is well-formed for the given stack.
     #[inline]
-    pub(super) fn initialize_function_types(stack: &Stack<N>, function: &Function<N>) -> Result<Self> {
+    pub(super) fn initialize_function_types(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        function: &Function<N>,
+    ) -> Result<Self> {
         // Initialize a map of registers to their types.
         let mut register_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
@@ -176,7 +180,12 @@ impl<N: Network> RegisterTypes<N> {
 impl<N: Network> RegisterTypes<N> {
     /// Ensure the given input register is well-formed.
     #[inline]
-    fn check_input(&mut self, stack: &Stack<N>, register: &Register<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_input(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        register: &Register<N>,
+        register_type: &RegisterType<N>,
+    ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
@@ -212,7 +221,12 @@ impl<N: Network> RegisterTypes<N> {
 
     /// Ensure the given output register is well-formed.
     #[inline]
-    fn check_output(&mut self, stack: &Stack<N>, operand: &Operand<N>, register_type: &RegisterType<N>) -> Result<()> {
+    fn check_output(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operand: &Operand<N>,
+        register_type: &RegisterType<N>,
+    ) -> Result<()> {
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
@@ -264,7 +278,7 @@ impl<N: Network> RegisterTypes<N> {
     #[inline]
     fn check_instruction(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {
@@ -299,7 +313,7 @@ impl<N: Network> RegisterTypes<N> {
     #[inline]
     fn check_instruction_opcode(
         &mut self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {

@@ -1,9 +1,9 @@
 [package]
 name = "snarkvm-console-collections"
-version = "0.11.2"
+version = "0.11.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Collections for a decentralized virtual machine"
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
@@ -13,16 +13,16 @@ harness = false
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
-version = "=0.11.2"
+version = "=0.11.5"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "=0.11.2"
+version = "=0.11.5"
 default-features = false
 features = [ "field", "integers" ]
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.rayon]
@@ -32,7 +32,7 @@ version = "1"
 path = "../network"
 
 [dev-dependencies.criterion]
-version = "0.4.0"
+version = "0.5.1"
 
 [dev-dependencies.indexmap]
 version = "1.9.2"

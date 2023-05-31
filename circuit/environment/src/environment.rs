@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{witness_mode, Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
 use snarkvm_curves::AffineCurve;
@@ -123,12 +121,12 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the number of constraints in the entire environment.
     fn num_constraints() -> u64;
 
-    /// Returns the number of gates in the entire environment.
-    fn num_gates() -> u64;
+    /// Returns the number of nonzeros in the entire circuit.
+    fn num_nonzeros() -> (u64, u64, u64);
 
-    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates in the entire environment.
-    fn count() -> (u64, u64, u64, u64, u64) {
-        (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_gates())
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and nonzeros in the entire environment.
+    fn count() -> (u64, u64, u64, u64, (u64, u64, u64)) {
+        (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_nonzeros())
     }
 
     /// Returns the number of constants for the current scope.
@@ -143,17 +141,17 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> u64;
 
-    /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> u64;
+    /// Returns the number of nonzeros for the current scope.
+    fn num_nonzeros_in_scope() -> (u64, u64, u64);
 
-    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates for the current scope.
-    fn count_in_scope() -> (u64, u64, u64, u64, u64) {
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and nonzeros for the current scope.
+    fn count_in_scope() -> (u64, u64, u64, u64, (u64, u64, u64)) {
         (
             Self::num_constants_in_scope(),
             Self::num_public_in_scope(),
             Self::num_private_in_scope(),
             Self::num_constraints_in_scope(),
-            Self::num_gates_in_scope(),
+            Self::num_nonzeros_in_scope(),
         )
     }
 

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod header;
 pub use header::*;
@@ -31,16 +29,13 @@ mod genesis;
 mod serialize;
 mod string;
 
-use crate::{
-    coinbase_puzzle::{CoinbaseSolution, PuzzleCommitment},
-    vm::VM,
-};
 use console::{
-    account::{Address, PrivateKey, Signature},
+    account::{PrivateKey, Signature},
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
 };
+use snarkvm_synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -401,7 +396,8 @@ impl<N: Network> Block<N> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::vm::test_helpers::CurrentNetwork;
-    use console::account::ViewKey;
+    use console::account::{Address, ViewKey};
+
     use once_cell::sync::OnceCell;
 
     /// Samples a random block,
@@ -422,8 +418,7 @@ pub(crate) mod test_helpers {
                 let inputs = [address.to_string(), "1_u64".to_string()].into_iter();
 
                 // Construct the transaction.
-                let transaction =
-                    Transaction::execute(&vm, &private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+                let transaction = vm.execute(&private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 // Construct the transactions.
                 let transactions =
                     Transactions::from(&[

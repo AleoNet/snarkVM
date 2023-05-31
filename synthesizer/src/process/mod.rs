@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod stack;
 pub use stack::*;
@@ -29,10 +27,9 @@ mod tests;
 
 use crate::{
     atomic_batch_scope,
-    block::{Input, Transition},
+    block::{Deployment, Execution, Fee, FinalizeOperation, Input, Transition},
     program::{Instruction, Program},
-    snark::{ProvingKey, UniversalSRS, VerifyingKey},
-    store::{FinalizeOperation, FinalizeStorage, FinalizeStore},
+    store::{FinalizeStorage, FinalizeStore},
 };
 use console::{
     account::PrivateKey,
@@ -40,6 +37,7 @@ use console::{
     program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
     types::{U16, U64},
 };
+use snarkvm_synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -306,8 +304,8 @@ impl<N: Network> Process<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
     use super::*;
     use crate::{Process, Program, Transition};
     use console::{account::PrivateKey, network::Testnet3, program::Identifier};
@@ -317,8 +315,7 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
-    pub(crate) fn sample_key() -> (Identifier<CurrentNetwork>, ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)
-    {
+    pub fn sample_key() -> (Identifier<CurrentNetwork>, ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>) {
         static INSTANCE: OnceCell<(
             Identifier<CurrentNetwork>,
             ProvingKey<CurrentNetwork>,
@@ -410,7 +407,7 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
+    pub fn sample_transition() -> Transition<CurrentNetwork> {
         // Retrieve the execution.
         let mut execution = sample_execution();
         // Ensure the execution is not empty.
