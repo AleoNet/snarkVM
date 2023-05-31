@@ -12,7 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Opcode, Operand, RegistersLoad, Stack, StackProgram};
+use crate::{
+    FinalizeOperation,
+    FinalizeStorage,
+    FinalizeStore,
+    Opcode,
+    Operand,
+    RegistersLoad,
+    RollbackOperation,
+    Stack,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Value},
@@ -70,7 +80,7 @@ impl<N: Network> Set<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut impl RegistersLoad<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
@@ -81,7 +91,7 @@ impl<N: Network> Set<N> {
         // Load the value operand as a plaintext.
         let value = Value::Plaintext(registers.load_plaintext(stack, &self.value)?);
 
-        // Update the value in storage, and return the finalize operation.
+        // Update the value in storage, and return the finalize operation and its corresponding rollback operation.
         store.update_key_value(stack.program_id(), &self.mapping, key, value)
     }
 }

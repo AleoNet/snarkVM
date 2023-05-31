@@ -149,7 +149,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         &self,
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         // Ensure the mapping name does not already exist.
         if self.mapping_id_map().contains_key_speculative(&(*program_id, *mapping_name))? {
             bail!("Illegal operation: mapping '{mapping_name}' already exists in storage - cannot initialize again.")
@@ -189,8 +189,12 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Ok(())
         })?;
 
-        // Return the finalize operation.
-        Ok(FinalizeOperation::InitializeMapping(mapping_id))
+        // Create the finalize and rollback operations.
+        let finalize_operation = FinalizeOperation::InitializeMapping(mapping_id);
+        let rollback_operation = RollbackOperation::InitializeMapping(mapping_id);
+
+        // Return the finalize operation and its corresponding rollback operation.
+        Ok((finalize_operation, rollback_operation))
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -202,7 +206,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: &Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         // Retrieve the mapping ID.
         let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
             Some(mapping_id) => mapping_id,
@@ -240,8 +244,12 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Ok(())
         })?;
 
-        // Return the finalize operation.
-        Ok(FinalizeOperation::InsertKeyValue(mapping_id, key_id, value_id))
+        // Create the finalize and rollback operations.
+        let finalize_operation = FinalizeOperation::InsertKeyValue(mapping_id, key_id, value_id);
+        let rollback_operation = RollbackOperation::InsertKeyValue(mapping_id, key_id, value_id);
+
+        // Return the finalize operation and its corresponding rollback operation.
+        Ok((finalize_operation, rollback_operation))
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -254,7 +262,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: &Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         // Retrieve the mapping ID.
         let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
             Some(mapping_id) => mapping_id,
@@ -304,8 +312,12 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Ok(())
         })?;
 
-        // Return the finalize operation.
-        Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id))
+        // Create the finalize and rollback operations.
+        let finalize_operation = FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id);
+        let rollback_operation = RollbackOperation::UpdateKeyValue(mapping_id, index, key_id, previous_value);
+
+        // Return the finalize operation and its corresponding rollback operation.
+        Ok((finalize_operation, rollback_operation))
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -314,7 +326,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         // Retrieve the mapping ID.
         let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
             Some(mapping_id) => mapping_id,
@@ -360,13 +372,21 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Ok(())
         })?;
 
-        // Return the finalize operation.
-        Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index, key_id))
+        // Create the finalize and rollback operations.
+        let finalize_operation = FinalizeOperation::RemoveKeyValue(mapping_id, index, key_id);
+        let rollback_operation = RollbackOperation::RemoveKeyValue(mapping_id, index, key.clone(), previous_value);
+
+        // Return the finalize operation and its corresponding rollback operation.
+        Ok((finalize_operation, rollback_operation))
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
     /// along with all associated key-value pairs in storage.
-    fn remove_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<FinalizeOperation<N>> {
+    fn remove_mapping(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         // Retrieve the mapping ID.
         let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
             Some(mapping_id) => mapping_id,
@@ -390,12 +410,32 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Remove the mapping name.
         mapping_names.remove(mapping_name);
 
+        // Retrieve the key values.
+        let mut key_values = Vec::with_capacity(key_value_ids.len());
+        for (key_id, value_id) in key_value_ids.iter() {
+            let key = match self.get_key_speculative(key_id)? {
+                Some(key_value) => key_value,
+                None => {
+                    bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot remove mapping.")
+                }
+            };
+            let value = match self.get_value_speculative(program_id, mapping_name, &key)? {
+                Some(key_value) => key_value,
+                None => {
+                    bail!("Illegal operation: value ID '{value_id}' does not exist in storage - cannot remove mapping.")
+                }
+            };
+
+            key_values.push((key, value));
+        }
+
         atomic_batch_scope!(self, {
             // Update the mapping names.
             if mapping_names.is_empty() {
                 // Remove the program ID mapping if there are no more mappings for the program ID.
                 self.program_id_map().remove(program_id)?;
             } else {
+                // Update the program ID mapping.
                 self.program_id_map().insert(*program_id, mapping_names)?;
             }
             // Remove the mapping ID.
@@ -411,8 +451,12 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Ok(())
         })?;
 
-        // Return the finalize operation.
-        Ok(FinalizeOperation::RemoveMapping(mapping_id))
+        // Create the finalize and rollback operations.
+        let finalize_operation = FinalizeOperation::RemoveMapping(mapping_id);
+        let rollback_operation = RollbackOperation::RemoveMapping(mapping_id, key_values);
+
+        // Return the finalize operation and its corresponding rollback operation.
+        Ok((finalize_operation, rollback_operation))
     }
 
     /// Removes the program for the given `program ID` from storage,
@@ -591,7 +635,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         &self,
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         self.storage.initialize_mapping(program_id, mapping_name)
     }
 
@@ -604,7 +648,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         mapping_name: &Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         self.storage.insert_key_value(program_id, mapping_name, key, value)
     }
 
@@ -618,7 +662,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         mapping_name: &Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         self.storage.update_key_value(program_id, mapping_name, key, value)
     }
 
@@ -628,7 +672,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         self.storage.remove_key_value(program_id, mapping_name, key)
     }
 
@@ -638,7 +682,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         &self,
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         self.storage.remove_mapping(program_id, mapping_name)
     }
 

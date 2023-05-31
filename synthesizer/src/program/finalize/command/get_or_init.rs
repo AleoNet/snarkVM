@@ -20,6 +20,7 @@ use crate::{
     Operand,
     RegistersLoad as LoadTrait,
     RegistersStore,
+    RollbackOperation,
     Stack,
     StackProgram,
 };
@@ -89,7 +90,7 @@ impl<N: Network> GetOrInit<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut (impl LoadTrait<N> + RegistersStore<N>),
-    ) -> Result<Option<FinalizeOperation<N>>> {
+    ) -> Result<Option<(FinalizeOperation<N>, RollbackOperation<N>)>> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
@@ -99,7 +100,7 @@ impl<N: Network> GetOrInit<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let (value, finalize_operation) = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
+        let (value, operations) = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => (Value::Plaintext(plaintext), None),
             Some(Value::Record(..)) => bail!("Cannot 'get.or_init' a 'record'"),
             // If a key does not exist, then store the default value into the mapping and return it.
@@ -114,8 +115,8 @@ impl<N: Network> GetOrInit<N> {
         // Assign the value to the destination register.
         registers.store(stack, &self.destination, value)?;
 
-        // Return the finalize operation.
-        Ok(finalize_operation)
+        // Return the finalize operation and its corresponding rollback operation.
+        Ok(operations)
     }
 }
 

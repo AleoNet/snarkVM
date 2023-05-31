@@ -46,8 +46,11 @@ impl<N: Network> Process<N> {
 
             // Iterate over the mappings.
             for mapping in deployment.program().mappings().values() {
+                // TODO (raychu86): Insert the rollback operations to the storage.
                 // Initialize the mapping.
-                finalize_operations.push(store.initialize_mapping(program_id, mapping.name())?);
+                let (finalize_operation, _) = store.initialize_mapping(program_id, mapping.name())?;
+                // Insert the finalize operation.
+                finalize_operations.push(finalize_operation);
             }
             lap!(timer, "Initialize the program mappings");
 
@@ -130,8 +133,9 @@ impl<N: Network> Process<N> {
                             command.finalize(stack, store, &mut registers)
                         }));
                         match result {
+                            // TODO (raychu86): Insert the rollback operations to the storage.
                             // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
+                            Ok(Ok(Some((finalize_operation, _)))) => finalize_operations.push(finalize_operation),
                             // If the evaluation succeeds with no operation, continue.
                             Ok(Ok(None)) => (),
                             // If the evaluation fails, bail and return the error.

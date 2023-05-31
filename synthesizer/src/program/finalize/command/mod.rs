@@ -24,7 +24,15 @@ pub use get_or_init::*;
 mod set;
 pub use set::*;
 
-use crate::{program::Instruction, FinalizeOperation, FinalizeRegisters, FinalizeStorage, FinalizeStore, Stack};
+use crate::{
+    program::Instruction,
+    FinalizeOperation,
+    FinalizeRegisters,
+    FinalizeStorage,
+    FinalizeStore,
+    RollbackOperation,
+    Stack,
+};
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -48,7 +56,7 @@ impl<N: Network> Command<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut FinalizeRegisters<N>,
-    ) -> Result<Option<FinalizeOperation<N>>> {
+    ) -> Result<Option<(FinalizeOperation<N>, RollbackOperation<N>)>> {
         match self {
             // Finalize the instruction, and return no finalize operation.
             Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
