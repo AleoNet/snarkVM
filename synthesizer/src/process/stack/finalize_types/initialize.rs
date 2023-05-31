@@ -135,7 +135,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Get(get) => self.check_get(stack, finalize_name, get)?,
             Command::GetOrInit(get_or_init) => self.check_get_or_init(stack, finalize_name, get_or_init)?,
             Command::Set(set) => self.check_set(stack, finalize_name, set)?,
-            // Note that the label in a `Position` command is checked to be unique, when constructing a `Finalize`.
+            // Note that, when constructing `Finalize`, the label in a `Position` command is checked to be unique.
             Command::Position(_) => (),
         }
         Ok(())
