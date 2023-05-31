@@ -141,6 +141,26 @@ impl<N: Network> Transaction<N> {
     }
 }
 
+impl<N: Network> Transaction<N> {
+    /// Returns `Some(deployment)` if the transaction is a deployment. Otherwise, returns `None`.
+    #[inline]
+    pub fn deployment(&self) -> Option<Deployment<N>> {
+        match self {
+            Self::Deploy(_, _, deployment, _) => Some(deployment.as_ref().clone()),
+            _ => None,
+        }
+    }
+
+    /// Returns `Some(execution)` if the transaction is an execution. Otherwise, returns `None`.
+    #[inline]
+    pub fn execution(&self) -> Option<Execution<N>> {
+        match self {
+            Self::Execute(_, execution, _) => Some(execution.clone()),
+            _ => None,
+        }
+    }
+}
+
 /// A helper enum for iterators and consuming iterators over a transaction.
 enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> {
     Deploy(I1),
