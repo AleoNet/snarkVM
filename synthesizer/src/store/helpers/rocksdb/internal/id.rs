@@ -169,6 +169,7 @@ pub enum ProgramMap {
     KeyValueID = DataID::KeyValueIDMap as u16,
     Key = DataID::KeyMap as u16,
     Value = DataID::ValueMap as u16,
+    Rollback = DataID::RollbackMap as u16,
 }
 
 /// The RocksDB map prefix for test-related entries.
@@ -248,6 +249,7 @@ enum DataID {
     KeyValueIDMap,
     KeyMap,
     ValueMap,
+    RollbackMap,
 
     // Testing
     #[cfg(test)]

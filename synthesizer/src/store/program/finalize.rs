@@ -14,7 +14,7 @@
 
 use crate::{
     atomic_batch_scope,
-    block::FinalizeOperation,
+    block::{FinalizeOperation, RollbackOperation},
     cow_to_cloned,
     cow_to_copied,
     store::helpers::{Map, MapRead},
@@ -51,6 +51,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     type KeyMap: for<'a> Map<'a, Field<N>, Plaintext<N>>;
     /// The mapping of `key ID` to `value`.
     type ValueMap: for<'a> Map<'a, Field<N>, Value<N>>;
+    /// The mapping of `block number` to `[(transaction id, [rollback operation])]`.
+    type RollbackMap: for<'a> Map<'a, u32, IndexMap<N::TransactionID, Vec<RollbackOperation<N>>>>;
 
     /// Initializes the program state storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -65,6 +67,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn key_map(&self) -> &Self::KeyMap;
     /// Returns the value map.
     fn value_map(&self) -> &Self::ValueMap;
+    /// Returns the rollback map.
+    fn rollback_map(&self) -> &Self::RollbackMap;
 
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16>;
@@ -76,6 +80,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.key_value_id_map().start_atomic();
         self.key_map().start_atomic();
         self.value_map().start_atomic();
+        self.rollback_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -85,6 +90,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.key_value_id_map().is_atomic_in_progress()
             || self.key_map().is_atomic_in_progress()
             || self.value_map().is_atomic_in_progress()
+            || self.rollback_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -94,6 +100,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.key_value_id_map().atomic_checkpoint();
         self.key_map().atomic_checkpoint();
         self.value_map().atomic_checkpoint();
+        self.rollback_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
@@ -103,6 +110,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.key_value_id_map().clear_latest_checkpoint();
         self.key_map().clear_latest_checkpoint();
         self.value_map().clear_latest_checkpoint();
+        self.rollback_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -112,6 +120,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.key_value_id_map().atomic_rewind();
         self.key_map().atomic_rewind();
         self.value_map().atomic_rewind();
+        self.rollback_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -121,6 +130,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.key_value_id_map().abort_atomic();
         self.key_map().abort_atomic();
         self.value_map().abort_atomic();
+        self.rollback_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -129,7 +139,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.mapping_id_map().finish_atomic()?;
         self.key_value_id_map().finish_atomic()?;
         self.key_map().finish_atomic()?;
-        self.value_map().finish_atomic()
+        self.value_map().finish_atomic()?;
+        self.rollback_map().finish_atomic()
     }
 
     /// Initializes the given `program ID` and `mapping name` in storage.
@@ -294,7 +305,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id, previous_value))
+        Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id))
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -350,7 +361,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index, previous_value))
+        Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index, key_id))
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
@@ -381,7 +392,12 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_batch_scope!(self, {
             // Update the mapping names.
-            self.program_id_map().insert(*program_id, mapping_names)?;
+            if mapping_names.is_empty() {
+                // Remove the program ID mapping if there are no more mappings for the program ID.
+                self.program_id_map().remove(program_id)?;
+            } else {
+                self.program_id_map().insert(*program_id, mapping_names)?;
+            }
             // Remove the mapping ID.
             self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
             // Remove the key IDs.

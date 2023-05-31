@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::store::{helpers::memory::MemoryMap, FinalizeStorage};
+use crate::{
+    store::{helpers::memory::MemoryMap, FinalizeStorage},
+    RollbackOperation,
+};
 use console::{
     prelude::*,
     program::{Identifier, Plaintext, ProgramID, Value},
@@ -34,6 +37,8 @@ pub struct FinalizeMemory<N: Network> {
     key_map: MemoryMap<Field<N>, Plaintext<N>>,
     /// The value map.
     value_map: MemoryMap<Field<N>, Value<N>>,
+    /// The rollback map.
+    rollback_map: MemoryMap<u32, IndexMap<N::TransactionID, Vec<RollbackOperation<N>>>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -45,6 +50,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type KeyValueIDMap = MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
     type KeyMap = MemoryMap<Field<N>, Plaintext<N>>;
     type ValueMap = MemoryMap<Field<N>, Value<N>>;
+    type RollbackMap = MemoryMap<u32, IndexMap<N::TransactionID, Vec<RollbackOperation<N>>>>;
 
     /// Initializes the program state storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -54,6 +60,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
             key_value_id_map: MemoryMap::default(),
             key_map: MemoryMap::default(),
             value_map: MemoryMap::default(),
+            rollback_map: MemoryMap::default(),
             dev,
         })
     }
@@ -81,6 +88,11 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     /// Returns the value map.
     fn value_map(&self) -> &Self::ValueMap {
         &self.value_map
+    }
+
+    /// Returns the rollback map.
+    fn rollback_map(&self) -> &Self::RollbackMap {
+        &self.rollback_map
     }
 
     /// Returns the optional development ID.
