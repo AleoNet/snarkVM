@@ -19,14 +19,27 @@ use super::*;
 pub enum RollbackOperation<N: Network> {
     /// Rollback an mapping initialization, (`mapping ID`).
     InitializeMapping(Field<N>),
-    /// Rollback a key-value insertion, (`mapping ID`, `key ID`, `value ID`).
-    InsertKeyValue(Field<N>, Field<N>, Field<N>),
+    /// Rollback a key-value insertion, (`mapping ID`, `key ID`).
+    InsertKeyValue(Field<N>, Field<N>),
     /// Rollback a key-value update, (`mapping ID`, `index`, `key ID`, `previous value`).
     UpdateKeyValue(Field<N>, u64, Field<N>, Option<Value<N>>),
     /// Rollback a key-value removal, (`mapping ID`, `index`, `key`, `previous value`).
     RemoveKeyValue(Field<N>, u64, Plaintext<N>, Value<N>),
     /// Rollback a mapping removal, (`mapping ID`, `[(key, value)]`).
     RemoveMapping(Field<N>, Vec<(Plaintext<N>, Value<N>)>),
+}
+
+impl<N: Network> RollbackOperation<N> {
+    /// Returns the mapping ID of the rollback operation.
+    pub fn mapping_id(&self) -> Field<N> {
+        match self {
+            RollbackOperation::InitializeMapping(mapping_id) => *mapping_id,
+            RollbackOperation::InsertKeyValue(mapping_id, _) => *mapping_id,
+            RollbackOperation::UpdateKeyValue(mapping_id, _, _, _) => *mapping_id,
+            RollbackOperation::RemoveKeyValue(mapping_id, _, _, _) => *mapping_id,
+            RollbackOperation::RemoveMapping(mapping_id, _) => *mapping_id,
+        }
+    }
 }
 
 impl<N: Network> FromBytes for RollbackOperation<N> {
@@ -47,10 +60,8 @@ impl<N: Network> FromBytes for RollbackOperation<N> {
                 let mapping_id = Field::read_le(&mut reader)?;
                 // Read the key ID.
                 let key_id = Field::read_le(&mut reader)?;
-                // Read the value ID.
-                let value_id = Field::read_le(&mut reader)?;
                 // Return the rollback operation.
-                Ok(RollbackOperation::InsertKeyValue(mapping_id, key_id, value_id))
+                Ok(RollbackOperation::InsertKeyValue(mapping_id, key_id))
             }
             2 => {
                 // Read the mapping ID.
@@ -113,15 +124,13 @@ impl<N: Network> ToBytes for RollbackOperation<N> {
                 // Write the mapping ID.
                 mapping_id.write_le(&mut writer)?;
             }
-            RollbackOperation::InsertKeyValue(mapping_id, key_id, value_id) => {
+            RollbackOperation::InsertKeyValue(mapping_id, key_id) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
                 // Write the mapping ID.
                 mapping_id.write_le(&mut writer)?;
                 // Write the key ID.
                 key_id.write_le(&mut writer)?;
-                // Write the value ID.
-                value_id.write_le(&mut writer)?;
             }
             RollbackOperation::UpdateKeyValue(mapping_id, index, key_id, previous_value) => {
                 // Write the variant.
@@ -185,11 +194,10 @@ impl<N: Network> Serialize for RollbackOperation<N> {
                         operation.serialize_field("type", "initialize_mapping")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
                     }
-                    RollbackOperation::InsertKeyValue(mapping_id, key_id, value_id) => {
+                    RollbackOperation::InsertKeyValue(mapping_id, key_id) => {
                         operation.serialize_field("type", "insert_key_value")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
                         operation.serialize_field("key_id", key_id)?;
-                        operation.serialize_field("value_id", value_id)?;
                     }
                     RollbackOperation::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
                         operation.serialize_field("type", "update_key_value")?;
@@ -237,10 +245,8 @@ impl<'de, N: Network> Deserialize<'de> for RollbackOperation<N> {
                         let mapping_id = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_id")?;
                         // Deserialize the key ID.
                         let key_id = DeserializeExt::take_from_value::<D>(&mut operation, "key_id")?;
-                        // Deserialize the value ID.
-                        let value_id = DeserializeExt::take_from_value::<D>(&mut operation, "value_id")?;
                         // Return the operation.
-                        Self::InsertKeyValue(mapping_id, key_id, value_id)
+                        Self::InsertKeyValue(mapping_id, key_id)
                     }
                     Some("update_key_value") => {
                         // Deserialize the mapping ID.

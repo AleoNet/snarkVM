@@ -31,8 +31,8 @@ pub enum FinalizeOperation<N: Network> {
     InsertKeyValue(Field<N>, Field<N>, Field<N>),
     /// Updates the key-value pair, (`mapping ID`, `index`, `key ID`, `value ID`).
     UpdateKeyValue(Field<N>, u64, Field<N>, Field<N>),
-    /// Removes the key-value pair, (`mapping ID`, `index`, `key ID`).
-    RemoveKeyValue(Field<N>, u64, Field<N>),
+    /// Removes the key-value pair, (`mapping ID`, `index`).
+    RemoveKeyValue(Field<N>, u64),
     /// Removes a mapping, (`mapping ID`).
     RemoveMapping(Field<N>),
 }
@@ -44,7 +44,7 @@ impl<N: Network> FinalizeOperation<N> {
             FinalizeOperation::InitializeMapping(mapping_id) => *mapping_id,
             FinalizeOperation::InsertKeyValue(mapping_id, _, _) => *mapping_id,
             FinalizeOperation::UpdateKeyValue(mapping_id, _, _, _) => *mapping_id,
-            FinalizeOperation::RemoveKeyValue(mapping_id, _, _) => *mapping_id,
+            FinalizeOperation::RemoveKeyValue(mapping_id, _) => *mapping_id,
             FinalizeOperation::RemoveMapping(mapping_id) => *mapping_id,
         }
     }
@@ -90,10 +90,8 @@ impl<N: Network> FromBytes for FinalizeOperation<N> {
                 let mapping_id = Field::read_le(&mut reader)?;
                 // Read the index.
                 let index = u64::read_le(&mut reader)?;
-                // Read the key ID.
-                let key_id = Field::read_le(&mut reader)?;
                 // Return the finalize operation.
-                Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index, key_id))
+                Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index))
             }
             4 => {
                 // Read the mapping ID.
@@ -138,15 +136,13 @@ impl<N: Network> ToBytes for FinalizeOperation<N> {
                 // Write the value ID.
                 value_id.write_le(&mut writer)?;
             }
-            FinalizeOperation::RemoveKeyValue(mapping_id, index, key_id) => {
+            FinalizeOperation::RemoveKeyValue(mapping_id, index) => {
                 // Write the variant.
                 3u8.write_le(&mut writer)?;
                 // Write the mapping ID.
                 mapping_id.write_le(&mut writer)?;
                 // Write the index.
                 index.write_le(&mut writer)?;
-                // Write the key ID.
-                key_id.write_le(&mut writer)?;
             }
             FinalizeOperation::RemoveMapping(mapping_id) => {
                 // Write the variant.
@@ -184,11 +180,10 @@ impl<N: Network> Serialize for FinalizeOperation<N> {
                         operation.serialize_field("key_id", key_id)?;
                         operation.serialize_field("value_id", value_id)?;
                     }
-                    FinalizeOperation::RemoveKeyValue(mapping_id, index, key_id) => {
+                    FinalizeOperation::RemoveKeyValue(mapping_id, index) => {
                         operation.serialize_field("type", "remove_key_value")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
                         operation.serialize_field("index", index)?;
-                        operation.serialize_field("key_id", key_id)?;
                     }
                     FinalizeOperation::RemoveMapping(mapping_id) => {
                         operation.serialize_field("type", "remove_mapping")?;
@@ -243,10 +238,8 @@ impl<'de, N: Network> Deserialize<'de> for FinalizeOperation<N> {
                         let mapping_id = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_id")?;
                         // Deserialize the index.
                         let index = DeserializeExt::take_from_value::<D>(&mut operation, "index")?;
-                        // Deserialize the key ID.
-                        let key_id = DeserializeExt::take_from_value::<D>(&mut operation, "key_id")?;
                         // Return the operation.
-                        Self::RemoveKeyValue(mapping_id, index, key_id)
+                        Self::RemoveKeyValue(mapping_id, index)
                     }
                     Some("remove_mapping") => {
                         // Deserialize the mapping ID.
