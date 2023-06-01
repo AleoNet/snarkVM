@@ -341,7 +341,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         ];
 
         // Prepare the fee.
-        let fee_record = records.next().unwrap().clone();
+        let microcredits = Identifier::from_str("microcredits").unwrap();
+        let fee_record = records
+            .find(|record| match record.data().get(&microcredits) {
+                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => {
+                    **amount >= priority_fee_in_microcredits
+                }
+                _ => false,
+            })
+            .unwrap()
+            .clone();
         let fee = Some((fee_record, priority_fee_in_microcredits));
 
         // Create a new execute transaction.
