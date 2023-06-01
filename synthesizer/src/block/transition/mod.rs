@@ -306,7 +306,7 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
-    /// Returns `true` if this is a coinbase transaction.
+    /// Returns `true` if this is a coinbase transition.
     #[inline]
     pub fn is_coinbase(&self) -> bool {
         // Case 1: The transition calls 'credits.aleo/mint'.
@@ -317,7 +317,7 @@ impl<N: Network> Transition<N> {
         false
     }
 
-    /// Returns `true` if this is a `split` transaction.
+    /// Returns `true` if this is a `split` transition.
     #[inline]
     pub fn is_split(&self) -> bool {
         // Case 1 - The transition calls 'credits.aleo/split'.
