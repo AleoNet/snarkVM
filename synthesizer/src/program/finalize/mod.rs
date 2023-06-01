@@ -72,6 +72,11 @@ impl<N: Network> Finalize<N> {
     pub const fn num_writes(&self) -> u16 {
         self.num_writes
     }
+
+    /// Returns the minimum fee, in microcredits, required to run the finalize.
+    pub fn fee_in_microcredits(&self) -> u64 {
+        1_000_000_000
+    }
 }
 
 impl<N: Network> Finalize<N> {
