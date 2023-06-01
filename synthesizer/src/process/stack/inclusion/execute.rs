@@ -167,12 +167,15 @@ impl<N: Network> Inclusion<N> {
 
     /// Checks the inclusion proof for the execution.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    pub fn verify_execution(execution: &Execution<N>) -> Result<()> {
+    pub fn verify_execution(
+        execution: &Execution<N>,
+        verifier_inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>,
+    ) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
 
         // Retrieve the inclusion proof.
-        let inclusion_proof = execution.inclusion_proof();
+        let proof = execution.inclusion_proof();
 
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
@@ -205,29 +208,30 @@ impl<N: Network> Inclusion<N> {
         }
 
         // If there are no batch verifier inputs, then ensure the inclusion proof is 'None'.
-        if batch_verifier_inputs.is_empty() && inclusion_proof.is_some() {
+        if batch_verifier_inputs.is_empty() && proof.is_some() {
             bail!("No input records in the execution. Expected the inclusion proof to be 'None'")
         }
         // If there are batch verifier inputs, then ensure the inclusion proof is 'Some'.
-        if !batch_verifier_inputs.is_empty() && inclusion_proof.is_none() {
+        if !batch_verifier_inputs.is_empty() && proof.is_none() {
             bail!("Missing inclusion proof for the execution")
         }
 
-        // Verify the inclusion proof.
-        if let Some(inclusion_proof) = inclusion_proof {
-            // Ensure the global state root is not zero.
-            if *global_state_root == Field::zero() {
-                bail!("Inclusion expected the global state root in the execution to *not* be zero")
-            }
+        // Ensure the global state root is not zero.
+        if batch_verifier_inputs.is_empty() && *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
 
+        let mut verifier_inputs = verifier_inputs.clone();
+
+        if !batch_verifier_inputs.is_empty() {
             // Fetch the inclusion verifying key.
             let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
-            // Verify the inclusion proof.
-            ensure!(
-                verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
-                "Inclusion proof is invalid"
-            );
+            // Insert the inclusion verifier inputs.
+            verifier_inputs.insert(Locator::from_str("aleo.aleo/inclusion")?, (verifying_key, batch_verifier_inputs));
         }
+
+        // Verify the execution proof.
+        ensure!(VerifyingKey::verify_batch(verifier_inputs, proof.unwrap()), "Execution proof is invalid");
 
         Ok(())
     }

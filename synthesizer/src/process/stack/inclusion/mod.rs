@@ -21,12 +21,11 @@ use crate::{BlockStorage, Execution, Fee, Input, Output, Query, Transaction, Tra
 use circuit::Assignment;
 use console::{
     network::prelude::*,
-    program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
+    program::{Identifier, InputID, Locator, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
 use snarkvm_synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
-use console::program::Locator;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -140,7 +139,7 @@ impl<N: Network> Inclusion<N> {
             .insert(Locator::from_str("aleo.aleo/inclusion")?, (proving_key.clone(), batch_assignments.clone()));
 
         // Generate the inclusion batch proof.
-        let inclusion_proof = proving_key.prove_batch(&proving_tasks, rng)?;
+        let inclusion_proof = ProvingKey::prove_batch(&proving_tasks, rng)?;
         // Return the global state root and inclusion proof.
         Ok((global_state_root, inclusion_proof))
     }

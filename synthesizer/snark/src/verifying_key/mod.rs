@@ -18,7 +18,9 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use std::collections::BTreeMap;
+use console::program::Locator;
+
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct VerifyingKey<N: Network> {
@@ -59,13 +61,16 @@ impl<N: Network> VerifyingKey<N> {
     }
 
     /// Returns `true` if the batch proof is valid for the given public inputs.
-    pub fn verify_batch(&self, function_name: &str, inputs: &[Vec<N::Field>], proof: &Proof<N>) -> bool {
+    pub fn verify_batch(inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>, proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        let keys_to_inputs: BTreeMap<_, _> = inputs
+            .values()
+            .map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice()))
+            .collect();
+
         // Verify the batch proof.
-        let mut keys_to_inputs = BTreeMap::new();
-        keys_to_inputs.insert(self.deref(), inputs);
         match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]

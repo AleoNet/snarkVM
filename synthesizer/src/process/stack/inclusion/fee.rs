@@ -134,7 +134,10 @@ impl<N: Network> Inclusion<N> {
 
     /// Checks the inclusion proof for the fee.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    pub fn verify_fee(fee: &Fee<N>) -> Result<()> {
+    pub fn verify_fee(
+        fee: &Fee<N>,
+        fee_transition_inputs: (Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)),
+    ) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = fee.global_state_root();
         // Ensure the global state root is not zero.
@@ -142,9 +145,9 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the global state root in the fee to *not* be zero")
         }
 
-        // Retrieve the inclusion proof.
-        let inclusion_proof = match fee.inclusion_proof() {
-            Some(inclusion_proof) => inclusion_proof,
+        // Retrieve the execution proof.
+        let proof = match fee.inclusion_proof() {
+            Some(proof) => proof,
             None => bail!("Inclusion expected the fee to contain an inclusion proof"),
         };
 
@@ -177,11 +180,17 @@ impl<N: Network> Inclusion<N> {
 
         // Fetch the inclusion verifying key.
         let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
-        // Verify the inclusion proof.
-        ensure!(
-            verifying_key.verify_batch(N::INCLUSION_FUNCTION_NAME, &batch_verifier_inputs, inclusion_proof),
-            "Inclusion proof is invalid"
-        );
+
+        // Construct the verifier inputs.
+        let verifier_inputs = [
+            fee_transition_inputs,
+            (Locator::from_str("aleo.aleo/inclusion")?, (verifying_key, batch_verifier_inputs)),
+        ]
+        .into_iter()
+        .collect();
+
+        // Verify the execution proof.
+        ensure!(VerifyingKey::verify_batch(verifier_inputs, proof), "Execution proof is invalid");
 
         Ok(())
     }

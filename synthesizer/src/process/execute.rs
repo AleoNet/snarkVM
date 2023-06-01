@@ -80,11 +80,8 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the number of transitions");
 
-        // Ensure the inclusion proof is valid.
-        if VERIFY_INCLUSION {
-            Inclusion::verify_execution(execution)?;
-            lap!(timer, "Verify the inclusion proof");
-        }
+        // Initialize a map of verifying keys to public inputs.
+        let mut verifier_inputs = HashMap::new();
 
         // Replicate the execution stack for verification.
         let mut queue = execution.clone();
@@ -206,16 +203,27 @@ impl<N: Network> Process<N> {
             #[cfg(debug_assertions)]
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
-            // // Retrieve the verifying key.
-            // let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-            // // Ensure the transition proof is valid.
-            // ensure!(
-            //     verifying_key.verify(&function.name().to_string(), &inputs, transition.proof()),
-            //     "Transition is invalid - failed to verify transition proof"
-            // );
-            //
+            // Retrieve the verifying key.
+            let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
+            // Save the verifying key and its inputs.
+            verifier_inputs
+                .entry(Locator::new(*stack.program_id(), *function.name()))
+                .or_insert((verifying_key, vec![inputs]));
+
             // lap!(timer, "Verify transition proof for {}", function.name());
         }
+
+        // Ensure the execution proof is valid.
+        if VERIFY_INCLUSION {
+            Inclusion::verify_execution(execution, verifier_inputs)?;
+            lap!(timer, "Verify the execution proof");
+        }
+
+        // // Ensure the execution proof is valid.
+        // ensure!(
+        //     verifying_key.verify(&function.name().to_string(), &inputs, transition.proof()),
+        //     "Transition is invalid - failed to verify transition proof"
+        // );
 
         finish!(timer);
         Ok(())

@@ -131,10 +131,6 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the outputs");
 
-        // Ensure the inclusion proof is valid.
-        Inclusion::verify_fee(fee)?;
-        lap!(timer, "Verify the inclusion proof");
-
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
 
@@ -164,14 +160,13 @@ impl<N: Network> Process<N> {
             "The fee proof is the wrong type (found *no* input records)"
         );
 
-        // // Retrieve the verifying key.
-        // let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-        // // Ensure the transition proof is valid.
-        // ensure!(
-        //     verifying_key.verify(&function.name().to_string(), &inputs, fee.proof()),
-        //     "Fee is invalid - failed to verify transition proof"
-        // );
-        // lap!(timer, "Verify the transition proof");
+        // Retrieve the verifying key.
+        let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
+
+        // Ensure the execution proof is valid.
+        let locator = Locator::new(*fee.program_id(), *fee.function_name());
+        Inclusion::verify_fee(fee, (locator, (verifying_key, vec![inputs])))?;
+        lap!(timer, "Verify the execution proof");
 
         finish!(timer);
 

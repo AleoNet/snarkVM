@@ -19,9 +19,10 @@ mod parse;
 mod serialize;
 
 use console::program::Locator;
+
 use std::collections::{BTreeMap, HashMap};
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
     proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
@@ -53,7 +54,6 @@ impl<N: Network> ProvingKey<N> {
 
     /// Returns a proof for the given batch of assignments on the circuit.
     pub fn prove_batch<R: Rng + CryptoRng>(
-        &self,
         assignments: &HashMap<Locator<N>, (ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)>,
         rng: &mut R,
     ) -> Result<Proof<N>> {

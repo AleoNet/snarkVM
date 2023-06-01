@@ -34,7 +34,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
+    program::{Identifier, Locator, Plaintext, ProgramID, Record, Request, Response, Value},
     types::{U16, U64},
 };
 use snarkvm_synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
@@ -42,10 +42,7 @@ use snarkvm_synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
-use std::sync::Arc;
-
-#[cfg(test)]
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
