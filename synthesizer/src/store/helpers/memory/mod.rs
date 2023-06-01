@@ -24,6 +24,9 @@ pub use consensus::*;
 mod program;
 pub use program::*;
 
+mod rollback;
+pub use rollback::*;
+
 mod transaction;
 pub use transaction::*;
 

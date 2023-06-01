@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    store::{
-        helpers::rocksdb::{self, DataMap, Database, MapID, ProgramMap},
-        FinalizeStorage,
-    },
-    RollbackOperation,
+use crate::store::{
+    helpers::rocksdb::{self, DataMap, Database, MapID, ProgramMap},
+    FinalizeStorage,
 };
 use console::{
     prelude::*,
@@ -40,8 +37,6 @@ pub struct FinalizeDB<N: Network> {
     key_map: DataMap<Field<N>, Plaintext<N>>,
     /// The value map.
     value_map: DataMap<Field<N>, Value<N>>,
-    /// The rollback map.
-    rollback_map: DataMap<u32, IndexMap<N::TransactionID, Vec<RollbackOperation<N>>>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -53,7 +48,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     type KeyValueIDMap = DataMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
     type KeyMap = DataMap<Field<N>, Plaintext<N>>;
     type ValueMap = DataMap<Field<N>, Value<N>>;
-    type RollbackMap = DataMap<u32, IndexMap<N::TransactionID, Vec<RollbackOperation<N>>>>;
 
     /// Initializes the program state storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -63,7 +57,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
             key_value_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
             key_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Key))?,
             value_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Value))?,
-            rollback_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Rollback))?,
             dev,
         })
     }
@@ -91,11 +84,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     /// Returns the value map.
     fn value_map(&self) -> &Self::ValueMap {
         &self.value_map
-    }
-
-    /// Returns the rollback map.
-    fn rollback_map(&self) -> &Self::RollbackMap {
-        &self.rollback_map
     }
 
     /// Returns the optional development ID.
