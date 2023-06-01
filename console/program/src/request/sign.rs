@@ -40,17 +40,17 @@ impl<N: Network> Request<N> {
         // Retrieve `sk_sig`.
         let sk_sig = private_key.sk_sig();
 
-        // Derive the view key.
-        let view_key = ViewKey::try_from(private_key)?;
-        // Derive `sk_tag` from the graph key.
-        let sk_tag = GraphKey::try_from(view_key)?.sk_tag();
-
         // Derive the compute key.
         let compute_key = ComputeKey::try_from(private_key)?;
         // Retrieve `pk_sig`.
         let pk_sig = compute_key.pk_sig();
         // Retrieve `pr_sig`.
         let pr_sig = compute_key.pr_sig();
+
+        // Derive the view key.
+        let view_key = ViewKey::try_from((private_key, &compute_key))?;
+        // Derive `sk_tag` from the graph key.
+        let sk_tag = GraphKey::try_from(view_key)?.sk_tag();
 
         // Sample a random nonce.
         let nonce = Field::<N>::rand(rng);
