@@ -76,7 +76,8 @@ impl<N: Network> VerifyingKey<N> {
                 #[cfg(feature = "aleo-cli")]
                 {
                     let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
+                    // TODO (howardwu): Make a bulleted list of the functions that were executed.
+                    println!("{}", format!(" • Verified '' (in {elapsed} ms)").dimmed());
                 }
 
                 is_valid

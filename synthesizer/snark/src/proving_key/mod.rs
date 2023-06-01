@@ -52,7 +52,7 @@ impl<N: Network> ProvingKey<N> {
         Ok(proof)
     }
 
-    /// Returns a proof for the given batch of assignments on the circuit.
+    /// Returns a proof for the given batch of proving keys and assignments.
     pub fn prove_batch<R: Rng + CryptoRng>(
         assignments: &HashMap<Locator<N>, (ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)>,
         rng: &mut R,
@@ -60,12 +60,14 @@ impl<N: Network> ProvingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        let keys_to_constraints: BTreeMap<_, _> = assignments
+        // Prepare the instances.
+        let instances: BTreeMap<_, _> = assignments
             .values()
             .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
             .collect();
 
-        let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &keys_to_constraints, rng)?);
+        // Compute the proof.
+        let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         {
