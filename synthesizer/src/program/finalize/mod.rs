@@ -74,7 +74,6 @@ impl<N: Network> Finalize<N> {
     }
 
     /// Returns the minimum fee, in microcredits, required to run the finalize.
-    // TODO (d0cd): Introduce a cost table for each instruction and use that to calculate the fee.
     pub fn fee_in_microcredits(&self) -> u64 {
         1_000_000_000
     }
