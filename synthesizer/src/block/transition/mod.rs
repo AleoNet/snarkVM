@@ -296,6 +296,30 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
+    /// Returns `true` if this is a coinbase transition.
+    #[inline]
+    pub fn is_coinbase(&self) -> bool {
+        // Case 1: The transition calls 'credits.aleo/mint'.
+        if self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "mint" {
+            return true;
+        }
+        // Otherwise, return 'false'.
+        false
+    }
+
+    /// Returns `true` if this is a `split` transition.
+    #[inline]
+    pub fn is_split(&self) -> bool {
+        // Case 1 - The transition calls 'credits.aleo/split'.
+        if self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "split" {
+            return true;
+        }
+        // Otherwise, return 'false'.
+        false
+    }
+}
+
+impl<N: Network> Transition<N> {
     /// Returns `true` if the transition contains the given serial number.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
         self.inputs.iter().any(|input| match input {

@@ -66,7 +66,6 @@ impl Debug for Opcode {
 impl Display for Opcode {
     /// Prints the opcode as a string, i.e. `add`.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // write!(f, "{}", *self)
         match self {
             Self::Assert(opcode) => write!(f, "{opcode}"),
             Self::Call => write!(f, "{}", self.deref()),
