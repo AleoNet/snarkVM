@@ -70,8 +70,8 @@ jobs:
       - name: Benchmark synthesizer
         run: |
           cd synthesizer
-          cargo bench --bench block --output-format bencher | tee -a ../output.txt
-          cargo bench --bench transaction --output-format bencher | tee -a ../output.txt
+          cargo bench --bench block -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench transaction -- --output-format bencher | tee -a ../output.txt
           cd ..
 
       - name: Benchmark synthesizer/coinbase
