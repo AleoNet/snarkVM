@@ -13,10 +13,11 @@
 // limitations under the License.
 
 use crate::store::{
-    helpers::rocksdb::{BlockDB, FinalizeDB, TransactionDB, TransitionDB},
+    helpers::rocksdb::{BlockDB, FinalizeDB, RollbackDB, TransactionDB, TransitionDB},
     BlockStore,
     ConsensusStorage,
     FinalizeStore,
+    RollbackStore,
 };
 use console::prelude::*;
 
@@ -25,6 +26,8 @@ use console::prelude::*;
 pub struct ConsensusDB<N: Network> {
     /// The finalize store.
     finalize_store: FinalizeStore<N, FinalizeDB<N>>,
+    /// The rollback store.
+    rollback_store: RollbackStore<N, RollbackDB<N>>,
     /// The block store.
     block_store: BlockStore<N, BlockDB<N>>,
 }
@@ -32,6 +35,7 @@ pub struct ConsensusDB<N: Network> {
 #[rustfmt::skip]
 impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
     type FinalizeStorage = FinalizeDB<N>;
+    type RollbackStorage = RollbackDB<N>;
     type BlockStorage = BlockDB<N>;
     type TransactionStorage = TransactionDB<N>;
     type TransitionStorage = TransitionDB<N>;
@@ -40,11 +44,14 @@ impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
     fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize the finalize store.
         let finalize_store = FinalizeStore::<N, FinalizeDB<N>>::open(dev)?;
+        // Initialize the rollback store.
+        let rollback_store = RollbackStore::<N, RollbackDB<N>>::open(dev)?;
         // Initialize the block store.
         let block_store = BlockStore::<N, BlockDB<N>>::open(dev)?;
         // Return the consensus storage.
         Ok(Self {
             finalize_store,
+            rollback_store,
             block_store,
         })
     }
@@ -52,6 +59,11 @@ impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
     /// Returns the finalize store.
     fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage> {
         &self.finalize_store
+    }
+
+    /// Returns the rollback store.
+    fn rollback_store(&self) -> &RollbackStore<N, Self::RollbackStorage> {
+        &self.rollback_store
     }
 
     /// Returns the block store.

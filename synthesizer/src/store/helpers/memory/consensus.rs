@@ -13,10 +13,11 @@
 // limitations under the License.
 
 use crate::store::{
-    helpers::memory::{BlockMemory, FinalizeMemory, TransactionMemory, TransitionMemory},
+    helpers::memory::{BlockMemory, FinalizeMemory, RollbackMemory, TransactionMemory, TransitionMemory},
     BlockStore,
     ConsensusStorage,
     FinalizeStore,
+    RollbackStore,
 };
 use console::prelude::*;
 
@@ -25,6 +26,8 @@ use console::prelude::*;
 pub struct ConsensusMemory<N: Network> {
     /// The finalize store.
     finalize_store: FinalizeStore<N, FinalizeMemory<N>>,
+    /// The rollback store.
+    rollback_store: RollbackStore<N, RollbackMemory<N>>,
     /// The block store.
     block_store: BlockStore<N, BlockMemory<N>>,
 }
@@ -32,6 +35,7 @@ pub struct ConsensusMemory<N: Network> {
 #[rustfmt::skip]
 impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
     type FinalizeStorage = FinalizeMemory<N>;
+    type RollbackStorage = RollbackMemory<N>;
     type BlockStorage = BlockMemory<N>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
@@ -40,11 +44,14 @@ impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
     fn open(dev: Option<u16>) -> Result<Self> {
         // Initialize the finalize store.
         let finalize_store = FinalizeStore::<N, FinalizeMemory<N>>::open(dev)?;
+        // Initialize the rollback store.
+        let rollback_store = RollbackStore::<N, RollbackMemory<N>>::open(dev)?;
         // Initialize the block store.
         let block_store = BlockStore::<N, BlockMemory<N>>::open(dev)?;
         // Return the consensus storage.
         Ok(Self {
             finalize_store,
+            rollback_store,
             block_store,
         })
     }
@@ -52,6 +59,11 @@ impl<N: Network> ConsensusStorage<N> for ConsensusMemory<N> {
     /// Returns the finalize store.
     fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage> {
         &self.finalize_store
+    }
+
+    /// Returns the rollback store.
+    fn rollback_store(&self) -> &RollbackStore<N, Self::RollbackStorage> {
+        &self.rollback_store
     }
 
     /// Returns the block store.
