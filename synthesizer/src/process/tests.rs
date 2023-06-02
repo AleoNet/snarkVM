@@ -805,7 +805,7 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    let (stack, _, _) = process.finalize_deployment(&store, &deployment).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -908,7 +908,7 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    let (stack, _, _) = process.finalize_deployment(&store, &deployment).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1025,7 +1025,7 @@ finalize mint_public:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    let (stack, _, _) = process.finalize_deployment(&store, &deployment).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1144,7 +1144,7 @@ finalize mint_public:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    let (stack, _, _) = process.finalize_deployment(&store, &deployment).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1276,7 +1276,7 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    let (stack, _, _) = process.finalize_deployment(&store, &deployment).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1388,7 +1388,7 @@ finalize compute:
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&store, &deployment).unwrap();
+    let (stack, _, _) = process.finalize_deployment(&store, &deployment).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
