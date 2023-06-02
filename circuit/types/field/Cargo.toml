@@ -20,6 +20,9 @@ version = "=0.16.16"
 path = "../boolean"
 version = "=0.16.16"
 
+[dependencies.log]
+version = "0.4.14"
+
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]

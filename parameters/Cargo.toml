@@ -101,6 +101,9 @@ version = "0.3.64"
 features = [ "XmlHttpRequest" ]
 optional = true
 
+[dependencies.log]
+version = "0.4.14"
+
 [target."cfg(not(target_family = \"wasm\"))".dependencies.curl]
 version = "0.4.43"
 optional = true

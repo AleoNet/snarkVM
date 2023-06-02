@@ -20,6 +20,7 @@ use crate::{
         SNARKMode,
     },
 };
+use log::trace;
 use snarkvm_fields::PrimeField;
 
 use anyhow::Result;
@@ -29,8 +30,6 @@ use rand_core::CryptoRng;
 use std::collections::BTreeMap;
 
 use snarkvm_utilities::cfg_iter;
-#[cfg(not(feature = "std"))]
-use snarkvm_utilities::println;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -112,12 +111,12 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                         assert_eq!(private_variables.len(), num_private_variables);
 
                         if cfg!(debug_assertions) {
-                            println!("Number of padded public variables in Prover::Init: {num_public_variables}");
-                            println!("Number of private variables: {num_private_variables}");
-                            println!("Number of constraints: {num_constraints}");
-                            println!("Number of non-zero entries in A: {num_non_zero_a}");
-                            println!("Number of non-zero entries in B: {num_non_zero_b}");
-                            println!("Number of non-zero entries in C: {num_non_zero_c}");
+                            trace!("Number of padded public variables in Prover::Init: {num_public_variables}");
+                            trace!("Number of private variables: {num_private_variables}");
+                            trace!("Number of constraints: {num_constraints}");
+                            trace!("Number of non-zero entries in A: {num_non_zero_a}");
+                            trace!("Number of non-zero entries in B: {num_non_zero_b}");
+                            trace!("Number of non-zero entries in C: {num_non_zero_c}");
                         }
 
                         if circuit.index_info.num_constraints != num_constraints

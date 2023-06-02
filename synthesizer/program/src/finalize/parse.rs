@@ -14,6 +14,8 @@
 
 use super::*;
 
+use log::warn;
+
 impl<N: Network, Command: CommandTrait<N>> Parser for FinalizeCore<N, Command> {
     /// Parses a string into finalize.
     #[inline]
@@ -40,11 +42,11 @@ impl<N: Network, Command: CommandTrait<N>> Parser for FinalizeCore<N, Command> {
             // Initialize a new finalize.
             let mut finalize = Self::new(name);
             if let Err(error) = inputs.iter().cloned().try_for_each(|input| finalize.add_input(input)) {
-                eprintln!("{error}");
+                warn!("{error}");
                 return Err(error);
             }
             if let Err(error) = commands.iter().cloned().try_for_each(|command| finalize.add_command(command)) {
-                eprintln!("{error}");
+                warn!("{error}");
                 return Err(error);
             }
             Ok::<_, Error>(finalize)

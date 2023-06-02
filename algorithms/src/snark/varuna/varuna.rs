@@ -54,7 +54,7 @@ use std::{borrow::Borrow, collections::BTreeMap, ops::Deref, sync::Arc};
 
 use crate::srs::UniversalProver;
 #[cfg(not(feature = "std"))]
-use snarkvm_utilities::println;
+use log::{trace, warn};
 
 /// The Varuna proof system.
 #[derive(Clone, Debug)]
@@ -682,7 +682,7 @@ where
                         new_input.extend_from_slice(input);
                         new_input.resize(input.len().max(input_domain.size()), E::Fr::zero());
                         if cfg!(debug_assertions) {
-                            println!("Number of padded public variables: {}", new_input.len());
+                            trace!("Number of padded public variables: {}", new_input.len());
                         }
                         let unformatted = prover::ConstraintSystem::unformat_public_input(&new_input);
                         (new_input, unformatted)
@@ -711,7 +711,7 @@ where
             !proof.pc_proof.is_hiding() & comms.mask_poly.is_none()
         };
         if !proof_has_correct_zk_mode {
-            eprintln!(
+            warn!(
                 "Found `mask_poly` in the first round when not expected, or proof has incorrect hiding mode ({})",
                 proof.pc_proof.is_hiding()
             );
@@ -902,7 +902,7 @@ where
 
         if !evaluations_are_correct {
             #[cfg(debug_assertions)]
-            eprintln!("SonicKZG10::Check failed using final challenge: {:?}", verifier_state.gamma);
+            warn!("SonicKZG10::Check failed using final challenge: {:?}", verifier_state.gamma);
         }
 
         end_timer!(verifier_time, || format!(

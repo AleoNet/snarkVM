@@ -14,6 +14,8 @@
 
 use super::*;
 
+use log::warn;
+
 impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Parser
     for FunctionCore<N, Instruction, Command>
 {
@@ -47,22 +49,22 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
             // Initialize a new function.
             let mut function = Self::new(name);
             if let Err(error) = inputs.iter().cloned().try_for_each(|input| function.add_input(input)) {
-                eprintln!("{error}");
+                warn!("{error}");
                 return Err(error);
             }
             if let Err(error) =
                 instructions.iter().cloned().try_for_each(|instruction| function.add_instruction(instruction))
             {
-                eprintln!("{error}");
+                warn!("{error}");
                 return Err(error);
             }
             if let Err(error) = outputs.iter().cloned().try_for_each(|output| function.add_output(output)) {
-                eprintln!("{error}");
+                warn!("{error}");
                 return Err(error);
             }
             if let Some(finalize) = &finalize {
                 if let Err(error) = function.add_finalize(finalize.clone()) {
-                    eprintln!("{error}");
+                    warn!("{error}");
                     return Err(error);
                 }
             }

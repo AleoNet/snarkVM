@@ -13,6 +13,8 @@
 // limitations under the License.
 
 use super::*;
+#[cfg(feature = "aleo-cli")]
+use log::trace;
 
 #[derive(Clone)]
 pub struct UniversalSRS<N: Network> {
@@ -38,7 +40,7 @@ impl<N: Network> UniversalSRS<N> {
         let (proving_key, verifying_key) = Varuna::<N>::circuit_setup(self, assignment)?;
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        trace!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
         Ok((ProvingKey::new(Arc::new(proving_key)), VerifyingKey::new(Arc::new(verifying_key))))
     }
@@ -71,7 +73,7 @@ impl<N: Network> Deref for UniversalSRS<N> {
             let universal_srs = varuna::UniversalSRS::load().expect("Failed to load the universal SRS");
 
             #[cfg(feature = "aleo-cli")]
-            println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());
+            trace!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
             universal_srs
         })

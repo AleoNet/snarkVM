@@ -119,6 +119,7 @@ mod tests {
     use super::*;
     use crate::Closure;
     use console::network::Testnet3;
+    use log::trace;
 
     type CurrentNetwork = Testnet3;
 
@@ -142,7 +143,7 @@ closure main:
 
         let expected = Closure::<CurrentNetwork>::from_str(closure_string)?;
         let expected_bytes = expected.to_bytes_le()?;
-        println!("String size: {:?}, Bytecode size: {:?}", closure_string.as_bytes().len(), expected_bytes.len());
+        trace!("String size: {:?}, Bytecode size: {:?}", closure_string.as_bytes().len(), expected_bytes.len());
 
         let candidate = Closure::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
         assert_eq!(expected.to_string(), candidate.to_string());

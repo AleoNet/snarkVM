@@ -34,8 +34,8 @@ macro_rules! remove_file {
         #[cfg(not(feature = "wasm"))]
         if std::path::PathBuf::from(&$filepath).exists() {
             match std::fs::remove_file(&$filepath) {
-                Ok(()) => println!("Removed {:?}. Please retry the command.", $filepath),
-                Err(err) => eprintln!("Failed to remove {:?}: {err}", $filepath),
+                Ok(()) => log::trace!("Removed {:?}. Please retry the command.", $filepath),
+                Err(err) => log::warn!("Failed to remove {:?}: {err}", $filepath),
             }
         }
     };
@@ -51,7 +51,7 @@ macro_rules! impl_store_and_remote_fetch {
             {
                 use colored::*;
                 let output = format!("{:>15} - Storing file in {:?}", "Installation", file_path);
-                println!("{}", output.dimmed());
+                log::trace!("{}", output.dimmed());
             }
 
             // Ensure the folders up to the file path all exist.
@@ -62,7 +62,7 @@ macro_rules! impl_store_and_remote_fetch {
             // Attempt to write the parameter buffer to a file.
             match std::fs::File::create(file_path) {
                 Ok(mut file) => file.write_all(&buffer)?,
-                Err(error) => eprintln!("{}", error),
+                Err(error) => log::warn!("{}", error),
             }
             Ok(())
         }
@@ -78,7 +78,7 @@ macro_rules! impl_store_and_remote_fetch {
                 use colored::*;
 
                 let output = format!("{:>15} - Downloading \"{}\"", "Installation", url);
-                println!("{}", output.dimmed());
+                log::trace!("{}", output.dimmed());
 
                 easy.progress(true)?;
                 easy.progress_function(|total_download, current_download, _, _| {
@@ -178,11 +178,11 @@ macro_rules! impl_load_bytes_logic_remote {
             std::fs::read(&file_path)?
         } else {
             // Downloads the missing parameters and stores it in the local directory for use.
-             #[cfg(not(feature = "no_std_out"))]
+            #[cfg(not(feature = "no_std_out"))]
             {
                 use colored::*;
                 let path = format!("(in {:?})", file_path);
-                eprintln!(
+                log::warn!(
                     "\n⚠️  \"{}\" does not exist. Downloading and storing it {}.\n",
                     $filename, path.dimmed()
                 );
@@ -206,7 +206,7 @@ macro_rules! impl_load_bytes_logic_remote {
                     match Self::store_bytes(&buffer, &file_path) {
                         Ok(()) => buffer,
                         Err(_) => {
-                            eprintln!(
+                            log::warn!(
                                 "\n❗ Error - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
                                 $filename, file_path
                             );

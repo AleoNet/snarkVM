@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{Mode, *};
+use log::warn;
 use snarkvm_fields::PrimeField;
 
 use core::{
@@ -105,13 +106,13 @@ impl<F: PrimeField> LinearCombination<F> {
             // Enforce property 2.
             // Note: This branch is triggered if ANY term is not (zero or one).
             if self.terms.iter().any(|(v, _)| !(v.value().is_zero() || v.value().is_one())) {
-                eprintln!("Property 2 of the `Boolean` type was violated in {self}");
+                warn!("Property 2 of the `Boolean` type was violated in {self}");
                 return false;
             }
 
             // Enforce property 3.
             if !(self.value.is_zero() || self.value.is_one()) {
-                eprintln!("Property 3 of the `Boolean` type was violated");
+                warn!("Property 3 of the `Boolean` type was violated");
                 return false;
             }
 
@@ -119,7 +120,7 @@ impl<F: PrimeField> LinearCombination<F> {
         } else {
             // Property 1 of the `Boolean` type was violated.
             // Both self.constant and self.terms contain elements.
-            eprintln!("Both LC::constant and LC::terms contain elements, which is a violation");
+            warn!("Both LC::constant and LC::terms contain elements, which is a violation");
             false
         }
     }

@@ -21,6 +21,9 @@ optional = true
 path = "../../environment"
 version = "=0.16.16"
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.criterion]
 version = "0.5"
 

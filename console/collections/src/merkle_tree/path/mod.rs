@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use log::warn;
+
 use super::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -61,12 +63,12 @@ impl<E: Environment, const DEPTH: u8> MerklePath<E, DEPTH> {
     ) -> bool {
         // Ensure the leaf index is within the tree depth.
         if (*self.leaf_index as u128) >= (1u128 << DEPTH) {
-            eprintln!("Found an out of bounds Merkle leaf index");
+            warn!("Found an out of bounds Merkle leaf index");
             return false;
         }
         // Ensure the path length matches the expected depth.
         else if self.siblings.len() != DEPTH as usize {
-            eprintln!("Found an incorrect Merkle path length");
+            warn!("Found an incorrect Merkle path length");
             return false;
         }
 
@@ -74,7 +76,7 @@ impl<E: Environment, const DEPTH: u8> MerklePath<E, DEPTH> {
         let mut current_hash = match leaf_hasher.hash_leaf(leaf) {
             Ok(candidate_leaf_hash) => candidate_leaf_hash,
             Err(error) => {
-                eprintln!("Failed to hash the Merkle leaf during verification: {error}");
+                warn!("Failed to hash the Merkle leaf during verification: {error}");
                 return false;
             }
         };
@@ -95,7 +97,7 @@ impl<E: Environment, const DEPTH: u8> MerklePath<E, DEPTH> {
             match path_hasher.hash_children(&left, &right) {
                 Ok(hash) => current_hash = hash,
                 Err(error) => {
-                    eprintln!("Failed to hash the Merkle path during verification: {error}");
+                    warn!("Failed to hash the Merkle path during verification: {error}");
                     return false;
                 }
             }

@@ -17,6 +17,8 @@ use super::*;
 mod bytes;
 mod parse;
 mod serialize;
+#[cfg(feature = "aleo-cli")]
+use log::trace;
 
 use std::collections::BTreeMap;
 
@@ -50,7 +52,7 @@ impl<N: Network> ProvingKey<N> {
         let proof = Proof::new(Varuna::<N>::prove(universal_prover, fiat_shamir, self, assignment, rng)?);
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        trace!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
         Ok(proof)
     }
 
@@ -78,7 +80,7 @@ impl<N: Network> ProvingKey<N> {
         let batch_proof = Proof::new(Varuna::<N>::prove_batch(universal_prover, fiat_shamir, &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        trace!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
         Ok(batch_proof)
     }

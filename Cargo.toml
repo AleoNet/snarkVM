@@ -262,6 +262,9 @@ version = "2.7"
 features = [ "json" ]
 optional = true
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.bincode]
 version = "1.3"
 

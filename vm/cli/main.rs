@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm::cli::{Updater, CLI};
-
 use clap::Parser;
+use log::info;
+use snarkvm::{
+    cli::{Updater, CLI},
+    utilities::simpler_logger::SimplerLogger,
+};
 
 fn main() -> anyhow::Result<()> {
+    SimplerLogger::new().init()?;
     // Parse the given arguments.
     let cli = CLI::parse();
     // Run the updater.
-    println!("{}", Updater::print_cli());
+    info!("{}", Updater::print_cli());
     // Run the CLI.
     match cli.command.parse() {
-        Ok(output) => println!("{output}\n"),
-        Err(error) => println!("⚠️  {error}\n"),
+        Ok(output) => info!("{output}\n"),
+        Err(error) => info!("⚠️  {error}\n"),
     }
     Ok(())
 }

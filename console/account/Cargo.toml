@@ -28,6 +28,9 @@ version = "0.5"
 version = "1"
 features = [ "derive" ]
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.bincode]
 version = "1.3"
 

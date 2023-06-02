@@ -40,7 +40,7 @@ impl<F: PrimeField> Constraint<F> {
         match a * b == c {
             true => true,
             false => {
-                eprintln!("Failed constraint at {scope}:\n\t({a} * {b}) != {c}");
+                log::warn!("Failed constraint at {scope}:\n\t({a} * {b}) != {c}");
                 false
             }
         }

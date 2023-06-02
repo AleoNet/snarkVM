@@ -24,6 +24,9 @@ default-features = false
 [dev-dependencies.anyhow]
 version = "1.0.73"
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
 default-features = false

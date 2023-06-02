@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use log::trace;
+
 use super::*;
 
 /// Runs an Aleo program function
@@ -65,7 +67,7 @@ impl Run {
         // Log the metrics.
         use num_format::ToFormattedString;
 
-        println!("⛓  Constraints\n");
+        trace!("⛓  Constraints\n");
         for (function_constraints, counter) in program_frequency {
             // Log the constraints
             let counter_string = match counter {
@@ -73,19 +75,19 @@ impl Run {
                 counter => format!("(called {counter} times)").dimmed(),
             };
 
-            println!(" •  {function_constraints} {counter_string}",)
+            trace!(" •  {function_constraints} {counter_string}",)
         }
 
         // Log the outputs.
         match response.outputs().len() {
             0 => (),
-            1 => println!("\n➡️  Output\n"),
-            _ => println!("\n➡️  Outputs\n"),
+            1 => trace!("\n➡️  Output\n"),
+            _ => trace!("\n➡️  Outputs\n"),
         };
         for output in response.outputs() {
-            println!("{}", format!(" • {output}"));
+            trace!("{}", format!(" • {output}"));
         }
-        println!();
+        trace!("");
 
         // Prepare the locator.
         let locator = Locator::<CurrentNetwork>::from_str(&format!("{}/{}", package.program_id(), self.function))?;

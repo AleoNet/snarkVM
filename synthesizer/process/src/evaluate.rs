@@ -14,6 +14,9 @@
 
 use super::*;
 
+#[cfg(feature = "aleo-cli")]
+use log::trace;
+
 impl<N: Network> Process<N> {
     /// Evaluates a program function on the given request.
     #[inline]
@@ -24,7 +27,7 @@ impl<N: Network> Process<N> {
         let request = authorization.peek_next()?;
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Evaluating '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+        trace!("{}", format!(" • Evaluating '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Retrieve the stack.
         let stack = self.get_stack(request.program_id())?;

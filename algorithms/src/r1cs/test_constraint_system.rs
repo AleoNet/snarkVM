@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::r1cs::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, OptionalVec, Variable};
+use log::trace;
 use snarkvm_fields::Field;
 
 use cfg_if::cfg_if;
@@ -151,23 +152,23 @@ impl<F: Field> TestConstraintSystem<F> {
             let self_interned_path = self_c.interned_path;
             let other_interned_path = other_c.interned_path;
             if self_c.a != other_c.a {
-                println!("A row {i} is different:");
-                println!("self: {}", self.unintern_path(self_interned_path));
-                println!("other: {}", other.unintern_path(other_interned_path));
+                trace!("A row {i} is different:");
+                trace!("self: {}", self.unintern_path(self_interned_path));
+                trace!("other: {}", other.unintern_path(other_interned_path));
                 break;
             }
 
             if self_c.b != other_c.b {
-                println!("B row {i} is different:");
-                println!("self: {}", self.unintern_path(self_interned_path));
-                println!("other: {}", other.unintern_path(other_interned_path));
+                trace!("B row {i} is different:");
+                trace!("self: {}", self.unintern_path(self_interned_path));
+                trace!("other: {}", other.unintern_path(other_interned_path));
                 break;
             }
 
             if self_c.c != other_c.c {
-                println!("C row {i} is different:");
-                println!("self: {}", self.unintern_path(self_interned_path));
-                println!("other: {}", other.unintern_path(other_interned_path));
+                trace!("C row {i} is different:");
+                trace!("self: {}", self.unintern_path(self_interned_path));
+                trace!("other: {}", other.unintern_path(other_interned_path));
                 break;
             }
         }
@@ -202,7 +203,7 @@ impl<F: Field> TestConstraintSystem<F> {
 
     pub fn print_named_objects(&self) {
         for TestConstraint { interned_path, .. } in self.constraints.iter() {
-            println!("{}", self.unintern_path(*interned_path));
+            trace!("{}", self.unintern_path(*interned_path));
         }
     }
 

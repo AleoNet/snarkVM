@@ -14,6 +14,8 @@
 
 use super::*;
 
+use log::warn;
+
 impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Parser
     for ProgramCore<N, Instruction, Command>
 {
@@ -61,7 +63,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
             let mut program = match ProgramCore::<N, Instruction, Command>::new(id) {
                 Ok(program) => program,
                 Err(error) => {
-                    eprintln!("{error}");
+                    warn!("{error}");
                     return Err(error);
                 }
             };
@@ -78,7 +80,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
                 match result {
                     Ok(_) => (),
                     Err(error) => {
-                        eprintln!("{error}");
+                        warn!("{error}");
                         return Err(error);
                     }
                 }
@@ -88,7 +90,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
                 match program.add_import(import.clone()) {
                     Ok(_) => (),
                     Err(error) => {
-                        eprintln!("{error}");
+                        warn!("{error}");
                         return Err(error);
                     }
                 }

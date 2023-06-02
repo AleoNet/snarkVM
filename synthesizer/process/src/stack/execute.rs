@@ -485,6 +485,7 @@ impl<N: Network> Stack<N> {
     #[cfg(debug_assertions)]
     pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
         use colored::Colorize;
+        use log::trace;
 
         // Determine if the circuit is satisfied.
         let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
@@ -492,7 +493,7 @@ impl<N: Network> Stack<N> {
         let (num_constant, num_public, num_private, num_constraints, num_nonzeros) = A::count();
 
         // Print the log.
-        println!(
+        trace!(
             "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, NonZeros: {num_nonzeros:?})",
             scope.into().bold(),
             width = 20

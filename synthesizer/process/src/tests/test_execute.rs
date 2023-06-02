@@ -34,6 +34,7 @@ use ledger_store::{
     FinalizeStorage,
     FinalizeStore,
 };
+use log::trace;
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 use synthesizer_snark::UniversalSRS;
 
@@ -1130,7 +1131,7 @@ function transfer:
         .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, [r0, r1, r2].iter(), rng)
         .unwrap();
     assert_eq!(authorization.len(), 5);
-    println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
+    trace!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
     let (output_a, output_b) = {
         // Fetch the first request.

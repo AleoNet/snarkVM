@@ -13,6 +13,9 @@
 // limitations under the License.
 
 use super::*;
+#[cfg(feature = "aleo-cli")]
+use log::warn;
+
 use synthesizer_program::CastType;
 
 impl<N: Network> RegisterTypes<N> {
@@ -309,11 +312,11 @@ impl<N: Network> RegisterTypes<N> {
         match operand {
             // Inform the user the output operand is an input register, to ensure this is intended behavior.
             Operand::Register(register) if self.is_input(register) => {
-                eprintln!("Output {operand} in '{}' is an input register, ensure this is intended", stack.program_id())
+                warn!("Output {operand} in '{}' is an input register, ensure this is intended", stack.program_id())
             }
             // Inform the user the output operand is a literal, to ensure this is intended behavior.
             Operand::Literal(..) => {
-                eprintln!("Output {operand} in '{}' is a literal, ensure this is intended", stack.program_id())
+                warn!("Output {operand} in '{}' is a literal, ensure this is intended", stack.program_id())
             }
             // Otherwise, do nothing.
             _ => (),

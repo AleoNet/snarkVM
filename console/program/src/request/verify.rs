@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use log::warn;
 
 impl<N: Network> Request<N> {
     /// Returns `true` if the request is valid, and `false` otherwise.
@@ -27,12 +28,12 @@ impl<N: Network> Request<N> {
                 Ok(tcm) => {
                     // Ensure the computed transition commitment matches.
                     if tcm != self.tcm {
-                        eprintln!("Invalid transition commitment in request.");
+                        warn!("Invalid transition commitment in request.");
                         return false;
                     }
                 }
                 Err(error) => {
-                    eprintln!("Failed to compute transition commitment in request verification: {error}");
+                    warn!("Failed to compute transition commitment in request verification: {error}");
                     return false;
                 }
             }
@@ -50,7 +51,7 @@ impl<N: Network> Request<N> {
         ) {
             Ok(function_id) => function_id,
             Err(error) => {
-                eprintln!("Failed to construct the function ID: {error}");
+                warn!("Failed to construct the function ID: {error}");
                 return false;
             }
         };
@@ -197,7 +198,7 @@ impl<N: Network> Request<N> {
                 Ok(())
             },
         ) {
-            eprintln!("Request verification failed on input checks: {error}");
+            warn!("Request verification failed on input checks: {error}");
             return false;
         }
 

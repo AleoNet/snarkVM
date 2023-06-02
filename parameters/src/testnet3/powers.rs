@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use log::trace;
 use snarkvm_curves::traits::{PairingCurve, PairingEngine};
 use snarkvm_utilities::{
     CanonicalDeserialize,
@@ -398,7 +399,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         // Download the powers of two.
         for num_powers in &download_queue {
             #[cfg(debug_assertions)]
-            println!("Loading {num_powers} powers");
+            trace!("Loading {num_powers} powers");
 
             // Download the universal SRS powers if they're not already on disk.
             let additional_bytes = match *num_powers {
@@ -476,7 +477,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
         for num_powers in &download_queue {
             #[cfg(debug_assertions)]
-            println!("Loading {num_powers} shifted powers");
+            trace!("Loading {num_powers} shifted powers");
 
             // Download the universal SRS powers if they're not already on disk.
             let additional_bytes = match *num_powers {

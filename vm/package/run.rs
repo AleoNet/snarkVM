@@ -13,6 +13,8 @@
 // limitations under the License.
 
 use super::*;
+#[cfg(feature = "aleo-cli")]
+use log::trace;
 
 impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
@@ -36,7 +38,7 @@ impl<N: Network> Package<N> {
         let _locator = Locator::<N>::from_str(&format!("{program_id}/{function_name}"))?;
 
         #[cfg(feature = "aleo-cli")]
-        println!("🚀 Running '{}'...\n", _locator.to_string().bold());
+        trace!("🚀 Running '{}'...\n", _locator.to_string().bold());
 
         // Construct the process.
         let process = self.get_process()?;

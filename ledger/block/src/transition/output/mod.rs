@@ -21,6 +21,7 @@ use console::{
     program::{Ciphertext, Future, Plaintext, Record, TransitionLeaf},
     types::{Field, Group},
 };
+use log::warn;
 
 type Variant = u8;
 
@@ -247,7 +248,7 @@ impl<N: Network> Output<N> {
         match result() {
             Ok(is_hash_valid) => is_hash_valid,
             Err(error) => {
-                eprintln!("{error}");
+                warn!("{error}");
                 false
             }
         }

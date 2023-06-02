@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use log::trace;
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
@@ -27,6 +28,7 @@ use snarkvm_synthesizer::{process::InclusionAssignment, snark::UniversalSRS, VM}
 use anyhow::{anyhow, Result};
 use rand::thread_rng;
 use serde_json::{json, Value};
+use snarkvm_utilities::SimplerLogger;
 use std::{
     fs::File,
     io::{BufWriter, Write},
@@ -139,7 +141,7 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         "verifier_size": verifying_key_bytes.len(),
     });
 
-    println!("{}", serde_json::to_string_pretty(&metadata)?);
+    trace!("{}", serde_json::to_string_pretty(&metadata)?);
     write_metadata(&format!("{inclusion_function_name}.metadata"), &metadata)?;
     write_remote(&format!("{inclusion_function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
     write_local(&format!("{inclusion_function_name}.verifier"), &verifying_key_bytes)?;
@@ -150,11 +152,11 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     ));
 
     // Print the commands.
-    println!("\nNow, perform the following operations:\n");
+    trace!("\nNow, perform the following operations:\n");
     for command in commands {
-        println!("{command}");
+        trace!("{command}");
     }
-    println!();
+    trace!("");
 
     Ok(())
 }
@@ -162,10 +164,11 @@ pub fn inclusion<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 /// Run the following command to generate the inclusion circuit keys.
 /// `cargo run --example inclusion [network]`
 pub fn main() -> Result<()> {
+    SimplerLogger::new().init()?;
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {
-        println!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
+        trace!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
         return Ok(());
     }
 

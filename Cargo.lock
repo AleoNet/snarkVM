@@ -2586,6 +2586,7 @@ dependencies = [
  "colored",
  "dotenvy",
  "indexmap 2.0.2",
+ "log",
  "num-format",
  "once_cell",
  "parking_lot",
@@ -2629,6 +2630,7 @@ dependencies = [
  "indexmap 2.0.2",
  "itertools 0.11.0",
  "lazy_static",
+ "log",
  "num-traits",
  "parking_lot",
  "rand",
@@ -2678,6 +2680,7 @@ name = "snarkvm-circuit-account"
 version = "0.16.16"
 dependencies = [
  "anyhow",
+ "log",
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",
@@ -2690,6 +2693,7 @@ name = "snarkvm-circuit-algorithms"
 version = "0.16.16"
 dependencies = [
  "anyhow",
+ "log",
  "snarkvm-circuit-types",
  "snarkvm-console-algorithms",
  "snarkvm-curves",
@@ -2702,6 +2706,7 @@ name = "snarkvm-circuit-collections"
 version = "0.16.16"
 dependencies = [
  "anyhow",
+ "log",
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",
@@ -2718,6 +2723,7 @@ dependencies = [
  "criterion",
  "indexmap 2.0.2",
  "itertools 0.11.0",
+ "log",
  "nom",
  "num-traits",
  "once_cell",
@@ -2752,6 +2758,7 @@ name = "snarkvm-circuit-program"
 version = "0.16.16"
 dependencies = [
  "anyhow",
+ "log",
  "paste",
  "rand",
  "snarkvm-circuit-account",
@@ -2769,6 +2776,7 @@ dependencies = [
 name = "snarkvm-circuit-types"
 version = "0.16.16"
 dependencies = [
+ "log",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-address",
  "snarkvm-circuit-types-boolean",
@@ -2784,6 +2792,7 @@ dependencies = [
 name = "snarkvm-circuit-types-address"
 version = "0.16.16"
 dependencies = [
+ "log",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
@@ -2797,6 +2806,7 @@ name = "snarkvm-circuit-types-boolean"
 version = "0.16.16"
 dependencies = [
  "criterion",
+ "log",
  "snarkvm-circuit-environment",
  "snarkvm-console-types-boolean",
 ]
@@ -2805,6 +2815,7 @@ dependencies = [
 name = "snarkvm-circuit-types-field"
 version = "0.16.16"
 dependencies = [
+ "log",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-console-types-field",
@@ -2814,6 +2825,7 @@ dependencies = [
 name = "snarkvm-circuit-types-group"
 version = "0.16.16"
 dependencies = [
+ "log",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
@@ -2826,6 +2838,7 @@ dependencies = [
 name = "snarkvm-circuit-types-integers"
 version = "0.16.16"
 dependencies = [
+ "log",
  "paste",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2839,6 +2852,7 @@ dependencies = [
 name = "snarkvm-circuit-types-scalar"
 version = "0.16.16"
 dependencies = [
+ "log",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
@@ -2849,6 +2863,7 @@ dependencies = [
 name = "snarkvm-circuit-types-string"
 version = "0.16.16"
 dependencies = [
+ "log",
  "rand",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
@@ -2877,6 +2892,7 @@ dependencies = [
  "bincode",
  "bs58",
  "criterion",
+ "log",
  "serde_json",
  "snarkvm-console-network",
  "snarkvm-console-types",
@@ -2908,6 +2924,7 @@ dependencies = [
  "aleo-std",
  "criterion",
  "indexmap 2.0.2",
+ "log",
  "rayon",
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
@@ -2961,6 +2978,7 @@ dependencies = [
  "enum_index",
  "enum_index_derive",
  "indexmap 2.0.2",
+ "log",
  "num-derive",
  "num-traits",
  "once_cell",
@@ -3146,6 +3164,7 @@ version = "0.16.16"
 dependencies = [
  "bincode",
  "indexmap 2.0.2",
+ "log",
  "once_cell",
  "rayon",
  "serde_json",
@@ -3372,6 +3391,7 @@ dependencies = [
  "itertools 0.11.0",
  "js-sys",
  "lazy_static",
+ "log",
  "parking_lot",
  "paste",
  "rand",
@@ -3428,6 +3448,7 @@ dependencies = [
  "bincode",
  "colored",
  "indexmap 2.0.2",
+ "log",
  "once_cell",
  "parking_lot",
  "rand",
@@ -3453,6 +3474,7 @@ dependencies = [
  "bincode",
  "criterion",
  "indexmap 2.0.2",
+ "log",
  "paste",
  "rand",
  "rand_chacha",
@@ -3468,6 +3490,7 @@ version = "0.16.16"
 dependencies = [
  "bincode",
  "colored",
+ "log",
  "once_cell",
  "serde_json",
  "snarkvm-algorithms",
@@ -3482,6 +3505,7 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "bincode",
+ "log",
  "num-bigint",
  "num_cpus",
  "rand",

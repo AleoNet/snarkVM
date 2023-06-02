@@ -387,7 +387,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     }
                     // If the transaction failed, abort the entire batch.
                     Err(error) => {
-                        eprintln!("Critical bug in speculate: {error}\n\n{transaction}");
+                        warn!("Critical bug in speculate: {error}\n\n{transaction}");
                         // Note: This will abort the entire atomic batch.
                         return Err(format!("Failed to speculate on transaction - {error}"));
                     }
@@ -670,7 +670,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     Ok(()) => (),
                     // If the transaction failed to finalize, abort and continue to the next transaction.
                     Err(error) => {
-                        eprintln!("Critical bug in finalize: {error}\n\n{transaction}");
+                        warn!("Critical bug in finalize: {error}\n\n{transaction}");
                         // Note: This will abort the entire atomic batch.
                         return Err(format!("Failed to finalize on transaction - {error}"));
                     }
@@ -1598,7 +1598,7 @@ finalize compute:
             .finalize_store()
             .get_value_speculative(program_id, mapping_name, &Plaintext::from(Literal::Address(address)))
             .unwrap();
-        println!("{:?}", value);
+        trace!("{:?}", value);
         assert!(
             !vm.finalize_store()
                 .contains_key_confirmed(program_id, mapping_name, &Plaintext::from(Literal::Address(address)))

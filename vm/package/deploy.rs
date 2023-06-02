@@ -13,6 +13,8 @@
 // limitations under the License.
 
 use crate::ledger::block::Deployment;
+#[cfg(feature = "aleo-cli")]
+use log::trace;
 use snarkvm_console::prelude::DeserializeExt;
 
 use super::*;
@@ -120,7 +122,7 @@ impl<N: Network> Package<N> {
         let program_id = program.id();
 
         #[cfg(feature = "aleo-cli")]
-        println!("⏳ Deploying '{}'...\n", program_id.to_string().bold());
+        trace!("⏳ Deploying '{}'...\n", program_id.to_string().bold());
 
         // Construct the process.
         let mut process = Process::<N>::load()?;

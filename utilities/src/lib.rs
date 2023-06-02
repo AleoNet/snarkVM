@@ -71,6 +71,9 @@ pub use self::rand::*;
 pub mod serialize;
 pub use serialize::*;
 
+pub mod simpler_logger;
+pub use simpler_logger::*;
+
 #[cfg(not(feature = "std"))]
 pub mod io;
 

@@ -163,7 +163,7 @@ mod tests {
         second: C,
         rng: &mut TestRng,
     ) {
-        println!("Checking homomorphic addition on {first} + {second}");
+        log::trace!("Checking homomorphic addition on {first} + {second}");
 
         // Sample the circuit randomizers.
         let first_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(rng));

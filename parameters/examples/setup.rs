@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use log::{trace, warn};
 use snarkvm_algorithms::crypto_hash::sha256::sha256;
 use snarkvm_circuit::Aleo;
 use snarkvm_console::network::{prelude::ToBytes, Network, Testnet3};
@@ -19,6 +20,7 @@ use snarkvm_synthesizer::{Process, Program};
 
 use anyhow::Result;
 use serde_json::{json, Value};
+use snarkvm_utilities::SimplerLogger;
 use std::{
     fs,
     fs::File,
@@ -100,7 +102,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     for (function_name, _) in program.functions().iter() {
         // let timer = std::time::Instant::now();
         // process.synthesize_key::<A, _>(program_id, function_name, rng)?;
-        // println!("Synthesized '{}': {} ms", function_name, timer.elapsed().as_millis());
+        // trace!("Synthesized '{}': {} ms", function_name, timer.elapsed().as_millis());
 
         let proving_key = process.get_proving_key(program_id, function_name)?;
         let proving_key_bytes = proving_key.to_bytes_le()?;
@@ -117,7 +119,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
             "verifier_size": verifying_key_bytes.len(),
         });
 
-        println!("{}", serde_json::to_string_pretty(&metadata)?);
+        trace!("{}", serde_json::to_string_pretty(&metadata)?);
         write_metadata(&format!("{function_name}.metadata"), &metadata)?;
         write_remote(&format!("{function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
         write_local(&format!("{function_name}.verifier"), &verifying_key_bytes)?;
@@ -129,11 +131,11 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     }
 
     // Print the commands.
-    println!("\nNow, perform the following operations:\n");
+    trace!("\nNow, perform the following operations:\n");
     for command in commands {
-        println!("{command}");
+        trace!("{command}");
     }
-    println!();
+    trace!("");
 
     Ok(())
 }
@@ -141,9 +143,10 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 /// Run the following command to perform a setup.
 /// `cargo run --example setup [variant]`
 pub fn main() -> Result<()> {
+    SimplerLogger::new().init()?;
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
+        warn!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
         return Ok(());
     }
 

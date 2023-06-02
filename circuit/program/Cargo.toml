@@ -43,6 +43,9 @@ version = "1.0"
 package = "snarkvm-console"
 path = "../../console"
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.console]
 package = "snarkvm-console-program"
 path = "../../console/program"

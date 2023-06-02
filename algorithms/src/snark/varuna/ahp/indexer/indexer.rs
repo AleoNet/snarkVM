@@ -26,6 +26,7 @@ use crate::{
         SNARKMode,
     },
 };
+use log::trace;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
 
@@ -36,8 +37,6 @@ use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
-#[cfg(not(feature = "std"))]
-use snarkvm_utilities::println;
 
 use super::Matrix;
 
@@ -156,12 +155,12 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         let num_variables = num_padded_public_variables + num_private_variables;
 
         if cfg!(debug_assertions) {
-            println!("Number of padded public variables: {num_padded_public_variables}");
-            println!("Number of private variables: {num_private_variables}");
-            println!("Number of num_constraints: {num_constraints}");
-            println!("Number of non-zero entries in A: {num_non_zero_a}");
-            println!("Number of non-zero entries in B: {num_non_zero_b}");
-            println!("Number of non-zero entries in C: {num_non_zero_c}");
+            trace!("Number of padded public variables: {num_padded_public_variables}");
+            trace!("Number of private variables: {num_private_variables}");
+            trace!("Number of num_constraints: {num_constraints}");
+            trace!("Number of non-zero entries in A: {num_non_zero_a}");
+            trace!("Number of non-zero entries in B: {num_non_zero_b}");
+            trace!("Number of non-zero entries in C: {num_non_zero_c}");
         }
 
         Self::num_formatted_public_inputs_is_admissible(num_padded_public_variables)?;

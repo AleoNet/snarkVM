@@ -117,7 +117,7 @@ impl<V: Copy + Debug + Display + Ord + Add<Output = V> + Sub<Output = V> + Mul<O
         };
 
         if !outcome {
-            eprintln!("Metrics claims the count should be {self:?}, found {candidate:?} during synthesis");
+            log::warn!("Metrics claims the count should be {self:?}, found {candidate:?} during synthesis");
         }
 
         outcome

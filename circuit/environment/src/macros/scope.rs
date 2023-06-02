@@ -22,7 +22,7 @@ macro_rules! scope {
 #[macro_export]
 macro_rules! print_scope {
     () => {{
-        println!(
+        log::trace!(
             "Circuit::scope(Constants: {:?}, Public: {:?}, Private: {:?}, Constraints: {:?})\n",
             Circuit::num_constants_in_scope(),
             Circuit::num_public_in_scope(),

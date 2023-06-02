@@ -28,6 +28,9 @@ version = "=0.16.16"
 path = "../scalar"
 version = "=0.16.16"
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.snarkvm-utilities]
 path = "../../../utilities"
 default-features = false

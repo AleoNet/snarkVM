@@ -13,6 +13,8 @@
 // limitations under the License.
 
 use super::*;
+#[cfg(feature = "aleo-cli")]
+use log::trace;
 
 mod bytes;
 mod parse;
@@ -45,15 +47,12 @@ impl<N: Network> VerifyingKey<N> {
         match Varuna::<N>::verify(universal_verifier, fiat_shamir, self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
-                println!(
-                    "{}",
-                    format!(" • Verified '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed()
-                );
+                trace!("{}", format!(" • Verified '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
                 is_valid
             }
             Err(error) => {
                 #[cfg(feature = "aleo-cli")]
-                println!("{}", format!(" • Verifier failed: {error}").dimmed());
+                trace!("{}", format!(" • Verifier failed: {error}").dimmed());
                 false
             }
         }
@@ -77,12 +76,12 @@ impl<N: Network> VerifyingKey<N> {
         match Varuna::<N>::verify_batch(universal_verifier, fiat_shamir, &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
-                println!("{}", format!(" • Verified '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+                trace!("{}", format!(" • Verified '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
                 is_valid
             }
             Err(error) => {
                 #[cfg(feature = "aleo-cli")]
-                println!("{}", format!(" • Verifier failed: {error}").dimmed());
+                trace!("{}", format!(" • Verifier failed: {error}").dimmed());
                 false
             }
         }

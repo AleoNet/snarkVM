@@ -20,6 +20,9 @@ version = "=0.16.16"
 path = "../types"
 version = "=0.16.16"
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.snarkvm-circuit-network]
 path = "../network"
 

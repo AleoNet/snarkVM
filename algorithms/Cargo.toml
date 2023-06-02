@@ -156,6 +156,9 @@ optional = true
 [dependencies.num-traits]
 version = "0.2"
 
+[dependencies.log]
+version = "0.4.14"
+
 [dev-dependencies.expect-test]
 version = "1.4.1"
 

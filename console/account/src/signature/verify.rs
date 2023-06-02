@@ -20,7 +20,7 @@ impl<N: Network> Signature<N> {
     pub fn verify(&self, address: &Address<N>, message: &[Field<N>]) -> bool {
         // Ensure the number of field elements does not exceed the maximum allowed size.
         if message.len() > N::MAX_DATA_SIZE_IN_FIELDS as usize {
-            eprintln!("Cannot sign the signature: the signed message exceeds maximum allowed size");
+            log::warn!("Cannot sign the signature: the signed message exceeds maximum allowed size");
             return false;
         }
 
@@ -69,7 +69,7 @@ impl<N: Network> Signature<N> {
         match message.chunks(Field::<N>::size_in_data_bits()).map(Field::from_bits_le).collect::<Result<Vec<_>>>() {
             Ok(fields) => self.verify(address, &fields),
             Err(error) => {
-                eprintln!("Failed to verify signature: {error}");
+                log::warn!("Failed to verify signature: {error}");
                 false
             }
         }
