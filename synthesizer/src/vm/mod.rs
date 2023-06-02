@@ -24,13 +24,22 @@ mod verify;
 pub use finalize::FinalizeMode;
 
 use crate::{
+    atomic_batch_scope,
     atomic_finalize,
     block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions, Transition},
     cast_ref,
     process,
     process::{Authorization, Inclusion, InclusionAssignment, Process, Query},
     program::Program,
-    store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
+    store::{
+        BlockStore,
+        ConsensusStorage,
+        ConsensusStore,
+        FinalizeStore,
+        RollbackStore,
+        TransactionStore,
+        TransitionStore,
+    },
     CallMetrics,
 };
 use console::{
@@ -99,10 +108,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Returns the consensus store.
+    #[inline]
+    pub fn consensus_store(&self) -> &ConsensusStore<N, C> {
+        &self.store
+    }
+
     /// Returns the finalize store.
     #[inline]
     pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
         self.store.finalize_store()
+    }
+
+    /// Returns the rollback store.
+    #[inline]
+    pub fn rollback_store(&self) -> &RollbackStore<N, C::RollbackStorage> {
+        self.store.rollback_store()
     }
 
     /// Returns the block store.
@@ -175,8 +196,32 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ok(())
             }
             Err(error) => {
-                // Rollback the block.
-                self.block_store().remove_last_n(1)?;
+                // Rollback the block and finalize operations.
+                atomic_batch_scope!(self.consensus_store(), {
+                    // Rollback the block.
+                    self.block_store().remove_last_n(1)?;
+
+                    // Fetch the rollback operations.
+                    let rollback_operations = block
+                        .transaction_ids()
+                        .flat_map(|id| self.rollback_store().get_rollback_operations_speculative(id).transpose())
+                        .collect::<Result<Vec<_>>>()?
+                        .into_iter()
+                        .flatten()
+                        .collect();
+
+                    // Rollback the finalize store.
+                    self.finalize_store().rollback(rollback_operations)?;
+
+                    // Remove the rollback operations.
+                    for transaction_id in block.transaction_ids() {
+                        // Remove the transaction from the rollback store.
+                        self.rollback_store().remove_rollback_operations(transaction_id)?;
+                    }
+
+                    Ok(())
+                })?;
+
                 // Return the error.
                 Err(error)
             }
