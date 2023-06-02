@@ -124,7 +124,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // TODO (raychu86): Remove `is_split` check once batch executions are supported.
                 // Ensure the fee is present, if the transaction is not a coinbase or split.
-                if !transaction.is_coinbase() && !transaction.is_split() && fee.is_none() {
+                if !((transaction.is_coinbase() || transaction.is_split()) && execution.len() == 1) && fee.is_none() {
                     bail!("Transaction is missing a fee (execution)");
                 }
                 // Verify the fee.
