@@ -17,7 +17,7 @@ pub use rollback_operation::*;
 
 use console::{
     network::prelude::*,
-    program::{Plaintext, Value},
+    program::{Identifier, Plaintext, ProgramID, Value},
     types::Field,
 };
 use snarkvm_utilities::DeserializeExt;

@@ -25,19 +25,21 @@ pub enum RollbackOperation<N: Network> {
     UpdateKeyValue(Field<N>, u64, Field<N>, Option<Value<N>>),
     /// Rollback a key-value removal, (`mapping ID`, `index`, `key`, `previous value`).
     RemoveKeyValue(Field<N>, u64, Plaintext<N>, Value<N>),
-    /// Rollback a mapping removal, (`mapping ID`, `[(key, value)]`).
-    RemoveMapping(Field<N>, Vec<(Plaintext<N>, Value<N>)>),
+    /// Rollback a mapping removal, (`program ID`, `mapping name` `[(key, value)]`).
+    RemoveMapping(ProgramID<N>, Identifier<N>, Vec<(Plaintext<N>, Value<N>)>),
 }
 
 impl<N: Network> RollbackOperation<N> {
     /// Returns the mapping ID of the rollback operation.
-    pub fn mapping_id(&self) -> Field<N> {
+    pub fn mapping_id(&self) -> Result<Field<N>> {
         match self {
-            RollbackOperation::InitializeMapping(mapping_id) => *mapping_id,
-            RollbackOperation::InsertKeyValue(mapping_id, _) => *mapping_id,
-            RollbackOperation::UpdateKeyValue(mapping_id, _, _, _) => *mapping_id,
-            RollbackOperation::RemoveKeyValue(mapping_id, _, _, _) => *mapping_id,
-            RollbackOperation::RemoveMapping(mapping_id, _) => *mapping_id,
+            RollbackOperation::InitializeMapping(mapping_id) => Ok(*mapping_id),
+            RollbackOperation::InsertKeyValue(mapping_id, _) => Ok(*mapping_id),
+            RollbackOperation::UpdateKeyValue(mapping_id, _, _, _) => Ok(*mapping_id),
+            RollbackOperation::RemoveKeyValue(mapping_id, _, _, _) => Ok(*mapping_id),
+            RollbackOperation::RemoveMapping(program_id, mapping_name, _) => {
+                N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())
+            }
         }
     }
 }
@@ -94,8 +96,10 @@ impl<N: Network> FromBytes for RollbackOperation<N> {
                 Ok(RollbackOperation::RemoveKeyValue(mapping_id, index, key, previous_value))
             }
             4 => {
-                // Read the mapping ID.
-                let mapping_id = Field::read_le(&mut reader)?;
+                // Read the program ID.
+                let program_id = ProgramID::read_le(&mut reader)?;
+                // Read the mapping name.
+                let mapping_name = Identifier::read_le(&mut reader)?;
 
                 // Read the number of key-value pairs.
                 let num_key_values = u32::read_le(&mut reader)?;
@@ -107,7 +111,7 @@ impl<N: Network> FromBytes for RollbackOperation<N> {
                     key_values.push((key, value));
                 }
 
-                Ok(RollbackOperation::RemoveMapping(mapping_id, key_values))
+                Ok(RollbackOperation::RemoveMapping(program_id, mapping_name, key_values))
             }
             5.. => Err(error(format!("Failed to decode finalize operation variant {variant}"))),
         }
@@ -163,11 +167,13 @@ impl<N: Network> ToBytes for RollbackOperation<N> {
                 // Write the previous value.
                 previous_value.write_le(&mut writer)?;
             }
-            RollbackOperation::RemoveMapping(mapping_id, key_values) => {
+            RollbackOperation::RemoveMapping(program_id, mapping_name, key_values) => {
                 // Write the variant.
                 4u8.write_le(&mut writer)?;
-                // Write the mapping ID.
-                mapping_id.write_le(&mut writer)?;
+                // Write the program ID.
+                program_id.write_le(&mut writer)?;
+                // Write the mapping name.
+                mapping_name.write_le(&mut writer)?;
 
                 // Write the number of key-value pairs.
                 (key_values.len() as u32).write_le(&mut writer)?;
@@ -187,7 +193,7 @@ impl<N: Network> Serialize for RollbackOperation<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut operation = serializer.serialize_struct("FinalizeOperation", 4)?;
+                let mut operation = serializer.serialize_struct("FinalizeOperation", 5)?;
                 // Serialize the components.
                 match self {
                     RollbackOperation::InitializeMapping(mapping_id) => {
@@ -213,9 +219,10 @@ impl<N: Network> Serialize for RollbackOperation<N> {
                         operation.serialize_field("key_id", key_id)?;
                         operation.serialize_field("previous_value", previous_value)?;
                     }
-                    RollbackOperation::RemoveMapping(mapping_id, key_values) => {
+                    RollbackOperation::RemoveMapping(program_id, mapping_name, key_values) => {
                         operation.serialize_field("type", "remove_mapping")?;
-                        operation.serialize_field("mapping_id", mapping_id)?;
+                        operation.serialize_field("program_id", program_id)?;
+                        operation.serialize_field("mapping_name", mapping_name)?;
                         operation.serialize_field("key_values", key_values)?;
                     }
                 }
@@ -273,12 +280,14 @@ impl<'de, N: Network> Deserialize<'de> for RollbackOperation<N> {
                         Self::RemoveKeyValue(mapping_id, index, key, previous_value)
                     }
                     Some("remove_mapping") => {
-                        // Deserialize the mapping ID.
-                        let mapping_id = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_id")?;
+                        // Deserialize the program ID.
+                        let program_id = DeserializeExt::take_from_value::<D>(&mut operation, "program_id")?;
+                        // Deserialize the mapping_name.
+                        let mapping_name = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_name")?;
                         // Deserialize the key values.
                         let key_values = DeserializeExt::take_from_value::<D>(&mut operation, "key_values")?;
                         // Return the operation.
-                        Self::RemoveMapping(mapping_id, key_values)
+                        Self::RemoveMapping(program_id, mapping_name, key_values)
                     }
                     _ => return Err(de::Error::custom("Invalid finalize operation type")),
                 };
