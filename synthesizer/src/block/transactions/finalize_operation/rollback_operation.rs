@@ -14,7 +14,7 @@
 
 use super::*;
 
-/// Enum to represent the allowed set of Merkle tree operations.
+/// Enum of operations that can be performed to rollback a finalize operation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RollbackOperation<N: Network> {
     /// Rollback an mapping initialization, (`mapping ID`).
@@ -113,13 +113,13 @@ impl<N: Network> FromBytes for RollbackOperation<N> {
 
                 Ok(RollbackOperation::RemoveMapping(program_id, mapping_name, key_values))
             }
-            5.. => Err(error(format!("Failed to decode finalize operation variant {variant}"))),
+            5.. => Err(error(format!("Failed to decode rollback operation variant {variant}"))),
         }
     }
 }
 
 impl<N: Network> ToBytes for RollbackOperation<N> {
-    /// Writes the finalize operation to buffer.
+    /// Writes the rollback operation to buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             RollbackOperation::InitializeMapping(mapping_id) => {
@@ -193,7 +193,7 @@ impl<N: Network> Serialize for RollbackOperation<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut operation = serializer.serialize_struct("FinalizeOperation", 5)?;
+                let mut operation = serializer.serialize_struct("RollbackOperation", 5)?;
                 // Serialize the components.
                 match self {
                     RollbackOperation::InitializeMapping(mapping_id) => {
@@ -289,12 +289,12 @@ impl<'de, N: Network> Deserialize<'de> for RollbackOperation<N> {
                         // Return the operation.
                         Self::RemoveMapping(program_id, mapping_name, key_values)
                     }
-                    _ => return Err(de::Error::custom("Invalid finalize operation type")),
+                    _ => return Err(de::Error::custom("Invalid rollback operation type")),
                 };
                 // Return the operation.
                 Ok(rollback_operation)
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "finalize operations"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "rollback operations"),
         }
     }
 }

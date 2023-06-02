@@ -72,7 +72,7 @@ pub trait RollbackStorage<N: Network>: 'static + Clone + Send + Sync {
         self.rollback_map().finish_atomic()
     }
 
-    /// Inserts the rollback operations for the given `block height` and `transaction ID` into storage.
+    /// Inserts the rollback operations for the given `transaction ID` into storage.
     fn insert_rollback_operations(
         &self,
         transaction_id: &N::TransactionID,
@@ -140,7 +140,7 @@ impl<N: Network, R: RollbackStorage<N>> RollbackStore<N, R> {
         Ok(Self { storage, _phantom: PhantomData })
     }
 
-    /// Inserts the rollback operations for the given `block height` and `transaction ID` into storage.
+    /// Inserts the rollback operations for the given `transaction ID` into storage.
     pub fn insert_rollback_operations(
         &self,
         transaction_id: &N::TransactionID,

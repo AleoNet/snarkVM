@@ -22,10 +22,10 @@ use console::{
 };
 use snarkvm_utilities::DeserializeExt;
 
-/// Enum to represent the allowed set of Merkle tree operations.
+/// Enum to represent the set of finalize operations that can be performed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FinalizeOperation<N: Network> {
-    /// Initializes a new a mapping (`mapping ID`).
+    /// Initializes a new a mapping, (`mapping ID`).
     InitializeMapping(Field<N>),
     /// Inserts a key-value pair, (`mapping ID`, `key ID`, `value ID`).
     InsertKeyValue(Field<N>, Field<N>, Field<N>),
