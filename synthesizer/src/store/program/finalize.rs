@@ -504,7 +504,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             // The cache of mapping ids to program ids and mapping names.
             let mut program_id_cache: IndexMap<Field<N>, (ProgramID<N>, Identifier<N>)> = IndexMap::new();
 
-            // Iterate over all the rollback operations.
+            // Iterate over all the rollback operations from the back.
             for rollback_operation in rollback_operations.iter().rev() {
                 // Fetch the mapping id for the finalize operation.
                 let mapping_id = rollback_operation.mapping_id()?;
