@@ -75,11 +75,11 @@ pub trait RollbackStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Inserts the rollback operations for the given `block height` and `transaction ID` into storage.
     fn insert_rollback_operations(
         &self,
-        transaction_id: N::TransactionID,
+        transaction_id: &N::TransactionID,
         rollback_operations: Vec<RollbackOperation<N>>,
     ) -> Result<()> {
         // Ensure the transaction ID does not already exist.
-        if self.rollback_map().contains_key_speculative(&transaction_id)? {
+        if self.rollback_map().contains_key_speculative(transaction_id)? {
             bail!(
                 "Illegal operation: transaction ID '{transaction_id}' already exists in storage - cannot insert again."
             )
@@ -87,7 +87,7 @@ pub trait RollbackStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // Insert the rollback operations into storage.
         atomic_batch_scope!(self, {
-            self.rollback_map().insert(transaction_id, rollback_operations)?;
+            self.rollback_map().insert(*transaction_id, rollback_operations)?;
 
             Ok(())
         })
@@ -143,7 +143,7 @@ impl<N: Network, R: RollbackStorage<N>> RollbackStore<N, R> {
     /// Inserts the rollback operations for the given `block height` and `transaction ID` into storage.
     pub fn insert_rollback_operations(
         &self,
-        transaction_id: N::TransactionID,
+        transaction_id: &N::TransactionID,
         rollback_operations: Vec<RollbackOperation<N>>,
     ) -> Result<()> {
         self.storage.insert_rollback_operations(transaction_id, rollback_operations)
@@ -209,5 +209,49 @@ impl<N: Network, R: RollbackStorage<N>> RollbackStore<N, R> {
         transaction_id: &N::TransactionID,
     ) -> Result<Option<Vec<RollbackOperation<N>>>> {
         self.storage.get_rollback_operations_speculative(transaction_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{helpers::memory::RollbackMemory, Transaction};
+
+    #[test]
+    fn test_insert_get_remove() {
+        let mut rng = TestRng::default();
+
+        // Sample the deployment transaction.
+        let transaction = crate::vm::test_helpers::sample_deployment_transaction(&mut rng);
+
+        assert!(matches!(transaction, Transaction::Deploy(_, _, _, _)), "Expected a deployment transaction.");
+        if let Transaction::Deploy(transaction_id, _, deployment, _) = transaction {
+            // Initialize the VM.
+            let vm = crate::vm::test_helpers::sample_vm();
+
+            let (_, _, rollback_operations) =
+                vm.process().write().finalize_deployment(vm.finalize_store(), &deployment).unwrap();
+
+            // Initialize a new rollback store.
+            let rollback_store = RollbackStore::<_, RollbackMemory<_>>::open(None).unwrap();
+
+            // Ensure the rollback operations do not exist.
+            let candidate = rollback_store.get_rollback_operations_speculative(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
+
+            // Insert the rollback operations.
+            rollback_store.insert_rollback_operations(&transaction_id, rollback_operations.clone()).unwrap();
+
+            // Retrieve the rollback operations.
+            let candidate = rollback_store.get_rollback_operations_speculative(&transaction_id).unwrap();
+            assert_eq!(Some(rollback_operations), candidate);
+
+            // Remove the rollback operations.
+            rollback_store.remove_rollback_operations(&transaction_id).unwrap();
+
+            // Ensure the rollback operations do not exist.
+            let candidate = rollback_store.get_rollback_operations_speculative(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 }
