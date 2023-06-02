@@ -627,7 +627,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, Execution, Inclusion, StackEvaluate, StackExecute};
+    use crate::{CallStack, Execution, StackEvaluate, StackExecute, Trace};
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey},
@@ -1105,9 +1105,9 @@ function compute:
 
         // Re-run to ensure state continues to work.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        let trace = Arc::new(RwLock::new(Trace::new()));
         let metrics = Arc::new(RwLock::new(Vec::new()));
-        let call_stack = CallStack::execute(authorization, execution, inclusion, metrics).unwrap();
+        let call_stack = CallStack::execute(authorization, execution, trace, metrics).unwrap();
         let response = stack.execute_function::<CurrentAleo, _>(call_stack, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());

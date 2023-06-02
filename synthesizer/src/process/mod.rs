@@ -15,6 +15,9 @@
 mod stack;
 pub use stack::*;
 
+mod trace;
+pub use trace::*;
+
 mod authorize;
 mod deploy;
 mod evaluate;
@@ -395,7 +398,7 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution, _inclusion, _metrics) =
+                let (_response, execution, _trace, _metrics) =
                     process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the execution.

@@ -21,7 +21,7 @@ impl<N: Network> Process<N> {
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Execution<N>, Trace<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute");
 
         // Retrieve the main request (without popping it).
@@ -32,12 +32,12 @@ impl<N: Network> Process<N> {
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        // Initialize the inclusion.
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the trace.
+        let trace = Arc::new(RwLock::new(Trace::new()));
         // Initialize the metrics.
         let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone(), trace.clone(), metrics.clone())?;
         lap!(timer, "Initialize call stack");
         // Execute the circuit.
         let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
@@ -46,19 +46,19 @@ impl<N: Network> Process<N> {
         let execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution is not empty.
         ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
-        // Extract the inclusion.
-        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
+        // Extract the trace.
+        let trace = Arc::try_unwrap(trace).unwrap().into_inner();
         // Extract the metrics.
         let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
-        Ok((response, execution, inclusion, metrics))
+        Ok((response, execution, trace, metrics))
     }
 
     /// Verifies the given execution is valid.
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_execution<const VERIFY_INCLUSION: bool>(&self, execution: &Execution<N>) -> Result<()> {
+    pub fn verify_execution<const VERIFY_PROOF: bool>(&self, execution: &Execution<N>) -> Result<()> {
         let timer = timer!("Process::verify_execution");
 
         // Ensure the execution contains transitions.
@@ -213,10 +213,10 @@ impl<N: Network> Process<N> {
             // lap!(timer, "Verify transition proof for {}", function.name());
         }
 
-        // Ensure the execution proof is valid.
-        if VERIFY_INCLUSION {
-            Inclusion::verify_execution(execution, verifier_inputs)?;
-            lap!(timer, "Verify the execution proof");
+        // Ensure the proof is valid.
+        if VERIFY_PROOF {
+            Trace::verify_proof(execution, verifier_inputs)?;
+            lap!(timer, "Verify the proof");
         }
 
         // // Ensure the execution proof is valid.

@@ -37,7 +37,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     type IDMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, bool)>;
     /// The mapping of `transition ID` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
-    /// The mapping of `transaction ID` to `(global state root, (optional) inclusion proof)`.
+    /// The mapping of `transaction ID` to `(global state root, (optional) proof)`.
     type InclusionMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
     /// The fee storage.
     type FeeStorage: FeeStorage<N>;
@@ -134,8 +134,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         let transition_ids = execution.transitions().map(Transition::id).copied().collect();
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
-        // Retrieve the inclusion proof.
-        let inclusion_proof = execution.inclusion_proof().cloned();
+        // Retrieve the proof.
+        let proof = execution.proof().cloned();
 
         atomic_batch_scope!(self, {
             // Store the transition IDs.
@@ -149,8 +149,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 self.transition_store().insert(transition)?;
             }
 
-            // Store the global state root and inclusion proof.
-            self.inclusion_map().insert(*transaction_id, (global_state_root, inclusion_proof))?;
+            // Store the global state root and proof.
+            self.inclusion_map().insert(*transaction_id, (global_state_root, proof))?;
 
             // Store the fee.
             if let Some(fee) = fee {

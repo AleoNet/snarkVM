@@ -23,7 +23,7 @@ impl<N: Network> Process<N> {
         credits: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Transition<N>, Trace<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute_fee");
 
         // Ensure the fee has the correct program ID.
@@ -58,12 +58,12 @@ impl<N: Network> Process<N> {
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        // Initialize the inclusion.
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
+        // Initialize the trace.
+        let trace = Arc::new(RwLock::new(Trace::new()));
         // Initialize the metrics.
         let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
+        let call_stack = CallStack::execute(authorization, execution.clone(), trace.clone(), metrics.clone())?;
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(call_stack, rng)?;
         lap!(timer, "Execute the circuit");
@@ -72,14 +72,14 @@ impl<N: Network> Process<N> {
         let execution = Arc::try_unwrap(execution).unwrap().into_inner();
         // Ensure the execution contains 1 transition.
         ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
-        // Extract the inclusion.
-        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
+        // Extract the trace.
+        let trace = Arc::try_unwrap(trace).unwrap().into_inner();
         // Extract the metrics.
         let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
 
-        Ok((response, execution.peek()?.clone(), inclusion, metrics))
+        Ok((response, execution.peek()?.clone(), trace, metrics))
     }
 
     /// Verifies the given fee is valid.

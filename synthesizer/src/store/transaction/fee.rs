@@ -107,10 +107,8 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
     fn insert(&self, transaction_id: N::TransactionID, fee: &Fee<N>) -> Result<()> {
         atomic_batch_scope!(self, {
             // Store the fee.
-            self.fee_map().insert(
-                transaction_id,
-                (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
-            )?;
+            self.fee_map()
+                .insert(transaction_id, (*fee.transition_id(), fee.global_state_root(), fee.proof().cloned()))?;
             self.reverse_fee_map().insert(*fee.transition_id(), transaction_id)?;
 
             // Store the fee transition.

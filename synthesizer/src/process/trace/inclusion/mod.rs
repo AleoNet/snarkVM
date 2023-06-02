@@ -48,23 +48,16 @@ pub struct Inclusion<N: Network> {
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
     /// A map of commitments to (transition ID, output index) pairs.
     output_commitments: HashMap<Field<N>, (N::TransitionID, u8)>,
-    /// A map of locators to (proving key, assignments) pairs.
-    proving_tasks: HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
 }
 
 impl<N: Network> Inclusion<N> {
     /// Initializes a new `Inclusion` instance.
     pub fn new() -> Self {
-        Self { input_tasks: HashMap::new(), output_commitments: HashMap::new(), proving_tasks: HashMap::new() }
+        Self { input_tasks: HashMap::new(), output_commitments: HashMap::new() }
     }
 
-    /// Inserts the transition to build state for the inclusion proof.
-    pub fn insert_transition(
-        &mut self,
-        input_ids: &[InputID<N>],
-        transition: &Transition<N>,
-        (proving_key, assignment): (ProvingKey<N>, Assignment<N::Field>),
-    ) -> Result<()> {
+    /// Inserts the transition to build state for the inclusion task.
+    pub fn insert_transition(&mut self, input_ids: &[InputID<N>], transition: &Transition<N>) -> Result<()> {
         // Ensure the transition inputs and input IDs are the same length.
         if input_ids.len() != transition.inputs().len() {
             bail!("Inclusion expected the same number of input IDs as transition inputs")
@@ -97,56 +90,78 @@ impl<N: Network> Inclusion<N> {
             }
         }
 
-        // Construct the locator.
-        let locator = Locator::new(*transition.program_id(), *transition.function_name());
-        // Insert the assignment (and proving key if the entry does not exist), for the specified locator.
-        self.proving_tasks.entry(locator).or_insert((proving_key, vec![])).1.push(assignment);
-
         Ok(())
-    }
-
-    /// Returns the global state root and inclusion proof for the given assignments.
-    fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        proving_tasks: &HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
-        proving_key: &ProvingKey<N>,
-        assignments: &[InclusionAssignment<N>],
-        rng: &mut R,
-    ) -> Result<(N::StateRoot, Proof<N>)> {
-        // Initialize the global state root.
-        let mut global_state_root = N::StateRoot::default();
-        // Initialize a vector for the batch assignments.
-        let mut batch_assignments = vec![];
-
-        for assignment in assignments.iter() {
-            // Ensure the global state root is the same across iterations.
-            if *global_state_root != Field::zero() && global_state_root != assignment.state_path.global_state_root() {
-                bail!("Inclusion expected the global state root to be the same across iterations")
-            }
-            // Update the global state root.
-            global_state_root = assignment.state_path.global_state_root();
-
-            // Add the assignment to the assignments.
-            batch_assignments.push(assignment.to_circuit_assignment::<A>()?);
-        }
-
-        // Ensure the global state root is not zero.
-        if *global_state_root == Field::zero() {
-            bail!("Inclusion expected the global state root in the execution to *not* be zero")
-        }
-
-        let mut proving_tasks = proving_tasks.clone();
-        proving_tasks
-            .insert(Locator::from_str("aleo.aleo/inclusion")?, (proving_key.clone(), batch_assignments.clone()));
-
-        // Generate the inclusion batch proof.
-        let inclusion_proof = ProvingKey::prove_batch(&proving_tasks, rng)?;
-        // Return the global state root and inclusion proof.
-        Ok((global_state_root, inclusion_proof))
     }
 }
 
+impl<N: Network> Inclusion<N> {
+    /// Returns the verifier public inputs for the given global state root and transitions.
+    pub fn prepare_verifier_inputs(
+        global_state_root: N::StateRoot,
+        transitions: &[Transition<N>],
+    ) -> Result<Vec<Vec<N::Field>>> {
+        // Initialize an empty transaction tree.
+        let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
+        // Initialize a vector for the batch verifier inputs.
+        let mut batch_verifier_inputs = vec![];
+
+        // Construct the batch verifier inputs.
+        for (transition_index, transition) in transitions.iter().enumerate() {
+            // Retrieve the local state root.
+            let local_state_root = *transaction_tree.root();
+
+            // Iterate through the inputs.
+            for input in transition.inputs() {
+                // Filter the inputs for records.
+                if let Input::Record(serial_number, _) = input {
+                    // Add the public inputs to the batch verifier inputs.
+                    batch_verifier_inputs.push(vec![
+                        N::Field::one(),
+                        **global_state_root,
+                        *local_state_root,
+                        **serial_number,
+                    ]);
+                }
+            }
+
+            // If this is not the last transition, append the transaction leaf to the transaction tree.
+            if transition_index + 1 != transitions.len() {
+                // Construct the transaction leaf.
+                let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
+                // Insert the leaf into the transaction tree.
+                transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
+            }
+        }
+
+        // Ensure the global state root is not zero.
+        if batch_verifier_inputs.is_empty() && *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
+
+        Ok(batch_verifier_inputs)
+    }
+
+    /// Returns the verifier public inputs for the given fee.
+    pub fn prepare_verifier_inputs_for_fee(fee: &Fee<N>) -> Result<Vec<Vec<N::Field>>> {
+        // Retrieve the global state root.
+        let global_state_root = fee.global_state_root();
+        // Ensure the global state root is not zero.
+        if *global_state_root == Field::zero() {
+            bail!("Inclusion expected the global state root in the fee to *not* be zero")
+        }
+        // Construct the batch verifier inputs.
+        let batch_verifier_inputs = Self::prepare_verifier_inputs(global_state_root, &[fee.transition().clone()])?;
+        // Ensure there are batch verifier inputs.
+        if batch_verifier_inputs.is_empty() {
+            bail!("Inclusion expected the fee to contain input records")
+        }
+        Ok(batch_verifier_inputs)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct InclusionAssignment<N: Network> {
-    state_path: StatePath<N>,
+    pub(crate) state_path: StatePath<N>,
     commitment: Field<N>,
     gamma: Group<N>,
     serial_number: Field<N>,

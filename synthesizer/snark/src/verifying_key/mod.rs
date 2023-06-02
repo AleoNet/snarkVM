@@ -65,10 +65,8 @@ impl<N: Network> VerifyingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        let keys_to_inputs: BTreeMap<_, _> = inputs
-            .values()
-            .map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice()))
-            .collect();
+        let keys_to_inputs: BTreeMap<_, _> =
+            inputs.values().map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice())).collect();
 
         // Verify the batch proof.
         match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), &keys_to_inputs, proof) {

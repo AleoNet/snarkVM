@@ -29,15 +29,15 @@ pub struct Fee<N: Network> {
     transition: Transition<N>,
     /// The global state root.
     global_state_root: N::StateRoot,
-    /// The inclusion proof.
-    inclusion_proof: Option<Proof<N>>,
+    /// The proof.
+    proof: Option<Proof<N>>,
 }
 
 impl<N: Network> Fee<N> {
-    /// Initializes a new `Fee` instance with the given transition, global state root, and inclusion proof.
-    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, inclusion_proof: Option<Proof<N>>) -> Self {
+    /// Initializes a new `Fee` instance with the given transition, global state root, and proof.
+    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, proof: Option<Proof<N>>) -> Self {
         // Return the new `Fee` instance.
-        Self { transition, global_state_root, inclusion_proof }
+        Self { transition, global_state_root, proof }
     }
 
     /// Returns 'true' if the fee amount is zero.
@@ -74,9 +74,9 @@ impl<N: Network> Fee<N> {
         self.global_state_root
     }
 
-    /// Returns the inclusion proof.
-    pub const fn inclusion_proof(&self) -> Option<&Proof<N>> {
-        self.inclusion_proof.as_ref()
+    /// Returns the proof.
+    pub const fn proof(&self) -> Option<&Proof<N>> {
+        self.proof.as_ref()
     }
 }
 

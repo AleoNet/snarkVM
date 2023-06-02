@@ -88,25 +88,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Execute the call.
-                let (response, execution, inclusion, metrics) =
+                let (response, _execution, trace, metrics) =
                     $process.execute::<$aleo, _>(authorization.clone(), rng)?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
-                let (assignments, global_state_root) = {
-                    let execution = cast_ref!(execution as Execution<N>);
-                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_execution(execution, query)?
-                };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
-                let global_state_root = *cast_ref!((*global_state_root) as Field<$network>);
-
+                let trace = cast_ref!(trace as Trace<N>);
+                trace.prepare(query)?;
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the inclusion proof and update the execution.
-                let execution =
-                    inclusion.prove_execution::<$aleo, _>(execution, assignments, global_state_root.into(), rng)?;
-                lap!(timer, "Compute the inclusion proof");
+                // Compute the proof and construct the execution.
+                let trace = cast_ref!(trace as Trace<$network>);
+                let execution = trace.prove_execution::<$aleo, _>(rng)?;
+                lap!(timer, "Compute the proof");
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();

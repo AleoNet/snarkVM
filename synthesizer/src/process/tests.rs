@@ -79,7 +79,7 @@ fn test_process_execute_mint() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -225,7 +225,7 @@ fn test_process_multirecords() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(output_a, candidate[0]);
@@ -308,7 +308,7 @@ fn test_process_self_caller() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -370,7 +370,7 @@ fn test_process_program_id() {
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -411,8 +411,7 @@ fn test_process_output_operand() {
         assert_eq!(authorization.len(), 1);
 
         // Execute the request.
-        let (response, execution, _inclusion, _metrics) =
-            process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(output, candidate[0]);
@@ -575,7 +574,7 @@ function compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(4, candidate.len());
     assert_eq!(r3, candidate[0]);
@@ -727,7 +726,7 @@ function transfer:
     assert_eq!(authorization.len(), 5);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(2, candidate.len());
     assert_eq!(output_a, candidate[0]);
@@ -834,7 +833,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(0, candidate.len());
 
@@ -937,7 +936,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(0, candidate.len());
 
@@ -1058,7 +1057,7 @@ finalize mint_public:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(0, candidate.len());
 
@@ -1200,7 +1199,7 @@ function mint:
     assert_eq!(authorization.len(), 2);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(0, candidate.len());
 
@@ -1305,7 +1304,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(0, candidate.len());
 
@@ -1416,7 +1415,7 @@ finalize compute:
     assert_eq!(authorization.len(), 1);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, execution, _trace, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
     let candidate = response.outputs();
     assert_eq!(0, candidate.len());
 

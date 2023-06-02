@@ -41,10 +41,10 @@ use crate::{
         snark::{ProvingKey, VerifyingKey},
         CallOperator,
         Execution,
-        Inclusion,
         Instruction,
         Process,
         Program,
+        Trace,
     },
 };
 

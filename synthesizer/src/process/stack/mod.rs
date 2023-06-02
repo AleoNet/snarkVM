@@ -21,12 +21,6 @@ pub use finalize_registers::*;
 mod finalize_types;
 pub use finalize_types::*;
 
-mod inclusion;
-pub use inclusion::*;
-
-mod query;
-pub use query::*;
-
 mod register_types;
 pub use register_types::*;
 
@@ -44,13 +38,8 @@ mod helpers;
 
 use crate::{
     block::{Deployment, Execution, Transition},
-    CallOperator,
-    Closure,
-    Function,
-    Instruction,
-    Operand,
-    Process,
-    Program,
+    process::{Process, Trace},
+    program::{CallOperator, Closure, Function, Instruction, Operand, Program},
 };
 use console::{
     account::{Address, PrivateKey},
@@ -101,7 +90,7 @@ pub enum CallStack<N: Network> {
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
-    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>, Arc<RwLock<Inclusion<N>>>, Arc<RwLock<Vec<CallMetrics<N>>>>),
+    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>, Arc<RwLock<Trace<N>>>, Arc<RwLock<Vec<CallMetrics<N>>>>),
 }
 
 impl<N: Network> CallStack<N> {
@@ -114,10 +103,10 @@ impl<N: Network> CallStack<N> {
     pub fn execute(
         authorization: Authorization<N>,
         execution: Arc<RwLock<Execution<N>>>,
-        inclusion: Arc<RwLock<Inclusion<N>>>,
+        trace: Arc<RwLock<Trace<N>>>,
         metrics: Arc<RwLock<Vec<CallMetrics<N>>>>,
     ) -> Result<Self> {
-        Ok(CallStack::Execute(authorization, execution, inclusion, metrics))
+        Ok(CallStack::Execute(authorization, execution, trace, metrics))
     }
 }
 
@@ -137,10 +126,10 @@ impl<N: Network> CallStack<N> {
                 Arc::new(RwLock::new(assignments.read().clone())),
             ),
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
-            CallStack::Execute(authorization, execution, inclusion, metrics) => CallStack::Execute(
+            CallStack::Execute(authorization, execution, trace, metrics) => CallStack::Execute(
                 authorization.replicate(),
                 Arc::new(RwLock::new(execution.read().clone())),
-                Arc::new(RwLock::new(inclusion.read().clone())),
+                Arc::new(RwLock::new(trace.read().clone())),
                 Arc::new(RwLock::new(metrics.read().clone())),
             ),
         }

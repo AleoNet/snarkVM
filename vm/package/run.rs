@@ -25,7 +25,7 @@ impl<N: Network> Package<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Execution<N>, Trace<N>, Vec<CallMetrics<N>>)> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -95,9 +95,9 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, execution, inclusion, metrics) = process.execute::<A, R>(authorization, rng)?;
+        let (response, execution, trace, metrics) = process.execute::<A, R>(authorization, rng)?;
 
-        Ok((response, execution, inclusion, metrics))
+        Ok((response, execution, trace, metrics))
     }
 }
 
