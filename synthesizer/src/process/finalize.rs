@@ -52,7 +52,7 @@ impl<N: Network> Process<N> {
                 let (finalize_operation, rollback_operation) = store.initialize_mapping(program_id, mapping.name())?;
                 // Insert the finalize operation.
                 finalize_operations.push(finalize_operation);
-                // Insert the rollback operations.
+                // Insert the rollback operation.
                 rollback_operations.push(rollback_operation);
             }
             lap!(timer, "Initialize the program mappings");
@@ -140,7 +140,9 @@ impl<N: Network> Process<N> {
                         match result {
                             // If the evaluation succeeds with an operation, add it to the list.
                             Ok(Ok(Some((finalize_operation, rollback_operation)))) => {
+                                // Insert the finalize operation.
                                 finalize_operations.push(finalize_operation);
+                                // Insert the rollback operation.
                                 rollback_operations.push(rollback_operation);
                             }
                             // If the evaluation succeeds with no operation, continue.
