@@ -73,6 +73,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<(Response<N>, Execution<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("VM::execute_authorization");
 
+        // Construct the locator of the main function.
+        let locator = {
+            let request = authorization.peek_next()?;
+            Locator::new(*request.program_id(), *request.function_name()).to_string()
+        };
+
         // Prepare the query.
         let query = match query {
             Some(query) => query,
@@ -97,7 +103,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Compute the proof and construct the execution.
                 let trace = cast_ref!(trace as Trace<$network>);
-                let execution = trace.prove_execution::<$aleo, _>(rng)?;
+                let execution = trace.prove_execution::<$aleo, _>(&locator, rng)?;
                 lap!(timer, "Compute the proof");
 
                 // Prepare the return.
@@ -217,13 +223,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2595, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2214, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2560, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2179, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -251,13 +257,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2480, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2099, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2445, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2064, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -284,13 +290,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2492, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2111, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2457, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2076, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 }

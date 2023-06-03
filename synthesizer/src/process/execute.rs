@@ -64,7 +64,7 @@ impl<N: Network> Process<N> {
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
         // Ensure the number of transitions matches the program function.
-        {
+        let locator = {
             // Retrieve the transition (without popping it).
             let transition = execution.peek()?;
             // Retrieve the stack.
@@ -76,7 +76,9 @@ impl<N: Network> Process<N> {
                 "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
                 execution.len()
             );
-        }
+            // Output the locator of the main function.
+            Locator::new(*transition.program_id(), *transition.function_name()).to_string()
+        };
         lap!(timer, "Verify the number of transitions");
 
         // Initialize a map of verifying keys to public inputs.
@@ -215,7 +217,7 @@ impl<N: Network> Process<N> {
         // Ensure the proof is valid.
         if VERIFY_PROOF {
             // Verify the execution proof.
-            Trace::verify_execution_proof(verifier_inputs, execution)?;
+            Trace::verify_execution_proof(&locator, verifier_inputs, execution)?;
             lap!(timer, "Verify the proof");
         }
 

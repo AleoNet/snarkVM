@@ -54,6 +54,7 @@ impl<N: Network> ProvingKey<N> {
 
     /// Returns a proof for the given batch of proving keys and assignments.
     pub fn prove_batch<R: Rng + CryptoRng>(
+        locator: &str,
         assignments: &HashMap<Locator<N>, (ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
@@ -70,10 +71,8 @@ impl<N: Network> ProvingKey<N> {
         let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
-        {
-            // TODO (howardwu): Make a bulleted list of the functions that were executed.
-            println!("{}", format!(" • Executed '' (in {} ms)", timer.elapsed().as_millis()).dimmed());
-        }
+        println!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+
         Ok(batch_proof)
     }
 }

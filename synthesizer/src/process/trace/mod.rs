@@ -131,6 +131,7 @@ impl<N: Network> Trace<N> {
     /// Returns a new execution with a proof, for the current inclusion assignments and global state root.
     pub fn prove_execution<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
+        locator: &str,
         rng: &mut R,
     ) -> Result<Execution<N>> {
         // Ensure this is not a fee.
@@ -142,8 +143,13 @@ impl<N: Network> Trace<N> {
         let global_state_root =
             self.global_state_root.get().ok_or_else(|| anyhow!("Global state root has not been set"))?;
         // Compute the proof.
-        let (global_state_root, proof) =
-            Self::prove_batch::<A, R>(self.transition_tasks.clone(), inclusion_assignments, *global_state_root, rng)?;
+        let (global_state_root, proof) = Self::prove_batch::<A, R>(
+            locator,
+            self.transition_tasks.clone(),
+            inclusion_assignments,
+            *global_state_root,
+            rng,
+        )?;
         // Return the execution.
         Execution::from(self.transitions.iter().cloned(), global_state_root, Some(proof))
     }
@@ -166,8 +172,13 @@ impl<N: Network> Trace<N> {
             _ => bail!("Expected 1 transition in the trace for proving the fee"),
         };
         // Compute the proof.
-        let (global_state_root, proof) =
-            Self::prove_batch::<A, R>(self.transition_tasks.clone(), inclusion_assignments, *global_state_root, rng)?;
+        let (global_state_root, proof) = Self::prove_batch::<A, R>(
+            "credits.aleo/fee",
+            self.transition_tasks.clone(),
+            inclusion_assignments,
+            *global_state_root,
+            rng,
+        )?;
         // Return the fee.
         Ok(Fee::from(fee_transition.clone(), global_state_root, Some(proof)))
     }
@@ -175,6 +186,7 @@ impl<N: Network> Trace<N> {
     /// Checks the proof for the execution.
     /// Note: This does *not* check that the global state root exists in the ledger.
     pub fn verify_execution_proof(
+        locator: &str,
         verifier_inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>,
         execution: &Execution<N>,
     ) -> Result<()> {
@@ -185,7 +197,7 @@ impl<N: Network> Trace<N> {
             bail!("Expected the execution to contain a proof")
         };
         // Verify the execution proof.
-        match Self::verify_batch(verifier_inputs, global_state_root, execution.transitions(), proof) {
+        match Self::verify_batch(locator, verifier_inputs, global_state_root, execution.transitions(), proof) {
             Ok(()) => Ok(()),
             Err(e) => bail!("Execution is invalid - {e}"),
         }
@@ -214,7 +226,13 @@ impl<N: Network> Trace<N> {
             bail!("Inclusion expected the fee to contain an input record")
         }
         // Verify the fee proof.
-        match Self::verify_batch(verifier_inputs, global_state_root, [fee.transition()].into_iter(), proof) {
+        match Self::verify_batch(
+            "credits.aleo/fee",
+            verifier_inputs,
+            global_state_root,
+            [fee.transition()].into_iter(),
+            proof,
+        ) {
             Ok(()) => Ok(()),
             Err(e) => bail!("Fee is invalid - {e}"),
         }
@@ -224,6 +242,7 @@ impl<N: Network> Trace<N> {
 impl<N: Network> Trace<N> {
     /// Returns the global state root and inclusion proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        locator: &str,
         mut proving_tasks: HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
         inclusion_assignments: &[InclusionAssignment<N>],
         global_state_root: N::StateRoot,
@@ -256,7 +275,7 @@ impl<N: Network> Trace<N> {
         }
 
         // Compute the proof.
-        let proof = ProvingKey::prove_batch(&proving_tasks, rng)?;
+        let proof = ProvingKey::prove_batch(locator, &proving_tasks, rng)?;
         // Return the global state root and proof.
         Ok((global_state_root, proof))
     }
@@ -264,6 +283,7 @@ impl<N: Network> Trace<N> {
     /// Checks the proof for the given inputs.
     /// Note: This does *not* check that the global state root exists in the ledger.
     fn verify_batch<'a>(
+        locator: &str,
         mut verifier_inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>,
         global_state_root: N::StateRoot,
         transitions: impl ExactSizeIterator<Item = &'a Transition<N>>,
@@ -281,7 +301,7 @@ impl<N: Network> Trace<N> {
             verifier_inputs.insert(locator, (verifying_key, batch_inclusion_inputs));
         }
         // Verify the proof.
-        match VerifyingKey::verify_batch(verifier_inputs, proof) {
+        match VerifyingKey::verify_batch(locator, verifier_inputs, proof) {
             true => Ok(()),
             false => bail!("Failed to verify proof"),
         }

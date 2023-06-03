@@ -36,7 +36,7 @@ use crate::{
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
+    program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
 };
 
 use aleo_std::prelude::{finish, lap, timer};
