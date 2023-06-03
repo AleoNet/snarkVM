@@ -120,11 +120,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        mut call_stack: CallStack<N>,
-        rng: &mut R,
-    ) -> Result<Response<N>> {
+    fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
         // Ensure the call stack is not `Evaluate`.

@@ -18,7 +18,7 @@ mod fee;
 #[cfg(debug_assertions)]
 use crate::Stack;
 use crate::{
-    block::{Fee, Input, Output, Transaction, Transition},
+    block::{Input, Output, Transaction, Transition},
     process::Query,
     store::BlockStorage,
 };

@@ -95,7 +95,7 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, execution, trace, metrics) = process.execute::<A, R>(authorization, rng)?;
+        let (response, execution, trace, metrics) = process.execute::<A>(authorization)?;
 
         Ok((response, execution, trace, metrics))
     }

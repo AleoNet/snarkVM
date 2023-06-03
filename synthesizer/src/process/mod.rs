@@ -398,8 +398,7 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution, _trace, _metrics) =
-                    process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, execution, _trace, _metrics) = process.execute::<CurrentAleo>(authorization).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the execution.
                 execution

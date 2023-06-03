@@ -17,10 +17,9 @@ use super::*;
 impl<N: Network> Process<N> {
     /// Executes the given authorization.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         authorization: Authorization<N>,
-        rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>, Trace<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute");
 
@@ -40,7 +39,7 @@ impl<N: Network> Process<N> {
         let call_stack = CallStack::execute(authorization, execution.clone(), trace.clone(), metrics.clone())?;
         lap!(timer, "Initialize call stack");
         // Execute the circuit.
-        let response = self.get_stack(request.program_id())?.execute_function::<A, R>(call_stack, rng)?;
+        let response = self.get_stack(request.program_id())?.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the function");
         // Extract the execution.
         let execution = Arc::try_unwrap(execution).unwrap().into_inner();

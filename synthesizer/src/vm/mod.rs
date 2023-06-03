@@ -25,7 +25,7 @@ pub use finalize::FinalizeMode;
 
 use crate::{
     atomic_finalize,
-    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions, Transition},
+    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions},
     cast_mut_ref,
     cast_ref,
     process,
@@ -37,7 +37,6 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
-    types::Field,
 };
 
 use aleo_std::prelude::{finish, lap, timer};
@@ -196,6 +195,7 @@ pub(crate) mod test_helpers {
         account::{Address, ViewKey},
         network::Testnet3,
         program::Value,
+        types::Field,
     };
 
     use indexmap::IndexMap;

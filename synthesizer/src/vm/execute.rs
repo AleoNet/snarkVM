@@ -88,8 +88,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Execute the call.
-                let (response, _execution, mut trace, metrics) =
-                    $process.execute::<$aleo, _>(authorization.clone(), rng)?;
+                let (response, _execution, mut trace, metrics) = $process.execute::<$aleo>(authorization.clone())?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
@@ -121,11 +120,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::helpers::memory::ConsensusMemory;
+    use crate::{block::Transition, store::helpers::memory::ConsensusMemory};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Ciphertext, Value},
+        types::Field,
     };
 
     use indexmap::IndexMap;

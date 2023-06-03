@@ -174,7 +174,7 @@ impl<N: Network> Trace<N> {
 
     /// Checks the proof for the execution.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    pub fn verify_execution_proof<'a>(
+    pub fn verify_execution_proof(
         verifier_inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>,
         execution: &Execution<N>,
     ) -> Result<()> {

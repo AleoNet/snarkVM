@@ -45,7 +45,7 @@ impl<N: Network> Process<N> {
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.get_stack(program_id)?.execute_function::<A, R>(call_stack, rng)?;
+        let _response = self.get_stack(program_id)?.execute_function::<A>(call_stack)?;
         lap!(timer, "Construct the authorization from the function");
 
         // Retrieve the main request (without popping it).
@@ -65,7 +65,7 @@ impl<N: Network> Process<N> {
         // Initialize the call stack.
         let call_stack = CallStack::execute(authorization, execution.clone(), trace.clone(), metrics.clone())?;
         // Execute the circuit.
-        let response = stack.execute_function::<A, R>(call_stack, rng)?;
+        let response = stack.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the circuit");
 
         // Extract the execution.

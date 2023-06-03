@@ -1108,7 +1108,7 @@ function compute:
         let trace = Arc::new(RwLock::new(Trace::new()));
         let metrics = Arc::new(RwLock::new(Vec::new()));
         let call_stack = CallStack::execute(authorization, execution, trace, metrics).unwrap();
-        let response = stack.execute_function::<CurrentAleo, _>(call_stack, rng).unwrap();
+        let response = stack.execute_function::<CurrentAleo>(call_stack).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
