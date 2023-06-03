@@ -241,7 +241,7 @@ impl<N: Network> Trace<N> {
 }
 
 impl<N: Network> Trace<N> {
-    /// Returns the global state root and inclusion proof for the given assignments.
+    /// Returns the global state root and proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         locator: &str,
         mut proving_tasks: Vec<(ProvingKey<N>, Vec<Assignment<N::Field>>)>,

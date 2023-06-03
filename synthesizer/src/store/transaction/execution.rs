@@ -182,7 +182,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 self.transition_store().remove(&transition_id)?;
             }
 
-            // Remove the global state root and inclusion proof.
+            // Remove the global state root and proof.
             self.inclusion_map().remove(transaction_id)?;
 
             // Remove the fee.
@@ -219,10 +219,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
 
-        // Retrieve the global state root and inclusion proof.
-        let (global_state_root, inclusion_proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
+        // Retrieve the global state root and proof.
+        let (global_state_root, proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
             Some(inclusion) => cow_to_cloned!(inclusion),
-            None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
+            None => bail!("Failed to get the proof for the transaction '{transaction_id}'"),
         };
 
         // Initialize a vector for the transitions.
@@ -237,7 +237,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         }
 
         // Return the execution.
-        Ok(Some(Execution::from(transitions.into_iter(), global_state_root, inclusion_proof)?))
+        Ok(Some(Execution::from(transitions.into_iter(), global_state_root, proof)?))
     }
 
     /// Returns the transaction for the given `transaction ID`.
@@ -248,10 +248,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
 
-        // Retrieve the global state root and inclusion proof.
-        let (global_state_root, inclusion_proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
+        // Retrieve the global state root and proof.
+        let (global_state_root, proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
             Some(inclusion) => cow_to_cloned!(inclusion),
-            None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
+            None => bail!("Failed to get the proof for the transaction '{transaction_id}'"),
         };
 
         // Initialize a vector for the transitions.
@@ -266,7 +266,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         }
 
         // Construct the execution.
-        let execution = Execution::from(transitions.into_iter(), global_state_root, inclusion_proof)?;
+        let execution = Execution::from(transitions.into_iter(), global_state_root, proof)?;
 
         // Construct the transaction.
         let transaction = match has_fee {

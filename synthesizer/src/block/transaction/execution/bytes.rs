@@ -41,7 +41,7 @@ impl<N: Network> FromBytes for Execution<N> {
         let proof = match proof_variant {
             0 => None,
             1 => Some(Proof::read_le(&mut reader)?),
-            _ => return Err(error(format!("Invalid inclusion proof variant '{proof_variant}'"))),
+            _ => return Err(error(format!("Invalid proof variant '{proof_variant}'"))),
         };
         // Return the new `Execution` instance.
         Self::from(transitions.into_iter(), global_state_root, proof).map_err(|e| error(e.to_string()))

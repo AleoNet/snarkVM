@@ -31,7 +31,7 @@ use core::marker::PhantomData;
 
 /// A trait for fee storage.
 pub trait FeeStorage<N: Network>: Clone + Send + Sync {
-    /// The mapping of `transaction ID` to `(fee transition ID, global state root, inclusion proof)`.
+    /// The mapping of `transaction ID` to `(fee transition ID, global state root, proof)`.
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The mapping of `fee transition ID` to `transaction ID`.
     type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
@@ -152,14 +152,13 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
     /// Returns the fee for the given `transaction ID`.
     fn get_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
         // Retrieve the fee transition ID.
-        let (fee_transition_id, global_state_root, inclusion_proof) =
-            match self.fee_map().get_confirmed(transaction_id)? {
-                Some(fee) => cow_to_cloned!(fee),
-                None => return Ok(None),
-            };
+        let (fee_transition_id, global_state_root, proof) = match self.fee_map().get_confirmed(transaction_id)? {
+            Some(fee) => cow_to_cloned!(fee),
+            None => return Ok(None),
+        };
         // Retrieve the fee transition.
         match self.transition_store().get_transition(&fee_transition_id)? {
-            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, inclusion_proof))),
+            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, proof))),
             None => bail!("Failed to locate the fee transition for transaction '{transaction_id}'"),
         }
     }
