@@ -32,7 +32,7 @@ use console::{
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Trace<N: Network> {
     /// The list of transitions.
     transitions: Vec<Transition<N>>,
@@ -252,7 +252,7 @@ impl<N: Network> Trace<N> {
             // Fetch the inclusion proving key.
             let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
             // Insert the inclusion proving key and assignments.
-            proving_tasks.insert(Locator::from_str("aleo.aleo/inclusion")?, (proving_key, batch_inclusions));
+            proving_tasks.insert(Locator::from_str("inclusion.aleo/state_path")?, (proving_key, batch_inclusions));
         }
 
         // Compute the proof.
