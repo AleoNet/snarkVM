@@ -104,6 +104,18 @@ pub trait InputStorage<N: Network>: Clone + Send + Sync {
         self.external_record_map().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.id_map().clear_latest_checkpoint();
+        self.reverse_id_map().clear_latest_checkpoint();
+        self.constant_map().clear_latest_checkpoint();
+        self.public_map().clear_latest_checkpoint();
+        self.private_map().clear_latest_checkpoint();
+        self.record_map().clear_latest_checkpoint();
+        self.record_tag_map().clear_latest_checkpoint();
+        self.external_record_map().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.id_map().atomic_rewind();
@@ -344,6 +356,11 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

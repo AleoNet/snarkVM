@@ -68,16 +68,13 @@ impl<N: Network> FromBytes for Transition<N> {
             2.. => return Err(error(format!("Invalid transition finalize variant ({finalize_variant})"))),
         };
 
-        // Read the proof.
-        let proof = FromBytes::read_le(&mut reader)?;
-
         // Read the transition public key.
         let tpk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
         let tcm = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
-        let transition = Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm)
+        let transition = Self::new(program_id, function_name, inputs, outputs, finalize, tpk, tcm)
             .map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
@@ -125,9 +122,6 @@ impl<N: Network> ToBytes for Transition<N> {
                 finalize.write_le(&mut writer)?;
             }
         }
-
-        // Write the proof.
-        self.proof.write_le(&mut writer)?;
 
         // Write the transition public key.
         self.tpk.write_le(&mut writer)?;

@@ -50,27 +50,28 @@ impl<N: Network> ProvingKey<N> {
         Ok(proof)
     }
 
-    /// Returns a proof for the given batch of assignments on the circuit.
+    /// Returns a proof for the given batch of proving keys and assignments.
+    #[allow(clippy::type_complexity)]
     pub fn prove_batch<R: Rng + CryptoRng>(
-        &self,
-        function_name: &str,
-        assignments: &[circuit::Assignment<N::Field>],
+        locator: &str,
+        assignments: &[(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)],
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        // Compute the batch proof.
-        let mut assignment_refs: Vec<&circuit::Assignment<N::Field>> = vec![];
-        for assignment in assignments {
-            assignment_refs.push(assignment);
-        }
-        let mut keys_to_constraints = BTreeMap::new();
-        keys_to_constraints.insert(self.deref(), assignment_refs.as_slice());
-        let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &keys_to_constraints, rng)?);
+        // Prepare the instances.
+        let instances: BTreeMap<_, _> = assignments
+            .iter()
+            .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
+            .collect();
+
+        // Compute the proof.
+        let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        println!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+
         Ok(batch_proof)
     }
 }

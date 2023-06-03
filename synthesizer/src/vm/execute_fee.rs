@@ -74,22 +74,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
-                let (response, fee_transition, inclusion, metrics) =
+                let (response, _fee_transition, mut trace, metrics) =
                     $process.execute_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
                 lap!(timer, "Execute the call to fee");
 
                 // Prepare the assignments.
-                let assignments = {
-                    let fee_transition = cast_ref!(fee_transition as Transition<N>);
-                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_fee(fee_transition, query)?
-                };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
+                cast_mut_ref!(trace as Trace<N>).prepare(query)?;
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the inclusion proof and construct the fee.
-                let fee = inclusion.prove_fee::<$aleo, _>(fee_transition, assignments, rng)?;
-                lap!(timer, "Compute the inclusion proof and construct the fee");
+                // Compute the proof and construct the fee.
+                let trace = cast_ref!(trace as Trace<$network>);
+                let fee = trace.prove_fee::<$aleo, _>(rng)?;
+                lap!(timer, "Compute the proof and construct the fee");
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
@@ -111,8 +107,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::helpers::memory::ConsensusMemory;
-    use console::{account::ViewKey, network::Testnet3, program::Ciphertext};
+    use crate::{block::Transition, store::helpers::memory::ConsensusMemory};
+    use console::{account::ViewKey, network::Testnet3, program::Ciphertext, types::Field};
 
     use indexmap::IndexMap;
 
@@ -160,6 +156,6 @@ mod tests {
 
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(2247, fee_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1866, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }

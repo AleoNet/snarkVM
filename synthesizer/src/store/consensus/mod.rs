@@ -77,6 +77,12 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
         self.block_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.finalize_store().clear_latest_checkpoint();
+        self.block_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.finalize_store().atomic_rewind();
@@ -152,6 +158,11 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

@@ -35,6 +35,23 @@ macro_rules! cast_ref {
     }};
 }
 
+/// A helper macro to downcast a `$variable` to `&mut $object<$network>`.
+#[macro_export]
+macro_rules! cast_mut_ref {
+    // Example: cast_mut_ref!((foo.bar()) as Bar<Testnet3>)
+    (($variable:expr) as $object:ident<$($traits:path),+>) => {{
+        (&mut $variable as &mut dyn std::any::Any)
+            .downcast_mut::<$object<$($traits),+>>()
+            .ok_or_else(|| anyhow!("Failed to downcast mut {}", stringify!($variable)))?
+    }};
+    // Example: cast_mut_ref!(bar as Bar<Testnet3>)
+    ($variable:ident as $object:ident<$($traits:path),+>) => {{
+        (&mut $variable as &mut dyn std::any::Any)
+            .downcast_mut::<$object<$($traits),+>>()
+            .ok_or_else(|| anyhow!("Failed to downcast mut {}", stringify!($variable)))?
+    }};
+}
+
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
 #[macro_export]
 macro_rules! process {

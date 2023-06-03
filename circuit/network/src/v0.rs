@@ -20,6 +20,7 @@ use snarkvm_circuit_algorithms::{
     HashMany,
     HashToGroup,
     HashToScalar,
+    HashUncompressed,
     Pedersen128,
     Pedersen64,
     Poseidon2,
@@ -127,12 +128,42 @@ impl Aleo for AleoV0 {
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomizer))
+    }
+
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
+    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
+    }
+
+    /// Returns a BHP commitment with an input hasher of 256-bits.
+    fn commit_to_group_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+        BHP_256.with(|bhp| bhp.commit_uncompressed(input, randomizer))
+    }
+
+    /// Returns a BHP commitment with an input hasher of 512-bits.
+    fn commit_to_group_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+        BHP_512.with(|bhp| bhp.commit_uncompressed(input, randomizer))
+    }
+
+    /// Returns a BHP commitment with an input hasher of 768-bits.
+    fn commit_to_group_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+        BHP_768.with(|bhp| bhp.commit_uncompressed(input, randomizer))
+    }
+
+    /// Returns a BHP commitment with an input hasher of 1024-bits.
+    fn commit_to_group_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+        BHP_1024.with(|bhp| bhp.commit_uncompressed(input, randomizer))
+    }
+
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
+    fn commit_to_group_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
         PEDERSEN_64.with(|pedersen| pedersen.commit_uncompressed(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+    fn commit_to_group_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
         PEDERSEN_128.with(|pedersen| pedersen.commit_uncompressed(input, randomizer))
     }
 
@@ -194,6 +225,36 @@ impl Aleo for AleoV0 {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_8.with(|poseidon| poseidon.hash_many(input, num_outputs))
+    }
+
+    /// Returns the BHP hash with an input hasher of 256-bits.
+    fn hash_to_group_bhp256(input: &[Boolean<Self>]) -> Group<Self> {
+        BHP_256.with(|bhp| bhp.hash_uncompressed(input))
+    }
+
+    /// Returns the BHP hash with an input hasher of 512-bits.
+    fn hash_to_group_bhp512(input: &[Boolean<Self>]) -> Group<Self> {
+        BHP_512.with(|bhp| bhp.hash_uncompressed(input))
+    }
+
+    /// Returns the BHP hash with an input hasher of 768-bits.
+    fn hash_to_group_bhp768(input: &[Boolean<Self>]) -> Group<Self> {
+        BHP_768.with(|bhp| bhp.hash_uncompressed(input))
+    }
+
+    /// Returns the BHP hash with an input hasher of 1024-bits.
+    fn hash_to_group_bhp1024(input: &[Boolean<Self>]) -> Group<Self> {
+        BHP_1024.with(|bhp| bhp.hash_uncompressed(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_to_group_ped64(input: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.hash_uncompressed(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_to_group_ped128(input: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.hash_uncompressed(input))
     }
 
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.

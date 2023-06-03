@@ -210,33 +210,63 @@ impl Network for Testnet3 {
         *SERIAL_NUMBER_DOMAIN
     }
 
-    /// Returns a BHP commitment with an input hasher of 256-bits.
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_256.commit(input, randomizer)
     }
 
-    /// Returns a BHP commitment with an input hasher of 512-bits.
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
     fn commit_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_512.commit(input, randomizer)
     }
 
-    /// Returns a BHP commitment with an input hasher of 768-bits.
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
     fn commit_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_768.commit(input, randomizer)
     }
 
-    /// Returns a BHP commitment with an input hasher of 1024-bits.
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
     fn commit_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
         BHP_1024.commit(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
+        PEDERSEN_64.commit(input, randomizer)
+    }
+
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
+    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>> {
+        PEDERSEN_128.commit(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 256-bits and randomizer.
+    fn commit_to_group_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_256.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 512-bits and randomizer.
+    fn commit_to_group_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_512.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 768-bits and randomizer.
+    fn commit_to_group_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_768.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a BHP commitment with an input hasher of 1024-bits and randomizer.
+    fn commit_to_group_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+        BHP_1024.commit_uncompressed(input, randomizer)
+    }
+
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
+    fn commit_to_group_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
         PEDERSEN_64.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
+    fn commit_to_group_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>> {
         PEDERSEN_128.commit_uncompressed(input, randomizer)
     }
 
@@ -298,6 +328,36 @@ impl Network for Testnet3 {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_8.hash_many(input, num_outputs)
+    }
+
+    /// Returns the BHP hash with an input hasher of 256-bits.
+    fn hash_to_group_bhp256(input: &[bool]) -> Result<Group<Self>> {
+        BHP_256.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 512-bits.
+    fn hash_to_group_bhp512(input: &[bool]) -> Result<Group<Self>> {
+        BHP_512.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 768-bits.
+    fn hash_to_group_bhp768(input: &[bool]) -> Result<Group<Self>> {
+        BHP_768.hash_uncompressed(input)
+    }
+
+    /// Returns the BHP hash with an input hasher of 1024-bits.
+    fn hash_to_group_bhp1024(input: &[bool]) -> Result<Group<Self>> {
+        BHP_1024.hash_uncompressed(input)
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_to_group_ped64(input: &[bool]) -> Result<Group<Self>> {
+        PEDERSEN_64.hash_uncompressed(input)
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_to_group_ped128(input: &[bool]) -> Result<Group<Self>> {
+        PEDERSEN_128.hash_uncompressed(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
