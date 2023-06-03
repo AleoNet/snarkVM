@@ -25,7 +25,7 @@ impl<N: Network> Package<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Trace<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Trace<N>, Vec<CallMetrics<N>>)> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -95,9 +95,9 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, execution, trace, metrics) = process.execute::<A>(authorization)?;
+        let (response, trace, metrics) = process.execute::<A>(authorization)?;
 
-        Ok((response, execution, trace, metrics))
+        Ok((response, trace, metrics))
     }
 }
 
@@ -125,7 +125,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution, _inclusion, _metrics) =
+        let (_response, _trace, _metrics) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
@@ -150,7 +150,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution, _inclusion, _metrics) =
+        let (_response, _trace, _metrics) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).

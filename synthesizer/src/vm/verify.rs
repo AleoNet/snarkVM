@@ -188,7 +188,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::verify_execution");
 
         // Verify the execution.
-        let verification = self.process.read().verify_execution::<true>(execution);
+        let verification = self.process.read().verify_execution(execution);
         finish!(timer);
 
         match verification {

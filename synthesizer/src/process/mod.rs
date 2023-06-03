@@ -307,7 +307,12 @@ impl<N: Network> Process<N> {
 #[cfg(any(test, feature = "test"))]
 pub mod test_helpers {
     use super::*;
-    use crate::{Process, Program, Transition};
+    use crate::{
+        store::{helpers::memory::BlockMemory, BlockStore},
+        Process,
+        Program,
+        Transition,
+    };
     use console::{account::PrivateKey, network::Testnet3, program::Identifier};
 
     use once_cell::sync::OnceCell;
@@ -384,6 +389,9 @@ function compute:
                 // Initialize a new caller account.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
+                // Initialize a new block store.
+                let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+
                 // Construct the process.
                 let process = sample_process(&program);
                 // Authorize the function call.
@@ -398,10 +406,13 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution, _trace, _metrics) = process.execute::<CurrentAleo>(authorization).unwrap();
-                assert_eq!(execution.len(), 1);
-                // Return the execution.
-                execution
+                let (_response, mut trace, _metrics) = process.execute::<CurrentAleo>(authorization).unwrap();
+                assert_eq!(trace.transitions().len(), 1);
+
+                // Prepare the trace.
+                trace.prepare(&block_store).unwrap();
+                // Compute the execution.
+                trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap()
             })
             .clone()
     }

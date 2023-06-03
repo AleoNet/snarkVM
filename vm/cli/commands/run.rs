@@ -45,7 +45,7 @@ impl Run {
         let rng = &mut rand::thread_rng();
 
         // Execute the request.
-        let (response, _transition, _inclusion, metrics) = package.run::<Aleo, _>(
+        let (response, _trace, metrics) = package.run::<Aleo, _>(
             self.endpoint,
             package.manifest_file().development_private_key(),
             self.function,

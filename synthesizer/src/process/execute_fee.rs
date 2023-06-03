@@ -56,30 +56,29 @@ impl<N: Network> Process<N> {
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
-        // Initialize the execution.
-        let execution = Arc::new(RwLock::new(Execution::new()));
         // Initialize the trace.
         let trace = Arc::new(RwLock::new(Trace::new()));
         // Initialize the metrics.
         let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), trace.clone(), metrics.clone())?;
+        let call_stack = CallStack::execute(authorization, trace.clone(), metrics.clone())?;
         // Execute the circuit.
         let response = stack.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the circuit");
 
-        // Extract the execution.
-        let execution = Arc::try_unwrap(execution).unwrap().into_inner();
-        // Ensure the execution contains 1 transition.
-        ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
         // Extract the trace.
         let trace = Arc::try_unwrap(trace).unwrap().into_inner();
+        // Ensure the trace contains 1 transition.
+        ensure!(
+            trace.transitions().len() == 1,
+            "Execution of '{program_id}/{function_name}' does not contain 1 transition"
+        );
         // Extract the metrics.
         let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
 
-        Ok((response, execution.peek()?.clone(), trace, metrics))
+        Ok((response, trace.transitions()[0].clone(), trace, metrics))
     }
 
     /// Verifies the given fee is valid.
@@ -170,5 +169,29 @@ impl<N: Network> Process<N> {
         finish!(timer);
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::block::Transaction;
+    use snarkvm_utilities::TestRng;
+
+    #[test]
+    fn test_verify_fee() {
+        let rng = &mut TestRng::default();
+        // Fetch a deployment transaction.
+        let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+
+        // Construct a new process.
+        let process = Process::load().unwrap();
+
+        match deployment_transaction {
+            Transaction::Deploy(_, _, _, fee) => {
+                assert!(process.verify_fee(&fee).is_ok());
+            }
+            _ => panic!("Expected a deployment transaction"),
+        }
     }
 }

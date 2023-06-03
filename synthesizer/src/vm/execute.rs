@@ -94,7 +94,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Execute the call.
-                let (response, _execution, mut trace, metrics) = $process.execute::<$aleo>(authorization.clone())?;
+                let (response, mut trace, metrics) = $process.execute::<$aleo>(authorization.clone())?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.

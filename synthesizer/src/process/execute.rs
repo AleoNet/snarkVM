@@ -20,44 +20,42 @@ impl<N: Network> Process<N> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         authorization: Authorization<N>,
-    ) -> Result<(Response<N>, Execution<N>, Trace<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Trace<N>, Vec<CallMetrics<N>>)> {
         let timer = timer!("Process::execute");
 
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
+        // Construct the locator.
+        let locator = Locator::new(*request.program_id(), *request.function_name());
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Executing '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+        println!("{}", format!(" • Executing '{locator}'...",).dimmed());
 
-        // Initialize the execution.
-        let execution = Arc::new(RwLock::new(Execution::new()));
         // Initialize the trace.
         let trace = Arc::new(RwLock::new(Trace::new()));
         // Initialize the metrics.
         let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), trace.clone(), metrics.clone())?;
+        let call_stack = CallStack::execute(authorization, trace.clone(), metrics.clone())?;
         lap!(timer, "Initialize call stack");
         // Execute the circuit.
         let response = self.get_stack(request.program_id())?.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the function");
-        // Extract the execution.
-        let execution = Arc::try_unwrap(execution).unwrap().into_inner();
-        // Ensure the execution is not empty.
-        ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
         // Extract the trace.
         let trace = Arc::try_unwrap(trace).unwrap().into_inner();
+        // Ensure the trace is not empty.
+        ensure!(!trace.transitions().is_empty(), "Execution of '{locator}' is empty");
         // Extract the metrics.
         let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
-        Ok((response, execution, trace, metrics))
+        Ok((response, trace, metrics))
     }
 
     /// Verifies the given execution is valid.
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_execution<const VERIFY_PROOF: bool>(&self, execution: &Execution<N>) -> Result<()> {
+    pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
         let timer = timer!("Process::verify_execution");
 
         // Ensure the execution contains transitions.
@@ -221,14 +219,11 @@ impl<N: Network> Process<N> {
         // Ensure the number of instances matches the number of transitions.
         ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
 
-        // Ensure the proof is valid.
-        if VERIFY_PROOF {
-            // Construct the list of verifier inputs.
-            let verifier_inputs = verifier_inputs.values().cloned().collect();
-            // Verify the execution proof.
-            Trace::verify_execution_proof(&locator, verifier_inputs, execution)?;
-            lap!(timer, "Verify the proof");
-        }
+        // Construct the list of verifier inputs.
+        let verifier_inputs = verifier_inputs.values().cloned().collect();
+        // Verify the execution proof.
+        Trace::verify_execution_proof(&locator, verifier_inputs, execution)?;
+        lap!(timer, "Verify the proof");
 
         finish!(timer);
         Ok(())

@@ -58,6 +58,7 @@ impl<N: Network> VerifyingKey<N> {
     }
 
     /// Returns `true` if the batch proof is valid for the given public inputs.
+    #[allow(clippy::type_complexity)]
     pub fn verify_batch(locator: &str, inputs: Vec<(VerifyingKey<N>, Vec<Vec<N::Field>>)>, proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();

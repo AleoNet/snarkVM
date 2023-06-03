@@ -59,6 +59,13 @@ impl<N: Network> Trace<N> {
         }
     }
 
+    /// Returns the list of transitions.
+    pub fn transitions(&self) -> &[Transition<N>] {
+        &self.transitions
+    }
+}
+
+impl<N: Network> Trace<N> {
     /// Inserts the transition into the trace.
     pub fn insert_transition(
         &mut self,
@@ -299,43 +306,3 @@ impl<N: Network> Trace<N> {
         }
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use snarkvm_utilities::TestRng;
-//
-//     #[test]
-//     fn test_inclusion_verify_execution() {
-//         let rng = &mut TestRng::default();
-//         // Fetch an execution transaction.
-//         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
-//
-//         match execution_transaction {
-//             Transaction::Execute(_, execution, _) => {
-//                 assert!(Trace::verify_execution(&execution).is_ok());
-//             }
-//             _ => panic!("Expected an execution transaction"),
-//         }
-//     }
-// }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use snarkvm_utilities::TestRng;
-//
-//     #[test]
-//     fn test_inclusion_verify_fee() {
-//         let rng = &mut TestRng::default();
-//         // Fetch a deployment transaction.
-//         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
-//
-//         match deployment_transaction {
-//             Transaction::Deploy(_, _, _, fee) => {
-//                 assert!(Inclusion::verify_fee(&fee).is_ok());
-//             }
-//             _ => panic!("Expected a deployment transaction"),
-//         }
-//     }
-// }

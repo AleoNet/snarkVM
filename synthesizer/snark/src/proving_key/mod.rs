@@ -51,9 +51,10 @@ impl<N: Network> ProvingKey<N> {
     }
 
     /// Returns a proof for the given batch of proving keys and assignments.
+    #[allow(clippy::type_complexity)]
     pub fn prove_batch<R: Rng + CryptoRng>(
         locator: &str,
-        assignments: &Vec<(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)>,
+        assignments: &[(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)],
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
