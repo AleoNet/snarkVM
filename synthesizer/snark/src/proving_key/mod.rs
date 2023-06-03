@@ -18,9 +18,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use console::program::Locator;
-
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct ProvingKey<N: Network> {
@@ -55,7 +53,7 @@ impl<N: Network> ProvingKey<N> {
     /// Returns a proof for the given batch of proving keys and assignments.
     pub fn prove_batch<R: Rng + CryptoRng>(
         locator: &str,
-        assignments: &HashMap<Locator<N>, (ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)>,
+        assignments: &Vec<(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
@@ -63,7 +61,7 @@ impl<N: Network> ProvingKey<N> {
 
         // Prepare the instances.
         let instances: BTreeMap<_, _> = assignments
-            .values()
+            .iter()
             .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
             .collect();
 

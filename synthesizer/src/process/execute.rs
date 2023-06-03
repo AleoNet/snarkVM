@@ -209,13 +209,22 @@ impl<N: Network> Process<N> {
             // Save the verifying key and its inputs.
             verifier_inputs
                 .entry(Locator::new(*stack.program_id(), *function.name()))
-                .or_insert((verifying_key, vec![inputs]));
+                .or_insert((verifying_key, vec![]))
+                .1
+                .push(inputs);
 
             lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
         }
 
+        // Count the number of verifier instances.
+        let num_instances = verifier_inputs.values().flat_map(|(_, inputs)| inputs).count();
+        // Ensure the number of instances matches the number of transitions.
+        ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
+
         // Ensure the proof is valid.
         if VERIFY_PROOF {
+            // Construct the list of verifier inputs.
+            let verifier_inputs = verifier_inputs.values().cloned().collect();
             // Verify the execution proof.
             Trace::verify_execution_proof(&locator, verifier_inputs, execution)?;
             lap!(timer, "Verify the proof");

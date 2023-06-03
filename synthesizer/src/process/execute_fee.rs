@@ -160,13 +160,11 @@ impl<N: Network> Process<N> {
             "The fee proof is the wrong type (found *no* input records)"
         );
 
-        // Construct the fee locator.
-        let locator = Locator::new(*fee.program_id(), *fee.function_name());
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
 
         // Ensure the fee proof is valid.
-        Trace::verify_fee_proof((locator, (verifying_key, vec![inputs])), fee)?;
+        Trace::verify_fee_proof((verifying_key, vec![inputs]), fee)?;
         lap!(timer, "Verify the fee proof");
 
         finish!(timer);
