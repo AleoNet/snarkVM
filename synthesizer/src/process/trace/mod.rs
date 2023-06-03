@@ -19,7 +19,7 @@ mod query;
 pub use query::*;
 
 use crate::{
-    block::{Execution, Fee, Output, Transition},
+    block::{Execution, Fee, Input, Transition},
     snark::{Proof, ProvingKey, VerifyingKey},
     store::BlockStorage,
 };
@@ -172,6 +172,56 @@ impl<N: Network> Trace<N> {
         Ok(Fee::from(fee_transition.clone(), global_state_root, Some(proof)))
     }
 
+    /// Checks the proof for the execution.
+    /// Note: This does *not* check that the global state root exists in the ledger.
+    pub fn verify_execution_proof<'a>(
+        verifier_inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>,
+        execution: &Execution<N>,
+    ) -> Result<()> {
+        // Retrieve the global state root.
+        let global_state_root = execution.global_state_root();
+        // Retrieve the proof.
+        let Some(proof) = execution.proof() else {
+            bail!("Expected the execution to contain a proof")
+        };
+        // Verify the execution proof.
+        match Self::verify_batch(verifier_inputs, global_state_root, execution.transitions(), proof) {
+            Ok(()) => Ok(()),
+            Err(e) => bail!("Execution is invalid - {e}"),
+        }
+    }
+
+    /// Checks the proof for the fee.
+    /// Note: This does *not* check that the global state root exists in the ledger.
+    pub fn verify_fee_proof(
+        verifier_inputs: (Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)),
+        fee: &Fee<N>,
+    ) -> Result<()> {
+        // Construct a HashMap for the verifier inputs.
+        let verifier_inputs = [verifier_inputs].into_iter().collect();
+        // Retrieve the global state root.
+        let global_state_root = fee.global_state_root();
+        // Ensure the global state root is not zero.
+        if global_state_root == N::StateRoot::default() {
+            bail!("Inclusion expected the global state root in the fee to *not* be zero")
+        }
+        // Retrieve the proof.
+        let Some(proof) = fee.proof() else {
+            bail!("Expected the fee to contain a proof")
+        };
+        // Ensure the transition contains an input record.
+        if fee.transition().inputs().iter().filter(|i| matches!(i, Input::Record(..))).count() != 1 {
+            bail!("Inclusion expected the fee to contain an input record")
+        }
+        // Verify the fee proof.
+        match Self::verify_batch(verifier_inputs, global_state_root, [fee.transition()].into_iter(), proof) {
+            Ok(()) => Ok(()),
+            Err(e) => bail!("Fee is invalid - {e}"),
+        }
+    }
+}
+
+impl<N: Network> Trace<N> {
     /// Returns the global state root and inclusion proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         mut proving_tasks: HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
@@ -211,48 +261,30 @@ impl<N: Network> Trace<N> {
         Ok((global_state_root, proof))
     }
 
-    /// Checks the inclusion proof for the execution.
+    /// Checks the proof for the given inputs.
     /// Note: This does *not* check that the global state root exists in the ledger.
-    fn verify_execution_proof(
-        execution: Execution<N>,
-        verifier_inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>,
-    ) {
-
-        // let mut verifier_inputs = verifier_inputs.clone();
-        //
-        // if !batch_verifier_inputs.is_empty() {
-        //     // Fetch the inclusion verifying key.
-        //     let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
-        //     // Insert the inclusion verifier inputs.
-        //     verifier_inputs.insert(Locator::from_str("aleo.aleo/inclusion")?, (verifying_key, batch_verifier_inputs));
-        // }
-        //
-        // // Verify the execution proof.
-        // ensure!(VerifyingKey::verify_batch(verifier_inputs, proof.unwrap()), "Execution proof is invalid");
-    }
-
-    /// Checks the inclusion proof for the fee.
-    /// Note: This does *not* check that the global state root exists in the ledger.
-    fn verify_fee_proof(fee: Fee<N>, fee_transition_inputs: (Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>))) {
-
-        // // Retrieve the proof.
-        // let proof = match fee.proof() {
-        //     Some(proof) => proof,
-        //     None => bail!("Expected the fee to contain a proof"),
-        // };
-        // // Fetch the inclusion verifying key.
-        // let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
-        //
-        // // Construct the verifier inputs.
-        // let verifier_inputs = [
-        //     fee_transition_inputs,
-        //     (Locator::from_str("aleo.aleo/inclusion")?, (verifying_key, batch_verifier_inputs)),
-        // ]
-        // .into_iter()
-        // .collect();
-        //
-        // // Verify the execution proof.
-        // ensure!(VerifyingKey::verify_batch(verifier_inputs, proof), "Execution proof is invalid");
+    fn verify_batch<'a>(
+        mut verifier_inputs: HashMap<Locator<N>, (VerifyingKey<N>, Vec<Vec<N::Field>>)>,
+        global_state_root: N::StateRoot,
+        transitions: impl ExactSizeIterator<Item = &'a Transition<N>>,
+        proof: &Proof<N>,
+    ) -> Result<()> {
+        // Construct the batch of inclusion verifier inputs.
+        let batch_inclusion_inputs = Inclusion::prepare_verifier_inputs(global_state_root, transitions)?;
+        // Insert the batch of inclusion verifier inputs to the verifier inputs.
+        if !batch_inclusion_inputs.is_empty() {
+            // Construct the locator.
+            let locator = Locator::from_str("inclusion.aleo/state_path")?;
+            // Fetch the inclusion verifying key.
+            let verifying_key = VerifyingKey::<N>::new(N::inclusion_verifying_key().clone());
+            // Insert the inclusion verifier inputs.
+            verifier_inputs.insert(locator, (verifying_key, batch_inclusion_inputs));
+        }
+        // Verify the proof.
+        match VerifyingKey::verify_batch(verifier_inputs, proof) {
+            true => Ok(()),
+            false => bail!("Failed to verify proof"),
+        }
     }
 }
 

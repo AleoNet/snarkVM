@@ -227,7 +227,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{Block, Header, Inclusion, Metadata, Transaction};
+    use crate::{Block, Header, Metadata, Transaction};
     use console::{
         account::{Address, ViewKey},
         types::Field,

@@ -17,14 +17,16 @@ mod fee;
 
 #[cfg(debug_assertions)]
 use crate::Stack;
-use crate::{BlockStorage, Execution, Fee, Input, Output, Query, Transaction, Transition};
-use circuit::Assignment;
+use crate::{
+    block::{Fee, Input, Output, Transaction, Transition},
+    process::Query,
+    store::BlockStorage,
+};
 use console::{
     network::prelude::*,
-    program::{Identifier, InputID, Locator, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
+    program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
-use snarkvm_synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
 use std::collections::HashMap;
 
@@ -43,7 +45,7 @@ struct InputTask<N: Network> {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Inclusion<N: Network> {
+pub(super) struct Inclusion<N: Network> {
     /// A map of transition IDs to a list of input tasks.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
     /// A map of commitments to (transition ID, output index) pairs.
@@ -96,17 +98,20 @@ impl<N: Network> Inclusion<N> {
 
 impl<N: Network> Inclusion<N> {
     /// Returns the verifier public inputs for the given global state root and transitions.
-    pub fn prepare_verifier_inputs(
+    pub fn prepare_verifier_inputs<'a>(
         global_state_root: N::StateRoot,
-        transitions: &[Transition<N>],
+        transitions: impl ExactSizeIterator<Item = &'a Transition<N>>,
     ) -> Result<Vec<Vec<N::Field>>> {
+        // Determine the number of transitions.
+        let num_transitions = transitions.len();
+
         // Initialize an empty transaction tree.
         let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
         // Initialize a vector for the batch verifier inputs.
         let mut batch_verifier_inputs = vec![];
 
         // Construct the batch verifier inputs.
-        for (transition_index, transition) in transitions.iter().enumerate() {
+        for (transition_index, transition) in transitions.enumerate() {
             // Retrieve the local state root.
             let local_state_root = *transaction_tree.root();
 
@@ -125,7 +130,7 @@ impl<N: Network> Inclusion<N> {
             }
 
             // If this is not the last transition, append the transaction leaf to the transaction tree.
-            if transition_index + 1 != transitions.len() {
+            if transition_index + 1 != num_transitions {
                 // Construct the transaction leaf.
                 let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
                 // Insert the leaf into the transaction tree.
@@ -138,23 +143,6 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
-        Ok(batch_verifier_inputs)
-    }
-
-    /// Returns the verifier public inputs for the given fee.
-    pub fn prepare_verifier_inputs_for_fee(fee: &Fee<N>) -> Result<Vec<Vec<N::Field>>> {
-        // Retrieve the global state root.
-        let global_state_root = fee.global_state_root();
-        // Ensure the global state root is not zero.
-        if *global_state_root == Field::zero() {
-            bail!("Inclusion expected the global state root in the fee to *not* be zero")
-        }
-        // Construct the batch verifier inputs.
-        let batch_verifier_inputs = Self::prepare_verifier_inputs(global_state_root, &[fee.transition().clone()])?;
-        // Ensure there are batch verifier inputs.
-        if batch_verifier_inputs.is_empty() {
-            bail!("Inclusion expected the fee to contain input records")
-        }
         Ok(batch_verifier_inputs)
     }
 }

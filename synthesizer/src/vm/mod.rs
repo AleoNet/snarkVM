@@ -26,9 +26,10 @@ pub use finalize::FinalizeMode;
 use crate::{
     atomic_finalize,
     block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions, Transition},
+    cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, CallMetrics, Inclusion, InclusionAssignment, Process, Query, Trace},
+    process::{Authorization, CallMetrics, Process, Query, Trace},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
 };
@@ -187,14 +188,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::{
+        block::{Block, Fee, Header, Metadata, Transition},
         program::Program,
         store::helpers::memory::ConsensusMemory,
-        Block,
-        Fee,
-        Header,
-        Inclusion,
-        Metadata,
-        Transition,
     };
     use console::{
         account::{Address, ViewKey},
@@ -452,7 +448,6 @@ function compute:
                     vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee));
-                assert!(Inclusion::verify_fee(&fee).is_ok());
                 // Return the fee.
                 fee
             })

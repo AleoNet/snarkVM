@@ -210,20 +210,15 @@ impl<N: Network> Process<N> {
                 .entry(Locator::new(*stack.program_id(), *function.name()))
                 .or_insert((verifying_key, vec![inputs]));
 
-            // lap!(timer, "Verify transition proof for {}", function.name());
+            lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
         }
 
         // Ensure the proof is valid.
         if VERIFY_PROOF {
-            Trace::verify_proof(execution, verifier_inputs)?;
+            // Verify the execution proof.
+            Trace::verify_execution_proof(verifier_inputs, execution)?;
             lap!(timer, "Verify the proof");
         }
-
-        // // Ensure the execution proof is valid.
-        // ensure!(
-        //     verifying_key.verify(&function.name().to_string(), &inputs, transition.proof()),
-        //     "Transition is invalid - failed to verify transition proof"
-        // );
 
         finish!(timer);
         Ok(())
