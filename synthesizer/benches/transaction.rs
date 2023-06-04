@@ -86,7 +86,7 @@ function hello:
 
     c.bench_function("Transaction verify - deployment", |b| {
         let transaction = vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction)))
+        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
 
@@ -134,7 +134,7 @@ fn execute(c: &mut Criterion) {
                 rng,
             )
             .unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction)))
+        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
 

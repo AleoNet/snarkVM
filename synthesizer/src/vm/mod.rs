@@ -323,7 +323,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction));
+                assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })
@@ -371,7 +371,7 @@ function compute:
                 // Execute.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(!vm.verify_transaction(&transaction));
+                assert!(!vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })
@@ -420,7 +420,7 @@ function compute:
                 // Execute.
                 let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction));
+                assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })
@@ -451,11 +451,14 @@ function compute:
                 // Update the VM.
                 vm.add_next_block(&genesis).unwrap();
 
+                // Sample a random rejected ID.
+                let rejected_id = Field::rand(rng);
+
                 // Execute.
                 let (_response, fee, _metrics) =
-                    vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
+                    vm.execute_fee_raw(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_fee(&fee));
+                assert!(vm.verify_fee(&fee, rejected_id));
                 // Return the fee.
                 fee
             })

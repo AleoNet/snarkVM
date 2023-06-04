@@ -16,8 +16,8 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if the transaction is valid.
-    pub fn verify_transaction(&self, transaction: &Transaction<N>) -> bool {
-        match self.check_transaction(transaction) {
+    pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
+        match self.check_transaction(transaction, rejected_id) {
             Ok(_) => true,
             Err(error) => {
                 warn!("{error}");
@@ -61,7 +61,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
-    pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
+    pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
         let timer = timer!("VM::verify");
 
         // Compute the Merkle root of the transaction.
@@ -106,6 +106,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         match transaction {
             Transaction::Deploy(id, owner, deployment, fee) => {
+                // Ensure the rejected ID is not present.
+                ensure!(rejected_id.is_none(), "Transaction should not have a rejected ID (deployment)");
                 // Compute the deployment ID.
                 let Ok(deployment_id) = deployment.to_deployment_id() else {
                     bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
@@ -118,6 +120,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 self.check_deployment(deployment)?;
             }
             Transaction::Execute(id, execution, fee) => {
+                // Ensure the rejected ID is not present.
+                ensure!(rejected_id.is_none(), "Transaction should not have a rejected ID (execution)");
                 // Compute the execution ID.
                 let Ok(execution_id) = execution.to_execution_id() else {
                     bail!("Failed to compute the Merkle root for execution transaction '{id}'")
@@ -137,8 +141,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Transaction::Fee(_, fee) => {
                 // Ensure the fee is nonzero.
                 ensure!(!fee.is_zero()?, "Invalid fee (zero)");
+                // Retrieve the rejected ID.
+                let Some(rejected_id) = rejected_id else {
+                    bail!("Transaction is missing a rejected ID (fee)");
+                };
                 // Verify the fee.
-                self.check_fee(fee)?;
+                self.check_fee(fee, rejected_id)?;
             }
         };
 
@@ -243,14 +251,14 @@ mod tests {
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&deployment_transaction).is_ok());
-        assert!(vm.verify_transaction(&deployment_transaction));
+        assert!(vm.check_transaction(&deployment_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&deployment_transaction, None));
 
         // Fetch an execution transaction.
         let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
         // Ensure the transaction verifies.
-        assert!(vm.check_transaction(&execution_transaction).is_ok());
-        assert!(vm.verify_transaction(&execution_transaction));
+        assert!(vm.check_transaction(&execution_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&execution_transaction, None));
     }
 
     #[test]
@@ -343,13 +351,13 @@ mod tests {
 
         // Fetch a valid execution transaction.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
-        assert!(vm.check_transaction(&valid_transaction).is_ok());
-        assert!(vm.verify_transaction(&valid_transaction));
+        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction, None));
 
         // Fetch an invalid execution transaction.
         let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
-        assert!(vm.check_transaction(&invalid_transaction).is_err());
-        assert!(!vm.verify_transaction(&invalid_transaction));
+        assert!(vm.check_transaction(&invalid_transaction, None).is_err());
+        assert!(!vm.verify_transaction(&invalid_transaction, None));
 
         Ok(())
     }
@@ -442,7 +450,7 @@ mod tests {
         let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
 
         // Verify.
-        assert!(vm.check_transaction(&transaction).is_ok());
-        assert!(vm.verify_transaction(&transaction));
+        assert!(vm.check_transaction(&transaction, None).is_ok());
+        assert!(vm.verify_transaction(&transaction, None));
     }
 }

@@ -117,9 +117,20 @@ impl<N: Network> Process<N> {
                 .to_bits_le(),
         )?;
 
+        // Ensure there are exactly 3 inputs.
+        ensure!(fee.inputs().len() == 3, "Incorrect number of inputs to the fee transition");
         // Ensure each input is valid.
         if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
             bail!("Failed to verify a fee input")
+        }
+        // Retrieve the 3rd input as the candidate ID.
+        let candidate_id = match fee.inputs().get(2) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(candidate_id), _)))) => *candidate_id,
+            _ => bail!("Failed to get the deployment or execution ID in the fee transition"),
+        };
+        // Ensure the candidate ID is the deployment or execution ID.
+        if candidate_id != deployment_or_execution_id {
+            bail!("Incorrect deployment or execution ID in the fee transition")
         }
         lap!(timer, "Verify the inputs");
 

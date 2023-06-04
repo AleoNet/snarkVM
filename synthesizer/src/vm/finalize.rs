@@ -526,7 +526,7 @@ finalize transfer_public:
             )
             .unwrap();
         // Verify.
-        assert!(vm.verify_transaction(&transaction));
+        assert!(vm.verify_transaction(&transaction, None));
 
         // Return the transaction.
         transaction
