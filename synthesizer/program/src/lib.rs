@@ -29,6 +29,9 @@ pub use instruction::*;
 mod mapping;
 pub use mapping::*;
 
+mod traits;
+pub use traits::*;
+
 mod bytes;
 mod parse;
 mod serialize;
@@ -767,7 +770,7 @@ function swap:
     output r4 as usdc.aleo/usdc.record;
     ",
         )
-        .unwrap();
+            .unwrap();
 
         // Ensure the program imports exist.
         assert!(program.contains_import(&ProgramID::from_str("eth.aleo")?));
@@ -815,7 +818,7 @@ function swap:
         output r2 as field.private;
     ",
         )
-        .unwrap();
+            .unwrap();
 
         // Declare the function name.
         let function_name = Identifier::from_str("foo").unwrap();
@@ -880,7 +883,7 @@ function compute:
     add r0.first r0.second into r1;
     output r1 as field.private;",
         )
-        .unwrap();
+            .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Declare the function name.
@@ -943,7 +946,7 @@ function compute:
     add r0.token_amount r0.token_amount into r1;
     output r1 as u64.private;",
         )
-        .unwrap();
+            .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Declare the function name.
@@ -960,7 +963,7 @@ function compute:
         let input_record = Record::from_str(&format!(
             "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
-        .unwrap();
+            .unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Declare the expected output value.
@@ -1018,7 +1021,7 @@ function compute:
     output r3 as field.private;
     output r4 as field.private;",
         )
-        .unwrap();
+            .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Declare the function name.
@@ -1131,7 +1134,7 @@ function compute:
     cast r0.owner r0.token_amount into r1 as token.record;
     output r1 as token.record;",
         )
-        .unwrap();
+            .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Declare the function name.
@@ -1148,7 +1151,7 @@ function compute:
         let input_record = Record::from_str(&format!(
             "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
-        .unwrap();
+            .unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Construct the process.
@@ -1169,7 +1172,7 @@ function compute:
         let expected = Value::from_str(&format!(
             "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
         ))
-        .unwrap();
+            .unwrap();
 
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();

@@ -60,6 +60,7 @@ default-features = false
 
 [dependencies.serde_json]
 version = "1.0"
+features = [ "preserve_order" ]
 
 [dependencies.thiserror]
 version = "1.0"

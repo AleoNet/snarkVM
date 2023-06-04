@@ -66,6 +66,7 @@ members = [
   "r1cs",
   "synthesizer",
   "synthesizer/coinbase",
+  "synthesizer/program",
   "synthesizer/snark",
   "utilities",
   "utilities/derives",

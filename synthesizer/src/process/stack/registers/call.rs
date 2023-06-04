@@ -15,9 +15,11 @@
 use super::*;
 
 impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCall<N> for Registers<N, A> {
+    type CallStack = CallStack<N>;
+
     /// Returns the current call stack.
     #[inline]
-    fn call_stack(&self) -> CallStack<N> {
+    fn call_stack(&self) -> Self::CallStack {
         self.call_stack.clone()
     }
 }

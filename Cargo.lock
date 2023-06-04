@@ -3002,7 +3002,6 @@ dependencies = [
  "itertools",
  "once_cell",
  "parking_lot",
- "paste",
  "rand 0.8.5",
  "rayon",
  "reqwest",
@@ -3017,6 +3016,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
  "tempfile",
@@ -3044,6 +3044,22 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-synthesizer-program"
+version = "0.11.7"
+dependencies = [
+ "bincode",
+ "indexmap",
+ "parking_lot",
+ "paste",
+ "rand 0.8.5",
+ "serde_json",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-synthesizer",
+ "snarkvm-synthesizer-snark",
 ]
 
 [[package]]

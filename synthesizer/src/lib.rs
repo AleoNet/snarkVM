@@ -26,7 +26,8 @@ extern crate tracing;
 
 #[cfg(feature = "coinbase")]
 pub use snarkvm_synthesizer_coinbase as coinbase;
-
+#[cfg(feature = "program")]
+pub use snarkvm_synthesizer_program as program;
 #[cfg(feature = "snark")]
 pub use snarkvm_synthesizer_snark as snark;
 
@@ -35,9 +36,6 @@ pub use block::*;
 
 pub mod process;
 pub use process::*;
-
-pub mod program;
-pub use program::*;
 
 pub mod store;
 pub use store::*;
@@ -48,6 +46,8 @@ pub use vm::*;
 pub mod prelude {
     #[cfg(feature = "coinbase")]
     pub use crate::coinbase::*;
+    #[cfg(feature = "program")]
+    pub use crate::program::*;
     #[cfg(feature = "snark")]
     pub use crate::snark::*;
 
