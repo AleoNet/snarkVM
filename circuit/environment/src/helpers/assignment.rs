@@ -192,8 +192,10 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                 }
 
                 // Finally, add the accumulated constant value to the linear combination.
-                linear_combination +=
-                    (lc.constant, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                if !lc.constant.is_zero() {
+                    linear_combination +=
+                        (lc.constant, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                }
 
                 // Return the linear combination of the second system.
                 linear_combination

@@ -363,7 +363,8 @@ function compute:
                 .into_iter();
 
                 // Authorize.
-                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "transfer", inputs, rng).unwrap();
+                let authorization =
+                    vm.authorize(&caller_private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.

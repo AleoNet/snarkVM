@@ -219,7 +219,7 @@ mod tests {
 
         // Execute.
         let transaction =
-            vm.execute(&caller_private_key, ("credits.aleo", "transfer"), inputs, None, None, rng).unwrap();
+            vm.execute(&caller_private_key, ("credits.aleo", "transfer_private"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();

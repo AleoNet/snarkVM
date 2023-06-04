@@ -61,9 +61,15 @@ impl_local!(BetaH, "resources/", "beta-h", "usrs");
 // Mint
 impl_remote!(MintProver, REMOTE_URL, "resources/", "mint", "prover");
 impl_remote!(MintVerifier, REMOTE_URL, "resources/", "mint", "verifier");
-// Transfer
-impl_remote!(TransferProver, REMOTE_URL, "resources/", "transfer", "prover");
-impl_remote!(TransferVerifier, REMOTE_URL, "resources/", "transfer", "verifier");
+// TransferPrivate
+impl_remote!(TransferPrivateProver, REMOTE_URL, "resources/", "transfer_private", "prover");
+impl_remote!(TransferPrivateVerifier, REMOTE_URL, "resources/", "transfer_private", "verifier");
+// TransferPublic
+impl_remote!(TransferPublicProver, REMOTE_URL, "resources/", "transfer_public", "prover");
+impl_remote!(TransferPublicVerifier, REMOTE_URL, "resources/", "transfer_public", "verifier");
+// TransferPrivateToPublic
+impl_remote!(TransferPrivateToPublicProver, REMOTE_URL, "resources/", "transfer_private_to_public", "prover");
+impl_remote!(TransferPrivateToPublicVerifier, REMOTE_URL, "resources/", "transfer_private_to_public", "verifier");
 // TransferPublicToPrivate
 impl_remote!(TransferPublicToPrivateProver, REMOTE_URL, "resources/", "transfer_public_to_private", "prover");
 impl_remote!(TransferPublicToPrivateVerifier, REMOTE_URL, "resources/", "transfer_public_to_private", "verifier");
@@ -83,7 +89,9 @@ macro_rules! insert_credit_keys {
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
             $crate::insert_key!($map, string, $type<$network>, ("mint", $crate::testnet3::[<Mint $variant>]::load_bytes()));
-            $crate::insert_key!($map, string, $type<$network>, ("transfer", $crate::testnet3::[<Transfer $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::testnet3::[<TransferPrivate $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::testnet3::[<TransferPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::testnet3::[<TransferPrivateToPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public_to_private", $crate::testnet3::[<TransferPublicToPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("join", $crate::testnet3::[<Join $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("split", $crate::testnet3::[<Split $variant>]::load_bytes()));
@@ -130,7 +138,9 @@ mod tests {
         Degree17::load_bytes().expect("Failed to load degree 17");
         Degree18::load_bytes().expect("Failed to load degree 18");
         Degree19::load_bytes().expect("Failed to load degree 19");
-        TransferVerifier::load_bytes().expect("Failed to load transfer verifier");
+        TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
+        TransferPublicVerifier::load_bytes().expect("Failed to load transfer_public verifier");
+        TransferPrivateToPublicVerifier::load_bytes().expect("Failed to load transfer_private_to_public verifier");
         TransferPublicToPrivateVerifier::load_bytes().expect("Failed to load transfer_public_to_private verifier");
         FeeProver::load_bytes().expect("Failed to load fee prover");
         FeeVerifier::load_bytes().expect("Failed to load fee verifier");
