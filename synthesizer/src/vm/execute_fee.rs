@@ -23,11 +23,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         fee_record: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the fee.
-        let fee = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?.1;
+        let fee = self
+            .execute_fee_raw(private_key, fee_record, fee_in_microcredits, deployment_or_execution_id, query, rng)?
+            .1;
         // Return the fee transaction.
         Transaction::from_fee(fee)
     }
@@ -40,6 +43,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         fee_record: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<(Response<N>, Fee<N>, Vec<CallMetrics<N>>)> {
@@ -71,11 +75,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Prepare the private key and fee record.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
                 let fee_record = cast_ref!(fee_record as RecordPlaintext<$network>);
+                let deployment_or_execution_id = cast_ref!(deployment_or_execution_id as Field<$network>);
                 lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
-                let (response, _fee_transition, mut trace, metrics) =
-                    $process.execute_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
+                let (response, _fee_transition, mut trace, metrics) = $process.execute_fee::<$aleo, _>(
+                    private_key,
+                    fee_record.clone(),
+                    fee_in_microcredits,
+                    *deployment_or_execution_id,
+                    rng,
+                )?;
                 lap!(timer, "Execute the call to fee");
 
                 // Prepare the assignments.

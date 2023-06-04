@@ -37,6 +37,7 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
+    types::Field,
 };
 
 use aleo_std::prelude::{finish, lap, timer};

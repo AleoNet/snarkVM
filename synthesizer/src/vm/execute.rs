@@ -40,8 +40,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     .size_in_bytes()?
                     .checked_add(priority_fee_in_microcredits)
                     .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                // Compute the execution ID.
+                let execution_id = execution.to_execution_id()?;
                 // Compute the fee.
-                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, query, rng)?.1)
+                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, execution_id, query, rng)?.1)
             }
         };
         // Return the execute transaction.

@@ -37,8 +37,8 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Locator, Plaintext, ProgramID, Record, Request, Response, Value},
-    types::{U16, U64},
+    program::{Identifier, Literal, Locator, Plaintext, ProgramID, Record, Request, Response, Value},
+    types::{Field, U16, U64},
 };
 use snarkvm_synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
 

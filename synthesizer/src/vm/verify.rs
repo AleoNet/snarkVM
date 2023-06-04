@@ -49,8 +49,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Returns `true` if the fee is valid.
-    pub fn verify_fee(&self, fee: &Fee<N>) -> bool {
-        match self.check_fee(fee) {
+    pub fn verify_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> bool {
+        match self.check_fee(fee, deployment_or_execution_id) {
             Ok(_) => true,
             Err(error) => {
                 warn!("{error}");
@@ -106,22 +106,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         match transaction {
             Transaction::Deploy(id, owner, deployment, fee) => {
-                // Check the deployment size.
-                if let Err(error) = Transaction::check_deployment_size(deployment) {
-                    bail!("Invalid transaction size (deployment): {error}");
-                }
+                // Compute the deployment ID.
+                let Ok(deployment_id) = deployment.to_deployment_id() else {
+                    bail!("Failed to compute the Merkle root for deployment transaction '{id}'")
+                };
                 // Verify the signature corresponds to the transaction ID.
-                ensure!(owner.verify(*id), "Invalid signature for the deployment transaction '{id}'");
+                ensure!(owner.verify(deployment_id), "Invalid owner signature for deployment transaction '{id}'");
                 // Verify the fee.
-                self.check_fee(fee)?;
+                self.check_fee(fee, deployment_id)?;
                 // Verify the deployment.
                 self.check_deployment(deployment)?;
             }
-            Transaction::Execute(_, execution, fee) => {
-                // Check the execution size.
-                if let Err(error) = Transaction::<N>::check_execution_size(execution.len()) {
-                    bail!("Invalid transaction size (execution): {error}");
-                }
+            Transaction::Execute(id, execution, fee) => {
+                // Compute the execution ID.
+                let Ok(execution_id) = execution.to_execution_id() else {
+                    bail!("Failed to compute the Merkle root for execution transaction '{id}'")
+                };
                 // TODO (raychu86): Remove `is_split` check once batch executions are supported.
                 // Ensure the fee is present, if the transaction is not a coinbase or split.
                 if !((transaction.is_coinbase() || transaction.is_split()) && execution.len() == 1) && fee.is_none() {
@@ -129,7 +129,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
                 // Verify the fee.
                 if let Some(fee) = fee {
-                    self.check_fee(fee)?;
+                    self.check_fee(fee, execution_id)?;
                 }
                 // Verify the execution.
                 self.check_execution(execution)?;
@@ -204,11 +204,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Verifies the given fee. On failure, returns an error.
     #[inline]
-    fn check_fee(&self, fee: &Fee<N>) -> Result<()> {
+    fn check_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> Result<()> {
         let timer = timer!("VM::verify_fee");
 
         // Verify the fee.
-        let verification = self.process.read().verify_fee(fee);
+        let verification = self.process.read().verify_fee(fee, deployment_or_execution_id);
         finish!(timer);
 
         match verification {
@@ -311,18 +311,20 @@ mod tests {
         let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
 
         match transaction {
-            Transaction::Execute(_, _, Some(fee)) => {
+            Transaction::Execute(_, execution, Some(fee)) => {
+                let execution_id = execution.to_execution_id().unwrap();
+
                 // Ensure the proof exists.
                 assert!(fee.proof().is_some());
                 // Verify the fee.
-                assert!(vm.check_fee(&fee).is_ok());
-                assert!(vm.verify_fee(&fee));
+                assert!(vm.check_fee(&fee, execution_id).is_ok());
+                assert!(vm.verify_fee(&fee, execution_id));
 
                 // Ensure that deserialization doesn't break the transaction verification.
                 let serialized_fee = fee.to_string();
                 let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
-                assert!(vm.check_fee(&recovered_fee).is_ok());
-                assert!(vm.verify_fee(&recovered_fee));
+                assert!(vm.check_fee(&recovered_fee, execution_id).is_ok());
+                assert!(vm.verify_fee(&recovered_fee, execution_id));
             }
             _ => panic!("Expected an execution with a fee"),
         }

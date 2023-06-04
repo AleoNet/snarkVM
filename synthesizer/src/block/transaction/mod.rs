@@ -49,7 +49,7 @@ impl<N: Network> Transaction<N> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
-        let id = *Self::deployment_tree(&deployment, &fee)?.root();
+        let id = *Self::deployment_tree(&deployment, Some(&fee))?.root();
         // Ensure the owner signed the correct transaction ID.
         ensure!(owner.verify(id.into()), "Attempted to create a transaction deployment with an invalid owner");
         // Construct the deployment transaction.
