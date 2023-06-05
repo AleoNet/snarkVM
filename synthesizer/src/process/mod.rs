@@ -406,7 +406,7 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, mut trace, _metrics) = process.execute::<CurrentAleo>(authorization).unwrap();
+                let (_response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
                 assert_eq!(trace.transitions().len(), 1);
 
                 // Prepare the trace.

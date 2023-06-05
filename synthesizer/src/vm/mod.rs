@@ -29,7 +29,7 @@ use crate::{
     cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, CallMetrics, Process, Query, Trace},
+    process::{Authorization, Process, Query, Trace},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
 };
@@ -452,7 +452,7 @@ function compute:
                 let rejected_id = Field::rand(rng);
 
                 // Execute.
-                let (_response, fee, _metrics) =
+                let (_response, fee) =
                     vm.execute_fee_raw(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee, rejected_id));

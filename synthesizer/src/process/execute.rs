@@ -20,7 +20,7 @@ impl<N: Network> Process<N> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         authorization: Authorization<N>,
-    ) -> Result<(Response<N>, Trace<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Trace<N>)> {
         let timer = timer!("Process::execute");
 
         // Retrieve the main request (without popping it).
@@ -33,23 +33,21 @@ impl<N: Network> Process<N> {
 
         // Initialize the trace.
         let trace = Arc::new(RwLock::new(Trace::new()));
-        // Initialize the metrics.
-        let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, trace.clone(), metrics.clone())?;
+        let call_stack = CallStack::execute(authorization, trace.clone())?;
         lap!(timer, "Initialize call stack");
+
         // Execute the circuit.
         let response = self.get_stack(request.program_id())?.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the function");
+
         // Extract the trace.
         let trace = Arc::try_unwrap(trace).unwrap().into_inner();
         // Ensure the trace is not empty.
         ensure!(!trace.transitions().is_empty(), "Execution of '{locator}' is empty");
-        // Extract the metrics.
-        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
-        Ok((response, trace, metrics))
+        Ok((response, trace))
     }
 
     /// Verifies the given execution is valid.
@@ -215,7 +213,7 @@ impl<N: Network> Process<N> {
         }
 
         // Count the number of verifier instances.
-        let num_instances = verifier_inputs.values().flat_map(|(_, inputs)| inputs).count();
+        let num_instances = verifier_inputs.values().map(|(_, inputs)| inputs.len()).sum::<usize>();
         // Ensure the number of instances matches the number of transitions.
         ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
 
