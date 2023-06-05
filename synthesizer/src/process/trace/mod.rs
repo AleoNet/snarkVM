@@ -185,10 +185,7 @@ impl<N: Network> Trace<N> {
         let global_state_root =
             self.global_state_root.get().ok_or_else(|| anyhow!("Global state root has not been set"))?;
         // Retrieve the fee transition.
-        let fee_transition = match self.transitions.len() {
-            1 => &self.transitions[0],
-            _ => bail!("Expected 1 transition in the trace for proving the fee"),
-        };
+        let fee_transition = &self.transitions[0];
         // Construct the proving tasks.
         let proving_tasks = self.transition_tasks.values().cloned().collect();
         // Compute the proof.
