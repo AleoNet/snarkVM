@@ -210,7 +210,7 @@ features = [ "rayon" ]
 version = "0.4.4"
 
 [dependencies.once_cell]
-version = "1.17"
+version = "1.18"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -223,7 +223,7 @@ optional = true
 version = "1"
 
 [dependencies.self_update]
-version = "0.36"
+version = "0.37"
 optional = true
 
 [dependencies.serde_json]

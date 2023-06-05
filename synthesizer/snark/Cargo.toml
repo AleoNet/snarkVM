@@ -54,7 +54,7 @@ version = "2"
 optional = true
 
 [dependencies.once_cell]
-version = "1.17"
+version = "1.18"
 
 [dependencies.serde_json]
 version = "1.0"
