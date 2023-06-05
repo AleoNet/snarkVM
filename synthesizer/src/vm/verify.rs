@@ -428,13 +428,6 @@ mod tests {
         // Fetch the unspent records.
         let records = deployment_block.records().collect::<indexmap::IndexMap<_, _>>();
 
-        // Prepare the fee.
-        let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let fee_in_microcredits = 10;
-
-        // Execute the fee.
-        let fee = vm.execute_fee_raw(&caller_private_key, credits, fee_in_microcredits, None, rng).unwrap().1;
-
         // Prepare the inputs.
         let inputs = [
             Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
@@ -442,12 +435,13 @@ mod tests {
         ]
         .into_iter();
 
-        // Authorize.
-        let authorization = vm.authorize(&caller_private_key, "testing.aleo", "mint", inputs, rng).unwrap();
-        assert_eq!(authorization.len(), 1);
+        // Prepare the fee.
+        let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+        let fee_in_microcredits = 10;
+        let fee = Some((credits, fee_in_microcredits));
 
         // Execute.
-        let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
+        let transaction = vm.execute(&caller_private_key, ("testing.aleo", "mint"), inputs, fee, None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());

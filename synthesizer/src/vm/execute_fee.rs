@@ -124,46 +124,17 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    fn prepare_vm(
-        rng: &mut TestRng,
-    ) -> Result<(
-        VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
-        IndexMap<Field<CurrentNetwork>, Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
-    )> {
-        // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-        // Fetch the unspent records.
-        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-
-        // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-        // Initialize the VM.
-        let vm = crate::vm::test_helpers::sample_vm();
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
-
-        Ok((vm, records))
-    }
-
     #[test]
     fn test_fee_transition_size() {
         let rng = &mut TestRng::default();
 
-        // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
-        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-
-        // Prepare the VM and records.
-        let (vm, records) = prepare_vm(rng).unwrap();
-
-        // Fetch the unspent record.
-        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-
-        // Execute.
-        let (_, fee, _) = vm.execute_fee_raw(&caller_private_key, record, 1, None, rng).unwrap();
-
+        // Retrieve a fee transaction.
+        let transaction = crate::vm::test_helpers::sample_fee_transaction(rng);
+        // Retrieve the fee.
+        let fee = match transaction {
+            Transaction::Fee(_, fee) => fee,
+            _ => panic!("Expected a fee transaction"),
+        };
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
         assert_eq!(1866, fee_size_in_bytes, "Update me if serialization has changed");
