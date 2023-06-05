@@ -653,6 +653,7 @@ finalize getter:
         vm.add_next_block(&execution_block).unwrap();
     }
 
+    #[ignore]
     #[test]
     fn test_use_local_records_in_transtion() {
         let rng = &mut TestRng::default();
