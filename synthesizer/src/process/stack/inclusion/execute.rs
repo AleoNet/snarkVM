@@ -44,6 +44,9 @@ macro_rules! prepare_execution_impl {
             // Construct the transaction leaf.
             let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
 
+            // Insert the leaf into the transaction tree.
+            transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
+
             // Process the input tasks.
             match $self.input_tasks.get(transition.id()) {
                 Some(tasks) => {
@@ -98,9 +101,6 @@ macro_rules! prepare_execution_impl {
                 }
                 None => bail!("Missing input tasks for transition {} in inclusion", transition.id()),
             }
-
-            // Insert the leaf into the transaction tree.
-            transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
         }
 
         Ok((assignments, global_state_root))
