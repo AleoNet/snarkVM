@@ -47,11 +47,13 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
     pub fn from_deployment(owner: ProgramOwner<N>, deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
-        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
+        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty deployment transaction");
         // Compute the transaction ID.
         let id = *Self::deployment_tree(&deployment, Some(&fee))?.root();
+        // Compute the deployment ID.
+        let deployment_id = deployment.to_deployment_id()?;
         // Ensure the owner signed the correct transaction ID.
-        ensure!(owner.verify(id), "Attempted to create a transaction deployment with an invalid owner");
+        ensure!(owner.verify(deployment_id), "Attempted to create a deployment transaction with an invalid owner");
         // Construct the deployment transaction.
         Ok(Self::Deploy(id.into(), owner, Box::new(deployment), fee))
     }
@@ -59,7 +61,7 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new execution transaction.
     pub fn from_execution(execution: Execution<N>, fee: Option<Fee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.
-        ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
+        ensure!(!execution.is_empty(), "Attempted to create an empty execution transaction");
         // Compute the transaction ID.
         let id = *Self::execution_tree(&execution, &fee)?.root();
         // Construct the execution transaction.
