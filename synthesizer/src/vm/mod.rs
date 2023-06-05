@@ -652,4 +652,103 @@ finalize getter:
             sample_next_block(&vm, &caller_private_key, &[first_execution, second_execution], rng).unwrap();
         vm.add_next_block(&execution_block).unwrap();
     }
+
+    #[test]
+    fn test_use_local_records_in_transtion() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Fetch the unspent records.
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+
+        // Select a record to spend.
+        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Split once.
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "split"),
+                [Value::Record(record), Value::from_str("1000000000u64").unwrap()].iter(), // 1000 credits
+                None,
+                None,
+                rng,
+            )
+            .unwrap();
+        let records = transaction.records().collect_vec();
+        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
+        let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
+        let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+        vm.add_next_block(&block).unwrap();
+
+        // Split again.
+        let mut transactions = Vec::new();
+        let transaction = vm
+            .execute(
+                &caller_private_key,
+                ("credits.aleo", "split"),
+                [Value::Record(first_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
+                None,
+                None,
+                rng,
+            )
+            .unwrap();
+        let records = transaction.records().collect_vec();
+        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
+        let third_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
+        transactions.push(transaction);
+        // Add the split transactions to a block and update the VM.
+        let fee_block = sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
+        vm.add_next_block(&fee_block).unwrap();
+
+        // Deploy the programs.
+        let test_program = r"
+import credits.aleo;
+program test_1.aleo;
+record fake_credits:
+owner as address.private;
+microcredits as u64.private;
+function transfer_1:
+    input r0 as credits.aleo/credits.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    call credits.aleo/transfer r0 r1 r2 into r3 r4;
+    call credits.aleo/transfer r4 r1 r2 into r5 r6;
+    output r4 as credits.aleo/credits.record;
+    output r5 as credits.aleo/credits.record;
+    output r6 as credits.aleo/credits.record;
+        ";
+
+        let deployment = vm
+            .deploy(&caller_private_key, &Program::from_str(test_program).unwrap(), (first_record, 1), None, rng)
+            .unwrap();
+        let deployment_block = sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Execute the programs.
+        let inputs = [
+            Value::<Testnet3>::Record(second_record),
+            Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
+            Value::<Testnet3>::from_str("10u64").unwrap(),
+        ]
+        .into_iter();
+        let execution = vm
+            .execute(&caller_private_key, ("test_1.aleo", "transfer_1"), inputs, Some((third_record, 1)), None, rng)
+            .unwrap();
+        let execution_block = sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap();
+        vm.add_next_block(&execution_block).unwrap();
+    }
 }
