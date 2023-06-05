@@ -18,7 +18,7 @@ use snarkvm_fields::PrimeField;
 use indexmap::IndexMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-enum AssignmentVariable<F: PrimeField> {
+pub enum AssignmentVariable<F: PrimeField> {
     Constant(F),
     Public(Index),
     Private(Index),
@@ -36,7 +36,7 @@ impl<F: PrimeField> From<&crate::Variable<F>> for AssignmentVariable<F> {
 }
 
 #[derive(Clone, Debug)]
-struct AssignmentLC<F: PrimeField> {
+pub struct AssignmentLC<F: PrimeField> {
     constant: F,
     terms: IndexMap<AssignmentVariable<F>, F>,
 }
@@ -50,6 +50,18 @@ impl<F: PrimeField> From<&crate::LinearCombination<F>> for AssignmentLC<F> {
                 lc.to_terms().iter().map(|(variable, coefficient)| (variable.into(), *coefficient)),
             ),
         }
+    }
+}
+
+impl<F: PrimeField> AssignmentLC<F> {
+    /// Returns the constant term of the linear combination.
+    pub const fn constant(&self) -> F {
+        self.constant
+    }
+
+    /// Returns the terms of the linear combination.
+    pub const fn terms(&self) -> &IndexMap<AssignmentVariable<F>, F> {
+        &self.terms
     }
 }
 
@@ -82,8 +94,18 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
 
 impl<F: PrimeField> Assignment<F> {
     /// Returns the public inputs of the assignment.
-    pub fn public_inputs(&self) -> Vec<F> {
-        self.public.values().cloned().collect()
+    pub const fn public_inputs(&self) -> &IndexMap<Index, F> {
+        &self.public
+    }
+
+    /// Returns the private inputs of the assignment.
+    pub const fn private_inputs(&self) -> &IndexMap<Index, F> {
+        &self.private
+    }
+
+    /// Returns the constraints of the assignment.
+    pub const fn constraints(&self) -> &Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)> {
+        &self.constraints
     }
 
     /// Returns the number of public variables in the assignment.
