@@ -402,7 +402,7 @@ mod tests {
         let deployment_header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
-            Field::zero(),
+            transactions.to_finalize_root().unwrap(),
             Field::zero(),
             deployment_metadata,
         )

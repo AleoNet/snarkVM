@@ -165,6 +165,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // TODO (raychu86): Move this to the `check_next_block` call for block verification.
+        // Ensure that the block's finalize root matches the transactions.
+        if block.finalize_root() != block.transactions().to_finalize_root()? {
+            bail!("The block's finalize root does not correspond to the transactions.");
+        }
+
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
@@ -495,9 +501,7 @@ function compute:
         let header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
-            Field::zero(),
-            // TODO (howardwu): Revisit this.
-            // vm.finalize_store().current_finalize_root(),
+            transactions.to_finalize_root().unwrap(),
             Field::zero(),
             metadata,
         )?;
