@@ -29,7 +29,7 @@ use crate::{
     cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, CallMetrics, Process, Query, Trace},
+    process::{Authorization, Process, Query, Trace},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
 };
@@ -444,8 +444,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee, _metrics) =
-                    vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
+                let (_response, fee) = vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee));
                 // Return the fee.

@@ -23,7 +23,7 @@ impl<N: Network> Process<N> {
         credits: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>, Trace<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Transition<N>, Trace<N>)> {
         let timer = timer!("Process::execute_fee");
 
         // Ensure the fee has the correct program ID.
@@ -36,12 +36,15 @@ impl<N: Network> Process<N> {
         // Construct the inputs.
         let inputs = [Value::Record(credits), Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?];
         lap!(timer, "Construct the inputs");
+
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
         lap!(timer, "Compute the request");
+
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         lap!(timer, "Initialize the authorization");
+
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
@@ -58,10 +61,8 @@ impl<N: Network> Process<N> {
 
         // Initialize the trace.
         let trace = Arc::new(RwLock::new(Trace::new()));
-        // Initialize the metrics.
-        let metrics = Arc::new(RwLock::new(Vec::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, trace.clone(), metrics.clone())?;
+        let call_stack = CallStack::execute(authorization, trace.clone())?;
         // Execute the circuit.
         let response = stack.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the circuit");
@@ -73,12 +74,10 @@ impl<N: Network> Process<N> {
             trace.transitions().len() == 1,
             "Execution of '{program_id}/{function_name}' does not contain 1 transition"
         );
-        // Extract the metrics.
-        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
 
         finish!(timer);
 
-        Ok((response, trace.transitions()[0].clone(), trace, metrics))
+        Ok((response, trace.transitions()[0].clone(), trace))
     }
 
     /// Verifies the given fee is valid.

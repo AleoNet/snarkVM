@@ -417,25 +417,30 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref trace, ref metrics) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref trace) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Construct the transition.
             let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
-
-            // Add the transition to the trace.
-            trace.write().insert_transition(console_request.input_ids(), &transition, (proving_key, assignment))?;
-            // Add the metrics.
-            metrics.write().push(CallMetrics {
+            // Construct the call metrics.
+            let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,
                 num_response_constraints,
-            });
+            };
+
+            // Add the transition to the trace.
+            trace.write().insert_transition(
+                console_request.input_ids(),
+                &transition,
+                (proving_key, assignment),
+                metrics,
+            )?;
         }
 
         finish!(timer);

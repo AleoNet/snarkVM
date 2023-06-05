@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod call_metrics;
+pub use call_metrics::*;
+
 mod inclusion;
 pub use inclusion::*;
 
@@ -40,6 +43,8 @@ pub struct Trace<N: Network> {
     transition_tasks: HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
     /// A tracker for all inclusion tasks.
     inclusion_tasks: Inclusion<N>,
+    /// A list of call metrics.
+    call_metrics: Vec<CallMetrics<N>>,
 
     /// A tracker for the inclusion assignments.
     inclusion_assignments: OnceCell<Vec<InclusionAssignment<N>>>,
@@ -56,12 +61,18 @@ impl<N: Network> Trace<N> {
             inclusion_tasks: Inclusion::new(),
             inclusion_assignments: OnceCell::new(),
             global_state_root: OnceCell::new(),
+            call_metrics: Vec::new(),
         }
     }
 
     /// Returns the list of transitions.
     pub fn transitions(&self) -> &[Transition<N>] {
         &self.transitions
+    }
+
+    /// Returns the call metrics.
+    pub fn call_metrics(&self) -> &[CallMetrics<N>] {
+        &self.call_metrics
     }
 }
 
@@ -72,6 +83,7 @@ impl<N: Network> Trace<N> {
         input_ids: &[InputID<N>],
         transition: &Transition<N>,
         (proving_key, assignment): (ProvingKey<N>, Assignment<N::Field>),
+        metrics: CallMetrics<N>,
     ) -> Result<()> {
         // Ensure the inclusion assignments and global state root have not been set.
         ensure!(self.inclusion_assignments.get().is_none());
@@ -86,6 +98,8 @@ impl<N: Network> Trace<N> {
         self.transition_tasks.entry(locator).or_insert((proving_key, vec![])).1.push(assignment);
         // Insert the transition into the list.
         self.transitions.push(transition.clone());
+        // Insert the call metrics into the list.
+        self.call_metrics.push(metrics);
 
         Ok(())
     }

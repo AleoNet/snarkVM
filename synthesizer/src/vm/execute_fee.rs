@@ -33,7 +33,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
-    /// Returns the response, fee, and call metrics.
+    /// Returns the response and fee.
     #[inline]
     pub fn execute_fee_raw<R: Rng + CryptoRng>(
         &self,
@@ -42,7 +42,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Fee<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Fee<N>)> {
         let timer = timer!("VM::execute_fee_raw");
 
         // Prepare the query.
@@ -74,7 +74,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
-                let (response, _fee_transition, mut trace, metrics) =
+                let (response, _fee_transition, mut trace) =
                     $process.execute_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
                 lap!(timer, "Execute the call to fee");
 
@@ -90,13 +90,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let fee = cast_ref!(fee as Fee<N>).clone();
-                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
-                lap!(timer, "Prepare the response, fee, and metrics");
+                lap!(timer, "Prepare the response and fee");
 
                 finish!(timer);
 
-                // Return the response, fee, metrics.
-                Ok((response, fee, metrics))
+                // Return the response and fee.
+                Ok((response, fee))
             }};
         }
         // Process the logic.
@@ -152,7 +151,7 @@ mod tests {
         let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
 
         // Execute.
-        let (_, fee, _) = vm.execute_fee_raw(&caller_private_key, record, 1, None, rng).unwrap();
+        let (_, fee) = vm.execute_fee_raw(&caller_private_key, record, 1, None, rng).unwrap();
 
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();

@@ -30,7 +30,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the authorization.
         let authorization = self.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Compute the execution.
-        let (_response, execution, _metrics) = self.execute_authorization_raw(authorization, query.clone(), rng)?;
+        let (_response, execution) = self.execute_authorization_raw(authorization, query.clone(), rng)?;
         // Compute the fee.
         let fee = match fee {
             None => None,
@@ -57,20 +57,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the execution.
-        let (_response, execution, _metrics) = self.execute_authorization_raw(authorization, query, rng)?;
+        let (_response, execution) = self.execute_authorization_raw(authorization, query, rng)?;
         // Return the execute transaction.
         Transaction::from_execution(execution, fee)
     }
 
     /// Executes a call to the program function for the given authorization.
-    /// Returns the response, execution, and metrics.
+    /// Returns the response and execution.
     #[inline]
     pub fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Execution<N>)> {
         let timer = timer!("VM::execute_authorization");
 
         // Construct the locator of the main function.
@@ -94,7 +94,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Execute the call.
-                let (response, mut trace, metrics) = $process.execute::<$aleo>(authorization.clone())?;
+                let (response, mut trace) = $process.execute::<$aleo>(authorization.clone())?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
@@ -109,13 +109,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let execution = cast_ref!(execution as Execution<N>).clone();
-                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
                 lap!(timer, "Prepare the response and execution");
 
                 finish!(timer);
 
-                // Return the response, execution, and metrics.
-                Ok((response, execution, metrics))
+                // Return the response and execution.
+                Ok((response, execution))
             }};
         }
         // Process the logic.
