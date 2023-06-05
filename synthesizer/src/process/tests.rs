@@ -41,7 +41,7 @@ fn test_process_execute_mint() {
     let caller = Address::try_from(&caller_private_key).unwrap();
     // Declare the input value.
     let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
-    let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+    let r1 = Value::<CurrentNetwork>::from_str("99_000_000_000_000_u64").unwrap();
 
     // Construct the process.
     let process = Process::load().unwrap();
@@ -65,7 +65,7 @@ fn test_process_execute_mint() {
 
     // Declare the expected output value.
     let r2 = Value::from_str(&format!(
-        "{{ owner: {caller}.private, microcredits: 1_500_000_000_000_000_u64.private, _nonce: {nonce}.public }}"
+        "{{ owner: {caller}.private, microcredits: 99_000_000_000_000_u64.private, _nonce: {nonce}.public }}"
     ))
     .unwrap();
 
