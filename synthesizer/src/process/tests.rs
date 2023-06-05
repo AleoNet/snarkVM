@@ -236,8 +236,6 @@ fn test_process_multirecords() {
     assert_eq!(output_b, candidate[1]);
     assert_eq!(output_c, candidate[2]);
 
-    // process.verify_execution::<false>(&execution).unwrap();
-
     // use circuit::Environment;
     //
     // assert_eq!(20060, CurrentAleo::num_constants());
@@ -316,8 +314,6 @@ fn test_process_self_caller() {
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
-
-    // process.verify_execution::<false>(&execution).unwrap();
 }
 
 #[test]
@@ -584,8 +580,6 @@ function compute:
     assert_eq!(r5, candidate[2]);
     assert_eq!(r6, candidate[3]);
 
-    // process.verify_execution::<false>(&execution).unwrap();
-
     // use circuit::Environment;
     //
     // assert_eq!(37080, CurrentAleo::num_constants());
@@ -733,8 +727,6 @@ function transfer:
     assert_eq!(2, candidate.len());
     assert_eq!(output_a, candidate[0]);
     assert_eq!(output_b, candidate[1]);
-
-    // process.verify_execution::<false>(&execution).unwrap();
 
     // use circuit::Environment;
     //
