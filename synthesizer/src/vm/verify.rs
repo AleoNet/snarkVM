@@ -119,7 +119,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
             Transaction::Execute(_, execution, fee) => {
                 // Check the execution size.
-                if let Err(error) = Transaction::check_execution_size(execution) {
+                if let Err(error) = Transaction::<N>::check_execution_size(execution.len()) {
                     bail!("Invalid transaction size (execution): {error}");
                 }
                 // TODO (raychu86): Remove `is_split` check once batch executions are supported.
@@ -188,7 +188,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::verify_execution");
 
         // Verify the execution.
-        let verification = self.process.read().verify_execution::<true>(execution);
+        let verification = self.process.read().verify_execution(execution);
         finish!(timer);
 
         match verification {
@@ -227,7 +227,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{Block, Header, Inclusion, Metadata, Transaction};
+    use crate::{Block, Header, Metadata, Transaction};
     use console::{
         account::{Address, ViewKey},
         types::Field,
@@ -285,10 +285,8 @@ mod tests {
 
         match transaction {
             Transaction::Execute(_, execution, _) => {
-                // Ensure the inclusion proof *does not* exist.
-                assert!(execution.inclusion_proof().is_none()); // This is 'None', because this execution called 'credits.aleo/mint'.
-                // Verify the inclusion.
-                assert!(Inclusion::verify_execution(&execution).is_ok());
+                // Ensure the proof exists.
+                assert!(execution.proof().is_some());
                 // Verify the execution.
                 assert!(vm.check_execution(&execution).is_ok());
                 assert!(vm.verify_execution(&execution));
@@ -314,10 +312,8 @@ mod tests {
 
         match transaction {
             Transaction::Execute(_, _, Some(fee)) => {
-                // Ensure the inclusion proof exists.
-                assert!(fee.inclusion_proof().is_some());
-                // Verify the inclusion.
-                assert!(Inclusion::verify_fee(&fee).is_ok());
+                // Ensure the proof exists.
+                assert!(fee.proof().is_some());
                 // Verify the fee.
                 assert!(vm.check_fee(&fee).is_ok());
                 assert!(vm.verify_fee(&fee));

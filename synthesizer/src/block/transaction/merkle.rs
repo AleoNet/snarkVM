@@ -132,7 +132,7 @@ impl<N: Network> Transaction<N> {
     /// Returns the Merkle tree for the given execution.
     pub fn execution_tree(execution: &Execution<N>, fee: &Option<Fee<N>>) -> Result<TransactionTree<N>> {
         // Ensure the number of leaves is within the Merkle tree size.
-        Self::check_execution_size(execution)?;
+        Self::check_execution_size(execution.len())?;
         // Prepare the leaves.
         let leaves = execution.transitions().enumerate().map(|(index, transition)| {
             // Construct the transaction leaf.
@@ -192,13 +192,12 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the execution is within the size bounds.
-    pub fn check_execution_size(execution: &Execution<N>) -> Result<()> {
+    pub fn check_execution_size(num_transitions: usize) -> Result<()> {
         // Ensure the number of functions is within the allowed range.
         ensure!(
-            execution.len() < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the fee.
-            "Execution must contain less than {} transitions, found {}",
+            num_transitions < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the fee.
+            "Execution must contain less than {num_transitions} transitions, found {}",
             Self::MAX_TRANSITIONS,
-            execution.len()
         );
         Ok(())
     }

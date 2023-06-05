@@ -43,11 +43,10 @@ impl<N: Network> VerifyingKey<N> {
         match Marlin::<N>::verify(N::marlin_fs_parameters(), self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
-                {
-                    let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
-                }
-
+                println!(
+                    "{}",
+                    format!(" • Verified '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed()
+                );
                 is_valid
             }
             Err(error) => {
@@ -59,21 +58,19 @@ impl<N: Network> VerifyingKey<N> {
     }
 
     /// Returns `true` if the batch proof is valid for the given public inputs.
-    pub fn verify_batch(&self, function_name: &str, inputs: &[Vec<N::Field>], proof: &Proof<N>) -> bool {
+    #[allow(clippy::type_complexity)]
+    pub fn verify_batch(locator: &str, inputs: Vec<(VerifyingKey<N>, Vec<Vec<N::Field>>)>, proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        let keys_to_inputs: BTreeMap<_, _> =
+            inputs.iter().map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice())).collect();
+
         // Verify the batch proof.
-        let mut keys_to_inputs = BTreeMap::new();
-        keys_to_inputs.insert(self.deref(), inputs);
         match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
-                {
-                    let elapsed = timer.elapsed().as_millis();
-                    println!("{}", format!(" • Verified '{function_name}' (in {elapsed} ms)").dimmed());
-                }
-
+                println!("{}", format!(" • Verified '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
                 is_valid
             }
             Err(error) => {

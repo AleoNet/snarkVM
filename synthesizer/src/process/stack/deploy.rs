@@ -111,7 +111,7 @@ impl<N: Network> Stack<N> {
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
             // Synthesize the circuit.
-            let _response = self.execute_function::<A, R>(call_stack, rng)?;
+            let _response = self.execute_function::<A>(call_stack)?;
             lap!(timer, "Synthesize the circuit");
             // Check the certificate.
             match assignments.read().last() {
