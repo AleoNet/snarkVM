@@ -213,7 +213,7 @@ impl<N: Network> Process<N> {
         }
 
         // Count the number of verifier instances.
-        let num_instances = verifier_inputs.values().flat_map(|(_, inputs)| inputs).count();
+        let num_instances = verifier_inputs.values().map(|(_, inputs)| inputs.len()).sum::<usize>();
         // Ensure the number of instances matches the number of transitions.
         ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
 
