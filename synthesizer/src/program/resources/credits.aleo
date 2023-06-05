@@ -31,7 +31,7 @@ function mint:
     // Construct the receiver's record.
     cast r0 r1 into r3 as credits.record;
     // Output the receiver's record.
-    output self.caller as credits.record;
+    output r3 as credits.record;
 
 // The `transfer_public` function sends the specified amount
 // from the sender's `account` to the receiver's `account`.

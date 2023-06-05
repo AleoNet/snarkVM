@@ -117,12 +117,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{block::Transition, store::helpers::memory::ConsensusMemory};
-    use console::{account::ViewKey, network::Testnet3, program::Ciphertext, types::Field};
-
-    use indexmap::IndexMap;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_fee_transition_size() {
