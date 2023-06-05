@@ -60,11 +60,11 @@ fn test_process_execute_mint() {
     let request = authorization.peek_next().unwrap();
 
     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-    let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(2)]).unwrap();
+    let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(3)]).unwrap();
     let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
 
     // Declare the expected output value.
-    let r2 = Value::from_str(&format!(
+    let r3 = Value::from_str(&format!(
         "{{ owner: {caller}.private, microcredits: 99_000_000_000_000_u64.private, _nonce: {nonce}.public }}"
     ))
     .unwrap();
@@ -76,7 +76,7 @@ fn test_process_execute_mint() {
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
-    assert_eq!(r2, candidate[0]);
+    assert_eq!(r3, candidate[0]);
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -85,7 +85,7 @@ fn test_process_execute_mint() {
     let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
-    assert_eq!(r2, candidate[0]);
+    assert_eq!(r3, candidate[0]);
 
     // process.verify_execution::<true>(&execution).unwrap();
 
