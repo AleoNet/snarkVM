@@ -25,19 +25,18 @@ pub use finalize::FinalizeMode;
 
 use crate::{
     atomic_finalize,
-    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions, Transition},
+    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions},
+    cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, Inclusion, InclusionAssignment, Process, Query},
+    process::{Authorization, Process, Query, Trace},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
-    CallMetrics,
 };
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
-    types::Field,
+    program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
 };
 
 use aleo_std::prelude::{finish, lap, timer};
@@ -166,6 +165,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // TODO (raychu86): Move this to the `check_next_block` call for block verification.
+        // Ensure that the block's finalize root matches the transactions.
+        if block.finalize_root() != block.transactions().to_finalize_root()? {
+            bail!("The block's finalize root does not correspond to the transactions.");
+        }
+
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
@@ -188,19 +193,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::{
+        block::{Block, Fee, Header, Metadata, Transition},
         program::Program,
         store::helpers::memory::ConsensusMemory,
-        Block,
-        Fee,
-        Header,
-        Inclusion,
-        Metadata,
-        Transition,
     };
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::Value,
+        types::Field,
     };
 
     use indexmap::IndexMap;
@@ -449,11 +450,9 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Execute.
-                let (_response, fee, _metrics) =
-                    vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
+                let (_response, fee) = vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee));
-                assert!(Inclusion::verify_fee(&fee).is_ok());
                 // Return the fee.
                 fee
             })
@@ -502,9 +501,7 @@ function compute:
         let header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
-            Field::zero(),
-            // TODO (howardwu): Revisit this.
-            // vm.finalize_store().current_finalize_root(),
+            transactions.to_finalize_root().unwrap(),
             Field::zero(),
             metadata,
         )?;

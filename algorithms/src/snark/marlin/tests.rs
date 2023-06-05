@@ -86,19 +86,10 @@ mod marlin {
 
                             let mut pks_to_constraints = BTreeMap::new();
                             let mut vks_to_inputs = BTreeMap::new();
-                            let mut constraint_refs = Vec::with_capacity(index_keys.len());
+
                             for (index_pk, index_vk) in index_keys.iter() {
-                                let circuit_constraints = &constraints[&index_pk.circuit.id];
-                                let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
-                                for constraint in circuit_constraints.iter() {
-                                    circuit_constraint_refs.push(constraint)
-                                }
-                                constraint_refs.push(circuit_constraint_refs);
-                                let circuit_inputs = &inputs[&index_pk.circuit.id];
-                                vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
-                            }
-                            for (i, (index_pk, _)) in index_keys.iter().enumerate() {
-                                pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
+                                pks_to_constraints.insert(index_pk, constraints[&index_pk.circuit.id].as_slice());
+                                vks_to_inputs.insert(index_vk, inputs[&index_pk.circuit.id].as_slice());
                             }
 
                             let proof =

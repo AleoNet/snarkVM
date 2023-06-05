@@ -25,8 +25,6 @@ use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, TestRng};
 
 use criterion::Criterion;
-
-use itertools::Itertools;
 use std::collections::BTreeMap;
 
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
@@ -94,6 +92,7 @@ fn snark_batch_prove(c: &mut Criterion) {
         let mut pks = Vec::with_capacity(circuit_batch_size);
         let mut all_circuits = Vec::with_capacity(circuit_batch_size);
         let mut keys_to_constraints = BTreeMap::new();
+
         for i in 0..circuit_batch_size {
             let num_constraints = num_constraints_base + i;
             let num_variables = num_variables_base + i;
@@ -108,14 +107,11 @@ fn snark_batch_prove(c: &mut Criterion) {
             pks.push(pk);
             all_circuits.push(circuits);
         }
-        // We need to create references to the circuits we just created
-        let all_circuit_refs = (0..circuit_batch_size)
-            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
-            .collect_vec();
 
         for i in 0..circuit_batch_size {
-            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+            keys_to_constraints.insert(&pks[i], all_circuits[i].as_slice());
         }
+
         b.iter(|| MarlinInst::prove_batch(&fs_parameters, &keys_to_constraints, rng).unwrap())
     });
 }
@@ -179,13 +175,9 @@ fn snark_batch_verify(c: &mut Criterion) {
             all_circuits.push(circuits);
             all_inputs.push(inputs);
         }
-        // We need to create references to the circuits and inputs we just created
-        let all_circuit_refs = (0..circuit_batch_size)
-            .map(|i| (0..instance_batch_size).map(|j| &all_circuits[i][j]).collect_vec())
-            .collect_vec();
 
         for i in 0..circuit_batch_size {
-            keys_to_constraints.insert(&pks[i], all_circuit_refs[i].as_slice());
+            keys_to_constraints.insert(&pks[i], all_circuits[i].as_slice());
             keys_to_inputs.insert(&vks[i], all_inputs[i].as_slice());
         }
 

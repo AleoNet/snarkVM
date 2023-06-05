@@ -39,7 +39,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
 
         // Compute the fee.
-        let (_, fee, _) = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?;
+        let (_, fee) = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?;
 
         // Construct the owner.
         let id = *Transaction::deployment_tree(&deployment, &fee)?.root();

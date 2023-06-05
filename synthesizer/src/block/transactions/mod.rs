@@ -94,6 +94,11 @@ impl<N: Network> Transactions<N> {
     pub fn num_finalize(&self) -> usize {
         cfg_values!(self.transactions).map(|tx| tx.num_finalize()).sum()
     }
+
+    /// Returns the finalize root of the transactions.
+    pub fn to_finalize_root(&self) -> Result<Field<N>> {
+        N::hash_bhp1024(&self.finalize_operations().flat_map(|op| op.to_bits_le()).collect::<Vec<_>>())
+    }
 }
 
 impl<N: Network> Transactions<N> {
@@ -223,6 +228,11 @@ impl<N: Network> Transactions<N> {
     /// Returns an iterator over the transaction fees, for all transactions.
     pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
         self.iter().map(|tx| tx.fee())
+    }
+
+    /// Returns an iterator over the finalize operations, for all transactions.
+    pub fn finalize_operations(&self) -> impl '_ + Iterator<Item = &FinalizeOperation<N>> {
+        self.iter().flat_map(|tx| tx.finalize_operations()).flatten()
     }
 }
 

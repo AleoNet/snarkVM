@@ -367,7 +367,7 @@ where
     /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         fs_parameters: &Self::FSParameters,
-        keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[&C]>,
+        keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[C]>,
         terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
