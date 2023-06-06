@@ -38,7 +38,7 @@ impl VariableBase {
                 let result = snarkvm_algorithms_cuda::msm::<G, G::Projective, <G::ScalarField as PrimeField>::BigInteger>(
                     bases, scalars,
                 );
-                if let Ok(result) = result {
+                if result.is_ok() {
                     return result;
                 }
             }
@@ -114,8 +114,8 @@ mod tests {
         let mut rng = TestRng::default();
         for i in 2..17 {
             let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << i);
-            let rust = standard::msm(bases.as_slice(), scalars.as_slice());
-            let cuda = VariableBase::msm::<G1Affine>(bases.as_slice(), scalars.as_slice());
+            let rust = standard::msm(bases.as_slice(), scalars.as_slice()).unwrap();
+            let cuda = VariableBase::msm::<G1Affine>(bases.as_slice(), scalars.as_slice()).unwrap();
             assert_eq!(rust.to_affine(), cuda.to_affine());
         }
     }
