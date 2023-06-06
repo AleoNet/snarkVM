@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use snarkvm_utilities::try_write_as;
+
 use super::*;
 
 impl<N: Network> FromBytes for Execution<N> {
@@ -54,7 +56,7 @@ impl<N: Network> ToBytes for Execution<N> {
         // Write the version.
         0u8.write_le(&mut writer)?;
         // Write the number of transitions.
-        (u8::try_from(self.transitions.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+        try_write_as::<u8, W>(self.transitions.len(), &mut writer)?;
         // Write the transitions.
         for transition in self.transitions.values() {
             transition.write_le(&mut writer)?;

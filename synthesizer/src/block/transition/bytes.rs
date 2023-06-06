@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use snarkvm_utilities::try_write_as;
+
 use super::*;
 
 impl<N: Network> FromBytes for Transition<N> {
@@ -98,12 +100,12 @@ impl<N: Network> ToBytes for Transition<N> {
         self.function_name.write_le(&mut writer)?;
 
         // Write the number of inputs.
-        (u8::try_from(self.inputs.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+        try_write_as::<u8, W>(self.inputs.len(), &mut writer)?;
         // Write the inputs.
         self.inputs.write_le(&mut writer)?;
 
         // Write the number of outputs.
-        (u8::try_from(self.outputs.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+        try_write_as::<u8, W>(self.outputs.len(), &mut writer)?;
         // Write the outputs.
         self.outputs.write_le(&mut writer)?;
 
@@ -117,7 +119,7 @@ impl<N: Network> ToBytes for Transition<N> {
                 // Write the finalize variant.
                 1u8.write_le(&mut writer)?;
                 // Write the number of inputs to finalize.
-                (u8::try_from(finalize.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+                try_write_as::<u8, W>(finalize.len(), &mut writer)?;
                 // Write the inputs to finalize.
                 finalize.write_le(&mut writer)?;
             }

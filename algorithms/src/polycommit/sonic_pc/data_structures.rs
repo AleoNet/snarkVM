@@ -223,7 +223,6 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 impl<E: PairingEngine> ToBytes for CommitterKey<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize `powers`.
-        // u32::try_from(*degree_bound).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         try_write_as::<u32, W>(self.powers_of_beta_g.len(), &mut writer)?;
         for power in &self.powers_of_beta_g {
             power.write_le(&mut writer)?;
