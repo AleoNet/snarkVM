@@ -20,7 +20,7 @@ mod serialize;
 mod to_bits;
 mod to_fields;
 
-use crate::{Entry, Identifier, Plaintext, Record};
+use crate::{Entry, Identifier, Literal, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -30,6 +30,48 @@ pub enum Value<N: Network> {
     Plaintext(Plaintext<N>),
     /// A record value.
     Record(Record<N, Plaintext<N>>),
+}
+
+impl<N: Network> From<Literal<N>> for Value<N> {
+    /// Initializes the value from a literal.
+    fn from(literal: Literal<N>) -> Self {
+        Self::Plaintext(Plaintext::from(literal))
+    }
+}
+
+impl<N: Network> From<&Literal<N>> for Value<N> {
+    /// Initializes the value from a literal.
+    fn from(literal: &Literal<N>) -> Self {
+        Self::from(Plaintext::from(literal))
+    }
+}
+
+impl<N: Network> From<Plaintext<N>> for Value<N> {
+    /// Initializes the value from a plaintext.
+    fn from(plaintext: Plaintext<N>) -> Self {
+        Self::Plaintext(plaintext)
+    }
+}
+
+impl<N: Network> From<&Plaintext<N>> for Value<N> {
+    /// Initializes the value from a plaintext.
+    fn from(plaintext: &Plaintext<N>) -> Self {
+        Self::from(plaintext.clone())
+    }
+}
+
+impl<N: Network> From<Record<N, Plaintext<N>>> for Value<N> {
+    /// Initializes the value from a record.
+    fn from(record: Record<N, Plaintext<N>>) -> Self {
+        Self::Record(record)
+    }
+}
+
+impl<N: Network> From<&Record<N, Plaintext<N>>> for Value<N> {
+    /// Initializes the value from a record.
+    fn from(record: &Record<N, Plaintext<N>>) -> Self {
+        Self::from(record.clone())
+    }
 }
 
 impl<N: Network> From<&Value<N>> for Value<N> {

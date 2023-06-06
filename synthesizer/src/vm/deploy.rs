@@ -38,12 +38,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             .and_then(|deployment_fee| deployment_fee.checked_add(priority_fee_in_microcredits))
             .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
 
+        // Compute the deployment ID.
+        let deployment_id = deployment.to_deployment_id()?;
+
         // Compute the fee.
-        let (_, fee, _) = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?;
+        let (_, fee) = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, deployment_id, query, rng)?;
 
         // Construct the owner.
-        let id = *Transaction::deployment_tree(&deployment, &fee)?.root();
-        let owner = ProgramOwner::new(private_key, id.into(), rng)?;
+        let owner = ProgramOwner::new(private_key, deployment_id, rng)?;
 
         // Return the deploy transaction.
         Transaction::from_deployment(owner, deployment, fee)

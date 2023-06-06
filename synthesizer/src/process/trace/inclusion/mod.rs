@@ -17,13 +17,16 @@ mod fee;
 
 #[cfg(debug_assertions)]
 use crate::Stack;
-use crate::{BlockStorage, Execution, Fee, Input, Output, Query, Transaction, Transition};
+use crate::{
+    block::{Input, Output, Transaction, Transition},
+    process::Query,
+    store::BlockStorage,
+};
 use console::{
     network::prelude::*,
     program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
-use snarkvm_synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
 use std::collections::HashMap;
 
@@ -42,7 +45,7 @@ struct InputTask<N: Network> {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Inclusion<N: Network> {
+pub(super) struct Inclusion<N: Network> {
     /// A map of transition IDs to a list of input tasks.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
     /// A map of commitments to (transition ID, output index) pairs.
@@ -55,7 +58,7 @@ impl<N: Network> Inclusion<N> {
         Self { input_tasks: HashMap::new(), output_commitments: HashMap::new() }
     }
 
-    /// Inserts the transition to build state for the inclusion proof.
+    /// Inserts the transition to build state for the inclusion task.
     pub fn insert_transition(&mut self, input_ids: &[InputID<N>], transition: &Transition<N>) -> Result<()> {
         // Ensure the transition inputs and input IDs are the same length.
         if input_ids.len() != transition.inputs().len() {
@@ -91,44 +94,62 @@ impl<N: Network> Inclusion<N> {
 
         Ok(())
     }
+}
 
-    /// Returns the global state root and inclusion proof for the given assignments.
-    fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        proving_key: &ProvingKey<N>,
-        assignments: &[InclusionAssignment<N>],
-        rng: &mut R,
-    ) -> Result<(N::StateRoot, Proof<N>)> {
-        // Initialize the global state root.
-        let mut global_state_root = N::StateRoot::default();
-        // Initialize a vector for the batch assignments.
-        let mut batch_assignments = vec![];
+impl<N: Network> Inclusion<N> {
+    /// Returns the verifier public inputs for the given global state root and transitions.
+    pub fn prepare_verifier_inputs<'a>(
+        global_state_root: N::StateRoot,
+        transitions: impl ExactSizeIterator<Item = &'a Transition<N>>,
+    ) -> Result<Vec<Vec<N::Field>>> {
+        // Determine the number of transitions.
+        let num_transitions = transitions.len();
 
-        for assignment in assignments.iter() {
-            // Ensure the global state root is the same across iterations.
-            if *global_state_root != Field::zero() && global_state_root != assignment.state_path.global_state_root() {
-                bail!("Inclusion expected the global state root to be the same across iterations")
+        // Initialize an empty transaction tree.
+        let mut transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;
+        // Initialize a vector for the batch verifier inputs.
+        let mut batch_verifier_inputs = vec![];
+
+        // Construct the batch verifier inputs.
+        for (transition_index, transition) in transitions.enumerate() {
+            // Retrieve the local state root.
+            let local_state_root = *transaction_tree.root();
+
+            // Iterate through the inputs.
+            for input in transition.inputs() {
+                // Filter the inputs for records.
+                if let Input::Record(serial_number, _) = input {
+                    // Add the public inputs to the batch verifier inputs.
+                    batch_verifier_inputs.push(vec![
+                        N::Field::one(),
+                        **global_state_root,
+                        *local_state_root,
+                        **serial_number,
+                    ]);
+                }
             }
-            // Update the global state root.
-            global_state_root = assignment.state_path.global_state_root();
 
-            // Add the assignment to the assignments.
-            batch_assignments.push(assignment.to_circuit_assignment::<A>()?);
+            // If this is not the last transition, append the transaction leaf to the transaction tree.
+            if transition_index + 1 != num_transitions {
+                // Construct the transaction leaf.
+                let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
+                // Insert the leaf into the transaction tree.
+                transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
+            }
         }
 
         // Ensure the global state root is not zero.
-        if *global_state_root == Field::zero() {
+        if batch_verifier_inputs.is_empty() && *global_state_root == Field::zero() {
             bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
 
-        // Generate the inclusion batch proof.
-        let inclusion_proof = proving_key.prove_batch(N::INCLUSION_FUNCTION_NAME, &batch_assignments, rng)?;
-        // Return the global state root and inclusion proof.
-        Ok((global_state_root, inclusion_proof))
+        Ok(batch_verifier_inputs)
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct InclusionAssignment<N: Network> {
-    state_path: StatePath<N>,
+    pub(crate) state_path: StatePath<N>,
     commitment: Field<N>,
     gamma: Group<N>,
     serial_number: Field<N>,

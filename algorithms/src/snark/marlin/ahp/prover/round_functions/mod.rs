@@ -36,7 +36,7 @@ mod third;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Initialize the AHP prover.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>>(
-        circuits_to_constraints: &BTreeMap<&'a Circuit<F, MM>, &[&C]>,
+        circuits_to_constraints: &BTreeMap<&'a Circuit<F, MM>, &[C]>,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 

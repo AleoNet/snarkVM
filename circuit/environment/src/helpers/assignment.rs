@@ -17,8 +17,8 @@ use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-enum AssignmentVariable<F: PrimeField> {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AssignmentVariable<F: PrimeField> {
     Constant(F),
     Public(Index),
     Private(Index),
@@ -35,8 +35,8 @@ impl<F: PrimeField> From<&crate::Variable<F>> for AssignmentVariable<F> {
     }
 }
 
-#[derive(Clone)]
-struct AssignmentLC<F: PrimeField> {
+#[derive(Clone, Debug)]
+pub struct AssignmentLC<F: PrimeField> {
     constant: F,
     terms: IndexMap<AssignmentVariable<F>, F>,
 }
@@ -53,9 +53,21 @@ impl<F: PrimeField> From<&crate::LinearCombination<F>> for AssignmentLC<F> {
     }
 }
 
+impl<F: PrimeField> AssignmentLC<F> {
+    /// Returns the constant term of the linear combination.
+    pub const fn constant(&self) -> F {
+        self.constant
+    }
+
+    /// Returns the terms of the linear combination.
+    pub const fn terms(&self) -> &IndexMap<AssignmentVariable<F>, F> {
+        &self.terms
+    }
+}
+
 /// A struct that contains public variable assignments, private variable assignments,
 /// and constraint assignments.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Assignment<F: PrimeField> {
     public: IndexMap<Index, F>,
     private: IndexMap<Index, F>,
@@ -82,8 +94,18 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
 
 impl<F: PrimeField> Assignment<F> {
     /// Returns the public inputs of the assignment.
-    pub fn public_inputs(&self) -> Vec<F> {
-        self.public.values().cloned().collect()
+    pub const fn public_inputs(&self) -> &IndexMap<Index, F> {
+        &self.public
+    }
+
+    /// Returns the private inputs of the assignment.
+    pub const fn private_inputs(&self) -> &IndexMap<Index, F> {
+        &self.private
+    }
+
+    /// Returns the constraints of the assignment.
+    pub const fn constraints(&self) -> &Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)> {
+        &self.constraints
     }
 
     /// Returns the number of public variables in the assignment.
@@ -192,8 +214,10 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                 }
 
                 // Finally, add the accumulated constant value to the linear combination.
-                linear_combination +=
-                    (lc.constant, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                if !lc.constant.is_zero() {
+                    linear_combination +=
+                        (lc.constant, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                }
 
                 // Return the linear combination of the second system.
                 linear_combination

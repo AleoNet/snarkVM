@@ -30,7 +30,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the authorization.
         let authorization = self.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Compute the execution.
-        let (_response, execution, _metrics) = self.execute_authorization_raw(authorization, query.clone(), rng)?;
+        let (_response, execution) = self.execute_authorization_raw(authorization, query.clone(), rng)?;
         // Compute the fee.
         let fee = match fee {
             None => None,
@@ -40,8 +40,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     .size_in_bytes()?
                     .checked_add(priority_fee_in_microcredits)
                     .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                // Compute the execution ID.
+                let execution_id = execution.to_execution_id()?;
                 // Compute the fee.
-                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, query, rng)?.1)
+                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, execution_id, query, rng)?.1)
             }
         };
         // Return the execute transaction.
@@ -57,21 +59,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the execution.
-        let (_response, execution, _metrics) = self.execute_authorization_raw(authorization, query, rng)?;
+        let (_response, execution) = self.execute_authorization_raw(authorization, query, rng)?;
         // Return the execute transaction.
         Transaction::from_execution(execution, fee)
     }
 
     /// Executes a call to the program function for the given authorization.
-    /// Returns the response, execution, and metrics.
+    /// Returns the response and execution.
     #[inline]
-    pub fn execute_authorization_raw<R: Rng + CryptoRng>(
+    fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Execution<N>)> {
         let timer = timer!("VM::execute_authorization");
+
+        // Construct the locator of the main function.
+        let locator = {
+            let request = authorization.peek_next()?;
+            Locator::new(*request.program_id(), *request.function_name()).to_string()
+        };
 
         // Prepare the query.
         let query = match query {
@@ -88,36 +96,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Execute the call.
-                let (response, execution, inclusion, metrics) =
-                    $process.execute::<$aleo, _>(authorization.clone(), rng)?;
+                let (response, mut trace) = $process.execute::<$aleo>(authorization.clone())?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
-                let (assignments, global_state_root) = {
-                    let execution = cast_ref!(execution as Execution<N>);
-                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_execution(execution, query)?
-                };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
-                let global_state_root = *cast_ref!((*global_state_root) as Field<$network>);
-
+                cast_mut_ref!(trace as Trace<N>).prepare(query)?;
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the inclusion proof and update the execution.
-                let execution =
-                    inclusion.prove_execution::<$aleo, _>(execution, assignments, global_state_root.into(), rng)?;
-                lap!(timer, "Compute the inclusion proof");
+                // Compute the proof and construct the execution.
+                let trace = cast_ref!(trace as Trace<$network>);
+                let execution = trace.prove_execution::<$aleo, _>(&locator, rng)?;
+                lap!(timer, "Compute the proof");
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let execution = cast_ref!(execution as Execution<N>).clone();
-                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
                 lap!(timer, "Prepare the response and execution");
 
                 finish!(timer);
 
-                // Return the response, execution, and metrics.
-                Ok((response, execution, metrics))
+                // Return the response and execution.
+                Ok((response, execution))
             }};
         }
         // Process the logic.
@@ -128,11 +127,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::helpers::memory::ConsensusMemory;
+    use crate::{block::Transition, store::helpers::memory::ConsensusMemory};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Ciphertext, Value},
+        types::Field,
     };
 
     use indexmap::IndexMap;
@@ -220,17 +220,17 @@ mod tests {
 
         // Execute.
         let transaction =
-            vm.execute(&caller_private_key, ("credits.aleo", "transfer"), inputs, None, None, rng).unwrap();
+            vm.execute(&caller_private_key, ("credits.aleo", "transfer_private"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2595, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2222, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2560, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2187, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -258,13 +258,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2480, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2099, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2445, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2064, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -291,13 +291,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2492, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2111, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2457, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2076, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 }

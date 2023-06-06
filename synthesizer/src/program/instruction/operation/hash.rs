@@ -28,36 +28,104 @@ use console::{
 };
 
 /// BHP256 is a collision-resistant hash function that processes inputs in 256-bit chunks.
-pub type HashBHP256<N> = HashInstruction<N, { Hasher::BHP256 as u8 }>;
+pub type HashBHP256<N> = HashInstruction<N, { Hasher::HashBHP256 as u8 }>;
 /// BHP512 is a collision-resistant hash function that processes inputs in 512-bit chunks.
-pub type HashBHP512<N> = HashInstruction<N, { Hasher::BHP512 as u8 }>;
+pub type HashBHP512<N> = HashInstruction<N, { Hasher::HashBHP512 as u8 }>;
 /// BHP768 is a collision-resistant hash function that processes inputs in 768-bit chunks.
-pub type HashBHP768<N> = HashInstruction<N, { Hasher::BHP768 as u8 }>;
+pub type HashBHP768<N> = HashInstruction<N, { Hasher::HashBHP768 as u8 }>;
 /// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
-pub type HashBHP1024<N> = HashInstruction<N, { Hasher::BHP1024 as u8 }>;
+pub type HashBHP1024<N> = HashInstruction<N, { Hasher::HashBHP1024 as u8 }>;
 
 /// Pedersen64 is a collision-resistant hash function that processes inputs in 64-bit chunks.
-pub type HashPED64<N> = HashInstruction<N, { Hasher::PED64 as u8 }>;
+pub type HashPED64<N> = HashInstruction<N, { Hasher::HashPED64 as u8 }>;
 /// Pedersen128 is a collision-resistant hash function that processes inputs in 128-bit chunks.
-pub type HashPED128<N> = HashInstruction<N, { Hasher::PED128 as u8 }>;
+pub type HashPED128<N> = HashInstruction<N, { Hasher::HashPED128 as u8 }>;
 
 /// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
-pub type HashPSD2<N> = HashInstruction<N, { Hasher::PSD2 as u8 }>;
+pub type HashPSD2<N> = HashInstruction<N, { Hasher::HashPSD2 as u8 }>;
 /// Poseidon4 is a cryptographic hash function that processes inputs in 4-field chunks.
-pub type HashPSD4<N> = HashInstruction<N, { Hasher::PSD4 as u8 }>;
+pub type HashPSD4<N> = HashInstruction<N, { Hasher::HashPSD4 as u8 }>;
 /// Poseidon8 is a cryptographic hash function that processes inputs in 8-field chunks.
-pub type HashPSD8<N> = HashInstruction<N, { Hasher::PSD8 as u8 }>;
+pub type HashPSD8<N> = HashInstruction<N, { Hasher::HashPSD8 as u8 }>;
+
+/// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
+pub type HashManyPSD2<N> = HashInstruction<N, { Hasher::HashManyPSD2 as u8 }>;
+/// Poseidon4 is a cryptographic hash function that processes inputs in 4-field chunks.
+pub type HashManyPSD4<N> = HashInstruction<N, { Hasher::HashManyPSD4 as u8 }>;
+/// Poseidon8 is a cryptographic hash function that processes inputs in 8-field chunks.
+pub type HashManyPSD8<N> = HashInstruction<N, { Hasher::HashManyPSD8 as u8 }>;
+
+/// BHP256 is a collision-resistant hash function that processes inputs in 256-bit chunks.
+pub type HashToGroupBHP256<N> = HashInstruction<N, { Hasher::HashToGroupBHP256 as u8 }>;
+/// BHP512 is a collision-resistant hash function that processes inputs in 512-bit chunks.
+pub type HashToGroupBHP512<N> = HashInstruction<N, { Hasher::HashToGroupBHP512 as u8 }>;
+/// BHP768 is a collision-resistant hash function that processes inputs in 768-bit chunks.
+pub type HashToGroupBHP768<N> = HashInstruction<N, { Hasher::HashToGroupBHP768 as u8 }>;
+/// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
+pub type HashToGroupBHP1024<N> = HashInstruction<N, { Hasher::HashToGroupBHP1024 as u8 }>;
+
+/// Pedersen64 is a collision-resistant hash function that processes inputs in 64-bit chunks.
+pub type HashToGroupPED64<N> = HashInstruction<N, { Hasher::HashToGroupPED64 as u8 }>;
+/// Pedersen128 is a collision-resistant hash function that processes inputs in 128-bit chunks.
+pub type HashToGroupPED128<N> = HashInstruction<N, { Hasher::HashToGroupPED128 as u8 }>;
+
+/// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
+pub type HashToGroupPSD2<N> = HashInstruction<N, { Hasher::HashToGroupPSD2 as u8 }>;
+/// Poseidon4 is a cryptographic hash function that processes inputs in 4-field chunks.
+pub type HashToGroupPSD4<N> = HashInstruction<N, { Hasher::HashToGroupPSD4 as u8 }>;
+/// Poseidon8 is a cryptographic hash function that processes inputs in 8-field chunks.
+pub type HashToGroupPSD8<N> = HashInstruction<N, { Hasher::HashToGroupPSD8 as u8 }>;
+
+/// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
+pub type HashToScalarPSD2<N> = HashInstruction<N, { Hasher::HashToScalarPSD2 as u8 }>;
+/// Poseidon4 is a cryptographic hash function that processes inputs in 4-field chunks.
+pub type HashToScalarPSD4<N> = HashInstruction<N, { Hasher::HashToScalarPSD4 as u8 }>;
+/// Poseidon8 is a cryptographic hash function that processes inputs in 8-field chunks.
+pub type HashToScalarPSD8<N> = HashInstruction<N, { Hasher::HashToScalarPSD8 as u8 }>;
 
 enum Hasher {
-    BHP256,
-    BHP512,
-    BHP768,
-    BHP1024,
-    PED64,
-    PED128,
-    PSD2,
-    PSD4,
-    PSD8,
+    HashBHP256,
+    HashBHP512,
+    HashBHP768,
+    HashBHP1024,
+    HashPED64,
+    HashPED128,
+    HashPSD2,
+    HashPSD4,
+    HashPSD8,
+    HashManyPSD2,
+    HashManyPSD4,
+    HashManyPSD8,
+    HashToGroupBHP256,
+    HashToGroupBHP512,
+    HashToGroupBHP768,
+    HashToGroupBHP1024,
+    HashToGroupPED64,
+    HashToGroupPED128,
+    HashToGroupPSD2,
+    HashToGroupPSD4,
+    HashToGroupPSD8,
+    HashToScalarPSD2,
+    HashToScalarPSD4,
+    HashToScalarPSD8,
+}
+
+/// Returns the expected number of operands given the variant.
+const fn expected_num_operands(variant: u8) -> usize {
+    match variant {
+        9..=11 => 2,
+        _ => 1,
+    }
+}
+
+/// Returns 'Ok(())' if the number of operands is correct.
+/// Otherwise, returns an error.
+fn check_number_of_operands(variant: u8, opcode: Opcode, num_operands: usize) -> Result<()> {
+    let expected = expected_num_operands(variant);
+    if expected != num_operands {
+        bail!("Instruction '{opcode}' expects {expected} operands, found {num_operands} operands")
+    }
+    Ok(())
 }
 
 /// Hashes the operand into the declared type.
@@ -83,15 +151,34 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             6 => Opcode::Hash("hash.psd2"),
             7 => Opcode::Hash("hash.psd4"),
             8 => Opcode::Hash("hash.psd8"),
-            _ => panic!("Invalid 'hash' instruction opcode"),
+            9 => Opcode::Hash("hash_many.psd2"),
+            10 => Opcode::Hash("hash_many.psd4"),
+            11 => Opcode::Hash("hash_many.psd8"),
+            12 => Opcode::Hash("hash_to_group.bhp256"),
+            13 => Opcode::Hash("hash_to_group.bhp512"),
+            14 => Opcode::Hash("hash_to_group.bhp768"),
+            15 => Opcode::Hash("hash_to_group.bhp1024"),
+            16 => Opcode::Hash("hash_to_group.ped64"),
+            17 => Opcode::Hash("hash_to_group.ped128"),
+            18 => Opcode::Hash("hash_to_group.psd2"),
+            19 => Opcode::Hash("hash_to_group.psd4"),
+            20 => Opcode::Hash("hash_to_group.psd8"),
+            21 => Opcode::Hash("hash_to_scalar.psd2"),
+            22 => Opcode::Hash("hash_to_scalar.psd4"),
+            23 => Opcode::Hash("hash_to_scalar.psd8"),
+            24.. => panic!("Invalid 'hash' instruction opcode"),
         }
     }
 
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
-        // Sanity check that the operands is exactly one input.
-        debug_assert!(self.operands.len() == 1, "Hash operation must have one operand");
+        // Sanity check that the operands is the correct length.
+        debug_assert!(
+            check_number_of_operands(VARIANT, Self::opcode(), self.operands.len()).is_ok(),
+            "Invalid number of operands for '{}'",
+            Self::opcode()
+        );
         // Return the operand.
         &self.operands
     }
@@ -112,26 +199,40 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
+        check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
+
         // Load the operand.
         let input = registers.load(stack, &self.operands[0])?;
         // Hash the input.
         let output = match VARIANT {
-            0 => N::hash_bhp256(&input.to_bits_le())?,
-            1 => N::hash_bhp512(&input.to_bits_le())?,
-            2 => N::hash_bhp768(&input.to_bits_le())?,
-            3 => N::hash_bhp1024(&input.to_bits_le())?,
-            4 => N::hash_ped64(&input.to_bits_le())?,
-            5 => N::hash_ped128(&input.to_bits_le())?,
-            6 => N::hash_psd2(&input.to_fields()?)?,
-            7 => N::hash_psd4(&input.to_fields()?)?,
-            8 => N::hash_psd8(&input.to_fields()?)?,
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
+            0 => Literal::Field(N::hash_bhp256(&input.to_bits_le())?),
+            1 => Literal::Field(N::hash_bhp512(&input.to_bits_le())?),
+            2 => Literal::Field(N::hash_bhp768(&input.to_bits_le())?),
+            3 => Literal::Field(N::hash_bhp1024(&input.to_bits_le())?),
+            4 => Literal::Field(N::hash_ped64(&input.to_bits_le())?),
+            5 => Literal::Field(N::hash_ped128(&input.to_bits_le())?),
+            6 => Literal::Field(N::hash_psd2(&input.to_fields()?)?),
+            7 => Literal::Field(N::hash_psd4(&input.to_fields()?)?),
+            8 => Literal::Field(N::hash_psd8(&input.to_fields()?)?),
+            9 => bail!("'hash_many' is not yet implemented"),
+            10 => bail!("'hash_many' is not yet implemented"),
+            11 => bail!("'hash_many' is not yet implemented"),
+            12 => Literal::Group(N::hash_to_group_bhp256(&input.to_bits_le())?),
+            13 => Literal::Group(N::hash_to_group_bhp512(&input.to_bits_le())?),
+            14 => Literal::Group(N::hash_to_group_bhp768(&input.to_bits_le())?),
+            15 => Literal::Group(N::hash_to_group_bhp1024(&input.to_bits_le())?),
+            16 => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
+            17 => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
+            18 => Literal::Group(N::hash_to_group_psd2(&input.to_fields()?)?),
+            19 => Literal::Group(N::hash_to_group_psd4(&input.to_fields()?)?),
+            20 => Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?),
+            21 => Literal::Scalar(N::hash_to_scalar_psd2(&input.to_fields()?)?),
+            22 => Literal::Scalar(N::hash_to_scalar_psd4(&input.to_fields()?)?),
+            23 => Literal::Scalar(N::hash_to_scalar_psd8(&input.to_fields()?)?),
+            24.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         // Store the output.
-        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(output))))
+        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
 
     /// Executes the instruction.
@@ -144,27 +245,40 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         use circuit::{ToBits, ToFields};
 
         // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
+        check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
+
         // Load the operand.
         let input = registers.load_circuit(stack, &self.operands[0])?;
         // Hash the input.
         let output = match VARIANT {
-            0 => A::hash_bhp256(&input.to_bits_le()),
-            1 => A::hash_bhp512(&input.to_bits_le()),
-            2 => A::hash_bhp768(&input.to_bits_le()),
-            3 => A::hash_bhp1024(&input.to_bits_le()),
-            4 => A::hash_ped64(&input.to_bits_le()),
-            5 => A::hash_ped128(&input.to_bits_le()),
-            6 => A::hash_psd2(&input.to_fields()),
-            7 => A::hash_psd4(&input.to_fields()),
-            8 => A::hash_psd8(&input.to_fields()),
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
+            0 => circuit::Literal::Field(A::hash_bhp256(&input.to_bits_le())),
+            1 => circuit::Literal::Field(A::hash_bhp512(&input.to_bits_le())),
+            2 => circuit::Literal::Field(A::hash_bhp768(&input.to_bits_le())),
+            3 => circuit::Literal::Field(A::hash_bhp1024(&input.to_bits_le())),
+            4 => circuit::Literal::Field(A::hash_ped64(&input.to_bits_le())),
+            5 => circuit::Literal::Field(A::hash_ped128(&input.to_bits_le())),
+            6 => circuit::Literal::Field(A::hash_psd2(&input.to_fields())),
+            7 => circuit::Literal::Field(A::hash_psd4(&input.to_fields())),
+            8 => circuit::Literal::Field(A::hash_psd8(&input.to_fields())),
+            9 => bail!("'hash_many' is not yet implemented"),
+            10 => bail!("'hash_many' is not yet implemented"),
+            11 => bail!("'hash_many' is not yet implemented"),
+            12 => circuit::Literal::Group(A::hash_to_group_bhp256(&input.to_bits_le())),
+            13 => circuit::Literal::Group(A::hash_to_group_bhp512(&input.to_bits_le())),
+            14 => circuit::Literal::Group(A::hash_to_group_bhp768(&input.to_bits_le())),
+            15 => circuit::Literal::Group(A::hash_to_group_bhp1024(&input.to_bits_le())),
+            16 => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
+            17 => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
+            18 => circuit::Literal::Group(A::hash_to_group_psd2(&input.to_fields())),
+            19 => circuit::Literal::Group(A::hash_to_group_psd4(&input.to_fields())),
+            20 => circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields())),
+            21 => circuit::Literal::Scalar(A::hash_to_scalar_psd2(&input.to_fields())),
+            22 => circuit::Literal::Scalar(A::hash_to_scalar_psd4(&input.to_fields())),
+            23 => circuit::Literal::Scalar(A::hash_to_scalar_psd8(&input.to_fields())),
+            24.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
-        let output =
-            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
+        let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.
         registers.store_circuit(stack, &self.destination, output)
     }
@@ -187,21 +301,18 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
-        if input_types.len() != 1 {
-            bail!("Instruction '{}' expects 1 inputs, found {} inputs", Self::opcode(), input_types.len())
-        }
+        check_number_of_operands(VARIANT, Self::opcode(), input_types.len())?;
         // Ensure the number of operands is correct.
-        if self.operands.len() != 1 {
-            bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
+        check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 => {
-                Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))])
-            }
-            _ => bail!("Invalid 'hash' variant: {VARIANT}"),
+            0..=8 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            9..=11 => bail!("'hash_many' is not yet implemented"),
+            12..=20 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
+            21..=23 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Scalar))]),
+            24.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         }
     }
 }
@@ -210,12 +321,29 @@ impl<N: Network, const VARIANT: u8> Parser for HashInstruction<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        /// Parse the operands from the string.
+        fn parse_operands<N: Network>(string: &str, num_operands: usize) -> ParserResult<Vec<Operand<N>>> {
+            let mut operands = Vec::with_capacity(num_operands);
+            let mut string = string;
+
+            for _ in 0..num_operands {
+                // Parse the operand from the string.
+                let (next_string, operand) = Operand::parse(string)?;
+                // Update the string.
+                string = next_string;
+                // Push the operand.
+                operands.push(operand);
+            }
+
+            Ok((string, operands))
+        }
+
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the operand from the string.
-        let (string, operand) = Operand::parse(string)?;
+        // Parse the operands from the string.
+        let (string, operands) = parse_operands(string, expected_num_operands(VARIANT))?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "into" from the string.
@@ -225,7 +353,7 @@ impl<N: Network, const VARIANT: u8> Parser for HashInstruction<N, VARIANT> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
 
-        Ok((string, Self { operands: vec![operand], destination }))
+        Ok((string, Self { operands, destination }))
     }
 }
 
@@ -257,11 +385,11 @@ impl<N: Network, const VARIANT: u8> Debug for HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> Display for HashInstruction<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Ensure the number of operands is 1.
-        if self.operands.len() != 1 {
-            eprintln!("The number of operands must be 1, found {}", self.operands.len());
-            return Err(fmt::Error);
-        }
+        // Ensure the number of operands is correct.
+        check_number_of_operands(VARIANT, Self::opcode(), self.operands.len()).map_err(|e| {
+            eprintln!("{e}");
+            fmt::Error
+        })?;
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
         self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
@@ -272,8 +400,10 @@ impl<N: Network, const VARIANT: u8> Display for HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> FromBytes for HashInstruction<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the operand.
-        let operands = vec![Operand::read_le(&mut reader)?];
+        // Prepare the number of operands.
+        let num_operands = expected_num_operands(VARIANT);
+        // Read the operands.
+        let operands = (0..num_operands).map(|_| Operand::read_le(&mut reader)).collect::<Result<_, _>>()?;
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Return the operation.
@@ -284,12 +414,10 @@ impl<N: Network, const VARIANT: u8> FromBytes for HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> ToBytes for HashInstruction<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the number of operands is 1.
-        if self.operands.len() != 1 {
-            return Err(error(format!("The number of operands must be 1, found {}", self.operands.len())));
-        }
-        // Write the operand.
-        self.operands[0].write_le(&mut writer)?;
+        // Ensure the number of operands is correct.
+        check_number_of_operands(VARIANT, Self::opcode(), self.operands.len()).map_err(|e| error(format!("{e}")))?;
+        // Write the operands.
+        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
         // Write the destination register.
         self.destination.write_le(&mut writer)
     }
@@ -460,80 +588,108 @@ mod tests {
     test_hash!(hash_bhp512, HashBHP512);
     test_hash!(hash_bhp768, HashBHP768);
     test_hash!(hash_bhp1024, HashBHP1024);
+
     test_hash!(hash_psd2, HashPSD2);
     test_hash!(hash_psd4, HashPSD4);
     test_hash!(hash_psd8, HashPSD8);
 
+    test_hash!(hash_to_group_bhp256, HashToGroupBHP256);
+    test_hash!(hash_to_group_bhp512, HashToGroupBHP512);
+    test_hash!(hash_to_group_bhp768, HashToGroupBHP768);
+    test_hash!(hash_to_group_bhp1024, HashToGroupBHP1024);
+
+    test_hash!(hash_to_group_psd2, HashToGroupPSD2);
+    test_hash!(hash_to_group_psd4, HashToGroupPSD4);
+    test_hash!(hash_to_group_psd8, HashToGroupPSD8);
+
+    test_hash!(hash_to_scalar_psd2, HashToScalarPSD2);
+    test_hash!(hash_to_scalar_psd4, HashToScalarPSD4);
+    test_hash!(hash_to_scalar_psd8, HashToScalarPSD8);
+
     // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
     #[test]
     fn test_hash_ped64_is_consistent() {
-        // Initialize the operation.
-        let operation = |operands, destination| HashPED64::<CurrentNetwork> { operands, destination };
-        // Initialize the opcode.
-        let opcode = HashPED64::<CurrentNetwork>::opcode();
-
         // Prepare the rng.
         let mut rng = TestRng::default();
 
         // Prepare the test.
         let modes = [circuit::Mode::Public, circuit::Mode::Private];
 
-        // Prepare the key cache.
-        let mut cache = Default::default();
+        macro_rules! check_hash {
+            ($operation:tt) => {
+                // Prepare the key cache.
+                let mut cache = Default::default();
 
-        for _ in 0..ITERATIONS {
-            let literals = [
-                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                Literal::I8(console::types::I8::rand(&mut rng)),
-                Literal::I16(console::types::I16::rand(&mut rng)),
-                Literal::I32(console::types::I32::rand(&mut rng)),
-                Literal::U8(console::types::U8::rand(&mut rng)),
-                Literal::U16(console::types::U16::rand(&mut rng)),
-                Literal::U32(console::types::U32::rand(&mut rng)),
-            ];
-            for literal in literals.iter() {
-                for mode in modes.iter() {
-                    check_hash(operation, opcode, literal, mode, &mut cache);
+                for _ in 0..ITERATIONS {
+                    let literals = [
+                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                        Literal::I8(console::types::I8::rand(&mut rng)),
+                        Literal::I16(console::types::I16::rand(&mut rng)),
+                        Literal::I32(console::types::I32::rand(&mut rng)),
+                        Literal::U8(console::types::U8::rand(&mut rng)),
+                        Literal::U16(console::types::U16::rand(&mut rng)),
+                        Literal::U32(console::types::U32::rand(&mut rng)),
+                    ];
+                    for literal in literals.iter() {
+                        for mode in modes.iter() {
+                            check_hash(
+                                |operands, destination| $operation::<CurrentNetwork> { operands, destination },
+                                $operation::<CurrentNetwork>::opcode(),
+                                literal,
+                                mode,
+                                &mut cache,
+                            );
+                        }
+                    }
                 }
-            }
+            };
         }
+        check_hash!(HashPED64);
+        check_hash!(HashToGroupPED64);
     }
 
     // Note this test must be explicitly written, instead of using the macro, because HashPED128 fails on certain input types.
     #[test]
     fn test_hash_ped128_is_consistent() {
-        // Initialize the operation.
-        let operation = |operands, destination| HashPED128::<CurrentNetwork> { operands, destination };
-        // Initialize the opcode.
-        let opcode = HashPED128::<CurrentNetwork>::opcode();
-
         // Prepare the rng.
         let mut rng = TestRng::default();
 
         // Prepare the test.
         let modes = [circuit::Mode::Public, circuit::Mode::Private];
 
-        // Prepare the key cache.
-        let mut cache = Default::default();
+        macro_rules! check_hash {
+            ($operation:tt) => {
+                // Prepare the key cache.
+                let mut cache = Default::default();
 
-        for _ in 0..ITERATIONS {
-            let literals = [
-                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                Literal::I8(console::types::I8::rand(&mut rng)),
-                Literal::I16(console::types::I16::rand(&mut rng)),
-                Literal::I32(console::types::I32::rand(&mut rng)),
-                Literal::I64(console::types::I64::rand(&mut rng)),
-                Literal::U8(console::types::U8::rand(&mut rng)),
-                Literal::U16(console::types::U16::rand(&mut rng)),
-                Literal::U32(console::types::U32::rand(&mut rng)),
-                Literal::U64(console::types::U64::rand(&mut rng)),
-            ];
-            for literal in literals.iter() {
-                for mode in modes.iter() {
-                    check_hash(operation, opcode, literal, mode, &mut cache);
+                for _ in 0..ITERATIONS {
+                    let literals = [
+                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                        Literal::I8(console::types::I8::rand(&mut rng)),
+                        Literal::I16(console::types::I16::rand(&mut rng)),
+                        Literal::I32(console::types::I32::rand(&mut rng)),
+                        Literal::I64(console::types::I64::rand(&mut rng)),
+                        Literal::U8(console::types::U8::rand(&mut rng)),
+                        Literal::U16(console::types::U16::rand(&mut rng)),
+                        Literal::U32(console::types::U32::rand(&mut rng)),
+                        Literal::U64(console::types::U64::rand(&mut rng)),
+                    ];
+                    for literal in literals.iter() {
+                        for mode in modes.iter() {
+                            check_hash(
+                                |operands, destination| $operation::<CurrentNetwork> { operands, destination },
+                                $operation::<CurrentNetwork>::opcode(),
+                                literal,
+                                mode,
+                                &mut cache,
+                            );
+                        }
+                    }
                 }
-            }
+            };
         }
+        check_hash!(HashPED128);
+        check_hash!(HashToGroupPED128);
     }
 
     #[test]

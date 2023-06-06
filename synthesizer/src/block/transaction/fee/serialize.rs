@@ -24,8 +24,8 @@ impl<N: Network> Serialize for Fee<N> {
                 let mut fee = serializer.serialize_struct("Fee", 3)?;
                 fee.serialize_field("transition", &self.transition)?;
                 fee.serialize_field("global_state_root", &self.global_state_root)?;
-                if let Some(inclusion_proof) = &self.inclusion_proof {
-                    fee.serialize_field("inclusion", inclusion_proof)?;
+                if let Some(proof) = &self.proof {
+                    fee.serialize_field("proof", proof)?;
                 }
                 fee.end()
             }
@@ -45,10 +45,10 @@ impl<'de, N: Network> Deserialize<'de> for Fee<N> {
                 let transition = DeserializeExt::take_from_value::<D>(&mut fee, "transition")?;
                 // Retrieve the global state root.
                 let global_state_root = DeserializeExt::take_from_value::<D>(&mut fee, "global_state_root")?;
-                // Retrieve the inclusion proof.
-                let inclusion_proof = DeserializeExt::take_from_value::<D>(&mut fee, "inclusion")?;
+                // Retrieve the proof.
+                let proof = DeserializeExt::take_from_value::<D>(&mut fee, "proof")?;
                 // Recover the fee.
-                Ok(Self::from(transition, global_state_root, inclusion_proof))
+                Ok(Self::from(transition, global_state_root, proof))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "fee"),
         }

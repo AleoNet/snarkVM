@@ -439,7 +439,7 @@ finalize transfer_public:
         let header = Header::from(
             *vm.block_store().current_state_root(),
             transactions.to_root().unwrap(),
-            Field::zero(),
+            transactions.to_finalize_root().unwrap(),
             Field::zero(),
             metadata,
         )?;
@@ -526,7 +526,7 @@ finalize transfer_public:
             )
             .unwrap();
         // Verify.
-        assert!(vm.verify_transaction(&transaction));
+        assert!(vm.verify_transaction(&transaction, None));
 
         // Return the transaction.
         transaction
