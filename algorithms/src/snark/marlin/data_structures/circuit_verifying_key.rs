@@ -109,11 +109,6 @@ impl<E: PairingEngine, MM: MarlinMode> ToMinimalBits for CircuitVerifyingKey<E, 
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
 
-        assert!(constraint_domain.size() < u64::MAX as usize);
-        assert!(non_zero_domain_a.size() < u64::MAX as usize);
-        assert!(non_zero_domain_b.size() < u64::MAX as usize);
-        assert!(non_zero_domain_c.size() < u64::MAX as usize);
-
         let constraint_domain_size = constraint_domain.size() as u64;
         let non_zero_domain_a_size = non_zero_domain_a.size() as u64;
         let non_zero_domain_b_size = non_zero_domain_b.size() as u64;

@@ -22,7 +22,7 @@ use rayon::prelude::*;
 pub struct FixedBase;
 
 impl FixedBase {
-    pub fn get_mul_window_size(num_scalars: usize) -> usize {
+    pub fn get_mul_window_size(num_scalars: usize) -> u32 {
         match num_scalars < 32 {
             true => 3,
             false => super::ln_without_floats(num_scalars),

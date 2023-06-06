@@ -26,7 +26,10 @@ use core::any::TypeId;
 pub struct VariableBase;
 
 impl VariableBase {
-    pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+    pub fn msm<G: AffineCurve>(
+        bases: &[G],
+        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    ) -> Result<G::Projective, anyhow::Error> {
         // For BLS12-377, we perform variable base MSM using a batched addition technique.
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
             #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
@@ -35,8 +38,9 @@ impl VariableBase {
                 let result = snarkvm_algorithms_cuda::msm::<G, G::Projective, <G::ScalarField as PrimeField>::BigInteger>(
                     bases, scalars,
                 );
+                // Remove any cuda::Error
                 if let Ok(result) = result {
-                    return result;
+                    return Ok(result);
                 }
             }
             batched::msm(bases, scalars)
@@ -97,10 +101,10 @@ mod tests {
             let naive_b = VariableBase::msm_naive_parallel(bases.as_slice(), scalars.as_slice()).to_affine();
             assert_eq!(naive_a, naive_b, "MSM size: {msm_size}");
 
-            let candidate = standard::msm(bases.as_slice(), scalars.as_slice()).to_affine();
+            let candidate = standard::msm(bases.as_slice(), scalars.as_slice()).unwrap().to_affine();
             assert_eq!(naive_a, candidate, "MSM size: {msm_size}");
 
-            let candidate = batched::msm(bases.as_slice(), scalars.as_slice()).to_affine();
+            let candidate = batched::msm(bases.as_slice(), scalars.as_slice()).unwrap().to_affine();
             assert_eq!(naive_a, candidate, "MSM size: {msm_size}");
         }
     }
@@ -111,8 +115,8 @@ mod tests {
         let mut rng = TestRng::default();
         for i in 2..17 {
             let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << i);
-            let rust = standard::msm(bases.as_slice(), scalars.as_slice());
-            let cuda = VariableBase::msm::<G1Affine>(bases.as_slice(), scalars.as_slice());
+            let rust = standard::msm(bases.as_slice(), scalars.as_slice()).unwrap();
+            let cuda = VariableBase::msm::<G1Affine>(bases.as_slice(), scalars.as_slice()).unwrap();
             assert_eq!(rust.to_affine(), cuda.to_affine());
         }
     }

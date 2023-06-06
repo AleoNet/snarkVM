@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_utilities::try_write_as;
 
 impl<N: Network> FromBytes for CoinbaseSolution<N> {
     /// Reads the coinbase solution from the buffer.
@@ -34,7 +35,7 @@ impl<N: Network> FromBytes for CoinbaseSolution<N> {
 impl<N: Network> ToBytes for CoinbaseSolution<N> {
     /// Writes the coinbase solution to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (u32::try_from(self.partial_solutions.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.partial_solutions.len(), &mut writer)?;
 
         for individual_puzzle_solution in &self.partial_solutions {
             individual_puzzle_solution.write_le(&mut writer)?;

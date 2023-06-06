@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_utilities::try_write_as;
 
 impl<N: Network> FromBytes for Deployment<N> {
     /// Reads the deployment from a buffer.
@@ -59,7 +60,7 @@ impl<N: Network> ToBytes for Deployment<N> {
         // Write the program.
         self.program.write_le(&mut writer)?;
         // Write the number of entries in the bundle.
-        (u16::try_from(self.verifying_keys.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+        try_write_as::<u16, W>(self.verifying_keys.len(), &mut writer)?;
         // Write each entry.
         for (function_name, (verifying_key, certificate)) in &self.verifying_keys {
             // Write the function name.

@@ -156,7 +156,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
             enforced_degree_bounds,
-            max_degree,
+            max_degree: u32::try_from(max_degree)?,
         };
 
         let g = pp.power_of_beta_g(0)?;
@@ -244,7 +244,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
-                ck.max_degree,
+                usize::try_from(ck.max_degree)?,
                 ck.enforced_degree_bounds.as_deref(),
                 p.clone(),
             )?;
@@ -327,16 +327,12 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
+        let max_degree = usize::try_from(ck.max_degree)?;
         Ok(Self::combine_polynomials(labeled_polynomials.into_iter().zip_eq(rands).map(|(p, r)| {
             let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
 
-            kzg10::KZG10::<E>::check_degrees_and_bounds(
-                ck.supported_degree(),
-                ck.max_degree,
-                enforced_degree_bounds,
-                p,
-            )
-            .unwrap();
+            kzg10::KZG10::<E>::check_degrees_and_bounds(ck.supported_degree(), max_degree, enforced_degree_bounds, p)
+                .unwrap();
             let challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
             (challenge, p.polynomial().to_dense(), r)
         })))
@@ -464,7 +460,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 p,
                 Some(randomizer),
                 fs_rng,
-            );
+            )?;
 
             randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
         }
@@ -529,7 +525,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             let lc_poly = LabeledPolynomial::new(lc_label.clone(), poly, degree_bound, hiding_bound);
             lc_polynomials.push(lc_poly);
             lc_randomness.push(randomness);
-            lc_commitments.push(Self::combine_commitments(coeffs_and_comms));
+            lc_commitments.push(Self::combine_commitments(coeffs_and_comms)?);
             lc_info.push((lc_label, degree_bound));
         }
 
@@ -604,7 +600,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 }
             }
             let lc_time = start_timer!(|| format!("Combining {num_polys} commitments for {lc_label}"));
-            lc_commitments.push(Self::combine_commitments(coeffs_and_comms));
+            lc_commitments.push(Self::combine_commitments(coeffs_and_comms)?);
             end_timer!(lc_time);
             lc_info.push((lc_label, degree_bound));
         }
@@ -644,7 +640,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     /// MSM for `commitments` and `coeffs`
     fn combine_commitments<'a>(
         coeffs_and_comms: impl IntoIterator<Item = (E::Fr, &'a Commitment<E>)>,
-    ) -> E::G1Projective {
+    ) -> Result<E::G1Projective, anyhow::Error> {
         let (scalars, bases): (Vec<_>, Vec<_>) = coeffs_and_comms.into_iter().map(|(f, c)| (f.into(), c.0)).unzip();
         VariableBase::msm(&bases, &scalars)
     }
@@ -668,7 +664,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         proof: &kzg10::KZGProof<E>,
         randomizer: Option<E::Fr>,
         fs_rng: &mut S,
-    ) {
+    ) -> Result<(), PCError> {
         let acc_time = start_timer!(|| "Accumulating elements");
         // Keeps track of running combination of values
         let mut combined_values = E::Fr::zero();
@@ -706,8 +702,9 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             proof.w.to_projective()
         };
         let coeffs = coeffs.into_iter().map(|c| c.into()).collect::<Vec<_>>();
-        *combined_adjusted_witness += VariableBase::msm(&bases, &coeffs);
+        *combined_adjusted_witness += VariableBase::msm(&bases, &coeffs)?;
         end_timer!(acc_time);
+        Ok(())
     }
 
     #[allow(clippy::type_complexity)]

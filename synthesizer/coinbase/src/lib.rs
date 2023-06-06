@@ -335,7 +335,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             cfg_iter!(coinbase_solution.partial_solutions()).map(|solution| solution.commitment().0).collect();
         let fs_challenges = challenge_points.into_iter().map(|f| f.to_bigint()).collect::<Vec<_>>();
         let accumulator_commitment =
-            KZGCommitment::<N::PairingCurve>(VariableBase::msm(&commitments, &fs_challenges).into());
+            KZGCommitment::<N::PairingCurve>(VariableBase::msm(&commitments, &fs_challenges)?.into());
 
         // Retrieve the coinbase verifying key.
         let coinbase_verifying_key = match self {

@@ -16,12 +16,11 @@
 
 use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::serialize::*;
 
 use std::{collections::BTreeMap, fmt};
 
 /// Stores a sparse polynomial in coefficient form.
-#[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Default)]
 #[must_use]
 pub struct SparsePolynomial<F: Field> {
     /// The coefficient a_i of `x^i` is stored as (i, a_i) in `self.coeffs`.

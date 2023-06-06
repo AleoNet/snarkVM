@@ -30,12 +30,12 @@ use crate::{
 };
 use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, num::TryFromIntError};
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        batch_sizes: &BTreeMap<CircuitId, usize>,
+        batch_sizes: &BTreeMap<CircuitId, u32>,
         circuit_infos: &BTreeMap<CircuitId, &CircuitInfo<TargetField>>,
         max_constraint_domain: EvaluationDomain<TargetField>,
         largest_non_zero_domain: EvaluationDomain<TargetField>,
@@ -49,14 +49,14 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let mut num_circuit_combiners = vec![1; batch_sizes.len()];
         num_circuit_combiners[0] = 0; // the first circuit_combiner is TargetField::one() and needs no random sampling
 
-        for ((batch_size, (circuit_id, circuit_info)), num_c_combiner) in
+        for ((&batch_size, (circuit_id, circuit_info)), num_c_combiner) in
             batch_sizes.values().zip(circuit_infos).zip(num_circuit_combiners)
         {
             let squeeze_time = start_timer!(|| format!("Squeezing challenges for {circuit_id}"));
-            let elems = fs_rng.squeeze_nonnative_field_elements(*batch_size - 1 + num_c_combiner);
+            let elems = fs_rng.squeeze_nonnative_field_elements(batch_size as usize - 1 + num_c_combiner);
             end_timer!(squeeze_time);
 
-            let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
+            let (instance_combiners, circuit_combiner) = elems.split_at(batch_size as usize - 1);
             assert_eq!(circuit_combiner.len(), num_c_combiner);
             let mut combiners =
                 BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
@@ -102,7 +102,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
                 non_zero_a_domain,
                 non_zero_b_domain,
                 non_zero_c_domain,
-                batch_size: *batch_size,
+                batch_size,
             };
             circuit_specific_states.insert(*circuit_id, circuit_specific_state);
         }
@@ -182,7 +182,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the query state and next round state.
-    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField>, State<TargetField, MM>) {
-        (QuerySet::new(&state), state)
+    pub fn verifier_query_set(
+        state: State<TargetField, MM>,
+    ) -> Result<(QuerySet<TargetField>, State<TargetField, MM>), TryFromIntError> {
+        Ok((QuerySet::new(&state)?, state))
     }
 }

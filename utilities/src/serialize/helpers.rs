@@ -13,12 +13,15 @@
 // limitations under the License.
 
 pub use crate::{
+    error,
     io::{self, Read, Write},
+    serialize::traits::*,
     FromBytes,
+    SerializationError,
     ToBytes,
     Vec,
 };
-use crate::{serialize::traits::*, SerializationError};
+use std::fmt::Display;
 
 /// Serialize a Vector's elements without serializing the Vector's length
 /// If you want to serialize the full Vector, use `CanonicalSerialize for Vec<T>`
@@ -48,4 +51,12 @@ pub fn deserialize_vec_without_len<T: CanonicalDeserialize>(
     len: usize,
 ) -> Result<Vec<T>, SerializationError> {
     (0..len).map(|_| CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)).collect()
+}
+
+/// Try to cast a usize and write it
+pub fn try_write_as<T: TryFrom<usize> + ToBytes, W: Write>(input: usize, writer: &mut W) -> io::Result<()>
+where
+    <T as TryFrom<usize>>::Error: Display,
+{
+    T::try_from(input).map_err(|e| error(e.to_string()))?.write_le(writer)
 }

@@ -49,6 +49,11 @@ pub trait PrimeField:
         Self::Parameters::MODULUS_BITS as usize
     }
 
+    /// Returns the field size in bits as u32
+    fn size_in_bits_u32() -> u32 {
+        Self::Parameters::MODULUS_BITS
+    }
+
     /// Returns the capacity size for data bits.
     fn size_in_data_bits() -> usize {
         Self::Parameters::CAPACITY as usize

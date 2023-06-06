@@ -79,7 +79,7 @@ const MIN_PARALLEL_CHUNK_SIZE: usize = 1 << 7;
 #[derive(Copy, Clone, Hash, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EvaluationDomain<F: FftField> {
     /// The size of the domain.
-    pub size: u64,
+    pub size: usize,
     /// `log_2(self.size)`.
     pub log_size_of_group: u32,
     /// Size of the domain as a field element.
@@ -114,7 +114,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// having `num_coeffs` coefficients.
     pub fn new(num_coeffs: usize) -> Option<Self> {
         // Compute the size of our evaluation domain
-        let size = num_coeffs.checked_next_power_of_two()? as u64;
+        let size = num_coeffs.checked_next_power_of_two()?;
         let log_size_of_group = size.trailing_zeros();
 
         // libfqfft uses > https://github.com/scipr-lab/libfqfft/blob/e0183b2cef7d4c5deb21a6eaf3fe3b586d738fe0/libfqfft/evaluation_domain/domains/basic_radix2_domain.tcc#L33
@@ -124,12 +124,13 @@ impl<F: FftField> EvaluationDomain<F> {
 
         // Compute the generator for the multiplicative subgroup.
         // It should be the 2^(log_size_of_group) root of unity.
-        let group_gen = F::get_root_of_unity(size as usize)?;
+        let group_gen = F::get_root_of_unity(size)?;
+        let size_u64 = size as u64;
 
         // Check that it is indeed the 2^(log_size_of_group) root of unity.
-        debug_assert_eq!(group_gen.pow([size]), F::one());
+        debug_assert_eq!(group_gen.pow([size_u64]), F::one());
 
-        let size_as_field_element = F::from(size);
+        let size_as_field_element = F::from(size_u64);
         let size_inv = size_as_field_element.inverse()?;
 
         Some(EvaluationDomain {
@@ -152,7 +153,7 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Return the size of `self`.
     pub fn size(&self) -> usize {
-        self.size as usize
+        self.size
     }
 
     /// Compute an FFT.
@@ -254,8 +255,8 @@ impl<F: FftField> EvaluationDomain<F> {
     /// `tau`.
     pub fn evaluate_all_lagrange_coefficients(&self, tau: F) -> Vec<F> {
         // Evaluate all Lagrange polynomials
-        let size = self.size as usize;
-        let t_size = tau.pow([self.size]);
+        let size = self.size();
+        let t_size = tau.pow([self.size as u64]);
         let one = F::one();
         if t_size.is_one() {
             let mut u = vec![F::zero(); size];
@@ -297,7 +298,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// This evaluates the vanishing polynomial for this domain at tau.
     /// For multiplicative subgroups, this polynomial is `z(X) = X^self.size - 1`.
     pub fn evaluate_vanishing_polynomial(&self, tau: F) -> F {
-        tau.pow([self.size]) - F::one()
+        tau.pow([self.size as u64]) - F::one()
     }
 
     /// Return an iterator over the elements of the domain.
@@ -373,7 +374,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold and check that the type is Fr
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Forward,
@@ -402,7 +403,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -423,7 +424,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -450,7 +451,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Forward,
@@ -481,7 +482,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -515,7 +516,7 @@ impl<F: FftField> EvaluationDomain<F> {
         // SNP TODO: how to set threshold
         if self.size >= 32 && std::mem::size_of::<T>() == 32 {
             let result = snarkvm_algorithms_cuda::NTT(
-                self.size as usize,
+                self.size(),
                 x_s,
                 snarkvm_algorithms_cuda::NTTInputOutputOrder::NN,
                 snarkvm_algorithms_cuda::NTTDirection::Inverse,
@@ -583,17 +584,17 @@ impl<F: FftField> EvaluationDomain<F> {
     // [1, g, g^2, ..., g^{(n/2) - 1}]
     #[cfg(feature = "serial")]
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
-        compute_powers_serial((self.size as usize) / 2, root)
+        compute_powers_serial((self.size()) / 2, root)
     }
 
     /// Computes the first `self.size / 2` roots of unity.
     #[cfg(not(feature = "serial"))]
     pub fn roots_of_unity(&self, root: F) -> Vec<F> {
         // TODO: check if this method can replace parallel compute powers.
-        let log_size = log2(self.size as usize);
+        let log_size = log2(self.size());
         // early exit for short inputs
         if log_size <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE {
-            compute_powers_serial((self.size as usize) / 2, root)
+            compute_powers_serial((self.size()) / 2, root)
         } else {
             let mut temp = root;
             // w, w^2, w^4, w^8, ..., w^(2^(log_size - 1))
@@ -783,8 +784,8 @@ const MIN_GAP_SIZE_FOR_PARALLELISATION: usize = 1 << 10;
 const LOG_ROOTS_OF_UNITY_PARALLEL_SIZE: u32 = 7;
 
 #[inline]
-pub(super) fn bitrev(a: u64, log_len: u32) -> u64 {
-    a.reverse_bits() >> (64 - log_len)
+pub(super) fn bitrev(a: usize, log_len: usize) -> usize {
+    a.reverse_bits() >> (std::mem::size_of::<usize>() * 8 - log_len)
 }
 
 pub(crate) fn derange<T>(xi: &mut [T]) {
@@ -792,10 +793,10 @@ pub(crate) fn derange<T>(xi: &mut [T]) {
 }
 
 fn derange_helper<T>(xi: &mut [T], log_len: u32) {
-    for idx in 1..(xi.len() as u64 - 1) {
-        let ridx = bitrev(idx, log_len);
+    for idx in 1..(xi.len() - 1) {
+        let ridx = bitrev(idx, log_len as usize);
         if idx < ridx {
-            xi.swap(idx as usize, ridx as usize);
+            xi.swap(idx, ridx);
         }
     }
 }
@@ -864,7 +865,7 @@ impl<F: FftField> Iterator for Elements<F> {
     type Item = F;
 
     fn next(&mut self) -> Option<F> {
-        if self.cur_pow == self.domain.size {
+        if self.cur_pow == self.domain.size as u64 {
             None
         } else {
             let cur_elem = self.cur_elem;

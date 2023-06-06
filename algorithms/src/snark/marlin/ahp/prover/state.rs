@@ -30,7 +30,7 @@ pub struct CircuitSpecificState<F: PrimeField> {
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
 
     /// The number of instances being proved in this batch.
-    pub(in crate::snark) batch_size: usize,
+    pub(in crate::snark) batch_size: u32,
 
     /// The list of public inputs for each instance in the batch.
     /// The length of this list must be equal to the batch size.
@@ -74,7 +74,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The largest constraint domain of all circuits in the batch.
     pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
     /// The total number of instances we're proving in the batch.
-    pub(in crate::snark) total_instances: usize,
+    pub(in crate::snark) total_instances: u32,
 }
 
 /// The public inputs for a single instance.
@@ -112,13 +112,14 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
 
                 let first_padded_public_inputs = &variable_assignments[0].0;
                 let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
-                let batch_size = variable_assignments.len();
+                let batch_size = variable_assignments.len().try_into()?;
                 total_instances += batch_size;
-                let mut z_as = Vec::with_capacity(batch_size);
-                let mut z_bs = Vec::with_capacity(batch_size);
-                let mut x_polys = Vec::with_capacity(batch_size);
-                let mut padded_public_variables = Vec::with_capacity(batch_size);
-                let mut private_variables = Vec::with_capacity(batch_size);
+                let batch_size_usize = batch_size as usize;
+                let mut z_as = Vec::with_capacity(batch_size_usize);
+                let mut z_bs = Vec::with_capacity(batch_size_usize);
+                let mut x_polys = Vec::with_capacity(batch_size_usize);
+                let mut padded_public_variables = Vec::with_capacity(batch_size_usize);
+                let mut private_variables = Vec::with_capacity(batch_size_usize);
 
                 for Assignments(padded_public_input, private_input, z_a, z_b) in variable_assignments {
                     z_as.push(z_a);
@@ -163,7 +164,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     }
 
     /// Get the batch size for a given circuit.
-    pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
+    pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<u32> {
         self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
     }
 

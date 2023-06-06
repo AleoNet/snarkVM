@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_utilities::try_write_as;
 
 impl<N: Network> FromBytes for ConfirmedTransaction<N> {
     /// Reads the confirmed transaction from a buffer.
@@ -82,7 +83,7 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the number of finalize operations.
-                NumFinalizeSize::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                try_write_as::<NumFinalizeSize, W>(finalize.len(), &mut writer)?;
                 // Write the finalize operations.
                 finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }
@@ -94,7 +95,7 @@ impl<N: Network> ToBytes for ConfirmedTransaction<N> {
                 // Write the transaction.
                 transaction.write_le(&mut writer)?;
                 // Write the number of finalize operations.
-                NumFinalizeSize::try_from(finalize.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                try_write_as::<NumFinalizeSize, W>(finalize.len(), &mut writer)?;
                 // Write the finalize operations.
                 finalize.iter().try_for_each(|finalize| finalize.write_le(&mut writer))
             }

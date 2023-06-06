@@ -16,7 +16,7 @@ use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg1
 use hashbrown::{HashMap, HashSet};
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error, serialize::*, try_write_as, FromBytes, ToBytes};
 
 use std::{
     borrow::{Borrow, Cow},
@@ -81,7 +81,7 @@ pub struct CommitterKey<E: PairingEngine> {
     pub enforced_degree_bounds: Option<Vec<usize>>,
 
     /// The maximum degree supported by the `UniversalParams` from which `self` was derived
-    pub max_degree: usize,
+    pub max_degree: u32,
 }
 
 impl<E: PairingEngine> FromBytes for CommitterKey<E> {
@@ -215,7 +215,7 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
             enforced_degree_bounds,
-            max_degree: max_degree as usize,
+            max_degree,
         })
     }
 }
@@ -223,22 +223,22 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 impl<E: PairingEngine> ToBytes for CommitterKey<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize `powers`.
-        (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.powers_of_beta_g.len(), &mut writer)?;
         for power in &self.powers_of_beta_g {
             power.write_le(&mut writer)?;
         }
 
         // Serialize `powers`.
-        (self.lagrange_bases_at_beta_g.len() as u32).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.lagrange_bases_at_beta_g.len(), &mut writer)?;
         for (size, powers) in &self.lagrange_bases_at_beta_g {
-            (*size as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(*size, &mut writer)?;
             for power in powers {
                 power.write_le(&mut writer)?;
             }
         }
 
         // Serialize `powers_of_beta_times_gamma_g`.
-        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.powers_of_beta_times_gamma_g.len(), &mut writer)?;
         for power_of_gamma_g in &self.powers_of_beta_times_gamma_g {
             power_of_gamma_g.write_le(&mut writer)?;
         }
@@ -246,7 +246,7 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `shifted_powers_of_beta_g`.
         self.shifted_powers_of_beta_g.is_some().write_le(&mut writer)?;
         if let Some(shifted_powers_of_beta_g) = &self.shifted_powers_of_beta_g {
-            (shifted_powers_of_beta_g.len() as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(shifted_powers_of_beta_g.len(), &mut writer)?;
             for shifted_power in shifted_powers_of_beta_g {
                 shifted_power.write_le(&mut writer)?;
             }
@@ -255,11 +255,11 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `shifted_powers_of_beta_times_gamma_g`.
         self.shifted_powers_of_beta_times_gamma_g.is_some().write_le(&mut writer)?;
         if let Some(shifted_powers_of_beta_times_gamma_g) = &self.shifted_powers_of_beta_times_gamma_g {
-            (shifted_powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
-            for (key, shifted_powers_of_beta_g) in shifted_powers_of_beta_times_gamma_g {
-                (*key as u32).write_le(&mut writer)?;
-                (shifted_powers_of_beta_g.len() as u32).write_le(&mut writer)?;
-                for shifted_power in shifted_powers_of_beta_g {
+            try_write_as::<u32, W>(shifted_powers_of_beta_times_gamma_g.len(), &mut writer)?;
+            for (key, shifted_powers_of_beta_times_gamma_g) in shifted_powers_of_beta_times_gamma_g {
+                try_write_as::<u32, W>(*key, &mut writer)?;
+                try_write_as::<u32, W>(shifted_powers_of_beta_times_gamma_g.len(), &mut writer)?;
+                for shifted_power in shifted_powers_of_beta_times_gamma_g {
                     shifted_power.write_le(&mut writer)?;
                 }
             }
@@ -268,14 +268,14 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `enforced_degree_bounds`.
         self.enforced_degree_bounds.is_some().write_le(&mut writer)?;
         if let Some(enforced_degree_bounds) = &self.enforced_degree_bounds {
-            (enforced_degree_bounds.len() as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(enforced_degree_bounds.len(), &mut writer)?;
             for enforced_degree_bound in enforced_degree_bounds {
-                (*enforced_degree_bound as u32).write_le(&mut writer)?;
+                try_write_as::<u32, W>(*enforced_degree_bound, &mut writer)?;
             }
         }
 
         // Serialize `max_degree`.
-        (self.max_degree as u32).write_le(&mut writer)?;
+        self.max_degree.write_le(&mut writer)?;
 
         // Construct the hash of the group elements.
         let mut hash_input = self.powers_of_beta_g.to_bytes_le().map_err(|_| error("Could not serialize powers"))?;
@@ -341,7 +341,7 @@ pub struct CommitterUnionKey<'a, E: PairingEngine> {
     pub enforced_degree_bounds: Option<Vec<usize>>,
 
     /// The maximum degree supported by the `UniversalParams` from which `self` was derived
-    pub max_degree: usize,
+    pub max_degree: u32,
 }
 
 impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
@@ -387,7 +387,7 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         })
     }
 
-    pub fn max_degree(&self) -> usize {
+    pub fn max_degree(&self) -> u32 {
         self.max_degree
     }
 

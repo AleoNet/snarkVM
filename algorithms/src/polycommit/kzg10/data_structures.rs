@@ -24,6 +24,7 @@ use snarkvm_utilities::{
     error,
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, SerializationError, Valid, Validate},
+    try_write_as,
     FromBytes,
     ToBytes,
     ToMinimalBits,
@@ -138,9 +139,9 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
         self.h.write_le(&mut writer)?;
 
         // Serialize `supported_degree_bounds`.
-        (self.supported_degree_bounds.len() as u32).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.supported_degree_bounds.len(), &mut writer)?;
         for degree_bound in &self.supported_degree_bounds {
-            (*degree_bound as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(*degree_bound, &mut writer)?;
         }
 
         // Serialize `prepared_h`.

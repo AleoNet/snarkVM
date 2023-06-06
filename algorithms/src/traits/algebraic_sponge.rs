@@ -66,7 +66,7 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize>: Clone + Debug {
         self.absorb_native_field_elements(&elements);
     }
 
-    /// Takes in field elements.
+    /// Takes out field elements.
     fn squeeze_native_field_elements(&mut self, num: usize) -> SmallVec<[F; 10]>;
 
     /// Takes out field elements.
@@ -128,17 +128,17 @@ pub(crate) mod nonnative_params {
     #[derive(Clone, Debug)]
     pub struct NonNativeFieldParams {
         /// The number of limbs (`BaseField` elements) used to represent a `TargetField` element. Highest limb first.
-        pub num_limbs: usize,
+        pub num_limbs: u32,
 
         /// The number of bits of the limb
-        pub bits_per_limb: usize,
+        pub bits_per_limb: u32,
     }
 
     /// Obtain the parameters from a `ConstraintSystem`'s cache or generate a new one
     #[must_use]
     pub const fn get_params(
-        target_field_size: usize,
-        base_field_size: usize,
+        target_field_size: u32,
+        base_field_size: u32,
         optimization_type: OptimizationType,
     ) -> NonNativeFieldParams {
         let (num_of_limbs, limb_size) = find_parameters(base_field_size, target_field_size, optimization_type);
@@ -156,21 +156,21 @@ pub(crate) mod nonnative_params {
 
     /// A function to search for parameters for nonnative field gadgets
     pub const fn find_parameters(
-        base_field_prime_length: usize,
-        target_field_prime_bit_length: usize,
+        base_field_prime_length: u32,
+        target_field_prime_bit_length: u32,
         optimization_type: OptimizationType,
-    ) -> (usize, usize) {
+    ) -> (u32, u32) {
         let mut found = false;
-        let mut min_cost = 0usize;
-        let mut min_cost_limb_size = 0usize;
-        let mut min_cost_num_of_limbs = 0usize;
+        let mut min_cost = 0u32;
+        let mut min_cost_limb_size = 0u32;
+        let mut min_cost_num_of_limbs = 0u32;
 
         let surfeit = 10;
         let mut max_limb_size = (base_field_prime_length - 1 - surfeit - 1) / 2 - 1;
         if max_limb_size > target_field_prime_bit_length {
             max_limb_size = target_field_prime_bit_length;
         }
-        let mut limb_size = 1;
+        let mut limb_size = 1u32;
 
         while limb_size <= max_limb_size {
             let num_of_limbs = (target_field_prime_bit_length + limb_size - 1) / limb_size;

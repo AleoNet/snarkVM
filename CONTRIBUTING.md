@@ -30,6 +30,11 @@ snarkVM is a big project, so (non-)adherence to best practices related to perfor
 - if possible, reuse collections; an example would be a loop that needs a clean vector on each iteration: instead of creating and allocating it over and over, create it _before_ the loop and use `.clear()` on every iteration instead
 - try to keep the sizes of `enum` variants uniform; use `Box<T>` on ones that are large
 
+### Cross-platform consistency
+- First and foremost, types which contain consensus- or cryptographic logic should have a consistent size across platforms. Their serialized output should not contain `usize`. For defense in depth, we serialize `usize` as `u64`.
+- For clarity, use `u32` and `u64` as much or long as possible, especially in type definitions. 
+- Given that we only target 32- and 64-bit systems, casting `usize` as `u64` and casting `u32` as `usize` will always be safe and doesn't need a `try_from::`. In serialization code, for defense in depth it is still encouraged to use `try_from::`.
+
 ### Misc. performance
 
 - avoid the `format!()` macro; if it is used only to convert a single value to a `String`, use `.to_string()` instead, which is also available to all the implementors of `Display`

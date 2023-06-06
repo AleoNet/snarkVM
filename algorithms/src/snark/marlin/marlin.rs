@@ -49,7 +49,7 @@ use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
-use std::{borrow::Borrow, collections::BTreeMap, ops::Deref, sync::Arc};
+use std::{borrow::Borrow, collections::BTreeMap, num::TryFromIntError, ops::Deref, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
@@ -102,10 +102,11 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             let indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
             // Increase the universal SRS size to support the circuit size.
-            if universal_srs.max_degree() < indexed_circuit.max_degree() {
-                universal_srs.download_powers_for(0..indexed_circuit.max_degree()).map_err(|_| {
-                    MarlinError::IndexTooLarge(universal_srs.max_degree(), indexed_circuit.max_degree())
-                })?;
+            let max_degree = usize::try_from(indexed_circuit.max_degree())?;
+            if universal_srs.max_degree() < max_degree {
+                universal_srs
+                    .download_powers_for(0..max_degree)
+                    .map_err(|_| MarlinError::IndexTooLarge(universal_srs.max_degree(), max_degree))?;
             }
             let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
@@ -113,7 +114,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             let supported_hiding_bound = 1;
             let (committer_key, verifier_key) = SonicKZG10::<E, FS>::trim(
                 universal_srs,
-                indexed_circuit.max_degree(),
+                max_degree,
                 [indexed_circuit.constraint_domain_size()],
                 supported_hiding_bound,
                 Some(coefficient_support.as_slice()),
@@ -166,7 +167,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
     fn init_sponge<'a>(
         fs_parameters: &FS::Parameters,
-        inputs_and_batch_sizes: &BTreeMap<CircuitId, (usize, &[Vec<E::Fr>])>,
+        inputs_and_batch_sizes: &BTreeMap<CircuitId, (u32, &[Vec<E::Fr>])>,
         circuit_commitments: impl Iterator<Item = &'a [crate::polycommit::sonic_pc::Commitment<E>]>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
@@ -237,7 +238,7 @@ where
     type Proof = Proof<E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
-    type UniversalSetupConfig = usize;
+    type UniversalSetupConfig = u32;
     type UniversalSetupParameters = UniversalSRS<E>;
     type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E, MM>;
@@ -245,7 +246,7 @@ where
     fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {max_degree}",) });
 
-        let srs = SonicKZG10::<E, FS>::load_srs(*max_degree).map_err(Into::into);
+        let srs = SonicKZG10::<E, FS>::load_srs((*max_degree).try_into()?).map_err(Into::into);
         end_timer!(setup_time);
         srs
     }
@@ -397,12 +398,12 @@ where
             let padded_public_input =
                 prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let circuit_id = pk.circuit.id;
-            batch_sizes.insert(circuit_id, batch_size);
+            circuit_ids.push(circuit_id);
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             inputs_and_batch_sizes.insert(circuit_id, (batch_size, padded_public_input));
-            total_instances += batch_size;
             public_inputs.insert(circuit_id, public_input);
-            circuit_ids.push(circuit_id);
+            total_instances += batch_size;
+            batch_sizes.insert(circuit_id, batch_size);
         }
         assert_eq!(prover_state.total_instances, total_instances);
 
@@ -524,7 +525,7 @@ where
         assert!(
             polynomials.len()
                 == keys_to_constraints.len() * 12 + // polys for row, col, rowcol, val
-            AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances) +
+            AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances.try_into()?) +
             AHPForR1CS::<E::Fr, MM>::num_second_round_oracles() +
             AHPForR1CS::<E::Fr, MM>::num_third_round_oracles(keys_to_constraints.len()) +
             AHPForR1CS::<E::Fr, MM>::num_fourth_round_oracles()
@@ -586,7 +587,7 @@ where
         }
 
         // Compute the AHP verifier's query set.
-        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
+        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state)?;
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_inputs,
             &polynomials,
@@ -598,7 +599,7 @@ where
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations = std::collections::BTreeMap::new();
-        for (label, (_, point)) in query_set.to_set() {
+        for (label, (_, point)) in query_set.to_set()? {
             if !AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
                 let lc = lc_s.get(&label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
                 let evaluation = polynomials.get_lc_eval(lc, point)?;
@@ -606,7 +607,7 @@ where
             }
         }
 
-        let evaluations = proof::Evaluations::from_map(&evaluations, batch_sizes.clone());
+        let evaluations = proof::Evaluations::from_map(&evaluations, batch_sizes.clone())?;
         end_timer!(eval_time);
 
         Self::terminate(terminator)?;
@@ -618,7 +619,7 @@ where
             lc_s.values(),
             polynomials,
             &labeled_commitments,
-            &query_set.to_set(),
+            &query_set.to_set()?,
             &commitment_randomnesses,
             &mut sponge,
         )?;
@@ -664,7 +665,7 @@ where
                 return Err(SNARKError::EmptyBatch);
             }
 
-            if public_inputs_i.len() != batch_sizes_vec[i] {
+            if u32::try_from(public_inputs_i.len())? != batch_sizes_vec[i] {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
@@ -714,7 +715,7 @@ where
             circuit_infos.insert(circuit_id, &vk.orig_vk.circuit_info);
             circuit_ids.push(circuit_id);
         }
-        for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(batch_sizes.values()).enumerate() {
+        for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(batch_sizes_vec).enumerate() {
             inputs_and_batch_sizes.insert(vk.orig_vk.id, (batch_size, padded_public_vec[i].as_slice()));
         }
 
@@ -739,33 +740,33 @@ where
         let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
 
         let mut first_comms_consumed = 0;
-        let mut first_commitments = batch_sizes
-            .iter()
-            .flat_map(|(&circuit_id, &batch_size)| {
-                let first_comms = comms.witness_commitments[first_comms_consumed..][..batch_size]
-                    .iter()
-                    .enumerate()
-                    .flat_map(|(j, w_comm)| {
-                        [
-                            LabeledCommitment::new_with_info(
-                                &first_round_info[&witness_label(circuit_id, "w", j)],
-                                w_comm.w,
-                            ),
-                            LabeledCommitment::new_with_info(
-                                &first_round_info[&witness_label(circuit_id, "z_a", j)],
-                                w_comm.z_a,
-                            ),
-                            LabeledCommitment::new_with_info(
-                                &first_round_info[&witness_label(circuit_id, "z_b", j)],
-                                w_comm.z_b,
-                            ),
-                        ]
-                    })
-                    .collect_vec();
-                first_comms_consumed += batch_size;
-                first_comms
-            })
-            .collect_vec();
+        let total_instances = batch_sizes.values().sum::<u32>();
+        let mut first_commitments = Vec::with_capacity(total_instances as usize);
+        for (&circuit_id, &batch_size) in batch_sizes.iter() {
+            let first_comms = comms.witness_commitments[first_comms_consumed as usize..][..batch_size as usize]
+                .iter()
+                .enumerate()
+                .map(|(j, w_comm)| {
+                    Ok::<_, TryFromIntError>([
+                        LabeledCommitment::new_with_info(
+                            &first_round_info[&witness_label(circuit_id, "w", u32::try_from(j)?)],
+                            w_comm.w,
+                        ),
+                        LabeledCommitment::new_with_info(
+                            &first_round_info[&witness_label(circuit_id, "z_a", u32::try_from(j)?)],
+                            w_comm.z_a,
+                        ),
+                        LabeledCommitment::new_with_info(
+                            &first_round_info[&witness_label(circuit_id, "z_b", u32::try_from(j)?)],
+                            w_comm.z_b,
+                        ),
+                    ])
+                });
+            first_comms_consumed += batch_size;
+            for comms in first_comms {
+                first_commitments.extend(comms?);
+            }
+        }
 
         if MM::ZK {
             first_commitments.push(LabeledCommitment::new_with_info(
@@ -860,7 +861,7 @@ where
             .collect();
 
         let query_set_time = start_timer!(|| "Constructing query set");
-        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
+        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state)?;
         end_timer!(query_set_time);
 
         sponge.absorb_nonnative_field_elements(proof.evaluations.to_field_elements());
@@ -869,7 +870,7 @@ where
 
         let mut current_circuit_id = "".to_string();
         let mut circuit_index: i64 = -1;
-        for (label, (_point_name, q)) in query_set.to_set() {
+        for (label, (_point_name, q)) in query_set.to_set()? {
             if AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), E::Fr::zero());
             } else {
@@ -882,7 +883,7 @@ where
                 }
                 let eval = proof
                     .evaluations
-                    .get(circuit_index as usize, &label)
+                    .get(usize::try_from(circuit_index)?, &label)?
                     .ok_or_else(|| AHPError::MissingEval(label.clone()))?;
                 evaluations.insert((label, q), eval);
             }
@@ -902,7 +903,7 @@ where
             &verifier_key,
             lc_s.values(),
             &commitments,
-            &query_set.to_set(),
+            &query_set.to_set()?,
             &evaluations,
             &proof.pc_proof,
             &mut sponge,

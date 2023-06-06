@@ -92,6 +92,9 @@ pub enum PCError {
         label: String,
     },
 
+    /// Could not convert from int.
+    IntError(std::num::TryFromIntError),
+
     Terminated,
 }
 
@@ -100,6 +103,12 @@ impl snarkvm_utilities::error::Error for PCError {}
 impl From<anyhow::Error> for PCError {
     fn from(other: anyhow::Error) -> Self {
         Self::AnyhowError(other)
+    }
+}
+
+impl From<std::num::TryFromIntError> for PCError {
+    fn from(other: std::num::TryFromIntError) -> Self {
+        Self::IntError(other)
     }
 }
 
@@ -148,6 +157,7 @@ impl core::fmt::Display for PCError {
                  (having degree {poly_degree:?}) is greater than the maximum \
                  supported degree ({supported_degree:?})"
             ),
+            Self::IntError(error) => write!(f, "{error}"),
             Self::Terminated => write!(f, "terminated"),
         }
     }
