@@ -16,7 +16,10 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{snark::Proof, Transition};
+use crate::{
+    block::{Transaction, Transition},
+    snark::Proof,
+};
 use console::{account::Field, network::prelude::*};
 
 use indexmap::IndexMap;
@@ -64,6 +67,11 @@ impl<N: Network> Execution<N> {
     /// Returns the proof.
     pub const fn proof(&self) -> Option<&Proof<N>> {
         self.proof.as_ref()
+    }
+
+    /// Returns the execution ID.
+    pub fn to_execution_id(&self) -> Result<Field<N>> {
+        Ok(*Transaction::execution_tree(self, &None)?.root())
     }
 }
 

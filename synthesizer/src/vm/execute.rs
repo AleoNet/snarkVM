@@ -40,8 +40,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     .size_in_bytes()?
                     .checked_add(priority_fee_in_microcredits)
                     .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                // Compute the execution ID.
+                let execution_id = execution.to_execution_id()?;
                 // Compute the fee.
-                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, query, rng)?.1)
+                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, execution_id, query, rng)?.1)
             }
         };
         // Return the execute transaction.
@@ -65,7 +67,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a call to the program function for the given authorization.
     /// Returns the response and execution.
     #[inline]
-    pub fn execute_authorization_raw<R: Rng + CryptoRng>(
+    fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
@@ -218,17 +220,17 @@ mod tests {
 
         // Execute.
         let transaction =
-            vm.execute(&caller_private_key, ("credits.aleo", "transfer"), inputs, None, None, rng).unwrap();
+            vm.execute(&caller_private_key, ("credits.aleo", "transfer_private"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2214, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2222, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2179, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2187, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 

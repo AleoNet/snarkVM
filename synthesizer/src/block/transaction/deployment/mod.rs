@@ -16,10 +16,11 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::program::Program;
+use crate::{block::Transaction, program::Program};
 use console::{
     network::prelude::*,
     program::{Identifier, ProgramID},
+    types::Field,
 };
 use snarkvm_synthesizer_snark::{Certificate, VerifyingKey};
 
@@ -120,6 +121,11 @@ impl<N: Network> Deployment<N> {
     /// Returns the verifying keys.
     pub const fn verifying_keys(&self) -> &Vec<(Identifier<N>, (VerifyingKey<N>, Certificate<N>))> {
         &self.verifying_keys
+    }
+
+    /// Returns the deployment ID.
+    pub fn to_deployment_id(&self) -> Result<Field<N>> {
+        Ok(*Transaction::deployment_tree(self, None)?.root())
     }
 }
 

@@ -15,13 +15,15 @@
 use super::*;
 
 impl<N: Network> Process<N> {
-    /// Executes the fee given the credits record and the fee amount (in microcredits).
+    /// Executes the fee given the credits record, the fee amount (in microcredits),
+    /// and the deployment or execution ID.
     #[inline]
     pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Transition<N>, Trace<N>)> {
         let timer = timer!("Process::execute_fee");
@@ -33,8 +35,12 @@ impl<N: Network> Process<N> {
 
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
+        // Prepare the fee in microcredits.
+        let fee_in_microcredits = Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?;
+        // Prepare the deployment or execution ID.
+        let deployment_or_execution_id = Value::from(Literal::Field(deployment_or_execution_id));
         // Construct the inputs.
-        let inputs = [Value::Record(credits), Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?];
+        let inputs = [Value::Record(credits), fee_in_microcredits, deployment_or_execution_id];
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
@@ -51,13 +57,11 @@ impl<N: Network> Process<N> {
         let _response = self.get_stack(program_id)?.execute_function::<A>(call_stack)?;
         lap!(timer, "Construct the authorization from the function");
 
-        // Retrieve the main request (without popping it).
-        let request = authorization.peek_next()?;
         // Prepare the stack.
-        let stack = self.get_stack(request.program_id())?;
+        let stack = self.get_stack(program_id)?;
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+        println!("{}", format!(" • Calling '{program_id}/{function_name}'...").dimmed());
 
         // Initialize the trace.
         let trace = Arc::new(RwLock::new(Trace::new()));
@@ -83,7 +87,7 @@ impl<N: Network> Process<N> {
     /// Verifies the given fee is valid.
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_fee(&self, fee: &Fee<N>) -> Result<()> {
+    pub fn verify_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> Result<()> {
         let timer = timer!("Process::verify_fee");
 
         #[cfg(debug_assertions)]
@@ -111,9 +115,20 @@ impl<N: Network> Process<N> {
                 .to_bits_le(),
         )?;
 
+        // Ensure there are exactly 3 inputs.
+        ensure!(fee.inputs().len() == 3, "Incorrect number of inputs to the fee transition");
         // Ensure each input is valid.
         if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
             bail!("Failed to verify a fee input")
+        }
+        // Retrieve the 3rd input as the candidate ID.
+        let candidate_id = match fee.inputs().get(2) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(candidate_id), _)))) => *candidate_id,
+            _ => bail!("Failed to get the deployment or execution ID in the fee transition"),
+        };
+        // Ensure the candidate ID is the deployment or execution ID.
+        if candidate_id != deployment_or_execution_id {
+            bail!("Incorrect deployment or execution ID in the fee transition")
         }
         lap!(timer, "Verify the inputs");
 
@@ -187,8 +202,11 @@ mod tests {
         let process = Process::load().unwrap();
 
         match deployment_transaction {
-            Transaction::Deploy(_, _, _, fee) => {
-                assert!(process.verify_fee(&fee).is_ok());
+            Transaction::Deploy(_, _, deployment, fee) => {
+                // Compute the deployment ID.
+                let deployment_id = deployment.to_deployment_id().unwrap();
+
+                assert!(process.verify_fee(&fee, deployment_id).is_ok());
             }
             _ => panic!("Expected a deployment transaction"),
         }

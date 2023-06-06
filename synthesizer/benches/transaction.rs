@@ -86,7 +86,7 @@ function hello:
 
     c.bench_function("Transaction verify - deployment", |b| {
         let transaction = vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction)))
+        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
 
@@ -109,9 +109,9 @@ fn execute(c: &mut Criterion) {
     .into_iter();
 
     // Authorize.
-    let authorization = vm.authorize(&private_key, "credits.aleo", "transfer", inputs, rng).unwrap();
+    let authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
 
-    let (_, fee) = vm.execute_fee_raw(&private_key, records[1].clone(), 100000, None, rng).unwrap();
+    let (_, fee) = vm.execute_fee_raw(&private_key, records[1].clone(), 100000, Field::zero(), None, rng).unwrap();
 
     c.bench_function("Transaction - execution (transfer)", |b| {
         b.iter(|| {
@@ -134,7 +134,7 @@ fn execute(c: &mut Criterion) {
                 rng,
             )
             .unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction)))
+        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
 
