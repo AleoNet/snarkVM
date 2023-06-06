@@ -22,7 +22,15 @@ use console::{
     program::{Literal, Plaintext, Register, Value, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
 };
 use criterion::{BatchSize, Criterion};
-use snarkvm_synthesizer::{finalize::Finalize, BinaryLiteral, FinalizeRegisters, FinalizeTypes, Instruction, Process, Program, Stack, Store, RegistersStore};
+use snarkvm_synthesizer::{
+    finalize::Finalize,
+    FinalizeRegisters,
+    FinalizeTypes,
+    Instruction,
+    Process,
+    RegistersStore,
+    Stack,
+};
 
 use std::{fmt::Display, str::FromStr};
 
@@ -170,8 +178,8 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
         (U128, U128)[u128_values],
     });
 
-    use snarkvm_synthesizer::SubWrapped;
-    bench_instruction!(SubWrapped {
+    use snarkvm_synthesizer::Sub;
+    bench_instruction!(Sub {
         (U8, U8)[u8_values],
         (U16, U16)[u16_values],
         (U32, U32)[u32_values],
@@ -187,9 +195,6 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
         (U64, U64)[u64_values],
         (U128, U128)[u128_values],
     });
-
-
-
 }
 
 criterion_group! {
