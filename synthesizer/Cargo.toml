@@ -173,6 +173,15 @@ version = "1.3"
 [dev-dependencies.criterion]
 version = "0.5.1"
 
+[dev-dependencies.enum-iterator]
+version = "1"
+
+[dev-dependencies.humansize]
+version = "2"
+
+[dev-dependencies.rayon]
+version = "1"
+
 [dev-dependencies.serde_yaml]
 version = "0.9"
 

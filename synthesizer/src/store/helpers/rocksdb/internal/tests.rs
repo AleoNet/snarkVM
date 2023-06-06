@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::store::helpers::{
-    rocksdb::{DataMap, MapID, RocksDB, TestMap as TestMapID},
+    rocksdb::{DataID, DataMap, Database, MapID, RocksDB, TestMap as TestMapID, PREFIX_LEN},
     Map,
     MapRead,
 };
@@ -23,8 +23,11 @@ use console::{
 };
 use snarkvm_utilities::{TestRng, Uniform};
 
+use humansize::{format_size, BINARY};
+use rayon::prelude::*;
+use rocksdb::{Direction, IteratorMode};
 use serial_test::serial;
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt, time::Instant};
 
 type TestMap = DataMap<u32, String>;
 
@@ -235,5 +238,103 @@ fn test_iterator_ordering() {
     for ((k1, v1), (k2, v2)) in map.iter_confirmed().zip(expected_order.iter()) {
         assert_eq!(&*k1, k2);
         assert_eq!(&*v1, v2);
+    }
+}
+
+#[test]
+#[ignore = "This is intended as a means of manually inspecting some existing persistent storage."]
+fn ledger_summary() {
+    // Specify the storage- and prefix-related consts.
+    const NETWORK_ID: u16 = 3;
+    const DEV: Option<u16> = None;
+
+    // The object containing stats related to a specific DataMap.
+    #[derive(Default, Debug, Clone)]
+    struct DataStats {
+        num_records: usize,
+        collective_key_size: usize,
+        collective_value_size: usize,
+    }
+    impl fmt::Display for DataStats {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let num_records = self.num_records;
+            let collective_key_size = self.collective_key_size;
+            let collective_value_size = self.collective_value_size;
+
+            let collective_size = format_size(collective_key_size + collective_value_size, BINARY);
+            let keys_size = format_size(collective_key_size, BINARY);
+            let values_size = format_size(collective_value_size, BINARY);
+
+            let avg_key_size = collective_key_size.checked_div(num_records).unwrap_or_default();
+            let avg_value_size = collective_value_size.checked_div(num_records).unwrap_or_default();
+            let avg_key_size = format_size(avg_key_size, BINARY);
+            let avg_value_size = format_size(avg_value_size, BINARY);
+
+            write!(
+                f,
+                "{} records with a collective size of {} (keys: {}, values: {}); ",
+                num_records, collective_size, keys_size, values_size
+            )?;
+
+            write!(f, "avg. key size: {}; avg. value size: {}", avg_key_size, avg_value_size)
+        }
+    }
+
+    // Obtain the number of possible DataIDs.
+    let data_id_count = enum_iterator::cardinality::<DataID>() as u16;
+    println!("There are {data_id_count} DataIDs defined");
+
+    // Make sure all of the variants are accounted for in the conversion impl.
+    assert_eq!(data_id_count, 52, "The number of DataID variants has changed; adjust the TryFrom impl");
+
+    // Start a timer.
+    println!("Analyzing the database...");
+    let start = Instant::now();
+
+    // Open the database.
+    let db = RocksDB::open(NETWORK_ID, DEV).unwrap();
+
+    // Traverse the records belonging to each DataMap in parallel.
+    let stats = (0..data_id_count)
+        .into_par_iter()
+        .map(|data_id| {
+            let data_id_bytes = data_id.to_le_bytes();
+
+            // Start iterating from the first record associated with the given DataID.
+            let mut start = [0u8; PREFIX_LEN];
+            start[..2].copy_from_slice(&NETWORK_ID.to_le_bytes());
+            start[2..].copy_from_slice(&data_id_bytes);
+            let iter = db.rocksdb.iterator(IteratorMode::From(&start, Direction::Forward));
+
+            // Traverse all the applicable records.
+            let mut data_stats = DataStats::default();
+            for record in iter {
+                let (key, value) = record.unwrap();
+
+                // Once the DataID changes, there are no more relevant records.
+                if &key[2..][..2] != &data_id_bytes {
+                    break;
+                }
+
+                // Update the stats related to the given DataID.
+                data_stats.num_records += 1;
+                // Exclude the size of the key prefix.
+                data_stats.collective_key_size += key.len() - PREFIX_LEN;
+                data_stats.collective_value_size += value.len();
+            }
+
+            data_stats
+        })
+        .collect::<Vec<_>>();
+
+    // Calculate global sums.
+    let num_records = stats.iter().map(|stats| stats.num_records).sum::<usize>();
+    let total_size = stats.iter().map(|s| s.collective_key_size + s.collective_value_size).sum::<usize>();
+    println!("Processed the database in {}s.", start.elapsed().as_secs());
+    println!("There are {} records, weighing {} in total.\n", num_records, format_size(total_size, BINARY));
+
+    // Provide a summary for each DataID.
+    for (data_id, data_stats) in enum_iterator::all::<DataID>().zip(stats) {
+        println!("{:?}: {}", data_id, data_stats);
     }
 }
