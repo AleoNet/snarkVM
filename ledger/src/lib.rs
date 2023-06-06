@@ -18,7 +18,7 @@
 extern crate tracing;
 
 mod helpers;
-use helpers::*;
+pub use helpers::*;
 
 mod advance;
 mod check;
