@@ -277,7 +277,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => self.get_epoch_challenge(self.latest_height()),
         }
     }
+}
 
+impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the unspent `credits.aleo` records.
     pub fn find_unspent_credits_records(&self, view_key: &ViewKey<N>) -> Result<RecordMap<N>> {
         let microcredits = Identifier::from_str("microcredits")?;
