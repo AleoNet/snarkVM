@@ -17,6 +17,7 @@
 #[macro_use]
 extern crate tracing;
 
+mod check;
 mod contains;
 mod find;
 mod get;
@@ -32,7 +33,7 @@ use console::{
     types::{Field, Group},
 };
 use synthesizer::{
-    block::{Block, ConfirmedTransaction, Header, Transaction, Transactions},
+    block::{Block, ConfirmedTransaction, Header, Input, Transaction, Transactions},
     coinbase::{CoinbaseSolution, EpochChallenge, PuzzleCommitment},
     process::Query,
     program::Program,
@@ -43,7 +44,7 @@ use synthesizer::{
 use aleo_std::prelude::{finish, lap, timer};
 use anyhow::Result;
 use core::ops::Range;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
 use std::{borrow::Cow, sync::Arc};
@@ -77,6 +78,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_block: Arc<RwLock<Block<N>>>,
     /// The current epoch challenge.
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
+    /// The current beacons.
+    current_beacons: Arc<RwLock<IndexSet<Address<N>>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -133,6 +136,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             genesis: genesis.clone(),
             current_block: Arc::new(RwLock::new(genesis.clone())),
             current_epoch_challenge: Default::default(),
+            current_beacons: Default::default(),
         };
 
         // If the block store is empty, initialize the genesis block.
