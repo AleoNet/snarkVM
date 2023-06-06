@@ -38,8 +38,9 @@ impl VariableBase {
                 let result = snarkvm_algorithms_cuda::msm::<G, G::Projective, <G::ScalarField as PrimeField>::BigInteger>(
                     bases, scalars,
                 );
-                if result.is_ok() {
-                    return result;
+                // Remove any cuda::Error
+                if let Ok(result) = result {
+                    return Ok(result);
                 }
             }
             batched::msm(bases, scalars)
