@@ -78,8 +78,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_block: Arc<RwLock<Block<N>>>,
     /// The current epoch challenge.
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
-    /// The current beacons.
-    current_beacons: Arc<RwLock<IndexSet<Address<N>>>>,
+    /// The current committee.
+    current_committee: Arc<RwLock<IndexSet<Address<N>>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -136,7 +136,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             genesis: genesis.clone(),
             current_block: Arc::new(RwLock::new(genesis.clone())),
             current_epoch_challenge: Default::default(),
-            current_beacons: Default::default(),
+            current_committee: Default::default(),
         };
 
         // If the block store is empty, initialize the genesis block.
@@ -144,6 +144,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Add the genesis block.
             ledger.add_next_block(&genesis)?;
         }
+
+        // Add the genesis validator to the committee.
+        ledger.current_committee.write().insert(genesis.signature().to_address());
         lap!(timer, "Initialize genesis");
 
         // Retrieve the latest height.
@@ -167,6 +170,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the VM.
     pub fn vm(&self) -> &VM<N, C> {
         &self.vm
+    }
+
+    /// Returns the latest committee.
+    pub fn latest_committee(&self) -> IndexSet<Address<N>> {
+        self.current_committee.read().clone()
     }
 
     /// Returns the latest state root.

@@ -25,7 +25,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         // TODO (raychu86): Remove this once proper coinbase transactions are integrated with consensus.
-        // Ensure the coinbase transaction is attributed to an authorized beacon.
+        // Ensure the coinbase transaction is attributed to a validator in the committee.
         if transaction.is_coinbase() {
             if let Transaction::Execute(id, execution, _) = transaction {
                 // Loop over coinbase transitions and check the input address.
@@ -33,9 +33,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     // Get the input address of the coinbase transition.
                     match transition.inputs().get(0) {
                         Some(Input::Public(_, Some(Plaintext::Literal(Literal::Address(address), _)))) => {
-                            // Check if the address is a valid beacon address.
-                            if !self.current_beacons.read().contains(address) {
-                                bail!("Coinbase transaction ({id}) is from an unauthorized beacon ({address})",);
+                            // Check if the address is in the current committee.
+                            if !self.current_committee.read().contains(address) {
+                                bail!("Coinbase transaction ({id}) is from an unauthorized account ({address})",);
                             }
                         }
                         _ => bail!("Invalid coinbase transaction: Missing public input in 'credits.aleo/mint'"),
