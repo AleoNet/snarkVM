@@ -49,7 +49,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the degree bounds of oracles in the first round.
     pub fn first_round_polynomial_info<'a>(
-        batch_sizes: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
+        batch_sizes: impl Iterator<Item = (&'a CircuitId, &'a u32)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut polynomials = batch_sizes
             .flat_map(|(&circuit_id, &batch_size)| {
@@ -72,7 +72,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     #[allow(clippy::type_complexity)]
     pub fn prover_first_round<'a, R: RngCore>(
         mut state: prover::State<'a, F, MM>,
-        batch_sizes: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
@@ -97,9 +96,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             for (j, (z_a, z_b, private_vars, x_poly)) in
                 itertools::izip!(z_a, z_b, private_variables, x_polys).enumerate()
             {
-                let w_label = witness_label(circuit.id, "w", j);
-                let za_label = witness_label(circuit.id, "z_a", j);
-                let zb_label = witness_label(circuit.id, "z_b", j);
+                let w_label = witness_label(circuit.id, "w", u32::try_from(j)?);
+                let za_label = witness_label(circuit.id, "z_a", u32::try_from(j)?);
+                let zb_label = witness_label(circuit.id, "z_b", u32::try_from(j)?);
                 job_pool.add_job(move || Self::calc_w(w_label, private_vars, x_poly, c_domain, i_domain, circuit));
                 job_pool.add_job(move || Self::calc_z_m(za_label, z_a, c_domain, circuit, None));
                 let r_b = F::rand(rng);
@@ -133,7 +132,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let mask_poly = Self::calculate_mask_poly(state.max_constraint_domain, rng);
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
-        assert!(oracles.matches_info(&Self::first_round_polynomial_info(batch_sizes)));
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(
+            state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
+        )));
         state.first_round_oracles = Some(Arc::new(oracles));
         Ok(state)
     }

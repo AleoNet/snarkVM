@@ -49,7 +49,7 @@ use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
-use std::{borrow::Borrow, collections::BTreeMap, ops::Deref, sync::Arc};
+use std::{borrow::Borrow, collections::BTreeMap, num::TryFromIntError, ops::Deref, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
@@ -403,8 +403,6 @@ where
             inputs_and_batch_sizes.insert(circuit_id, (batch_size, padded_public_input));
             public_inputs.insert(circuit_id, public_input);
             total_instances += batch_size;
-
-            let batch_size = usize::try_from(batch_size)?;
             batch_sizes.insert(circuit_id, batch_size);
         }
         assert_eq!(prover_state.total_instances, total_instances);
@@ -420,7 +418,7 @@ where
         // First round
 
         Self::terminate(terminator)?;
-        let mut prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, batch_sizes.iter(), zk_rng)?;
+        let mut prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
@@ -601,7 +599,7 @@ where
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations = std::collections::BTreeMap::new();
-        for (label, (_, point)) in query_set.to_set() {
+        for (label, (_, point)) in query_set.to_set()? {
             if !AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
                 let lc = lc_s.get(&label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
                 let evaluation = polynomials.get_lc_eval(lc, point)?;
@@ -621,7 +619,7 @@ where
             lc_s.values(),
             polynomials,
             &labeled_commitments,
-            &query_set.to_set(),
+            &query_set.to_set()?,
             &commitment_randomnesses,
             &mut sponge,
         )?;
@@ -661,7 +659,7 @@ where
         let batch_sizes_vec = proof.batch_sizes()?;
         let mut batch_sizes = BTreeMap::new();
         for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
-            batch_sizes.insert(vk.orig_vk.id, batch_sizes_vec[i].try_into()?);
+            batch_sizes.insert(vk.orig_vk.id, batch_sizes_vec[i]);
 
             if public_inputs_i.is_empty() {
                 return Err(SNARKError::EmptyBatch);
@@ -742,33 +740,33 @@ where
         let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
 
         let mut first_comms_consumed = 0;
-        let mut first_commitments = batch_sizes
-            .iter()
-            .flat_map(|(&circuit_id, &batch_size)| {
-                let first_comms = comms.witness_commitments[first_comms_consumed..][..batch_size]
-                    .iter()
-                    .enumerate()
-                    .flat_map(|(j, w_comm)| {
-                        [
-                            LabeledCommitment::new_with_info(
-                                &first_round_info[&witness_label(circuit_id, "w", j)],
-                                w_comm.w,
-                            ),
-                            LabeledCommitment::new_with_info(
-                                &first_round_info[&witness_label(circuit_id, "z_a", j)],
-                                w_comm.z_a,
-                            ),
-                            LabeledCommitment::new_with_info(
-                                &first_round_info[&witness_label(circuit_id, "z_b", j)],
-                                w_comm.z_b,
-                            ),
-                        ]
-                    })
-                    .collect_vec();
-                first_comms_consumed += batch_size;
-                first_comms
-            })
-            .collect_vec();
+        let total_instances = batch_sizes.values().sum::<u32>();
+        let mut first_commitments = Vec::with_capacity(total_instances as usize);
+        for (&circuit_id, &batch_size) in batch_sizes.iter() {
+            let first_comms = comms.witness_commitments[first_comms_consumed as usize..][..batch_size as usize]
+                .iter()
+                .enumerate()
+                .map(|(j, w_comm)| {
+                    Ok::<_, TryFromIntError>([
+                        LabeledCommitment::new_with_info(
+                            &first_round_info[&witness_label(circuit_id, "w", u32::try_from(j)?)],
+                            w_comm.w,
+                        ),
+                        LabeledCommitment::new_with_info(
+                            &first_round_info[&witness_label(circuit_id, "z_a", u32::try_from(j)?)],
+                            w_comm.z_a,
+                        ),
+                        LabeledCommitment::new_with_info(
+                            &first_round_info[&witness_label(circuit_id, "z_b", u32::try_from(j)?)],
+                            w_comm.z_b,
+                        ),
+                    ])
+                });
+            first_comms_consumed += batch_size;
+            for comms in first_comms {
+                first_commitments.extend(comms?);
+            }
+        }
 
         if MM::ZK {
             first_commitments.push(LabeledCommitment::new_with_info(
@@ -872,7 +870,7 @@ where
 
         let mut current_circuit_id = "".to_string();
         let mut circuit_index: i64 = -1;
-        for (label, (_point_name, q)) in query_set.to_set() {
+        for (label, (_point_name, q)) in query_set.to_set()? {
             if AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), E::Fr::zero());
             } else {
@@ -905,7 +903,7 @@ where
             &verifier_key,
             lc_s.values(),
             &commitments,
-            &query_set.to_set(),
+            &query_set.to_set()?,
             &evaluations,
             &proof.pc_proof,
             &mut sponge,

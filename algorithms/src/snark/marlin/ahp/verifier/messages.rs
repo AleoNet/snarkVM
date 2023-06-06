@@ -110,11 +110,11 @@ impl<F: PrimeField> QuerySet<F> {
 
     /// Returns a `BTreeSet` containing elements of the form
     /// `(polynomial_label, (query_label, query))`.
-    pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<F> {
+    pub fn to_set(&self) -> Result<crate::polycommit::sonic_pc::QuerySet<F>, TryFromIntError> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
         for (&circuit_id, &batch_size) in self.batch_sizes.iter() {
             for j in 0..batch_size {
-                query_set.insert((witness_label(circuit_id, "z_b", j), self.z_b_query.clone()));
+                query_set.insert((witness_label(circuit_id, "z_b", u32::try_from(j)?), self.z_b_query.clone()));
             }
             query_set.insert((witness_label(circuit_id, "g_a", 0), self.g_a_query.clone()));
             query_set.insert((witness_label(circuit_id, "g_b", 0), self.g_b_query.clone()));
@@ -123,6 +123,6 @@ impl<F: PrimeField> QuerySet<F> {
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
         query_set.insert(("matrix_sumcheck".into(), self.matrix_sumcheck_query.clone()));
-        query_set
+        Ok(query_set)
     }
 }

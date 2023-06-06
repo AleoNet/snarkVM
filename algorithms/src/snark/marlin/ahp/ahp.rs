@@ -46,7 +46,7 @@ struct VerifierChallenges<F: Field> {
     gamma: F,
 }
 
-pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
+pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: u32) -> String {
     format!("circuit_{circuit_id}_{poly}_{i:0>8}")
 }
 
@@ -243,7 +243,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|(&circuit_id, circuit_state)| {
                 let z_b_i = (0..circuit_state.batch_size)
                     .map(|i| {
-                        let z_b = witness_label(circuit_id, "z_b", usize::try_from(i)?);
+                        let z_b = witness_label(circuit_id, "z_b", i);
                         Ok::<_, TryFromIntError>(LinearCombination::new(z_b.clone(), [(F::one(), z_b)]))
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -328,8 +328,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             for (id, c) in batch_combiners.iter() {
                 let mut circuit_term = LinearCombination::empty(format!("lincheck_sumcheck term {id}"));
                 for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
-                    let z_a_j = witness_label(*id, "z_a", j);
-                    let w_j = witness_label(*id, "w", j);
+                    let z_a_j = witness_label(*id, "z_a", u32::try_from(j)?);
+                    let w_j = witness_label(*id, "w", u32::try_from(j)?);
                     circuit_term
                         .add(r_alpha_at_beta_s[id] * instance_combiner * (eta_a + eta_c * z_b_s_at_beta[id][j]), z_a_j)
                         .add(-t_at_beta_s[id] * v_X_at_beta[id] * instance_combiner, w_j);

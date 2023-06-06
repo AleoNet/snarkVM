@@ -180,7 +180,7 @@ impl<F: PrimeField> Evaluations<F> {
 impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(
         map: &std::collections::BTreeMap<String, F>,
-        batch_sizes: BTreeMap<CircuitId, usize>,
+        batch_sizes: BTreeMap<CircuitId, u32>,
     ) -> Result<Self, TryFromIntError> {
         let mut z_b_evals_collect: BTreeMap<CircuitId, Vec<F>> = BTreeMap::new();
         let mut g_a_evals = Vec::with_capacity(batch_sizes.len());
@@ -197,7 +197,7 @@ impl<F: PrimeField> Evaluations<F> {
                 if let Some(z_b_i) = z_b_evals_collect.get_mut(&circuit_id) {
                     z_b_i.push(*value);
                 } else {
-                    let mut values = Vec::with_capacity(batch_sizes[&circuit_id]);
+                    let mut values = Vec::with_capacity(batch_sizes[&circuit_id] as usize);
                     values.push(*value);
                     z_b_evals_collect.insert(circuit_id, values);
                 }
@@ -275,7 +275,7 @@ pub struct Proof<E: PairingEngine> {
 impl<E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
-        batch_sizes_in: BTreeMap<CircuitId, usize>,
+        batch_sizes_in: BTreeMap<CircuitId, u32>,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
         msg: ahp::prover::ThirdMessage<E::Fr>,
@@ -283,14 +283,14 @@ impl<E: PairingEngine> Proof<E> {
     ) -> Result<Self, SNARKError> {
         let mut total_instances = 0;
         let mut batch_sizes = Vec::with_capacity(batch_sizes_in.len());
-        for (z_b_evals, batch_size) in evaluations.z_b_evals.iter().zip(batch_sizes_in.values()) {
+        for (z_b_evals, &batch_size) in evaluations.z_b_evals.iter().zip(batch_sizes_in.values()) {
             total_instances += batch_size;
-            batch_sizes.push(u32::try_from(*batch_size)?);
-            if z_b_evals.len() != *batch_size {
+            batch_sizes.push(batch_size);
+            if z_b_evals.len() != batch_size as usize {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
-        if commitments.witness_commitments.len() != total_instances {
+        if commitments.witness_commitments.len() != total_instances as usize {
             return Err(SNARKError::BatchSizeMismatch);
         }
         Ok(Self { batch_sizes, commitments, evaluations, msg, pc_proof })
