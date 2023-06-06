@@ -31,7 +31,9 @@ snarkVM is a big project, so (non-)adherence to best practices related to perfor
 - try to keep the sizes of `enum` variants uniform; use `Box<T>` on ones that are large
 
 ### Cross-platform consistency
-- types which contain consensus- or cryptographic logic should have a consistent size across platforms. Their serialized output should not contain `usize`, and at times it may be worth it to avoid using `usize` in the types themselves for clarity.
+- First and foremost, types which contain consensus- or cryptographic logic should have a consistent size across platforms. Their serialized output should not contain `usize`. For defense in depth, we serialize `usize` as `u64`.
+- For clarity, use `u32` and `u64` as much or long as possible, especially in type definitions. 
+- Given that we only target 32- and 64-bit systems, casting `usize` as `u64` and casting `u32` as `usize` will always be safe and doesn't need a `try_from::`. In serialization code, for defense in depth it is still encouraged to use `try_from::`.
 
 ### Misc. performance
 

@@ -26,7 +26,10 @@ use core::any::TypeId;
 pub struct VariableBase;
 
 impl VariableBase {
-    pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+    pub fn msm<G: AffineCurve>(
+        bases: &[G],
+        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    ) -> Result<G::Projective, anyhow::Error> {
         // For BLS12-377, we perform variable base MSM using a batched addition technique.
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
             #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
@@ -97,10 +100,10 @@ mod tests {
             let naive_b = VariableBase::msm_naive_parallel(bases.as_slice(), scalars.as_slice()).to_affine();
             assert_eq!(naive_a, naive_b, "MSM size: {msm_size}");
 
-            let candidate = standard::msm(bases.as_slice(), scalars.as_slice()).to_affine();
+            let candidate = standard::msm(bases.as_slice(), scalars.as_slice()).unwrap().to_affine();
             assert_eq!(naive_a, candidate, "MSM size: {msm_size}");
 
-            let candidate = batched::msm(bases.as_slice(), scalars.as_slice()).to_affine();
+            let candidate = batched::msm(bases.as_slice(), scalars.as_slice()).unwrap().to_affine();
             assert_eq!(naive_a, candidate, "MSM size: {msm_size}");
         }
     }

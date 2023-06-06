@@ -467,7 +467,7 @@ fn selector_evals<F: PrimeField>(
     challenge: F,
 ) -> F {
     *cached_selector_evaluations
-        .entry((target_domain.size, largest_domain.size, challenge))
+        .entry((target_domain.size as u64, largest_domain.size as u64, challenge))
         .or_insert_with(|| largest_domain.evaluate_selector_polynomial(*target_domain, challenge))
 }
 

@@ -24,6 +24,7 @@ use snarkvm_utilities::{
     error,
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, SerializationError, Valid, Validate},
+    try_write_as,
     FromBytes,
     ToBytes,
     ToMinimalBits,
@@ -129,8 +130,6 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     }
 }
 
-// It is safe to cast `supported_degree_bounds.len()` and individual bounds to a `u32` because they are read and used as u32
-#[allow(clippy::cast_possible_truncation)]
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize powers.
@@ -140,9 +139,9 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
         self.h.write_le(&mut writer)?;
 
         // Serialize `supported_degree_bounds`.
-        (self.supported_degree_bounds.len() as u32).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.supported_degree_bounds.len(), &mut writer)?;
         for degree_bound in &self.supported_degree_bounds {
-            (*degree_bound as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(*degree_bound, &mut writer)?;
         }
 
         // Serialize `prepared_h`.
@@ -352,7 +351,7 @@ impl<E: PairingEngine> ToBytes for KZGCommitment<E> {
 }
 
 impl<E: PairingEngine> ToMinimalBits for KZGCommitment<E> {
-    fn to_minimal_bits(&self) -> Result<Vec<bool>, std::num::TryFromIntError> {
+    fn to_minimal_bits(&self) -> Vec<bool> {
         self.0.to_minimal_bits()
     }
 }

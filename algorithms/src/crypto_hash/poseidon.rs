@@ -322,7 +322,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         let capacity = F::size_in_bits() - 1;
         let mut dest_limbs = Vec::<F>::new();
 
-        let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), ty);
+        let params = get_params(TargetField::size_in_bits_u32(), F::size_in_bits_u32(), ty);
 
         let adjustment_factor_lookup_table = {
             let mut table = Vec::<F>::new();
@@ -342,9 +342,9 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
             let first = &src_limbs[i];
             let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
 
-            let first_max_bits_per_limb = params.bits_per_limb + crate::overhead!(first.1 + F::one());
+            let first_max_bits_per_limb = params.bits_per_limb as usize + crate::overhead!(first.1 + F::one());
             let second_max_bits_per_limb = if let Some(second) = second {
-                params.bits_per_limb + crate::overhead!(second.1 + F::one())
+                params.bits_per_limb as usize + crate::overhead!(second.1 + F::one())
             } else {
                 0
             };
@@ -377,26 +377,24 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         Self::get_limbs_representations_from_big_integer::<TargetField>(&elem.to_bigint(), optimization_type)
     }
 
-    // params.bits_per_limb is safe to cast as u32 because it will be less than `max_limb_size`
-    #[allow(clippy::cast_possible_truncation)]
     /// Obtain the limbs directly from a big int
     pub fn get_limbs_representations_from_big_integer<TargetField: PrimeField>(
         elem: &<TargetField as PrimeField>::BigInteger,
         optimization_type: OptimizationType,
     ) -> SmallVec<[F; 10]> {
-        let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), optimization_type);
-        assert!(params.bits_per_limb <= u32::MAX as usize);
+        let params = get_params(TargetField::size_in_bits_u32(), F::size_in_bits_u32(), optimization_type);
 
         // Push the lower limbs first
         let mut limbs: SmallVec<[F; 10]> = SmallVec::new();
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
             let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
-            let cur_mod_r =
-                <F as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..])
-                    .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
+            let cur_mod_r = <F as PrimeField>::BigInteger::from_bits_be(
+                &cur_bits[cur_bits.len() - params.bits_per_limb as usize..],
+            )
+            .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(F::from_bigint(cur_mod_r).unwrap());
-            cur.divn(params.bits_per_limb as u32);
+            cur.divn(params.bits_per_limb);
         }
 
         // then we reserve, so that the limbs are ``big limb first''

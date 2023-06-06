@@ -79,7 +79,7 @@ const MIN_PARALLEL_CHUNK_SIZE: usize = 1 << 7;
 #[derive(Copy, Clone, Hash, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EvaluationDomain<F: FftField> {
     /// The size of the domain.
-    pub size: u64,
+    pub size: usize,
     /// `log_2(self.size)`.
     pub log_size_of_group: u32,
     /// Size of the domain as a field element.
@@ -125,12 +125,12 @@ impl<F: FftField> EvaluationDomain<F> {
         // Compute the generator for the multiplicative subgroup.
         // It should be the 2^(log_size_of_group) root of unity.
         let group_gen = F::get_root_of_unity(size)?;
-        let size = size as u64;
+        let size_u64 = size as u64;
 
         // Check that it is indeed the 2^(log_size_of_group) root of unity.
-        debug_assert_eq!(group_gen.pow([size]), F::one());
+        debug_assert_eq!(group_gen.pow([size_u64]), F::one());
 
-        let size_as_field_element = F::from(size);
+        let size_as_field_element = F::from(size_u64);
         let size_inv = size_as_field_element.inverse()?;
 
         Some(EvaluationDomain {
@@ -151,11 +151,9 @@ impl<F: FftField> EvaluationDomain<F> {
         if size.trailing_zeros() <= F::FftParameters::TWO_ADICITY { Some(size) } else { None }
     }
 
-    // casting to usize is safe because it is originally a usize in self.new()
-    #[allow(clippy::cast_possible_truncation)]
     /// Return the size of `self`.
     pub fn size(&self) -> usize {
-        self.size as usize
+        self.size
     }
 
     /// Compute an FFT.
@@ -258,7 +256,7 @@ impl<F: FftField> EvaluationDomain<F> {
     pub fn evaluate_all_lagrange_coefficients(&self, tau: F) -> Vec<F> {
         // Evaluate all Lagrange polynomials
         let size = self.size();
-        let t_size = tau.pow([self.size]);
+        let t_size = tau.pow([self.size as u64]);
         let one = F::one();
         if t_size.is_one() {
             let mut u = vec![F::zero(); size];
@@ -300,7 +298,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// This evaluates the vanishing polynomial for this domain at tau.
     /// For multiplicative subgroups, this polynomial is `z(X) = X^self.size - 1`.
     pub fn evaluate_vanishing_polynomial(&self, tau: F) -> F {
-        tau.pow([self.size]) - F::one()
+        tau.pow([self.size as u64]) - F::one()
     }
 
     /// Return an iterator over the elements of the domain.
@@ -786,21 +784,19 @@ const MIN_GAP_SIZE_FOR_PARALLELISATION: usize = 1 << 10;
 const LOG_ROOTS_OF_UNITY_PARALLEL_SIZE: u32 = 7;
 
 #[inline]
-pub(super) fn bitrev(a: u64, log_len: u32) -> u64 {
-    a.reverse_bits() >> (64 - log_len)
+pub(super) fn bitrev(a: usize, log_len: usize) -> usize {
+    a.reverse_bits() >> (std::mem::size_of::<usize>() * 8 - log_len)
 }
 
 pub(crate) fn derange<T>(xi: &mut [T]) {
     derange_helper(xi, log2(xi.len()))
 }
 
-// casting to usize is safe because xi.len() is at most domain.size() which uses usize in self.new()
-#[allow(clippy::cast_possible_truncation)]
 fn derange_helper<T>(xi: &mut [T], log_len: u32) {
-    for idx in 1..(xi.len() as u64 - 1) {
-        let ridx = bitrev(idx, log_len);
+    for idx in 1..(xi.len() - 1) {
+        let ridx = bitrev(idx, log_len as usize);
         if idx < ridx {
-            xi.swap(idx as usize, ridx as usize);
+            xi.swap(idx, ridx);
         }
     }
 }
@@ -869,7 +865,7 @@ impl<F: FftField> Iterator for Elements<F> {
     type Item = F;
 
     fn next(&mut self) -> Option<F> {
-        if self.cur_pow == self.domain.size {
+        if self.cur_pow == self.domain.size as u64 {
             None
         } else {
             let cur_elem = self.cur_elem;

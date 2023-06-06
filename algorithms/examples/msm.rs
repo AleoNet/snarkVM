@@ -90,8 +90,8 @@ pub fn main() -> Result<()> {
 
         // Parse the variant.
         match args[1].as_str() {
-            "batched" => batched::msm(bases.as_slice(), scalars.as_slice()),
-            "standard" => standard::msm(bases.as_slice(), scalars.as_slice()),
+            "batched" => batched::msm(bases.as_slice(), scalars.as_slice())?,
+            "standard" => standard::msm(bases.as_slice(), scalars.as_slice())?,
             _ => panic!("Invalid variant: use 'batched' or 'standard'"),
         };
 

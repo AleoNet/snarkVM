@@ -19,19 +19,15 @@ use snarkvm_utilities::{cfg_into_iter, BigInteger};
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-// It is safe to cast w_start to u32 because it was small enough earlier in the callchain
-// It is safe to cast scalar to usize because it is mod c, which is usize
-#[allow(clippy::cast_possible_truncation)]
 fn update_buckets<G: AffineCurve>(
     base: &G,
     mut scalar: <G::ScalarField as PrimeField>::BigInteger,
-    w_start: usize,
-    c: usize,
+    w_start: u32,
+    c: u32,
     buckets: &mut [G::Projective],
-) {
-    assert!(w_start <= u32::MAX as usize);
+) -> Result<(), anyhow::Error> {
     // We right-shift by w_start, thus getting rid of the lower bits.
-    scalar.divn(w_start as u32);
+    scalar.divn(w_start);
 
     // We mod the remaining bits by the window size.
     let scalar = scalar.as_ref()[0] % (1 << c);
@@ -39,16 +35,17 @@ fn update_buckets<G: AffineCurve>(
     // If the scalar is non-zero, we update the corresponding bucket.
     // (Recall that `buckets` doesn't have a zero bucket.)
     if scalar != 0 {
-        buckets[(scalar - 1) as usize].add_assign_mixed(base);
+        buckets[usize::try_from(scalar - 1)?].add_assign_mixed(base);
     }
+    Ok(())
 }
 
 fn standard_window<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-    w_start: usize,
-    c: usize,
-) -> (G::Projective, usize) {
+    w_start: u32,
+    c: u32,
+) -> Result<(G::Projective, u32), anyhow::Error> {
     let mut res = G::Projective::zero();
     let fr_one = G::ScalarField::one().to_bigint();
 
@@ -66,7 +63,7 @@ fn standard_window<G: AffineCurve>(
         .iter()
         .zip(bases)
         .filter(|(&s, _)| s > fr_one)
-        .for_each(|(&scalar, base)| update_buckets(base, scalar, w_start, c, &mut buckets));
+        .try_for_each(|(&scalar, base)| update_buckets(base, scalar, w_start, c, &mut buckets))?;
     // G::Projective::batch_normalization(&mut buckets);
 
     for running_sum in buckets.into_iter().rev().scan(G::Projective::zero(), |sum, b| {
@@ -76,33 +73,38 @@ fn standard_window<G: AffineCurve>(
         res += running_sum;
     }
 
-    (res, window_size)
+    Ok((res, window_size))
 }
 
-pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+pub fn msm<G: AffineCurve>(
+    bases: &[G],
+    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+) -> Result<G::Projective, anyhow::Error> {
     // Determine the bucket size `c` (chosen empirically).
     let c = match scalars.len() < 32 {
         true => 1,
         false => crate::msm::ln_without_floats(scalars.len()) + 2,
     };
 
-    let num_bits = <G::ScalarField as PrimeField>::size_in_bits();
+    let num_bits = <G::ScalarField as PrimeField>::size_in_bits_u32();
 
     // Each window is of size `c`.
     // We divide up the bits 0..num_bits into windows of size `c`, and
     // in parallel process each such window.
-    let window_sums: Vec<_> =
-        cfg_into_iter!(0..num_bits).step_by(c).map(|w_start| standard_window(bases, scalars, w_start, c)).collect();
+    let window_sums: Vec<_> = cfg_into_iter!(0..num_bits)
+        .step_by(c as usize)
+        .map(|w_start| standard_window(bases, scalars, w_start, c))
+        .collect::<Result<_, _>>()?;
 
     // We store the sum for the lowest window.
     let (lowest, window_sums) = window_sums.split_first().unwrap();
 
     // We're traversing windows from high to low.
-    window_sums.iter().rev().fold(G::Projective::zero(), |mut total, (sum_i, window_size)| {
+    Ok(window_sums.iter().rev().fold(G::Projective::zero(), |mut total, (sum_i, window_size)| {
         total += sum_i;
         for _ in 0..*window_size {
             total.double_in_place();
         }
         total
-    }) + lowest.0
+    }) + lowest.0)
 }

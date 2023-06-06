@@ -256,8 +256,8 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 }
 
 impl<P: Parameters> ToMinimalBits for Affine<P> {
-    fn to_minimal_bits(&self) -> Result<Vec<bool>, std::num::TryFromIntError> {
-        Ok(self.x.to_bits_le())
+    fn to_minimal_bits(&self) -> Vec<bool> {
+        self.x.to_bits_le()
     }
 }
 

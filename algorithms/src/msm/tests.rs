@@ -45,7 +45,7 @@ fn variable_base_test_with_bls12() {
     let g = (0..SAMPLES).map(|_| G1Projective::rand(&mut rng).to_affine()).collect::<Vec<_>>();
 
     let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
-    let fast = VariableBase::msm(g.as_slice(), v.as_slice());
+    let fast = VariableBase::msm(g.as_slice(), v.as_slice()).unwrap();
 
     assert_eq!(naive.to_affine(), fast.to_affine());
 }
@@ -60,7 +60,7 @@ fn variable_base_test_with_bls12_unequal_numbers() {
     let g = (0..SAMPLES).map(|_| G1Projective::rand(&mut rng).to_affine()).collect::<Vec<_>>();
 
     let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
-    let fast = VariableBase::msm(g.as_slice(), v.as_slice());
+    let fast = VariableBase::msm(g.as_slice(), v.as_slice()).unwrap();
 
     assert_eq!(naive.to_affine(), fast.to_affine());
 }

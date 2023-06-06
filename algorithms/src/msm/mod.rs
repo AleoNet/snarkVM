@@ -25,7 +25,7 @@ pub use variable_base::*;
 /// [`Explanation of usage`]
 ///
 /// [`Explanation of usage`]: https://github.com/scipr-lab/zexe/issues/79#issue-556220473
-fn ln_without_floats(a: usize) -> usize {
+fn ln_without_floats(a: usize) -> u32 {
     // log2(a) * ln(2)
-    (crate::fft::domain::log2(a) * 69 / 100) as usize
+    crate::fft::domain::log2(a) * 69 / 100
 }

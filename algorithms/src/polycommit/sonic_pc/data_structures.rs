@@ -16,7 +16,7 @@ use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg1
 use hashbrown::{HashMap, HashSet};
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error, serialize::*, try_write_as, FromBytes, ToBytes};
 
 use std::{
     borrow::{Borrow, Cow},
@@ -221,26 +221,25 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 }
 
 impl<E: PairingEngine> ToBytes for CommitterKey<E> {
-    // Values are safe to cast to u32 because they are read as u32.
-    #[allow(clippy::cast_possible_truncation)]
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize `powers`.
-        (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
+        // u32::try_from(*degree_bound).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.powers_of_beta_g.len(), &mut writer)?;
         for power in &self.powers_of_beta_g {
             power.write_le(&mut writer)?;
         }
 
         // Serialize `powers`.
-        (self.lagrange_bases_at_beta_g.len() as u32).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.lagrange_bases_at_beta_g.len(), &mut writer)?;
         for (size, powers) in &self.lagrange_bases_at_beta_g {
-            (*size as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(*size, &mut writer)?;
             for power in powers {
                 power.write_le(&mut writer)?;
             }
         }
 
         // Serialize `powers_of_beta_times_gamma_g`.
-        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
+        try_write_as::<u32, W>(self.powers_of_beta_times_gamma_g.len(), &mut writer)?;
         for power_of_gamma_g in &self.powers_of_beta_times_gamma_g {
             power_of_gamma_g.write_le(&mut writer)?;
         }
@@ -248,7 +247,7 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `shifted_powers_of_beta_g`.
         self.shifted_powers_of_beta_g.is_some().write_le(&mut writer)?;
         if let Some(shifted_powers_of_beta_g) = &self.shifted_powers_of_beta_g {
-            (shifted_powers_of_beta_g.len() as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(shifted_powers_of_beta_g.len(), &mut writer)?;
             for shifted_power in shifted_powers_of_beta_g {
                 shifted_power.write_le(&mut writer)?;
             }
@@ -257,10 +256,10 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `shifted_powers_of_beta_times_gamma_g`.
         self.shifted_powers_of_beta_times_gamma_g.is_some().write_le(&mut writer)?;
         if let Some(shifted_powers_of_beta_times_gamma_g) = &self.shifted_powers_of_beta_times_gamma_g {
-            (shifted_powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(shifted_powers_of_beta_times_gamma_g.len(), &mut writer)?;
             for (key, shifted_powers_of_beta_times_gamma_g) in shifted_powers_of_beta_times_gamma_g {
-                (*key as u32).write_le(&mut writer)?;
-                (shifted_powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
+                try_write_as::<u32, W>(*key, &mut writer)?;
+                try_write_as::<u32, W>(shifted_powers_of_beta_times_gamma_g.len(), &mut writer)?;
                 for shifted_power in shifted_powers_of_beta_times_gamma_g {
                     shifted_power.write_le(&mut writer)?;
                 }
@@ -270,9 +269,9 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `enforced_degree_bounds`.
         self.enforced_degree_bounds.is_some().write_le(&mut writer)?;
         if let Some(enforced_degree_bounds) = &self.enforced_degree_bounds {
-            (enforced_degree_bounds.len() as u32).write_le(&mut writer)?;
+            try_write_as::<u32, W>(enforced_degree_bounds.len(), &mut writer)?;
             for enforced_degree_bound in enforced_degree_bounds {
-                (*enforced_degree_bound as u32).write_le(&mut writer)?;
+                try_write_as::<u32, W>(*enforced_degree_bound, &mut writer)?;
             }
         }
 
