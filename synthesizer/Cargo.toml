@@ -180,7 +180,7 @@ version = "0.9"
 version = "2"
 
 [dev-dependencies.tempfile]
-version = "3.4"
+version = "3.6"
 
 [dev-dependencies.tracing-test]
 version = "0.2"
