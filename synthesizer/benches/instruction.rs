@@ -77,7 +77,7 @@ fn setup_finalize_registers(
     registers
 }
 
-fn bench_arithmetic_instructions(c: &mut Criterion) {
+fn bench_instructions(c: &mut Criterion) {
     // Initialize an RNG.
     let rng = &mut TestRng::default();
     // Initialize a process.
@@ -88,45 +88,25 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
     let stack = process.get_stack("credits.aleo").unwrap();
 
     macro_rules! bench_instruction {
-        // Case 0: Unary operation.
+        // Benchmark a unary instruction, using the default sampling method.
         ($operation:ident, $instruction:ident { $( $input:ident , )+ }) => {
             $({
-                let name = concat!(stringify!($instruction), "/", stringify!($input));
-                let samples = iter::repeat_with(|| {
+                // Define the default sampling method.
+                let mut samples = iter::repeat_with(|| {
                     let mut arg: $input::<Testnet3> = Uniform::rand(rng);
                     while (std::panic::catch_unwind(|| arg.$operation())).is_err() {
                         arg = Uniform::rand(rng);
                     }
                     arg
                 });
-                // Benchmark the core operation of the instruction.
-                c.bench_function(&format!("{name}/core"), |b| {
-                    b.iter_batched(
-                        || samples.next().unwrap(),
-                        |arg| arg.$operation(),
-                        BatchSize::PerIteration,
-                    )
-                });
-                // Benchmark the entire instruction.
-                use snarkvm_synthesizer::$instruction;
-                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                c.bench_function(&format!("{name}/instruction"), |b| {
-                    b.iter_batched(
-                        || {
-                            let arg = samples.next().unwrap();
-                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
-                        },
-                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::PerIteration,
-                    )
-                });
+                bench_instruction!($operation, samples, $instruction { $input , });
             })+
         };
-        // Case 1: Binary operation.
+        // Benchmark a binary instruction, using the default sampling method.
         ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ }) => {
             $({
-                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
-                let samples = iter::repeat_with(|| {
+                // Define the default sampling method.
+                let mut samples = iter::repeat_with(|| {
                     let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
                     let mut second: $input_b::<Testnet3> = Uniform::rand(rng);
                     while (std::panic::catch_unwind(|| first.$operation(&second))).is_err() {
@@ -135,34 +115,13 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
                     }
                     (first, second)
                 });
-                // Benchmark the core operation of the instruction.
-                c.bench_function(&format!("{name}/core"), |b| {
-                    b.iter_batched(
-                        || samples.next().unwrap(),
-                        |(first, second)| first.$operation(&second),
-                        BatchSize::PerIteration,
-                    )
-                });
-                // Benchmark the entire instruction.
-                use snarkvm_synthesizer::$instruction;
-                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                c.bench_function(&format!("{name}/instruction"), |b| {
-                    b.iter_batched(
-                        || {
-                            let (first, second) = samples.next().unwrap();
-                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
-                        },
-                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::PerIteration,
-                    )
-                });
+                bench_instruction!($operation, samples, $instruction { ($input_a, $input_b) , });
             })+
         };
-        // Case 2: Ternary operation.
+        // Benchmark a ternary instruction, with the default sampling method.
         ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident, $input_c:ident), )+ }) => {
             $({
-                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_",  stringify!($input_b), "_", stringify!($input_c));
-                let samples = iter::repeat_with(|| {
+                let mut samples = iter::repeat_with(|| {
                     let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
                     let mut second: $input_b::<Testnet3> = Uniform::rand(rng);
                     let mut third: $input_c::<Testnet3> = Uniform::rand(rng);
@@ -173,10 +132,71 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
                     }
                     (first, second, third)
                 });
+                bench_instruction!($operation, samples, $instruction { ($input_a, $input_b, $input_c), });
+            })+
+        };
+        // Benchmark a unary instruction, with the given sampling method.
+        ($operation:ident, $samples:tt, $instruction:ident { $input:ident , }) => {
+            {
+                let name = concat!(stringify!($instruction), "/", stringify!($input));
                 // Benchmark the core operation of the instruction.
                 c.bench_function(&format!("{name}/core"), |b| {
                     b.iter_batched(
-                        || samples.next().unwrap(),
+                        || $samples.next().unwrap(),
+                        |arg| arg.$operation(),
+                        BatchSize::PerIteration,
+                    )
+                });
+                // Benchmark the entire instruction.
+                use snarkvm_synthesizer::$instruction;
+                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1", $instruction::<Testnet3>::opcode().to_string())).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let arg = $samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            };
+        };
+        // Benchmark a binary instruction, with the given sampling method.
+        ($operation:ident, $samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident) , }) => {
+            {
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+                // Benchmark the core operation of the instruction.
+                c.bench_function(&format!("{name}/core"), |b| {
+                    b.iter_batched(
+                        || $samples.next().unwrap(),
+                        |(first, second)| first.$operation(&second),
+                        BatchSize::PerIteration,
+                    )
+                });
+                // Benchmark the entire instruction.
+                use snarkvm_synthesizer::$instruction;
+                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string())).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let (first, second) = $samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            };
+        };
+        // Benchmark a ternary instruction, with the given sampling method.
+        ($operation:ident, $samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident, $input_c:ident), }) => {
+            {
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_",  stringify!($input_b), "_", stringify!($input_c));
+                // Benchmark the core operation of the instruction.
+                c.bench_function(&format!("{name}/core"), |b| {
+                    b.iter_batched(
+                        || $samples.next().unwrap(),
                         |(first, second, third)| $input_b::ternary(&first, &second, &third),
                         BatchSize::PerIteration
                     )
@@ -187,14 +207,14 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
                 c.bench_function(&format!("{name}/instruction"), |b| {
                     b.iter_batched(
                         || {
-                            let (first, second, third) = samples.next().unwrap();
+                            let (first, second, third) = $samples.next().unwrap();
                             setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap(), Value::from_str(&third.to_string()).unwrap()])
                         },
                         |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
                         BatchSize::PerIteration
                     )
                 });
-            })+
+            }
         };
     }
 
@@ -705,7 +725,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
 criterion_group! {
     name = bench;
     config = Criterion::default().sample_size(10);
-    targets = bench_arithmetic_instructions,
+    targets = bench_instructions,
 }
 
 criterion_main!(bench);
