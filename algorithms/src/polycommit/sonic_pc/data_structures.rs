@@ -546,31 +546,17 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
 pub struct VerifierUnionKey<'a, E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: &'a kzg10::VerifierKey<E>,
-
-    /// Pairs a degree_bound with its corresponding G2 element.
-    /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
-    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, &'a E::G2Affine)>>,
-
-    /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
+    /// Pairs a degree_bound with its corresponding G2 prepared element.
+    /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} H),` where `H` is the generator of G2 above.
     pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, &'a <E::G2Affine as PairingCurve>::Prepared)>>,
-
-    /// The maximum degree supported by the trimmed parameters that `self` is
-    /// a part of.
+    /// The maximum degree supported by the trimmed parameters that `self` is a part of.
     pub supported_degree: usize,
-
-    /// The maximum degree supported by the `UniversalParams` `self` was derived
-    /// from.
+    /// The maximum degree supported by the `UniversalParams` `self` was derived from.
     pub max_degree: usize,
 }
 
 impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
-    /// Find the appropriate shift for the degree bound.
-    pub fn get_shift_power(&self, degree_bound: usize) -> Option<&E::G2Affine> {
-        self.degree_bounds_and_neg_powers_of_h
-            .as_ref()
-            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1))
-    }
-
+    /// Find the appropriate prepared shift for the degree bound.
     pub fn get_prepared_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
         self.degree_bounds_and_prepared_neg_powers_of_h
             .as_ref()
@@ -583,20 +569,15 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
 
     pub fn union<T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
         let mut bounds_seen = HashSet::<usize>::new();
-        let mut bounds_and_neg_powers = vec![];
         let mut bounds_and_prepared_neg_powers = vec![];
         let mut biggest_vk: Option<&VerifierKey<E>> = None;
         for vk in verifier_keys {
             if biggest_vk.is_none() || biggest_vk.unwrap().supported_degree < vk.supported_degree {
                 biggest_vk = Some(vk);
             }
-            let new_bounds = vk.degree_bounds_and_neg_powers_of_h.as_ref().unwrap();
             let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.as_ref().unwrap();
-            assert_eq!(new_bounds.len(), new_prep_bounds.len());
-            for ((bound, neg_powers), (bound2, prep_neg_powers)) in new_bounds.iter().zip(new_prep_bounds) {
-                assert_eq!(bound, bound2);
+            for (bound, prep_neg_powers) in new_prep_bounds {
                 if bounds_seen.insert(*bound) {
-                    bounds_and_neg_powers.push((*bound, neg_powers));
                     bounds_and_prepared_neg_powers.push((*bound, prep_neg_powers));
                 }
             }
@@ -605,17 +586,11 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         let biggest_vk = biggest_vk.unwrap();
         let mut vk_union = VerifierUnionKey::<E> {
             vk: &biggest_vk.vk,
-            degree_bounds_and_neg_powers_of_h: None,
             degree_bounds_and_prepared_neg_powers_of_h: None,
             supported_degree: biggest_vk.supported_degree,
             max_degree: biggest_vk.max_degree,
         };
 
-        if !bounds_and_neg_powers.is_empty() {
-            bounds_and_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
-            bounds_and_neg_powers.dedup_by(|a, b| a.0 <= b.0);
-            vk_union.degree_bounds_and_neg_powers_of_h = Some(bounds_and_neg_powers);
-        }
         if !bounds_and_prepared_neg_powers.is_empty() {
             bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
             bounds_and_prepared_neg_powers.dedup_by(|a, b| a.0 <= b.0);
