@@ -448,20 +448,14 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
-
     /// Pairs a degree_bound with its corresponding G2 element.
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
     pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>>,
-
     /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
     pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
-
-    /// The maximum degree supported by the trimmed parameters that `self` is
-    /// a part of.
+    /// The maximum degree supported by the trimmed parameters that `self` is a part of.
     pub supported_degree: usize,
-
-    /// The maximum degree supported by the `UniversalParams` `self` was derived
-    /// from.
+    /// The maximum degree supported by the `UniversalParams` `self` was derived from.
     pub max_degree: usize,
 }
 
@@ -546,7 +540,8 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
 pub struct VerifierUnionKey<'a, E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: &'a kzg10::VerifierKey<E>,
-    /// Pairs a degree_bound with its corresponding G2 prepared element.
+    /// Information required to enforce degree bounds. Each pair is of the form `(degree_bound, shifting_advice)`.
+    /// This is `None` if `self` does not support enforcing any degree bounds.
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} H),` where `H` is the generator of G2 above.
     pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, &'a <E::G2Affine as PairingCurve>::Prepared)>>,
     /// The maximum degree supported by the trimmed parameters that `self` is a part of.
@@ -614,48 +609,6 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
         }
 
         Ok(res)
-    }
-}
-
-/// `PreparedVerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Clone, Debug)]
-pub struct PreparedVerifierKey<E: PairingEngine> {
-    /// The verification key for the underlying KZG10 scheme.
-    pub prepared_vk: kzg10::PreparedVerifierKey<E>,
-    /// Information required to enforce degree bounds. Each pair
-    /// is of the form `(degree_bound, shifting_advice)`.
-    /// This is `None` if `self` does not support enforcing any degree bounds.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
-    /// The maximum degree supported by the `UniversalParams` `self` was derived
-    /// from.
-    pub max_degree: usize,
-    /// The maximum degree supported by the trimmed parameters that `self` is
-    /// a part of.
-    pub supported_degree: usize,
-}
-
-impl<E: PairingEngine> PreparedVerifierKey<E> {
-    /// Find the appropriate shift for the degree bound.
-    pub fn get_prepared_shift_power(&self, bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
-        self.degree_bounds_and_prepared_neg_powers_of_h
-            .as_ref()
-            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&bound)).ok().map(|i| v[i].1.clone()))
-    }
-}
-
-impl<E: PairingEngine> Prepare for VerifierKey<E> {
-    type Prepared = PreparedVerifierKey<E>;
-
-    /// prepare `PreparedVerifierKey` from `VerifierKey`
-    fn prepare(&self) -> PreparedVerifierKey<E> {
-        let prepared_vk = kzg10::PreparedVerifierKey::<E>::prepare(&self.vk);
-
-        PreparedVerifierKey::<E> {
-            prepared_vk,
-            degree_bounds_and_prepared_neg_powers_of_h: self.degree_bounds_and_prepared_neg_powers_of_h.clone(),
-            max_degree: self.max_degree,
-            supported_degree: self.supported_degree,
-        }
     }
 }
 
