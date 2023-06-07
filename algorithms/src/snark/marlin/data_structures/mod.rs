@@ -37,5 +37,4 @@ pub(super) mod test_circuit;
 pub use test_circuit::*;
 
 /// The Marlin universal SRS.
-pub(super) mod universal_srs;
-pub use universal_srs::*;
+pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;
