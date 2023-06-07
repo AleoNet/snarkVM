@@ -448,12 +448,8 @@ where
         Self::terminate(terminator)?;
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
-        let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &committer_key,
-            second_oracles.iter().map(Into::into),
-            terminator,
-            Some(zk_rng),
-        )?;
+        let (second_commitments, second_commitment_randomnesses) =
+            SonicKZG10::<E, FS>::commit(&committer_key, second_oracles.iter().map(Into::into), Some(zk_rng))?;
         end_timer!(second_round_comm_time);
 
         Self::absorb_labeled(&second_commitments, &mut sponge);
@@ -473,12 +469,8 @@ where
         Self::terminate(terminator)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
-        let (third_commitments, third_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &committer_key,
-            third_oracles.iter().map(Into::into),
-            terminator,
-            Some(zk_rng),
-        )?;
+        let (third_commitments, third_commitment_randomnesses) =
+            SonicKZG10::<E, FS>::commit(&committer_key, third_oracles.iter().map(Into::into), Some(zk_rng))?;
         end_timer!(third_round_comm_time);
 
         Self::absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
@@ -497,12 +489,8 @@ where
         Self::terminate(terminator)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
-        let (fourth_commitments, fourth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
-            &committer_key,
-            fourth_oracles.iter().map(Into::into),
-            terminator,
-            Some(zk_rng),
-        )?;
+        let (fourth_commitments, fourth_commitment_randomnesses) =
+            SonicKZG10::<E, FS>::commit(&committer_key, fourth_oracles.iter().map(Into::into), Some(zk_rng))?;
         end_timer!(fourth_round_comm_time);
 
         Self::absorb_labeled(&fourth_commitments, &mut sponge);

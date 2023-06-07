@@ -23,12 +23,7 @@ use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 
-use core::{
-    convert::TryInto,
-    marker::PhantomData,
-    ops::Mul,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use core::{convert::TryInto, marker::PhantomData, ops::Mul};
 use rand_core::{RngCore, SeedableRng};
 use std::{
     borrow::Borrow,
@@ -199,8 +194,11 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Ok((ck, vk))
     }
 
-    /// Outputs a commitments to `polynomials`. If `polynomials[i].is_hiding()`,
-    /// then the `i`-th commitment is hiding up to `polynomials.hiding_bound()` queries.
+    /// Outputs a commitments to `polynomials`.
+    ///
+    /// If `polynomials[i].is_hiding()`, then the `i`-th commitment is hiding
+    /// up to `polynomials.hiding_bound()` queries.
+    ///
     /// `rng` should not be `None` if `polynomials[i].is_hiding() == true` for any `i`.
     ///
     /// If for some `i`, `polynomials[i].is_hiding() == false`, then the
@@ -209,21 +207,10 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     /// If for some `i`, `polynomials[i].degree_bound().is_some()`, then that
     /// polynomial will have the corresponding degree bound enforced.
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::format_push_string)]
     pub fn commit<'b>(
         ck: &CommitterUnionKey<E>,
         polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'b, E::Fr>>,
-        rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Vec<LabeledCommitment<Commitment<E>>>, Vec<Randomness<E>>), PCError> {
-        Self::commit_with_terminator(ck, polynomials, &AtomicBool::new(false), rng)
-    }
-
-    /// Outputs a commitment to `polynomial`.
-    #[allow(clippy::type_complexity)]
-    #[allow(clippy::format_push_string)]
-    pub fn commit_with_terminator<'a>(
-        ck: &CommitterUnionKey<E>,
-        polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'a, E::Fr>>,
-        terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Commitment<E>>>, Vec<Randomness<E>>), PCError> {
         let rng = &mut OptionalRng(rng);
@@ -233,9 +220,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
         let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
         for p in polynomials {
-            if terminator.load(Ordering::Relaxed) {
-                return Err(PCError::Terminated);
-            }
             let seed = rng.0.as_mut().map(|r| {
                 let mut seed = [0u8; 32];
                 r.fill_bytes(&mut seed);
@@ -279,7 +263,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                                     &lagrange_basis,
                                     &evaluations.evaluations,
                                     hiding_bound,
-                                    terminator,
                                     rng_ref,
                                 )
                             }
@@ -290,7 +273,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                                     ck.powers()
                                 };
 
-                                kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, terminator, rng_ref)
+                                kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, rng_ref)
                             }
                         }
                     })
