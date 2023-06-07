@@ -1,25 +1,42 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #[macro_use]
 extern crate criterion;
 
 use console::{
     network::Testnet3,
-    program::{Literal, Plaintext, Register, Value, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
+    prelude::Uniform,
+    program::{
+        Boolean,
+        Field,
+        Group,
+        Plaintext,
+        Register,
+        Scalar,
+        Value,
+        I128,
+        I16,
+        I32,
+        I64,
+        I8,
+        U128,
+        U16,
+        U32,
+        U64,
+        U8,
+    },
 };
 use criterion::{BatchSize, Criterion};
 use snarkvm_synthesizer::{
@@ -32,10 +49,11 @@ use snarkvm_synthesizer::{
     Stack,
 };
 
+use snarkvm_utilities::TestRng;
 use std::{fmt::Display, str::FromStr};
 
 /// A helper function to construct a set of `FinalizeRegisters` with the given arguments.
-pub fn setup_finalize_registers(
+fn setup_finalize_registers(
     stack: &Stack<Testnet3>,
     finalize_body: impl Display,
     args: &[Value<Testnet3>],
@@ -59,31 +77,9 @@ pub fn setup_finalize_registers(
     registers
 }
 
-fn run_benchmark(
-    c: &mut Criterion,
-    name: impl Display,
-    instruction: Instruction<Testnet3>,
-    stack: &Stack<Testnet3>,
-    benchmarks: &Vec<Vec<Value<Testnet3>>>,
-) {
-    // Initialize a benchmark group.
-    let mut group = c.benchmark_group(name.to_string());
-    // For each set of benchmark arguments, bench `evaluate_finalize`.
-    for benchmark in benchmarks {
-        let benchmark_name =
-            format!("{}_{}", name, benchmark.iter().map(|arg| arg.to_string()).collect::<Vec<_>>().join("_"));
-        // Initialize a fresh set of finalize registers.
-        group.bench_function(&benchmark_name, |b| {
-            b.iter_batched(
-                || setup_finalize_registers(stack, instruction.to_string(), benchmark),
-                |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                BatchSize::PerIteration,
-            )
-        });
-    }
-}
-
 fn bench_arithmetic_instructions(c: &mut Criterion) {
+    // Initialize an RNG.
+    let rng = &mut TestRng::default();
     // Initialize a process.
     let process = Process::<Testnet3>::load().unwrap();
     // Get the stack for the credits program.
@@ -93,107 +89,571 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
 
     macro_rules! bench_instruction {
         // Case 0: Unary operation.
-        ($instruction:ident { $( ($input:ident) [ $args:expr ], )+ }) => {
+        ($operation:ident, $instruction:ident { $( $input:ident , )+ }) => {
             $({
+                use snarkvm_synthesizer::$instruction;
                 let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                run_benchmark(c, stringify!($instruction|$input), instruction, &stack, $args);
+                let name = concat!(stringify!($instruction), "/", stringify!($input));
+                c.bench_function(&name, |b| {
+                    b.iter_batched(
+                        || {
+                            let mut arg: $input::<Testnet3> = Uniform::rand(rng);
+                            while (std::panic::catch_unwind(|| arg.$operation())).is_err() {
+                                arg = Uniform::rand(rng);
+                            }
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
             })+
         };
         // Case 1: Binary operation.
-        ($instruction:ident { $( ($input_a:ident, $input_b:ident) [ $args:expr ], )+ }) => {
+        ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ }) => {
             $({
+                use snarkvm_synthesizer::$instruction;
                 let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                run_benchmark(c, stringify!($instruction|$input_a|$input_b), instruction, &stack, $args);
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+                c.bench_function(&name, |b| {
+                    b.iter_batched(
+                        || {
+                            let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
+                            let mut second: $input_b::<Testnet3> = Uniform::rand(rng);
+                            while (std::panic::catch_unwind(|| first.$operation(&second))).is_err() {
+                                first = Uniform::rand(rng);
+                                second = Uniform::rand(rng);
+                            }
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
             })+
         };
         // Case 2: Ternary operation.
-        ($instruction:ident { $( ($input_a:ident, $input_b:ident, $input_c:ident) [ $args:expr ], )+ }) => {
+        ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident, $input_c:ident), )+ }) => {
             $({
+                use snarkvm_synthesizer::$instruction;
                 let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 r2 into r3", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                run_benchmark(c, stringify!(<$instruction:lower _ $input_a _ $input_b _ $input_c>), instruction, &stack, $args);
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_",  stringify!($input_b), "_", stringify!($input_c));
+                c.bench_function(&name, |b| {
+                    b.iter_batched(
+                        || {
+                            let first: $input_a::<Testnet3> = Uniform::rand(rng);
+                            let second: $input_b::<Testnet3> = Uniform::rand(rng);
+                            let third: $input_c::<Testnet3> = Uniform::rand(rng);
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap(), Value::from_str(&third.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::SmallInput,
+                    )
+                });
             })+
         };
     }
 
-    let i8_values = &vec![vec![Value::Plaintext(Plaintext::from(Literal::I8(I8::new(1i8))))]];
-    let i16_values = &vec![vec![Value::Plaintext(Plaintext::from(Literal::I16(I16::new(1i16))))]];
-    let i32_values = &vec![vec![Value::Plaintext(Plaintext::from(Literal::I32(I32::new(1i32))))]];
-    let i64_values = &vec![vec![Value::Plaintext(Plaintext::from(Literal::I64(I64::new(1i64))))]];
-    let i128_values = &vec![vec![Value::Plaintext(Plaintext::from(Literal::I128(I128::new(1i128))))]];
+    use console::prelude::AbsChecked;
+    bench_instruction!(abs_checked, Abs { I8, I16, I32, I64, I128, });
 
-    use snarkvm_synthesizer::Abs;
-    bench_instruction!(Abs {
-        (I8)[i8_values],
-        (I16)[i16_values],
-        (I32)[i32_values],
-        (I64)[i64_values],
-        (I128)[i128_values],
+    use console::prelude::AbsWrapped;
+    bench_instruction!(abs_wrapped, AbsWrapped { I8, I16, I32, I64, I128, });
+
+    use std::ops::Add;
+    bench_instruction!(add, Add {
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
     });
 
-    let u8_values = &vec![vec![
-        Value::Plaintext(Plaintext::from(Literal::U8(U8::new(1u8)))),
-        Value::Plaintext(Plaintext::from(Literal::U8(U8::new(1u8)))),
-    ]];
-    let u16_values = &vec![vec![
-        Value::Plaintext(Plaintext::from(Literal::U16(U16::new(1u16)))),
-        Value::Plaintext(Plaintext::from(Literal::U16(U16::new(1u16)))),
-    ]];
-    let u32_values = &vec![vec![
-        Value::Plaintext(Plaintext::from(Literal::U32(U32::new(1u32)))),
-        Value::Plaintext(Plaintext::from(Literal::U32(U32::new(1u32)))),
-    ]];
-    let u64_values = &vec![vec![
-        Value::Plaintext(Plaintext::from(Literal::U64(U64::new(1u64)))),
-        Value::Plaintext(Plaintext::from(Literal::U64(U64::new(1u64)))),
-    ]];
-    let u128_values = &vec![vec![
-        Value::Plaintext(Plaintext::from(Literal::U128(U128::new(1u128)))),
-        Value::Plaintext(Plaintext::from(Literal::U128(U128::new(1u128)))),
-    ]];
-
-    use snarkvm_synthesizer::LessThan;
-    bench_instruction!(LessThan {
-        (U8, U8)[u8_values],
-        (U16, U16)[u16_values],
-        (U32, U32)[u32_values],
-        (U64, U64)[u64_values],
-        (U128, U128)[u128_values],
+    use console::prelude::AddWrapped;
+    bench_instruction!(add_wrapped, AddWrapped {
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
     });
 
-    use snarkvm_synthesizer::And;
-    bench_instruction!(And {
-        (U8, U8)[u8_values],
-        (U16, U16)[u16_values],
-        (U32, U32)[u32_values],
-        (U64, U64)[u64_values],
-        (U128, U128)[u128_values],
+    use core::ops::BitAnd;
+    bench_instruction!(bitand, And {
+        (Boolean, Boolean),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
     });
 
-    use snarkvm_synthesizer::Or;
-    bench_instruction!(Or {
-        (U8, U8)[u8_values],
-        (U16, U16)[u16_values],
-        (U32, U32)[u32_values],
-        (U64, U64)[u64_values],
-        (U128, U128)[u128_values],
+    use console::prelude::Div;
+    bench_instruction!(div, Div {
+        (Field, Field),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
     });
 
-    use snarkvm_synthesizer::Sub;
-    bench_instruction!(Sub {
-        (U8, U8)[u8_values],
-        (U16, U16)[u16_values],
-        (U32, U32)[u32_values],
-        (U64, U64)[u64_values],
-        (U128, U128)[u128_values],
+    use console::prelude::DivWrapped;
+    bench_instruction!(div_wrapped, DivWrapped {
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
     });
 
-    use snarkvm_synthesizer::Xor;
-    bench_instruction!(Xor {
-        (U8, U8)[u8_values],
-        (U16, U16)[u16_values],
-        (U32, U32)[u32_values],
-        (U64, U64)[u64_values],
-        (U128, U128)[u128_values],
+    use console::prelude::Double;
+    bench_instruction!(double, Double { Field, Group, });
+
+    use console::prelude::Compare;
+    bench_instruction!(is_greater_than, GreaterThan {
+        (Field, Field),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+        (Scalar, Scalar),
+    });
+
+    bench_instruction!(is_greater_than_or_equal, GreaterThanOrEqual {
+        (Field, Field),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+        (Scalar, Scalar),
+    });
+
+    use console::prelude::Inverse;
+    bench_instruction!(inverse, Inv { Field, });
+
+    bench_instruction!(is_less_than, LessThan {
+        (Field, Field),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+        (Scalar, Scalar),
+    });
+
+    bench_instruction!(is_less_than_or_equal, LessThanOrEqual {
+        (Field, Field),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+        (Scalar, Scalar),
+    });
+
+    use console::prelude::Modulo;
+    bench_instruction!(modulo, Modulo {
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+    });
+
+    use core::ops::Mul;
+    bench_instruction!(mul, Mul {
+        (Field, Field),
+        (Group, Scalar),
+        (Scalar, Group),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+    });
+
+    use console::prelude::MulWrapped;
+    bench_instruction!(mul_wrapped, MulWrapped {
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+    });
+
+    use console::prelude::Nand;
+    bench_instruction!(nand, Nand {
+        (Boolean, Boolean),
+    });
+
+    use core::ops::Neg;
+    bench_instruction!(neg, Neg { Field, Group, I8, I16, I32, I64, I128, });
+
+    use console::prelude::Nor;
+    bench_instruction!(nor, Nor {
+        (Boolean, Boolean),
+    });
+
+    use core::ops::Not;
+    bench_instruction!(not, Not { Boolean, I8, I16, I32, I64, I128, U8, U16, U32, U64, });
+
+    use core::ops::BitOr;
+    bench_instruction!(bitor, Or {
+        (Boolean, Boolean),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+    });
+
+    use console::prelude::Pow;
+    bench_instruction!(pow, Pow {
+        (Field, Field),
+        (I8, U8),
+        (I8, U16),
+        (I8, U32),
+        (I16, U8),
+        (I16, U16),
+        (I16, U32),
+        (I32, U8),
+        (I32, U16),
+        (I32, U32),
+        (I64, U8),
+        (I64, U16),
+        (I64, U32),
+        (I128, U8),
+        (I128, U16),
+        (I128, U32),
+        (U8, U8),
+        (U8, U16),
+        (U8, U32),
+        (U16, U8),
+        (U16, U16),
+        (U16, U32),
+        (U32, U8),
+        (U32, U16),
+        (U32, U32),
+        (U64, U8),
+        (U64, U16),
+        (U64, U32),
+        (U128, U8),
+        (U128, U16),
+        (U128, U32),
+    });
+
+    use console::prelude::PowWrapped;
+    bench_instruction!(pow_wrapped, PowWrapped {
+        (I8, U8),
+        (I8, U16),
+        (I8, U32),
+        (I16, U8),
+        (I16, U16),
+        (I16, U32),
+        (I32, U8),
+        (I32, U16),
+        (I32, U32),
+        (I64, U8),
+        (I64, U16),
+        (I64, U32),
+        (I128, U8),
+        (I128, U16),
+        (I128, U32),
+        (U8, U8),
+        (U8, U16),
+        (U8, U32),
+        (U16, U8),
+        (U16, U16),
+        (U16, U32),
+        (U32, U8),
+        (U32, U16),
+        (U32, U32),
+        (U64, U8),
+        (U64, U16),
+        (U64, U32),
+        (U128, U8),
+        (U128, U16),
+        (U128, U32),
+    });
+
+    use core::ops::Rem;
+    bench_instruction!(rem, Rem {
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+    });
+
+    use console::prelude::RemWrapped;
+    bench_instruction!(rem_wrapped, RemWrapped {
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+    });
+
+    use console::prelude::ShlChecked;
+    bench_instruction!(shl_checked, Shl {
+            (I8, U8),
+        (I8, U16),
+        (I8, U32),
+        (I16, U8),
+        (I16, U16),
+        (I16, U32),
+        (I32, U8),
+        (I32, U16),
+        (I32, U32),
+        (I64, U8),
+        (I64, U16),
+        (I64, U32),
+        (I128, U8),
+        (I128, U16),
+        (I128, U32),
+        (U8, U8),
+        (U8, U16),
+        (U8, U32),
+        (U16, U8),
+        (U16, U16),
+        (U16, U32),
+        (U32, U8),
+        (U32, U16),
+        (U32, U32),
+        (U64, U8),
+        (U64, U16),
+        (U64, U32),
+        (U128, U8),
+        (U128, U16),
+        (U128, U32),
+    });
+
+    use console::prelude::ShlWrapped;
+    bench_instruction!(shl_wrapped, ShlWrapped {
+        (I8, U8),
+        (I8, U16),
+        (I8, U32),
+        (I16, U8),
+        (I16, U16),
+        (I16, U32),
+        (I32, U8),
+        (I32, U16),
+        (I32, U32),
+        (I64, U8),
+        (I64, U16),
+        (I64, U32),
+        (I128, U8),
+        (I128, U16),
+        (I128, U32),
+        (U8, U8),
+        (U8, U16),
+        (U8, U32),
+        (U16, U8),
+        (U16, U16),
+        (U16, U32),
+        (U32, U8),
+        (U32, U16),
+        (U32, U32),
+        (U64, U8),
+        (U64, U16),
+        (U64, U32),
+        (U128, U8),
+        (U128, U16),
+        (U128, U32),
+    });
+
+    use console::prelude::ShrChecked;
+    bench_instruction!(shr_checked, Shr {
+        (I8, U8),
+        (I8, U16),
+        (I8, U32),
+        (I16, U8),
+        (I16, U16),
+        (I16, U32),
+        (I32, U8),
+        (I32, U16),
+        (I32, U32),
+        (I64, U8),
+        (I64, U16),
+        (I64, U32),
+        (I128, U8),
+        (I128, U16),
+        (I128, U32),
+        (U8, U8),
+        (U8, U16),
+        (U8, U32),
+        (U16, U8),
+        (U16, U16),
+        (U16, U32),
+        (U32, U8),
+        (U32, U16),
+        (U32, U32),
+        (U64, U8),
+        (U64, U16),
+        (U64, U32),
+        (U128, U8),
+        (U128, U16),
+        (U128, U32),
+    });
+
+    use console::prelude::ShrWrapped;
+    bench_instruction!(shr_wrapped, ShrWrapped {
+        (I8, U8),
+        (I8, U16),
+        (I8, U32),
+        (I16, U8),
+        (I16, U16),
+        (I16, U32),
+        (I32, U8),
+        (I32, U16),
+        (I32, U32),
+        (I64, U8),
+        (I64, U16),
+        (I64, U32),
+        (I128, U8),
+        (I128, U16),
+        (I128, U32),
+        (U8, U8),
+        (U8, U16),
+        (U8, U32),
+        (U16, U8),
+        (U16, U16),
+        (U16, U32),
+        (U32, U8),
+        (U32, U16),
+        (U32, U32),
+        (U64, U8),
+        (U64, U16),
+        (U64, U32),
+        (U128, U8),
+        (U128, U16),
+        (U128, U32),
+    });
+
+    use console::prelude::Square;
+    bench_instruction!(square, Square { Field, });
+
+    use console::prelude::SquareRoot;
+    bench_instruction!(square_root, SquareRoot { Field, });
+
+    use std::ops::Sub;
+    bench_instruction!(sub, Sub {
+        (Field, Field),
+        (Group, Group),
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+    });
+
+    use console::prelude::SubWrapped;
+    bench_instruction!(sub_wrapped, SubWrapped {
+        (I8, I8),
+        (I16, I16),
+        (I32, I32),
+        (I64, I64),
+        (I128, I128),
+        (U8, U8),
+        (U16, U16),
+        (U32, U32),
+        (U64, U64),
+        (U128, U128),
+    });
+
+    bench_instruction!(ternary, Ternary {
+        // (Boolean, Address, Address), // TODO (d0cd): Enable this when we have a way to generate random addresses via `Uniform::rand`.
+        (Boolean, Boolean, Boolean),
+        (Boolean, Field, Field),
+        (Boolean, Group, Group),
+        (Boolean, I8, I8),
+        (Boolean, I16, I16),
+        (Boolean, I32, I32),
+        (Boolean, I64, I64),
+        (Boolean, I128, I128),
+        (Boolean, U8, U8),
+        (Boolean, U16, U16),
+        (Boolean, U32, U32),
+        (Boolean, U64, U64),
+        (Boolean, U128, U128),
+        (Boolean, Scalar, Scalar),
     });
 }
 
