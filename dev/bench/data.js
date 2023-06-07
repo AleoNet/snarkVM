@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1686084479365,
+  "lastUpdate": 1686113129431,
   "repoUrl": "https://github.com/AleoHQ/snarkVM",
   "entries": {
     "snarkVM Benchmarks": [
@@ -27541,6 +27541,1710 @@ window.BENCHMARK_DATA = {
             "name": "CoinbasePuzzle::Accumulate 100 of 2^13",
             "value": 1409839103,
             "range": "± 10202593",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "9260812+howardwu@users.noreply.github.com",
+            "name": "Howard Wu",
+            "username": "howardwu"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9bccc8e86b86a7855698655e3c4fc352797fdebb",
+          "message": "Merge pull request #1628 from AleoHQ/feat/ledger-updates\n\nMigrates and updates `Ledger` to check transactions and blocks with state",
+          "timestamp": "2023-06-06T18:15:52-07:00",
+          "tree_id": "fdabbcab54a68acda1b6812b5778bab38aaeee7c",
+          "url": "https://github.com/AleoHQ/snarkVM/commit/9bccc8e86b86a7855698655e3c4fc352797fdebb"
+        },
+        "date": 1686113128481,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "VariableBase MSM on BLS12-377 (10000)",
+            "value": 91533168,
+            "range": "± 328478",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "VariableBase MSM on BLS12-377 (100000)",
+            "value": 642677226,
+            "range": "± 2127029",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "VariableBase MSM on BLS12-377 (200000)",
+            "value": 1171810474,
+            "range": "± 19798941",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "VariableBase MSM on BLS12-377 (300000)",
+            "value": 1799633150,
+            "range": "± 6080472",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "VariableBase MSM on BLS12-377 (400000)",
+            "value": 2271356317,
+            "range": "± 5079207",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "VariableBase MSM on BLS12-377 (500000)",
+            "value": 2567178672,
+            "range": "± 10705909",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "VariableBase MSM on BLS12-377 (1000000)",
+            "value": 4713868407,
+            "range": "± 16671085",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "VariableBase MSM on BLS12-377 (2000000)",
+            "value": 8484793248,
+            "range": "± 72887829",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Variable MSM on Edwards-BLS12 (10000)",
+            "value": 58698091,
+            "range": "± 139796",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Variable MSM on Edwards-BLS12 (100000)",
+            "value": 445461427,
+            "range": "± 3032198",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Variable MSM on Edwards-BLS12 (1000000)",
+            "value": 4397785966,
+            "range": "± 32396205",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "PoseidonSponge<2, 1> Absorb 4",
+            "value": 79339,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "PoseidonSponge<2, 1> Absorb 10",
+            "value": 198111,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_universal_setup",
+            "value": 1399426576,
+            "range": "± 3385925",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_circuit_setup_100",
+            "value": 85431570,
+            "range": "± 614461",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_circuit_setup_1000",
+            "value": 527354382,
+            "range": "± 1149081",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_circuit_setup_10000",
+            "value": 8706971548,
+            "range": "± 23283566",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_vk_serialize/compressed",
+            "value": 6763,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_vk_serialize/uncompressed",
+            "value": 6871,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_vk_deserialize/compressed_checked",
+            "value": 24834011,
+            "range": "± 945565",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_vk_deserialize/compressed_unchecked",
+            "value": 11689551,
+            "range": "± 8846",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_vk_deserialize/uncompressed_checked",
+            "value": 18229146,
+            "range": "± 397100",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_vk_deserialize/uncompressed_unchecked",
+            "value": 5028500,
+            "range": "± 3168",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_prove_100",
+            "value": 6338541,
+            "range": "± 40846",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_prove_1000",
+            "value": 16725465,
+            "range": "± 61390",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_prove_10000",
+            "value": 138867786,
+            "range": "± 391164",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_prove_100000",
+            "value": 847466256,
+            "range": "± 2156057",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_verify_100",
+            "value": 6588433,
+            "range": "± 40015",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_verify_1000",
+            "value": 8180327,
+            "range": "± 65398",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_verify_10000",
+            "value": 31074074,
+            "range": "± 1053876",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "snark_certificate_verify_100000",
+            "value": 244268771,
+            "range": "± 6509147",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "LinearCombination::add",
+            "value": 7026715,
+            "range": "± 7213",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "LinearCombination::add_assign",
+            "value": 434857,
+            "range": "± 729",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "debug",
+            "value": 773978386,
+            "range": "± 1667876",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "account_private_key",
+            "value": 89801,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "account_view_key",
+            "value": 172782,
+            "range": "± 5565",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "account_address",
+            "value": 219105,
+            "range": "± 5278",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon2 Hash 4 -> 1",
+            "value": 64305,
+            "range": "± 162",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon2 Hash 4 -> 2",
+            "value": 64329,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon2 Hash 10 -> 1",
+            "value": 129179,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon2 Hash 10 -> 4",
+            "value": 150318,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon2 Hash 10 -> 8",
+            "value": 192462,
+            "range": "± 106",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon4 Hash 4 -> 1",
+            "value": 76716,
+            "range": "± 262",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon4 Hash 4 -> 2",
+            "value": 76823,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon4 Hash 10 -> 1",
+            "value": 154207,
+            "range": "± 96",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon4 Hash 10 -> 4",
+            "value": 154447,
+            "range": "± 55",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon4 Hash 10 -> 8",
+            "value": 193169,
+            "range": "± 128",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon8 Hash 4 -> 1",
+            "value": 170617,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon8 Hash 4 -> 2",
+            "value": 170142,
+            "range": "± 67",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon8 Hash 10 -> 1",
+            "value": 256776,
+            "range": "± 97",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon8 Hash 10 -> 4",
+            "value": 256666,
+            "range": "± 121",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon8 Hash 10 -> 8",
+            "value": 256604,
+            "range": "± 124",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/new/1",
+            "value": 3354101,
+            "range": "± 480",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/new/10",
+            "value": 5060593,
+            "range": "± 896",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/new/100",
+            "value": 21856352,
+            "range": "± 4239",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/new/1000",
+            "value": 95949955,
+            "range": "± 2112313",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/new/10000",
+            "value": 1185226960,
+            "range": "± 6410972",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/new/100000",
+            "value": 10077226634,
+            "range": "± 18079587",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1/1",
+            "value": 3257518,
+            "range": "± 483",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1/10",
+            "value": 4966873,
+            "range": "± 1003",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1/100",
+            "value": 21759218,
+            "range": "± 87960",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1/1000",
+            "value": 95426678,
+            "range": "± 3683608",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1/10000",
+            "value": 1195821776,
+            "range": "± 6351444",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1/100000",
+            "value": 10123902813,
+            "range": "± 14078589",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10/1",
+            "value": 3256476,
+            "range": "± 969",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10/10",
+            "value": 5635877,
+            "range": "± 1411",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10/100",
+            "value": 21009027,
+            "range": "± 87459",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10/1000",
+            "value": 99054096,
+            "range": "± 2792288",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10/10000",
+            "value": 1190732065,
+            "range": "± 2391435",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10/100000",
+            "value": 10140204328,
+            "range": "± 11689687",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100/1",
+            "value": 3257736,
+            "range": "± 1278",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100/10",
+            "value": 4571253,
+            "range": "± 1842",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100/100",
+            "value": 24567076,
+            "range": "± 91287",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100/1000",
+            "value": 142630346,
+            "range": "± 311981",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100/10000",
+            "value": 1185449537,
+            "range": "± 2146516",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100/100000",
+            "value": 10145380224,
+            "range": "± 19973362",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1000/1",
+            "value": 3262017,
+            "range": "± 2689",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1000/10",
+            "value": 4668421,
+            "range": "± 3405",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1000/100",
+            "value": 67089944,
+            "range": "± 300638",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1000/1000",
+            "value": 99286968,
+            "range": "± 2614891",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1000/10000",
+            "value": 1138629126,
+            "range": "± 2699339",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/1000/100000",
+            "value": 10067228637,
+            "range": "± 7195504",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10000/1",
+            "value": 3460785,
+            "range": "± 15115",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10000/10",
+            "value": 4806962,
+            "range": "± 15536",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10000/100",
+            "value": 19727465,
+            "range": "± 58599",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10000/1000",
+            "value": 102620784,
+            "range": "± 1806559",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10000/10000",
+            "value": 1508138405,
+            "range": "± 5088146",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/10000/100000",
+            "value": 9600673106,
+            "range": "± 50611215",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100000/1",
+            "value": 5611682,
+            "range": "± 633775",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100000/10",
+            "value": 7093803,
+            "range": "± 880120",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100000/100",
+            "value": 23656125,
+            "range": "± 955464",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100000/1000",
+            "value": 102167053,
+            "range": "± 853644",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100000/10000",
+            "value": 871939437,
+            "range": "± 5724106",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/append/100000/100000",
+            "value": 11741652313,
+            "range": "± 20668051",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1/1",
+            "value": 3269442,
+            "range": "± 1046",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1/10",
+            "value": 32729949,
+            "range": "± 7907",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1/100",
+            "value": 326416357,
+            "range": "± 57957",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1/1000",
+            "value": 3273074555,
+            "range": "± 860539",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1/10000",
+            "value": 32644779687,
+            "range": "± 40312468",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10/1",
+            "value": 3274499,
+            "range": "± 1408",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10/10",
+            "value": 32677728,
+            "range": "± 27421",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10/100",
+            "value": 327501145,
+            "range": "± 437514",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10/1000",
+            "value": 3275166488,
+            "range": "± 288420",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10/10000",
+            "value": 32739243017,
+            "range": "± 4831132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100/1",
+            "value": 3274943,
+            "range": "± 903",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100/10",
+            "value": 32764626,
+            "range": "± 4612",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100/100",
+            "value": 327668194,
+            "range": "± 61708",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100/1000",
+            "value": 3274096751,
+            "range": "± 556130",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100/10000",
+            "value": 32772406405,
+            "range": "± 6032177",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1000/1",
+            "value": 3280032,
+            "range": "± 575",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1000/10",
+            "value": 32815960,
+            "range": "± 5413",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1000/100",
+            "value": 327697904,
+            "range": "± 59035",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1000/1000",
+            "value": 3280995701,
+            "range": "± 930932",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/1000/10000",
+            "value": 32795293796,
+            "range": "± 7144982",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10000/1",
+            "value": 3442674,
+            "range": "± 7895",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10000/10",
+            "value": 34279902,
+            "range": "± 61618",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10000/100",
+            "value": 342187068,
+            "range": "± 591655",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10000/1000",
+            "value": 3425360105,
+            "range": "± 2666548",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/10000/10000",
+            "value": 34207616675,
+            "range": "± 10719293",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100000/1",
+            "value": 5012513,
+            "range": "± 162490",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100000/10",
+            "value": 43508872,
+            "range": "± 802262",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100000/100",
+            "value": 433164696,
+            "range": "± 3037833",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100000/1000",
+            "value": 4361275477,
+            "range": "± 23083777",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update/100000/10000",
+            "value": 43459722018,
+            "range": "± 323751343",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1/1",
+            "value": 3278100,
+            "range": "± 584",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1/1 #2",
+            "value": 3278593,
+            "range": "± 982",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1/1 #3",
+            "value": 3278815,
+            "range": "± 822",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1/1 #4",
+            "value": 3278418,
+            "range": "± 405",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1/1 #5",
+            "value": 3272536,
+            "range": "± 417",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10/1",
+            "value": 3273713,
+            "range": "± 683",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10/10",
+            "value": 4589730,
+            "range": "± 2083",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10/10 #2",
+            "value": 4590658,
+            "range": "± 1013",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10/10 #3",
+            "value": 4585665,
+            "range": "± 1078",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10/10 #4",
+            "value": 4591797,
+            "range": "± 877",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100/1",
+            "value": 3263367,
+            "range": "± 845",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100/10",
+            "value": 4779174,
+            "range": "± 863",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100/100",
+            "value": 19375662,
+            "range": "± 297671",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100/100 #2",
+            "value": 19377879,
+            "range": "± 289353",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100/100 #3",
+            "value": 19379343,
+            "range": "± 288721",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1000/1",
+            "value": 3262110,
+            "range": "± 491",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1000/10",
+            "value": 4779197,
+            "range": "± 959",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1000/100",
+            "value": 19367306,
+            "range": "± 296138",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1000/1000",
+            "value": 99911587,
+            "range": "± 2583606",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/1000/1000 #2",
+            "value": 100994659,
+            "range": "± 2380458",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10000/1",
+            "value": 3285593,
+            "range": "± 2136",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10000/10",
+            "value": 4711328,
+            "range": "± 4722",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10000/100",
+            "value": 21487315,
+            "range": "± 387041",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10000/1000",
+            "value": 109160846,
+            "range": "± 2706867",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/10000/8653",
+            "value": 813757546,
+            "range": "± 4009797",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100000/1",
+            "value": 3414846,
+            "range": "± 37719",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100000/10",
+            "value": 5636475,
+            "range": "± 37193",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100000/100",
+            "value": 36863654,
+            "range": "± 812072",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100000/1000",
+            "value": 198425546,
+            "range": "± 1450568",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "MerkleTree/update_many/100000/10000",
+            "value": 1830320461,
+            "range": "± 5141051",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/1",
+            "value": 3257489,
+            "range": "± 1538",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/1",
+            "value": 3254801,
+            "range": "± 1587",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/2",
+            "value": 3255995,
+            "range": "± 2130",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/2",
+            "value": 3255807,
+            "range": "± 1086",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/3",
+            "value": 3254677,
+            "range": "± 1063",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/3",
+            "value": 3253900,
+            "range": "± 1049",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/4",
+            "value": 3253904,
+            "range": "± 526",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/4",
+            "value": 3254317,
+            "range": "± 1181",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/5",
+            "value": 3256415,
+            "range": "± 1338",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/5",
+            "value": 3249751,
+            "range": "± 1353",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/6",
+            "value": 3255944,
+            "range": "± 627",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/6",
+            "value": 3256973,
+            "range": "± 951",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/7",
+            "value": 3248449,
+            "range": "± 4440",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/7",
+            "value": 3256267,
+            "range": "± 990",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/8",
+            "value": 3257704,
+            "range": "± 1186",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/8",
+            "value": 3257448,
+            "range": "± 870",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/9",
+            "value": 3258585,
+            "range": "± 1604",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/9",
+            "value": 3259817,
+            "range": "± 1535",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/10",
+            "value": 3260410,
+            "range": "± 1996",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/10",
+            "value": 3259769,
+            "range": "± 747",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/11",
+            "value": 3262087,
+            "range": "± 2218",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/11",
+            "value": 3256121,
+            "range": "± 3006",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/12",
+            "value": 3280202,
+            "range": "± 2808",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/12",
+            "value": 3265345,
+            "range": "± 9470",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/13",
+            "value": 3325605,
+            "range": "± 8961",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/13",
+            "value": 3260457,
+            "range": "± 1093",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/14",
+            "value": 3408569,
+            "range": "± 7810",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/14",
+            "value": 3267890,
+            "range": "± 2143",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/15",
+            "value": 3588489,
+            "range": "± 5549",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/15",
+            "value": 3270947,
+            "range": "± 6203",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Single/16",
+            "value": 3971312,
+            "range": "± 52171",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "UpdateVSUpdateMany/Batch/16",
+            "value": 3283954,
+            "range": "± 23459",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g1_rand",
+            "value": 158888,
+            "range": "± 2836",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g1_mul_assign",
+            "value": 173768,
+            "range": "± 1866",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g1_add_assign",
+            "value": 930,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g1_add_assign_mixed",
+            "value": 684,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g1_double",
+            "value": 434,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g1_is_in_correct_subgroup",
+            "value": 74077,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g2_rand",
+            "value": 1512143,
+            "range": "± 14201",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g2_mul_assign",
+            "value": 410399,
+            "range": "± 2543",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g2_add_assign",
+            "value": 3520,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g2_add_assign_mixed",
+            "value": 2511,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: g2_double",
+            "value": 1594,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_repr_add_nocarry",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_repr_sub_noborrow",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_repr_num_bits",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_repr_mul2",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_repr_div2",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_add_assign",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_sub_assign",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_mul_assign",
+            "value": 58,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_double",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_square",
+            "value": 52,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_inverse",
+            "value": 10586,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_negate",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_sqrt",
+            "value": 67702,
+            "range": "± 83",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_to_bigint",
+            "value": 35,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq_from_bigint",
+            "value": 66,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq12_add_assign",
+            "value": 205,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq12_sub_assign",
+            "value": 124,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq12_mul_assign",
+            "value": 5254,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq12_double",
+            "value": 150,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq12_square",
+            "value": 3636,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq12_inverse",
+            "value": 19733,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq2_add_assign",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq2_sub_assign",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq2_mul_assign",
+            "value": 212,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq2_double",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq2_square",
+            "value": 163,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq2_inverse",
+            "value": 10949,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fq2_sqrt",
+            "value": 110731,
+            "range": "± 6865",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_repr_add_nocarry",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_repr_sub_noborrow",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_repr_num_bits",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_repr_mul2",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_repr_div2",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_add_assign",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_sub_assign",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_mul_assign",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_double",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_square",
+            "value": 29,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_inverse",
+            "value": 5396,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_negate",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_sqrt",
+            "value": 28029,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_to_bigint",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: fr_from_bigint",
+            "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: pairing_miller_loop",
+            "value": 489529,
+            "range": "± 471",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: pairing_final_exponentiation",
+            "value": 985504,
+            "range": "± 612",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "bls12_377: pairing_full",
+            "value": 1695999,
+            "range": "± 5262",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Block::to_bytes_le",
+            "value": 113290,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Block::serialize (bincode)",
+            "value": 230823,
+            "range": "± 90",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Block::to_string (serde_json)",
+            "value": 577518,
+            "range": "± 2069",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Block::from_bytes_le",
+            "value": 67104366,
+            "range": "± 74430",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Block::deserialize (bincode)",
+            "value": 66790397,
+            "range": "± 184132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Block::from_str (serde_json)",
+            "value": 69040879,
+            "range": "± 82132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Header::to_bytes_le",
+            "value": 379,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Header::serialize (bincode)",
+            "value": 788,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Header::to_string (serde_json)",
+            "value": 2442,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Header::from_bytes_le",
+            "value": 189,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Header::deserialize (bincode)",
+            "value": 316,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Header::from_str (serde_json)",
+            "value": 14967,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transactions::to_bytes_le",
+            "value": 110040,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transactions::serialize (bincode)",
+            "value": 222175,
+            "range": "± 747",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transactions::to_string (serde_json)",
+            "value": 570281,
+            "range": "± 498",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transactions::from_bytes_le",
+            "value": 64120913,
+            "range": "± 69911",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transactions::deserialize (bincode)",
+            "value": 64086099,
+            "range": "± 83871",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transactions::from_str (serde_json)",
+            "value": 66403031,
+            "range": "± 58104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction::to_bytes_le",
+            "value": 7006,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction::serialize (bincode)",
+            "value": 13983,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction::to_string (serde_json)",
+            "value": 35827,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction::from_bytes_le",
+            "value": 4037045,
+            "range": "± 4821",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction::deserialize (bincode)",
+            "value": 4043235,
+            "range": "± 4235",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction::from_str (serde_json)",
+            "value": 4195927,
+            "range": "± 3695",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transition::to_bytes_le",
+            "value": 4595,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transition::serialize (bincode)",
+            "value": 9151,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transition::to_string (serde_json)",
+            "value": 16266,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transition::from_bytes_le",
+            "value": 1557280,
+            "range": "± 259",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transition::deserialize (bincode)",
+            "value": 1557358,
+            "range": "± 280",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transition::from_str (serde_json)",
+            "value": 1673078,
+            "range": "± 1779",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction - deploy",
+            "value": 44500022031,
+            "range": "± 101325897",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction verify - deployment",
+            "value": 430658990,
+            "range": "± 2266502",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Transaction - execution (transfer)",
+            "value": 24531956125,
+            "range": "± 88321105",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "CoinbasePuzzle::Trim 2^13",
+            "value": 7132428803,
+            "range": "± 14881029",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "CoinbasePuzzle::Prove 2^13",
+            "value": 274483888,
+            "range": "± 2351230",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "CoinbasePuzzle::Accumulate 10 of 2^13",
+            "value": 238240657,
+            "range": "± 1078738",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "CoinbasePuzzle::Accumulate 100 of 2^13",
+            "value": 1181570322,
+            "range": "± 2112805",
             "unit": "ns/iter"
           }
         ]
