@@ -102,6 +102,20 @@ fn bench_instructions(c: &mut Criterion) {
                 bench_instruction!($operation, samples, $instruction { $input , });
             })+
         };
+        // Benchmark a unary instruction with a question mark (?), using the default sampling method.
+        ($operation:ident?, $instruction:ident { $( $input:ident , )+ }) => {
+            $({
+                // Define the default sampling method.
+                let mut samples = iter::repeat_with(|| {
+                    let mut arg: $input::<Testnet3> = Uniform::rand(rng);
+                    while (std::panic::catch_unwind(|| arg.$operation().unwrap())).is_err() {
+                        arg = Uniform::rand(rng);
+                    }
+                    arg
+                });
+                bench_instruction!($operation, samples, $instruction { $input , });
+            })+
+        };
         // Benchmark a binary instruction, using the default sampling method.
         ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ }) => {
             $({
@@ -331,7 +345,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Inverse;
-    bench_instruction!(inverse, Inv { Field, });
+    bench_instruction!(inverse?, Inv { Field, });
 
     bench_instruction!(is_less_than, LessThan {
         (Field, Field),
@@ -532,7 +546,7 @@ fn bench_instructions(c: &mut Criterion) {
 
     use console::prelude::ShlChecked;
     bench_instruction!(shl_checked, Shl {
-            (I8, U8),
+        (I8, U8),
         (I8, U16),
         (I8, U32),
         (I16, U8),
@@ -670,7 +684,7 @@ fn bench_instructions(c: &mut Criterion) {
     bench_instruction!(square, Square { Field, });
 
     use console::prelude::SquareRoot;
-    bench_instruction!(square_root, SquareRoot { Field, });
+    bench_instruction!(square_root?, SquareRoot { Field, });
 
     use std::ops::Sub;
     bench_instruction!(sub, Sub {
@@ -724,7 +738,7 @@ fn bench_instructions(c: &mut Criterion) {
 
 criterion_group! {
     name = bench;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(100);
     targets = bench_instructions,
 }
 
