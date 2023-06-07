@@ -17,7 +17,7 @@ extern crate criterion;
 
 use console::{
     network::Testnet3,
-    prelude::Uniform,
+    prelude::{Uniform, Zero},
     program::{
         Boolean,
         Field,
@@ -158,7 +158,7 @@ fn bench_instructions(c: &mut Criterion) {
                     b.iter_batched(
                         || $samples.next().unwrap(),
                         |arg| arg.$operation(),
-                        BatchSize::PerIteration,
+                        BatchSize::SmallInput,
                     )
                 });
                 // Benchmark the entire instruction.
@@ -171,7 +171,7 @@ fn bench_instructions(c: &mut Criterion) {
                             setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
                         },
                         |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::PerIteration,
+                        BatchSize::SmallInput,
                     )
                 });
             };
@@ -185,7 +185,7 @@ fn bench_instructions(c: &mut Criterion) {
                     b.iter_batched(
                         || $samples.next().unwrap(),
                         |(first, second)| first.$operation(&second),
-                        BatchSize::PerIteration,
+                        BatchSize::SmallInput,
                     )
                 });
                 // Benchmark the entire instruction.
@@ -198,7 +198,7 @@ fn bench_instructions(c: &mut Criterion) {
                             setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
                         },
                         |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::PerIteration,
+                        BatchSize::SmallInput,
                     )
                 });
             };
@@ -212,7 +212,7 @@ fn bench_instructions(c: &mut Criterion) {
                     b.iter_batched(
                         || $samples.next().unwrap(),
                         |(first, second, third)| $input_b::ternary(&first, &second, &third),
-                        BatchSize::PerIteration
+                        BatchSize::SmallInput
                     )
                 });
                 // Benchmark the entire instruction.
@@ -225,7 +225,7 @@ fn bench_instructions(c: &mut Criterion) {
                             setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap(), Value::from_str(&third.to_string()).unwrap()])
                         },
                         |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::PerIteration
+                        BatchSize::SmallInput
                     )
                 });
             }
@@ -391,17 +391,28 @@ fn bench_instructions(c: &mut Criterion) {
         (Field, Field),
         (Group, Scalar),
         (Scalar, Group),
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
     });
+    // Use a custom sampling method for integer multiplication, since there is a high chance of overflow.
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), I8::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (I8, I8), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), I16::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (I16, I16), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), I32::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (I32, I32), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), I64::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (I64, I64), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), I128::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (I128, I128), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (U8, U8), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (U16, U16), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (U32, U32), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U64::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (U64, U64), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U128::<Testnet3>::zero()));
+    bench_instruction!(mul, samples, Mul { (U128, U128), });
 
     use console::prelude::MulWrapped;
     bench_instruction!(mul_wrapped, MulWrapped {
@@ -450,37 +461,68 @@ fn bench_instructions(c: &mut Criterion) {
     use console::prelude::Pow;
     bench_instruction!(pow, Pow {
         (Field, Field),
-        (I8, U8),
-        (I8, U16),
-        (I8, U32),
-        (I16, U8),
-        (I16, U16),
-        (I16, U32),
-        (I32, U8),
-        (I32, U16),
-        (I32, U32),
-        (I64, U8),
-        (I64, U16),
-        (I64, U32),
-        (I128, U8),
-        (I128, U16),
-        (I128, U32),
-        (U8, U8),
-        (U8, U16),
-        (U8, U32),
-        (U16, U8),
-        (U16, U16),
-        (U16, U32),
-        (U32, U8),
-        (U32, U16),
-        (U32, U32),
-        (U64, U8),
-        (U64, U16),
-        (U64, U32),
-        (U128, U8),
-        (U128, U16),
-        (U128, U32),
     });
+    // Use a custom sampling method for integer exponentiation, since there is a high chance of overflow.
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I8, U8), });
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I8, U16), });
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I8, U32), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I16, U8), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I16, U16), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I16, U32), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I32, U8), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I32, U16), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I32, U32), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I64, U8), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I64, U16), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I64, U32), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I128, U8), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I128, U16), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (I128, U32), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U8, U8), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U8, U16), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U8, U32), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U16, U8), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U16, U16), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U16, U32), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U32, U8), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U32, U16), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U32, U32), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U64, U8), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U64, U16), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U64, U32), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U128, U8), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U128, U16), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(pow, samples, Pow { (U128, U32), });
 
     use console::prelude::PowWrapped;
     bench_instruction!(pow_wrapped, PowWrapped {
@@ -545,38 +587,67 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::ShlChecked;
-    bench_instruction!(shl_checked, Shl {
-        (I8, U8),
-        (I8, U16),
-        (I8, U32),
-        (I16, U8),
-        (I16, U16),
-        (I16, U32),
-        (I32, U8),
-        (I32, U16),
-        (I32, U32),
-        (I64, U8),
-        (I64, U16),
-        (I64, U32),
-        (I128, U8),
-        (I128, U16),
-        (I128, U32),
-        (U8, U8),
-        (U8, U16),
-        (U8, U32),
-        (U16, U8),
-        (U16, U16),
-        (U16, U32),
-        (U32, U8),
-        (U32, U16),
-        (U32, U32),
-        (U64, U8),
-        (U64, U16),
-        (U64, U32),
-        (U128, U8),
-        (U128, U16),
-        (U128, U32),
-    });
+    // Use a custom sampling method for left-shift, since there is a high chance of overflow.
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I8, U8), });
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I8, U16), });
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I8, U32), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I16, U8), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I16, U16), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I16, U32), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I32, U8), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I32, U16), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I32, U32), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I64, U8), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I64, U16), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I64, U32), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I128, U8), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I128, U16), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (I128, U32), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U8, U8), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U8, U16), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U8, U32), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U16, U8), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U16, U16), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U16, U32), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U32, U8), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U32, U16), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U32, U32), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U64, U8), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U64, U16), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U64, U32), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U128, U8), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U128, U16), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(shl_checked, samples, Shl { (U128, U32), });
 
     use console::prelude::ShlWrapped;
     bench_instruction!(shl_wrapped, ShlWrapped {
