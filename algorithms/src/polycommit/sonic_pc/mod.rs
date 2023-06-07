@@ -161,34 +161,9 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         let prepared_h = pp.prepared_h.clone();
         let prepared_beta_h = pp.prepared_beta_h.clone();
 
-        let degree_bounds_and_neg_powers_of_h = if pp.neg_powers_of_beta_h().is_empty() {
-            None
-        } else {
-            Some(
-                pp.neg_powers_of_beta_h()
-                    .iter()
-                    .map(|(d, affine)| (*d, *affine))
-                    .collect::<Vec<(usize, E::G2Affine)>>(),
-            )
-        };
-
-        let degree_bounds_and_prepared_neg_powers_of_h =
-            degree_bounds_and_neg_powers_of_h.as_ref().map(|degree_bounds_and_neg_powers_of_h| {
-                degree_bounds_and_neg_powers_of_h
-                    .iter()
-                    .map(|(d, affine)| (*d, affine.prepare()))
-                    .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
-            });
-
         let kzg10_vk = kzg10::VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h };
 
-        let vk = VerifierKey {
-            vk: kzg10_vk,
-            degree_bounds_and_neg_powers_of_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-            supported_degree,
-            max_degree,
-        };
+        let vk = VerifierKey { vk: kzg10_vk, supported_degree, max_degree };
 
         end_timer!(trim_time);
         Ok((ck, vk))
@@ -391,6 +366,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
     pub fn batch_check<'a>(
         vk: &VerifierUnionKey<E>,
+        prepared_neg_powers_of_beta_h: &BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         query_set: &QuerySet<E::Fr>,
         values: &Evaluations<E::Fr>,
@@ -452,7 +428,13 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
         }
 
-        let result = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);
+        let result = Self::check_elems(
+            vk,
+            prepared_neg_powers_of_beta_h,
+            combined_comms,
+            combined_witness,
+            combined_adjusted_witness,
+        );
         end_timer!(batch_check_time);
         result
     }
@@ -539,6 +521,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     /// committed in `labeled_commitments`.
     pub fn check_combinations<'a>(
         vk: &VerifierUnionKey<E>,
+        prepared_neg_powers_of_beta_h: &BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         query_set: &QuerySet<E::Fr>,
@@ -592,6 +575,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             lc_info.push((lc_label, degree_bound));
         }
         end_timer!(lc_processing_time);
+
         let combined_comms_norm_time = start_timer!(|| "Normalizing commitments");
         let comms = Self::normalize_commitments(lc_commitments);
         let lc_commitments = lc_info
@@ -601,7 +585,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             .collect::<Vec<_>>();
         end_timer!(combined_comms_norm_time);
 
-        Self::batch_check(vk, &lc_commitments, query_set, &evaluations, proof, fs_rng)
+        Self::batch_check(vk, prepared_neg_powers_of_beta_h, &lc_commitments, query_set, &evaluations, proof, fs_rng)
     }
 }
 
@@ -695,10 +679,11 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
     #[allow(clippy::type_complexity)]
     fn check_elems(
+        vk: &VerifierUnionKey<E>,
+        prepared_neg_powers_of_beta_h: &BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>,
         combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
         combined_witness: E::G1Projective,
         combined_adjusted_witness: E::G1Projective,
-        vk: &VerifierUnionKey<E>,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| "Checking elems");
         let mut g1_projective_elems = Vec::with_capacity(combined_comms.len() + 2);
@@ -706,7 +691,11 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
         for (degree_bound, comm) in combined_comms.into_iter() {
             let shift_power = if let Some(degree_bound) = degree_bound {
-                vk.get_prepared_shift_power(degree_bound).ok_or(PCError::UnsupportedDegreeBound(degree_bound))?
+                // Find the appropriate prepared shift for the degree bound.
+                prepared_neg_powers_of_beta_h
+                    .get(&degree_bound)
+                    .cloned()
+                    .ok_or(PCError::UnsupportedDegreeBound(degree_bound))?
             } else {
                 vk.vk.prepared_h.clone()
             };

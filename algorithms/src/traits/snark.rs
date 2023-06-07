@@ -33,13 +33,6 @@ pub trait PrepareOrd {
     fn prepare(&self) -> Self::Prepared;
 }
 
-/// An abstraction layer to enable a circuit-specific SRS or universal SRS.
-/// Forward compatible with future assumptions that proof systems will require.
-pub enum SRS<'a, T> {
-    CircuitSpecific,
-    Universal(&'a T),
-}
-
 pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
@@ -78,11 +71,13 @@ pub trait SNARK {
     type FiatShamirRng: AlgebraicSponge<Self::BaseField, 2, Parameters = Self::FSParameters>;
     type FSParameters;
 
+    type PreparedNegativePowersOfBetaH;
+
     fn universal_setup(config: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError>;
 
-    fn setup<C: ConstraintSynthesizer<Self::ScalarField>>(
+    fn circuit_setup<C: ConstraintSynthesizer<Self::ScalarField>>(
+        srs: &Self::UniversalSetupParameters,
         circuit: &C,
-        srs: &mut SRS<Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
     fn prove_vk(
@@ -110,6 +105,7 @@ pub trait SNARK {
 
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
         fs_parameters: &Self::FSParameters,
+        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         circuit: &C,
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
@@ -117,6 +113,7 @@ pub trait SNARK {
 
     fn verify<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
+        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         verifying_key: &Self::VerifyingKey,
         input: B,
         proof: &Self::Proof,
@@ -124,11 +121,12 @@ pub trait SNARK {
         let mut keys_to_inputs = BTreeMap::new();
         let inputs = [input];
         keys_to_inputs.insert(verifying_key, &inputs[..]);
-        Self::verify_batch(fs_parameters, &keys_to_inputs, proof)
+        Self::verify_batch(fs_parameters, prepared_neg_powers_of_beta_h, &keys_to_inputs, proof)
     }
 
     fn verify_batch<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
+        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
@@ -141,11 +139,12 @@ pub trait SNARK {
             })
             .collect::<BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
         end_timer!(preparation_time);
-        Self::verify_batch_prepared(fs_parameters, &prepared_keys_to_inputs, proof)
+        Self::verify_batch_prepared(fs_parameters, prepared_neg_powers_of_beta_h, &prepared_keys_to_inputs, proof)
     }
 
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
+        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;

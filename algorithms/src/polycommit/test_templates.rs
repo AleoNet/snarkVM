@@ -115,7 +115,15 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
-        let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
+        let result = SonicKZG10::batch_check(
+            &vk,
+            &pp.prepared_neg_powers_of_beta_h(),
+            &comms,
+            &query_set,
+            &values,
+            &proof,
+            &mut sponge_for_check,
+        )?;
         assert!(result, "proof was incorrect, Query set: {query_set:#?}");
     }
     Ok(())
@@ -201,7 +209,15 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
-        let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
+        let result = SonicKZG10::batch_check(
+            &vk,
+            &pp.prepared_neg_powers_of_beta_h(),
+            &comms,
+            &query_set,
+            &values,
+            &proof,
+            &mut sponge_for_check,
+        )?;
         if !result {
             println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
             println!("Degree of polynomials:");
@@ -321,7 +337,15 @@ where
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
-        let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
+        let result = SonicKZG10::batch_check(
+            &vk,
+            &pp.prepared_neg_powers_of_beta_h(),
+            &comms,
+            &query_set,
+            &values,
+            &proof,
+            &mut sponge_for_check,
+        )?;
         if !result {
             println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
             println!("Degree of polynomials:");
@@ -483,6 +507,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::check_combinations(
             &vk,
+            &pp.prepared_neg_powers_of_beta_h(),
             &linear_combinations,
             &comms,
             &query_set,

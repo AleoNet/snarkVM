@@ -41,11 +41,12 @@ use snarkvm_algorithms::{
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
-use snarkvm_curves::PairingEngine;
+use snarkvm_curves::{PairingCurve, PairingEngine};
+use snarkvm_utilities::CanonicalDeserialize;
 
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 /// A helper type for the BHP Merkle tree.
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
@@ -174,6 +175,10 @@ pub trait Network:
 
     /// Returns the sponge parameters for Marlin.
     fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;
+
+    /// Returns the prepared negative powers of beta H for Marlin.
+    fn marlin_prepared_negative_powers_of_beta_h()
+    -> &'static Arc<BTreeMap<usize, <<Self::PairingCurve as PairingEngine>::G2Affine as PairingCurve>::Prepared>>;
 
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;

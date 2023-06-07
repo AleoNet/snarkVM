@@ -195,6 +195,21 @@ impl Network for Testnet3 {
         &MARLIN_FS_PARAMETERS
     }
 
+    /// Returns the prepared negative powers of beta H for Marlin.
+    fn marlin_prepared_negative_powers_of_beta_h()
+    -> &'static Arc<BTreeMap<usize, <<Self::PairingCurve as PairingEngine>::G2Affine as PairingCurve>::Prepared>> {
+        type ConsoleG2Affine = <<Console as Environment>::PairingCurve as PairingEngine>::G2Affine;
+        static INSTANCE: OnceCell<Arc<BTreeMap<usize, <ConsoleG2Affine as PairingCurve>::Prepared>>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            // Reconstruct negative powers of beta_h.
+            let negative_powers_of_beta_h: BTreeMap<usize, ConsoleG2Affine> =
+                BTreeMap::deserialize_uncompressed_unchecked(&**snarkvm_parameters::testnet3::NEG_POWERS_OF_BETA_H)
+                    .expect("Failed to load universal SRS (negative powers of beta_h).");
+            // Compute the prepared negative powers of beta_h.
+            Arc::new(negative_powers_of_beta_h.iter().map(|(d, affine)| (*d, affine.prepare())).collect())
+        })
+    }
+
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self> {
         *ENCRYPTION_DOMAIN

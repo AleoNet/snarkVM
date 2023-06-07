@@ -94,6 +94,10 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.read().negative_powers_of_beta_h()
     }
 
+    pub fn prepared_neg_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>> {
+        self.powers.read().prepared_negative_powers_of_beta_h()
+    }
+
     pub fn max_degree(&self) -> usize {
         self.powers.read().max_num_powers() - 1
     }

@@ -39,8 +39,12 @@ impl<N: Network> VerifyingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        // Retrieve the verification parameters.
+        let fiat_shamir = N::marlin_fs_parameters();
+        let neg_beta_h = N::marlin_prepared_negative_powers_of_beta_h();
+
         // Verify the proof.
-        match Marlin::<N>::verify(N::marlin_fs_parameters(), self, inputs, proof) {
+        match Marlin::<N>::verify(fiat_shamir, neg_beta_h, self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 println!(
@@ -63,11 +67,16 @@ impl<N: Network> VerifyingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        // Convert the instances.
         let keys_to_inputs: BTreeMap<_, _> =
             inputs.iter().map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice())).collect();
 
+        // Retrieve the verification parameters.
+        let fiat_shamir = N::marlin_fs_parameters();
+        let neg_beta_h = N::marlin_prepared_negative_powers_of_beta_h();
+
         // Verify the batch proof.
-        match Marlin::<N>::verify_batch(N::marlin_fs_parameters(), &keys_to_inputs, proof) {
+        match Marlin::<N>::verify_batch(fiat_shamir, neg_beta_h, &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 println!("{}", format!(" • Verified '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());

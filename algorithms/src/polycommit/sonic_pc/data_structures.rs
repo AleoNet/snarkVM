@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::{LabeledPolynomial, PolynomialInfo};
 use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
-use hashbrown::{HashMap, HashSet};
-use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
+use hashbrown::HashMap;
 use std::{
     borrow::{Borrow, Cow},
     collections::{BTreeMap, BTreeSet},
     fmt,
     ops::{AddAssign, MulAssign, SubAssign},
 };
-
-use super::{LabeledPolynomial, PolynomialInfo};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
@@ -448,11 +447,6 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
-    /// Pairs a degree_bound with its corresponding G2 element.
-    /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
-    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>>,
-    /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
     /// The maximum degree supported by the trimmed parameters that `self` is a part of.
     pub supported_degree: usize,
     /// The maximum degree supported by the `UniversalParams` `self` was derived from.
@@ -462,7 +456,6 @@ pub struct VerifierKey<E: PairingEngine> {
 impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.vk.serialize_with_mode(&mut writer, compress)?;
-        self.degree_bounds_and_neg_powers_of_h.serialize_with_mode(&mut writer, compress)?;
         self.supported_degree.serialize_with_mode(&mut writer, compress)?;
         self.max_degree.serialize_with_mode(&mut writer, compress)?;
         Ok(())
@@ -470,7 +463,6 @@ impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
 
     fn serialized_size(&self, compress: Compress) -> usize {
         self.vk.serialized_size(compress)
-            + self.degree_bounds_and_neg_powers_of_h.serialized_size(compress)
             + self.supported_degree.serialized_size(compress)
             + self.max_degree.serialized_size(compress)
     }
@@ -483,26 +475,15 @@ impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>> =
-            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_prepared_neg_powers_of_h =
-            degree_bounds_and_neg_powers_of_h.as_ref().map(|v| v.iter().map(|(b, pow)| (*b, pow.prepare())).collect());
-        Ok(VerifierKey {
-            vk,
-            degree_bounds_and_neg_powers_of_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-            supported_degree,
-            max_degree,
-        })
+        Ok(VerifierKey { vk, supported_degree, max_degree })
     }
 }
 
 impl<E: PairingEngine> Valid for VerifierKey<E> {
     fn check(&self) -> Result<(), SerializationError> {
         Valid::check(&self.vk)?;
-        Valid::check(&self.degree_bounds_and_neg_powers_of_h)?;
         Valid::check(&self.supported_degree)?;
         Valid::check(&self.max_degree)?;
         Ok(())
@@ -514,7 +495,6 @@ impl<E: PairingEngine> Valid for VerifierKey<E> {
     {
         let batch: Vec<_> = batch.collect();
         Valid::batch_check(batch.iter().map(|v| &v.vk))?;
-        Valid::batch_check(batch.iter().map(|v| &v.degree_bounds_and_neg_powers_of_h))?;
         Valid::batch_check(batch.iter().map(|v| &v.supported_degree))?;
         Valid::batch_check(batch.iter().map(|v| &v.max_degree))?;
         Ok(())
@@ -540,10 +520,6 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
 pub struct VerifierUnionKey<'a, E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: &'a kzg10::VerifierKey<E>,
-    /// Information required to enforce degree bounds. Each pair is of the form `(degree_bound, shifting_advice)`.
-    /// This is `None` if `self` does not support enforcing any degree bounds.
-    /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} H),` where `H` is the generator of G2 above.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, &'a <E::G2Affine as PairingCurve>::Prepared)>>,
     /// The maximum degree supported by the trimmed parameters that `self` is a part of.
     pub supported_degree: usize,
     /// The maximum degree supported by the `UniversalParams` `self` was derived from.
@@ -551,64 +527,24 @@ pub struct VerifierUnionKey<'a, E: PairingEngine> {
 }
 
 impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
-    /// Find the appropriate prepared shift for the degree bound.
-    pub fn get_prepared_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
-        self.degree_bounds_and_prepared_neg_powers_of_h
-            .as_ref()
-            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1.clone()))
-    }
-
     pub fn max_degree(&self) -> usize {
         self.max_degree
     }
 
     pub fn union<T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
-        let mut bounds_seen = HashSet::<usize>::new();
-        let mut bounds_and_prepared_neg_powers = vec![];
         let mut biggest_vk: Option<&VerifierKey<E>> = None;
         for vk in verifier_keys {
             if biggest_vk.is_none() || biggest_vk.unwrap().supported_degree < vk.supported_degree {
                 biggest_vk = Some(vk);
             }
-            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.as_ref().unwrap();
-            for (bound, prep_neg_powers) in new_prep_bounds {
-                if bounds_seen.insert(*bound) {
-                    bounds_and_prepared_neg_powers.push((*bound, prep_neg_powers));
-                }
-            }
         }
-
         let biggest_vk = biggest_vk.unwrap();
-        let mut vk_union = VerifierUnionKey::<E> {
+
+        VerifierUnionKey::<E> {
             vk: &biggest_vk.vk,
-            degree_bounds_and_prepared_neg_powers_of_h: None,
             supported_degree: biggest_vk.supported_degree,
             max_degree: biggest_vk.max_degree,
-        };
-
-        if !bounds_and_prepared_neg_powers.is_empty() {
-            bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
-            bounds_and_prepared_neg_powers.dedup_by(|a, b| a.0 <= b.0);
-            vk_union.degree_bounds_and_prepared_neg_powers_of_h = Some(bounds_and_prepared_neg_powers);
         }
-        vk_union
-    }
-}
-
-impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
-    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
-        let mut res = Vec::new();
-        res.extend_from_slice(&self.vk.to_field_elements()?);
-
-        if let Some(degree_bounds_and_neg_powers_of_h) = &self.degree_bounds_and_neg_powers_of_h {
-            for (d, neg_powers_of_h) in degree_bounds_and_neg_powers_of_h.iter() {
-                let d_elem: E::Fq = (*d as u64).into();
-                res.push(d_elem);
-                res.append(&mut neg_powers_of_h.to_field_elements()?);
-            }
-        }
-
-        Ok(res)
     }
 }
 
