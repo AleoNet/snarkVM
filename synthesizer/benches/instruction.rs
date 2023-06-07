@@ -50,7 +50,7 @@ use snarkvm_synthesizer::{
 };
 
 use snarkvm_utilities::TestRng;
-use std::{fmt::Display, str::FromStr};
+use std::{iter, fmt::Display, str::FromStr};
 
 /// A helper function to construct a set of `FinalizeRegisters` with the given arguments.
 fn setup_finalize_registers(
@@ -91,17 +91,18 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
         // Case 0: Unary operation.
         ($operation:ident, $instruction:ident { $( $input:ident , )+ }) => {
             $({
-                // Benchmark the core operation of the instruction.
                 let name = concat!(stringify!($instruction), "/", stringify!($input));
+                let samples = iter::repeat_with(|| {
+                    let mut arg: $input::<Testnet3> = Uniform::rand(rng);
+                    while (std::panic::catch_unwind(|| arg.$operation())).is_err() {
+                        arg = Uniform::rand(rng);
+                    }
+                    arg
+                });
+                // Benchmark the core operation of the instruction.
                 c.bench_function(&format!("{name}/core"), |b| {
                     b.iter_batched(
-                        || {
-                            let mut arg: $input::<Testnet3> = Uniform::rand(rng);
-                            while (std::panic::catch_unwind(|| arg.$operation())).is_err() {
-                                arg = Uniform::rand(rng);
-                            }
-                            arg
-                        },
+                        || samples.next().unwrap(),
                         |arg| arg.$operation(),
                         BatchSize::PerIteration,
                     )
@@ -112,10 +113,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
                 c.bench_function(&format!("{name}/instruction"), |b| {
                     b.iter_batched(
                         || {
-                            let mut arg: $input::<Testnet3> = Uniform::rand(rng);
-                            while (std::panic::catch_unwind(|| arg.$operation())).is_err() {
-                                arg = Uniform::rand(rng);
-                            }
+                            let arg = samples.next().unwrap();
                             setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
                         },
                         |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
@@ -127,19 +125,20 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
         // Case 1: Binary operation.
         ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ }) => {
             $({
-                // Benchmark the core operation of the instruction.
                 let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+                let samples = iter::repeat_with(|| {
+                    let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
+                    let mut second: $input_b::<Testnet3> = Uniform::rand(rng);
+                    while (std::panic::catch_unwind(|| first.$operation(&second))).is_err() {
+                        first = Uniform::rand(rng);
+                        second = Uniform::rand(rng);
+                    }
+                    (first, second)
+                });
+                // Benchmark the core operation of the instruction.
                 c.bench_function(&format!("{name}/core"), |b| {
                     b.iter_batched(
-                        || {
-                            let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
-                            let mut second: $input_b::<Testnet3> = Uniform::rand(rng);
-                            while (std::panic::catch_unwind(|| first.$operation(&second))).is_err() {
-                                first = Uniform::rand(rng);
-                                second = Uniform::rand(rng);
-                            }
-                            (first, second)
-                        },
+                        || samples.next().unwrap(),
                         |(first, second)| first.$operation(&second),
                         BatchSize::PerIteration,
                     )
@@ -150,12 +149,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
                 c.bench_function(&format!("{name}/instruction"), |b| {
                     b.iter_batched(
                         || {
-                            let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
-                            let mut second: $input_b::<Testnet3> = Uniform::rand(rng);
-                            while (std::panic::catch_unwind(|| first.$operation(&second))).is_err() {
-                                first = Uniform::rand(rng);
-                                second = Uniform::rand(rng);
-                            }
+                            let (first, second) = samples.next().unwrap();
                             setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
                         },
                         |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
@@ -167,16 +161,22 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
         // Case 2: Ternary operation.
         ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident, $input_c:ident), )+ }) => {
             $({
-                // Benchmark the core operation of the instruction.
                 let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_",  stringify!($input_b), "_", stringify!($input_c));
+                let samples = iter::repeat_with(|| {
+                    let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
+                    let mut second: $input_b::<Testnet3> = Uniform::rand(rng);
+                    let mut third: $input_c::<Testnet3> = Uniform::rand(rng);
+                    while (std::panic::catch_unwind(|| $input_b::ternary(&first, &second, &third))).is_err() {
+                        first = Uniform::rand(rng);
+                        second = Uniform::rand(rng);
+                        third = Uniform::rand(rng);
+                    }
+                    (first, second, third)
+                });
+                // Benchmark the core operation of the instruction.
                 c.bench_function(&format!("{name}/core"), |b| {
                     b.iter_batched(
-                        || {
-                            let first: $input_a::<Testnet3> = Uniform::rand(rng);
-                            let second: $input_b::<Testnet3> = Uniform::rand(rng);
-                            let third: $input_c::<Testnet3> = Uniform::rand(rng);
-                            (first, second, third)
-                        },
+                        || samples.next().unwrap(),
                         |(first, second, third)| $input_b::ternary(&first, &second, &third),
                         BatchSize::PerIteration
                     )
@@ -187,9 +187,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
                 c.bench_function(&format!("{name}/instruction"), |b| {
                     b.iter_batched(
                         || {
-                            let first: $input_a::<Testnet3> = Uniform::rand(rng);
-                            let second: $input_b::<Testnet3> = Uniform::rand(rng);
-                            let third: $input_c::<Testnet3> = Uniform::rand(rng);
+                            let (first, second, third) = samples.next().unwrap();
                             setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap(), Value::from_str(&third.to_string()).unwrap()])
                         },
                         |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
@@ -201,10 +199,10 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
     }
 
     use console::prelude::AbsChecked;
-    bench_instruction!(abs_checked, Abs { I8, I16, I32, I64, I128 });
+    bench_instruction!(abs_checked, Abs { I8, I16, I32, I64, I128, });
 
     use console::prelude::AbsWrapped;
-    bench_instruction!(abs_wrapped, AbsWrapped { I8, I16, I32, I64, I128 });
+    bench_instruction!(abs_wrapped, AbsWrapped { I8, I16, I32, I64, I128, });
 
     use std::ops::Add;
     bench_instruction!(add, Add {
@@ -279,7 +277,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Double;
-    bench_instruction!(double, Double { Field, Group });
+    bench_instruction!(double, Double { Field, Group, });
 
     use console::prelude::Compare;
     bench_instruction!(is_greater_than, GreaterThan {
@@ -313,7 +311,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Inverse;
-    bench_instruction!(inverse, Inv { Field });
+    bench_instruction!(inverse, Inv { Field, });
 
     bench_instruction!(is_less_than, LessThan {
         (Field, Field),
@@ -391,7 +389,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
     });
 
     use core::ops::Neg;
-    bench_instruction!(neg, Neg { Field, Group, I8, I16, I32, I64, I128 });
+    bench_instruction!(neg, Neg { Field, Group, I8, I16, I32, I64, I128, });
 
     use console::prelude::Nor;
     bench_instruction!(nor, Nor {
@@ -399,7 +397,7 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
     });
 
     use core::ops::Not;
-    bench_instruction!(not, Not { Boolean, I8, I16, I32, I64, I128, U8, U16, U32, U64 });
+    bench_instruction!(not, Not { Boolean, I8, I16, I32, I64, I128, U8, U16, U32, U64, });
 
     use core::ops::BitOr;
     bench_instruction!(bitor, Or {
@@ -649,10 +647,10 @@ fn bench_arithmetic_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Square;
-    bench_instruction!(square, Square { Field });
+    bench_instruction!(square, Square { Field, });
 
     use console::prelude::SquareRoot;
-    bench_instruction!(square_root, SquareRoot { Field });
+    bench_instruction!(square_root, SquareRoot { Field, });
 
     use std::ops::Sub;
     bench_instruction!(sub, Sub {
