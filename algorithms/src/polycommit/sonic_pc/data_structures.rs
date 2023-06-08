@@ -544,10 +544,6 @@ pub struct VerifierUnionKey<'a, E: PairingEngine> {
     /// This is `None` if `self` does not support enforcing any degree bounds.
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} H),` where `H` is the generator of G2 above.
     pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, &'a <E::G2Affine as PairingCurve>::Prepared)>>,
-    /// The maximum degree supported by the trimmed parameters that `self` is a part of.
-    pub supported_degree: usize,
-    /// The maximum degree supported by the `UniversalParams` `self` was derived from.
-    pub max_degree: usize,
 }
 
 impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
@@ -556,10 +552,6 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         self.degree_bounds_and_prepared_neg_powers_of_h
             .as_ref()
             .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1.clone()))
-    }
-
-    pub fn max_degree(&self) -> usize {
-        self.max_degree
     }
 
     pub fn union<T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
@@ -579,12 +571,8 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         }
 
         let biggest_vk = biggest_vk.unwrap();
-        let mut vk_union = VerifierUnionKey::<E> {
-            vk: &biggest_vk.vk,
-            degree_bounds_and_prepared_neg_powers_of_h: None,
-            supported_degree: biggest_vk.supported_degree,
-            max_degree: biggest_vk.max_degree,
-        };
+        let mut vk_union =
+            VerifierUnionKey::<E> { vk: &biggest_vk.vk, degree_bounds_and_prepared_neg_powers_of_h: None };
 
         if !bounds_and_prepared_neg_powers.is_empty() {
             bounds_and_prepared_neg_powers.sort_by(|a, b| a.0.cmp(&b.0));
