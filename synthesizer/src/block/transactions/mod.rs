@@ -26,7 +26,7 @@ mod string;
 use crate::block::{Transaction, Transition};
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
+    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, FINALIZE_OPERATIONS_DEPTH, TRANSACTIONS_DEPTH},
     types::{Field, Group, U64},
 };
 

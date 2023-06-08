@@ -17,7 +17,12 @@ use super::*;
 impl<N: Network> Transactions<N> {
     /// Returns the finalize root of the transactions.
     pub fn to_finalize_root(&self) -> Result<Field<N>> {
-        N::hash_bhp1024(&self.finalize_operations().flat_map(|op| op.to_bits_le()).collect::<Vec<_>>())
+        // Prepare the leaves.
+        let leaves = self.finalize_operations().map(|op| op.to_bits_le());
+        // Compute the finalize tree.
+        let tree = N::merkle_tree_bhp::<FINALIZE_OPERATIONS_DEPTH>(&leaves.collect::<Vec<_>>())?;
+        // Return the finalize root.
+        Ok(*tree.root())
     }
 }
 
