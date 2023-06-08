@@ -28,7 +28,7 @@ use console::{
     program::{Identifier, Register, Value},
 };
 
-/// A get command that uses the provided operand in case of failure, e.g. `get.or_use accounts[r0] r1 into r2;`.
+/// A get command that uses the provided default in case of failure, e.g. `get.or_use accounts[r0] r1 into r2;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
 /// If the key is not present, `default` is stored in `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -89,7 +89,7 @@ impl<N: Network> GetOrUse<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut (impl LoadTrait<N> + RegistersStore<N>),
-    ) -> Result<Option<FinalizeOperation<N>>> {
+    ) -> Result<()> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
@@ -99,18 +99,18 @@ impl<N: Network> GetOrUse<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let (value, finalize_operation) = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
-            Some(Value::Plaintext(plaintext)) => (Value::Plaintext(plaintext), None),
+        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
+            Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get.or_use' a 'record'"),
             // If a key does not exist, then use the default value.
-            None => (Value::Plaintext(registers.load_plaintext(stack, &self.default)?), None),
+            None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
         };
 
         // Assign the value to the destination register.
         registers.store(stack, &self.destination, value)?;
 
         // Return the finalize operation.
-        Ok(finalize_operation)
+        Ok(())
     }
 }
 

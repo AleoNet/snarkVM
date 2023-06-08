@@ -108,13 +108,9 @@ impl<N: Network> Finalize<N> {
         // Ensure the maximum number of commands has not been exceeded.
         ensure!(self.commands.len() < N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
         // Ensure the number of write commands has not been exceeded.
-        ensure!(
-            self.num_writes < N::MAX_WRITES,
-            "Cannot add more than {} 'get.or_use' and 'set' commands",
-            N::MAX_WRITES
-        );
+        ensure!(self.num_writes < N::MAX_WRITES, "Cannot add more than {} 'set' commands", N::MAX_WRITES);
 
-        // If the command is an instruction, `get` command, or `get.or_use` command, perform additional checks.
+        // Perform additional checks on the command.
         match &command {
             Command::Instruction(instruction) => {
                 match instruction {

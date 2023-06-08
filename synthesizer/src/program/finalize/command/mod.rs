@@ -55,7 +55,7 @@ impl<N: Network> Command<N> {
             // Finalize the 'get' command, and return no finalize operation.
             Command::Get(get) => get.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get.or_use' command, and return the (optional) finalize operation.
-            Command::GetOrUse(get_or_use) => get_or_use.finalize(stack, store, registers),
+            Command::GetOrUse(get_or_use) => get_or_use.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'set' command, and return the finalize operation.
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
         }
