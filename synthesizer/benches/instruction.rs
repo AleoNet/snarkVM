@@ -251,142 +251,148 @@ fn bench_instructions(c: &mut Criterion) {
         };
     }
 
-    use console::prelude::AbsChecked;
-    bench_instruction_with_default!(abs_checked, Abs { I8, I16, I32, I64, I128, });
-
-    use console::prelude::AbsWrapped;
-    bench_instruction_with_default!(abs_wrapped, AbsWrapped { I8, I16, I32, I64, I128, });
-
-    use std::ops::Add;
-    bench_instruction_with_default!(add, Add {
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
-    });
-
-    use console::prelude::AddWrapped;
-    bench_instruction_with_default!(add_wrapped, AddWrapped {
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
-    });
-
-    use core::ops::BitAnd;
-    bench_instruction_with_default!(bitand, And {
-        (Boolean, Boolean),
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
-    });
-
-    use console::prelude::Div;
-    bench_instruction_with_default!(div, Div {
-        (Field, Field),
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
-    });
-
-    use console::prelude::DivWrapped;
-    bench_instruction_with_default!(div_wrapped, DivWrapped {
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
-    });
-
-    use console::prelude::Double;
-    bench_instruction_with_default!(double, Double { Field, Group, });
-
+    // use console::prelude::AbsChecked;
+    // bench_instruction_with_default!(abs_checked, Abs { I8, I16, I32, I64, I128, });
+    //
+    // use console::prelude::AbsWrapped;
+    // bench_instruction_with_default!(abs_wrapped, AbsWrapped { I8, I16, I32, I64, I128, });
+    //
+    // use std::ops::Add;
+    // bench_instruction_with_default!(add, Add {
+    //     (I8, I8),
+    //     (I16, I16),
+    //     (I32, I32),
+    //     (I64, I64),
+    //     (I128, I128),
+    //     (U8, U8),
+    //     (U16, U16),
+    //     (U32, U32),
+    //     (U64, U64),
+    //     (U128, U128),
+    // });
+    //
+    // use console::prelude::AddWrapped;
+    // bench_instruction_with_default!(add_wrapped, AddWrapped {
+    //     (I8, I8),
+    //     (I16, I16),
+    //     (I32, I32),
+    //     (I64, I64),
+    //     (I128, I128),
+    //     (U8, U8),
+    //     (U16, U16),
+    //     (U32, U32),
+    //     (U64, U64),
+    //     (U128, U128),
+    // });
+    //
+    // use core::ops::BitAnd;
+    // bench_instruction_with_default!(bitand, And {
+    //     (Boolean, Boolean),
+    //     (I8, I8),
+    //     (I16, I16),
+    //     (I32, I32),
+    //     (I64, I64),
+    //     (I128, I128),
+    //     (U8, U8),
+    //     (U16, U16),
+    //     (U32, U32),
+    //     (U64, U64),
+    //     (U128, U128),
+    // });
+    //
+    // use console::prelude::Div;
+    // bench_instruction_with_default!(div, Div {
+    //     (Field, Field),
+    //     (I8, I8),
+    //     (I16, I16),
+    //     (I32, I32),
+    //     (I64, I64),
+    //     (I128, I128),
+    //     (U8, U8),
+    //     (U16, U16),
+    //     (U32, U32),
+    //     (U64, U64),
+    //     (U128, U128),
+    // });
+    //
+    // use console::prelude::DivWrapped;
+    // bench_instruction_with_default!(div_wrapped, DivWrapped {
+    //     (I8, I8),
+    //     (I16, I16),
+    //     (I32, I32),
+    //     (I64, I64),
+    //     (I128, I128),
+    //     (U8, U8),
+    //     (U16, U16),
+    //     (U32, U32),
+    //     (U64, U64),
+    //     (U128, U128),
+    // });
+    //
+    // use console::prelude::Double;
+    // bench_instruction_with_default!(double, Double { Field, Group, });
+    //
     use console::prelude::Compare;
-    bench_instruction_with_default!(is_greater_than, GreaterThan {
-        (Field, Field),
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
-        (Scalar, Scalar),
-    });
-
-    bench_instruction_with_default!(is_greater_than_or_equal, GreaterThanOrEqual {
-        (Field, Field),
-        (I8, I8),
-        (I16, I16),
-        (I32, I32),
-        (I64, I64),
-        (I128, I128),
-        (U8, U8),
-        (U16, U16),
-        (U32, U32),
-        (U64, U64),
-        (U128, U128),
-        (Scalar, Scalar),
-    });
-
-    macro_rules! bench_hash_instruction {
+    // bench_instruction_with_default!(is_greater_than, GreaterThan {
+    //     (Field, Field),
+    //     (I8, I8),
+    //     (I16, I16),
+    //     (I32, I32),
+    //     (I64, I64),
+    //     (I128, I128),
+    //     (U8, U8),
+    //     (U16, U16),
+    //     (U32, U32),
+    //     (U64, U64),
+    //     (U128, U128),
+    //     (Scalar, Scalar),
+    // });
+    //
+    // bench_instruction_with_default!(is_greater_than_or_equal, GreaterThanOrEqual {
+    //     (Field, Field),
+    //     (I8, I8),
+    //     (I16, I16),
+    //     (I32, I32),
+    //     (I64, I64),
+    //     (I128, I128),
+    //     (U8, U8),
+    //     (U16, U16),
+    //     (U32, U32),
+    //     (U64, U64),
+    //     (U128, U128),
+    //     (Scalar, Scalar),
+    // });
+    //
+    macro_rules! bench_ped64_hash_instruction {
         ($instruction:tt) => {
             let mut samples = iter::repeat_with(|| { Boolean::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { Boolean, });
-            let mut samples = iter::repeat_with(|| { Field::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { Field, });
-            let mut samples = iter::repeat_with(|| { Group::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { Group, });
             let mut samples = iter::repeat_with(|| { I8::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { I8, });
             let mut samples = iter::repeat_with(|| { I16::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { I16, });
             let mut samples = iter::repeat_with(|| { I32::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { I32, });
-            let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { I64, });
-            let mut samples = iter::repeat_with(|| { I128::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { I128, });
             let mut samples = iter::repeat_with(|| { U8::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { U8, });
             let mut samples = iter::repeat_with(|| { U16::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { U16, });
             let mut samples = iter::repeat_with(|| { U32::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { U32, });
+        }
+    }
+
+    macro_rules! bench_hash_instruction {
+        ($instruction:tt) => {
+            bench_ped64_hash_instruction!($instruction);
+            let mut samples = iter::repeat_with(|| { Field::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { Field, });
+            let mut samples = iter::repeat_with(|| { Group::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { Group, });
+            let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { I64, });
+            let mut samples = iter::repeat_with(|| { I128::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { I128, });
             let mut samples = iter::repeat_with(|| { U64::<Testnet3>::rand(rng) });
             bench_instruction!(samples, $instruction { U64, });
             let mut samples = iter::repeat_with(|| { U128::<Testnet3>::rand(rng) });
@@ -395,13 +401,20 @@ fn bench_instructions(c: &mut Criterion) {
             bench_instruction!(samples, $instruction { Scalar, });
         }
     }
+    //
+    // bench_hash_instruction!(HashBHP256);
+    // bench_hash_instruction!(HashBHP512);
+    // bench_hash_instruction!(HashBHP768);
+    // bench_hash_instruction!(HashBHP1024);
 
-    bench_hash_instruction!(HashBHP256);
-    bench_hash_instruction!(HashBHP512);
-    bench_hash_instruction!(HashBHP768);
-    bench_hash_instruction!(HashBHP1024);
-    bench_hash_instruction!(HashPED64);
-    bench_hash_instruction!(HashPED128);
+    bench_ped64_hash_instruction!(HashPED64);
+
+    bench_ped64_hash_instruction!(HashPED128);
+    let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
+    bench_instruction!(samples, HashPED128 { I64, });
+    let mut samples = iter::repeat_with(|| { U64::<Testnet3>::rand(rng) });
+    bench_instruction!(samples, HashPED128 { U64, });
+
     bench_hash_instruction!(HashPSD2);
     bench_hash_instruction!(HashPSD4);
     bench_hash_instruction!(HashPSD8);
@@ -409,8 +422,15 @@ fn bench_instructions(c: &mut Criterion) {
     bench_hash_instruction!(HashToGroupBHP512);
     bench_hash_instruction!(HashToGroupBHP768);
     bench_hash_instruction!(HashToGroupBHP1024);
-    bench_hash_instruction!(HashToGroupPED64);
-    bench_hash_instruction!(HashToGroupPED128);
+
+    bench_ped64_hash_instruction!(HashToGroupPED64);
+
+    bench_ped64_hash_instruction!(HashToGroupPED128);
+    let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
+    bench_instruction!(samples, HashToGroupPED128 { I64, });
+    let mut samples = iter::repeat_with(|| { U64::<Testnet3>::rand(rng) });
+    bench_instruction!(samples, HashToGroupPED128 { U64, });
+
     bench_hash_instruction!(HashToGroupPSD2);
     bench_hash_instruction!(HashToGroupPSD4);
     bench_hash_instruction!(HashToGroupPSD8);
