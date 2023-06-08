@@ -33,13 +33,6 @@ pub trait PrepareOrd {
     fn prepare(&self) -> Self::Prepared;
 }
 
-/// An abstraction layer to enable a circuit-specific SRS or universal SRS.
-/// Forward compatible with future assumptions that proof systems will require.
-pub enum SRS<'a, T> {
-    CircuitSpecific,
-    Universal(&'a T),
-}
-
 pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
@@ -80,9 +73,9 @@ pub trait SNARK {
 
     fn universal_setup(config: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError>;
 
-    fn setup<C: ConstraintSynthesizer<Self::ScalarField>>(
+    fn circuit_setup<C: ConstraintSynthesizer<Self::ScalarField>>(
+        srs: &Self::UniversalSetupParameters,
         circuit: &C,
-        srs: &mut SRS<Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
     fn prove_vk(

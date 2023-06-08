@@ -41,7 +41,6 @@ use crate::{
     PrepareOrd,
     SNARKError,
     SNARK,
-    SRS,
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
@@ -66,23 +65,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";
-
-    /// Generate the index-specific (i.e., circuit-specific) prover and verifier
-    /// keys. This is a trusted setup.
-    ///
-    /// # Warning
-    ///
-    /// This method should be used *only* for testing purposes, and not in production.
-    /// In production, one should instead perform a universal setup via [`Self::universal_setup`],
-    /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
-    #[allow(clippy::type_complexity)]
-    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>>(
-        circuit: &C,
-    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
-        let indexed_circuit = AHPForR1CS::<E::Fr, MM>::index(circuit)?;
-        let srs = Self::universal_setup(&indexed_circuit.max_degree())?;
-        Self::circuit_setup(&srs, circuit)
-    }
 
     // TODO: implement optimizations resulting from batching
     //       (e.g. computing a common set of Lagrange powers, FFT precomputations, etc)
@@ -141,18 +123,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
         end_timer!(index_time);
         Ok(circuit_keys)
-    }
-
-    /// Generates the circuit proving and verifying keys.
-    /// This is a deterministic algorithm that anyone can rerun.
-    #[allow(clippy::type_complexity)]
-    pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
-        universal_srs: &UniversalSRS<E>,
-        circuit: &C,
-    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
-        let mut circuit_keys = Self::batch_circuit_setup(universal_srs, &[circuit])?;
-        assert_eq!(circuit_keys.len(), 1);
-        Ok(circuit_keys.pop().unwrap())
     }
 
     fn init_sponge<'a>(
@@ -240,15 +210,15 @@ where
         srs
     }
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>>(
+    /// Generates the circuit proving and verifying keys.
+    /// This is a deterministic algorithm that anyone can rerun.
+    fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
+        universal_srs: &Self::UniversalSetupParameters,
         circuit: &C,
-        srs: &mut SRS<Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
-        match srs {
-            SRS::CircuitSpecific => Self::circuit_specific_setup(circuit),
-            SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
-        }
-        .map_err(SNARKError::from)
+        let mut circuit_keys = Self::batch_circuit_setup(universal_srs, &[circuit])?;
+        assert_eq!(circuit_keys.len(), 1);
+        Ok(circuit_keys.pop().unwrap())
     }
 
     /// Prove that the verifying key indeed includes a part of the reference string,
@@ -581,18 +551,7 @@ where
         let proof = Proof::<E>::new(batch_sizes, commitments, evaluations, prover_third_message, pc_proof)?;
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
 
-        // Collect verification key and public inputs to verify_batch
-        let mut vk_to_inputs = BTreeMap::new();
-        for pk in keys_to_constraints.keys() {
-            vk_to_inputs.insert(&pk.circuit_verifying_key, public_inputs.get(&pk.circuit.id).unwrap().as_slice());
-        }
-
-        #[cfg(debug_assertions)]
-        if !Self::verify_batch(fs_parameters, &vk_to_inputs, &proof)? {
-            println!("Invalid proof")
-        }
         end_timer!(prover_time);
-
         Ok(proof)
     }
 
@@ -871,58 +830,5 @@ where
             evaluations_are_correct & proof_has_correct_zk_mode
         ));
         Ok(evaluations_are_correct & proof_has_correct_zk_mode)
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    use super::*;
-    use crate::{
-        crypto_hash::PoseidonSponge,
-        snark::marlin::{MarlinHidingMode, MarlinSNARK, TestCircuit},
-        AlgebraicSponge,
-        SRS,
-    };
-    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_utilities::{TestRng, Uniform};
-
-    use core::ops::MulAssign;
-
-    const ITERATIONS: usize = 10;
-
-    type FS = PoseidonSponge<Fq, 2, 1>;
-    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode>;
-
-    #[test]
-    fn marlin_snark_test() {
-        let mut rng = &mut TestRng::default();
-
-        for _ in 0..ITERATIONS {
-            // Construct the circuit.
-
-            let a = Fr::rand(&mut rng);
-            let b = Fr::rand(&mut rng);
-            let mut c = a;
-            c.mul_assign(&b);
-
-            let mul_depth = 1;
-            let num_constraints = 100;
-            let num_variables = 25;
-            let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
-
-            // Generate the circuit parameters.
-
-            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific).unwrap();
-
-            // Test native proof and verification.
-            let fs_parameters = FS::sample_parameters();
-
-            let proof = TestSNARK::prove(&fs_parameters, &pk, &circ, &mut rng).unwrap();
-
-            assert!(
-                TestSNARK::verify(&fs_parameters, &vk.clone(), public_inputs.as_slice(), &proof).unwrap(),
-                "The native verification check fails."
-            );
-        }
     }
 }
