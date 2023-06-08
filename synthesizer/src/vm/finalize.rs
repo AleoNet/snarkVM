@@ -372,7 +372,7 @@ finalize mint_public:
     input r0 as address.public;
     input r1 as u64.public;
 
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r2 r1 into r3;
     set r3 into account[r0];
 
@@ -387,8 +387,8 @@ finalize transfer_public:
     input r1 as address.public;
     input r2 as u64.public;
 
-    get.or_init account[r0] 0u64 into r3;
-    get.or_init account[r1] 0u64 into r4;
+    get.or_use account[r0] 0u64 into r3;
+    get.or_use account[r1] 0u64 into r4;
 
     sub r3 r2 into r5;
     add r4 r2 into r6;
@@ -919,7 +919,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u8.public;
-    get.or_init entries[r0] r1 into r2;
+    get.or_use entries[r0] r1 into r2;
     add r1 r2 into r3;
     set r3 into entries[r0];
     get entries[r0] into r4;

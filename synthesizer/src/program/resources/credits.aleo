@@ -51,15 +51,15 @@ finalize transfer_public:
     // Input the amount.
     input r2 as u64.public;
     // Decrements `account[r0]` by `r2`.
-    // If `account[r0]` does not exist, it will be created.
+    // If `account[r0]` does not exist, 0u64 is used.
     // If `account[r0] - r2` underflows, `transfer_public` is reverted.
-    get.or_init account[r0] 0u64 into r3;
+    get.or_use account[r0] 0u64 into r3;
     sub r3 r2 into r4;
     set r4 into account[r0];
     // Increments `account[r1]` by `r2`.
-    // If `account[r1]` does not exist, it will be created.
+    // If `account[r1]` does not exist, 0u64 is used.
     // If `account[r1] + r2` overflows, `transfer_public` is reverted.
-    get.or_init account[r1] 0u64 into r5;
+    get.or_use account[r1] 0u64 into r5;
     add r5 r2 into r6;
     set r6 into account[r1];
 
@@ -116,8 +116,8 @@ finalize transfer_private_to_public:
     // Input the amount.
     input r1 as u64.public;
     // Retrieve the balance of the sender.
-    // If `account[r0]` does not exist, it will be created.
-    get.or_init account[r0] 0u64 into r2;
+    // If `account[r0]` does not exist, 0u64 is used.
+    get.or_use account[r0] 0u64 into r2;
     // Increments `account[r0]` by `r1`.
     // If `r1 + r2` overflows, `transfer_private_to_public` is reverted.
     add r1 r2 into r3;
@@ -147,8 +147,8 @@ finalize transfer_public_to_private:
     // Input the amount.
     input r1 as u64.public;
     // Retrieve the balance of the sender.
-    // If `account[r0]` does not exist, it will be created.
-    get.or_init account[r0] 0u64 into r2;
+    // If `account[r0]` does not exist, 0u64 is used.
+    get.or_use account[r0] 0u64 into r2;
     // Decrements `account[r0]` by `r1`.
     // If `r2 - r1` underflows, `transfer_public_to_private` is reverted.
     sub r2 r1 into r3;

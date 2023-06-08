@@ -110,11 +110,11 @@ impl<N: Network> Finalize<N> {
         // Ensure the number of write commands has not been exceeded.
         ensure!(
             self.num_writes < N::MAX_WRITES,
-            "Cannot add more than {} 'get.or_init' and 'set' commands",
+            "Cannot add more than {} 'get.or_use' and 'set' commands",
             N::MAX_WRITES
         );
 
-        // If the command is an instruction, `get` command, or `get.or_init` command, perform additional checks.
+        // If the command is an instruction, `get` command, or `get.or_use` command, perform additional checks.
         match &command {
             Command::Instruction(instruction) => {
                 match instruction {
@@ -135,14 +135,12 @@ impl<N: Network> Finalize<N> {
                 // Ensure the destination register is a locator.
                 ensure!(matches!(get.destination(), Register::Locator(..)), "Destination register must be a locator");
             }
-            Command::GetOrInit(get_or_init) => {
+            Command::GetOrUse(get_or_use) => {
                 // Ensure the destination register is a locator.
                 ensure!(
-                    matches!(get_or_init.destination(), Register::Locator(..)),
+                    matches!(get_or_use.destination(), Register::Locator(..)),
                     "Destination register must be a locator"
                 );
-                // Increment the number of write commands.
-                self.num_writes += 1;
             }
             Command::Set(_) => {
                 // Increment the number of write commands.
