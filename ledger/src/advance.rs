@@ -34,10 +34,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Retrieve the latest cumulative weight.
         let latest_cumulative_weight = latest_block.cumulative_weight();
 
-        // TODO (raychu86): Use a proper `finalize_root` instead of `Field::zero()` once `finalize` is integrated.
-        // Initialize the new finalize root.
-        let finalize_root = Field::zero();
-
         // Select the transactions from the memory pool.
         let transactions = self.vm.speculate(candidate_transactions.iter())?;
 
@@ -186,8 +182,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Construct the header.
         let header = Header::from(
             latest_state_root,
-            transactions.to_root()?,
-            finalize_root,
+            transactions.to_transactions_root()?,
+            transactions.to_finalize_root()?,
             coinbase_accumulator_point,
             metadata,
         )?;

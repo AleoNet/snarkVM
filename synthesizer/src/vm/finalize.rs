@@ -49,7 +49,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn speculate<'a>(
         &self,
-        transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
+        transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<Transactions<N>> {
         let timer = timer!("VM::speculate");
 
@@ -81,7 +81,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[rustfmt::skip]
     fn atomic_speculate<'a>(
         &self,
-        transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
+        transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<Vec<ConfirmedTransaction<N>>> {
         let timer = timer!("VM::atomic_speculate");
 
@@ -438,7 +438,7 @@ finalize transfer_public:
 
         let header = Header::from(
             *vm.block_store().current_state_root(),
-            transactions.to_root().unwrap(),
+            transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
             Field::zero(),
             metadata,
