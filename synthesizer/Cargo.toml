@@ -23,26 +23,20 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
 
-#[[bench]]
-#name = "block"
-#path = "benches/block.rs"
-#harness = false
-#
-#[[bench]]
-#name = "coinbase_puzzle"
-#path = "benches/coinbase_puzzle.rs"
-#harness = false
-#required-features = [ "setup" ]
+[[bench]]
+name = "block"
+path = "benches/block.rs"
+harness = false
 
 [[bench]]
 name = "instruction"
 path = "benches/instruction.rs"
 harness = false
 
-#[[bench]]
-#name = "transaction"
-#path = "benches/transaction.rs"
-#harness = false
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
 
 [features]
 default = [ "coinbase", "snark" ]
