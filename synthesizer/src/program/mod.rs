@@ -358,7 +358,9 @@ impl<N: Network> Program<N> {
         // Note: This design ensures cyclic references are not possible.
         for (identifier, entry_type) in record.entries() {
             // Ensure the member name is not a reserved keyword.
-            ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
+            if &self.id.to_string() != "credits.aleo" {
+                ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
+            }
             // Ensure the member type is already defined in the program.
             match entry_type {
                 // Ensure the plaintext type is already defined.
@@ -514,6 +516,7 @@ impl<N: Network> Program<N> {
         // Record
         "record",
         "owner",
+        "microcredits",
         // Program
         "function",
         "struct",
