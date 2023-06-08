@@ -379,7 +379,7 @@ fn bench_instructions(c: &mut Criterion) {
         (U64, U64),
         (U128, U128),
     });
-    
+
     use console::prelude::DivWrapped;
     bench_instruction_with_default!(div_wrapped, DivWrapped {
         (I8, I8),
@@ -393,10 +393,10 @@ fn bench_instructions(c: &mut Criterion) {
         (U64, U64),
         (U128, U128),
     });
-    
+
     use console::prelude::Double;
     bench_instruction_with_default!(double, Double { Field, Group, });
-    
+
     use console::prelude::Compare;
     bench_instruction_with_default!(is_greater_than, GreaterThan {
         (Field, Field),
@@ -412,7 +412,7 @@ fn bench_instructions(c: &mut Criterion) {
         (U128, U128),
         (Scalar, Scalar),
     });
-    
+
     bench_instruction_with_default!(is_greater_than_or_equal, GreaterThanOrEqual {
         (Field, Field),
         (I8, I8),
@@ -427,7 +427,7 @@ fn bench_instructions(c: &mut Criterion) {
         (U128, U128),
         (Scalar, Scalar),
     });
-    
+
     macro_rules! bench_ped64_hash_instruction {
         ($instruction:tt) => {
             let mut samples = iter::repeat_with(|| { Boolean::<Testnet3>::rand(rng) });
@@ -466,7 +466,7 @@ fn bench_instructions(c: &mut Criterion) {
             bench_instruction!(samples, $instruction { Scalar, });
         }
     }
-    
+
     bench_hash_instruction!(HashBHP256);
     bench_hash_instruction!(HashBHP512);
     bench_hash_instruction!(HashBHP768);
@@ -941,7 +941,7 @@ fn bench_instructions(c: &mut Criterion) {
     bench_instruction_with_default!(square, Square { Field, });
 
     use console::prelude::SquareRoot;
-    bench_instruction_with_default!(square_root, SquareRoot { Field, });
+    bench_instruction_with_default!(square_root?, SquareRoot { Field, });
 
     use console::prelude::Sub;
     bench_instruction_with_default!(sub, Sub {
