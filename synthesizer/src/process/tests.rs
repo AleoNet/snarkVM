@@ -1474,43 +1474,6 @@ finalize compute:
 fn test_sanity_check_transfer_and_fee() {
     use console::types::Group;
 
-    // Initialize a new program.
-    let program = Program::<CurrentNetwork>::from_str(
-        r"
-program token.aleo;
-
-record credits:
-    owner as address.private;
-    microcredits as u64.private;
-
-function mint:
-    input r0 as address.public;
-    input r1 as u64.public;
-    cast r0 r1 into r2 as credits.record;
-    output r2 as credits.record;
-
-function transfer:
-    input r0 as credits.record;
-    input r1 as address.private;
-    input r2 as u64.private;
-    sub r0.microcredits r2 into r3;
-    cast r1 r2 into r4 as credits.record;
-    cast r0.owner r3 into r5 as credits.record;
-    output r4 as credits.record;
-    output r5 as credits.record;
-
-function fee:
-    input r0 as credits.record;
-    input r1 as u64.public;
-    input r2 as field.public;
-    assert.neq r1 0u64;
-    sub r0.microcredits r1 into r3;
-    cast r0.owner r3 into r4 as credits.record;
-    output r4 as credits.record;
-",
-    )
-    .unwrap();
-
     // Initialize the RNG.
     let rng = &mut TestRng::default();
 
@@ -1518,15 +1481,15 @@ function fee:
     let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     let caller = Address::try_from(&private_key).unwrap();
 
-    // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    // Construct a new process.
+    let process = Process::load().unwrap();
     // Retrieve the stack.
-    let stack = process.get_stack(program.id()).unwrap();
+    let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
 
     /* Transfer */
     {
         // Declare the function name.
-        let function_name = Identifier::from_str("transfer").unwrap();
+        let function_name = Identifier::from_str("transfer_private").unwrap();
 
         // Declare the inputs.
         let r0 = Value::from_str(&format!(
@@ -1538,11 +1501,11 @@ function fee:
         let r2 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
 
         // Compute the assignment.
-        let _assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
-        // assert_eq!(12, assignment.num_public());
-        // assert_eq!(54246, assignment.num_private());
-        // assert_eq!(54304, assignment.num_constraints());
-        // assert_eq!((88070, 129958, 82635), assignment.num_nonzeros());
+        let assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        assert_eq!(12, assignment.num_public());
+        assert_eq!(54672, assignment.num_private());
+        assert_eq!(54730, assignment.num_constraints());
+        assert_eq!((88496, 130675, 83625), assignment.num_nonzeros());
     }
 
     println!();
@@ -1562,11 +1525,11 @@ function fee:
         let r2 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
 
         // Compute the assignment.
-        let _assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
-        // assert_eq!(10, assignment.num_public());
-        // assert_eq!(40934, assignment.num_private());
-        // assert_eq!(40981, assignment.num_constraints());
-        // assert_eq!((64138, 92420, 61697), assignment.num_nonzeros());
+        let assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        assert_eq!(10, assignment.num_public());
+        assert_eq!(41218, assignment.num_private());
+        assert_eq!(41265, assignment.num_constraints());
+        assert_eq!((64422, 92898, 62357), assignment.num_nonzeros());
     }
 }
 
