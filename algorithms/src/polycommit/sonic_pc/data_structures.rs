@@ -520,17 +520,9 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
 pub struct VerifierUnionKey<'a, E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: &'a kzg10::VerifierKey<E>,
-    /// The maximum degree supported by the trimmed parameters that `self` is a part of.
-    pub supported_degree: usize,
-    /// The maximum degree supported by the `UniversalParams` `self` was derived from.
-    pub max_degree: usize,
 }
 
 impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
-    pub fn max_degree(&self) -> usize {
-        self.max_degree
-    }
-
     pub fn union<T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
         let mut biggest_vk: Option<&VerifierKey<E>> = None;
         for vk in verifier_keys {
@@ -540,11 +532,7 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         }
         let biggest_vk = biggest_vk.unwrap();
 
-        VerifierUnionKey::<E> {
-            vk: &biggest_vk.vk,
-            supported_degree: biggest_vk.supported_degree,
-            max_degree: biggest_vk.max_degree,
-        }
+        VerifierUnionKey::<E> { vk: &biggest_vk.vk }
     }
 }
 
