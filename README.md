@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-    <a href="https://circleci.com/gh/AleoHQ/snarkVM"><img src="https://circleci.com/gh/AleoHQ/snarkVM.svg?style=svg&circle-token=6e9ad6d39d95350544f352d34e0e5c62ef54db26"></a>
+    <a href="https://circleci.com/gh/AleoHQ/snarkVM"><img src="https://dl.circleci.com/status-badge/img/gh/AleoHQ/snarkVM/tree/testnet3.svg?style=svg"></a>
     <a href="https://codecov.io/gh/AleoHQ/snarkVM"><img src="https://codecov.io/gh/AleoHQ/snarkVM/branch/master/graph/badge.svg?token=cck8tS9HpO"/></a>
     <a href="https://aleo.org/discord"><img src="https://img.shields.io/discord/700454073459015690?logo=discord"/></a>
 </p>
@@ -25,6 +25,7 @@
 |   snarkvm-console   | ![crates.io](https://img.shields.io/crates/v/snarkvm-console.svg?color=neon)     | :white_check_mark: | :white_check_mark: |
 |   snarkvm-curves    | ![crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)      | :white_check_mark: | :white_check_mark: |
 |   snarkvm-fields    | ![crates.io](https://img.shields.io/crates/v/snarkvm-fields.svg?color=neon)      | :white_check_mark: | :white_check_mark: |
+|   snarkvm-ledger    | ![crates.io](https://img.shields.io/crates/v/snarkvm-ledger.svg?color=neon)      | :white_check_mark: | :white_check_mark: |
 | snarkvm-parameters  | ![crates.io](https://img.shields.io/crates/v/snarkvm-parameters.svg?color=neon)  | :white_check_mark: | :white_check_mark: |
 |    snarkvm-r1cs     | ![crates.io](https://img.shields.io/crates/v/snarkvm-r1cs.svg?color=neon)        | :white_check_mark: | :white_check_mark: |
 | snarkvm-synthesizer | ![crates.io](https://img.shields.io/crates/v/snarkvm-synthesizer.svg?color=neon) | :white_check_mark: | :white_check_mark: |

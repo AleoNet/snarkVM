@@ -12,5 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// The universal public parameters for the argument system.
-pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;
+use console::{
+    network::Network,
+    program::{Identifier, ProgramID},
+};
+
+#[derive(Copy, Clone, Debug)]
+pub struct CallMetrics<N: Network> {
+    pub program_id: ProgramID<N>,
+    pub function_name: Identifier<N>,
+    pub num_instructions: usize,
+    pub num_request_constraints: u64,
+    pub num_function_constraints: u64,
+    pub num_response_constraints: u64,
+}

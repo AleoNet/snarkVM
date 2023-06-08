@@ -143,7 +143,7 @@ impl<C: Eject<Primitive = P>, P> Eject for &[C] {
 
 /// A helper macro to implement `Eject` for a tuple of `Eject` circuits.
 macro_rules! eject_tuple {
-    (($t0:ident, $i0:expr), $(($ty:ident, $idx:tt)),*) => {
+    (($t0:ident, 0), $(($ty:ident, $idx:tt)),*) => {
         impl<'a, $t0: Eject, $($ty: Eject),*> Eject for (&'a $t0, $(&'a $ty),*) {
             type Primitive = ($t0::Primitive, $( $ty::Primitive ),*);
 

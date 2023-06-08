@@ -23,7 +23,6 @@ use crate::{
     block::{Input, Output, Transition},
     cow_to_cloned,
     cow_to_copied,
-    snark::Proof,
     store::helpers::{Map, MapRead},
 };
 use console::{
@@ -45,8 +44,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type OutputStorage: OutputStorage<N>;
     /// The transition finalize inputs.
     type FinalizeMap: for<'a> Map<'a, N::TransitionID, Option<Vec<Value<N>>>>;
-    /// The transition proofs.
-    type ProofMap: for<'a> Map<'a, N::TransitionID, Proof<N>>;
     /// The transition public keys.
     type TPKMap: for<'a> Map<'a, N::TransitionID, Group<N>>;
     /// The mapping of `transition public key` to `transition ID`.
@@ -67,8 +64,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn output_store(&self) -> &OutputStore<N, Self::OutputStorage>;
     /// Returns the transition finalize inputs map.
     fn finalize_map(&self) -> &Self::FinalizeMap;
-    /// Returns the transition proofs map.
-    fn proof_map(&self) -> &Self::ProofMap;
     /// Returns the transition public keys map.
     fn tpk_map(&self) -> &Self::TPKMap;
     /// Returns the reverse `tpk` map.
@@ -90,7 +85,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.input_store().start_atomic();
         self.output_store().start_atomic();
         self.finalize_map().start_atomic();
-        self.proof_map().start_atomic();
         self.tpk_map().start_atomic();
         self.reverse_tpk_map().start_atomic();
         self.tcm_map().start_atomic();
@@ -103,7 +97,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             || self.input_store().is_atomic_in_progress()
             || self.output_store().is_atomic_in_progress()
             || self.finalize_map().is_atomic_in_progress()
-            || self.proof_map().is_atomic_in_progress()
             || self.tpk_map().is_atomic_in_progress()
             || self.reverse_tpk_map().is_atomic_in_progress()
             || self.tcm_map().is_atomic_in_progress()
@@ -116,11 +109,22 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.input_store().atomic_checkpoint();
         self.output_store().atomic_checkpoint();
         self.finalize_map().atomic_checkpoint();
-        self.proof_map().atomic_checkpoint();
         self.tpk_map().atomic_checkpoint();
         self.reverse_tpk_map().atomic_checkpoint();
         self.tcm_map().atomic_checkpoint();
         self.reverse_tcm_map().atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.locator_map().clear_latest_checkpoint();
+        self.input_store().clear_latest_checkpoint();
+        self.output_store().clear_latest_checkpoint();
+        self.finalize_map().clear_latest_checkpoint();
+        self.tpk_map().clear_latest_checkpoint();
+        self.reverse_tpk_map().clear_latest_checkpoint();
+        self.tcm_map().clear_latest_checkpoint();
+        self.reverse_tcm_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -129,7 +133,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.input_store().atomic_rewind();
         self.output_store().atomic_rewind();
         self.finalize_map().atomic_rewind();
-        self.proof_map().atomic_rewind();
         self.tpk_map().atomic_rewind();
         self.reverse_tpk_map().atomic_rewind();
         self.tcm_map().atomic_rewind();
@@ -142,7 +145,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.input_store().abort_atomic();
         self.output_store().abort_atomic();
         self.finalize_map().abort_atomic();
-        self.proof_map().abort_atomic();
         self.tpk_map().abort_atomic();
         self.reverse_tpk_map().abort_atomic();
         self.tcm_map().abort_atomic();
@@ -155,7 +157,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.input_store().finish_atomic()?;
         self.output_store().finish_atomic()?;
         self.finalize_map().finish_atomic()?;
-        self.proof_map().finish_atomic()?;
         self.tpk_map().finish_atomic()?;
         self.reverse_tpk_map().finish_atomic()?;
         self.tcm_map().finish_atomic()?;
@@ -175,8 +176,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.output_store().insert(transition_id, transition.outputs())?;
             // Store the finalize inputs.
             self.finalize_map().insert(transition_id, transition.finalize().cloned())?;
-            // Store the proof.
-            self.proof_map().insert(transition_id, transition.proof().clone())?;
             // Store `tpk`.
             self.tpk_map().insert(transition_id, *transition.tpk())?;
             // Store the reverse `tpk` entry.
@@ -212,8 +211,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.output_store().remove(transition_id)?;
             // Remove the finalize inputs.
             self.finalize_map().remove(transition_id)?;
-            // Remove the proof.
-            self.proof_map().remove(transition_id)?;
             // Remove `tpk`.
             self.tpk_map().remove(transition_id)?;
             // Remove the reverse `tpk` entry.
@@ -240,15 +237,13 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         let outputs = self.output_store().get_outputs(transition_id)?;
         // Retrieve the finalize inputs.
         let finalize = self.finalize_map().get_confirmed(transition_id)?;
-        // Retrieve the proof.
-        let proof = self.proof_map().get_confirmed(transition_id)?;
         // Retrieve `tpk`.
         let tpk = self.tpk_map().get_confirmed(transition_id)?;
         // Retrieve `tcm`.
         let tcm = self.tcm_map().get_confirmed(transition_id)?;
 
-        match (finalize, proof, tpk, tcm) {
-            (Some(finalize), Some(proof), Some(tpk), Some(tcm)) => {
+        match (finalize, tpk, tcm) {
+            (Some(finalize), Some(tpk), Some(tcm)) => {
                 // Construct the transition.
                 let transition = Transition::new(
                     program_id,
@@ -256,7 +251,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
                     inputs,
                     outputs,
                     cow_to_cloned!(finalize),
-                    cow_to_cloned!(proof),
                     cow_to_cloned!(tpk),
                     cow_to_cloned!(tcm),
                 )?;
@@ -282,8 +276,6 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     outputs: OutputStore<N, T::OutputStorage>,
     /// The map of transition finalize inputs.
     finalize: T::FinalizeMap,
-    /// The map of transition proofs.
-    proof: T::ProofMap,
     /// The map of transition public keys.
     tpk: T::TPKMap,
     /// The reverse `tpk` map.
@@ -307,7 +299,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
             finalize: storage.finalize_map().clone(),
-            proof: storage.proof_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
@@ -323,7 +314,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
             finalize: storage.finalize_map().clone(),
-            proof: storage.proof_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
@@ -355,6 +345,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -639,11 +634,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     }
 
     /* Metadata */
-
-    /// Returns an iterator over the proofs, for all transitions.
-    pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, Proof<N>>> {
-        self.proof.values_confirmed()
-    }
 
     /// Returns an iterator over the transition public keys, for all transitions.
     pub fn tpks(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {

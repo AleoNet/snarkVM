@@ -124,7 +124,7 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the number of nonzeros in the entire circuit.
     fn num_nonzeros() -> (u64, u64, u64);
 
-    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates in the entire environment.
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and nonzeros in the entire environment.
     fn count() -> (u64, u64, u64, u64, (u64, u64, u64)) {
         (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_nonzeros())
     }

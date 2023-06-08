@@ -26,7 +26,7 @@ mod string;
 use crate::block::{Transaction, Transition};
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
+    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, FINALIZE_OPERATIONS_DEPTH, TRANSACTIONS_DEPTH},
     types::{Field, Group, U64},
 };
 
@@ -155,7 +155,7 @@ impl<N: Network> Transactions<N> {
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
-    pub fn iter(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
+    pub fn iter(&self) -> impl '_ + ExactSizeIterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.values()
     }
 
@@ -166,7 +166,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
-    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
+    pub fn transaction_ids(&self) -> impl '_ + ExactSizeIterator<Item = &N::TransactionID> {
         self.transactions.keys()
     }
 
@@ -224,6 +224,11 @@ impl<N: Network> Transactions<N> {
     pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
         self.iter().map(|tx| tx.fee())
     }
+
+    /// Returns an iterator over the finalize operations, for all transactions.
+    pub fn finalize_operations(&self) -> impl '_ + Iterator<Item = &FinalizeOperation<N>> {
+        self.iter().flat_map(|tx| tx.finalize_operations()).flatten()
+    }
 }
 
 impl<N: Network> IntoIterator for Transactions<N> {
@@ -238,7 +243,7 @@ impl<N: Network> IntoIterator for Transactions<N> {
 
 impl<N: Network> Transactions<N> {
     /// Returns a consuming iterator over the transaction IDs, for all transactions in `self`.
-    pub fn into_transaction_ids(self) -> impl Iterator<Item = N::TransactionID> {
+    pub fn into_transaction_ids(self) -> impl ExactSizeIterator<Item = N::TransactionID> {
         self.transactions.into_keys()
     }
 

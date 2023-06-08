@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::type_complexity)]
+
 #[macro_use]
 extern crate criterion;
 
@@ -36,7 +38,7 @@ use rand::{CryptoRng, Rng};
 fn initialize_vm<R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,
     rng: &mut R,
-) -> (VM<Testnet3, ConsensusMemory<Testnet3>>, Record<Testnet3, Plaintext<Testnet3>>) {
+) -> (VM<Testnet3, ConsensusMemory<Testnet3>>, Vec<Record<Testnet3, Plaintext<Testnet3>>>) {
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
@@ -47,12 +49,12 @@ fn initialize_vm<R: Rng + CryptoRng>(
 
     // Select a record to spend.
     let view_key = ViewKey::try_from(private_key).unwrap();
-    let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
+    let records = records.values().map(|record| record.decrypt(&view_key).unwrap()).collect();
 
     // Update the VM.
     vm.add_next_block(&genesis).unwrap();
 
-    (vm, record)
+    (vm, records)
 }
 
 fn deploy(c: &mut Criterion) {
@@ -62,7 +64,7 @@ fn deploy(c: &mut Criterion) {
     let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
 
     // Initialize the VM.
-    let (vm, record) = initialize_vm(&private_key, rng);
+    let (vm, records) = initialize_vm(&private_key, rng);
 
     // Create a sample program.
     let program = Program::<Testnet3>::from_str(
@@ -79,12 +81,12 @@ function hello:
     .unwrap();
 
     c.bench_function("Transaction - deploy", |b| {
-        b.iter(|| vm.deploy(&private_key, &program, (record.clone(), 600000), None, rng).unwrap())
+        b.iter(|| vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap())
     });
 
     c.bench_function("Transaction verify - deployment", |b| {
-        let transaction = vm.deploy(&private_key, &program, (record.clone(), 600000), None, rng).unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction)))
+        let transaction = vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap();
+        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
 
@@ -96,24 +98,26 @@ fn execute(c: &mut Criterion) {
     let address = Address::try_from(&private_key).unwrap();
 
     // Initialize the VM.
-    let (vm, record) = initialize_vm(&private_key, rng);
+    let (vm, records) = initialize_vm(&private_key, rng);
 
     // Prepare the inputs.
     let inputs = [
-        Value::<Testnet3>::Record(record),
+        Value::<Testnet3>::Record(records[0].clone()),
         Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
         Value::<Testnet3>::from_str("1u64").unwrap(),
     ]
     .into_iter();
 
     // Authorize.
-    let authorization = vm.authorize(&private_key, "credits.aleo", "transfer", inputs, rng).unwrap();
+    let authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+
+    let (_, fee) = vm.execute_fee_raw(&private_key, records[1].clone(), 100000, Field::zero(), None, rng).unwrap();
 
     c.bench_function("Transaction - execution (transfer)", |b| {
         b.iter(|| {
             vm.execute_authorization(
                 Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
-                None,
+                Some(fee.clone()),
                 None,
                 rng,
             )
@@ -125,12 +129,12 @@ fn execute(c: &mut Criterion) {
         let transaction = vm
             .execute_authorization(
                 Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
-                None,
+                Some(fee.clone()),
                 None,
                 rng,
             )
             .unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction)))
+        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
 

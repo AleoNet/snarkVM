@@ -58,6 +58,11 @@ pub trait Map<
     fn atomic_checkpoint(&self);
 
     ///
+    /// Removes the latest atomic checkpoint.
+    ///
+    fn clear_latest_checkpoint(&self);
+
+    ///
     /// Removes all pending operations to the last `atomic_checkpoint`
     /// (or to `start_atomic` if no checkpoints have been created).
     ///
@@ -193,7 +198,13 @@ macro_rules! atomic_batch_scope {
             // Save this atomic batch scope and return.
             Ok(result) => match is_atomic_in_progress {
                 // A 'true' implies this is a nested atomic batch scope.
-                true => Ok(result),
+                true => {
+                    // Once a nested batch scope is completed, clear its checkpoint.
+                    // Until a new checkpoint is established,
+                    // we can now only rewind to a previous (higher-level) checkpoint.
+                    $self.clear_latest_checkpoint();
+                    Ok(result)
+                }
                 // A 'false' implies this is the top-level calling scope.
                 // Commit the atomic batch IFF it's the top-level calling scope.
                 false => $self.finish_atomic().map(|_| result),

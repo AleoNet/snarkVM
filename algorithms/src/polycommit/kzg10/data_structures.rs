@@ -273,61 +273,6 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
-    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
-        let mut res = Vec::new();
-
-        res.extend_from_slice(&self.g.to_field_elements().unwrap());
-        res.extend_from_slice(&self.gamma_g.to_field_elements().unwrap());
-        res.extend_from_slice(&self.h.to_field_elements().unwrap());
-        res.extend_from_slice(&self.beta_h.to_field_elements().unwrap());
-
-        Ok(res)
-    }
-}
-
-/// `PreparedVerifierKey` is the fully prepared version for checking evaluation proofs for a given commitment.
-/// We omit gamma here for simplicity.
-#[derive(Clone, Debug, Default)]
-pub struct PreparedVerifierKey<E: PairingEngine> {
-    /// The generator of G1, prepared for power series.
-    pub prepared_g: Vec<E::G1Affine>,
-    /// The generator of G1 that is used for making a commitment hiding, prepared for power series
-    pub prepared_gamma_g: Vec<E::G1Affine>,
-    /// The generator of G2, prepared for use in pairings.
-    pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
-    /// \beta times the above generator of G2, prepared for use in pairings.
-    pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
-}
-
-impl<E: PairingEngine> PreparedVerifierKey<E> {
-    /// prepare `PreparedVerifierKey` from `VerifierKey`
-    pub fn prepare(vk: &VerifierKey<E>) -> Self {
-        let supported_bits = E::Fr::size_in_bits();
-
-        let mut prepared_g = Vec::<E::G1Affine>::new();
-        let mut g = E::G1Projective::from(vk.g);
-        for _ in 0..supported_bits {
-            prepared_g.push(g.into());
-            g.double_in_place();
-        }
-
-        let mut prepared_gamma_g = Vec::<E::G1Affine>::new();
-        let mut gamma_g = E::G1Projective::from(vk.gamma_g);
-        for _ in 0..supported_bits {
-            prepared_gamma_g.push(gamma_g.into());
-            gamma_g.double_in_place();
-        }
-
-        Self {
-            prepared_g,
-            prepared_gamma_g,
-            prepared_h: vk.prepared_h.clone(),
-            prepared_beta_h: vk.prepared_beta_h.clone(),
-        }
-    }
-}
-
 /// `KZGCommitment` commits to a polynomial. It is output by `KZG10::commit`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KZGCommitment<E: PairingEngine>(

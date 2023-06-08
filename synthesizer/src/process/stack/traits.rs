@@ -55,11 +55,7 @@ pub trait StackExecute<N: Network> {
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
-    fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        call_stack: CallStack<N>,
-        rng: &mut R,
-    ) -> Result<Response<N>>;
+    fn execute_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
 }
 
 pub trait StackMatches<N: Network> {

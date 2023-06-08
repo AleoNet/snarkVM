@@ -114,6 +114,18 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         self.fee_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.id_map().clear_latest_checkpoint();
+        self.edition_map().clear_latest_checkpoint();
+        self.reverse_id_map().clear_latest_checkpoint();
+        self.owner_map().clear_latest_checkpoint();
+        self.program_map().clear_latest_checkpoint();
+        self.verifying_key_map().clear_latest_checkpoint();
+        self.certificate_map().clear_latest_checkpoint();
+        self.fee_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.id_map().atomic_rewind();
@@ -471,6 +483,11 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

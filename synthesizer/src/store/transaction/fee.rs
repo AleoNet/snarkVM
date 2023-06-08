@@ -31,7 +31,7 @@ use core::marker::PhantomData;
 
 /// A trait for fee storage.
 pub trait FeeStorage<N: Network>: Clone + Send + Sync {
-    /// The mapping of `transaction ID` to `(fee transition ID, global state root, inclusion proof)`.
+    /// The mapping of `transaction ID` to `(fee transition ID, global state root, proof)`.
     type FeeMap: for<'a> Map<'a, N::TransactionID, (N::TransitionID, N::StateRoot, Option<Proof<N>>)>;
     /// The mapping of `fee transition ID` to `transaction ID`.
     type ReverseFeeMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
@@ -75,6 +75,13 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
         self.transition_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.fee_map().clear_latest_checkpoint();
+        self.reverse_fee_map().clear_latest_checkpoint();
+        self.transition_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.fee_map().atomic_rewind();
@@ -100,10 +107,8 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
     fn insert(&self, transaction_id: N::TransactionID, fee: &Fee<N>) -> Result<()> {
         atomic_batch_scope!(self, {
             // Store the fee.
-            self.fee_map().insert(
-                transaction_id,
-                (*fee.transition_id(), fee.global_state_root(), fee.inclusion_proof().cloned()),
-            )?;
+            self.fee_map()
+                .insert(transaction_id, (*fee.transition_id(), fee.global_state_root(), fee.proof().cloned()))?;
             self.reverse_fee_map().insert(*fee.transition_id(), transaction_id)?;
 
             // Store the fee transition.
@@ -147,14 +152,13 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
     /// Returns the fee for the given `transaction ID`.
     fn get_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<Fee<N>>> {
         // Retrieve the fee transition ID.
-        let (fee_transition_id, global_state_root, inclusion_proof) =
-            match self.fee_map().get_confirmed(transaction_id)? {
-                Some(fee) => cow_to_cloned!(fee),
-                None => return Ok(None),
-            };
+        let (fee_transition_id, global_state_root, proof) = match self.fee_map().get_confirmed(transaction_id)? {
+            Some(fee) => cow_to_cloned!(fee),
+            None => return Ok(None),
+        };
         // Retrieve the fee transition.
         match self.transition_store().get_transition(&fee_transition_id)? {
-            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, inclusion_proof))),
+            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, proof))),
             None => bail!("Failed to locate the fee transition for transaction '{transaction_id}'"),
         }
     }
@@ -211,6 +215,11 @@ impl<N: Network, F: FeeStorage<N>> FeeStore<N, F> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

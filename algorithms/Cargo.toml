@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.11.2"
+version = "0.11.7"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -37,6 +37,7 @@ harness = false
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
+bench = false
 
 [[bench]]
 name = "marlin"
@@ -45,32 +46,32 @@ harness = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.11.2"
+version = "=0.11.7"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.11.2"
+version = "=0.11.7"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "=0.11.2"
+version = "=0.11.7"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "=0.11.2"
+version = "=0.11.7"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.11.2"
+version = "=0.11.7"
 default-features = false
 
 [dependencies.snarkvm-algorithms-cuda]
 path = "./cuda"
-version = "=0.11.2"
+version = "=0.11.7"
 optional = true
 
 [dependencies.aleo-std]
@@ -89,7 +90,7 @@ version = "0.5"
 optional = true
 
 [dependencies.hashbrown]
-version = "0.13.2"
+version = "0.14.0"
 
 [dependencies.hex]
 version = "0.4"
@@ -151,7 +152,7 @@ version = "1.4.1"
 version = "1"
 
 [dev-dependencies.criterion]
-version = "0.4.0"
+version = "0.5.1"
 
 [dev-dependencies.serde_json]
 version = "1"

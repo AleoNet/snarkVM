@@ -20,10 +20,8 @@ pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
 #[derive(Debug, Parser)]
 pub struct Run {
     /// The function name.
-    #[clap(parse(try_from_str))]
     function: Identifier<CurrentNetwork>,
     /// The function inputs.
-    #[clap(parse(try_from_str))]
     inputs: Vec<Value<CurrentNetwork>>,
     /// Uses the specified endpoint.
     #[clap(long)]
@@ -47,7 +45,7 @@ impl Run {
         let rng = &mut rand::thread_rng();
 
         // Execute the request.
-        let (response, _transition, _inclusion, metrics) = package.run::<Aleo, _>(
+        let (response, trace) = package.run::<Aleo, _>(
             self.endpoint,
             package.manifest_file().development_private_key(),
             self.function,
@@ -57,7 +55,7 @@ impl Run {
 
         // Count the number of times a function is called.
         let mut program_frequency = HashMap::<String, usize>::new();
-        for metric in metrics.iter() {
+        for metric in trace.call_metrics().iter() {
             // Prepare the function name string.
             let function_name_string = format!("'{}/{}'", metric.program_id, metric.function_name).bold();
 
@@ -107,5 +105,25 @@ impl Run {
         let path_string = format!("(in \"{}\")", path.display());
 
         Ok(format!("✅ Executed '{}' {}", locator.to_string().bold(), path_string.dimmed()))
+    }
+
+    #[cfg(test)]
+    pub fn function(&self) -> Identifier<CurrentNetwork> {
+        self.function
+    }
+
+    #[cfg(test)]
+    pub fn inputs(&self) -> &[Value<CurrentNetwork>] {
+        &self.inputs
+    }
+
+    #[cfg(test)]
+    pub fn endpoint(&self) -> Option<&str> {
+        self.endpoint.as_deref()
+    }
+
+    #[cfg(test)]
+    pub fn offline(&self) -> bool {
+        self.offline
     }
 }

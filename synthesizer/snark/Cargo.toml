@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer-snark"
-version = "0.11.2"
+version = "0.11.7"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "SNARK wrappers for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -27,30 +27,24 @@ edition = "2021"
 default = [ ]
 aleo-cli = [ "colored" ]
 cuda = [ "snarkvm-algorithms/cuda" ]
-serial = [
-  "console/serial",
-  "snarkvm-algorithms/serial",
-]
-wasm = [
-  "console/wasm",
-  "snarkvm-algorithms/wasm",
-]
+serial = [ "console/serial", "snarkvm-algorithms/serial" ]
+wasm = [ "console/wasm", "snarkvm-algorithms/wasm" ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
-version = "=0.11.2"
+version = "=0.11.7"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.11.2"
+version = "=0.11.7"
 default-features = false
 features = [ "network" ]
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-version = "=0.11.2"
+version = "=0.11.7"
 
 [dependencies.bincode]
 version = "1"
@@ -60,7 +54,7 @@ version = "2"
 optional = true
 
 [dependencies.once_cell]
-version = "1.17"
+version = "1.18"
 
 [dependencies.serde_json]
 version = "1.0"
@@ -69,6 +63,5 @@ features = [ "preserve_order" ]
 [dev-dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.11.2"
 default-features = false
 features = [ "types" ]

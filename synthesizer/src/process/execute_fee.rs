@@ -15,15 +15,17 @@
 use super::*;
 
 impl<N: Network> Process<N> {
-    /// Executes the fee given the credits record and the fee amount (in microcredits).
+    /// Executes the fee given the credits record, the fee amount (in microcredits),
+    /// and the deployment or execution ID.
     #[inline]
     pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Transition<N>, Trace<N>)> {
         let timer = timer!("Process::execute_fee");
 
         // Ensure the fee has the correct program ID.
@@ -33,59 +35,59 @@ impl<N: Network> Process<N> {
 
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
+        // Prepare the fee in microcredits.
+        let fee_in_microcredits = Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?;
+        // Prepare the deployment or execution ID.
+        let deployment_or_execution_id = Value::from(Literal::Field(deployment_or_execution_id));
         // Construct the inputs.
-        let inputs = [Value::Record(credits), Value::from_str(&U64::<N>::new(fee_in_microcredits).to_string())?];
+        let inputs = [Value::Record(credits), fee_in_microcredits, deployment_or_execution_id];
         lap!(timer, "Construct the inputs");
+
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
         lap!(timer, "Compute the request");
+
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         lap!(timer, "Initialize the authorization");
+
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.get_stack(program_id)?.execute_function::<A, R>(call_stack, rng)?;
+        let _response = self.get_stack(program_id)?.execute_function::<A>(call_stack)?;
         lap!(timer, "Construct the authorization from the function");
 
-        // Retrieve the main request (without popping it).
-        let request = authorization.peek_next()?;
         // Prepare the stack.
-        let stack = self.get_stack(request.program_id())?;
+        let stack = self.get_stack(program_id)?;
 
         #[cfg(feature = "aleo-cli")]
-        println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+        println!("{}", format!(" • Calling '{program_id}/{function_name}'...").dimmed());
 
-        // Initialize the execution.
-        let execution = Arc::new(RwLock::new(Execution::new()));
-        // Initialize the inclusion.
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
-        // Initialize the metrics.
-        let metrics = Arc::new(RwLock::new(Vec::new()));
+        // Initialize the trace.
+        let trace = Arc::new(RwLock::new(Trace::new()));
         // Initialize the call stack.
-        let call_stack = CallStack::execute(authorization, execution.clone(), inclusion.clone(), metrics.clone())?;
+        let call_stack = CallStack::execute(authorization, trace.clone())?;
         // Execute the circuit.
-        let response = stack.execute_function::<A, R>(call_stack, rng)?;
+        let response = stack.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the circuit");
 
-        // Extract the execution.
-        let execution = Arc::try_unwrap(execution).unwrap().into_inner();
-        // Ensure the execution contains 1 transition.
-        ensure!(execution.len() == 1, "Execution of '{}/{}' does not contain 1 transition", program_id, function_name);
-        // Extract the inclusion.
-        let inclusion = Arc::try_unwrap(inclusion).unwrap().into_inner();
-        // Extract the metrics.
-        let metrics = Arc::try_unwrap(metrics).unwrap().into_inner();
+        // Extract the trace.
+        let trace = Arc::try_unwrap(trace).unwrap().into_inner();
+        // Ensure the trace contains 1 transition.
+        ensure!(
+            trace.transitions().len() == 1,
+            "Execution of '{program_id}/{function_name}' does not contain 1 transition"
+        );
 
         finish!(timer);
 
-        Ok((response, execution.peek()?.clone(), inclusion, metrics))
+        Ok((response, trace.transitions()[0].clone(), trace))
     }
 
     /// Verifies the given fee is valid.
     /// Note: This does *not* check that the global state root exists in the ledger.
     #[inline]
-    pub fn verify_fee(&self, fee: &Fee<N>) -> Result<()> {
+    pub fn verify_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> Result<()> {
         let timer = timer!("Process::verify_fee");
 
         #[cfg(debug_assertions)]
@@ -113,9 +115,20 @@ impl<N: Network> Process<N> {
                 .to_bits_le(),
         )?;
 
+        // Ensure there are exactly 3 inputs.
+        ensure!(fee.inputs().len() == 3, "Incorrect number of inputs to the fee transition");
         // Ensure each input is valid.
         if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
             bail!("Failed to verify a fee input")
+        }
+        // Retrieve the 3rd input as the candidate ID.
+        let candidate_id = match fee.inputs().get(2) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(candidate_id), _)))) => *candidate_id,
+            _ => bail!("Failed to get the deployment or execution ID in the fee transition"),
+        };
+        // Ensure the candidate ID is the deployment or execution ID.
+        if candidate_id != deployment_or_execution_id {
+            bail!("Incorrect deployment or execution ID in the fee transition")
         }
         lap!(timer, "Verify the inputs");
 
@@ -130,10 +143,6 @@ impl<N: Network> Process<N> {
             bail!("Failed to verify a fee output")
         }
         lap!(timer, "Verify the outputs");
-
-        // Ensure the inclusion proof is valid.
-        Inclusion::verify_fee(fee)?;
-        lap!(timer, "Verify the inclusion proof");
 
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
@@ -166,15 +175,40 @@ impl<N: Network> Process<N> {
 
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
-        // Ensure the transition proof is valid.
-        ensure!(
-            verifying_key.verify(&function.name().to_string(), &inputs, fee.proof()),
-            "Fee is invalid - failed to verify transition proof"
-        );
-        lap!(timer, "Verify the transition proof");
+
+        // Ensure the fee proof is valid.
+        Trace::verify_fee_proof((verifying_key, vec![inputs]), fee)?;
+        lap!(timer, "Verify the fee proof");
 
         finish!(timer);
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::block::Transaction;
+    use snarkvm_utilities::TestRng;
+
+    #[test]
+    fn test_verify_fee() {
+        let rng = &mut TestRng::default();
+        // Fetch a deployment transaction.
+        let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+
+        // Construct a new process.
+        let process = Process::load().unwrap();
+
+        match deployment_transaction {
+            Transaction::Deploy(_, _, deployment, fee) => {
+                // Compute the deployment ID.
+                let deployment_id = deployment.to_deployment_id().unwrap();
+
+                assert!(process.verify_fee(&fee, deployment_id).is_ok());
+            }
+            _ => panic!("Expected a deployment transaction"),
+        }
     }
 }

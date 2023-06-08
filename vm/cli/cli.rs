@@ -14,11 +14,19 @@
 
 use crate::cli::commands::{Build, Clean, New, Run, Update};
 
+use anstyle::{AnsiColor, Color, Style};
 use anyhow::Result;
-use clap::Parser;
+use clap::{builder::Styles, Parser};
+
+const HEADER_COLOR: Option<Color> = Some(Color::Ansi(AnsiColor::Yellow));
+const LITERAL_COLOR: Option<Color> = Some(Color::Ansi(AnsiColor::Green));
+const STYLES: Styles = Styles::plain()
+    .header(Style::new().bold().fg_color(HEADER_COLOR))
+    .usage(Style::new().bold().fg_color(HEADER_COLOR))
+    .literal(Style::new().bold().fg_color(LITERAL_COLOR));
 
 #[derive(Debug, Parser)]
-#[clap(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>", setting = clap::AppSettings::ColoredHelp)]
+#[clap(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>", styles = STYLES)]
 pub struct CLI {
     /// Specify the verbosity [options: 0, 1, 2, 3]
     #[clap(default_value = "2", short, long)]
@@ -51,6 +59,35 @@ impl Command {
             Self::New(command) => command.parse(),
             Self::Run(command) => command.parse(),
             Self::Update(command) => command.parse(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // A test case recommended by clap (https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#testing).
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        CLI::command().debug_assert()
+    }
+
+    #[test]
+    fn clap_snarkvm_run() {
+        use crate::prelude::{Identifier, Value};
+
+        let arg_vec = vec!["snarkvm", "run", "hello", "1u32", "2u32", "--endpoint", "ENDPOINT", "--offline"];
+        let cli = CLI::parse_from(&arg_vec);
+
+        if let Command::Run(run) = cli.command {
+            assert_eq!(run.function(), Identifier::try_from(arg_vec[2]).unwrap());
+            assert_eq!(run.inputs(), vec![Value::try_from(arg_vec[3]).unwrap(), Value::try_from(arg_vec[4]).unwrap()]);
+            assert_eq!(run.endpoint(), Some("ENDPOINT"));
+            assert!(run.offline());
+        } else {
+            panic!("Unexpected result of clap parsing!");
         }
     }
 }

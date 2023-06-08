@@ -47,11 +47,13 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
     pub fn from_deployment(owner: ProgramOwner<N>, deployment: Deployment<N>, fee: Fee<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
-        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
+        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty deployment transaction");
         // Compute the transaction ID.
-        let id = *Self::deployment_tree(&deployment, &fee)?.root();
+        let id = *Self::deployment_tree(&deployment, Some(&fee))?.root();
+        // Compute the deployment ID.
+        let deployment_id = deployment.to_deployment_id()?;
         // Ensure the owner signed the correct transaction ID.
-        ensure!(owner.verify(id.into()), "Attempted to create a transaction deployment with an invalid owner");
+        ensure!(owner.verify(deployment_id), "Attempted to create a deployment transaction with an invalid owner");
         // Construct the deployment transaction.
         Ok(Self::Deploy(id.into(), owner, Box::new(deployment), fee))
     }
@@ -59,7 +61,7 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new execution transaction.
     pub fn from_execution(execution: Execution<N>, fee: Option<Fee<N>>) -> Result<Self> {
         // Ensure the transaction is not empty.
-        ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
+        ensure!(!execution.is_empty(), "Attempted to create an empty execution transaction");
         // Compute the transaction ID.
         let id = *Self::execution_tree(&execution, &fee)?.root();
         // Construct the execution transaction.
@@ -99,45 +101,52 @@ impl<N: Network> Transaction<N> {
     /// Returns `true` if this is a coinbase transaction.
     #[inline]
     pub fn is_coinbase(&self) -> bool {
-        // Case 1 - The transaction contains 1 transition, which calls 'credits.aleo/mint'.
-        if let Self::Execute(_, execution, _) = self {
-            // Ensure there is 1 transition.
-            if execution.len() == 1 {
-                // Retrieve the transition.
-                if let Ok(transition) = execution.get(0) {
-                    // Check if it calls 'credits.aleo/mint'.
-                    if transition.program_id().to_string() == "credits.aleo"
-                        && transition.function_name().to_string() == "mint"
-                    {
-                        return true;
-                    }
-                }
-            }
+        match self {
+            // Case 1 - The transaction contains a transition that calls 'credits.aleo/mint'.
+            Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_coinbase()),
+            // Otherwise, return 'false'.
+            _ => false,
         }
-        // Otherwise, return 'false'.
-        false
     }
 
     /// Returns `true` if this is a `split` transaction.
     #[inline]
     pub fn is_split(&self) -> bool {
-        // Case 1 - The transaction contains 1 transition, which calls 'credits.aleo/split'.
-        if let Self::Execute(_, execution, _) = self {
-            // Ensure there is 1 transition.
-            if execution.len() == 1 {
-                // Retrieve the transition.
-                if let Ok(transition) = execution.get(0) {
-                    // Check if it calls 'credits.aleo/split'.
-                    if transition.program_id().to_string() == "credits.aleo"
-                        && transition.function_name().to_string() == "split"
-                    {
-                        return true;
-                    }
-                }
-            }
+        match self {
+            // Case 1 - The transaction contains a transition that calls 'credits.aleo/split'.
+            Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_split()),
+            // Otherwise, return 'false'.
+            _ => false,
         }
-        // Otherwise, return 'false'.
-        false
+    }
+}
+
+impl<N: Network> Transaction<N> {
+    /// Returns `Some(owner)` if the transaction is a deployment. Otherwise, returns `None`.
+    #[inline]
+    pub fn owner(&self) -> Option<&ProgramOwner<N>> {
+        match self {
+            Self::Deploy(_, owner, _, _) => Some(owner),
+            _ => None,
+        }
+    }
+
+    /// Returns `Some(deployment)` if the transaction is a deployment. Otherwise, returns `None`.
+    #[inline]
+    pub fn deployment(&self) -> Option<&Deployment<N>> {
+        match self {
+            Self::Deploy(_, _, deployment, _) => Some(deployment.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// Returns `Some(execution)` if the transaction is an execution. Otherwise, returns `None`.
+    #[inline]
+    pub fn execution(&self) -> Option<&Execution<N>> {
+        match self {
+            Self::Execute(_, execution, _) => Some(execution),
+            _ => None,
+        }
     }
 }
 
