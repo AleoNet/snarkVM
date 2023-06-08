@@ -94,11 +94,6 @@ impl<N: Network> Transactions<N> {
     pub fn num_finalize(&self) -> usize {
         cfg_values!(self.transactions).map(|tx| tx.num_finalize()).sum()
     }
-
-    /// Returns the finalize root of the transactions.
-    pub fn to_finalize_root(&self) -> Result<Field<N>> {
-        N::hash_bhp1024(&self.finalize_operations().flat_map(|op| op.to_bits_le()).collect::<Vec<_>>())
-    }
 }
 
 impl<N: Network> Transactions<N> {
@@ -160,7 +155,7 @@ impl<N: Network> Transactions<N> {
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
-    pub fn iter(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
+    pub fn iter(&self) -> impl '_ + ExactSizeIterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.values()
     }
 
@@ -171,7 +166,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
-    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
+    pub fn transaction_ids(&self) -> impl '_ + ExactSizeIterator<Item = &N::TransactionID> {
         self.transactions.keys()
     }
 
@@ -248,7 +243,7 @@ impl<N: Network> IntoIterator for Transactions<N> {
 
 impl<N: Network> Transactions<N> {
     /// Returns a consuming iterator over the transaction IDs, for all transactions in `self`.
-    pub fn into_transaction_ids(self) -> impl Iterator<Item = N::TransactionID> {
+    pub fn into_transaction_ids(self) -> impl ExactSizeIterator<Item = N::TransactionID> {
         self.transactions.into_keys()
     }
 

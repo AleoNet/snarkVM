@@ -379,7 +379,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         /* Transactions */
 
         // Compute the transactions root.
-        match block.transactions().to_root() {
+        match block.transactions().to_transactions_root() {
             // Ensure the transactions root matches the one in the block header.
             Ok(root) => {
                 if root != block.header().transactions_root() {
@@ -417,12 +417,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
+        // Ensure the transactions after speculation match.
+        if block.transactions() != &self.vm.speculate(block.transactions().iter().map(|tx| tx.deref()))? {
+            bail!("The transactions after speculation do not match the transactions in the block");
+        }
+
         /* Finalize Root */
 
-        // TODO (raychu86): Properly check the finalize root once `finalize` is integrated.
-        // Ensure the finalize root matches the one in the block header.
-        if block.finalize_root() != Field::zero() {
-            bail!("Invalid finalize root: expected {}, got {}", Field::<N>::zero(), block.finalize_root())
+        // Ensure that the block's finalize root matches the transactions.
+        let expected_finalize_root = block.transactions().to_finalize_root()?;
+        if block.finalize_root() != expected_finalize_root {
+            bail!("Invalid finalize root: expected '{expected_finalize_root}', got '{}'", block.finalize_root())
         }
 
         /* Coinbase Proof */

@@ -19,7 +19,7 @@ impl<N: Network> Header<N> {
     pub fn genesis(transactions: &Transactions<N>) -> Result<Self> {
         // Prepare a genesis block header.
         let previous_state_root = Field::zero();
-        let transactions_root = transactions.to_root()?;
+        let transactions_root = transactions.to_transactions_root()?;
         // TODO (raychu86): Update this to consider the transactions in the genesis block.
         let finalize_root = Field::zero();
         let coinbase_accumulator_point = Field::zero();

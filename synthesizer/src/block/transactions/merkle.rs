@@ -15,8 +15,15 @@
 use super::*;
 
 impl<N: Network> Transactions<N> {
+    /// Returns the finalize root of the transactions.
+    pub fn to_finalize_root(&self) -> Result<Field<N>> {
+        N::hash_bhp1024(&self.finalize_operations().flat_map(|op| op.to_bits_le()).collect::<Vec<_>>())
+    }
+}
+
+impl<N: Network> Transactions<N> {
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
-    pub fn to_root(&self) -> Result<Field<N>> {
+    pub fn to_transactions_root(&self) -> Result<Field<N>> {
         Ok(*self.to_tree()?.root())
     }
 
