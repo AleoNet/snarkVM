@@ -583,23 +583,6 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
     }
 }
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
-    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
-        let mut res = Vec::new();
-        res.extend_from_slice(&self.vk.to_field_elements()?);
-
-        if let Some(degree_bounds_and_neg_powers_of_h) = &self.degree_bounds_and_neg_powers_of_h {
-            for (d, neg_powers_of_h) in degree_bounds_and_neg_powers_of_h.iter() {
-                let d_elem: E::Fq = (*d as u64).into();
-                res.push(d_elem);
-                res.append(&mut neg_powers_of_h.to_field_elements()?);
-            }
-        }
-
-        Ok(res)
-    }
-}
-
 /// Evaluation proof at a query set.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::KZGProof<E>>);
