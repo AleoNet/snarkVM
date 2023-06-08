@@ -38,7 +38,6 @@ use console::{
         U8,
     },
 };
-use criterion::{BatchSize, Criterion};
 use snarkvm_synthesizer::{
     finalize::Finalize,
     FinalizeRegisters,
@@ -48,9 +47,12 @@ use snarkvm_synthesizer::{
     RegistersStore,
     Stack,
 };
-
 use snarkvm_utilities::TestRng;
+
+use criterion::{BatchSize, Criterion};
 use std::{iter, fmt::Display, str::FromStr};
+
+// TODO (d0cd): Add benchmarks using `Address` once random sampling for `Address` is supported.
 
 /// A helper function to construct a set of `FinalizeRegisters` with the given arguments.
 fn setup_finalize_registers(
@@ -77,6 +79,7 @@ fn setup_finalize_registers(
     registers
 }
 
+#[rustfmt::skip]
 fn bench_instructions(c: &mut Criterion) {
     // Initialize an RNG.
     let rng = &mut TestRng::default();
@@ -87,9 +90,66 @@ fn bench_instructions(c: &mut Criterion) {
     // This is because `Stack`s are only used in finalize contexts to check that structs are well-formed.
     let stack = process.get_stack("credits.aleo").unwrap();
 
-    macro_rules! bench_instruction {
+     macro_rules! bench_instruction {
+        // Benchmark a unary instruction, with the given sampling method.
+        ($samples:tt, $instruction:ident { $input:ident , }) => {
+            {
+                use snarkvm_synthesizer::$instruction;
+                let name = concat!(stringify!($instruction), "/", stringify!($input));
+                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1", $instruction::<Testnet3>::opcode().to_string())).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let arg = $samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            };
+        };
+        // Benchmark a binary instruction, with the given sampling method.
+        ($samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident) , }) => {
+            {
+                use snarkvm_synthesizer::$instruction;
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string())).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let (first, second) = $samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            };
+        };
+        // Benchmark a ternary instruction, with the given sampling method.
+        ($samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident, $input_c:ident), }) => {
+            {
+                use snarkvm_synthesizer::$instruction;
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_",  stringify!($input_b), "_", stringify!($input_c));
+                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 r2 into r3", $instruction::<Testnet3>::opcode().to_string())).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let (first, second, third) = $samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap(), Value::from_str(&third.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            }
+        };
+    }
+
+    macro_rules! bench_instruction_with_default {
         // Benchmark a unary instruction, using the default sampling method.
-        ($operation:ident, $instruction:ident { $( $input:ident , )+ }) => {
+        ($operation:tt, $instruction:ident { $( $input:ident , )+ }) => {
             $({
                 // Define the default sampling method.
                 let mut samples = iter::repeat_with(|| {
@@ -99,11 +159,21 @@ fn bench_instructions(c: &mut Criterion) {
                     }
                     arg
                 });
-                bench_instruction!($operation, samples, $instruction { $input , });
+                // Benchmark the underlying operation.
+                let name = concat!(stringify!($instruction), "/", stringify!($input));
+                c.bench_function(&format!("{name}/core"), |b| {
+                    b.iter_batched(
+                        || samples.next().unwrap(),
+                        |arg| arg.$operation(),
+                        BatchSize::SmallInput,
+                    )
+                });
+                // Benchmark the instruction.
+                bench_instruction!(samples, $instruction { $input , });
             })+
         };
         // Benchmark a unary instruction with a question mark (?), using the default sampling method.
-        ($operation:ident?, $instruction:ident { $( $input:ident , )+ }) => {
+        ($operation:tt?, $instruction:ident { $( $input:ident , )+ }) => {
             $({
                 // Define the default sampling method.
                 let mut samples = iter::repeat_with(|| {
@@ -113,11 +183,21 @@ fn bench_instructions(c: &mut Criterion) {
                     }
                     arg
                 });
-                bench_instruction!($operation, samples, $instruction { $input , });
+                // Benchmark the underlying operation.
+                let name = concat!(stringify!($instruction), "/", stringify!($input));
+                c.bench_function(&format!("{name}/core"), |b| {
+                    b.iter_batched(
+                        || samples.next().unwrap(),
+                        |arg| arg.$operation().unwrap(),
+                        BatchSize::SmallInput,
+                    )
+                });
+                // Benchmark the instruction.
+                bench_instruction!(samples, $instruction { $input , });
             })+
         };
         // Benchmark a binary instruction, using the default sampling method.
-        ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ }) => {
+        ($operation:tt, $instruction:ident { $( ($input_a:ident, $input_b:ident) , )+ }) => {
             $({
                 // Define the default sampling method.
                 let mut samples = iter::repeat_with(|| {
@@ -129,11 +209,21 @@ fn bench_instructions(c: &mut Criterion) {
                     }
                     (first, second)
                 });
-                bench_instruction!($operation, samples, $instruction { ($input_a, $input_b) , });
+                // Benchmark the underlying operation.
+                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
+                c.bench_function(&format!("{name}/core"), |b| {
+                    b.iter_batched(
+                        || samples.next().unwrap(),
+                        |(first, second)| first.$operation(&second),
+                        BatchSize::SmallInput,
+                    )
+                });
+                // Benchmark the instruction.
+                bench_instruction!(samples, $instruction { ($input_a, $input_b) , });
             })+
         };
         // Benchmark a ternary instruction, with the default sampling method.
-        ($operation:ident, $instruction:ident { $( ($input_a:ident, $input_b:ident, $input_c:ident), )+ }) => {
+        ($operation:tt, $instruction:ident { $( ($input_a:ident, $input_b:ident, $input_c:ident), )+ }) => {
             $({
                 let mut samples = iter::repeat_with(|| {
                     let mut first: $input_a::<Testnet3> = Uniform::rand(rng);
@@ -146,100 +236,29 @@ fn bench_instructions(c: &mut Criterion) {
                     }
                     (first, second, third)
                 });
-                bench_instruction!($operation, samples, $instruction { ($input_a, $input_b, $input_c), });
-            })+
-        };
-        // Benchmark a unary instruction, with the given sampling method.
-        ($operation:ident, $samples:tt, $instruction:ident { $input:ident , }) => {
-            {
-                let name = concat!(stringify!($instruction), "/", stringify!($input));
-                // Benchmark the core operation of the instruction.
-                c.bench_function(&format!("{name}/core"), |b| {
-                    b.iter_batched(
-                        || $samples.next().unwrap(),
-                        |arg| arg.$operation(),
-                        BatchSize::SmallInput,
-                    )
-                });
-                // Benchmark the entire instruction.
-                use snarkvm_synthesizer::$instruction;
-                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                c.bench_function(&format!("{name}/instruction"), |b| {
-                    b.iter_batched(
-                        || {
-                            let arg = $samples.next().unwrap();
-                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
-                        },
-                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::SmallInput,
-                    )
-                });
-            };
-        };
-        // Benchmark a binary instruction, with the given sampling method.
-        ($operation:ident, $samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident) , }) => {
-            {
-                let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_", stringify!($input_b));
-                // Benchmark the core operation of the instruction.
-                c.bench_function(&format!("{name}/core"), |b| {
-                    b.iter_batched(
-                        || $samples.next().unwrap(),
-                        |(first, second)| first.$operation(&second),
-                        BatchSize::SmallInput,
-                    )
-                });
-                // Benchmark the entire instruction.
-                use snarkvm_synthesizer::$instruction;
-                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 into r2", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                c.bench_function(&format!("{name}/instruction"), |b| {
-                    b.iter_batched(
-                        || {
-                            let (first, second) = $samples.next().unwrap();
-                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
-                        },
-                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::SmallInput,
-                    )
-                });
-            };
-        };
-        // Benchmark a ternary instruction, with the given sampling method.
-        ($operation:ident, $samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident, $input_c:ident), }) => {
-            {
+                // Benchmark the underlying operation.
                 let name = concat!(stringify!($instruction), "/", stringify!($input_a), "_",  stringify!($input_b), "_", stringify!($input_c));
-                // Benchmark the core operation of the instruction.
                 c.bench_function(&format!("{name}/core"), |b| {
                     b.iter_batched(
-                        || $samples.next().unwrap(),
+                        || samples.next().unwrap(),
                         |(first, second, third)| $input_b::ternary(&first, &second, &third),
-                        BatchSize::SmallInput
+                        BatchSize::SmallInput,
                     )
                 });
-                // Benchmark the entire instruction.
-                use snarkvm_synthesizer::$instruction;
-                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 r1 r2 into r3", $instruction::<Testnet3>::opcode().to_string())).unwrap());
-                c.bench_function(&format!("{name}/instruction"), |b| {
-                    b.iter_batched(
-                        || {
-                            let (first, second, third) = $samples.next().unwrap();
-                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap(), Value::from_str(&third.to_string()).unwrap()])
-                        },
-                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
-                        BatchSize::SmallInput
-                    )
-                });
-            }
+                // Benchmark the instruction.
+                bench_instruction!(samples, $instruction { ($input_a, $input_b, $input_c), });
+            })+
         };
     }
 
     use console::prelude::AbsChecked;
-    bench_instruction!(abs_checked, Abs { I8, I16, I32, I64, I128, });
+    bench_instruction_with_default!(abs_checked, Abs { I8, I16, I32, I64, I128, });
 
     use console::prelude::AbsWrapped;
-    bench_instruction!(abs_wrapped, AbsWrapped { I8, I16, I32, I64, I128, });
+    bench_instruction_with_default!(abs_wrapped, AbsWrapped { I8, I16, I32, I64, I128, });
 
     use std::ops::Add;
-    bench_instruction!(add, Add {
+    bench_instruction_with_default!(add, Add {
         (I8, I8),
         (I16, I16),
         (I32, I32),
@@ -253,7 +272,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::AddWrapped;
-    bench_instruction!(add_wrapped, AddWrapped {
+    bench_instruction_with_default!(add_wrapped, AddWrapped {
         (I8, I8),
         (I16, I16),
         (I32, I32),
@@ -267,7 +286,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use core::ops::BitAnd;
-    bench_instruction!(bitand, And {
+    bench_instruction_with_default!(bitand, And {
         (Boolean, Boolean),
         (I8, I8),
         (I16, I16),
@@ -282,7 +301,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Div;
-    bench_instruction!(div, Div {
+    bench_instruction_with_default!(div, Div {
         (Field, Field),
         (I8, I8),
         (I16, I16),
@@ -297,7 +316,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::DivWrapped;
-    bench_instruction!(div_wrapped, DivWrapped {
+    bench_instruction_with_default!(div_wrapped, DivWrapped {
         (I8, I8),
         (I16, I16),
         (I32, I32),
@@ -311,10 +330,10 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Double;
-    bench_instruction!(double, Double { Field, Group, });
+    bench_instruction_with_default!(double, Double { Field, Group, });
 
     use console::prelude::Compare;
-    bench_instruction!(is_greater_than, GreaterThan {
+    bench_instruction_with_default!(is_greater_than, GreaterThan {
         (Field, Field),
         (I8, I8),
         (I16, I16),
@@ -329,7 +348,7 @@ fn bench_instructions(c: &mut Criterion) {
         (Scalar, Scalar),
     });
 
-    bench_instruction!(is_greater_than_or_equal, GreaterThanOrEqual {
+    bench_instruction_with_default!(is_greater_than_or_equal, GreaterThanOrEqual {
         (Field, Field),
         (I8, I8),
         (I16, I16),
@@ -343,11 +362,66 @@ fn bench_instructions(c: &mut Criterion) {
         (U128, U128),
         (Scalar, Scalar),
     });
+
+    macro_rules! bench_hash_instruction {
+        ($instruction:tt) => {
+            let mut samples = iter::repeat_with(|| { Boolean::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { Boolean, });
+            let mut samples = iter::repeat_with(|| { Field::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { Field, });
+            let mut samples = iter::repeat_with(|| { Group::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { Group, });
+            let mut samples = iter::repeat_with(|| { I8::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { I8, });
+            let mut samples = iter::repeat_with(|| { I16::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { I16, });
+            let mut samples = iter::repeat_with(|| { I32::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { I32, });
+            let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { I64, });
+            let mut samples = iter::repeat_with(|| { I128::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { I128, });
+            let mut samples = iter::repeat_with(|| { U8::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { U8, });
+            let mut samples = iter::repeat_with(|| { U16::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { U16, });
+            let mut samples = iter::repeat_with(|| { U32::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { U32, });
+            let mut samples = iter::repeat_with(|| { U64::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { U64, });
+            let mut samples = iter::repeat_with(|| { U128::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { U128, });
+            let mut samples = iter::repeat_with(|| { Scalar::<Testnet3>::rand(rng) });
+            bench_instruction!(samples, $instruction { Scalar, });
+        }
+    }
+
+    bench_hash_instruction!(HashBHP256);
+    bench_hash_instruction!(HashBHP512);
+    bench_hash_instruction!(HashBHP768);
+    bench_hash_instruction!(HashBHP1024);
+    bench_hash_instruction!(HashPED64);
+    bench_hash_instruction!(HashPED128);
+    bench_hash_instruction!(HashPSD2);
+    bench_hash_instruction!(HashPSD4);
+    bench_hash_instruction!(HashPSD8);
+    bench_hash_instruction!(HashToGroupBHP256);
+    bench_hash_instruction!(HashToGroupBHP512);
+    bench_hash_instruction!(HashToGroupBHP768);
+    bench_hash_instruction!(HashToGroupBHP1024);
+    bench_hash_instruction!(HashToGroupPED64);
+    bench_hash_instruction!(HashToGroupPED128);
+    bench_hash_instruction!(HashToGroupPSD2);
+    bench_hash_instruction!(HashToGroupPSD4);
+    bench_hash_instruction!(HashToGroupPSD8);
+    bench_hash_instruction!(HashToScalarPSD2);
+    bench_hash_instruction!(HashToScalarPSD4);
+    bench_hash_instruction!(HashToScalarPSD8);
 
     use console::prelude::Inverse;
-    bench_instruction!(inverse?, Inv { Field, });
+    bench_instruction_with_default!(inverse?, Inv { Field, });
 
-    bench_instruction!(is_less_than, LessThan {
+    bench_instruction_with_default!(is_less_than, LessThan {
         (Field, Field),
         (I8, I8),
         (I16, I16),
@@ -362,7 +436,7 @@ fn bench_instructions(c: &mut Criterion) {
         (Scalar, Scalar),
     });
 
-    bench_instruction!(is_less_than_or_equal, LessThanOrEqual {
+    bench_instruction_with_default!(is_less_than_or_equal, LessThanOrEqual {
         (Field, Field),
         (I8, I8),
         (I16, I16),
@@ -378,7 +452,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Modulo;
-    bench_instruction!(modulo, Modulo {
+    bench_instruction_with_default!(modulo, Modulo {
         (U8, U8),
         (U16, U16),
         (U32, U32),
@@ -387,35 +461,35 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use core::ops::Mul;
-    bench_instruction!(mul, Mul {
+    bench_instruction_with_default!(mul, Mul {
         (Field, Field),
         (Group, Scalar),
         (Scalar, Group),
     });
     // Use a custom sampling method for integer multiplication, since there is a high chance of overflow.
     let mut samples = iter::repeat((I8::<Testnet3>::zero(), I8::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (I8, I8), });
+    bench_instruction!(samples, Mul { (I8, I8), });
     let mut samples = iter::repeat((I16::<Testnet3>::zero(), I16::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (I16, I16), });
+    bench_instruction!(samples, Mul { (I16, I16), });
     let mut samples = iter::repeat((I32::<Testnet3>::zero(), I32::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (I32, I32), });
+    bench_instruction!(samples, Mul { (I32, I32), });
     let mut samples = iter::repeat((I64::<Testnet3>::zero(), I64::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (I64, I64), });
+    bench_instruction!(samples, Mul { (I64, I64), });
     let mut samples = iter::repeat((I128::<Testnet3>::zero(), I128::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (I128, I128), });
+    bench_instruction!(samples, Mul { (I128, I128), });
     let mut samples = iter::repeat((U8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (U8, U8), });
+    bench_instruction!(samples, Mul { (U8, U8), });
     let mut samples = iter::repeat((U16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (U16, U16), });
+    bench_instruction!(samples, Mul { (U16, U16), });
     let mut samples = iter::repeat((U32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (U32, U32), });
+    bench_instruction!(samples, Mul { (U32, U32), });
     let mut samples = iter::repeat((U64::<Testnet3>::zero(), U64::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (U64, U64), });
+    bench_instruction!(samples, Mul { (U64, U64), });
     let mut samples = iter::repeat((U128::<Testnet3>::zero(), U128::<Testnet3>::zero()));
-    bench_instruction!(mul, samples, Mul { (U128, U128), });
+    bench_instruction!(samples, Mul { (U128, U128), });
 
     use console::prelude::MulWrapped;
-    bench_instruction!(mul_wrapped, MulWrapped {
+    bench_instruction_with_default!(mul_wrapped, MulWrapped {
         (I8, I8),
         (I16, I16),
         (I32, I32),
@@ -429,23 +503,23 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Nand;
-    bench_instruction!(nand, Nand {
+    bench_instruction_with_default!(nand, Nand {
         (Boolean, Boolean),
     });
 
     use core::ops::Neg;
-    bench_instruction!(neg, Neg { Field, Group, I8, I16, I32, I64, I128, });
+    bench_instruction_with_default!(neg, Neg { Field, Group, I8, I16, I32, I64, I128, });
 
     use console::prelude::Nor;
-    bench_instruction!(nor, Nor {
+    bench_instruction_with_default!(nor, Nor {
         (Boolean, Boolean),
     });
 
     use core::ops::Not;
-    bench_instruction!(not, Not { Boolean, I8, I16, I32, I64, I128, U8, U16, U32, U64, });
+    bench_instruction_with_default!(not, Not { Boolean, I8, I16, I32, I64, I128, U8, U16, U32, U64, });
 
     use core::ops::BitOr;
-    bench_instruction!(bitor, Or {
+    bench_instruction_with_default!(bitor, Or {
         (Boolean, Boolean),
         (I8, I8),
         (I16, I16),
@@ -459,73 +533,73 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Pow;
-    bench_instruction!(pow, Pow {
+    bench_instruction_with_default!(pow, Pow {
         (Field, Field),
     });
     // Use a custom sampling method for integer exponentiation, since there is a high chance of overflow.
     let mut samples = iter::repeat((I8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I8, U8), });
+    bench_instruction!(samples, Pow { (I8, U8), });
     let mut samples = iter::repeat((I8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I8, U16), });
+    bench_instruction!(samples, Pow { (I8, U16), });
     let mut samples = iter::repeat((I8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I8, U32), });
+    bench_instruction!(samples, Pow { (I8, U32), });
     let mut samples = iter::repeat((I16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I16, U8), });
+    bench_instruction!(samples, Pow { (I16, U8), });
     let mut samples = iter::repeat((I16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I16, U16), });
+    bench_instruction!(samples, Pow { (I16, U16), });
     let mut samples = iter::repeat((I16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I16, U32), });
+    bench_instruction!(samples, Pow { (I16, U32), });
     let mut samples = iter::repeat((I32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I32, U8), });
+    bench_instruction!(samples, Pow { (I32, U8), });
     let mut samples = iter::repeat((I32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I32, U16), });
+    bench_instruction!(samples, Pow { (I32, U16), });
     let mut samples = iter::repeat((I32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I32, U32), });
+    bench_instruction!(samples, Pow { (I32, U32), });
     let mut samples = iter::repeat((I64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I64, U8), });
+    bench_instruction!(samples, Pow { (I64, U8), });
     let mut samples = iter::repeat((I64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I64, U16), });
+    bench_instruction!(samples, Pow { (I64, U16), });
     let mut samples = iter::repeat((I64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I64, U32), });
+    bench_instruction!(samples, Pow { (I64, U32), });
     let mut samples = iter::repeat((I128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I128, U8), });
+    bench_instruction!(samples, Pow { (I128, U8), });
     let mut samples = iter::repeat((I128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I128, U16), });
+    bench_instruction!(samples, Pow { (I128, U16), });
     let mut samples = iter::repeat((I128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (I128, U32), });
+    bench_instruction!(samples, Pow { (I128, U32), });
     let mut samples = iter::repeat((U8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U8, U8), });
+    bench_instruction!(samples, Pow { (U8, U8), });
     let mut samples = iter::repeat((U8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U8, U16), });
+    bench_instruction!(samples, Pow { (U8, U16), });
     let mut samples = iter::repeat((U8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U8, U32), });
+    bench_instruction!(samples, Pow { (U8, U32), });
     let mut samples = iter::repeat((U16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U16, U8), });
+    bench_instruction!(samples, Pow { (U16, U8), });
     let mut samples = iter::repeat((U16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U16, U16), });
+    bench_instruction!(samples, Pow { (U16, U16), });
     let mut samples = iter::repeat((U16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U16, U32), });
+    bench_instruction!(samples, Pow { (U16, U32), });
     let mut samples = iter::repeat((U32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U32, U8), });
+    bench_instruction!(samples, Pow { (U32, U8), });
     let mut samples = iter::repeat((U32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U32, U16), });
+    bench_instruction!(samples, Pow { (U32, U16), });
     let mut samples = iter::repeat((U32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U32, U32), });
+    bench_instruction!(samples, Pow { (U32, U32), });
     let mut samples = iter::repeat((U64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U64, U8), });
+    bench_instruction!(samples, Pow { (U64, U8), });
     let mut samples = iter::repeat((U64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U64, U16), });
+    bench_instruction!(samples, Pow { (U64, U16), });
     let mut samples = iter::repeat((U64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U64, U32), });
+    bench_instruction!(samples, Pow { (U64, U32), });
     let mut samples = iter::repeat((U128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U128, U8), });
+    bench_instruction!(samples, Pow { (U128, U8), });
     let mut samples = iter::repeat((U128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U128, U16), });
+    bench_instruction!(samples, Pow { (U128, U16), });
     let mut samples = iter::repeat((U128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(pow, samples, Pow { (U128, U32), });
+    bench_instruction!(samples, Pow { (U128, U32), });
 
     use console::prelude::PowWrapped;
-    bench_instruction!(pow_wrapped, PowWrapped {
+    bench_instruction_with_default!(pow_wrapped, PowWrapped {
         (I8, U8),
         (I8, U16),
         (I8, U32),
@@ -559,7 +633,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use core::ops::Rem;
-    bench_instruction!(rem, Rem {
+    bench_instruction_with_default!(rem, Rem {
         (I8, I8),
         (I16, I16),
         (I32, I32),
@@ -573,7 +647,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::RemWrapped;
-    bench_instruction!(rem_wrapped, RemWrapped {
+    bench_instruction_with_default!(rem_wrapped, RemWrapped {
         (I8, I8),
         (I16, I16),
         (I32, I32),
@@ -586,71 +660,70 @@ fn bench_instructions(c: &mut Criterion) {
         (U128, U128),
     });
 
-    use console::prelude::ShlChecked;
     // Use a custom sampling method for left-shift, since there is a high chance of overflow.
     let mut samples = iter::repeat((I8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I8, U8), });
+    bench_instruction!(samples, Shl { (I8, U8), });
     let mut samples = iter::repeat((I8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I8, U16), });
+    bench_instruction!(samples, Shl { (I8, U16), });
     let mut samples = iter::repeat((I8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I8, U32), });
+    bench_instruction!(samples, Shl { (I8, U32), });
     let mut samples = iter::repeat((I16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I16, U8), });
+    bench_instruction!(samples, Shl { (I16, U8), });
     let mut samples = iter::repeat((I16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I16, U16), });
+    bench_instruction!(samples, Shl { (I16, U16), });
     let mut samples = iter::repeat((I16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I16, U32), });
+    bench_instruction!(samples, Shl { (I16, U32), });
     let mut samples = iter::repeat((I32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I32, U8), });
+    bench_instruction!(samples, Shl { (I32, U8), });
     let mut samples = iter::repeat((I32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I32, U16), });
+    bench_instruction!(samples, Shl { (I32, U16), });
     let mut samples = iter::repeat((I32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I32, U32), });
+    bench_instruction!(samples, Shl { (I32, U32), });
     let mut samples = iter::repeat((I64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I64, U8), });
+    bench_instruction!(samples, Shl { (I64, U8), });
     let mut samples = iter::repeat((I64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I64, U16), });
+    bench_instruction!(samples, Shl { (I64, U16), });
     let mut samples = iter::repeat((I64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I64, U32), });
+    bench_instruction!(samples, Shl { (I64, U32), });
     let mut samples = iter::repeat((I128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I128, U8), });
+    bench_instruction!(samples, Shl { (I128, U8), });
     let mut samples = iter::repeat((I128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I128, U16), });
+    bench_instruction!(samples, Shl { (I128, U16), });
     let mut samples = iter::repeat((I128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (I128, U32), });
+    bench_instruction!(samples, Shl { (I128, U32), });
     let mut samples = iter::repeat((U8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U8, U8), });
+    bench_instruction!(samples, Shl { (U8, U8), });
     let mut samples = iter::repeat((U8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U8, U16), });
+    bench_instruction!(samples, Shl { (U8, U16), });
     let mut samples = iter::repeat((U8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U8, U32), });
+    bench_instruction!(samples, Shl { (U8, U32), });
     let mut samples = iter::repeat((U16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U16, U8), });
+    bench_instruction!(samples, Shl { (U16, U8), });
     let mut samples = iter::repeat((U16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U16, U16), });
+    bench_instruction!(samples, Shl { (U16, U16), });
     let mut samples = iter::repeat((U16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U16, U32), });
+    bench_instruction!(samples, Shl { (U16, U32), });
     let mut samples = iter::repeat((U32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U32, U8), });
+    bench_instruction!(samples, Shl { (U32, U8), });
     let mut samples = iter::repeat((U32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U32, U16), });
+    bench_instruction!(samples, Shl { (U32, U16), });
     let mut samples = iter::repeat((U32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U32, U32), });
+    bench_instruction!(samples, Shl { (U32, U32), });
     let mut samples = iter::repeat((U64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U64, U8), });
+    bench_instruction!(samples, Shl { (U64, U8), });
     let mut samples = iter::repeat((U64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U64, U16), });
+    bench_instruction!(samples, Shl { (U64, U16), });
     let mut samples = iter::repeat((U64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U64, U32), });
+    bench_instruction!(samples, Shl { (U64, U32), });
     let mut samples = iter::repeat((U128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U128, U8), });
+    bench_instruction!(samples, Shl { (U128, U8), });
     let mut samples = iter::repeat((U128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U128, U16), });
+    bench_instruction!(samples, Shl { (U128, U16), });
     let mut samples = iter::repeat((U128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
-    bench_instruction!(shl_checked, samples, Shl { (U128, U32), });
+    bench_instruction!(samples, Shl { (U128, U32), });
 
     use console::prelude::ShlWrapped;
-    bench_instruction!(shl_wrapped, ShlWrapped {
+    bench_instruction_with_default!(shl_wrapped, ShlWrapped {
         (I8, U8),
         (I8, U16),
         (I8, U32),
@@ -683,42 +756,70 @@ fn bench_instructions(c: &mut Criterion) {
         (U128, U32),
     });
 
-    use console::prelude::ShrChecked;
-    bench_instruction!(shr_checked, Shr {
-        (I8, U8),
-        (I8, U16),
-        (I8, U32),
-        (I16, U8),
-        (I16, U16),
-        (I16, U32),
-        (I32, U8),
-        (I32, U16),
-        (I32, U32),
-        (I64, U8),
-        (I64, U16),
-        (I64, U32),
-        (I128, U8),
-        (I128, U16),
-        (I128, U32),
-        (U8, U8),
-        (U8, U16),
-        (U8, U32),
-        (U16, U8),
-        (U16, U16),
-        (U16, U32),
-        (U32, U8),
-        (U32, U16),
-        (U32, U32),
-        (U64, U8),
-        (U64, U16),
-        (U64, U32),
-        (U128, U8),
-        (U128, U16),
-        (U128, U32),
-    });
+    // Use a custom sampling method for left-shift, since there is a high chance of overflow.
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I8, U8), });
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I8, U16), });
+    let mut samples = iter::repeat((I8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I8, U32), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I16, U8), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I16, U16), });
+    let mut samples = iter::repeat((I16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I16, U32), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I32, U8), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I32, U16), });
+    let mut samples = iter::repeat((I32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I32, U32), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I64, U8), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I64, U16), });
+    let mut samples = iter::repeat((I64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I64, U32), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I128, U8), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I128, U16), });
+    let mut samples = iter::repeat((I128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (I128, U32), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U8, U8), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U8, U16), });
+    let mut samples = iter::repeat((U8::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U8, U32), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U16, U8), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U16, U16), });
+    let mut samples = iter::repeat((U16::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U16, U32), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U32, U8), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U32, U16), });
+    let mut samples = iter::repeat((U32::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U32, U32), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U64, U8), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U64, U16), });
+    let mut samples = iter::repeat((U64::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U64, U32), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U8::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U128, U8), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U16::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U128, U16), });
+    let mut samples = iter::repeat((U128::<Testnet3>::zero(), U32::<Testnet3>::zero()));
+    bench_instruction!(samples, Shr { (U128, U32), });
 
     use console::prelude::ShrWrapped;
-    bench_instruction!(shr_wrapped, ShrWrapped {
+    bench_instruction_with_default!(shr_wrapped, ShrWrapped {
         (I8, U8),
         (I8, U16),
         (I8, U32),
@@ -752,13 +853,13 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Square;
-    bench_instruction!(square, Square { Field, });
+    bench_instruction_with_default!(square, Square { Field, });
 
     use console::prelude::SquareRoot;
-    bench_instruction!(square_root?, SquareRoot { Field, });
+    bench_instruction_with_default!(square_root, SquareRoot { Field, });
 
-    use std::ops::Sub;
-    bench_instruction!(sub, Sub {
+    use console::prelude::Sub;
+    bench_instruction_with_default!(sub, Sub {
         (Field, Field),
         (Group, Group),
         (I8, I8),
@@ -774,7 +875,7 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::SubWrapped;
-    bench_instruction!(sub_wrapped, SubWrapped {
+    bench_instruction_with_default!(sub_wrapped, SubWrapped {
         (I8, I8),
         (I16, I16),
         (I32, I32),
@@ -788,8 +889,8 @@ fn bench_instructions(c: &mut Criterion) {
     });
 
     use console::prelude::Ternary;
-    bench_instruction!(ternary, Ternary {
-        // (Boolean, Address, Address), // TODO (d0cd): Enable this when we have a way to generate random addresses via `Uniform::rand`.
+    bench_instruction_with_default!(ternary, Ternary {
+        // (Boolean, Address, Address),
         (Boolean, Boolean, Boolean),
         (Boolean, Field, Field),
         (Boolean, Group, Group),
