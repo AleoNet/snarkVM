@@ -50,7 +50,7 @@ use snarkvm_synthesizer::{
 use snarkvm_utilities::TestRng;
 
 use criterion::{BatchSize, Criterion};
-use std::{iter, fmt::Display, str::FromStr};
+use std::{fmt::Display, iter, str::FromStr};
 
 // TODO (d0cd): Add benchmarks using `Address` once random sampling for `Address` is supported.
 

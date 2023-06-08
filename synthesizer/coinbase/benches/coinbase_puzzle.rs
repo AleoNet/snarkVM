@@ -138,10 +138,10 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
     }
 }
 
-// criterion_group! {
-//     name = coinbase_puzzle;
-//     config = Criterion::default().sample_size(10);
-//     targets = coinbase_puzzle_trim, coinbase_puzzle_prove, coinbase_puzzle_accumulate, coinbase_puzzle_verify,
-// }
-//
-// criterion_main!(coinbase_puzzle);
+criterion_group! {
+    name = coinbase_puzzle;
+    config = Criterion::default().sample_size(10);
+    targets = coinbase_puzzle_trim, coinbase_puzzle_prove, coinbase_puzzle_accumulate, coinbase_puzzle_verify,
+}
+
+criterion_main!(coinbase_puzzle);
