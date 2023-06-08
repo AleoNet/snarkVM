@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use crate::{
-    FinalizeOperation,
     FinalizeStorage,
     FinalizeStore,
     Opcode,
