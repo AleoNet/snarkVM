@@ -18,7 +18,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as entry.public;
-    get.or_init entries[r0] r1 into r2;
+    get.or_use entries[r0] r1 into r2;
     add r1.count r2.count into r3;
     add r1.data r2.data into r4;
     cast r3 r4 into r5 as entry;

@@ -764,7 +764,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r2 r1 into r3;
     set r3 into account[r0];
 ",
@@ -873,7 +873,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r2 r1 into r3;
     sub r3 r1 into r4;
     set r4 into account[r0];
@@ -996,7 +996,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Set `r3` into `account[r0]`.
@@ -1124,7 +1124,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Set `r3` into `account[r0]`.
@@ -1260,7 +1260,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r1 r2 into r3;
     set r3 into account[r0];
     get account[r0] into r4;
@@ -1375,7 +1375,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as entry.public;
-    get.or_init entries[r0] r1 into r2;
+    get.or_use entries[r0] r1 into r2;
     add r1.count r2.count into r3;
     add r1.data r2.data into r4;
     cast r3 r4 into r5 as entry;
