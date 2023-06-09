@@ -26,13 +26,6 @@ pub trait Prepare {
     fn prepare(&self) -> Self::Prepared;
 }
 
-/// Defines trait that describes preparing from an unprepared version to an orderable prepare version.
-pub trait PrepareOrd {
-    // NOTE: we keep this separate from Prepare because we also have unordered Prepared types
-    type Prepared: Ord;
-    fn prepare(&self) -> Self::Prepared;
-}
-
 pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
@@ -61,7 +54,6 @@ pub trait SNARK {
         + Sync
         + ToBytes
         + FromBytes
-        + PrepareOrd
         + ToConstraintField<Self::BaseField>
         + ToMinimalBits
         + Ord;
@@ -126,24 +118,6 @@ pub trait SNARK {
         fs_parameters: &Self::FSParameters,
         prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
-        proof: &Self::Proof,
-    ) -> Result<bool, SNARKError> {
-        let preparation_time = start_timer!(|| "Preparing vks");
-        let prepared_keys_to_inputs = keys_to_inputs
-            .iter()
-            .map(|(key, inputs)| {
-                let prepared_key = key.prepare();
-                (prepared_key, *inputs)
-            })
-            .collect::<BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>>();
-        end_timer!(preparation_time);
-        Self::verify_batch_prepared(fs_parameters, prepared_neg_powers_of_beta_h, &prepared_keys_to_inputs, proof)
-    }
-
-    fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
-        fs_parameters: &Self::FSParameters,
-        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
-        keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 }

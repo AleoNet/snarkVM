@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    fft::EvaluationDomain,
-    polycommit::sonic_pc,
-    snark::marlin::{ahp::indexer::*, PreparedCircuitVerifyingKey},
-    PrepareOrd,
-};
+use crate::{fft::EvaluationDomain, polycommit::sonic_pc, snark::marlin::ahp::indexer::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_r1cs::SynthesisError;
@@ -48,36 +43,6 @@ pub struct CircuitVerifyingKey<E: PairingEngine> {
     /// The verifier key for this index, trimmed from the universal SRS.
     pub verifier_key: sonic_pc::VerifierKey<E>,
     pub id: CircuitId,
-}
-
-impl<E: PairingEngine> PrepareOrd for CircuitVerifyingKey<E> {
-    type Prepared = PreparedCircuitVerifyingKey<E>;
-
-    /// Prepare the circuit verifying key.
-    fn prepare(&self) -> Self::Prepared {
-        let constraint_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_constraints).unwrap() as u64;
-        let non_zero_a_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_a).unwrap() as u64;
-        let non_zero_b_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u64;
-        let non_zero_c_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u64;
-
-        PreparedCircuitVerifyingKey {
-            constraint_domain_size,
-            non_zero_a_domain_size,
-            non_zero_b_domain_size,
-            non_zero_c_domain_size,
-            orig_vk: (*self).clone(),
-        }
-    }
-}
-
-impl<E: PairingEngine> From<PreparedCircuitVerifyingKey<E>> for CircuitVerifyingKey<E> {
-    fn from(other: PreparedCircuitVerifyingKey<E>) -> Self {
-        other.orig_vk
-    }
 }
 
 impl<E: PairingEngine> ToMinimalBits for CircuitVerifyingKey<E> {

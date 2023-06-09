@@ -38,7 +38,6 @@ use crate::{
         UniversalSRS,
     },
     AlgebraicSponge,
-    PrepareOrd,
     SNARKError,
     SNARK,
 };
@@ -560,10 +559,10 @@ where
     /// This is the main entrypoint for verifying proofs.
     /// You can find a specification of the verifier algorithm in:
     /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
-    fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
+    fn verify_batch<B: Borrow<Self::VerifierInput>>(
         fs_parameters: &Self::FSParameters,
         prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
-        keys_to_inputs: &BTreeMap<<Self::VerifyingKey as PrepareOrd>::Prepared, &[B]>,
+        keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         if keys_to_inputs.is_empty() {
@@ -573,7 +572,7 @@ where
         let batch_sizes_vec = proof.batch_sizes()?;
         let mut batch_sizes = BTreeMap::new();
         for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
-            batch_sizes.insert(vk.orig_vk.id, batch_sizes_vec[i]);
+            batch_sizes.insert(vk.id, batch_sizes_vec[i]);
 
             if public_inputs_i.is_empty() {
                 return Err(SNARKError::EmptyBatch);
@@ -595,17 +594,16 @@ where
         let mut vks = Vec::with_capacity(keys_to_inputs.len());
         let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
         for (vk, public_inputs_i) in keys_to_inputs.iter() {
-            vks.push(&vk.orig_vk.verifier_key);
+            vks.push(&vk.verifier_key);
 
             let constraint_domains =
-                AHPForR1CS::<_, MM>::max_constraint_domain(&vk.orig_vk.circuit_info, max_constraint_domain)?;
+                AHPForR1CS::<_, MM>::max_constraint_domain(&vk.circuit_info, max_constraint_domain)?;
             max_constraint_domain = constraint_domains.max_constraint_domain;
-            let non_zero_domains =
-                AHPForR1CS::<_, MM>::max_non_zero_domain(&vk.orig_vk.circuit_info, max_non_zero_domain)?;
+            let non_zero_domains = AHPForR1CS::<_, MM>::max_non_zero_domain(&vk.circuit_info, max_non_zero_domain)?;
             max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
-            let input_domain = EvaluationDomain::<E::Fr>::new(vk.orig_vk.circuit_info.num_public_inputs).unwrap();
-            input_domains.insert(vk.orig_vk.id, input_domain);
+            let input_domain = EvaluationDomain::<E::Fr>::new(vk.circuit_info.num_public_inputs).unwrap();
+            input_domains.insert(vk.id, input_domain);
 
             let (padded_public_inputs_i, parsed_public_inputs_i): (Vec<_>, Vec<_>) = {
                 public_inputs_i
@@ -623,14 +621,14 @@ where
                     })
                     .unzip()
             };
-            let circuit_id = vk.orig_vk.id;
+            let circuit_id = vk.id;
             public_inputs.insert(circuit_id, parsed_public_inputs_i);
             padded_public_vec.push(padded_public_inputs_i);
-            circuit_infos.insert(circuit_id, &vk.orig_vk.circuit_info);
+            circuit_infos.insert(circuit_id, &vk.circuit_info);
             circuit_ids.push(circuit_id);
         }
         for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(batch_sizes.values()).enumerate() {
-            inputs_and_batch_sizes.insert(vk.orig_vk.id, (batch_size, padded_public_vec[i].as_slice()));
+            inputs_and_batch_sizes.insert(vk.id, (batch_size, padded_public_vec[i].as_slice()));
         }
 
         let verifier_key = VerifierUnionKey::<E>::union(vks);
@@ -715,7 +713,7 @@ where
         let fourth_round_info = AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info();
         let fourth_commitments = [LabeledCommitment::new_with_info(&fourth_round_info["h_2"], comms.h_2)];
 
-        let circuit_commitments = keys_to_inputs.keys().map(|vk| vk.orig_vk.circuit_commitments.as_slice());
+        let circuit_commitments = keys_to_inputs.keys().map(|vk| vk.circuit_commitments.as_slice());
         let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.clone());
 
         // --------------------------------------------------------------------
