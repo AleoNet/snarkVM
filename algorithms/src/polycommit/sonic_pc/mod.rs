@@ -163,7 +163,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
         let kzg10_vk = kzg10::VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h };
 
-        let vk = VerifierKey { vk: kzg10_vk, supported_degree, max_degree };
+        let vk = VerifierKey { vk: kzg10_vk, supported_degree };
 
         end_timer!(trim_time);
         Ok((ck, vk))

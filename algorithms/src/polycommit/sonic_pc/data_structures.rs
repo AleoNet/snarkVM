@@ -449,22 +449,16 @@ pub struct VerifierKey<E: PairingEngine> {
     pub vk: kzg10::VerifierKey<E>,
     /// The maximum degree supported by the trimmed parameters that `self` is a part of.
     pub supported_degree: usize,
-    /// The maximum degree supported by the `UniversalParams` `self` was derived from.
-    pub max_degree: usize,
 }
 
 impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.vk.serialize_with_mode(&mut writer, compress)?;
-        self.supported_degree.serialize_with_mode(&mut writer, compress)?;
-        self.max_degree.serialize_with_mode(&mut writer, compress)?;
-        Ok(())
+        self.supported_degree.serialize_with_mode(&mut writer, compress)
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        self.vk.serialized_size(compress)
-            + self.supported_degree.serialized_size(compress)
-            + self.max_degree.serialized_size(compress)
+        self.vk.serialized_size(compress) + self.supported_degree.serialized_size(compress)
     }
 }
 
@@ -476,8 +470,7 @@ impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
     ) -> Result<Self, SerializationError> {
         let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        Ok(VerifierKey { vk, supported_degree, max_degree })
+        Ok(VerifierKey { vk, supported_degree })
     }
 }
 
@@ -485,7 +478,6 @@ impl<E: PairingEngine> Valid for VerifierKey<E> {
     fn check(&self) -> Result<(), SerializationError> {
         Valid::check(&self.vk)?;
         Valid::check(&self.supported_degree)?;
-        Valid::check(&self.max_degree)?;
         Ok(())
     }
 
@@ -496,7 +488,6 @@ impl<E: PairingEngine> Valid for VerifierKey<E> {
         let batch: Vec<_> = batch.collect();
         Valid::batch_check(batch.iter().map(|v| &v.vk))?;
         Valid::batch_check(batch.iter().map(|v| &v.supported_degree))?;
-        Valid::batch_check(batch.iter().map(|v| &v.max_degree))?;
         Ok(())
     }
 }
