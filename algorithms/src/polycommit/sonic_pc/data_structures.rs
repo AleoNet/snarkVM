@@ -447,18 +447,15 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
-    /// The maximum degree supported by the trimmed parameters that `self` is a part of.
-    pub supported_degree: usize,
 }
 
 impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
-        self.vk.serialize_with_mode(&mut writer, compress)?;
-        self.supported_degree.serialize_with_mode(&mut writer, compress)
+        self.vk.serialize_with_mode(&mut writer, compress)
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        self.vk.serialized_size(compress) + self.supported_degree.serialized_size(compress)
+        self.vk.serialized_size(compress)
     }
 }
 
@@ -469,15 +466,13 @@ impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        Ok(VerifierKey { vk, supported_degree })
+        Ok(VerifierKey { vk })
     }
 }
 
 impl<E: PairingEngine> Valid for VerifierKey<E> {
     fn check(&self) -> Result<(), SerializationError> {
         Valid::check(&self.vk)?;
-        Valid::check(&self.supported_degree)?;
         Ok(())
     }
 
@@ -487,7 +482,6 @@ impl<E: PairingEngine> Valid for VerifierKey<E> {
     {
         let batch: Vec<_> = batch.collect();
         Valid::batch_check(batch.iter().map(|v| &v.vk))?;
-        Valid::batch_check(batch.iter().map(|v| &v.supported_degree))?;
         Ok(())
     }
 }
@@ -517,7 +511,7 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
     pub fn union<T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
         let mut biggest_vk: Option<&VerifierKey<E>> = None;
         for vk in verifier_keys {
-            if biggest_vk.is_none() || biggest_vk.unwrap().supported_degree < vk.supported_degree {
+            if biggest_vk.is_none() {
                 biggest_vk = Some(vk);
             }
         }
