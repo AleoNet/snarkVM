@@ -53,6 +53,7 @@ use criterion::{BatchSize, Criterion};
 use std::{fmt::Display, iter, str::FromStr};
 
 // TODO (d0cd): Add benchmarks using `Address` once random sampling for `Address` is supported.
+// TODO (d0cd): Generalize macros to support arbitrary arity instructions (low priority).
 
 /// A helper function to construct a set of `FinalizeRegisters` with the given arguments.
 fn setup_finalize_registers(
@@ -285,6 +286,68 @@ fn bench_instructions(c: &mut Criterion) {
         (U128, U128),
     });
 
+    macro_rules! bench_assert {
+        ($typ:tt) => {
+            let mut samples = iter::repeat_with(|| {
+                let result = $typ::<Testnet3>::rand(rng);
+                (result.clone(), result)
+            });
+            {
+                use snarkvm_synthesizer::AssertEq;
+                let name = concat!("AssertEq/", stringify!($typ), "_", stringify!($typ));
+                let instruction = Instruction::<Testnet3>::AssertEq(AssertEq::from_str(&format!("{} r0 r1", AssertEq::<Testnet3>::opcode().to_string())).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let (first, second) = samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            };
+            let mut samples = iter::repeat_with(|| {
+                let first = $typ::<Testnet3>::rand(rng);
+                let mut second = $typ::<Testnet3>::rand(rng);
+                while first == second {
+                    second = $typ::<Testnet3>::rand(rng);
+                }
+                (first, second)
+            });
+            {
+                use snarkvm_synthesizer::AssertNeq;
+                let name = concat!("AssertNeq/", stringify!($typ), "_", stringify!($typ));
+                let instruction = Instruction::<Testnet3>::AssertNeq(AssertNeq::from_str(&format!("{} r0 r1", AssertNeq::<Testnet3>::opcode().to_string())).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let (first, second) = samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&first.to_string()).unwrap(), Value::from_str(&second.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            };
+        };
+    }
+
+    bench_assert!(Boolean);
+    bench_assert!(Field);
+    bench_assert!(Group);
+    bench_assert!(I8);
+    bench_assert!(I16);
+    bench_assert!(I32);
+    bench_assert!(I64);
+    bench_assert!(I128);
+    bench_assert!(Scalar);
+    bench_assert!(U8);
+    bench_assert!(U16);
+    bench_assert!(U32);
+    bench_assert!(U64);
+    bench_assert!(U128);
+
     use core::ops::BitAnd;
     bench_instruction_with_default!(bitand, And {
         (Boolean, Boolean),
@@ -505,6 +568,49 @@ fn bench_instructions(c: &mut Criterion) {
 
     use console::prelude::Inverse;
     bench_instruction_with_default!(inverse?, Inv { Field, });
+
+    let mut samples = iter::repeat_with(|| { (Boolean::<Testnet3>::rand(rng), Boolean::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (Boolean, Boolean), });
+    bench_instruction!(samples, IsNeq { (Boolean, Boolean), });
+    let mut samples = iter::repeat_with(|| { (Field::<Testnet3>::rand(rng), Field::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (Field, Field), });
+    bench_instruction!(samples, IsNeq { (Field, Field), });
+    let mut samples = iter::repeat_with(|| { (Group::<Testnet3>::rand(rng), Group::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (Group, Group), });
+    bench_instruction!(samples, IsNeq { (Group, Group), });
+    let mut samples = iter::repeat_with(|| { (I8::<Testnet3>::rand(rng), I8::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (I8, I8), });
+    bench_instruction!(samples, IsNeq { (I8, I8), });
+    let mut samples = iter::repeat_with(|| { (I16::<Testnet3>::rand(rng), I16::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (I16, I16), });
+    bench_instruction!(samples, IsNeq { (I16, I16), });
+    let mut samples = iter::repeat_with(|| { (I32::<Testnet3>::rand(rng), I32::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (I32, I32), });
+    bench_instruction!(samples, IsNeq { (I32, I32), });
+    let mut samples = iter::repeat_with(|| { (I64::<Testnet3>::rand(rng), I64::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (I64, I64), });
+    bench_instruction!(samples, IsNeq { (I64, I64), });
+    let mut samples = iter::repeat_with(|| { (I128::<Testnet3>::rand(rng), I128::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (I128, I128), });
+    bench_instruction!(samples, IsNeq { (I128, I128), });
+    let mut samples = iter::repeat_with(|| { (Scalar::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (Scalar, Scalar), });
+    bench_instruction!(samples, IsNeq { (Scalar, Scalar), });
+    let mut samples = iter::repeat_with(|| { (U8::<Testnet3>::rand(rng), U8::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (U8, U8), });
+    bench_instruction!(samples, IsNeq { (U8, U8), });
+    let mut samples = iter::repeat_with(|| { (U16::<Testnet3>::rand(rng), U16::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (U16, U16), });
+    bench_instruction!(samples, IsNeq { (U16, U16), });
+    let mut samples = iter::repeat_with(|| { (U32::<Testnet3>::rand(rng), U32::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (U32, U32), });
+    bench_instruction!(samples, IsNeq { (U32, U32), });
+    let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand(rng), U64::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (U64, U64), });
+    bench_instruction!(samples, IsNeq { (U64, U64), });
+    let mut samples = iter::repeat_with(|| { (U128::<Testnet3>::rand(rng), U128::<Testnet3>::rand(rng)) });
+    bench_instruction!(samples, IsEq { (U128, U128), });
+    bench_instruction!(samples, IsNeq { (U128, U128), });
 
     bench_instruction_with_default!(is_less_than, LessThan {
         (Field, Field),
