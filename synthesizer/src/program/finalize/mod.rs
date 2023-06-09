@@ -73,8 +73,8 @@ impl<N: Network> Finalize<N> {
         self.num_writes
     }
 
-    /// Returns the minimum fee, in microcredits, required to run the finalize.
-    pub fn fee_in_microcredits(&self) -> u64 {
+    /// Returns the minimum number of microcredits required to run the finalize.
+    pub fn cost_in_microcredits(&self) -> u64 {
         // Defines the cost of each command.
         let cost = |command: &Command<N>| match command {
             Command::Instruction(Instruction::Abs(_)) => 1_000_000_000,
