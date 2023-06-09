@@ -23,14 +23,12 @@ use std::collections::BTreeMap;
 #[derive(Clone, PartialEq, Eq)]
 pub struct VerifyingKey<N: Network> {
     /// The verifying key for the function.
-    verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
+    verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve>>,
 }
 
 impl<N: Network> VerifyingKey<N> {
     /// Initializes a new verifying key.
-    pub const fn new(
-        verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
-    ) -> Self {
+    pub const fn new(verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve>>) -> Self {
         Self { verifying_key }
     }
 
@@ -92,7 +90,7 @@ impl<N: Network> VerifyingKey<N> {
 }
 
 impl<N: Network> Deref for VerifyingKey<N> {
-    type Target = marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>;
+    type Target = marlin::CircuitVerifyingKey<N::PairingCurve>;
 
     fn deref(&self) -> &Self::Target {
         &self.verifying_key

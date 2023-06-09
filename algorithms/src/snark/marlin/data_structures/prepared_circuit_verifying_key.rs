@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::snark::marlin::{CircuitVerifyingKey, MarlinMode};
+use crate::snark::marlin::CircuitVerifyingKey;
 use snarkvm_curves::PairingEngine;
-use std::cmp::Ordering;
-/// Verification key, prepared (preprocessed) for use in pairings.
 
+use std::cmp::Ordering;
+
+/// Verification key, prepared (preprocessed) for use in pairings.
 #[derive(Clone)]
-pub struct PreparedCircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
+pub struct PreparedCircuitVerifyingKey<E: PairingEngine> {
     /// Size of the variable domain.
     pub constraint_domain_size: u64,
     /// Size of the domain that represents A.
@@ -30,25 +31,25 @@ pub struct PreparedCircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
     /// Non-prepared verification key, for use in native "prepared verify" (which
     /// is actually standard verify), as well as in absorbing the original vk into
     /// the Fiat-Shamir sponge.
-    pub orig_vk: CircuitVerifyingKey<E, MM>,
+    pub orig_vk: CircuitVerifyingKey<E>,
 }
 
-impl<E: PairingEngine, MM: MarlinMode> Ord for PreparedCircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> Ord for PreparedCircuitVerifyingKey<E> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.orig_vk.id.cmp(&other.orig_vk.id)
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> PartialOrd for PreparedCircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> PartialOrd for PreparedCircuitVerifyingKey<E> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> PartialEq for PreparedCircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> PartialEq for PreparedCircuitVerifyingKey<E> {
     fn eq(&self, other: &Self) -> bool {
         self.orig_vk.id == other.orig_vk.id
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> Eq for PreparedCircuitVerifyingKey<E, MM> {}
+impl<E: PairingEngine> Eq for PreparedCircuitVerifyingKey<E> {}

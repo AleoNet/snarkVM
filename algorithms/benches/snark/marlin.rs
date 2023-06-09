@@ -249,10 +249,8 @@ fn snark_vk_deserialize(c: &mut Criterion) {
             vk.serialize_with_mode(&mut bytes, compress).unwrap();
             group.bench_function(name, |b| {
                 b.iter(|| {
-                    let _vk = CircuitVerifyingKey::<Bls12_377, MarlinHidingMode>::deserialize_with_mode(
-                        &*bytes, compress, validate,
-                    )
-                    .unwrap();
+                    let _vk =
+                        CircuitVerifyingKey::<Bls12_377>::deserialize_with_mode(&*bytes, compress, validate).unwrap();
                 })
             });
         }

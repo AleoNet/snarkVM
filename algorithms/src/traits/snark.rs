@@ -62,8 +62,6 @@ pub trait SNARK {
         + ToBytes
         + FromBytes
         + PrepareOrd
-        + for<'a> From<&'a Self::ProvingKey>
-        + From<Self::ProvingKey>
         + ToConstraintField<Self::BaseField>
         + ToMinimalBits
         + Ord;

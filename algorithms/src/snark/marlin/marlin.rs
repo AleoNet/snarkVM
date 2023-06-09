@@ -71,7 +71,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     pub fn batch_circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
-    ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>)>, SNARKError> {
+    ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>, SNARKError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         let mut circuit_keys = Vec::with_capacity(circuits.len());
@@ -109,7 +109,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                 circuit_info: indexed_circuit.index_info,
                 circuit_commitments,
                 verifier_key,
-                mode: PhantomData,
                 id: indexed_circuit.id,
             };
             let circuit_proving_key = CircuitProvingKey {
@@ -202,7 +201,7 @@ where
     type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<E>;
     type VerifierInput = [E::Fr];
-    type VerifyingKey = CircuitVerifyingKey<E, MM>;
+    type VerifyingKey = CircuitVerifyingKey<E>;
 
     fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {max_degree}",) });

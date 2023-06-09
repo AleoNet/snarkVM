@@ -184,7 +184,6 @@ impl<F: PrimeField, MM: MarlinMode> snarkvm_utilities::Valid for Circuit<F, MM> 
 }
 
 impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
-    #[allow(unused_mut, unused_variables)]
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,

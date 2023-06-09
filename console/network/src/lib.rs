@@ -60,7 +60,7 @@ pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>:
 
 /// Helper types for the Marlin proving and verifying key.
 pub(crate) type MarlinProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
-pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
+pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve>;
 
 pub trait Network:
     'static
