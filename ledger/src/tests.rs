@@ -118,7 +118,7 @@ fn test_insufficient_finalize_fees() {
     // Create a genesis block.
     let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
     // Initialize the ledger with the genesis block.
-    let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+    let ledger = CurrentLedger::load(genesis, None).unwrap();
 
     // Deploy a test program to the ledger.
     let program = Program::<CurrentNetwork>::from_str(
