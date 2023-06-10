@@ -36,6 +36,7 @@ use crate::environment::prelude::*;
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
     snark::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinHidingMode},
+    srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
@@ -59,7 +60,7 @@ pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>:
 
 /// Helper types for the Marlin proving and verifying key.
 pub(crate) type MarlinProvingKey<N> = CircuitProvingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
-pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve, MarlinHidingMode>;
+pub(crate) type MarlinVerifyingKey<N> = CircuitVerifyingKey<<N as Environment>::PairingCurve>;
 
 pub trait Network:
     'static
@@ -173,6 +174,12 @@ pub trait Network:
 
     /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
+    /// Returns the Marlin universal prover.
+    fn marlin_universal_prover() -> &'static UniversalProver<Self::PairingCurve>;
+
+    /// Returns the Marlin universal verifier.
+    fn marlin_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;
 
     /// Returns the sponge parameters for Marlin.
     fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;

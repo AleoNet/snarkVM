@@ -30,7 +30,7 @@ use std::{cmp::Ordering, sync::Arc};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     /// The circuit verifying key.
-    pub circuit_verifying_key: CircuitVerifyingKey<E, MM>,
+    pub circuit_verifying_key: CircuitVerifyingKey<E>,
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<sonic_pc::Randomness<E>>,
     // NOTE: The circuit verifying key's circuit_info and circuit id are also stored in Circuit for convenience.

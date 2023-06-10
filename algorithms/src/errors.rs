@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::snark::marlin::ahp::AHPError;
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_r1cs::SynthesisError;
 
@@ -33,7 +34,7 @@ pub enum SNARKError {
     Message(String),
 
     #[error("{}", _0)]
-    SynthesisError(SynthesisError),
+    SynthesisError(#[from] SynthesisError),
 
     #[error("Batch size was zero; must be at least 1")]
     EmptyBatch,
@@ -48,8 +49,17 @@ pub enum SNARKError {
     Terminated,
 }
 
-impl From<SynthesisError> for SNARKError {
-    fn from(error: SynthesisError) -> Self {
-        SNARKError::SynthesisError(error)
+impl From<AHPError> for SNARKError {
+    fn from(err: AHPError) -> Self {
+        SNARKError::Crate("AHPError", format!("{err:?}"))
+    }
+}
+
+impl From<crate::polycommit::PCError> for SNARKError {
+    fn from(err: crate::polycommit::PCError) -> Self {
+        match err {
+            crate::polycommit::PCError::Terminated => SNARKError::Terminated,
+            err => SNARKError::Crate("PCError", format!("{err:?}")),
+        }
     }
 }

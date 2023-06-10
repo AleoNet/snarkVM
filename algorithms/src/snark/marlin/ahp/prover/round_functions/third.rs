@@ -53,7 +53,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the degree bounds of oracles in the third round.
     pub fn third_round_polynomial_info<'a>(
-        circuits: impl Iterator<Item = (CircuitId, &'a CircuitInfo<F>)>,
+        circuits: impl Iterator<Item = (CircuitId, &'a CircuitInfo)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         circuits
             .flat_map(|(circuit_id, circuit_info)| {
