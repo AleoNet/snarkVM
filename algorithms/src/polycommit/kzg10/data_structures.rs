@@ -17,7 +17,7 @@ use crate::{
     AlgebraicSponge,
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
 use snarkvm_parameters::testnet3::PowersOfG;
 use snarkvm_utilities::{
     borrow::Cow,
@@ -337,30 +337,6 @@ impl<E: PairingEngine> KZGCommitment<E> {
 impl<E: PairingEngine> ToConstraintField<E::Fq> for KZGCommitment<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         self.0.to_field_elements()
-    }
-}
-
-/// `PreparedKZGCommitment` commits to a polynomial and prepares for mul_bits.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct PreparedKZGCommitment<E: PairingEngine>(
-    /// The commitment is a group element.
-    pub Vec<E::G1Affine>,
-);
-
-impl<E: PairingEngine> PreparedKZGCommitment<E> {
-    /// prepare `PreparedKZGCommitment` from `KZGCommitment`
-    pub fn prepare(comm: &KZGCommitment<E>) -> Self {
-        let mut prepared_comm = Vec::<E::G1Affine>::new();
-        let mut cur = E::G1Projective::from(comm.0);
-
-        let supported_bits = E::Fr::size_in_bits();
-
-        for _ in 0..supported_bits {
-            prepared_comm.push(cur.into());
-            cur.double_in_place();
-        }
-
-        Self(prepared_comm)
     }
 }
 

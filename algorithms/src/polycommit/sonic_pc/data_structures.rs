@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use super::{LabeledPolynomial, PolynomialInfo};
-use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
-use snarkvm_curves::{PairingEngine, ProjectiveCurve};
+use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10};
+use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
@@ -34,25 +34,6 @@ pub type Randomness<E> = kzg10::KZGRandomness<E>;
 
 /// `Commitment` is the commitment for the KZG10 scheme.
 pub type Commitment<E> = kzg10::KZGCommitment<E>;
-
-/// `PreparedCommitment` is the prepared commitment for the KZG10 scheme.
-pub type PreparedCommitment<E> = kzg10::PreparedKZGCommitment<E>;
-
-impl<E: PairingEngine> Prepare for Commitment<E> {
-    type Prepared = PreparedCommitment<E>;
-
-    /// prepare `PreparedCommitment` from `Commitment`
-    fn prepare(&self) -> PreparedCommitment<E> {
-        let mut prepared_comm = Vec::<E::G1Affine>::new();
-        let mut cur = E::G1Projective::from(self.0);
-        for _ in 0..128 {
-            prepared_comm.push(cur.into());
-            cur.double_in_place();
-        }
-
-        kzg10::PreparedKZGCommitment::<E>(prepared_comm)
-    }
-}
 
 /// `CommitterKey` is used to commit to, and create evaluation proofs for, a given polynomial.
 #[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
