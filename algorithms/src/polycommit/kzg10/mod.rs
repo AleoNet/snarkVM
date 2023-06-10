@@ -418,7 +418,6 @@ impl<E: PairingEngine> KZG10<E> {
     }
 
     pub(crate) fn check_degrees_and_bounds<'a>(
-        supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
         p: impl Into<LabeledPolynomialWithBasis<'a, E::Fr>>,
@@ -433,7 +432,7 @@ impl<E: PairingEngine> KZG10<E> {
                 return Err(PCError::IncorrectDegreeBound {
                     poly_degree: p.degree(),
                     degree_bound: p.degree_bound().unwrap(),
-                    supported_degree,
+                    max_degree,
                     label: p.label().to_string(),
                 });
             } else {

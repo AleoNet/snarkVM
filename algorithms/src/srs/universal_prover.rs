@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::polycommit::kzg10;
 use snarkvm_curves::{PairingCurve, PairingEngine};
 
 use std::{collections::BTreeMap, sync::Arc};

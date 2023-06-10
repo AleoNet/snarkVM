@@ -86,8 +86,8 @@ pub enum PCError {
         poly_degree: usize,
         /// Degree bound.
         degree_bound: usize,
-        /// Maximum supported degree.
-        supported_degree: usize,
+        /// Maximum degree.
+        max_degree: usize,
         /// Index of the offending polynomial.
         label: String,
     },
@@ -142,11 +142,10 @@ impl core::fmt::Display for PCError {
             Self::LagrangeBasisSizeIsTooLarge => {
                 write!(f, "the Lagrange Basis size larger than max supported degree")
             }
-            Self::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
+            Self::IncorrectDegreeBound { poly_degree, degree_bound, max_degree, label } => write!(
                 f,
-                "the degree bound ({degree_bound:?}) for the polynomial {label} \
-                 (having degree {poly_degree:?}) is greater than the maximum \
-                 supported degree ({supported_degree:?})"
+                "the degree bound ({degree_bound}) for the polynomial {label} \
+                 (having degree {poly_degree}) is greater than the maximum degree ({max_degree})"
             ),
             Self::Terminated => write!(f, "terminated"),
         }
