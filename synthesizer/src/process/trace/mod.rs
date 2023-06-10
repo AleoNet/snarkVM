@@ -157,6 +157,14 @@ impl<N: Network> Trace<N> {
     ) -> Result<Execution<N>> {
         // Ensure this is not a fee.
         ensure!(!self.is_fee(), "The trace cannot prove execution for fee");
+        // Ensure there are no fee transitions.
+        ensure!(
+            self.transitions.iter().all(|transition| {
+                !(&transition.program_id().to_string() == "credits.aleo"
+                    && &transition.function_name().to_string() == "fee")
+            }),
+            "The trace cannot prove execution for a fee, call 'prove_fee' instead"
+        );
         // Retrieve the inclusion assignments.
         let inclusion_assignments =
             self.inclusion_assignments.get().ok_or_else(|| anyhow!("Inclusion assignments have not been set"))?;
