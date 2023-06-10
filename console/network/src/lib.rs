@@ -36,7 +36,7 @@ use crate::environment::prelude::*;
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
     snark::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinHidingMode},
-    srs::UniversalVerifier,
+    srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
@@ -173,7 +173,10 @@ pub trait Network:
     /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
-    /// Returns the universal verifier for Marlin.
+    /// Returns the Marlin universal prover.
+    fn marlin_universal_prover() -> &'static UniversalProver<Self::PairingCurve>;
+
+    /// Returns the Marlin universal verifier.
     fn marlin_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;
 
     /// Returns the sponge parameters for Marlin.

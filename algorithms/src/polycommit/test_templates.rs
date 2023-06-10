@@ -69,6 +69,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
     let rng = &mut TestRng::default();
     let max_degree = 100;
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
+    let universal_prover = &pp.to_universal_prover().unwrap();
 
     for _ in 0..10 {
         let supported_degree = distributions::Uniform::from(1..=max_degree).sample(rng);
@@ -98,7 +99,8 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
 
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
 
-        let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
+        let (comms, rands) =
+            SonicKZG10::<E, S>::commit(universal_prover, &ck, polynomials.iter().map(Into::into), Some(rng))?;
 
         let mut query_set = QuerySet::new();
         let mut values = Evaluations::new();
@@ -111,7 +113,15 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
+        let proof = SonicKZG10::batch_open(
+            universal_prover,
+            &ck,
+            &polynomials,
+            &comms,
+            &query_set,
+            &rands,
+            &mut sponge_for_open,
+        )?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         assert!(result, "proof was incorrect, Query set: {query_set:#?}");
@@ -131,6 +141,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
 
     let rng = &mut TestRng::default();
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
+    let universal_prover = &pp.to_universal_prover().unwrap();
 
     for _ in 0..num_iters {
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
@@ -181,7 +192,8 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
         let vk = pp.to_universal_verifier().unwrap();
 
-        let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, lagrange_polynomials, Some(rng)).unwrap();
+        let (comms, rands) =
+            SonicKZG10::<E, S>::commit(universal_prover, &ck, lagrange_polynomials, Some(rng)).unwrap();
 
         // Construct query set
         let mut query_set = QuerySet::new();
@@ -198,7 +210,15 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
+        let proof = SonicKZG10::batch_open(
+            universal_prover,
+            &ck,
+            &polynomials,
+            &comms,
+            &query_set,
+            &rands,
+            &mut sponge_for_open,
+        )?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
@@ -245,6 +265,7 @@ where
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let supported_degree_bounds = pp.supported_degree_bounds();
+    let universal_prover = &pp.to_universal_prover().unwrap();
 
     for _ in 0..num_iters {
         let supported_degree =
@@ -302,7 +323,8 @@ where
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
         let vk = pp.to_universal_verifier().unwrap();
 
-        let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
+        let (comms, rands) =
+            SonicKZG10::<E, S>::commit(universal_prover, &ck, polynomials.iter().map(Into::into), Some(rng))?;
 
         // Construct query set
         let mut query_set = QuerySet::new();
@@ -319,7 +341,15 @@ where
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
+        let proof = SonicKZG10::batch_open(
+            universal_prover,
+            &ck,
+            &polynomials,
+            &comms,
+            &query_set,
+            &rands,
+            &mut sponge_for_open,
+        )?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
@@ -364,6 +394,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
     let max_degree = max_degree.unwrap_or_else(|| distributions::Uniform::from(8..=64).sample(rng));
     let pp = SonicKZG10::<E, S>::load_srs(max_degree)?;
     let supported_degree_bounds = pp.supported_degree_bounds();
+    let universal_prover = &pp.to_universal_prover().unwrap();
 
     for _ in 0..num_iters {
         let supported_degree =
@@ -425,7 +456,8 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
         let vk = pp.to_universal_verifier().unwrap();
 
-        let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
+        let (comms, rands) =
+            SonicKZG10::<E, S>::commit(universal_prover, &ck, polynomials.iter().map(Into::into), Some(rng))?;
 
         // Let's construct our equations
         let mut linear_combinations = Vec::new();
@@ -472,6 +504,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
 
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::open_combinations(
+            universal_prover,
             &ck,
             &linear_combinations,
             &polynomials,

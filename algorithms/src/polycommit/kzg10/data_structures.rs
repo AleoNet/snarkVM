@@ -29,7 +29,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
-use crate::srs::UniversalVerifier;
+use crate::srs::{UniversalProver, UniversalVerifier};
 use anyhow::Result;
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
@@ -105,6 +105,10 @@ impl<E: PairingEngine> UniversalParams<E> {
 
     pub fn supported_degree_bounds(&self) -> &[usize] {
         &self.supported_degree_bounds
+    }
+
+    pub fn to_universal_prover(&self) -> Result<UniversalProver<E>> {
+        Ok(UniversalProver::<E> { max_degree: self.max_degree(), _unused: None })
     }
 
     pub fn to_universal_verifier(&self) -> Result<UniversalVerifier<E>> {

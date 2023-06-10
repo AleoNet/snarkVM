@@ -316,13 +316,14 @@ mod tests {
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover().unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_pp = FS::sample_parameters();
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &assignment).unwrap();
         println!("Called circuit setup");
 
-        let proof = MarlinInst::prove(&fs_pp, &index_pk, &assignment, rng).unwrap();
+        let proof = MarlinInst::prove(universal_prover, &fs_pp, &index_pk, &assignment, rng).unwrap();
         println!("Called prover");
 
         let one = <Circuit as Environment>::BaseField::one();

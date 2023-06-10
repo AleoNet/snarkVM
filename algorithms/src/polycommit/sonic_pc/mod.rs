@@ -16,7 +16,7 @@ use crate::{
     fft::DensePolynomial,
     msm::variable_base::VariableBase,
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
-    srs::UniversalVerifier,
+    srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
 use hashbrown::HashMap;
@@ -155,7 +155,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
             enforced_degree_bounds,
-            max_degree,
         };
 
         let vk = pp.to_universal_verifier()?;
@@ -179,6 +178,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     #[allow(clippy::type_complexity)]
     #[allow(clippy::format_push_string)]
     pub fn commit<'b>(
+        universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
         polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'b, E::Fr>>,
         rng: Option<&mut dyn RngCore>,
@@ -198,7 +198,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
-                ck.max_degree,
+                universal_prover.max_degree,
                 ck.enforced_degree_bounds.as_deref(),
                 p.clone(),
             )?;
@@ -271,6 +271,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     }
 
     pub fn combine_for_open<'a>(
+        universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
         labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
@@ -285,7 +286,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
-                ck.max_degree,
+                universal_prover.max_degree,
                 enforced_degree_bounds,
                 p,
             )
@@ -298,6 +299,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     /// On input a list of labeled polynomials and a query set, `open` outputs a proof of evaluation
     /// of the polynomials at the points in the query set.
     pub fn batch_open<'a>(
+        universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
         labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
@@ -343,7 +345,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 query_rands.push(*rand);
                 query_comms.push(*comm);
             }
-            let (polynomial, rand) = Self::combine_for_open(ck, query_polys, query_rands, fs_rng)?;
+            let (polynomial, rand) = Self::combine_for_open(universal_prover, ck, query_polys, query_rands, fs_rng)?;
             let _randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
 
             pool.add_job(move || {
@@ -428,6 +430,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     }
 
     pub fn open_combinations<'a>(
+        universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
         polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
@@ -494,6 +497,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             .collect::<Vec<_>>();
 
         let proof = Self::batch_open(
+            universal_prover,
             ck,
             lc_polynomials.iter(),
             lc_commitments.iter(),

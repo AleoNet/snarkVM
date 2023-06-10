@@ -39,8 +39,12 @@ impl<N: Network> Certificate<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        // Retrieve the proving parameters.
+        let universal_prover = N::marlin_universal_prover();
+        let fiat_shamir = N::marlin_fs_parameters();
+
         // Compute the certificate.
-        let certificate = Marlin::<N>::prove_vk(N::marlin_fs_parameters(), verifying_key, proving_key)?;
+        let certificate = Marlin::<N>::prove_vk(universal_prover, fiat_shamir, verifying_key, proving_key)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Certified '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());

@@ -12,8 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod universal_prover;
-pub use universal_prover::*;
+use crate::polycommit::kzg10;
+use snarkvm_curves::{PairingCurve, PairingEngine};
 
-pub mod universal_verifier;
-pub use universal_verifier::*;
+use std::{collections::BTreeMap, sync::Arc};
+
+/// `UniversalProver` is used to compute evaluation proofs for a given commitment.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UniversalProver<E: PairingEngine> {
+    /// The maximum degree supported by the universal SRS.
+    pub max_degree: usize,
+    pub _unused: Option<E>,
+}

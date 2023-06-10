@@ -51,6 +51,7 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::{borrow::Borrow, collections::BTreeMap, ops::Deref, sync::Arc};
 
+use crate::srs::UniversalProver;
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
@@ -72,6 +73,8 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         circuits: &[&C],
     ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
+
+        let universal_prover = &universal_srs.to_universal_prover()?;
 
         let mut circuit_keys = Vec::with_capacity(circuits.len());
         for circuit in circuits {
@@ -99,7 +102,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
-                SonicKZG10::<E, FS>::commit(&ck, indexed_circuit.iter().map(Into::into), None)?;
+                SonicKZG10::<E, FS>::commit(universal_prover, &ck, indexed_circuit.iter().map(Into::into), None)?;
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
@@ -195,6 +198,7 @@ where
     type Proof = Proof<E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
+    type UniversalProver = UniversalProver<E>;
     type UniversalSRS = UniversalSRS<E>;
     type UniversalVerifier = UniversalVerifier<E>;
     type VerifierInput = [E::Fr];
@@ -221,6 +225,7 @@ where
     /// Prove that the verifying key indeed includes a part of the reference string,
     /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
     fn prove_vk(
+        universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
@@ -253,6 +258,7 @@ where
         let committer_key = CommitterUnionKey::union(std::iter::once(proving_key.committer_key.as_ref()));
 
         let certificate = SonicKZG10::<E, FS>::open_combinations(
+            universal_prover,
             &committer_key,
             &[lc],
             proving_key.circuit.iter(),
@@ -322,6 +328,7 @@ where
     /// You can find a specification of the prover algorithm in:
     /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn prove_batch<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+        universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[C]>,
         zk_rng: &mut R,
@@ -374,7 +381,12 @@ where
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = {
             let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
-            SonicKZG10::<E, FS>::commit(&committer_key, first_round_oracles.iter_for_commit(), Some(zk_rng))?
+            SonicKZG10::<E, FS>::commit(
+                universal_prover,
+                &committer_key,
+                first_round_oracles.iter_for_commit(),
+                Some(zk_rng),
+            )?
         };
         end_timer!(first_round_comm_time);
 
@@ -396,8 +408,12 @@ where
             AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_message, prover_state, zk_rng);
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
-        let (second_commitments, second_commitment_randomnesses) =
-            SonicKZG10::<E, FS>::commit(&committer_key, second_oracles.iter().map(Into::into), Some(zk_rng))?;
+        let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
+            universal_prover,
+            &committer_key,
+            second_oracles.iter().map(Into::into),
+            Some(zk_rng),
+        )?;
         end_timer!(second_round_comm_time);
 
         Self::absorb_labeled(&second_commitments, &mut sponge);
@@ -413,8 +429,12 @@ where
             AHPForR1CS::<_, MM>::prover_third_round(&verifier_second_msg, prover_state, zk_rng)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
-        let (third_commitments, third_commitment_randomnesses) =
-            SonicKZG10::<E, FS>::commit(&committer_key, third_oracles.iter().map(Into::into), Some(zk_rng))?;
+        let (third_commitments, third_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
+            universal_prover,
+            &committer_key,
+            third_oracles.iter().map(Into::into),
+            Some(zk_rng),
+        )?;
         end_timer!(third_round_comm_time);
 
         Self::absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
@@ -430,8 +450,12 @@ where
         let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(verifier_third_msg, prover_state, zk_rng)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
-        let (fourth_commitments, fourth_commitment_randomnesses) =
-            SonicKZG10::<E, FS>::commit(&committer_key, fourth_oracles.iter().map(Into::into), Some(zk_rng))?;
+        let (fourth_commitments, fourth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
+            universal_prover,
+            &committer_key,
+            fourth_oracles.iter().map(Into::into),
+            Some(zk_rng),
+        )?;
         end_timer!(fourth_round_comm_time);
 
         Self::absorb_labeled(&fourth_commitments, &mut sponge);
@@ -535,6 +559,7 @@ where
         sponge.absorb_nonnative_field_elements(evaluations.to_field_elements());
 
         let pc_proof = SonicKZG10::<E, FS>::open_combinations(
+            universal_prover,
             &committer_key,
             lc_s.values(),
             polynomials,

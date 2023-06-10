@@ -59,9 +59,6 @@ pub struct CommitterKey<E: PairingEngine> {
     /// Sorted in ascending order from smallest bound to largest bound.
     /// This is `None` if `self` does not support enforcing any degree bounds.
     pub enforced_degree_bounds: Option<Vec<usize>>,
-
-    /// The maximum degree supported by the `UniversalParams` from which `self` was derived
-    pub max_degree: usize,
 }
 
 impl<E: PairingEngine> FromBytes for CommitterKey<E> {
@@ -151,9 +148,6 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
             false => None,
         };
 
-        // Deserialize `max_degree`.
-        let max_degree: u32 = FromBytes::read_le(&mut reader)?;
-
         // Construct the hash of the group elements.
         let mut hash_input = powers_of_beta_g.to_bytes_le().map_err(|_| error("Could not serialize powers"))?;
 
@@ -195,7 +189,6 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
             enforced_degree_bounds,
-            max_degree: max_degree as usize,
         })
     }
 }
@@ -253,9 +246,6 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
                 (*enforced_degree_bound as u32).write_le(&mut writer)?;
             }
         }
-
-        // Serialize `max_degree`.
-        (self.max_degree as u32).write_le(&mut writer)?;
 
         // Construct the hash of the group elements.
         let mut hash_input = self.powers_of_beta_g.to_bytes_le().map_err(|_| error("Could not serialize powers"))?;
@@ -319,9 +309,6 @@ pub struct CommitterUnionKey<'a, E: PairingEngine> {
     /// Sorted in ascending order from smallest bound to largest bound.
     /// This is `None` if `self` does not support enforcing any degree bounds.
     pub enforced_degree_bounds: Option<Vec<usize>>,
-
-    /// The maximum degree supported by the `UniversalParams` from which `self` was derived
-    pub max_degree: usize,
 }
 
 impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
@@ -367,10 +354,6 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         })
     }
 
-    pub fn max_degree(&self) -> usize {
-        self.max_degree
-    }
-
     pub fn supported_degree(&self) -> usize {
         self.powers_of_beta_g.unwrap().len() - 1
     }
@@ -383,7 +366,6 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
             shifted_powers_of_beta_g: None,
             shifted_powers_of_beta_times_gamma_g: None,
             enforced_degree_bounds: None,
-            max_degree: 0,
         };
         let mut enforced_degree_bounds = vec![];
         let mut biggest_ck: Option<&CommitterKey<E>> = None;
@@ -410,7 +392,6 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         ck_union.powers_of_beta_g = Some(&biggest_ck.powers_of_beta_g);
         ck_union.powers_of_beta_times_gamma_g = Some(&biggest_ck.powers_of_beta_times_gamma_g);
         ck_union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.as_ref();
-        ck_union.max_degree = biggest_ck.max_degree;
 
         if !enforced_degree_bounds.is_empty() {
             enforced_degree_bounds.sort();

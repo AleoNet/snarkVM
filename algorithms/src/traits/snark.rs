@@ -46,6 +46,7 @@ pub trait SNARK {
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync + Ord;
 
     type UniversalSRS: Clone;
+    type UniversalProver;
     type UniversalVerifier;
 
     type VerifierInput: ?Sized;
@@ -69,12 +70,14 @@ pub trait SNARK {
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey)>;
 
     fn prove_vk(
+        universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
     ) -> Result<Self::Certificate, SNARKError>;
 
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
         constraints: &C,
@@ -82,10 +85,11 @@ pub trait SNARK {
     ) -> Result<Self::Proof, SNARKError> {
         let mut keys_to_constraints = BTreeMap::new();
         keys_to_constraints.insert(proving_key, std::slice::from_ref(constraints));
-        Self::prove_batch(fs_parameters, &keys_to_constraints, rng)
+        Self::prove_batch(universal_prover, fs_parameters, &keys_to_constraints, rng)
     }
 
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
         keys_to_constraints: &BTreeMap<&Self::ProvingKey, &[C]>,
         rng: &mut R,
