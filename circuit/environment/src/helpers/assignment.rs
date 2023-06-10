@@ -63,6 +63,15 @@ impl<F: PrimeField> AssignmentLC<F> {
     pub const fn terms(&self) -> &IndexMap<AssignmentVariable<F>, F> {
         &self.terms
     }
+
+    /// Returns the number of nonzeros in the linear combination.
+    pub(super) fn num_nonzeros(&self) -> u64 {
+        // Increment by one if the constant is nonzero.
+        match self.constant.is_zero() {
+            true => self.terms.len() as u64,
+            false => (self.terms.len() as u64).saturating_add(1),
+        }
+    }
 }
 
 /// A struct that contains public variable assignments, private variable assignments,
@@ -121,6 +130,14 @@ impl<F: PrimeField> Assignment<F> {
     /// Returns the number of constraints in the assignment.
     pub fn num_constraints(&self) -> u64 {
         self.constraints.len() as u64
+    }
+
+    /// Returns the number of nonzeros in the assignment.
+    pub fn num_nonzeros(&self) -> (u64, u64, u64) {
+        self.constraints
+            .iter()
+            .map(|(a, b, c)| (a.num_nonzeros(), b.num_nonzeros(), c.num_nonzeros()))
+            .fold((0, 0, 0), |(a, b, c), (x, y, z)| (a.saturating_add(x), b.saturating_add(y), c.saturating_add(z)))
     }
 }
 

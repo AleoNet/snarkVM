@@ -66,44 +66,21 @@ impl<C: Inject<Primitive = P>, P> Inject for Vec<C> {
 /****** Tuples ******/
 /********************/
 
-impl<C0: Inject, C1: Inject> Inject for (C0, C1) {
-    type Primitive = (C0::Primitive, C1::Primitive);
+/// A helper macro to implement `Inject` for a tuple of `Inject` circuits.
+macro_rules! inject_tuple {
+    (($t0:ident, 0), $(($ty:ident, $idx:tt)),*) => {
+        impl<$t0: Inject, $($ty: Inject),*> Inject for ($t0, $($ty),*) {
+            type Primitive = ($t0::Primitive, $( $ty::Primitive ),*);
 
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (C0::new(mode, value.0), C1::new(mode, value.1))
+            #[inline]
+            fn new(mode: Mode, value: Self::Primitive) -> Self {
+                ($t0::new(mode, value.0), $($ty::new(mode, value.$idx)),*)
+            }
+        }
     }
 }
 
-impl<C0: Inject, C1: Inject, C2: Inject> Inject for (C0, C1, C2) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive);
-
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (C0::new(mode, value.0), C1::new(mode, value.1), C2::new(mode, value.2))
-    }
-}
-
-impl<C0: Inject, C1: Inject, C2: Inject, C3: Inject> Inject for (C0, C1, C2, C3) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive);
-
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (C0::new(mode, value.0), C1::new(mode, value.1), C2::new(mode, value.2), C3::new(mode, value.3))
-    }
-}
-
-impl<C0: Inject, C1: Inject, C2: Inject, C3: Inject, C4: Inject> Inject for (C0, C1, C2, C3, C4) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive, C4::Primitive);
-
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (
-            C0::new(mode, value.0),
-            C1::new(mode, value.1),
-            C2::new(mode, value.2),
-            C3::new(mode, value.3),
-            C4::new(mode, value.4),
-        )
-    }
-}
+inject_tuple!((C0, 0), (C1, 1));
+inject_tuple!((C0, 0), (C1, 1), (C2, 2));
+inject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3));
+inject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4));

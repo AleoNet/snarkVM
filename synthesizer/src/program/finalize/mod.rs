@@ -38,12 +38,14 @@ pub struct Finalize<N: Network> {
     inputs: IndexSet<Input<N>>,
     /// The commands, in order of execution.
     commands: Vec<Command<N>>,
+    /// The number of write commands.
+    num_writes: u16,
 }
 
 impl<N: Network> Finalize<N> {
     /// Initializes a new finalize with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), commands: Vec::new() }
+        Self { name, inputs: IndexSet::new(), commands: Vec::new(), num_writes: 0 }
     }
 
     /// Returns the name of the associated function.
@@ -64,6 +66,11 @@ impl<N: Network> Finalize<N> {
     /// Returns the finalize commands.
     pub fn commands(&self) -> &[Command<N>] {
         &self.commands
+    }
+
+    /// Returns the number of write commands.
+    pub const fn num_writes(&self) -> u16 {
+        self.num_writes
     }
 }
 
@@ -100,8 +107,10 @@ impl<N: Network> Finalize<N> {
     pub fn add_command(&mut self, command: Command<N>) -> Result<()> {
         // Ensure the maximum number of commands has not been exceeded.
         ensure!(self.commands.len() < N::MAX_COMMANDS, "Cannot add more than {} commands", N::MAX_COMMANDS);
+        // Ensure the number of write commands has not been exceeded.
+        ensure!(self.num_writes < N::MAX_WRITES, "Cannot add more than {} 'set' commands", N::MAX_WRITES);
 
-        // If the command is an instruction, `get` command, or `get.or_init` command, perform additional checks.
+        // Perform additional checks on the command.
         match &command {
             Command::Instruction(instruction) => {
                 match instruction {
@@ -122,14 +131,17 @@ impl<N: Network> Finalize<N> {
                 // Ensure the destination register is a locator.
                 ensure!(matches!(get.destination(), Register::Locator(..)), "Destination register must be a locator");
             }
-            Command::GetOrInit(get_or_init) => {
+            Command::GetOrUse(get_or_use) => {
                 // Ensure the destination register is a locator.
                 ensure!(
-                    matches!(get_or_init.destination(), Register::Locator(..)),
+                    matches!(get_or_use.destination(), Register::Locator(..)),
                     "Destination register must be a locator"
                 );
             }
-            Command::Set(_) => {}
+            Command::Set(_) => {
+                // Increment the number of write commands.
+                self.num_writes += 1;
+            }
         }
 
         // Insert the command.

@@ -17,13 +17,14 @@ use crate::store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
     BlockStore,
 };
-use circuit::network::AleoV0;
+use circuit::{network::AleoV0, Assignment};
 use console::{
     account::{Address, PrivateKey, ViewKey},
     network::Testnet3,
     program::{Identifier, Literal, Value},
     types::Field,
 };
+use snarkvm_curves::bls12_377::Fr;
 
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
@@ -764,7 +765,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r2 r1 into r3;
     set r3 into account[r0];
 ",
@@ -873,7 +874,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r2 r1 into r3;
     sub r3 r1 into r4;
     set r4 into account[r0];
@@ -996,7 +997,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Set `r3` into `account[r0]`.
@@ -1124,7 +1125,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Set `r3` into `account[r0]`.
@@ -1260,7 +1261,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r1 r2 into r3;
     set r3 into account[r0];
     get account[r0] into r4;
@@ -1375,7 +1376,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as entry.public;
-    get.or_init entries[r0] r1 into r2;
+    get.or_use entries[r0] r1 into r2;
     add r1.count r2.count into r3;
     add r1.data r2.data into r4;
     cast r3 r4 into r5 as entry;
@@ -1467,4 +1468,91 @@ finalize compute:
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("{ count: 3u8, data: 6u8 }").unwrap());
+}
+
+#[test]
+fn test_sanity_check_transfer_and_fee() {
+    use console::types::Group;
+
+    // Initialize the RNG.
+    let rng = &mut TestRng::default();
+
+    // Initialize a new caller account.
+    let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let caller = Address::try_from(&private_key).unwrap();
+
+    // Construct a new process.
+    let process = Process::load().unwrap();
+    // Retrieve the stack.
+    let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+
+    /* Transfer */
+    {
+        // Declare the function name.
+        let function_name = Identifier::from_str("transfer_private").unwrap();
+
+        // Declare the inputs.
+        let r0 = Value::from_str(&format!(
+            "{{ owner: {caller}.private, microcredits: 1_500_000_000_000_000_u64.private, _nonce: {}.public }}",
+            Group::<CurrentNetwork>::zero()
+        ))
+        .unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+
+        // Compute the assignment.
+        let assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        assert_eq!(12, assignment.num_public());
+        assert_eq!(54672, assignment.num_private());
+        assert_eq!(54730, assignment.num_constraints());
+        assert_eq!((88496, 130675, 83625), assignment.num_nonzeros());
+    }
+
+    println!();
+
+    /* Fee */
+    {
+        // Declare the function name.
+        let function_name = Identifier::from_str("fee").unwrap();
+
+        // Declare the inputs.
+        let r0 = Value::from_str(&format!(
+            "{{ owner: {caller}.private, microcredits: 1_500_000_000_000_000_u64.private, _nonce: {}.public }}",
+            Group::<CurrentNetwork>::zero()
+        ))
+        .unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
+
+        // Compute the assignment.
+        let assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        assert_eq!(10, assignment.num_public());
+        assert_eq!(41218, assignment.num_private());
+        assert_eq!(41265, assignment.num_constraints());
+        assert_eq!((64422, 92898, 62357), assignment.num_nonzeros());
+    }
+}
+
+fn get_assignment(
+    stack: &Stack<CurrentNetwork>,
+    private_key: &PrivateKey<CurrentNetwork>,
+    function_name: Identifier<CurrentNetwork>,
+    inputs: &[Value<CurrentNetwork>],
+    rng: &mut TestRng,
+) -> Assignment<Fr> {
+    // Retrieve the program.
+    let program = stack.program();
+    // Retrieve the input types.
+    let input_types = program.get_function(&function_name).unwrap().input_types();
+    // Compute the request.
+    let request = Request::sign(private_key, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
+    // Initialize the assignments.
+    let assignments = Assignments::<CurrentNetwork>::default();
+    // Initialize the call stack.
+    let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
+    // Synthesize the circuit.
+    let _response = stack.execute_function::<CurrentAleo>(call_stack).unwrap();
+    // Retrieve the assignment.
+    let assignment = assignments.read().last().unwrap().clone();
+    assignment
 }

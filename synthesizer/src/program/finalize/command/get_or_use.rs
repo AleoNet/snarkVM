@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use crate::{
-    FinalizeOperation,
     FinalizeStorage,
     FinalizeStore,
     Opcode,
@@ -28,11 +27,11 @@ use console::{
     program::{Identifier, Register, Value},
 };
 
-/// A get command that initializes the mapping in case of failure, e.g. `get.or_init accounts[r0] r1 into r2;`.
+/// A get command that uses the provided default in case of failure, e.g. `get.or_use accounts[r0] r1 into r2;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
-/// If the key is not present, `default` is stored in `mapping` and stored in `destination`.
+/// If the key is not present, `default` is stored in `destination`.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct GetOrInit<N: Network> {
+pub struct GetOrUse<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The key to access the mapping.
@@ -43,11 +42,11 @@ pub struct GetOrInit<N: Network> {
     destination: Register<N>,
 }
 
-impl<N: Network> GetOrInit<N> {
+impl<N: Network> GetOrUse<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("get.or_init")
+        Opcode::Command("get.or_use")
     }
 
     /// Returns the operands in the operation.
@@ -81,7 +80,7 @@ impl<N: Network> GetOrInit<N> {
     }
 }
 
-impl<N: Network> GetOrInit<N> {
+impl<N: Network> GetOrUse<N> {
     /// Finalizes the command.
     #[inline]
     pub fn finalize<P: FinalizeStorage<N>>(
@@ -89,7 +88,7 @@ impl<N: Network> GetOrInit<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut (impl LoadTrait<N> + RegistersStore<N>),
-    ) -> Result<Option<FinalizeOperation<N>>> {
+    ) -> Result<()> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
@@ -99,27 +98,22 @@ impl<N: Network> GetOrInit<N> {
         let key = registers.load_plaintext(stack, &self.key)?;
 
         // Retrieve the value from storage as a literal.
-        let (value, finalize_operation) = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
-            Some(Value::Plaintext(plaintext)) => (Value::Plaintext(plaintext), None),
-            Some(Value::Record(..)) => bail!("Cannot 'get.or_init' a 'record'"),
-            // If a key does not exist, then store the default value into the mapping and return it.
-            None => {
-                // Store the default value into the mapping.
-                let default = Value::Plaintext(registers.load_plaintext(stack, &self.default)?);
-                // Return the default value and finalize operation.
-                (default.clone(), Some(store.update_key_value(stack.program_id(), &self.mapping, key, default)?))
-            }
+        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
+            Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
+            Some(Value::Record(..)) => bail!("Cannot 'get.or_use' a 'record'"),
+            // If a key does not exist, then use the default value.
+            None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
         };
 
         // Assign the value to the destination register.
         registers.store(stack, &self.destination, value)?;
 
         // Return the finalize operation.
-        Ok(finalize_operation)
+        Ok(())
     }
 }
 
-impl<N: Network> Parser for GetOrInit<N> {
+impl<N: Network> Parser for GetOrUse<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -165,7 +159,7 @@ impl<N: Network> Parser for GetOrInit<N> {
     }
 }
 
-impl<N: Network> FromStr for GetOrInit<N> {
+impl<N: Network> FromStr for GetOrUse<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -183,14 +177,14 @@ impl<N: Network> FromStr for GetOrInit<N> {
     }
 }
 
-impl<N: Network> Debug for GetOrInit<N> {
+impl<N: Network> Debug for GetOrUse<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for GetOrInit<N> {
+impl<N: Network> Display for GetOrUse<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
@@ -202,7 +196,7 @@ impl<N: Network> Display for GetOrInit<N> {
     }
 }
 
-impl<N: Network> FromBytes for GetOrInit<N> {
+impl<N: Network> FromBytes for GetOrUse<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
@@ -218,7 +212,7 @@ impl<N: Network> FromBytes for GetOrInit<N> {
     }
 }
 
-impl<N: Network> ToBytes for GetOrInit<N> {
+impl<N: Network> ToBytes for GetOrUse<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
@@ -241,12 +235,12 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, get_or_init) = GetOrInit::<CurrentNetwork>::parse("get.or_init account[r0] r1 into r2;").unwrap();
+        let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get_or_init.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(get_or_init.operands().len(), 2, "The number of operands is incorrect");
-        assert_eq!(get_or_init.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(get_or_init.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(get_or_init.destination, Register::Locator(2), "The second operand is incorrect");
+        assert_eq!(get_or_use.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(get_or_use.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(get_or_use.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(get_or_use.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(get_or_use.destination, Register::Locator(2), "The second operand is incorrect");
     }
 }
