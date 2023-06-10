@@ -35,7 +35,7 @@ fn snark_universal_setup(c: &mut Criterion) {
 
     c.bench_function("snark_universal_setup", move |b| {
         b.iter(|| {
-            MarlinInst::universal_setup(&max_degree).unwrap();
+            MarlinInst::universal_setup(max_degree).unwrap();
         })
     });
 }
@@ -44,7 +44,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+    let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
 
     for size in [100, 1_000, 10_000] {
         let num_constraints = size;
@@ -65,7 +65,7 @@ fn snark_prove(c: &mut Criterion) {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -83,7 +83,7 @@ fn snark_batch_prove(c: &mut Criterion) {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
 
         let circuit_batch_size = 5;
@@ -124,7 +124,7 @@ fn snark_verify(c: &mut Criterion) {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
@@ -148,7 +148,7 @@ fn snark_batch_verify(c: &mut Criterion) {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 100).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
@@ -207,7 +207,7 @@ fn snark_vk_serialize(c: &mut Criterion) {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
@@ -242,7 +242,7 @@ fn snark_vk_deserialize(c: &mut Criterion) {
             let rng = &mut TestRng::default();
 
             let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
-            let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+            let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
             let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
             let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
@@ -263,7 +263,7 @@ fn snark_certificate_prove(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+    let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
     let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;
 
@@ -284,7 +284,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
     let rng = &mut TestRng::default();
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100_000, 100_000, 100_000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+    let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
     let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
     let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;

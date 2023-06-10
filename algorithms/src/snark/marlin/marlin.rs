@@ -195,15 +195,14 @@ where
     type Proof = Proof<E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
-    type UniversalSetupConfig = usize;
-    type UniversalSetupParameters = UniversalSRS<E>;
+    type UniversalSRS = UniversalSRS<E>;
     type UniversalVerifier = UniversalVerifier<E>;
     type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E>;
 
-    fn universal_setup(max_degree: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError> {
+    fn universal_setup(max_degree: usize) -> Result<Self::UniversalSRS, SNARKError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {max_degree}",) });
-        let srs = SonicKZG10::<E, FS>::load_srs(*max_degree).map_err(Into::into);
+        let srs = SonicKZG10::<E, FS>::load_srs(max_degree).map_err(Into::into);
         end_timer!(setup_time);
         srs
     }
@@ -211,7 +210,7 @@ where
     /// Generates the circuit proving and verifying keys.
     /// This is a deterministic algorithm that anyone can rerun.
     fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
-        universal_srs: &Self::UniversalSetupParameters,
+        universal_srs: &Self::UniversalSRS,
         circuit: &C,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey)> {
         let mut circuit_keys = Self::batch_circuit_setup(universal_srs, &[circuit])?;

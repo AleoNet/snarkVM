@@ -39,7 +39,7 @@ mod marlin {
                     let random = Fr::rand(rng);
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree).unwrap();
                     let universal_verifier = universal_srs.to_universal_verifier().unwrap();
                     let fs_parameters = FS::sample_parameters();
 
@@ -135,7 +135,7 @@ mod marlin {
                     let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree).unwrap();
 
                     let mul_depth = 1;
                     let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -162,7 +162,7 @@ mod marlin {
                     let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree).unwrap();
 
                     let mul_depth = 1;
                     let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -285,7 +285,7 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let universal_verifier = universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
@@ -323,7 +323,7 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
 
         let mul_depth = 1;
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -345,7 +345,7 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
 
         let mul_depth = 1;
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -431,7 +431,7 @@ mod marlin_hiding {
         let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let universal_verifier = universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
@@ -456,7 +456,7 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
         let universal_verifier = universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 

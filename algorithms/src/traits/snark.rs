@@ -45,9 +45,7 @@ pub trait SNARK {
     type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync + Ord;
 
-    // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
-    type UniversalSetupConfig: Clone;
-    type UniversalSetupParameters: FromBytes + ToBytes + Clone;
+    type UniversalSRS: Clone;
     type UniversalVerifier;
 
     type VerifierInput: ?Sized;
@@ -63,10 +61,10 @@ pub trait SNARK {
     type FiatShamirRng: AlgebraicSponge<Self::BaseField, 2, Parameters = Self::FSParameters>;
     type FSParameters;
 
-    fn universal_setup(config: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError>;
+    fn universal_setup(config: usize) -> Result<Self::UniversalSRS, SNARKError>;
 
     fn circuit_setup<C: ConstraintSynthesizer<Self::ScalarField>>(
-        srs: &Self::UniversalSetupParameters,
+        srs: &Self::UniversalSRS,
         circuit: &C,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey)>;
 
