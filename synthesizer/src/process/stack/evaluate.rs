@@ -97,7 +97,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             CallStack::Evaluate(authorization) => (authorization.next()?, call_stack),
             // If the evaluation is performed in the `Execute` mode, create a new `Evaluate` mode.
             // This is done to ensure that evaluation during execution is performed consistently.
-            CallStack::Execute(authorization, _, _, _) => {
+            CallStack::Execute(authorization, _) => {
                 let authorization = authorization.replicate();
                 let request = authorization.next()?;
                 let call_stack = CallStack::Evaluate(authorization);

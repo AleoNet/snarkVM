@@ -1369,7 +1369,7 @@ function c:
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
     // Construct the process.
-    let mut process = super::test_helpers::sample_process(&program0);
+    let mut process = test_helpers::sample_process(&program0);
 
     // Initialize another program.
     let (string, program1) = Program::<CurrentNetwork>::parse(
@@ -1441,7 +1441,7 @@ function a:
     assert_eq!(authorization.len(), 3);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -1455,14 +1455,21 @@ function a:
 
     // Check the expected transition order.
     for (transition, (expected_program_id, expected_function_name)) in
-        execution.transitions().zip_eq(expected_order.iter())
+        trace.transitions().iter().zip_eq(expected_order.iter())
     {
         assert_eq!(transition.program_id(), *expected_program_id);
         assert_eq!(transition.function_name(), expected_function_name);
     }
 
-    // Check that the execution is valid.
-    process.verify_execution::<false>(&execution).unwrap();
+    // Initialize a new block store.
+    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    // Prepare the trace.
+    trace.prepare(block_store).unwrap();
+    // Prove the execution.
+    let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
+
+    // Verify the execution.
+    process.verify_execution(&execution).unwrap();
 }
 
 #[test]
@@ -1616,7 +1623,7 @@ fn test_complex_execution_order() {
     assert_eq!(authorization.len(), 10);
 
     // Execute the request.
-    let (response, execution, _inclusion, _metrics) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(output, candidate[0]);
@@ -1635,14 +1642,21 @@ fn test_complex_execution_order() {
         (program4.id(), Identifier::<Testnet3>::from_str("a").unwrap()),
     ];
     for (transition, (expected_program_id, expected_function_name)) in
-        execution.transitions().zip_eq(expected_order.iter())
+        trace.transitions().iter().zip_eq(expected_order.iter())
     {
         assert_eq!(transition.program_id(), *expected_program_id);
         assert_eq!(transition.function_name(), expected_function_name);
     }
 
-    // Check that the execution is valid.
-    process.verify_execution::<false>(&execution).unwrap();
+    // Initialize a new block store.
+    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    // Prepare the trace.
+    trace.prepare(block_store).unwrap();
+    // Prove the execution.
+    let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
+
+    // Verify the execution.
+    process.verify_execution(&execution).unwrap();
 }
 
 #[test]
