@@ -167,11 +167,17 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (3, _) => Literal::Group(N::hash_to_group_bhp1024(&input.to_bits_le())?),
             (4, _) => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
             (5, _) => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
-            (6, LiteralType::Group) => Literal::Group(N::hash_to_group_psd2(&input.to_fields()?)?),
+            (6, LiteralType::Address) | (6, LiteralType::Group) => {
+                Literal::Group(N::hash_to_group_psd2(&input.to_fields()?)?)
+            }
             (6, _) => Literal::Field(N::hash_psd2(&input.to_fields()?)?),
-            (7, LiteralType::Group) => Literal::Group(N::hash_to_group_psd4(&input.to_fields()?)?),
+            (7, LiteralType::Address) | (7, LiteralType::Group) => {
+                Literal::Group(N::hash_to_group_psd4(&input.to_fields()?)?)
+            }
             (7, _) => Literal::Field(N::hash_psd4(&input.to_fields()?)?),
-            (8, LiteralType::Group) => Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?),
+            (8, LiteralType::Address) | (8, LiteralType::Group) => {
+                Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?)
+            }
             (8, _) => Literal::Field(N::hash_psd8(&input.to_fields()?)?),
             (9, _) => bail!("'hash_many' is not yet implemented"),
             (10, _) => bail!("'hash_many' is not yet implemented"),
