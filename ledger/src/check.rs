@@ -68,7 +68,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                         let function = program.get_function(transition.function_name())?;
                         let finalize_cost = match function.finalize() {
                             None => 0u64,
-                            Some((_, finalize_)) => finalize_.cost_in_microcredits()?,
+                            Some((_, finalize)) => finalize.cost_in_microcredits()?,
                         };
                         total_finalize_cost = match total_finalize_cost.checked_add(finalize_cost) {
                             Some(total_finalize_cost) => total_finalize_cost,
