@@ -126,7 +126,10 @@ impl<N: Network> Process<N> {
         // Iterate over each transition in reverse post-order, and populate the call graph and IO cache.
         for transition in execution.transitions().rev() {
             // Add the transition inputs and outputs to the IO cache.
-            io_cache.insert(*transition.id(), (transition.inputs().to_vec(), transition.outputs().to_vec()));
+            io_cache.insert(
+                *transition.id(),
+                (transition.inputs().to_vec(), transition.output_ids().cloned().collect::<Vec<_>>()),
+            );
 
             // If the stack has entries and they are complete, then pop them.
             while let Some(entry) = traversal_stack.last() {
@@ -136,6 +139,7 @@ impl<N: Network> Process<N> {
                     break;
                 }
             }
+
             // Now process the current transition.
             match traversal_stack.last_mut() {
                 // If the stack is empty, then push the current transition.
@@ -154,7 +158,7 @@ impl<N: Network> Process<N> {
             }
             // Process the entry at the top of the stack.
             // If the entry is complete, then pop it.
-            // TODO: Unwrap safety
+            // Note this unwrap is safe, since we just pushed the entry.
             let top = traversal_stack.last().unwrap();
             if !top.children.is_empty() {
                 update_call_graph(traversal_stack.pop().unwrap(), &mut call_graph, &mut uid_to_tid);
@@ -171,7 +175,7 @@ impl<N: Network> Process<N> {
                         Instruction::Call(call) => Some(call.operator()),
                         _ => None,
                     })
-                    .collect_vec();
+                    .collect::<Vec<_>>();
 
                 // If the function has no children, then pop the entry.
                 if children.is_empty() {
@@ -181,8 +185,8 @@ impl<N: Network> Process<N> {
                         .into_iter()
                         .map(|call_operator| {
                             let (pid, fname) = match call_operator {
-                                crate::CallOperator::Locator(locator) => (locator.program_id(), locator.name()),
-                                crate::CallOperator::Resource(name) => (&top.pid, name),
+                                crate::CallOperator::Locator(locator) => (locator.program_id(), locator.resource()),
+                                crate::CallOperator::Resource(fname) => (&top.pid, fname),
                             };
                             TransitionMetadata::new(&mut counter, *pid, *fname, None)
                         })
@@ -197,14 +201,17 @@ impl<N: Network> Process<N> {
             }
         }
 
+        // Empty the stack, checking that all entries are complete.
+        while let Some(entry) = traversal_stack.pop() {
+            ensure!(entry.is_complete(), "The call graph is incomplete");
+            update_call_graph(entry, &mut call_graph, &mut uid_to_tid);
+        }
+
         // Initialize a map of verifying keys to public inputs.
         let mut verifier_inputs = HashMap::new();
 
-        // Replicate the execution stack for verification.
-        let mut queue = execution.clone();
-
         // Verify each transition.
-        while let Ok(transition) = queue.pop() {
+        for transition in execution.transitions() {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
 
@@ -257,34 +264,22 @@ impl<N: Network> Process<N> {
             // [Inputs] Extend the verifier inputs with the input IDs.
             inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
 
-            // Retrieve the stack.
-            let stack = self.get_stack(transition.program_id())?;
-            // Retrieve the function from the stack.
-            let function = stack.get_function(transition.function_name())?;
-            // Determine the number of function calls in this function.
-            let mut num_function_calls = 0;
-            for instruction in function.instructions() {
-                if let Instruction::Call(call) = instruction {
-                    // Determine if this is a function call.
-                    if call.is_function_call(stack)? {
-                        num_function_calls += 1;
-                    }
-                }
-            }
             // If there are function calls, append their inputs and outputs.
-            if num_function_calls > 0 {
-                // This loop takes the last `num_function_call` transitions, and reverses them
-                // to order them in the order they were defined in the function.
-                for transition in queue.transitions().rev().take(num_function_calls).rev() {
-                    // [Inputs] Extend the verifier inputs with the input IDs of the external call.
-                    inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
-                    // [Inputs] Extend the verifier inputs with the output IDs of the external call.
-                    inputs.extend(transition.output_ids().map(|id| **id));
-                }
+            for transition_id in call_graph.get(transition.id()).unwrap() {
+                let (transition_inputs, output_ids) = io_cache.get(transition_id).unwrap();
+                // [Inputs] Extend the verifier inputs with the input IDs of the external call.
+                inputs.extend(transition_inputs.iter().flat_map(|input| input.verifier_inputs()));
+                // [Inputs] Extend the verifier inputs with the output IDs of the external call.
+                inputs.extend(output_ids.iter().map(|id| **id));
             }
 
             // [Inputs] Extend the verifier inputs with the output IDs.
             inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
+
+            // Retrieve the stack.
+            let stack = self.get_stack(transition.program_id())?;
+            // Retrieve the function from the stack.
+            let function = stack.get_function(transition.function_name())?;
 
             // Ensure the transition contains finalize inputs, if the function has a finalize scope.
             if let Some((command, logic)) = function.finalize() {
