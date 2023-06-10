@@ -133,30 +133,6 @@ pub enum Instruction<N: Network> {
     HashManyPSD4(HashManyPSD4<N>),
     /// Performs a Poseidon hash with an input rate of 8.
     HashManyPSD8(HashManyPSD8<N>),
-    /// Performs a BHP hash on inputs of 256-bit chunks.
-    HashToGroupBHP256(HashToGroupBHP256<N>),
-    /// Performs a BHP hash on inputs of 512-bit chunks.
-    HashToGroupBHP512(HashToGroupBHP512<N>),
-    /// Performs a BHP hash on inputs of 768-bit chunks.
-    HashToGroupBHP768(HashToGroupBHP768<N>),
-    /// Performs a BHP hash on inputs of 1024-bit chunks.
-    HashToGroupBHP1024(HashToGroupBHP1024<N>),
-    /// Performs a Pedersen hash on up to a 64-bit input.
-    HashToGroupPED64(HashToGroupPED64<N>),
-    /// Performs a Pedersen hash on up to a 128-bit input.
-    HashToGroupPED128(HashToGroupPED128<N>),
-    /// Performs a Poseidon hash with an input rate of 2.
-    HashToGroupPSD2(HashToGroupPSD2<N>),
-    /// Performs a Poseidon hash with an input rate of 4.
-    HashToGroupPSD4(HashToGroupPSD4<N>),
-    /// Performs a Poseidon hash with an input rate of 8.
-    HashToGroupPSD8(HashToGroupPSD8<N>),
-    /// Performs a Poseidon hash with an input rate of 2.
-    HashToScalarPSD2(HashToScalarPSD2<N>),
-    /// Performs a Poseidon hash with an input rate of 4.
-    HashToScalarPSD4(HashToScalarPSD4<N>),
-    /// Performs a Poseidon hash with an input rate of 8.
-    HashToScalarPSD8(HashToScalarPSD8<N>),
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
     Inv(Inv<N>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
@@ -280,18 +256,6 @@ macro_rules! instruction {
             HashManyPSD2,
             HashManyPSD4,
             HashManyPSD8,
-            HashToGroupBHP256,
-            HashToGroupBHP512,
-            HashToGroupBHP768,
-            HashToGroupBHP1024,
-            HashToGroupPED64,
-            HashToGroupPED128,
-            HashToGroupPSD2,
-            HashToGroupPSD4,
-            HashToGroupPSD8,
-            HashToScalarPSD2,
-            HashToScalarPSD4,
-            HashToScalarPSD8,
             Inv,
             IsEq,
             IsNeq,
