@@ -464,7 +464,7 @@ mod marlin_hiding {
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        // Indexing, proving, and verifying for a circuit with 1 << 13 constraints and 1 << 13 variables.
+        // Indexing, proving, and verifying for a circuit with 1 << 15 constraints and 1 << 15 variables.
         let mul_depth = 2;
         let num_constraints = 2usize.pow(15) - 10;
         let num_variables = 2usize.pow(15) - 10;

@@ -112,8 +112,10 @@ impl<E: PairingEngine> KZG10<E> {
             Polynomial::Dense(polynomial) => {
                 let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
+                let bases = &powers.powers_of_beta_g[num_leading_zeros..(num_leading_zeros + plain_coeffs.len())];
+
                 let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
-                let commitment = VariableBase::msm(&powers.powers_of_beta_g[num_leading_zeros..], &plain_coeffs);
+                let commitment = VariableBase::msm(bases, &plain_coeffs);
                 end_timer!(msm_time);
 
                 commitment
@@ -243,8 +245,10 @@ impl<E: PairingEngine> KZG10<E> {
         Self::check_degree_is_too_large(witness_polynomial.degree(), powers.size())?;
         let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
+        let bases = &powers.powers_of_beta_g[num_leading_zeros..(num_leading_zeros + witness_coeffs.len())];
+
         let witness_comm_time = start_timer!(|| "Computing commitment to witness polynomial");
-        let mut w = VariableBase::msm(&powers.powers_of_beta_g[num_leading_zeros..], &witness_coeffs);
+        let mut w = VariableBase::msm(bases, &witness_coeffs);
         end_timer!(witness_comm_time);
 
         let random_v = if let Some(hiding_witness_polynomial) = hiding_witness_polynomial {
