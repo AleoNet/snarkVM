@@ -48,7 +48,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Fee */
 
-        // TODO (raychu86): TODO (raychu86): Consider fees for `finalize` execution when it is ready.
         // Ensure the transaction has a sufficient fee.
         let fee = transaction.fee()?;
         match transaction {
@@ -60,11 +59,33 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
             Transaction::Execute(_, execution, _) => {
                 // TODO (raychu86): Remove the split check when batch executions are integrated.
-                // If the transaction is not a coinbase or split transaction, check that the fee in microcredits is at least the execution size in bytes.
-                if !((transaction.is_coinbase() || transaction.is_split()) && execution.len() == 1)
-                    && execution.size_in_bytes()? > *fee
-                {
-                    bail!("Transaction '{transaction_id}' has insufficient fee to cover its storage in bytes")
+                // If the transaction is not a coinbase or split transaction, check that the fee in microcredits is at least the execution size in bytes plus the cost of the `finalize`s.
+                if !((transaction.is_coinbase() || transaction.is_split()) && execution.len() == 1) {
+                    // Compute the total cost for the `finalize`s in the execution.
+                    let mut total_finalize_cost = 0u64;
+                    for transition in execution.transitions() {
+                        let program = self.get_program(*transition.program_id())?;
+                        let function = program.get_function(transition.function_name())?;
+                        let finalize_cost = match function.finalize() {
+                            None => 0u64,
+                            Some((_, finalize)) => finalize.cost_in_microcredits()?,
+                        };
+                        total_finalize_cost = match total_finalize_cost.checked_add(finalize_cost) {
+                            Some(total_finalize_cost) => total_finalize_cost,
+                            None => bail!("Overflow in calculating the total finalize cost"),
+                        };
+                    }
+                    // Add the execution size in bytes to the total cost.
+                    let total_cost = match total_finalize_cost.checked_add(execution.size_in_bytes()?) {
+                        Some(total_cost) => total_cost,
+                        None => bail!("Overflow in calculating the total cost"),
+                    };
+                    // Check that the fee in microcredits is at least the total cost.
+                    if total_cost > *fee {
+                        bail!(
+                            "Transaction '{transaction_id}' has insufficient fee to cover its storage in bytes and finalize its execution"
+                        )
+                    }
                 }
             }
             // TODO (howardwu): Pass the confirmed transaction in and check its rejected size against the fee.
