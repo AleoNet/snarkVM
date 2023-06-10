@@ -80,12 +80,10 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
         for circuit in circuits {
             let indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
-            // Increase the universal SRS size to support the circuit size.
-            if universal_srs.max_degree() < indexed_circuit.max_degree() {
-                universal_srs.download_powers_for(0..indexed_circuit.max_degree()).map_err(|e| {
-                    anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree())
-                })?;
-            }
+            // Ensure the universal SRS supports the circuit size.
+            universal_srs
+                .download_powers_for(0..indexed_circuit.max_degree())
+                .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree()))?;
             let coefficient_support = AHPForR1CS::<E::Fr, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Marlin only needs degree 2 random polynomials.

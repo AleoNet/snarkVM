@@ -66,11 +66,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(CommitterKey<E>, UniversalVerifier<E>)> {
         let trim_time = start_timer!(|| "Trimming public parameters");
-        let mut max_degree = pp.max_degree();
-        if supported_degree > max_degree {
-            pp.download_powers_for(0..supported_degree).map_err(|_| PCError::TrimmingDegreeTooLarge)?;
-            max_degree = pp.max_degree();
-        }
+        let max_degree = pp.max_degree();
 
         let enforced_degree_bounds = enforced_degree_bounds.map(|bounds| {
             let mut v = bounds.to_vec();
