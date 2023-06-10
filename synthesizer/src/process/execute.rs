@@ -77,6 +77,126 @@ impl<N: Network> Process<N> {
         };
         lap!(timer, "Verify the number of transitions");
 
+        // Initialize a call graph, which is a map of transition IDs to the transition IDs it calls.
+        let mut call_graph = HashMap::new();
+        // Initialize a cache for the inputs and outputs of each transition.
+        let mut io_cache = HashMap::new();
+        // Initialize a mapping from UIDs to transition IDs.
+        let mut uid_to_tid = HashMap::new();
+
+        // Metadata for each transition the execution.
+        struct TransitionMetadata<N: Network> {
+            uid: usize,
+            pid: ProgramID<N>,
+            fname: Identifier<N>,
+            tid: Option<N::TransitionID>,
+            children: Vec<usize>,
+        }
+
+        impl<N: Network> TransitionMetadata<N> {
+            fn new(counter: &mut usize, pid: ProgramID<N>, fname: Identifier<N>, tid: Option<N::TransitionID>) -> Self {
+                let uid = *counter;
+                *counter += 1;
+                Self { uid, pid, fname, tid, children: vec![] }
+            }
+
+            fn is_complete(&self) -> bool {
+                self.tid.is_some()
+            }
+        }
+
+        // A helper function to update the call graph.
+        let update_call_graph = |metadata: TransitionMetadata<N>,
+                                 call_graph: &mut HashMap<N::TransitionID, Vec<N::TransitionID>>,
+                                 uid_to_tid: &mut HashMap<usize, N::TransitionID>| {
+            // Add an entry to the UID to TID mapping.
+            uid_to_tid.insert(metadata.uid, metadata.tid.unwrap());
+            // Add an entry to the call graph.
+            call_graph.insert(
+                metadata.tid.unwrap(),
+                metadata.children.into_iter().map(|uid| uid_to_tid[&uid]).collect::<Vec<_>>(),
+            );
+        };
+
+        // Initialize a stack to track metadata of each transition, while traversing the call graph.
+        let mut traversal_stack: Vec<TransitionMetadata<N>> = Vec::new();
+        // Initialize a counter to track the unique ID of each transition.
+        let mut counter = 0;
+
+        // Iterate over each transition in reverse post-order, and populate the call graph and IO cache.
+        for transition in execution.transitions().rev() {
+            // Add the transition inputs and outputs to the IO cache.
+            io_cache.insert(*transition.id(), (transition.inputs().to_vec(), transition.outputs().to_vec()));
+
+            // If the stack has entries and they are complete, then pop them.
+            while let Some(entry) = traversal_stack.last() {
+                if entry.is_complete() {
+                    update_call_graph(traversal_stack.pop().unwrap(), &mut call_graph, &mut uid_to_tid);
+                } else {
+                    break;
+                }
+            }
+            // Now process the current transition.
+            match traversal_stack.last_mut() {
+                // If the stack is empty, then push the current transition.
+                None => {
+                    traversal_stack.push(TransitionMetadata::new(
+                        &mut counter,
+                        *transition.program_id(),
+                        *transition.function_name(),
+                        Some(*transition.id()),
+                    ));
+                }
+                // If the stack is not empty, then add the current transition ID to the entry.
+                Some(head) => {
+                    head.tid = Some(*transition.id());
+                }
+            }
+            // Process the entry at the top of the stack.
+            // If the entry is complete, then pop it.
+            // TODO: Unwrap safety
+            let top = traversal_stack.last().unwrap();
+            if !top.children.is_empty() {
+                update_call_graph(traversal_stack.pop().unwrap(), &mut call_graph, &mut uid_to_tid);
+            } else {
+                // Retrieve the stack.
+                let stack = self.get_stack(top.pid)?;
+                // Retrieve the function from the stack.
+                let function = stack.get_function(&top.fname)?;
+                // Collect the children of the current transition.
+                let children = function
+                    .instructions()
+                    .iter()
+                    .filter_map(|instruction| match instruction {
+                        Instruction::Call(call) => Some(call.operator()),
+                        _ => None,
+                    })
+                    .collect_vec();
+
+                // If the function has no children, then pop the entry.
+                if children.is_empty() {
+                    update_call_graph(traversal_stack.pop().unwrap(), &mut call_graph, &mut uid_to_tid);
+                } else {
+                    let children = children
+                        .into_iter()
+                        .map(|call_operator| {
+                            let (pid, fname) = match call_operator {
+                                crate::CallOperator::Locator(locator) => (locator.program_id(), locator.name()),
+                                crate::CallOperator::Resource(name) => (&top.pid, name),
+                            };
+                            TransitionMetadata::new(&mut counter, *pid, *fname, None)
+                        })
+                        .collect::<Vec<_>>();
+
+                    // Add the children to the entry.
+                    let top = traversal_stack.last_mut().unwrap();
+                    top.children.extend(children.iter().map(|child| child.uid));
+                    // Push the children to the stack.
+                    traversal_stack.extend(children);
+                }
+            }
+        }
+
         // Initialize a map of verifying keys to public inputs.
         let mut verifier_inputs = HashMap::new();
 
