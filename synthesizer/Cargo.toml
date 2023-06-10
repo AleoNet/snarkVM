@@ -29,6 +29,11 @@ path = "benches/block.rs"
 harness = false
 
 [[bench]]
+name = "instruction"
+path = "benches/instruction.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false

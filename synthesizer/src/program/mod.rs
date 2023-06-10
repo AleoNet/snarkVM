@@ -34,7 +34,43 @@ mod parse;
 mod serialize;
 
 use console::{
-    network::prelude::*,
+    network::prelude::{
+        alt,
+        anyhow,
+        bail,
+        de,
+        ensure,
+        error,
+        fmt,
+        many0,
+        many1,
+        map,
+        map_res,
+        tag,
+        take,
+        Debug,
+        Deserialize,
+        Deserializer,
+        Display,
+        Error,
+        Formatter,
+        FromBytes,
+        FromBytesDeserializer,
+        FromStr,
+        IoResult,
+        Network,
+        Parser,
+        ParserResult,
+        Read,
+        Result,
+        Sanitizer,
+        Serialize,
+        Serializer,
+        ToBytes,
+        ToBytesSerializer,
+        TypeName,
+        Write,
+    },
     program::{EntryType, Identifier, PlaintextType, ProgramID, RecordType, Struct},
 };
 
@@ -589,6 +625,7 @@ mod tests {
     };
 
     use parking_lot::RwLock;
+    use snarkvm_utilities::TestRng;
     use std::sync::Arc;
 
     type CurrentNetwork = Testnet3;
