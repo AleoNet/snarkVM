@@ -190,6 +190,28 @@ impl Network for Testnet3 {
             .sum()
     }
 
+    /// Returns the Marlin universal prover.
+    fn marlin_universal_prover() -> &'static UniversalProver<Self::PairingCurve> {
+        static INSTANCE: OnceCell<UniversalProver<<Console as Environment>::PairingCurve>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
+                .expect("Failed to load universal SRS (KZG10).")
+                .to_universal_prover()
+                .expect("Failed to convert universal SRS (KZG10) to the prover.")
+        })
+    }
+
+    /// Returns the Marlin universal verifier.
+    fn marlin_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve> {
+        static INSTANCE: OnceCell<UniversalVerifier<<Console as Environment>::PairingCurve>> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
+                .expect("Failed to load universal SRS (KZG10).")
+                .to_universal_verifier()
+                .expect("Failed to convert universal SRS (KZG10) to the verifier.")
+        })
+    }
+
     /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
     fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self> {
         &MARLIN_FS_PARAMETERS

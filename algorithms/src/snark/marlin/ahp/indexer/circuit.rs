@@ -58,7 +58,7 @@ impl CircuitId {
 #[derive(Clone, Debug)]
 pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// Information about the indexed circuit.
-    pub index_info: CircuitInfo<F>,
+    pub index_info: CircuitInfo,
 
     /// The A matrix for the R1CS instance
     pub a: Matrix<F>,
@@ -99,7 +99,7 @@ impl<F: PrimeField, MM: MarlinMode> PartialOrd for Circuit<F, MM> {
 
 impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     pub fn hash(
-        index_info: &CircuitInfo<F>,
+        index_info: &CircuitInfo,
         a: &Matrix<F>,
         b: &Matrix<F>,
         c: &Matrix<F>,
@@ -114,7 +114,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
 
     /// The maximum degree required to represent polynomials of this index.
     pub fn max_degree(&self) -> usize {
-        self.index_info.max_degree::<MM>()
+        self.index_info.max_degree::<F, MM>()
     }
 
     /// The number of constraints in this R1CS instance.
@@ -184,13 +184,12 @@ impl<F: PrimeField, MM: MarlinMode> snarkvm_utilities::Valid for Circuit<F, MM> 
 }
 
 impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
-    #[allow(unused_mut, unused_variables)]
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let index_info: CircuitInfo<F> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
             .ok_or(SerializationError::InvalidData)?;
         let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)

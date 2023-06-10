@@ -12,25 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// The Marlin certificate.
-pub(super) mod certificate;
-pub use certificate::*;
+pub mod universal_prover;
+pub use universal_prover::*;
 
-/// The Marlin circuit proving key.
-pub(super) mod circuit_proving_key;
-pub use circuit_proving_key::*;
-
-/// The Marlin circuit verifying key.
-pub(super) mod circuit_verifying_key;
-pub use circuit_verifying_key::*;
-
-/// The Marlin zkSNARK proof.
-pub(super) mod proof;
-pub use proof::*;
-
-/// A test circuit.
-pub(super) mod test_circuit;
-pub use test_circuit::*;
-
-/// The Marlin universal SRS.
-pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;
+pub mod universal_verifier;
+pub use universal_verifier::*;

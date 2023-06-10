@@ -42,8 +42,12 @@ impl<N: Network> ProvingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        // Retrieve the proving parameters.
+        let universal_prover = N::marlin_universal_prover();
+        let fiat_shamir = N::marlin_fs_parameters();
+
         // Compute the proof.
-        let proof = Proof::new(Marlin::<N>::prove(N::marlin_fs_parameters(), self, assignment, rng)?);
+        let proof = Proof::new(Marlin::<N>::prove(universal_prover, fiat_shamir, self, assignment, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -66,8 +70,12 @@ impl<N: Network> ProvingKey<N> {
             .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
             .collect();
 
+        // Retrieve the proving parameters.
+        let universal_prover = N::marlin_universal_prover();
+        let fiat_shamir = N::marlin_fs_parameters();
+
         // Compute the proof.
-        let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), &instances, rng)?);
+        let batch_proof = Proof::new(Marlin::<N>::prove_batch(universal_prover, fiat_shamir, &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());

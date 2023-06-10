@@ -12,25 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// The Marlin certificate.
-pub(super) mod certificate;
-pub use certificate::*;
+use snarkvm_curves::PairingEngine;
 
-/// The Marlin circuit proving key.
-pub(super) mod circuit_proving_key;
-pub use circuit_proving_key::*;
-
-/// The Marlin circuit verifying key.
-pub(super) mod circuit_verifying_key;
-pub use circuit_verifying_key::*;
-
-/// The Marlin zkSNARK proof.
-pub(super) mod proof;
-pub use proof::*;
-
-/// A test circuit.
-pub(super) mod test_circuit;
-pub use test_circuit::*;
-
-/// The Marlin universal SRS.
-pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;
+/// `UniversalProver` is used to compute evaluation proofs for a given commitment.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UniversalProver<E: PairingEngine> {
+    /// The maximum degree supported by the universal SRS.
+    pub max_degree: usize,
+    pub _unused: Option<E>,
+}
