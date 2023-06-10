@@ -179,7 +179,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (12.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         // Cast the output to the destination type.
-        let output = output.cast_to(self.destination_type)?;
+        let output = output.downcast_lossy(self.destination_type)?;
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
@@ -206,18 +206,24 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (3, _) => circuit::Literal::Group(A::hash_to_group_bhp1024(&input.to_bits_le())),
             (4, _) => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
             (5, _) => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
-            (6, LiteralType::Group) => circuit::Literal::Group(A::hash_to_group_psd2(&input.to_fields())),
+            (6, LiteralType::Address) | (6, LiteralType::Group) => {
+                circuit::Literal::Group(A::hash_to_group_psd2(&input.to_fields()))
+            }
             (6, _) => circuit::Literal::Field(A::hash_psd2(&input.to_fields())),
-            (7, LiteralType::Group) => circuit::Literal::Group(A::hash_to_group_psd4(&input.to_fields())),
+            (7, LiteralType::Address) | (7, LiteralType::Group) => {
+                circuit::Literal::Group(A::hash_to_group_psd4(&input.to_fields()))
+            }
             (7, _) => circuit::Literal::Field(A::hash_psd4(&input.to_fields())),
-            (8, LiteralType::Group) => circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields())),
+            (8, LiteralType::Address) | (8, LiteralType::Group) => {
+                circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields()))
+            }
             (8, _) => circuit::Literal::Field(A::hash_psd8(&input.to_fields())),
             (9, _) => bail!("'hash_many' is not yet implemented"),
             (10, _) => bail!("'hash_many' is not yet implemented"),
             (11, _) => bail!("'hash_many' is not yet implemented"),
             (12.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
-        let output = output.cast_to(self.destination_type)?;
+        let output = output.downcast_lossy(self.destination_type)?;
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.
@@ -509,8 +515,12 @@ mod tests {
             // Check that the output type is consistent with the declared type.
             match output_a {
                 Value::Plaintext(Plaintext::Literal(literal, _)) => {
-                    assert_eq!(literal.to_type(), destination_type, "The output type is inconsistent with the declared type");
-                },
+                    assert_eq!(
+                        literal.to_type(),
+                        destination_type,
+                        "The output type is inconsistent with the declared type"
+                    );
+                }
                 _ => unreachable!("The output type is inconsistent with the declared type"),
             }
         }
@@ -616,7 +626,11 @@ mod tests {
                         for mode in modes.iter() {
                             for destination_type in valid_destination_types() {
                                 check_hash(
-                                    |operands, destination, destination_type| $operation::<CurrentNetwork> { operands, destination, destination_type },
+                                    |operands, destination, destination_type| $operation::<CurrentNetwork> {
+                                        operands,
+                                        destination,
+                                        destination_type,
+                                    },
                                     $operation::<CurrentNetwork>::opcode(),
                                     literal,
                                     mode,
@@ -662,7 +676,11 @@ mod tests {
                         for mode in modes.iter() {
                             for destination_type in valid_destination_types() {
                                 check_hash(
-                                    |operands, destination, destination_type| $operation::<CurrentNetwork> { operands, destination, destination_type },
+                                    |operands, destination, destination_type| $operation::<CurrentNetwork> {
+                                        operands,
+                                        destination,
+                                        destination_type,
+                                    },
                                     $operation::<CurrentNetwork>::opcode(),
                                     literal,
                                     mode,
