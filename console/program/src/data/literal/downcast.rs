@@ -22,11 +22,11 @@ impl<N: Network> Literal<N> {
     ///
     /// The hierarchy of downcasting is as follows:
     ///  - (`Address`, `Group`) -> `Field` -> `Scalar` -> `Integer` -> `Boolean`
-    ///  - `String` (currently not supported)
+    ///  - `String` (not supported)
     pub fn downcast(&self, to_type: LiteralType) -> Result<Self> {
         match self {
             Self::Address(address) => downcast_group_to_type(address.to_group(), to_type),
-            Self::Boolean(..) => bail!("Cannot downcast a boolean literal to another type (yet)."),
+            Self::Boolean(..) => bail!("Cannot downcast a boolean literal to another type."),
             Self::Field(field) => downcast_field_to_type(field, to_type),
             Self::Group(group) => downcast_group_to_type(group, to_type),
             Self::I8(..) => bail!("Cannot downcast an i8 literal to another type (yet)."),
@@ -40,7 +40,7 @@ impl<N: Network> Literal<N> {
             Self::U64(..) => bail!("Cannot downcast a u64 literal to another type (yet)."),
             Self::U128(..) => bail!("Cannot downcast a u128 literal to another type (yet)."),
             Self::Scalar(..) => bail!("Cannot downcast a scalar literal to another type (yet)."),
-            Self::String(..) => bail!("Cannot downcast a string literal to another type (yet)."),
+            Self::String(..) => bail!("Cannot downcast a string literal to another type."),
         }
     }
 
@@ -51,11 +51,11 @@ impl<N: Network> Literal<N> {
     ///
     /// The hierarchy of downcasting is as follows:
     ///  - (`Address`, `Group`) -> `Field` -> `Scalar` -> `Integer` -> `Boolean`
-    ///  - `String` (currently not supported)
+    ///  - `String` (not supported)
     pub fn downcast_lossy(&self, to_type: LiteralType) -> Result<Self> {
         match self {
             Self::Address(address) => downcast_lossy_group_to_type(address.to_group(), to_type),
-            Self::Boolean(..) => bail!("Cannot downcast a boolean literal to another type (yet)."),
+            Self::Boolean(..) => bail!("Cannot downcast a boolean literal to another type."),
             Self::Field(field) => downcast_lossy_field_to_type(field, to_type),
             Self::Group(group) => downcast_lossy_group_to_type(group, to_type),
             Self::I8(..) => bail!("Cannot downcast an i8 literal to another type (yet)."),
@@ -69,7 +69,7 @@ impl<N: Network> Literal<N> {
             Self::U64(..) => bail!("Cannot downcast a u64 literal to another type (yet)."),
             Self::U128(..) => bail!("Cannot downcast a u128 literal to another type (yet)."),
             Self::Scalar(..) => bail!("Cannot downcast a scalar literal to another type (yet)."),
-            Self::String(..) => bail!("Cannot downcast a string literal to another type (yet)."),
+            Self::String(..) => bail!("Cannot downcast a string literal to another type."),
         }
     }
 }
@@ -78,7 +78,7 @@ impl<N: Network> Literal<N> {
 fn downcast_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
         LiteralType::Address => bail!("Cannot downcast a field literal to an address type."),
-        LiteralType::Boolean => bail!("Cannot downcast a field literal to a boolean type."),
+        LiteralType::Boolean => bail!("Cannot downcast a field literal to a boolean type (yet)."),
         LiteralType::Field => Ok(Literal::Field(*field)),
         LiteralType::Group => bail!("Cannot downcast a field literal to a group type."),
         LiteralType::I8 => Ok(Literal::I8(I8::from_field(field)?)),
@@ -100,7 +100,7 @@ fn downcast_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) ->
 fn downcast_lossy_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
         LiteralType::Address => bail!("Cannot downcast a field literal to an address type."),
-        LiteralType::Boolean => bail!("Cannot downcast a field literal to a boolean type."),
+        LiteralType::Boolean => bail!("Cannot downcast a field literal to a boolean type (yet)."),
         LiteralType::Field => Ok(Literal::Field(*field)),
         LiteralType::Group => bail!("Cannot downcast a field literal to a group type."),
         LiteralType::I8 => Ok(Literal::I8(I8::from_field_lossy(field)?)),
@@ -122,6 +122,7 @@ fn downcast_lossy_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralTy
 fn downcast_group_to_type<N: Network>(group: &Group<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
         LiteralType::Address => Ok(Literal::Address(Address::new(*group))),
+        LiteralType::Group => Ok(Literal::Group(*group)),
         _ => downcast_field_to_type(&group.to_x_coordinate(), to_type),
     }
 }
@@ -130,6 +131,7 @@ fn downcast_group_to_type<N: Network>(group: &Group<N>, to_type: LiteralType) ->
 fn downcast_lossy_group_to_type<N: Network>(group: &Group<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
         LiteralType::Address => Ok(Literal::Address(Address::new(*group))),
+        LiteralType::Group => Ok(Literal::Group(*group)),
         _ => downcast_lossy_field_to_type(&group.to_x_coordinate(), to_type),
     }
 }
