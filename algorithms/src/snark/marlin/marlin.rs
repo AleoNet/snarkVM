@@ -86,7 +86,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
                     anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree())
                 })?;
             }
-            let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info);
+            let coefficient_support = AHPForR1CS::<E::Fr, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Marlin only needs degree 2 random polynomials.
             let supported_hiding_bound = 1;

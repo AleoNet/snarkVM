@@ -354,10 +354,6 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         })
     }
 
-    pub fn supported_degree(&self) -> usize {
-        self.powers_of_beta_g.unwrap().len() - 1
-    }
-
     pub fn union<T: IntoIterator<Item = &'a CommitterKey<E>>>(committer_keys: T) -> Self {
         let mut ck_union = CommitterUnionKey::<E> {
             powers_of_beta_g: None,

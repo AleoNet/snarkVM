@@ -37,7 +37,7 @@ use std::cmp::Ordering;
 #[derive(Debug, Clone, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitVerifyingKey<E: PairingEngine> {
     /// Stores information about the size of the circuit, as well as its defined field.
-    pub circuit_info: CircuitInfo<E::Fr>,
+    pub circuit_info: CircuitInfo,
     /// Commitments to the indexed polynomials.
     pub circuit_commitments: Vec<sonic_pc::Commitment<E>>,
     pub id: CircuitId,

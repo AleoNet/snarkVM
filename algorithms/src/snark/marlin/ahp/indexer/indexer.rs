@@ -180,7 +180,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             num_non_zero_a,
             num_non_zero_b,
             num_non_zero_c,
-            f: PhantomData,
         };
 
         let constraint_domain =
@@ -273,5 +272,5 @@ struct IndexerState<F: PrimeField> {
     non_zero_c_domain: EvaluationDomain<F>,
     c_evals: MatrixEvals<F>,
 
-    index_info: CircuitInfo<F>,
+    index_info: CircuitInfo,
 }
