@@ -258,6 +258,7 @@ impl<N: Network> Process<N> {
                 Self { uid, pid, fname, tid, children: None }
             }
 
+            /// Returns 'true' if the subgraph starting from this transition has been fully-indexed.
             fn is_complete(&self) -> bool {
                 self.tid.is_some() && self.children.is_some()
             }
@@ -269,14 +270,22 @@ impl<N: Network> Process<N> {
                                  uid_to_tid: &mut HashMap<usize, N::TransitionID>|
          -> Result<()> {
             // Check that the transition metadata is complete.
-            ensure!(metadata.is_complete(), "The transition metadata is incomplete");
-            // Update the UID to TID mapping.
-            uid_to_tid.insert(metadata.uid, metadata.tid.unwrap());
+            ensure!(metadata.is_complete(), "Invalid traversal - transition metadata is incomplete");
             // Update the call graph.
             call_graph.insert(
                 metadata.tid.unwrap(),
-                metadata.children.unwrap().into_iter().map(|uid| uid_to_tid[&uid]).collect::<Vec<_>>(),
+                metadata
+                    .children // Safe to unwrap, since the metadata is complete.
+                    .unwrap()
+                    .into_iter()
+                    .map(|uid| match uid_to_tid.get(&uid) {
+                        Some(tid) => Ok(*tid),
+                        None => bail!("Invalid traversal - missing 'tid' for uid '{uid}'"),
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
             );
+            // Update the UID to TID mapping.
+            uid_to_tid.insert(metadata.uid, metadata.tid.unwrap());
             Ok(())
         };
 
@@ -292,15 +301,6 @@ impl<N: Network> Process<N> {
 
         // Iterate over each transition in reverse post-order, and populate the call graph.
         for transition in execution.transitions().rev() {
-            // If the stack has complete metadata entries, then remove and add them to the call graph.
-            while let Some(metadata) = traversal_stack.last() {
-                if metadata.is_complete() {
-                    update_call_graph(traversal_stack.pop().unwrap(), &mut call_graph, &mut uid_to_tid)?;
-                } else {
-                    break;
-                }
-            }
-
             // Now process the current `transition`.
             // At this point, the algorithm must maintain the following invariant:
             // - The stack is either empty, or the top entry is incomplete.
@@ -317,7 +317,7 @@ impl<N: Network> Process<N> {
                 // If the stack is not empty, then add the current transition ID to the entry.
                 Some(head) => match head.pid == *transition.program_id() && head.fname == *transition.function_name() {
                     true => head.tid = Some(*transition.id()),
-                    false => bail!("Unexpected transition in the execution"),
+                    false => bail!("Invalid traversal - unexpected transition in the execution"),
                 },
             }
 
@@ -355,17 +355,26 @@ impl<N: Network> Process<N> {
                 let child_uids = children.iter().map(|child| child.uid).collect::<Vec<_>>();
                 match top.children {
                     None => top.children = Some(child_uids),
-                    Some(ref mut children) => children.extend(child_uids),
+                    Some(_) => bail!("Invalid traversal - children have already been processed"),
                 }
                 // Push the children to the top of the stack.
                 traversal_stack.extend(children);
             }
+            // If the stack has complete metadata entries, then remove and add them to the call graph.
+            while let Some(metadata) = traversal_stack.last() {
+                if metadata.is_complete() {
+                    update_call_graph(traversal_stack.pop().unwrap(), &mut call_graph, &mut uid_to_tid)?;
+                } else {
+                    break;
+                }
+            }
         }
-
-        // Add the completed entries to the call graph.
-        while let Some(entry) = traversal_stack.pop() {
-            update_call_graph(entry, &mut call_graph, &mut uid_to_tid)?;
-        }
+        // Check that the the traversal completed correctly.
+        ensure!(traversal_stack.is_empty(), "Invalid traversal - traversal stack is not empty");
+        ensure!(
+            counter == execution.len(),
+            "Invalid traversal - counter does not match the number of transitions in the execution"
+        );
 
         Ok(call_graph)
     }
