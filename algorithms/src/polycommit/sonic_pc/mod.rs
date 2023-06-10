@@ -16,6 +16,7 @@ use crate::{
     fft::DensePolynomial,
     msm::variable_base::VariableBase,
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
+    srs::UniversalVerifier,
     AlgebraicSponge,
 };
 use hashbrown::HashMap;
@@ -23,6 +24,7 @@ use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 
+use anyhow::{bail, Result};
 use core::{convert::TryInto, marker::PhantomData, ops::Mul};
 use rand_core::{RngCore, SeedableRng};
 use std::{
@@ -62,7 +64,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         supported_lagrange_sizes: impl IntoIterator<Item = usize>,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
-    ) -> Result<(CommitterKey<E>, VerifierKey<E>), PCError> {
+    ) -> Result<(CommitterKey<E>, UniversalVerifier<E>)> {
         let trim_time = start_timer!(|| "Trimming public parameters");
         let mut max_degree = pp.max_degree();
         if supported_degree > max_degree {
@@ -85,7 +87,9 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             } else {
                 let highest_enforced_degree_bound = *enforced_degree_bounds.last().unwrap();
                 if highest_enforced_degree_bound > supported_degree {
-                    return Err(PCError::UnsupportedDegreeBound(highest_enforced_degree_bound));
+                    bail!(
+                        "The highest enforced degree bound {highest_enforced_degree_bound} is larger than the supported degree {supported_degree}"
+                    );
                 }
 
                 let lowest_shift_degree = max_degree - highest_enforced_degree_bound;
@@ -132,10 +136,10 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         for size in supported_lagrange_sizes {
             let lagrange_time = start_timer!(|| format!("Constructing `lagrange_bases` of size {size}"));
             if !size.is_power_of_two() {
-                return Err(PCError::LagrangeBasisSizeIsNotPowerOfTwo);
+                bail!("The Lagrange basis size ({size}) is not a power of two")
             }
             if size > pp.max_degree() + 1 {
-                return Err(PCError::LagrangeBasisSizeIsTooLarge);
+                bail!("The Lagrange basis size ({size}) is larger than the supported degree ({})", pp.max_degree() + 1)
             }
             let domain = crate::fft::EvaluationDomain::new(size).unwrap();
             let lagrange_basis_at_beta_g = pp.lagrange_basis(domain)?;
@@ -154,16 +158,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             max_degree,
         };
 
-        let g = pp.power_of_beta_g(0)?;
-        let h = pp.h;
-        let beta_h = pp.beta_h();
-        let gamma_g = pp.powers_of_beta_times_gamma_g()[&0];
-        let prepared_h = pp.prepared_h.clone();
-        let prepared_beta_h = pp.prepared_beta_h.clone();
-
-        let kzg10_vk = kzg10::VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h };
-
-        let vk = VerifierKey { vk: kzg10_vk };
+        let vk = pp.to_universal_verifier()?;
 
         end_timer!(trim_time);
         Ok((ck, vk))
@@ -365,8 +360,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     }
 
     pub fn batch_check<'a>(
-        vk: &VerifierUnionKey<E>,
-        prepared_neg_powers_of_beta_h: &BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>,
+        vk: &UniversalVerifier<E>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         query_set: &QuerySet<E::Fr>,
         values: &Evaluations<E::Fr>,
@@ -428,13 +422,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
         }
 
-        let result = Self::check_elems(
-            vk,
-            prepared_neg_powers_of_beta_h,
-            combined_comms,
-            combined_witness,
-            combined_adjusted_witness,
-        );
+        let result = Self::check_elems(vk, combined_comms, combined_witness, combined_adjusted_witness);
         end_timer!(batch_check_time);
         result
     }
@@ -520,8 +508,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     /// Checks that `values` are the true evaluations at `query_set` of the polynomials
     /// committed in `labeled_commitments`.
     pub fn check_combinations<'a>(
-        vk: &VerifierUnionKey<E>,
-        prepared_neg_powers_of_beta_h: &BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>,
+        vk: &UniversalVerifier<E>,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         query_set: &QuerySet<E::Fr>,
@@ -585,7 +572,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             .collect::<Vec<_>>();
         end_timer!(combined_comms_norm_time);
 
-        Self::batch_check(vk, prepared_neg_powers_of_beta_h, &lc_commitments, query_set, &evaluations, proof, fs_rng)
+        Self::batch_check(vk, &lc_commitments, query_set, &evaluations, proof, fs_rng)
     }
 }
 
@@ -628,7 +615,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
         combined_witness: &mut E::G1Projective,
         combined_adjusted_witness: &mut E::G1Projective,
-        vk: &VerifierUnionKey<E>,
+        vk: &UniversalVerifier<E>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         point: E::Fr,
         values: impl IntoIterator<Item = E::Fr>,
@@ -679,8 +666,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
     #[allow(clippy::type_complexity)]
     fn check_elems(
-        vk: &VerifierUnionKey<E>,
-        prepared_neg_powers_of_beta_h: &BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>,
+        vk: &UniversalVerifier<E>,
         combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
         combined_witness: E::G1Projective,
         combined_adjusted_witness: E::G1Projective,
@@ -692,7 +678,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         for (degree_bound, comm) in combined_comms.into_iter() {
             let shift_power = if let Some(degree_bound) = degree_bound {
                 // Find the appropriate prepared shift for the degree bound.
-                prepared_neg_powers_of_beta_h
+                vk.prepared_negative_powers_of_beta_h
                     .get(&degree_bound)
                     .cloned()
                     .ok_or(PCError::UnsupportedDegreeBound(degree_bound))?

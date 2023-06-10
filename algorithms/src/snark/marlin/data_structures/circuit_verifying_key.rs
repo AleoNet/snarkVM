@@ -40,8 +40,6 @@ pub struct CircuitVerifyingKey<E: PairingEngine> {
     pub circuit_info: CircuitInfo<E::Fr>,
     /// Commitments to the indexed polynomials.
     pub circuit_commitments: Vec<sonic_pc::Commitment<E>>,
-    /// The verifier key for this index, trimmed from the universal SRS.
-    pub verifier_key: sonic_pc::VerifierKey<E>,
     pub id: CircuitId,
 }
 

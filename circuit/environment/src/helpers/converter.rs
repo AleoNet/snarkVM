@@ -229,8 +229,8 @@ mod tests {
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_pp = FS::sample_parameters();
-        let neg_beta_h = universal_srs.prepared_neg_powers_of_beta_h();
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
         println!("Called circuit setup");
@@ -238,9 +238,9 @@ mod tests {
         let proof = MarlinInst::prove(&fs_pp, &index_pk, &Circuit, rng).unwrap();
         println!("Called prover");
 
-        assert!(MarlinInst::verify(&fs_pp, &neg_beta_h, &index_vk, [*one, *one], &proof).unwrap());
+        assert!(MarlinInst::verify(universal_verifier, &fs_pp, &index_vk, [*one, *one], &proof).unwrap());
         println!("Called verifier");
         println!("\nShould not verify (i.e. verifier messages should print below):");
-        assert!(!MarlinInst::verify(&fs_pp, &neg_beta_h, &index_vk, [*one, *one + *one], &proof).unwrap());
+        assert!(!MarlinInst::verify(universal_verifier, &fs_pp, &index_vk, [*one, *one + *one], &proof).unwrap());
     }
 }

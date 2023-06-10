@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::marker::PhantomData;
-
 use super::sonic_pc::{
     BatchLCProof,
     BatchProof,
@@ -24,8 +22,6 @@ use super::sonic_pc::{
     QuerySet,
     Randomness,
     SonicKZG10,
-    VerifierKey,
-    VerifierUnionKey,
 };
 use crate::{
     fft::DensePolynomial,
@@ -33,17 +29,19 @@ use crate::{
         sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, LinearCombination},
         PCError,
     },
+    srs::UniversalVerifier,
     AlgebraicSponge,
 };
-use itertools::Itertools;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::{TestRng, Uniform};
 
+use itertools::Itertools;
 use rand::{
     distributions::{self, Distribution},
     Rng,
 };
+use std::marker::PhantomData;
 
 #[derive(Default)]
 struct TestInfo {
@@ -57,7 +55,7 @@ struct TestInfo {
 }
 
 pub struct TestComponents<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
-    pub verification_key: VerifierKey<E>,
+    pub verification_key: UniversalVerifier<E>,
     pub commitments: Vec<LabeledCommitment<Commitment<E>>>,
     pub query_set: QuerySet<E::Fr>,
     pub evaluations: Evaluations<E::Fr>,
@@ -94,11 +92,11 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
 
         println!("supported degree: {supported_degree:?}");
         let (ck, vk) =
-            SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_degree, Some(degree_bounds.as_slice()))?;
+            SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_degree, Some(degree_bounds.as_slice()))
+                .unwrap();
         println!("Trimmed");
 
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
-        let vk = VerifierUnionKey::union(std::iter::once(&vk));
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
@@ -115,15 +113,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
-        let result = SonicKZG10::batch_check(
-            &vk,
-            &pp.prepared_neg_powers_of_beta_h(),
-            &comms,
-            &query_set,
-            &values,
-            &proof,
-            &mut sponge_for_check,
-        )?;
+        let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         assert!(result, "proof was incorrect, Query set: {query_set:#?}");
     }
     Ok(())
@@ -184,11 +174,12 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
             supported_lagrange_sizes,
             supported_hiding_bound,
             degree_bounds,
-        )?;
+        )
+        .unwrap();
         println!("Trimmed");
 
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
-        let vk = VerifierUnionKey::union(std::iter::once(&vk_orig));
+        let vk = pp.to_universal_verifier().unwrap();
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, lagrange_polynomials, Some(rng)).unwrap();
 
@@ -209,15 +200,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
-        let result = SonicKZG10::batch_check(
-            &vk,
-            &pp.prepared_neg_powers_of_beta_h(),
-            &comms,
-            &query_set,
-            &values,
-            &proof,
-            &mut sponge_for_check,
-        )?;
+        let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
             println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
             println!("Degree of polynomials:");
@@ -312,11 +295,12 @@ where
         println!("supported hiding bound: {supported_hiding_bound:?}");
         println!("num_points_in_query_set: {num_points_in_query_set:?}");
         let (ck, vk_orig) =
-            SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
+            SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())
+                .unwrap();
         println!("Trimmed");
 
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
-        let vk = VerifierUnionKey::union(std::iter::once(&vk_orig));
+        let vk = pp.to_universal_verifier().unwrap();
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
@@ -337,15 +321,7 @@ where
         let mut sponge_for_open = S::new();
         let proof = SonicKZG10::batch_open(&ck, &polynomials, &comms, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
-        let result = SonicKZG10::batch_check(
-            &vk,
-            &pp.prepared_neg_powers_of_beta_h(),
-            &comms,
-            &query_set,
-            &values,
-            &proof,
-            &mut sponge_for_check,
-        )?;
+        let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
             println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
             println!("Degree of polynomials:");
@@ -442,11 +418,12 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         println!("{enforce_degree_bounds}");
 
         let (ck, vk_orig) =
-            SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
+            SonicKZG10::<E, S>::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())
+                .unwrap();
         println!("Trimmed");
 
         let ck = CommitterUnionKey::union(std::iter::once(&ck));
-        let vk = VerifierUnionKey::union(std::iter::once(&vk_orig));
+        let vk = pp.to_universal_verifier().unwrap();
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
@@ -507,7 +484,6 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::check_combinations(
             &vk,
-            &pp.prepared_neg_powers_of_beta_h(),
             &linear_combinations,
             &comms,
             &query_set,

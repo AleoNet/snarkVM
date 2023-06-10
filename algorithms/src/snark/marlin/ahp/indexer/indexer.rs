@@ -31,6 +31,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::cfg_into_iter;
 
+use anyhow::{anyhow, Result};
 use core::marker::PhantomData;
 use std::collections::BTreeMap;
 
@@ -43,7 +44,7 @@ use super::Matrix;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Generate the index for this constraint system.
-    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>, AHPError> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>> {
         let IndexerState {
             constraint_domain,
 
@@ -60,7 +61,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_evals,
 
             index_info,
-        } = Self::index_helper(c)?;
+        } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
         let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
@@ -80,7 +81,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             non_zero_b_domain.size(),
             non_zero_c_domain.size(),
         )
-        .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        .ok_or(anyhow!("The polynomial degree is too large"))?;
         end_timer!(fft_precomp_time);
 
         Ok(Circuit {

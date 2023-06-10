@@ -59,11 +59,11 @@ impl<N: Network> Certificate<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the verification parameters.
+        let universal_verifier = N::marlin_universal_verifier();
         let fiat_shamir = N::marlin_fs_parameters();
-        let neg_beta_h = N::marlin_prepared_negative_powers_of_beta_h();
 
         // Verify the certificate.
-        match Marlin::<N>::verify_vk(fiat_shamir, neg_beta_h, assignment, verifying_key, self) {
+        match Marlin::<N>::verify_vk(universal_verifier, fiat_shamir, assignment, verifying_key, self) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 {

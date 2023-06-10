@@ -13,11 +13,12 @@
 // limitations under the License.
 
 use crate::{errors::SNARKError, AlgebraicSponge};
-use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes, ToMinimalBits};
-
-use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes, ToMinimalBits};
+
+use anyhow::Result;
+use rand::{CryptoRng, Rng};
 use std::{borrow::Borrow, collections::BTreeMap, fmt::Debug};
 
 /// Defines trait that describes preparing from an unprepared version to a prepare version.
@@ -47,6 +48,7 @@ pub trait SNARK {
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
     type UniversalSetupConfig: Clone;
     type UniversalSetupParameters: FromBytes + ToBytes + Clone;
+    type UniversalVerifier;
 
     type VerifierInput: ?Sized;
     type VerifyingKey: Clone
@@ -61,14 +63,12 @@ pub trait SNARK {
     type FiatShamirRng: AlgebraicSponge<Self::BaseField, 2, Parameters = Self::FSParameters>;
     type FSParameters;
 
-    type PreparedNegativePowersOfBetaH;
-
     fn universal_setup(config: &Self::UniversalSetupConfig) -> Result<Self::UniversalSetupParameters, SNARKError>;
 
     fn circuit_setup<C: ConstraintSynthesizer<Self::ScalarField>>(
         srs: &Self::UniversalSetupParameters,
         circuit: &C,
-    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey)>;
 
     fn prove_vk(
         fs_parameters: &Self::FSParameters,
@@ -94,16 +94,16 @@ pub trait SNARK {
     ) -> Result<Self::Proof, SNARKError>;
 
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
-        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         circuit: &C,
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError>;
 
     fn verify<B: Borrow<Self::VerifierInput>>(
+        universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
-        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         verifying_key: &Self::VerifyingKey,
         input: B,
         proof: &Self::Proof,
@@ -111,12 +111,12 @@ pub trait SNARK {
         let mut keys_to_inputs = BTreeMap::new();
         let inputs = [input];
         keys_to_inputs.insert(verifying_key, &inputs[..]);
-        Self::verify_batch(fs_parameters, prepared_neg_powers_of_beta_h, &keys_to_inputs, proof)
+        Self::verify_batch(universal_verifier, fs_parameters, &keys_to_inputs, proof)
     }
 
     fn verify_batch<B: Borrow<Self::VerifierInput>>(
+        universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
-        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;

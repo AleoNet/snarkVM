@@ -29,6 +29,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
+use crate::srs::UniversalVerifier;
 use anyhow::Result;
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
@@ -104,6 +105,20 @@ impl<E: PairingEngine> UniversalParams<E> {
 
     pub fn supported_degree_bounds(&self) -> &[usize] {
         &self.supported_degree_bounds
+    }
+
+    pub fn to_universal_verifier(&self) -> Result<UniversalVerifier<E>> {
+        let g = self.power_of_beta_g(0)?;
+        let h = self.h;
+        let beta_h = self.beta_h();
+        let gamma_g = self.powers_of_beta_times_gamma_g()[&0];
+        let prepared_h = self.prepared_h.clone();
+        let prepared_beta_h = self.prepared_beta_h.clone();
+
+        Ok(UniversalVerifier {
+            vk: VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h },
+            prepared_negative_powers_of_beta_h: self.powers.read().prepared_negative_powers_of_beta_h(),
+        })
     }
 }
 

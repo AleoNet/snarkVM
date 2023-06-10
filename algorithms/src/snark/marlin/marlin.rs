@@ -23,7 +23,6 @@ use crate::{
         QuerySet,
         Randomness,
         SonicKZG10,
-        VerifierUnionKey,
     },
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
@@ -32,20 +31,21 @@ use crate::{
         witness_label,
         CircuitProvingKey,
         CircuitVerifyingKey,
-        MarlinError,
         MarlinMode,
         Proof,
         UniversalSRS,
     },
+    srs::UniversalVerifier,
     AlgebraicSponge,
     SNARKError,
     SNARK,
 };
-use snarkvm_curves::{PairingCurve, PairingEngine};
+use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
+use anyhow::{anyhow, Result};
 use core::marker::PhantomData;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
@@ -70,7 +70,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     pub fn batch_circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
-    ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>, SNARKError> {
+    ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         let mut circuit_keys = Vec::with_capacity(circuits.len());
@@ -79,15 +79,15 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             // TODO: Add check that c is in the correct mode.
             // Increase the universal SRS size to support the circuit size.
             if universal_srs.max_degree() < indexed_circuit.max_degree() {
-                universal_srs.download_powers_for(0..indexed_circuit.max_degree()).map_err(|_| {
-                    MarlinError::IndexTooLarge(universal_srs.max_degree(), indexed_circuit.max_degree())
+                universal_srs.download_powers_for(0..indexed_circuit.max_degree()).map_err(|e| {
+                    anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree())
                 })?;
             }
             let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Marlin only needs degree 2 random polynomials.
             let supported_hiding_bound = 1;
-            let (committer_key, verifier_key) = SonicKZG10::<E, FS>::trim(
+            let (committer_key, _) = SonicKZG10::<E, FS>::trim(
                 universal_srs,
                 indexed_circuit.max_degree(),
                 [indexed_circuit.constraint_domain_size()],
@@ -107,7 +107,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             let circuit_verifying_key = CircuitVerifyingKey {
                 circuit_info: indexed_circuit.index_info,
                 circuit_commitments,
-                verifier_key,
                 id: indexed_circuit.id,
             };
             let circuit_proving_key = CircuitProvingKey {
@@ -193,12 +192,12 @@ where
     type Certificate = Certificate<E>;
     type FSParameters = FS::Parameters;
     type FiatShamirRng = FS;
-    type PreparedNegativePowersOfBetaH = BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>;
     type Proof = Proof<E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
     type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<E>;
+    type UniversalVerifier = UniversalVerifier<E>;
     type VerifierInput = [E::Fr];
     type VerifyingKey = CircuitVerifyingKey<E>;
 
@@ -214,7 +213,7 @@ where
     fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &Self::UniversalSetupParameters,
         circuit: &C,
-    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey)> {
         let mut circuit_keys = Self::batch_circuit_setup(universal_srs, &[circuit])?;
         assert_eq!(circuit_keys.len(), 1);
         Ok(circuit_keys.pop().unwrap())
@@ -270,8 +269,8 @@ where
     /// Verify that the verifying key indeed includes a part of the reference string,
     /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
-        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         circuit: &C,
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
@@ -307,11 +306,8 @@ where
             .collect::<Vec<_>>();
         let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
 
-        let verifier_key = VerifierUnionKey::union(std::iter::once(&verifying_key.verifier_key));
-
         SonicKZG10::<E, FS>::check_combinations(
-            &verifier_key,
-            prepared_neg_powers_of_beta_h,
+            universal_verifier,
             &[lc],
             &commitments,
             &query_set,
@@ -560,8 +556,8 @@ where
     /// You can find a specification of the verifier algorithm in:
     /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
     fn verify_batch<B: Borrow<Self::VerifierInput>>(
+        universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
-        prepared_neg_powers_of_beta_h: &Self::PreparedNegativePowersOfBetaH,
         keys_to_inputs: &BTreeMap<&Self::VerifyingKey, &[B]>,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
@@ -591,11 +587,8 @@ where
         let mut inputs_and_batch_sizes = BTreeMap::new();
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
-        let mut vks = Vec::with_capacity(keys_to_inputs.len());
         let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
         for (vk, public_inputs_i) in keys_to_inputs.iter() {
-            vks.push(&vk.verifier_key);
-
             let constraint_domains =
                 AHPForR1CS::<_, MM>::max_constraint_domain(&vk.circuit_info, max_constraint_domain)?;
             max_constraint_domain = constraint_domains.max_constraint_domain;
@@ -630,8 +623,6 @@ where
         for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(batch_sizes.values()).enumerate() {
             inputs_and_batch_sizes.insert(vk.id, (batch_size, padded_public_vec[i].as_slice()));
         }
-
-        let verifier_key = VerifierUnionKey::<E>::union(vks);
 
         let comms = &proof.commitments;
         let proof_has_correct_zk_mode = if MM::ZK {
@@ -812,8 +803,7 @@ where
 
         let pc_time = start_timer!(|| "Checking linear combinations with PC");
         let evaluations_are_correct = SonicKZG10::<E, FS>::check_combinations(
-            &verifier_key,
-            prepared_neg_powers_of_beta_h,
+            universal_verifier,
             lc_s.values(),
             &commitments,
             &query_set.to_set(),

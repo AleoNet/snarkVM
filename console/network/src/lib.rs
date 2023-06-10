@@ -36,17 +36,17 @@ use crate::environment::prelude::*;
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
     snark::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinHidingMode},
+    srs::UniversalVerifier,
     AlgebraicSponge,
 };
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
-use snarkvm_curves::{PairingCurve, PairingEngine};
-use snarkvm_utilities::CanonicalDeserialize;
+use snarkvm_curves::PairingEngine;
 
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 /// A helper type for the BHP Merkle tree.
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
@@ -173,12 +173,11 @@ pub trait Network:
     /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
+    /// Returns the universal verifier for Marlin.
+    fn marlin_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;
+
     /// Returns the sponge parameters for Marlin.
     fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;
-
-    /// Returns the prepared negative powers of beta H for Marlin.
-    fn marlin_prepared_negative_powers_of_beta_h()
-    -> &'static Arc<BTreeMap<usize, <<Self::PairingCurve as PairingEngine>::G2Affine as PairingCurve>::Prepared>>;
 
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
