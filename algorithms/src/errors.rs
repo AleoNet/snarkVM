@@ -61,6 +61,5 @@ impl From<crate::polycommit::PCError> for SNARKError {
             crate::polycommit::PCError::Terminated => SNARKError::Terminated,
             err => SNARKError::Crate("PCError", format!("{err:?}")),
         }
-        .into()
     }
 }
