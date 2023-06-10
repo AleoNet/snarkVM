@@ -50,8 +50,6 @@ pub struct UniversalParams<E: PairingEngine> {
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
-    /// Supported degree bounds.
-    supported_degree_bounds: Vec<usize>,
 }
 
 impl<E: PairingEngine> UniversalParams<E> {
@@ -60,9 +58,8 @@ impl<E: PairingEngine> UniversalParams<E> {
         let h = E::G2Affine::prime_subgroup_generator();
         let prepared_h = h.prepare();
         let prepared_beta_h = powers.read().beta_h().prepare();
-        let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
 
-        Ok(Self { powers, h, prepared_h, prepared_beta_h, supported_degree_bounds })
+        Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 
     pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
@@ -75,8 +72,8 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(E::G1Projective::batch_normalization_into_affine(basis))
     }
 
-    pub fn power_of_beta_g(&self, which_power: usize) -> Result<E::G1Affine> {
-        self.powers.write().power_of_beta_g(which_power)
+    pub fn power_of_beta_g(&self, index: usize) -> Result<E::G1Affine> {
+        self.powers.write().power_of_beta_g(index)
     }
 
     pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
@@ -91,20 +88,8 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.read().beta_h()
     }
 
-    pub fn neg_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
-        self.powers.read().negative_powers_of_beta_h()
-    }
-
-    pub fn prepared_neg_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>> {
-        self.powers.read().prepared_negative_powers_of_beta_h()
-    }
-
     pub fn max_degree(&self) -> usize {
         self.powers.read().max_num_powers() - 1
-    }
-
-    pub fn supported_degree_bounds(&self) -> &[usize] {
-        &self.supported_degree_bounds
     }
 
     pub fn to_universal_prover(&self) -> Result<UniversalProver<E>> {
@@ -140,15 +125,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         // Deserialize `prepared_beta_h`.
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
-        // Deserialize `supported_degree_bounds`.
-        let supported_degree_bounds_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut supported_degree_bounds = Vec::with_capacity(supported_degree_bounds_len as usize);
-        for _ in 0..supported_degree_bounds_len {
-            let degree_bound: u32 = FromBytes::read_le(&mut reader)?;
-            supported_degree_bounds.push(degree_bound as usize);
-        }
-
-        Ok(Self { powers, h, supported_degree_bounds, prepared_h, prepared_beta_h })
+        Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 }
 
@@ -165,12 +142,6 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
 
         // Serialize `prepared_beta_h`.
         self.prepared_beta_h.write_le(&mut writer)?;
-
-        // Serialize `supported_degree_bounds`.
-        (self.supported_degree_bounds.len() as u32).write_le(&mut writer)?;
-        for degree_bound in &self.supported_degree_bounds {
-            (*degree_bound as u32).write_le(&mut writer)?;
-        }
 
         Ok(())
     }
