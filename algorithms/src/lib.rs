@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
+#![warn(unsafe_code)]
 #![allow(clippy::module_inception)]
 #![allow(clippy::type_complexity)]
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
