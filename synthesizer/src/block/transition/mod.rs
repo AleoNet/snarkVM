@@ -307,6 +307,17 @@ impl<N: Network> Transition<N> {
         false
     }
 
+    /// Returns `true` if this is a `fee` transition.
+    #[inline]
+    pub fn is_fee(&self) -> bool {
+        // Case 1 - The transition calls 'credits.aleo/fee'.
+        if self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "fee" {
+            return true;
+        }
+        // Otherwise, return 'false'.
+        false
+    }
+
     /// Returns `true` if this is a `split` transition.
     #[inline]
     pub fn is_split(&self) -> bool {

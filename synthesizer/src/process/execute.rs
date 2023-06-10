@@ -91,6 +91,9 @@ impl<N: Network> Process<N> {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
 
+            // Ensure the transition is not a fee transition.
+            ensure!(!transition.is_fee(), "Fee transitions are not allowed in executions");
+
             // Ensure the transition ID is correct.
             ensure!(**transition.id() == transition.to_root()?, "The transition ID is incorrect");
             // Ensure the number of inputs is within the allowed range.
