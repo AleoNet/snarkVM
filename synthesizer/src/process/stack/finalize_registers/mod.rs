@@ -22,6 +22,7 @@ use crate::{
 use console::{
     network::prelude::*,
     program::{Literal, Plaintext, Register, Value},
+    types::U32,
 };
 
 use indexmap::IndexMap;

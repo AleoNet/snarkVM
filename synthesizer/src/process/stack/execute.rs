@@ -104,6 +104,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
                     ))),
+                    // If the operand is the block height, throw an error.
+                    Operand::BlockHeight => {
+                        bail!("Illegal operation: cannot retrieve the block height in a closure scope")
+                    }
                 }
             })
             .collect();
@@ -258,6 +262,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
                     ))),
+                    // If the operand is the block height, throw an error.
+                    Operand::BlockHeight => {
+                        bail!("Illegal operation: cannot retrieve the block height in a function scope")
+                    }
                 }
             })
             .collect::<Result<Vec<_>>>()?;
