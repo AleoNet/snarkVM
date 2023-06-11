@@ -104,6 +104,9 @@ impl<N: Network> Process<N> {
             "The fee proof is the wrong type (found *no* input records)"
         );
 
+        // Ensure the fee transition does not contain a finalize scope.
+        ensure!(fee.finalize().is_none(), "The fee transition should not contain finalize inputs");
+
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
 
