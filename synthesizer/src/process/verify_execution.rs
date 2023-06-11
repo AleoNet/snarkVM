@@ -150,6 +150,13 @@ impl<N: Network> Process<N> {
                     }
                     None => bail!("The transition is missing inputs for 'finalize'"),
                 }
+            } else {
+                // Ensure the transition does not contain inputs for finalize.
+                if transition.finalize().is_some() {
+                    bail!(
+                        "The transition contains inputs for 'finalize', but the function does not have a 'finalize' scope"
+                    )
+                }
             }
 
             lap!(timer, "Construct the verifier inputs");
