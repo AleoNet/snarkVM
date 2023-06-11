@@ -108,6 +108,14 @@ pub(crate) mod tests {
         }
     }
 
+    /// Samples a random lowercase identifier as a string.
+    pub(crate) fn sample_lowercase_identifier_as_string<N: Network>(rng: &mut TestRng) -> Result<String> {
+        // Sample a random identifier.
+        let string = sample_identifier_as_string::<N>(rng)?;
+        // Return the identifier as lowercase.
+        Ok(string.to_lowercase())
+    }
+
     #[test]
     fn test_try_from() -> Result<()> {
         let mut rng = TestRng::default();

@@ -25,7 +25,7 @@ use snarkvm_console_types::{Address, Field};
 
 /// Returns `true` if the string consists of lowercase alphanumeric characters.
 fn is_lowercase_alphanumeric(s: &str) -> bool {
-    s.chars().all(|c| matches!(c, '0'..='9' | 'a'..='z'))
+    s.chars().all(|c| matches!(c, '0'..='9' | 'a'..='z' | '_'))
 }
 
 /// A program ID is of the form `{name}.{network}`.

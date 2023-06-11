@@ -84,6 +84,9 @@ mod tests {
         assert!(ProgramID::<CurrentNetwork>::from_str("foo").is_err());
         assert!(ProgramID::<CurrentNetwork>::from_str("Bar.aleo").is_err());
         assert!(ProgramID::<CurrentNetwork>::from_str("foO.aleo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("0foo.aleo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("0_foo.aleo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("_foo.aleo").is_err());
 
         Ok(())
     }
