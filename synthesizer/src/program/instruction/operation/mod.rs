@@ -774,6 +774,7 @@ pub(crate) mod test_helpers {
     use crate::{
         Authorization,
         CallStack,
+        FinalizeGlobalState,
         FinalizeRegisters,
         Registers,
         RegistersStore,
@@ -830,8 +831,10 @@ pub(crate) mod test_helpers {
         literals: &[&Literal<CurrentNetwork>],
     ) -> Result<FinalizeRegisters<CurrentNetwork>> {
         // Initialize the registers.
-        let mut finalize_registers =
-            FinalizeRegisters::<CurrentNetwork>::new(stack.get_finalize_types(function_name)?.clone());
+        let mut finalize_registers = FinalizeRegisters::<CurrentNetwork>::new(
+            FinalizeGlobalState::new(1),
+            stack.get_finalize_types(function_name)?.clone(),
+        );
 
         // For each literal,
         for (index, literal) in literals.iter().enumerate() {

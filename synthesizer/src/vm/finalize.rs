@@ -49,12 +49,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn speculate<'a>(
         &self,
+        state: FinalizeGlobalState,
         transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<Transactions<N>> {
         let timer = timer!("VM::speculate");
 
         // Performs a **dry-run** over the list of transactions.
-        let confirmed_transactions = self.atomic_speculate(transactions)?;
+        let confirmed_transactions = self.atomic_speculate(state, transactions)?;
 
         finish!(timer, "Finished dry-run of the transactions");
 
@@ -64,11 +65,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Finalizes the given transactions into the VM.
     #[inline]
-    pub fn finalize(&self, transactions: &Transactions<N>) -> Result<()> {
+    pub fn finalize(&self, state: FinalizeGlobalState, transactions: &Transactions<N>) -> Result<()> {
         let timer = timer!("VM::finalize");
 
         // Performs a **real-run** of finalize over the list of transactions.
-        self.atomic_finalize(transactions)?;
+        self.atomic_finalize(state, transactions)?;
 
         finish!(timer, "Finished real-run of finalize");
         Ok(())
@@ -81,6 +82,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[rustfmt::skip]
     fn atomic_speculate<'a>(
         &self,
+        state: FinalizeGlobalState,
         transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<Vec<ConfirmedTransaction<N>>> {
         let timer = timer!("VM::atomic_speculate");
@@ -127,7 +129,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     }
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
-                    Transaction::Execute(_, execution, fee) => match process.finalize_execution(store, execution) {
+                    Transaction::Execute(_, execution, fee) => match process.finalize_execution(state, store, execution) {
                         // Construct the accepted execute transaction.
                         Ok(finalize) => ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
                         // Construct the rejected execute transaction.
@@ -177,7 +179,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Performs atomic finalization over a list of transactions.
     #[inline]
-    fn atomic_finalize(&self, transactions: &Transactions<N>) -> Result<()> {
+    fn atomic_finalize(&self, state: FinalizeGlobalState, transactions: &Transactions<N>) -> Result<()> {
         let timer = timer!("VM::atomic_finalize");
 
         // Perform the finalize operation on the preset finalize mode.
@@ -248,7 +250,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         };
                         // The finalize operation here involves calling 'update_key_value',
                         // and update the respective leaves of the finalize tree.
-                        match process.finalize_execution(store, execution) {
+                        match process.finalize_execution(state, store, execution) {
                             // Ensure the finalize operations match the expected.
                             Ok(finalize_operations) => {
                                 if finalize != &finalize_operations {
@@ -285,7 +287,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         // TODO (howardwu): Ensure this fee corresponds to the execution.
                         // Attempt to finalize the execution, which should fail.
-                        if let Ok(..) = process.finalize_execution(store, execution) {
+                        if let Ok(..) = process.finalize_execution(state, store, execution) {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected execute transaction".to_string());
                         }
@@ -325,7 +327,7 @@ mod tests {
     use super::*;
     use crate::{
         store::helpers::memory::ConsensusMemory,
-        vm::test_helpers,
+        vm::{test_helpers, test_helpers::sample_finalize_state},
         Block,
         Header,
         Metadata,
@@ -421,7 +423,7 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Construct the new block header.
-        let transactions = vm.speculate(transactions.iter())?;
+        let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             CurrentNetwork::ID,
@@ -593,25 +595,27 @@ finalize transfer_public:
         let program_id = ProgramID::from_str("testing.aleo").unwrap();
 
         // Prepare the confirmed transactions.
-        let confirmed_transactions = vm.speculate([deployment_transaction.clone()].iter()).unwrap();
+        let confirmed_transactions =
+            vm.speculate(sample_finalize_state(1), [deployment_transaction.clone()].iter()).unwrap();
 
         // Ensure the VM does not contain this program.
         assert!(!vm.contains_program(&program_id));
 
         // Finalize the transaction.
-        assert!(vm.finalize(&confirmed_transactions).is_ok());
+        assert!(vm.finalize(sample_finalize_state(1), &confirmed_transactions).is_ok());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(&confirmed_transactions).is_err());
+        assert!(vm.finalize(sample_finalize_state(1), &confirmed_transactions).is_err());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the dry run of the redeployment will cause a reject transaction to be created.
-        let candidate_transactions = vm.atomic_speculate([deployment_transaction].iter()).unwrap();
+        let candidate_transactions =
+            vm.atomic_speculate(sample_finalize_state(1), [deployment_transaction].iter()).unwrap();
         assert_eq!(candidate_transactions.len(), 1);
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
     }
@@ -708,7 +712,7 @@ finalize transfer_public:
         // Transfer_20 -> Balance = 20 - 20 = 0
         {
             let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
-            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+            let confirmed_transactions = vm.atomic_speculate(sample_finalize_state(1), transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
             assert_eq!(confirmed_transactions.len(), 3);
@@ -726,7 +730,7 @@ finalize transfer_public:
         // Transfer_30 -> Balance = 30 - 30 = 0
         {
             let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
-            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+            let confirmed_transactions = vm.atomic_speculate(sample_finalize_state(1), transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
             assert_eq!(confirmed_transactions.len(), 4);
@@ -744,7 +748,7 @@ finalize transfer_public:
         // Transfer_10 -> Balance = 0 - 10 = -10 (should be rejected)
         {
             let transactions = [transfer_20.clone(), transfer_10.clone()];
-            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+            let confirmed_transactions = vm.atomic_speculate(sample_finalize_state(1), transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
             assert_eq!(confirmed_transactions.len(), 2);
@@ -763,7 +767,7 @@ finalize transfer_public:
         // Transfer_10 -> Balance = 10 - 10 = 0
         {
             let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone(), transfer_10.clone()];
-            let confirmed_transactions = vm.atomic_speculate(transactions.iter()).unwrap();
+            let confirmed_transactions = vm.atomic_speculate(sample_finalize_state(1), transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
             assert_eq!(confirmed_transactions.len(), 4);
@@ -857,7 +861,7 @@ function ped_hash:
                 create_execution(&vm, caller_private_key, program_id, "ped_hash", inputs, &mut unspent_records, rng);
 
             // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
-            let confirmed_transactions = vm.speculate([transaction.clone()].iter()).unwrap();
+            let confirmed_transactions = vm.speculate(sample_finalize_state(1), [transaction.clone()].iter()).unwrap();
 
             // Ensure that the transaction is rejected.
             assert_eq!(confirmed_transactions.len(), 1);
