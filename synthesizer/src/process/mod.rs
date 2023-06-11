@@ -24,6 +24,8 @@ mod evaluate;
 mod execute;
 mod execute_fee;
 mod finalize;
+mod verify_execution;
+mod verify_fee;
 
 #[cfg(test)]
 mod tests;
