@@ -24,7 +24,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, InputID, ProgramID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
+    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
 
