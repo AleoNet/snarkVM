@@ -97,83 +97,24 @@ impl<N: Network> Process<N> {
             }
             lap!(timer, "Verify the outputs");
 
-            // Compute the x- and y-coordinate of `tpk`.
-            let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
-
-            // [Inputs] Construct the verifier inputs to verify the proof.
-            let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
-            // [Inputs] Extend the verifier inputs with the input IDs.
-            inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
-
-            // If there are function calls, append their inputs and outputs.
-            for transition_id in call_graph.get(transition.id()).unwrap() {
-                // Note that this unwrap is safe, since we are processing transitions in post-order, which implies that all callees have been added to `transition_map`.
-                let transition: &&Transition<N> = transition_map.get(transition_id).unwrap();
-                // [Inputs] Extend the verifier inputs with the input IDs of the external call.
-                inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
-                // [Inputs] Extend the verifier inputs with the output IDs of the external call.
-                inputs.extend(transition.output_ids().map(|id| **id));
-            }
-
-            // [Inputs] Extend the verifier inputs with the output IDs.
-            inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
-
             // Retrieve the stack.
             let stack = self.get_stack(transition.program_id())?;
             // Retrieve the function from the stack.
             let function = stack.get_function(transition.function_name())?;
 
-            // Ensure the transition contains finalize inputs, if the function has a finalize scope.
-            if let Some((command, logic)) = function.finalize() {
-                // Ensure the transition contains finalize inputs.
-                match transition.finalize() {
-                    Some(finalize) => {
-                        // Retrieve the number of operands.
-                        let num_operands = command.operands().len();
-                        // Retrieve the number of inputs.
-                        let num_inputs = logic.inputs().len();
+            // Construct the verifier inputs for the transition.
+            let inputs = self.to_transition_verifier_inputs(transition, &function, &call_graph, &mut transition_map)?;
+            lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
 
-                        // Ensure the number of inputs for finalize is within the allowed range.
-                        ensure!(finalize.len() <= N::MAX_INPUTS, "Transition exceeds maximum inputs for finalize");
-                        // Ensure the number of inputs for finalize matches in the finalize command.
-                        ensure!(finalize.len() == num_operands, "The number of inputs for finalize is incorrect");
-                        // Ensure the number of inputs for finalize matches in the finalize logic.
-                        ensure!(finalize.len() == num_inputs, "The number of inputs for finalize is incorrect");
-
-                        // Convert the finalize inputs into concatenated bits.
-                        let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
-                        // Compute the checksum of the finalize inputs.
-                        let checksum = N::hash_bhp1024(&finalize_bits)?;
-
-                        // [Inputs] Extend the verifier inputs with the inputs for finalize.
-                        inputs.push(*checksum);
-                    }
-                    None => bail!("The transition is missing inputs for 'finalize'"),
-                }
-            } else {
-                // Ensure the transition does not contain inputs for finalize.
-                if transition.finalize().is_some() {
-                    bail!(
-                        "The transition contains inputs for 'finalize', but the function does not have a 'finalize' scope"
-                    )
-                }
-            }
-
-            lap!(timer, "Construct the verifier inputs");
-
-            #[cfg(debug_assertions)]
-            println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
-
-            // Retrieve the verifying key.
-            let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
             // Save the verifying key and its inputs.
             verifier_inputs
                 .entry(Locator::new(*stack.program_id(), *function.name()))
-                .or_insert((verifying_key, vec![]))
+                // Retrieve the verifying key, if it does not already exist.
+                .or_insert((stack.get_verifying_key(function.name())?, vec![]))
                 .1
                 .push(inputs);
+            lap!(timer, "Stored the verifier inputs for a transition of {}", function.name());
 
-            lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
             // Add the transition to the transition map.
             transition_map.insert(*transition.id(), transition);
         }
@@ -191,6 +132,78 @@ impl<N: Network> Process<N> {
 
         finish!(timer);
         Ok(())
+    }
+}
+
+impl<N: Network> Process<N> {
+    /// Returns the public inputs to verify the proof for the given transition.
+    fn to_transition_verifier_inputs(
+        &self,
+        transition: &Transition<N>,
+        function: &Function<N>,
+        call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
+        transition_map: &mut HashMap<N::TransitionID, &Transition<N>>,
+    ) -> Result<Vec<N::Field>> {
+        // Compute the x- and y-coordinate of `tpk`.
+        let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
+
+        // [Inputs] Construct the verifier inputs to verify the proof.
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
+        // [Inputs] Extend the verifier inputs with the input IDs.
+        inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
+
+        // If there are function calls, append their inputs and outputs.
+        for transition_id in call_graph.get(transition.id()).unwrap() {
+            // Note that this unwrap is safe, since we are processing transitions in post-order, which implies that all callees have been added to `transition_map`.
+            let transition: &&Transition<N> = transition_map.get(transition_id).unwrap();
+            // [Inputs] Extend the verifier inputs with the input IDs of the external call.
+            inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
+            // [Inputs] Extend the verifier inputs with the output IDs of the external call.
+            inputs.extend(transition.output_ids().map(|id| **id));
+        }
+
+        // [Inputs] Extend the verifier inputs with the output IDs.
+        inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
+
+        // Ensure the transition contains finalize inputs, if the function has a finalize scope.
+        if let Some((command, logic)) = function.finalize() {
+            // Ensure the transition contains finalize inputs.
+            match transition.finalize() {
+                Some(finalize) => {
+                    // Retrieve the number of operands.
+                    let num_operands = command.operands().len();
+                    // Retrieve the number of inputs.
+                    let num_inputs = logic.inputs().len();
+
+                    // Ensure the number of inputs for finalize is within the allowed range.
+                    ensure!(finalize.len() <= N::MAX_INPUTS, "Transition exceeds maximum inputs for finalize");
+                    // Ensure the number of inputs for finalize matches in the finalize command.
+                    ensure!(finalize.len() == num_operands, "The number of inputs for finalize is incorrect");
+                    // Ensure the number of inputs for finalize matches in the finalize logic.
+                    ensure!(finalize.len() == num_inputs, "The number of inputs for finalize is incorrect");
+
+                    // Convert the finalize inputs into concatenated bits.
+                    let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
+                    // Compute the checksum of the finalize inputs.
+                    let checksum = N::hash_bhp1024(&finalize_bits)?;
+
+                    // [Inputs] Extend the verifier inputs with the inputs for finalize.
+                    inputs.push(*checksum);
+                }
+                None => bail!("The transition is missing inputs for 'finalize'"),
+            }
+        } else {
+            // Ensure the transition does not contain inputs for finalize.
+            if transition.finalize().is_some() {
+                bail!(
+                    "The transition contains inputs for 'finalize', but the function does not have a 'finalize' scope"
+                )
+            }
+        }
+
+        #[cfg(debug_assertions)]
+        println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
+        Ok(inputs)
     }
 }
 
