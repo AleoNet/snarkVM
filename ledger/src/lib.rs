@@ -37,7 +37,7 @@ use console::{
     types::{Field, Group},
 };
 use synthesizer::{
-    block::{Block, ConfirmedTransaction, Header, Input, Metadata, Transaction, Transactions},
+    block::{Block, ConfirmedTransaction, Header, Metadata, Transaction, Transactions},
     coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
     process::Query,
     program::Program,

@@ -14,6 +14,8 @@
 
 use super::*;
 
+use std::collections::HashMap;
+
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given transaction is well-formed and unique.
     pub fn check_transaction_basic(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
@@ -24,75 +26,56 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Transaction '{transaction_id}' already exists in the ledger")
         }
 
-        // TODO (raychu86): Remove this once proper coinbase transactions are integrated with consensus.
-        // Ensure the coinbase transaction is attributed to a validator in the committee.
-        if transaction.is_coinbase() {
-            if let Transaction::Execute(id, execution, _) = transaction {
-                // Loop over coinbase transitions and check the input address.
-                for transition in execution.transitions().filter(|t| t.is_coinbase()) {
-                    // Get the input address of the coinbase transition.
-                    match transition.inputs().get(0) {
-                        Some(Input::Public(_, Some(Plaintext::Literal(Literal::Address(address), _)))) => {
-                            // Check if the address is in the current committee.
-                            if !self.current_committee.read().contains(address) {
-                                bail!("Coinbase transaction ({id}) is from an unauthorized account ({address})",);
-                            }
-                        }
-                        _ => bail!("Invalid coinbase transaction: Missing public input in 'credits.aleo/mint'"),
-                    }
+        // Ensure the mint transaction is attributed to a validator in the committee.
+        if transaction.is_mint() {
+            // Retrieve the execution.
+            let Some(execution) = transaction.execution() else {
+                bail!("Invalid mint transaction: expected an execution");
+            };
+            // Loop over the mint transitions and ensure the address is authorized.
+            for transition in execution.transitions().filter(|t| t.is_mint()) {
+                // Retrieve the address that minted.
+                let address = mint_address(transition)?;
+                // Check if the address is in the current committee.
+                if !self.current_committee.read().contains(address) {
+                    bail!("Mint transaction ({transaction_id}) is from an unauthorized account ({address})")
                 }
-            } else {
-                bail!("Invalid coinbase transaction");
             }
         }
 
         /* Fee */
 
-        // Ensure the transaction has a sufficient fee.
-        let fee = transaction.fee()?;
-        match transaction {
-            Transaction::Deploy(_, _, deployment, _) => {
-                // Check that the fee in microcredits is at least the deployment size in bytes.
-                if deployment.size_in_bytes()?.saturating_mul(N::DEPLOYMENT_FEE_MULTIPLIER) > *fee {
-                    bail!("Transaction '{transaction_id}' has insufficient fee to cover its storage in bytes")
+        // TODO (raychu86): Remove the split check when batch executions are integrated.
+        let can_skip_fee = match transaction.execution() {
+            Some(execution) => (transaction.is_mint() || transaction.is_split()) && execution.len() == 1,
+            None => false,
+        };
+
+        if !can_skip_fee {
+            // Retrieve the transaction fee.
+            let fee = *transaction.fee()?;
+            // Retrieve the minimum cost of the transaction.
+            let (cost, _) = match transaction {
+                Transaction::Deploy(_, _, deployment, _) => deployment_cost(deployment)?,
+                Transaction::Execute(_, execution, _) => {
+                    // Prepare the program lookup.
+                    let lookup = execution
+                        .transitions()
+                        .map(|transition| Ok((*transition.program_id(), self.get_program(*transition.program_id())?)))
+                        .collect::<Result<HashMap<_, _>>>()?;
+                    // Compute the execution cost.
+                    execution_cost(execution, lookup)?
                 }
+                // TODO (howardwu): Plug in the Rejected struct, to compute the cost.
+                Transaction::Fee(_, _) => (0, (0, 0)),
+            };
+            // Ensure the transaction has a sufficient fee.
+            if cost > fee {
+                bail!("Transaction '{transaction_id}' has an insufficient fee - expected at least {cost} microcredits")
             }
-            Transaction::Execute(_, execution, _) => {
-                // TODO (raychu86): Remove the split check when batch executions are integrated.
-                // If the transaction is not a coinbase or split transaction, check that the fee in microcredits is at least the execution size in bytes plus the cost of the `finalize`s.
-                if !((transaction.is_coinbase() || transaction.is_split()) && execution.len() == 1) {
-                    // Compute the total cost for the `finalize`s in the execution.
-                    let mut total_finalize_cost = 0u64;
-                    for transition in execution.transitions() {
-                        let program = self.get_program(*transition.program_id())?;
-                        let function = program.get_function(transition.function_name())?;
-                        let finalize_cost = match function.finalize() {
-                            None => 0u64,
-                            Some((_, finalize)) => finalize.cost_in_microcredits()?,
-                        };
-                        total_finalize_cost = match total_finalize_cost.checked_add(finalize_cost) {
-                            Some(total_finalize_cost) => total_finalize_cost,
-                            None => bail!("Overflow in calculating the total finalize cost"),
-                        };
-                    }
-                    // Add the execution size in bytes to the total cost.
-                    let total_cost = match total_finalize_cost.checked_add(execution.size_in_bytes()?) {
-                        Some(total_cost) => total_cost,
-                        None => bail!("Overflow in calculating the total cost"),
-                    };
-                    // Check that the fee in microcredits is at least the total cost.
-                    if total_cost > *fee {
-                        bail!(
-                            "Transaction '{transaction_id}' has insufficient fee to cover its storage in bytes and finalize its execution"
-                        )
-                    }
-                }
-            }
-            // TODO (howardwu): Pass the confirmed transaction in and check its rejected size against the fee.
-            Transaction::Fee(..) => (),
         }
 
-        /* Proof(s) */
+        /* Proof */
 
         // Ensure the transaction is valid.
         self.vm().check_transaction(transaction, rejected_id)?;
@@ -145,11 +128,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Program */
 
-        // Ensure that the ledger does not already contain the given program ID.
+        // If the transaction is a deployment, then perform deployment checks.
         if let Transaction::Deploy(_, _, deployment, _) = &transaction {
-            let program_id = deployment.program_id();
-            if self.contains_program_id(program_id)? {
-                bail!("Program ID '{program_id}' already exists in the ledger")
+            // Ensure the edition is correct.
+            if deployment.edition() != N::EDITION {
+                bail!("Invalid program deployment: expected edition {}", N::EDITION)
+            }
+            // Ensure the program ID is not already in the ledger.
+            if self.contains_program_id(deployment.program_id())? {
+                bail!("Program ID '{}' already exists in the ledger", deployment.program_id())
             }
         }
 
@@ -263,47 +250,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Invalid block header: {:?}", block.header());
         }
 
-        // TODO (raychu86): Include mints from the leader of each round.
-        // TODO (raychu86): Clean this up or create a `total_supply_delta` in `Transactions`.
-        // Calculate the new total supply of microcredits after the block.
-        let mut new_total_supply_in_microcredits = self.latest_total_supply_in_microcredits();
-        for confirmed_tx in block.transactions().iter() {
-            // Subtract the fee from the total supply.
-            let fee = confirmed_tx.fee()?;
-            new_total_supply_in_microcredits = new_total_supply_in_microcredits
-                .checked_sub(*fee)
-                .ok_or_else(|| anyhow!("Fee exceeded total supply of credits"))?;
-
-            // If the transaction is a coinbase, add the amount to the total supply.
-            if confirmed_tx.is_coinbase() {
-                if let Transaction::Execute(_, execution, _) = confirmed_tx.transaction() {
-                    // Loop over coinbase transitions and accumulate the amounts.
-                    for transition in execution.transitions().filter(|t| t.is_coinbase()) {
-                        // Extract the amount from the second input (amount) if it exists.
-                        let amount = transition
-                            .inputs()
-                            .get(1)
-                            .and_then(|input| match input {
-                                Input::Public(_, Some(Plaintext::Literal(Literal::U64(amount), _))) => Some(amount),
-                                _ => None,
-                            })
-                            .ok_or_else(|| {
-                                anyhow!("Invalid coinbase transaction: Missing public input in 'credits.aleo/mint'")
-                            })?;
-
-                        // Add the public amount minted to the total supply.
-                        new_total_supply_in_microcredits = new_total_supply_in_microcredits
-                            .checked_add(**amount)
-                            .ok_or_else(|| anyhow!("Total supply of microcredits overflowed"))?;
-                    }
-                } else {
-                    bail!("Invalid coinbase transaction");
-                }
-            }
-        }
-
+        // Retrieve the latest total supply.
+        let latest_total_supply = self.latest_total_supply_in_microcredits();
+        // Compute the next total supply in microcredits.
+        let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, block.transactions())?;
         // Ensure the total supply in microcredits is correct.
-        if new_total_supply_in_microcredits != block.total_supply_in_microcredits() {
+        if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
             bail!("Invalid total supply in microcredits")
         }
 

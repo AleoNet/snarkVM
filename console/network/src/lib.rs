@@ -98,6 +98,8 @@ pub trait Network:
     const STARTING_SUPPLY: u64 = 1_500_000_000_000_000; // 1.5B credits
     /// The cost in microcredits per byte for the deployment transaction.
     const DEPLOYMENT_FEE_MULTIPLIER: u64 = 1_000; // 1 millicredit per byte
+    /// The maximum number of microcredits that can be spent as a fee.
+    const MAX_FEE: u64 = 1_000_000_000_000_000;
 
     /// The anchor time per block in seconds, which must be greater than the round time per block.
     const ANCHOR_TIME: u16 = 25;
