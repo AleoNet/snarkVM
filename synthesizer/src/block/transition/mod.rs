@@ -296,15 +296,15 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
-    /// Returns `true` if this is a coinbase transition.
+    /// Returns `true` if this is a `mint` transition.
     #[inline]
-    pub fn is_coinbase(&self) -> bool {
-        // Case 1: The transition calls 'credits.aleo/mint'.
-        if self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "mint" {
-            return true;
-        }
-        // Otherwise, return 'false'.
-        false
+    pub fn is_mint(&self) -> bool {
+        // The transition is a `mint` transition if it:
+        self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "mint"
+            && self.inputs.len() == 2
+            && self.outputs.len() == 1
+            && self.finalize.is_none()
     }
 
     /// Returns `true` if this is a `fee` transition.

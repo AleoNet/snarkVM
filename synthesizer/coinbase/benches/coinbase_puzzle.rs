@@ -17,7 +17,10 @@
 #[macro_use]
 extern crate criterion;
 
-use console::{account::*, network::Testnet3};
+use console::{
+    account::*,
+    network::{Network, Testnet3},
+};
 use snarkvm_synthesizer_coinbase::{CoinbasePuzzle, EpochChallenge, PuzzleConfig};
 
 use criterion::Criterion;
@@ -92,7 +95,7 @@ fn coinbase_puzzle_accumulate(c: &mut Criterion) {
         let puzzle = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
 
-        for batch_size in [10, 100, 500] {
+        for batch_size in [10, 100, <Testnet3 as Network>::MAX_PROVER_SOLUTIONS] {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let (address, nonce) = sample_address_and_nonce(rng);
@@ -121,7 +124,7 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
         let puzzle = CoinbasePuzzleInst::trim(&universal_srs, config).unwrap();
         let epoch_challenge = sample_epoch_challenge(degree, rng);
 
-        for batch_size in [10, 100, 500] {
+        for batch_size in [10, 100, <Testnet3 as Network>::MAX_PROVER_SOLUTIONS] {
             let solutions = (0..batch_size)
                 .map(|_| {
                     let (address, nonce) = sample_address_and_nonce(rng);

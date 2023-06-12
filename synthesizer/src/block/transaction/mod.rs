@@ -98,12 +98,12 @@ impl<N: Network> Transaction<N> {
         matches!(self, Self::Fee(..))
     }
 
-    /// Returns `true` if this is a coinbase transaction.
+    /// Returns `true` if this is a `mint` transaction.
     #[inline]
-    pub fn is_coinbase(&self) -> bool {
+    pub fn is_mint(&self) -> bool {
         match self {
             // Case 1 - The transaction contains a transition that calls 'credits.aleo/mint'.
-            Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_coinbase()),
+            Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_mint()),
             // Otherwise, return 'false'.
             _ => false,
         }

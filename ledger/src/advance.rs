@@ -27,77 +27,52 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_state_root = *self.latest_state_root();
         // Retrieve the latest block.
         let latest_block = self.latest_block();
+        // Retrieve the latest round.
+        let latest_round = latest_block.round();
         // Retrieve the latest height.
         let latest_height = latest_block.height();
         // Retrieve the latest total supply in microcredits.
-        let latest_total_supply_in_microcredits = latest_block.total_supply_in_microcredits();
+        let latest_total_supply = latest_block.total_supply_in_microcredits();
         // Retrieve the latest cumulative weight.
         let latest_cumulative_weight = latest_block.cumulative_weight();
 
+        // Construct the coinbase solution.
+        let (coinbase, coinbase_accumulator_point, cumulative_proof_target) = match &candidate_solutions {
+            Some(solutions) => {
+                // Accumulate the prover solutions into a coinbase solution.
+                let coinbase = self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, solutions)?;
+                // Compute the accumulator point of the coinbase solution.
+                let coinbase_accumulator_point = coinbase.to_accumulator_point()?;
+                // Compute the cumulative proof target. Using '.sum' here is safe because we sum u64s into a u128.
+                let cumulative_proof_target =
+                    solutions.iter().map(|s| Ok(s.to_target()? as u128)).sum::<Result<u128>>()?;
+                // Output the coinbase solution, coinbase accumulator point, and cumulative proof target.
+                (Some(coinbase), coinbase_accumulator_point, cumulative_proof_target)
+            }
+            None => (None, Field::<N>::zero(), 0u128),
+        };
+
+        // Compute the next round number.
+        let next_round = latest_round.saturating_add(1);
+        // Compute the next height.
+        let next_height = latest_height.saturating_add(1);
+        // Compute the next cumulative weight.
+        let next_cumulative_weight = latest_cumulative_weight.saturating_add(cumulative_proof_target);
+
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(latest_height + 1);
+        let state = FinalizeGlobalState::new(next_height);
         // Select the transactions from the memory pool.
         let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
 
-        // TODO (raychu86): Clean this up or create a `total_supply_delta` in `Transactions`.
-        // Calculate the new total supply of microcredits after the block.
-        let mut new_total_supply_in_microcredits = latest_total_supply_in_microcredits;
-        for confirmed_tx in transactions.iter() {
-            // Subtract the fee from the total supply.
-            let fee = confirmed_tx.fee()?;
-            new_total_supply_in_microcredits = new_total_supply_in_microcredits
-                .checked_sub(*fee)
-                .ok_or_else(|| anyhow!("Fee exceeded total supply of credits"))?;
+        // Compute the next total supply in microcredits.
+        let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, &transactions)?;
 
-            // If the transaction is a coinbase, add the amount to the total supply.
-            if confirmed_tx.is_coinbase() {
-                if let Transaction::Execute(_, execution, _) = confirmed_tx.transaction() {
-                    // Loop over coinbase transitions and accumulate the amounts.
-                    for transition in execution.transitions().filter(|t| t.is_coinbase()) {
-                        // Extract the amount from the second input (amount) if it exists.
-                        let amount = transition
-                            .inputs()
-                            .get(1)
-                            .and_then(|input| match input {
-                                Input::Public(_, Some(Plaintext::Literal(Literal::U64(amount), _))) => Some(amount),
-                                _ => None,
-                            })
-                            .ok_or_else(|| {
-                                anyhow!("Invalid coinbase transaction: Missing public input in 'credits.aleo/mint'")
-                            })?;
-
-                        // Add the public amount minted to the total supply.
-                        new_total_supply_in_microcredits = new_total_supply_in_microcredits
-                            .checked_add(**amount)
-                            .ok_or_else(|| anyhow!("Total supply of microcredits overflowed"))?;
-                    }
-                } else {
-                    bail!("Invalid coinbase transaction");
-                }
-            }
-        }
-
-        // Construct the coinbase solution.
-        let (coinbase, coinbase_accumulator_point) = match &candidate_solutions {
-            Some(prover_solutions) => {
-                let epoch_challenge = self.latest_epoch_challenge()?;
-                let coinbase_solution =
-                    self.coinbase_puzzle.accumulate_unchecked(&epoch_challenge, prover_solutions)?;
-                let coinbase_accumulator_point = coinbase_solution.to_accumulator_point()?;
-
-                (Some(coinbase_solution), coinbase_accumulator_point)
-            }
-            None => (None, Field::<N>::zero()),
-        };
-
-        // Fetch the next round state.
+        // Checkpoint the timestamp for the next block.
         let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
-        let next_height = latest_height.saturating_add(1);
-        let next_round = latest_block.round().saturating_add(1);
 
         // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
         //  and instead, will track prover leaderboards via the `coinbase_solution` in each block.
-        let block_cumulative_proof_target = if let Some(prover_solutions) = candidate_solutions {
+        if let Some(prover_solutions) = candidate_solutions {
             // Calculate the coinbase reward.
             let coinbase_reward = coinbase_reward(
                 latest_block.last_coinbase_timestamp(),
@@ -105,45 +80,37 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 next_height,
                 N::STARTING_SUPPLY,
                 N::ANCHOR_TIME,
-            )?;
+            )? as u128;
 
-            // Compute the cumulative proof target of the prover solutions as a u128.
-            let block_cumulative_proof_target: u128 =
-                prover_solutions.iter().try_fold(0u128, |cumulative, solution| {
-                    cumulative
-                        .checked_add(solution.to_target()? as u128)
-                        .ok_or_else(|| anyhow!("Cumulative proof target overflowed"))
-                })?;
+            // Initialize a vector to store the prover rewards.
+            let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
 
             // Calculate the rewards for the individual provers.
-            let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
             for prover_solution in prover_solutions {
                 // Prover compensation is defined as:
                 //   1/2 * coinbase_reward * (prover_target / cumulative_prover_target)
                 //   = (coinbase_reward * prover_target) / (2 * cumulative_prover_target)
 
                 // Compute the numerator.
-                let numerator = (coinbase_reward as u128)
+                let numerator = coinbase_reward
                     .checked_mul(prover_solution.to_target()? as u128)
                     .ok_or_else(|| anyhow!("Prover reward numerator overflowed"))?;
-
                 // Compute the denominator.
-                let denominator = block_cumulative_proof_target
+                let denominator = cumulative_proof_target
                     .checked_mul(2)
                     .ok_or_else(|| anyhow!("Prover reward denominator overflowed"))?;
+                // Compute the quotient.
+                let quotient =
+                    numerator.checked_div(denominator).ok_or_else(|| anyhow!("Prover reward quotient overflowed"))?;
 
-                // Compute the prover reward.
-                let prover_reward = u64::try_from(
-                    numerator.checked_div(denominator).ok_or_else(|| anyhow!("Prover reward overflowed"))?,
-                )?;
-
+                // Cast the prover reward as a u64.
+                let prover_reward = u64::try_from(quotient)?;
+                // Ensure the prover reward is within a safe bound.
+                ensure!(prover_reward <= 1_000_000_000, "Prover reward is too large");
+                // Append the prover reward to the vector.
                 prover_rewards.push((prover_solution.address(), prover_reward));
             }
-
-            block_cumulative_proof_target
-        } else {
-            0u128
-        };
+        }
 
         // Construct the next coinbase target.
         let next_coinbase_target = coinbase_target(
@@ -164,16 +131,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => (latest_block.last_coinbase_target(), latest_block.last_coinbase_timestamp()),
         };
 
-        // Construct the new cumulative weight.
-        let cumulative_weight = latest_cumulative_weight.saturating_add(block_cumulative_proof_target);
-
         // Construct the metadata.
         let metadata = Metadata::new(
             N::ID,
             next_round,
             next_height,
-            new_total_supply_in_microcredits,
-            cumulative_weight,
+            next_total_supply_in_microcredits,
+            next_cumulative_weight,
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,
