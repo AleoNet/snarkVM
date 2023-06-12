@@ -159,10 +159,7 @@ impl<N: Network> Trace<N> {
         ensure!(!self.is_fee(), "The trace cannot prove execution for fee");
         // Ensure there are no fee transitions.
         ensure!(
-            self.transitions.iter().all(|transition| {
-                !(&transition.program_id().to_string() == "credits.aleo"
-                    && &transition.function_name().to_string() == "fee")
-            }),
+            self.transitions.iter().all(|transition| !transition.is_fee()),
             "The trace cannot prove execution for a fee, call 'prove_fee' instead"
         );
         // Retrieve the inclusion assignments.
