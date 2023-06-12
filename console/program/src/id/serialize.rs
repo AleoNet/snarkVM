@@ -42,7 +42,7 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &["testing.aleo", "hello.aleo", "hello.world", "foo.bar"];
+    const TEST_CASES: &[&str] = &["testing.aleo", "hello.aleo", "abc_def.aleo", "a1234.aleo"];
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,

@@ -191,6 +191,14 @@ pub(crate) mod tests {
         }
     }
 
+    /// Samples a random identifier as a string.
+    pub(crate) fn sample_lowercase_console_identifier_as_string<A: Aleo>() -> Result<String> {
+        // Sample a random identifier.
+        let string = sample_console_identifier_as_string::<A>()?;
+        // Return the identifier as lowercase.
+        Ok(string.to_lowercase())
+    }
+
     #[test]
     fn test_identifier_parse() -> Result<()> {
         let candidate = Identifier::<Circuit>::parse("foo_bar").unwrap();

@@ -120,11 +120,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        mut call_stack: CallStack<N>,
-        rng: &mut R,
-    ) -> Result<Response<N>> {
+    fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
         // Ensure the call stack is not `Evaluate`.
@@ -421,36 +417,30 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution, ref inclusion, ref metrics) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref trace) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
+            // Construct the transition.
+            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
-            // Execute the circuit.
-            let proof = match proving_key.prove(&function.name().to_string(), &assignment, rng) {
-                Ok(proof) => proof,
-                Err(error) => bail!("Execution proof failed - {error}"),
-            };
-            lap!(timer, "Execute the circuit");
-
-            // Construct the transition.
-            let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof)?;
-
-            // Add the transition commitments.
-            inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
-            // Add the transition to the execution.
-            execution.write().push(transition);
-
-            // Add the metrics.
-            metrics.write().push(CallMetrics {
+            // Construct the call metrics.
+            let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,
                 num_response_constraints,
-            });
+            };
+
+            // Add the transition to the trace.
+            trace.write().insert_transition(
+                console_request.input_ids(),
+                &transition,
+                (proving_key, assignment),
+                metrics,
+            )?;
         }
 
         finish!(timer);

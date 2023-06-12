@@ -19,9 +19,8 @@ impl<N: Network> Header<N> {
     pub fn genesis(transactions: &Transactions<N>) -> Result<Self> {
         // Prepare a genesis block header.
         let previous_state_root = Field::zero();
-        let transactions_root = transactions.to_root()?;
-        // TODO (raychu86): Update this to consider the transactions in the genesis block.
-        let finalize_root = Field::zero();
+        let transactions_root = transactions.to_transactions_root()?;
+        let finalize_root = transactions.to_finalize_root()?;
         let coinbase_accumulator_point = Field::zero();
         let metadata = Metadata::genesis()?;
 
@@ -35,8 +34,8 @@ impl<N: Network> Header<N> {
         self.previous_state_root == Field::zero()
             // Ensure the transactions root is nonzero.
             && self.transactions_root != Field::zero()
-            // Ensure the finalize root is zero.
-            && self.finalize_root == Field::zero()
+            // Ensure the finalize root is nonzero.
+            && self.finalize_root != Field::zero()
             // Ensure the coinbase accumulator point is zero.
             && self.coinbase_accumulator_point == Field::zero()
             // Ensure the metadata is a genesis metadata.

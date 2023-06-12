@@ -49,7 +49,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn speculate<'a>(
         &self,
-        transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
+        transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<Transactions<N>> {
         let timer = timer!("VM::speculate");
 
@@ -81,7 +81,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[rustfmt::skip]
     fn atomic_speculate<'a>(
         &self,
-        transactions: impl Iterator<Item = &'a Transaction<N>> + ExactSizeIterator,
+        transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
     ) -> Result<Vec<ConfirmedTransaction<N>>> {
         let timer = timer!("VM::atomic_speculate");
 
@@ -351,7 +351,7 @@ mod tests {
         unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<(String, Block<CurrentNetwork>)> {
-        let program_name = format!("a{}.aleo", Alphanumeric.sample_string(rng, 8));
+        let program_name = format!("a{}.aleo", Alphanumeric.sample_string(rng, 8).to_lowercase());
 
         let program = Program::<CurrentNetwork>::from_str(&format!(
             "
@@ -372,7 +372,7 @@ finalize mint_public:
     input r0 as address.public;
     input r1 as u64.public;
 
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r2 r1 into r3;
     set r3 into account[r0];
 
@@ -387,8 +387,8 @@ finalize transfer_public:
     input r1 as address.public;
     input r2 as u64.public;
 
-    get.or_init account[r0] 0u64 into r3;
-    get.or_init account[r1] 0u64 into r4;
+    get.or_use account[r0] 0u64 into r3;
+    get.or_use account[r1] 0u64 into r4;
 
     sub r3 r2 into r5;
     add r4 r2 into r6;
@@ -438,8 +438,8 @@ finalize transfer_public:
 
         let header = Header::from(
             *vm.block_store().current_state_root(),
-            transactions.to_root().unwrap(),
-            Field::zero(),
+            transactions.to_transactions_root().unwrap(),
+            transactions.to_finalize_root().unwrap(),
             Field::zero(),
             metadata,
         )?;
@@ -526,7 +526,7 @@ finalize transfer_public:
             )
             .unwrap();
         // Verify.
-        assert!(vm.verify_transaction(&transaction));
+        assert!(vm.verify_transaction(&transaction, None));
 
         // Return the transaction.
         transaction
@@ -791,7 +791,7 @@ finalize transfer_public:
         for finalize_logic in &[
             "finalize ped_hash:
     input r0 as u128.public;
-    hash.ped64 r0 into r1;
+    hash.ped64 r0 into r1 as field;
     set r1 into hashes[r0];",
             "finalize ped_hash:
     input r0 as u128.public;
@@ -824,7 +824,7 @@ mapping hashes:
 
 function ped_hash:
     input r0 as u128.public;
-    // hash.ped64 r0 into r1; // <--- This will cause a E::halt.
+    // hash.ped64 r0 into r1 as field; // <--- This will cause a E::halt.
     finalize r0;
 
 {finalize_logic}"
@@ -919,7 +919,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u8.public;
-    get.or_init entries[r0] r1 into r2;
+    get.or_use entries[r0] r1 into r2;
     add r1 r2 into r3;
     set r3 into entries[r0];
     get entries[r0] into r4;

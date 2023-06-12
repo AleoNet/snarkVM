@@ -28,26 +28,46 @@ use console::{
 };
 
 /// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
-pub type CommitBHP256<N> = CommitInstruction<N, { Committer::BHP256 as u8 }>;
+pub type CommitBHP256<N> = CommitInstruction<N, { Committer::CommitBHP256 as u8 }>;
 /// BHP512 is a collision-resistant function that processes inputs in 512-bit chunks.
-pub type CommitBHP512<N> = CommitInstruction<N, { Committer::BHP512 as u8 }>;
+pub type CommitBHP512<N> = CommitInstruction<N, { Committer::CommitBHP512 as u8 }>;
 /// BHP768 is a collision-resistant function that processes inputs in 768-bit chunks.
-pub type CommitBHP768<N> = CommitInstruction<N, { Committer::BHP768 as u8 }>;
+pub type CommitBHP768<N> = CommitInstruction<N, { Committer::CommitBHP768 as u8 }>;
 /// BHP1024 is a collision-resistant function that processes inputs in 1024-bit chunks.
-pub type CommitBHP1024<N> = CommitInstruction<N, { Committer::BHP1024 as u8 }>;
+pub type CommitBHP1024<N> = CommitInstruction<N, { Committer::CommitBHP1024 as u8 }>;
 
 /// Pedersen64 is a collision-resistant function that processes inputs in 64-bit chunks.
-pub type CommitPED64<N> = CommitInstruction<N, { Committer::PED64 as u8 }>;
+pub type CommitPED64<N> = CommitInstruction<N, { Committer::CommitPED64 as u8 }>;
 /// Pedersen128 is a collision-resistant function that processes inputs in 128-bit chunks.
-pub type CommitPED128<N> = CommitInstruction<N, { Committer::PED128 as u8 }>;
+pub type CommitPED128<N> = CommitInstruction<N, { Committer::CommitPED128 as u8 }>;
+
+/// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
+pub type CommitToGroupBHP256<N> = CommitInstruction<N, { Committer::CommitToGroupBHP256 as u8 }>;
+/// BHP512 is a collision-resistant function that processes inputs in 512-bit chunks.
+pub type CommitToGroupBHP512<N> = CommitInstruction<N, { Committer::CommitToGroupBHP512 as u8 }>;
+/// BHP768 is a collision-resistant function that processes inputs in 768-bit chunks.
+pub type CommitToGroupBHP768<N> = CommitInstruction<N, { Committer::CommitToGroupBHP768 as u8 }>;
+/// BHP1024 is a collision-resistant function that processes inputs in 1024-bit chunks.
+pub type CommitToGroupBHP1024<N> = CommitInstruction<N, { Committer::CommitToGroupBHP1024 as u8 }>;
+
+/// Pedersen64 is a collision-resistant function that processes inputs in 64-bit chunks.
+pub type CommitToGroupPED64<N> = CommitInstruction<N, { Committer::CommitToGroupPED64 as u8 }>;
+/// Pedersen128 is a collision-resistant function that processes inputs in 128-bit chunks.
+pub type CommitToGroupPED128<N> = CommitInstruction<N, { Committer::CommitToGroupPED128 as u8 }>;
 
 enum Committer {
-    BHP256,
-    BHP512,
-    BHP768,
-    BHP1024,
-    PED64,
-    PED128,
+    CommitBHP256,
+    CommitBHP512,
+    CommitBHP768,
+    CommitBHP1024,
+    CommitPED64,
+    CommitPED128,
+    CommitToGroupBHP256,
+    CommitToGroupBHP512,
+    CommitToGroupBHP768,
+    CommitToGroupBHP1024,
+    CommitToGroupPED64,
+    CommitToGroupPED128,
 }
 
 /// Commits the operand into the declared type.
@@ -70,7 +90,13 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             3 => Opcode::Commit("commit.bhp1024"),
             4 => Opcode::Commit("commit.ped64"),
             5 => Opcode::Commit("commit.ped128"),
-            _ => panic!("Invalid 'commit' instruction opcode"),
+            6 => Opcode::Commit("commit_to_group.bhp256"),
+            7 => Opcode::Commit("commit_to_group.bhp512"),
+            8 => Opcode::Commit("commit_to_group.bhp768"),
+            9 => Opcode::Commit("commit_to_group.bhp1024"),
+            10 => Opcode::Commit("commit_to_group.ped64"),
+            11 => Opcode::Commit("commit_to_group.ped128"),
+            12.. => panic!("Invalid 'commit' instruction opcode"),
         }
     }
 
@@ -118,9 +144,15 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             1 => Literal::Field(N::commit_bhp512(&input.to_bits_le(), &randomizer)?),
             2 => Literal::Field(N::commit_bhp768(&input.to_bits_le(), &randomizer)?),
             3 => Literal::Field(N::commit_bhp1024(&input.to_bits_le(), &randomizer)?),
-            4 => Literal::Group(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
-            5 => Literal::Group(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
-            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+            4 => Literal::Field(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
+            5 => Literal::Field(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
+            6 => Literal::Group(N::commit_to_group_bhp256(&input.to_bits_le(), &randomizer)?),
+            7 => Literal::Group(N::commit_to_group_bhp512(&input.to_bits_le(), &randomizer)?),
+            8 => Literal::Group(N::commit_to_group_bhp768(&input.to_bits_le(), &randomizer)?),
+            9 => Literal::Group(N::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)?),
+            10 => Literal::Group(N::commit_to_group_ped64(&input.to_bits_le(), &randomizer)?),
+            11 => Literal::Group(N::commit_to_group_ped128(&input.to_bits_le(), &randomizer)?),
+            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
@@ -157,9 +189,15 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             1 => circuit::Literal::Field(A::commit_bhp512(&input.to_bits_le(), &randomizer)),
             2 => circuit::Literal::Field(A::commit_bhp768(&input.to_bits_le(), &randomizer)),
             3 => circuit::Literal::Field(A::commit_bhp1024(&input.to_bits_le(), &randomizer)),
-            4 => circuit::Literal::Group(A::commit_ped64(&input.to_bits_le(), &randomizer)),
-            5 => circuit::Literal::Group(A::commit_ped128(&input.to_bits_le(), &randomizer)),
-            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+            4 => circuit::Literal::Field(A::commit_ped64(&input.to_bits_le(), &randomizer)),
+            5 => circuit::Literal::Field(A::commit_ped128(&input.to_bits_le(), &randomizer)),
+            6 => circuit::Literal::Group(A::commit_to_group_bhp256(&input.to_bits_le(), &randomizer)),
+            7 => circuit::Literal::Group(A::commit_to_group_bhp512(&input.to_bits_le(), &randomizer)),
+            8 => circuit::Literal::Group(A::commit_to_group_bhp768(&input.to_bits_le(), &randomizer)),
+            9 => circuit::Literal::Group(A::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)),
+            10 => circuit::Literal::Group(A::commit_to_group_ped64(&input.to_bits_le(), &randomizer)),
+            11 => circuit::Literal::Group(A::commit_to_group_ped128(&input.to_bits_le(), &randomizer)),
+            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
@@ -196,9 +234,9 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0 | 1 | 2 | 3 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
-            4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
-            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
+            0..=5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            6..=11 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
+            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         }
     }
 }
@@ -487,14 +525,14 @@ mod tests {
     test_commit!(commit_bhp768, CommitBHP768);
     test_commit!(commit_bhp1024, CommitBHP1024);
 
-    // Note this test must be explicitly written, instead of using the macro, because CommitPED64 fails on certain input types.
-    #[test]
-    fn test_hash_ped64_is_consistent() {
-        // Initialize the operation.
-        let operation = |operands, destination| CommitPED64::<CurrentNetwork> { operands, destination };
-        // Initialize the opcode.
-        let opcode = CommitPED128::<CurrentNetwork>::opcode();
+    test_commit!(commit_to_group_bhp256, CommitToGroupBHP256);
+    test_commit!(commit_to_group_bhp512, CommitToGroupBHP512);
+    test_commit!(commit_to_group_bhp768, CommitToGroupBHP768);
+    test_commit!(commit_to_group_bhp1024, CommitToGroupBHP1024);
 
+    // Note this test must be explicitly written, instead of using the macro, because CommitPED64 and CommitToGroupPED64 fails on certain input types.
+    #[test]
+    fn test_commit_ped64_is_consistent() {
         // Prepare the rng.
         let mut rng = TestRng::default();
 
@@ -502,41 +540,47 @@ mod tests {
         let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
-        // Prepare the key cache.
-        let mut cache = Default::default();
-
-        for _ in 0..ITERATIONS {
-            let literals_a = [
-                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                Literal::I8(console::types::I8::rand(&mut rng)),
-                Literal::I16(console::types::I16::rand(&mut rng)),
-                Literal::I32(console::types::I32::rand(&mut rng)),
-                Literal::U8(console::types::U8::rand(&mut rng)),
-                Literal::U16(console::types::U16::rand(&mut rng)),
-                Literal::U32(console::types::U32::rand(&mut rng)),
-            ];
-            let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
-
-            for literal_a in &literals_a {
-                for literal_b in &literals_b {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        macro_rules! check_commit {
+            ($operation:tt) => {
+                let mut cache = Default::default();
+                for _ in 0..ITERATIONS {
+                    let literals_a = [
+                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                        Literal::I8(console::types::I8::rand(&mut rng)),
+                        Literal::I16(console::types::I16::rand(&mut rng)),
+                        Literal::I32(console::types::I32::rand(&mut rng)),
+                        Literal::U8(console::types::U8::rand(&mut rng)),
+                        Literal::U16(console::types::U16::rand(&mut rng)),
+                        Literal::U32(console::types::U32::rand(&mut rng)),
+                    ];
+                    let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
+                    for literal_a in &literals_a {
+                        for literal_b in &literals_b {
+                            for mode_a in &modes_a {
+                                for mode_b in &modes_b {
+                                    check_commit(
+                                        |operands, destination| $operation::<CurrentNetwork> { operands, destination },
+                                        $operation::<CurrentNetwork>::opcode(),
+                                        literal_a,
+                                        literal_b,
+                                        mode_a,
+                                        mode_b,
+                                        &mut cache,
+                                    );
+                                }
+                            }
                         }
                     }
                 }
-            }
+            };
         }
+        check_commit!(CommitPED64);
+        check_commit!(CommitToGroupPED64);
     }
 
-    // Note this test must be explicitly written, instead of using the macro, because CommitPED128 fails on certain input types.
+    // Note this test must be explicitly written, instead of using the macro, because CommitPED128 and CommitToGroupPED64 fails on certain input types.
     #[test]
-    fn test_hash_ped128_is_consistent() {
-        // Initialize the operation.
-        let operation = |operands, destination| CommitPED128::<CurrentNetwork> { operands, destination };
-        // Initialize the opcode.
-        let opcode = CommitPED128::<CurrentNetwork>::opcode();
-
+    fn test_commit_ped128_is_consistent() {
         // Prepare the rng.
         let mut rng = TestRng::default();
 
@@ -544,33 +588,44 @@ mod tests {
         let modes_a = [circuit::Mode::Public, circuit::Mode::Private];
         let modes_b = [circuit::Mode::Public, circuit::Mode::Private];
 
-        // Prepare the key cache.
-        let mut cache = Default::default();
-
-        for _ in 0..ITERATIONS {
-            let literals_a = [
-                Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                Literal::I8(console::types::I8::rand(&mut rng)),
-                Literal::I16(console::types::I16::rand(&mut rng)),
-                Literal::I32(console::types::I32::rand(&mut rng)),
-                Literal::I64(console::types::I64::rand(&mut rng)),
-                Literal::U8(console::types::U8::rand(&mut rng)),
-                Literal::U16(console::types::U16::rand(&mut rng)),
-                Literal::U32(console::types::U32::rand(&mut rng)),
-                Literal::U64(console::types::U64::rand(&mut rng)),
-            ];
-            let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
-
-            for literal_a in &literals_a {
-                for literal_b in &literals_b {
-                    for mode_a in &modes_a {
-                        for mode_b in &modes_b {
-                            check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+        macro_rules! check_commit {
+            ($operation:tt) => {
+                let mut cache = Default::default();
+                for _ in 0..ITERATIONS {
+                    let literals_a = [
+                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
+                        Literal::I8(console::types::I8::rand(&mut rng)),
+                        Literal::I16(console::types::I16::rand(&mut rng)),
+                        Literal::I32(console::types::I32::rand(&mut rng)),
+                        Literal::I64(console::types::I64::rand(&mut rng)),
+                        Literal::U8(console::types::U8::rand(&mut rng)),
+                        Literal::U16(console::types::U16::rand(&mut rng)),
+                        Literal::U32(console::types::U32::rand(&mut rng)),
+                        Literal::U64(console::types::U64::rand(&mut rng)),
+                    ];
+                    let literals_b = vec![Literal::Scalar(console::types::Scalar::rand(&mut rng))];
+                    for literal_a in &literals_a {
+                        for literal_b in &literals_b {
+                            for mode_a in &modes_a {
+                                for mode_b in &modes_b {
+                                    check_commit(
+                                        |operands, destination| $operation::<CurrentNetwork> { operands, destination },
+                                        $operation::<CurrentNetwork>::opcode(),
+                                        literal_a,
+                                        literal_b,
+                                        mode_a,
+                                        mode_b,
+                                        &mut cache,
+                                    );
+                                }
+                            }
                         }
                     }
                 }
-            }
+            };
         }
+        check_commit!(CommitPED128);
+        check_commit!(CommitToGroupPED128);
     }
 
     #[test]

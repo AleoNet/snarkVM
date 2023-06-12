@@ -27,6 +27,7 @@ mod size_in_bytes;
 mod to_bits;
 mod to_field;
 mod to_fields;
+mod to_group;
 
 pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_boolean::Boolean;

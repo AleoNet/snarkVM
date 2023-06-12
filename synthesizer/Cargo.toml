@@ -29,6 +29,11 @@ path = "benches/block.rs"
 harness = false
 
 [[bench]]
+name = "instruction"
+path = "benches/instruction.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
@@ -124,7 +129,7 @@ features = [ "serde", "rayon" ]
 version = "0.10.1"
 
 [dependencies.once_cell]
-version = "1.17"
+version = "1.18"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -180,7 +185,7 @@ version = "0.9"
 version = "2"
 
 [dev-dependencies.tempfile]
-version = "3.4"
+version = "3.6"
 
 [dev-dependencies.tracing-test]
 version = "0.2"

@@ -17,6 +17,11 @@
 #[macro_use]
 extern crate tracing;
 
+mod helpers;
+pub use helpers::*;
+
+mod advance;
+mod check;
 mod contains;
 mod find;
 mod get;
@@ -32,8 +37,8 @@ use console::{
     types::{Field, Group},
 };
 use synthesizer::{
-    block::{Block, ConfirmedTransaction, Header, Transaction, Transactions},
-    coinbase::{CoinbaseSolution, EpochChallenge, PuzzleCommitment},
+    block::{Block, ConfirmedTransaction, Header, Input, Metadata, Transaction, Transactions},
+    coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
     process::Query,
     program::Program,
     store::{ConsensusStorage, ConsensusStore},
@@ -43,10 +48,11 @@ use synthesizer::{
 use aleo_std::prelude::{finish, lap, timer};
 use anyhow::Result;
 use core::ops::Range;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
 use std::{borrow::Cow, sync::Arc};
+use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -73,10 +79,14 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     vm: VM<N, C>,
     /// The genesis block.
     genesis: Block<N>,
+    /// The coinbase puzzle.
+    coinbase_puzzle: CoinbasePuzzle<N>,
     /// The current block.
     current_block: Arc<RwLock<Block<N>>>,
     /// The current epoch challenge.
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
+    /// The current committee.
+    current_committee: Arc<RwLock<IndexSet<Address<N>>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -131,14 +141,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let mut ledger = Self {
             vm,
             genesis: genesis.clone(),
+            coinbase_puzzle: CoinbasePuzzle::<N>::load()?,
             current_block: Arc::new(RwLock::new(genesis.clone())),
             current_epoch_challenge: Default::default(),
+            current_committee: Default::default(),
         };
+
+        // Add the genesis validator to the committee.
+        ledger.current_committee.write().insert(genesis.signature().to_address());
 
         // If the block store is empty, initialize the genesis block.
         if ledger.vm.block_store().heights().max().is_none() {
             // Add the genesis block.
-            ledger.add_next_block(&genesis)?;
+            ledger.advance_to_next_block(&genesis)?;
         }
         lap!(timer, "Initialize genesis");
 
@@ -161,8 +176,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the VM.
-    pub fn vm(&self) -> &VM<N, C> {
+    pub const fn vm(&self) -> &VM<N, C> {
         &self.vm
+    }
+
+    /// Returns the coinbase puzzle.
+    pub const fn coinbase_puzzle(&self) -> &CoinbasePuzzle<N> {
+        &self.coinbase_puzzle
+    }
+
+    /// Returns the latest committee.
+    pub fn latest_committee(&self) -> IndexSet<Address<N>> {
+        self.current_committee.read().clone()
     }
 
     /// Returns the latest state root.
@@ -252,29 +277,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => self.get_epoch_challenge(self.latest_height()),
         }
     }
+}
 
-    /// Adds the given block as the next block in the chain.
-    pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
-        // Acquire the write lock on the current block.
-        let mut current_block = self.current_block.write();
-        // Update the VM.
-        self.vm.add_next_block(block)?;
-        // Update the current block.
-        *current_block = block.clone();
-        // Drop the write lock on the current block.
-        drop(current_block);
-
-        // If the block is the start of a new epoch, or the epoch challenge has not been set, update the current epoch challenge.
-        if block.height() % N::NUM_BLOCKS_PER_EPOCH == 0 || self.current_epoch_challenge.read().is_none() {
-            // Update the current epoch challenge.
-            self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
-        }
-
-        Ok(())
-    }
-
-    /// Returns the unspent records.
-    pub fn find_unspent_records(&self, view_key: &ViewKey<N>) -> Result<RecordMap<N>> {
+impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
+    /// Returns the unspent `credits.aleo` records.
+    pub fn find_unspent_credits_records(&self, view_key: &ViewKey<N>) -> Result<RecordMap<N>> {
         let microcredits = Identifier::from_str("microcredits")?;
         Ok(self
             .find_records(view_key, RecordsFilter::Unspent)?
@@ -299,7 +306,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         query: Option<Query<N, C::BlockStorage>>,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
-        let records = self.find_unspent_records(&ViewKey::try_from(private_key)?)?;
+        let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
 
@@ -326,7 +333,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         query: Option<Query<N, C::BlockStorage>>,
     ) -> Result<Transaction<N>> {
         // Fetch the unspent records.
-        let records = self.find_unspent_records(&ViewKey::try_from(private_key)?)?;
+        let records = self.find_unspent_credits_records(&ViewKey::try_from(private_key)?)?;
         ensure!(!records.len().is_zero(), "The Aleo account has no records to spend.");
         let mut records = records.values();
 
@@ -345,6 +352,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let fee = Some((fee_record, priority_fee_in_microcredits));
 
         // Create a new execute transaction.
-        self.vm.execute(private_key, ("credits.aleo", "transfer"), inputs.iter(), fee, query, rng)
+        self.vm.execute(private_key, ("credits.aleo", "transfer_private"), inputs.iter(), fee, query, rng)
     }
 }

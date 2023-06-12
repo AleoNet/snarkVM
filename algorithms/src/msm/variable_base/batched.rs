@@ -175,7 +175,7 @@ pub(super) fn batch_add<G: AffineCurve>(
     bases: &[G],
     bucket_positions: &mut [BucketPosition],
 ) -> Vec<G> {
-    // assert_eq!(bases.len(), bucket_positions.len());
+    assert!(bases.len() >= bucket_positions.len());
     assert!(!bases.is_empty());
 
     // Fetch the ideal batch size for the number of bases.
@@ -374,7 +374,7 @@ pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField
             if encountered_one {
                 sum.double_in_place();
             }
-            for (base, bits) in bases.iter().zip(&mut bits) {
+            for (bits, base) in bits.iter_mut().zip(bases) {
                 if let Some(true) = bits.next() {
                     sum.add_assign_mixed(base);
                     encountered_one = true;

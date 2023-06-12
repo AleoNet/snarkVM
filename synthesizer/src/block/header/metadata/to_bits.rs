@@ -51,3 +51,32 @@ impl<N: Network> ToBits for Metadata<N> {
         .concat()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bits_le() {
+        let mut rng = TestRng::default();
+
+        for expected in [*crate::vm::test_helpers::sample_genesis_block(&mut rng).metadata()].into_iter() {
+            // Check the length matches.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            let expected_bits = expected.to_bits_le();
+            assert_eq!(expected_bytes.to_bits_le().len(), expected_bits.len());
+        }
+    }
+
+    #[test]
+    fn test_bits_be() {
+        let mut rng = TestRng::default();
+
+        for expected in [*crate::vm::test_helpers::sample_genesis_block(&mut rng).metadata()].into_iter() {
+            // Check the length matches.
+            let expected_bytes = expected.to_bytes_le().unwrap(); // There is no 'to_bytes_be' function.
+            let expected_bits = expected.to_bits_be();
+            assert_eq!(expected_bytes.to_bits_be().len(), expected_bits.len());
+        }
+    }
+}

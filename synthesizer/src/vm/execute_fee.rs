@@ -23,26 +23,30 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         private_key: &PrivateKey<N>,
         fee_record: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the fee.
-        let fee = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, query, rng)?.1;
+        let fee = self
+            .execute_fee_raw(private_key, fee_record, fee_in_microcredits, deployment_or_execution_id, query, rng)?
+            .1;
         // Return the fee transaction.
         Transaction::from_fee(fee)
     }
 
     /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
-    /// Returns the response, fee, and call metrics.
+    /// Returns the response and fee.
     #[inline]
     pub fn execute_fee_raw<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         fee_record: Record<N, Plaintext<N>>,
         fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Fee<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Fee<N>)> {
         let timer = timer!("VM::execute_fee_raw");
 
         // Prepare the query.
@@ -71,36 +75,37 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Prepare the private key and fee record.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
                 let fee_record = cast_ref!(fee_record as RecordPlaintext<$network>);
+                let deployment_or_execution_id = cast_ref!(deployment_or_execution_id as Field<$network>);
                 lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
-                let (response, fee_transition, inclusion, metrics) =
-                    $process.execute_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
+                let (response, _fee_transition, mut trace) = $process.execute_fee::<$aleo, _>(
+                    private_key,
+                    fee_record.clone(),
+                    fee_in_microcredits,
+                    *deployment_or_execution_id,
+                    rng,
+                )?;
                 lap!(timer, "Execute the call to fee");
 
                 // Prepare the assignments.
-                let assignments = {
-                    let fee_transition = cast_ref!(fee_transition as Transition<N>);
-                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_fee(fee_transition, query)?
-                };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
+                cast_mut_ref!(trace as Trace<N>).prepare(query)?;
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the inclusion proof and construct the fee.
-                let fee = inclusion.prove_fee::<$aleo, _>(fee_transition, assignments, rng)?;
-                lap!(timer, "Compute the inclusion proof and construct the fee");
+                // Compute the proof and construct the fee.
+                let trace = cast_ref!(trace as Trace<$network>);
+                let fee = trace.prove_fee::<$aleo, _>(rng)?;
+                lap!(timer, "Compute the proof and construct the fee");
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let fee = cast_ref!(fee as Fee<N>).clone();
-                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
-                lap!(timer, "Prepare the response, fee, and metrics");
+                lap!(timer, "Prepare the response and fee");
 
                 finish!(timer);
 
-                // Return the response, fee, metrics.
-                Ok((response, fee, metrics))
+                // Return the response and fee.
+                Ok((response, fee))
             }};
         }
         // Process the logic.
@@ -111,55 +116,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::helpers::memory::ConsensusMemory;
-    use console::{account::ViewKey, network::Testnet3, program::Ciphertext};
-
-    use indexmap::IndexMap;
-
-    type CurrentNetwork = Testnet3;
-
-    fn prepare_vm(
-        rng: &mut TestRng,
-    ) -> Result<(
-        VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
-        IndexMap<Field<CurrentNetwork>, Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
-    )> {
-        // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-        // Fetch the unspent records.
-        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-
-        // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-        // Initialize the VM.
-        let vm = crate::vm::test_helpers::sample_vm();
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
-
-        Ok((vm, records))
-    }
 
     #[test]
     fn test_fee_transition_size() {
         let rng = &mut TestRng::default();
 
-        // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
-        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-
-        // Prepare the VM and records.
-        let (vm, records) = prepare_vm(rng).unwrap();
-
-        // Fetch the unspent record.
-        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-
-        // Execute.
-        let (_, fee, _) = vm.execute_fee_raw(&caller_private_key, record, 1, None, rng).unwrap();
-
+        // Retrieve a fee transaction.
+        let transaction = crate::vm::test_helpers::sample_fee_transaction(rng);
+        // Retrieve the fee.
+        let fee = match transaction {
+            Transaction::Fee(_, fee) => fee,
+            _ => panic!("Expected a fee transaction"),
+        };
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(2247, fee_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1935, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }

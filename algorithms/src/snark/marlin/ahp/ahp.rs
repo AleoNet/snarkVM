@@ -110,7 +110,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Get all the strict degree bounds enforced in the AHP.
-    pub fn get_degree_bounds(info: &CircuitInfo<F>) -> [usize; 4] {
+    pub fn get_degree_bounds(info: &CircuitInfo) -> [usize; 4] {
         let num_constraints = info.num_constraints;
         let num_non_zero_a = info.num_non_zero_a;
         let num_non_zero_b = info.num_non_zero_b;
@@ -124,7 +124,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     pub(crate) fn max_constraint_domain(
-        info: &CircuitInfo<F>,
+        info: &CircuitInfo,
         max_candidate: Option<EvaluationDomain<F>>,
     ) -> Result<ConstraintDomains<F>, SynthesisError> {
         let constraint_domain =
@@ -137,7 +137,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     pub(crate) fn max_non_zero_domain(
-        info: &CircuitInfo<F>,
+        info: &CircuitInfo,
         max_candidate: Option<EvaluationDomain<F>>,
     ) -> Result<NonZeroDomains<F>, SynthesisError> {
         let domain_a = EvaluationDomain::new(info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;

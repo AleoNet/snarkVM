@@ -42,7 +42,7 @@ fn test_program_execute() {
                     .authorize::<CurrentAleo, _>(&private_key, program.id(), function_name, inputs.iter(), rng)
                     .unwrap();
                 // Execute the authorization.
-                let (response, _, _, _) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (response, _) = process.execute::<CurrentAleo>(authorization).unwrap();
                 // Extract the output.
                 response.outputs().to_vec()
             })

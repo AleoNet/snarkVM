@@ -36,7 +36,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         batch_sizes: &BTreeMap<CircuitId, usize>,
-        circuit_infos: &BTreeMap<CircuitId, &CircuitInfo<TargetField>>,
+        circuit_infos: &BTreeMap<CircuitId, &CircuitInfo>,
         max_constraint_domain: EvaluationDomain<TargetField>,
         largest_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,

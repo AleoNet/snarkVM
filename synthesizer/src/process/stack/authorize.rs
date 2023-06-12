@@ -36,12 +36,12 @@ impl<N: Network> Stack<N> {
         // Retrieve the input types.
         let input_types = function.input_types();
         // Ensure the number of inputs matches the number of input types.
-        if function.inputs().len() != input_types.len() {
+        if inputs.len() != input_types.len() {
             bail!(
-                "Function '{function_name}' in program '{}' expects {} inputs, but {} types were found.",
+                "Function '{function_name}' in program '{}' expects {} inputs, but {} inputs were found.",
                 self.program.id(),
-                function.inputs().len(),
-                input_types.len()
+                input_types.len(),
+                inputs.len()
             )
         }
         lap!(timer, "Verify the number of inputs");
@@ -54,7 +54,7 @@ impl<N: Network> Stack<N> {
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.execute_function::<A, R>(call_stack, rng)?;
+        let _response = self.execute_function::<A>(call_stack)?;
         lap!(timer, "Construct the authorization from the function");
 
         finish!(timer);
