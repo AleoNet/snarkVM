@@ -204,6 +204,57 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
+        // Ensure there are no duplicate transition IDs.
+        if has_duplicates(block.transition_ids()) {
+            bail!("Found duplicate transition in the block");
+        }
+
+        /* Input */
+
+        // Ensure there are no duplicate input IDs.
+        if has_duplicates(block.transitions().flat_map(|t| t.input_ids())) {
+            bail!("Found duplicate input IDs in the block");
+        }
+
+        // Ensure there are no duplicate serial numbers.
+        if has_duplicates(block.serial_numbers()) {
+            bail!("Found duplicate serial numbers in the block");
+        }
+
+        // Ensure there are no duplicate tags.
+        if has_duplicates(block.tags()) {
+            bail!("Found duplicate tags in the block");
+        }
+
+        /* Output */
+
+        // Ensure there are no duplicate output IDs.
+        if has_duplicates(block.transitions().flat_map(|t| t.output_ids())) {
+            bail!("Found duplicate output IDs in the block");
+        }
+
+        // Ensure there are no duplicate commitments.
+        if has_duplicates(block.commitments()) {
+            bail!("Found duplicate commitments in the block");
+        }
+
+        // Ensure there are no duplicate nonces.
+        if has_duplicates(block.nonces()) {
+            bail!("Found duplicate nonces in the block");
+        }
+
+        /* Metadata */
+
+        // Ensure there are no duplicate transition public keys.
+        if has_duplicates(block.transition_public_keys()) {
+            bail!("Found duplicate transition public keys in the block");
+        }
+
+        // Ensure there are no duplicate transition commitments.
+        if has_duplicates(block.transition_commitments()) {
+            bail!("Found duplicate transition commitments in the block");
+        }
+
         /* Block Header */
 
         // If the block is the genesis block, check that it is valid.
