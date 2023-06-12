@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use crate::Function;
 
 impl<N: Network> Process<N> {
     /// Verifies the given execution is valid.
