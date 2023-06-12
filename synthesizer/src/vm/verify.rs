@@ -127,8 +127,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     bail!("Failed to compute the Merkle root for execution transaction '{id}'")
                 };
                 // TODO (raychu86): Remove `is_split` check once batch executions are supported.
-                // Ensure the fee is present, if the transaction is not a coinbase or split.
-                if !((transaction.is_coinbase() || transaction.is_split()) && execution.len() == 1) && fee.is_none() {
+                // Ensure the fee is present, if the transaction is not a mint or split.
+                if !((transaction.is_mint() || transaction.is_split()) && execution.len() == 1) && fee.is_none() {
                     bail!("Transaction is missing a fee (execution)");
                 }
                 // Verify the fee.
@@ -214,6 +214,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     fn check_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> Result<()> {
         let timer = timer!("VM::verify_fee");
+
+        // Ensure the fee does not exceed the limit.
+        ensure!(*fee.amount()? < N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
 
         // Verify the fee.
         let verification = self.process.read().verify_fee(fee, deployment_or_execution_id);
