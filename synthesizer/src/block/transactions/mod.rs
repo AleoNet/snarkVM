@@ -195,6 +195,11 @@ impl<N: Network> Transactions<N> {
         self.iter().flat_map(|tx| tx.transition_public_keys())
     }
 
+    /// Returns an iterator over the transition commitments, for all transactions.
+    pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.iter().flat_map(|tx| tx.transition_commitments())
+    }
+
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.iter().flat_map(|tx| tx.tags())
