@@ -88,6 +88,11 @@ fn check_number_of_operands(variant: u8, opcode: Opcode, num_operands: usize) ->
     Ok(())
 }
 
+/// Returns 'true' if the destination type is valid.
+fn is_valid_destination_type(destination_type: LiteralType) -> bool {
+    !matches!(destination_type, LiteralType::Boolean | LiteralType::String)
+}
+
 /// Hashes the operand into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct HashInstruction<N: Network, const VARIANT: u8> {
@@ -141,7 +146,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 
     /// Returns the destination register type.
     #[inline]
-    pub fn destination_type(&self) -> LiteralType {
+    pub const fn destination_type(&self) -> LiteralType {
         self.destination_type
     }
 }
@@ -156,6 +161,8 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
+        // Ensure the destination type is valid.
+        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'hash' instruction");
 
         // Load the operand.
         let input = registers.load(stack, &self.operands[0])?;
@@ -201,6 +208,8 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 
         // Ensure the number of operands is correct.
         check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
+        // Ensure the destination type is valid.
+        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'hash' instruction");
 
         // Load the operand.
         let input = registers.load_circuit(stack, &self.operands[0])?;
@@ -257,6 +266,8 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         check_number_of_operands(VARIANT, Self::opcode(), input_types.len())?;
         // Ensure the number of operands is correct.
         check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;
+        // Ensure the destination type is valid.
+        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'hash' instruction");
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
@@ -704,11 +715,14 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, hash) = HashBHP512::<CurrentNetwork>::parse("hash.bhp512 r0 into r1 as field").unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(hash.operands.len(), 1, "The number of operands is incorrect");
-        assert_eq!(hash.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(hash.destination, Register::Locator(1), "The destination register is incorrect");
-        assert_eq!(hash.destination_type, LiteralType::Field, "The destination type is incorrect");
+        for destination_type in valid_destination_types() {
+            let instruction = format!("hash.bhp512 r0 into r1 as {destination_type}");
+            let (string, hash) = HashBHP512::<CurrentNetwork>::parse(&instruction).unwrap();
+            assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+            assert_eq!(hash.operands.len(), 1, "The number of operands is incorrect");
+            assert_eq!(hash.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+            assert_eq!(hash.destination, Register::Locator(1), "The destination register is incorrect");
+            assert_eq!(hash.destination_type, *destination_type, "The destination type is incorrect");
+        }
     }
 }

@@ -433,19 +433,6 @@ fn bench_instructions(c: &mut Criterion) {
     let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
     bench_instruction!(samples, CommitPED128 { (U64, Scalar), });
 
-    bench_commit_instruction!(CommitToGroupBHP256);
-    bench_commit_instruction!(CommitToGroupBHP512);
-    bench_commit_instruction!(CommitToGroupBHP768);
-    bench_commit_instruction!(CommitToGroupBHP1024);
-
-    bench_ped64_commit_instruction!(CommitToGroupPED64);
-
-    bench_ped64_commit_instruction!(CommitToGroupPED128);
-    let mut samples = iter::repeat_with(|| { (I64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
-    bench_instruction!(samples, CommitToGroupPED128 { (I64, Scalar), });
-    let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
-    bench_instruction!(samples, CommitToGroupPED128 { (U64, Scalar), });
-
     use console::prelude::Div;
     bench_instruction_with_default!(div, Div {
         (Field, Field),

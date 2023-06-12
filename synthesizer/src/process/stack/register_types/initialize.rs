@@ -483,21 +483,8 @@ impl<N: Network> RegisterTypes<N> {
     #[inline]
     pub(crate) fn check_commit_opcode(opcode: &str, instruction: &Instruction<N>) -> Result<()> {
         // Ensure the instruction belongs to the defined set.
-        if ![
-            "commit.bhp256",
-            "commit.bhp512",
-            "commit.bhp768",
-            "commit.bhp1024",
-            "commit.ped64",
-            "commit.ped128",
-            "commit_to_group.bhp256",
-            "commit_to_group.bhp512",
-            "commit_to_group.bhp768",
-            "commit_to_group.bhp1024",
-            "commit_to_group.ped64",
-            "commit_to_group.ped128",
-        ]
-        .contains(&opcode)
+        if !["commit.bhp256", "commit.bhp512", "commit.bhp768", "commit.bhp1024", "commit.ped64", "commit.ped128"]
+            .contains(&opcode)
         {
             bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
         }
@@ -525,30 +512,6 @@ impl<N: Network> RegisterTypes<N> {
             ),
             "commit.ped128" => ensure!(
                 matches!(instruction, Instruction::CommitPED128(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.bhp256" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP256(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.bhp512" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP512(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.bhp768" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP768(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.bhp1024" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP1024(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.ped64" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupPED64(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.ped128" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupPED128(..)),
                 "Instruction '{instruction}' is not for opcode '{opcode}'."
             ),
             _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
