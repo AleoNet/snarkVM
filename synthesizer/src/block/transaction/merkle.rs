@@ -71,8 +71,12 @@ impl<N: Network> Transaction<N> {
                 bail!("Transition ID not found in execution transaction");
             }
             Self::Fee(_, fee) => {
-                // Return the transaction leaf.
-                Ok(TransactionLeaf::new_fee(0, **fee.id()))
+                if *id == **fee.id() {
+                    // Return the transaction leaf.
+                    return Ok(TransactionLeaf::new_fee(0, **fee.id()));
+                }
+                // Error if the transition ID was not found.
+                bail!("Transition ID not found in fee transaction");
             }
         }
     }

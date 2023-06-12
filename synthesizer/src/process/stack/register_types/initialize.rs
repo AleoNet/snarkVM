@@ -483,21 +483,8 @@ impl<N: Network> RegisterTypes<N> {
     #[inline]
     pub(crate) fn check_commit_opcode(opcode: &str, instruction: &Instruction<N>) -> Result<()> {
         // Ensure the instruction belongs to the defined set.
-        if ![
-            "commit.bhp256",
-            "commit.bhp512",
-            "commit.bhp768",
-            "commit.bhp1024",
-            "commit.ped64",
-            "commit.ped128",
-            "commit_to_group.bhp256",
-            "commit_to_group.bhp512",
-            "commit_to_group.bhp768",
-            "commit_to_group.bhp1024",
-            "commit_to_group.ped64",
-            "commit_to_group.ped128",
-        ]
-        .contains(&opcode)
+        if !["commit.bhp256", "commit.bhp512", "commit.bhp768", "commit.bhp1024", "commit.ped64", "commit.ped128"]
+            .contains(&opcode)
         {
             bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
         }
@@ -527,30 +514,6 @@ impl<N: Network> RegisterTypes<N> {
                 matches!(instruction, Instruction::CommitPED128(..)),
                 "Instruction '{instruction}' is not for opcode '{opcode}'."
             ),
-            "commit_to_group.bhp256" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP256(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.bhp512" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP512(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.bhp768" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP768(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.bhp1024" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupBHP1024(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.ped64" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupPED64(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "commit_to_group.ped128" => ensure!(
-                matches!(instruction, Instruction::CommitToGroupPED128(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
             _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
         }
         Ok(())
@@ -573,18 +536,6 @@ impl<N: Network> RegisterTypes<N> {
             "hash_many.psd2",
             "hash_many.psd4",
             "hash_many.psd8",
-            "hash_to_group.bhp256",
-            "hash_to_group.bhp512",
-            "hash_to_group.bhp768",
-            "hash_to_group.bhp1024",
-            "hash_to_group.ped64",
-            "hash_to_group.ped128",
-            "hash_to_group.psd2",
-            "hash_to_group.psd4",
-            "hash_to_group.psd8",
-            "hash_to_scalar.psd2",
-            "hash_to_scalar.psd4",
-            "hash_to_scalar.psd8",
         ]
         .contains(&opcode)
         {
@@ -638,54 +589,6 @@ impl<N: Network> RegisterTypes<N> {
             ),
             "hash_many.psd8" => ensure!(
                 matches!(instruction, Instruction::HashManyPSD8(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp256" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP256(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp512" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP512(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp768" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP768(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp1024" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP1024(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.ped64" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPED64(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.ped128" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPED128(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.psd2" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPSD2(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.psd4" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPSD4(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.psd8" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPSD8(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_scalar.psd2" => ensure!(
-                matches!(instruction, Instruction::HashToScalarPSD2(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_scalar.psd4" => ensure!(
-                matches!(instruction, Instruction::HashToScalarPSD4(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_scalar.psd8" => ensure!(
-                matches!(instruction, Instruction::HashToScalarPSD8(..)),
                 "Instruction '{instruction}' is not for opcode '{opcode}'."
             ),
             _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),

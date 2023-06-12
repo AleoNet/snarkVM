@@ -110,6 +110,24 @@ fn bench_instructions(c: &mut Criterion) {
                 });
             };
         };
+        // Benchmark a unary instruction, with the given sampling method.
+        ($samples:tt, $instruction:ident { $input:ident , }, $as_type:expr) => {
+            {
+                use snarkvm_synthesizer::$instruction;
+                let name = concat!(stringify!($instruction), "/", stringify!($input));
+                let instruction = Instruction::<Testnet3>::$instruction($instruction::from_str(&format!("{} r0 into r1 as {}", $instruction::<Testnet3>::opcode().to_string(), $as_type)).unwrap());
+                c.bench_function(&format!("{name}/instruction"), |b| {
+                    b.iter_batched(
+                        || {
+                            let arg = $samples.next().unwrap();
+                            setup_finalize_registers(stack, instruction.to_string(), &[Value::from_str(&arg.to_string()).unwrap()])
+                        },
+                        |mut finalize_registers| instruction.finalize(stack, &mut finalize_registers).unwrap(),
+                        BatchSize::PerIteration,
+                    )
+                });
+            };
+        };
         // Benchmark a binary instruction, with the given sampling method.
         ($samples:tt, $instruction:ident { ($input_a:ident, $input_b:ident) , }) => {
             {
@@ -415,19 +433,6 @@ fn bench_instructions(c: &mut Criterion) {
     let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
     bench_instruction!(samples, CommitPED128 { (U64, Scalar), });
 
-    bench_commit_instruction!(CommitToGroupBHP256);
-    bench_commit_instruction!(CommitToGroupBHP512);
-    bench_commit_instruction!(CommitToGroupBHP768);
-    bench_commit_instruction!(CommitToGroupBHP1024);
-
-    bench_ped64_commit_instruction!(CommitToGroupPED64);
-
-    bench_ped64_commit_instruction!(CommitToGroupPED128);
-    let mut samples = iter::repeat_with(|| { (I64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
-    bench_instruction!(samples, CommitToGroupPED128 { (I64, Scalar), });
-    let mut samples = iter::repeat_with(|| { (U64::<Testnet3>::rand(rng), Scalar::<Testnet3>::rand(rng)) });
-    bench_instruction!(samples, CommitToGroupPED128 { (U64, Scalar), });
-
     use console::prelude::Div;
     bench_instruction_with_default!(div, Div {
         (Field, Field),
@@ -494,19 +499,19 @@ fn bench_instructions(c: &mut Criterion) {
     macro_rules! bench_ped64_hash_instruction {
         ($instruction:tt) => {
             let mut samples = iter::repeat_with(|| { Boolean::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { Boolean, });
+            bench_instruction!(samples, $instruction { Boolean, }, "group");
             let mut samples = iter::repeat_with(|| { I8::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { I8, });
+            bench_instruction!(samples, $instruction { I8, }, "group");
             let mut samples = iter::repeat_with(|| { I16::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { I16, });
+            bench_instruction!(samples, $instruction { I16, }, "group");
             let mut samples = iter::repeat_with(|| { I32::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { I32, });
+            bench_instruction!(samples, $instruction { I32, }, "group");
             let mut samples = iter::repeat_with(|| { U8::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { U8, });
+            bench_instruction!(samples, $instruction { U8, }, "group");
             let mut samples = iter::repeat_with(|| { U16::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { U16, });
+            bench_instruction!(samples, $instruction { U16, }, "group");
             let mut samples = iter::repeat_with(|| { U32::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { U32, });
+            bench_instruction!(samples, $instruction { U32, }, "group");
         }
     }
 
@@ -514,19 +519,19 @@ fn bench_instructions(c: &mut Criterion) {
         ($instruction:tt) => {
             bench_ped64_hash_instruction!($instruction);
             let mut samples = iter::repeat_with(|| { Field::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { Field, });
+            bench_instruction!(samples, $instruction { Field, }, "group");
             let mut samples = iter::repeat_with(|| { Group::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { Group, });
+            bench_instruction!(samples, $instruction { Group, }, "group");
             let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { I64, });
+            bench_instruction!(samples, $instruction { I64, }, "group");
             let mut samples = iter::repeat_with(|| { I128::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { I128, });
+            bench_instruction!(samples, $instruction { I128, }, "group");
             let mut samples = iter::repeat_with(|| { U64::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { U64, });
+            bench_instruction!(samples, $instruction { U64, }, "group");
             let mut samples = iter::repeat_with(|| { U128::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { U128, });
+            bench_instruction!(samples, $instruction { U128, }, "group");
             let mut samples = iter::repeat_with(|| { Scalar::<Testnet3>::rand(rng) });
-            bench_instruction!(samples, $instruction { Scalar, });
+            bench_instruction!(samples, $instruction { Scalar, }, "group");
         }
     }
 
@@ -539,32 +544,13 @@ fn bench_instructions(c: &mut Criterion) {
 
     bench_ped64_hash_instruction!(HashPED128);
     let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
-    bench_instruction!(samples, HashPED128 { I64, });
+    bench_instruction!(samples, HashPED128 { I64, }, "group");
     let mut samples = iter::repeat_with(|| { U64::<Testnet3>::rand(rng) });
-    bench_instruction!(samples, HashPED128 { U64, });
+    bench_instruction!(samples, HashPED128 { U64, }, "group");
 
     bench_hash_instruction!(HashPSD2);
     bench_hash_instruction!(HashPSD4);
     bench_hash_instruction!(HashPSD8);
-    bench_hash_instruction!(HashToGroupBHP256);
-    bench_hash_instruction!(HashToGroupBHP512);
-    bench_hash_instruction!(HashToGroupBHP768);
-    bench_hash_instruction!(HashToGroupBHP1024);
-
-    bench_ped64_hash_instruction!(HashToGroupPED64);
-
-    bench_ped64_hash_instruction!(HashToGroupPED128);
-    let mut samples = iter::repeat_with(|| { I64::<Testnet3>::rand(rng) });
-    bench_instruction!(samples, HashToGroupPED128 { I64, });
-    let mut samples = iter::repeat_with(|| { U64::<Testnet3>::rand(rng) });
-    bench_instruction!(samples, HashToGroupPED128 { U64, });
-
-    bench_hash_instruction!(HashToGroupPSD2);
-    bench_hash_instruction!(HashToGroupPSD4);
-    bench_hash_instruction!(HashToGroupPSD8);
-    bench_hash_instruction!(HashToScalarPSD2);
-    bench_hash_instruction!(HashToScalarPSD4);
-    bench_hash_instruction!(HashToScalarPSD8);
 
     use console::prelude::Inverse;
     bench_instruction_with_default!(inverse?, Inv { Field, });

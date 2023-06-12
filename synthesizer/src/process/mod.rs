@@ -33,7 +33,7 @@ mod tests;
 use crate::{
     atomic_batch_scope,
     block::{Deployment, Execution, Fee, FinalizeOperation, Input, Transition},
-    program::{Instruction, Program},
+    program::{Function, Instruction, Program},
     store::{FinalizeStorage, FinalizeStore},
 };
 use console::{

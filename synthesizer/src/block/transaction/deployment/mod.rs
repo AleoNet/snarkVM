@@ -60,8 +60,6 @@ impl<N: Network> Deployment<N> {
             N::EDITION,
             self.edition
         );
-        // Ensure the program network-level domain (NLD) is correct.
-        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.
         ensure!(
             !self.program.functions().is_empty(),
