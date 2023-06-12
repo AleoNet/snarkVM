@@ -116,8 +116,6 @@ impl<N: Network> Program<N> {
     pub fn new(id: ProgramID<N>) -> Result<Self> {
         // Ensure the program name is valid.
         ensure!(!Self::is_reserved_keyword(id.name()), "Program name is invalid: {}", id.name());
-        // Ensure the program network-level domain is `aleo`.
-        ensure!(id.is_aleo(), "Program network is invalid: {}", id.network());
 
         Ok(Self {
             id,

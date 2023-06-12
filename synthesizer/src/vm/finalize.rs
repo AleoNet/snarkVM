@@ -351,7 +351,7 @@ mod tests {
         unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<(String, Block<CurrentNetwork>)> {
-        let program_name = format!("a{}.aleo", Alphanumeric.sample_string(rng, 8));
+        let program_name = format!("a{}.aleo", Alphanumeric.sample_string(rng, 8).to_lowercase());
 
         let program = Program::<CurrentNetwork>::from_str(&format!(
             "

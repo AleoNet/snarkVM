@@ -71,6 +71,9 @@ impl<A: Aleo> Eject for ProgramID<A> {
 
     /// Ejects a program ID into a primitive.
     fn eject_value(&self) -> Self::Primitive {
-        console::ProgramID::from((self.name.eject_value(), self.network.eject_value()))
+        match console::ProgramID::try_from((self.name.eject_value(), self.network.eject_value())) {
+            Ok(id) => id,
+            Err(error) => A::halt(format!("Failed to eject program ID: {error}")),
+        }
     }
 }

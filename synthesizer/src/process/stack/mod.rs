@@ -182,8 +182,6 @@ impl<N: Network> Stack<N> {
         let program_id = program.id();
         // Ensure the program does not already exist in the process.
         ensure!(!process.contains_program(program_id), "Program '{program_id}' already exists");
-        // Ensure the program network-level domain (NLD) is correct.
-        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.
         ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
 

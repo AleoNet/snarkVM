@@ -23,6 +23,11 @@ use crate::Identifier;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Field};
 
+/// Returns `true` if the string consists of lowercase alphanumeric characters.
+fn is_lowercase_alphanumeric(s: &str) -> bool {
+    s.chars().all(|c| matches!(c, '0'..='9' | 'a'..='z' | '_'))
+}
+
 /// A program ID is of the form `{name}.{network}`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProgramID<N: Network> {
@@ -39,10 +44,19 @@ impl<N: Network> From<&ProgramID<N>> for ProgramID<N> {
     }
 }
 
-impl<N: Network> From<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
+impl<N: Network> TryFrom<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
+    type Error = Error;
+
     /// Initializes a program ID from a name and network-level domain identifier.
-    fn from((name, network): (Identifier<N>, Identifier<N>)) -> Self {
-        Self { name, network }
+    fn try_from((name, network): (Identifier<N>, Identifier<N>)) -> Result<Self> {
+        // Ensure the name is lowercase alphabets and numbers.
+        ensure!(is_lowercase_alphanumeric(&name.to_string()), "Program name is invalid: {name}");
+        // Construct the program ID.
+        let id = Self { name, network };
+        // Ensure the program network-level domain is `aleo`.
+        ensure!(id.is_aleo(), "Program network is invalid: {network}");
+        // Return the program ID.
+        Ok(id)
     }
 }
 
@@ -73,7 +87,10 @@ impl<N: Network> TryFrom<&str> for ProgramID<N> {
         let mut split = program_id.split('.');
         // Parse the name and network.
         if let (Some(name), Some(network), None) = (split.next(), split.next(), split.next()) {
-            Ok(Self { name: Identifier::from_str(name)?, network: Identifier::from_str(network)? })
+            // Ensure the name is lowercase alphabets and numbers.
+            ensure!(is_lowercase_alphanumeric(name), "Program name is invalid: {name}");
+            // Construct the program ID.
+            Self::try_from((Identifier::from_str(name)?, Identifier::from_str(network)?))
         } else {
             bail!("Invalid program ID '{program_id}'")
         }
