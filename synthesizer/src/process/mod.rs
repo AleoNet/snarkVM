@@ -24,6 +24,8 @@ mod evaluate;
 mod execute;
 mod execute_fee;
 mod finalize;
+mod verify_execution;
+mod verify_fee;
 
 #[cfg(test)]
 mod tests;
@@ -31,7 +33,7 @@ mod tests;
 use crate::{
     atomic_batch_scope,
     block::{Deployment, Execution, Fee, FinalizeOperation, Input, Transition},
-    program::{Instruction, Program},
+    program::{Function, Instruction, Program},
     store::{FinalizeStorage, FinalizeStore},
 };
 use console::{

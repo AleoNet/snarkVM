@@ -41,20 +41,6 @@ pub type CommitPED64<N> = CommitInstruction<N, { Committer::CommitPED64 as u8 }>
 /// Pedersen128 is a collision-resistant function that processes inputs in 128-bit chunks.
 pub type CommitPED128<N> = CommitInstruction<N, { Committer::CommitPED128 as u8 }>;
 
-/// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
-pub type CommitToGroupBHP256<N> = CommitInstruction<N, { Committer::CommitToGroupBHP256 as u8 }>;
-/// BHP512 is a collision-resistant function that processes inputs in 512-bit chunks.
-pub type CommitToGroupBHP512<N> = CommitInstruction<N, { Committer::CommitToGroupBHP512 as u8 }>;
-/// BHP768 is a collision-resistant function that processes inputs in 768-bit chunks.
-pub type CommitToGroupBHP768<N> = CommitInstruction<N, { Committer::CommitToGroupBHP768 as u8 }>;
-/// BHP1024 is a collision-resistant function that processes inputs in 1024-bit chunks.
-pub type CommitToGroupBHP1024<N> = CommitInstruction<N, { Committer::CommitToGroupBHP1024 as u8 }>;
-
-/// Pedersen64 is a collision-resistant function that processes inputs in 64-bit chunks.
-pub type CommitToGroupPED64<N> = CommitInstruction<N, { Committer::CommitToGroupPED64 as u8 }>;
-/// Pedersen128 is a collision-resistant function that processes inputs in 128-bit chunks.
-pub type CommitToGroupPED128<N> = CommitInstruction<N, { Committer::CommitToGroupPED128 as u8 }>;
-
 enum Committer {
     CommitBHP256,
     CommitBHP512,
@@ -62,12 +48,11 @@ enum Committer {
     CommitBHP1024,
     CommitPED64,
     CommitPED128,
-    CommitToGroupBHP256,
-    CommitToGroupBHP512,
-    CommitToGroupBHP768,
-    CommitToGroupBHP1024,
-    CommitToGroupPED64,
-    CommitToGroupPED128,
+}
+
+/// Returns 'true' if the destination type is valid.
+fn is_valid_destination_type(destination_type: LiteralType) -> bool {
+    matches!(destination_type, LiteralType::Address | LiteralType::Field | LiteralType::Group)
 }
 
 /// Commits the operand into the declared type.
@@ -77,6 +62,8 @@ pub struct CommitInstruction<N: Network, const VARIANT: u8> {
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
+    /// The destination register type.
+    destination_type: LiteralType,
 }
 
 impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
@@ -90,13 +77,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             3 => Opcode::Commit("commit.bhp1024"),
             4 => Opcode::Commit("commit.ped64"),
             5 => Opcode::Commit("commit.ped128"),
-            6 => Opcode::Commit("commit_to_group.bhp256"),
-            7 => Opcode::Commit("commit_to_group.bhp512"),
-            8 => Opcode::Commit("commit_to_group.bhp768"),
-            9 => Opcode::Commit("commit_to_group.bhp1024"),
-            10 => Opcode::Commit("commit_to_group.ped64"),
-            11 => Opcode::Commit("commit_to_group.ped128"),
-            12.. => panic!("Invalid 'commit' instruction opcode"),
+            6.. => panic!("Invalid 'commit' instruction opcode"),
         }
     }
 
@@ -114,6 +95,12 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     pub fn destinations(&self) -> Vec<Register<N>> {
         vec![self.destination.clone()]
     }
+
+    /// Returns the destination register type.
+    #[inline]
+    pub const fn destination_type(&self) -> LiteralType {
+        self.destination_type
+    }
 }
 
 impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
@@ -128,6 +115,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
+        // Ensure the destination type is valid.
+        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'commit' instruction");
 
         // Retrieve the input and randomizer.
         let input = registers.load(stack, &self.operands[0])?;
@@ -140,20 +129,16 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
 
         // Commit the input.
         let output = match VARIANT {
-            0 => Literal::Field(N::commit_bhp256(&input.to_bits_le(), &randomizer)?),
-            1 => Literal::Field(N::commit_bhp512(&input.to_bits_le(), &randomizer)?),
-            2 => Literal::Field(N::commit_bhp768(&input.to_bits_le(), &randomizer)?),
-            3 => Literal::Field(N::commit_bhp1024(&input.to_bits_le(), &randomizer)?),
-            4 => Literal::Field(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
-            5 => Literal::Field(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
-            6 => Literal::Group(N::commit_to_group_bhp256(&input.to_bits_le(), &randomizer)?),
-            7 => Literal::Group(N::commit_to_group_bhp512(&input.to_bits_le(), &randomizer)?),
-            8 => Literal::Group(N::commit_to_group_bhp768(&input.to_bits_le(), &randomizer)?),
-            9 => Literal::Group(N::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)?),
-            10 => Literal::Group(N::commit_to_group_ped64(&input.to_bits_le(), &randomizer)?),
-            11 => Literal::Group(N::commit_to_group_ped128(&input.to_bits_le(), &randomizer)?),
-            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
+            0 => Literal::Group(N::commit_to_group_bhp256(&input.to_bits_le(), &randomizer)?),
+            1 => Literal::Group(N::commit_to_group_bhp512(&input.to_bits_le(), &randomizer)?),
+            2 => Literal::Group(N::commit_to_group_bhp768(&input.to_bits_le(), &randomizer)?),
+            3 => Literal::Group(N::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)?),
+            4 => Literal::Group(N::commit_to_group_ped64(&input.to_bits_le(), &randomizer)?),
+            5 => Literal::Group(N::commit_to_group_ped128(&input.to_bits_le(), &randomizer)?),
+            6.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
+        // Cast the output to the destination type.
+        let output = output.downcast_lossy(self.destination_type)?;
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
@@ -171,6 +156,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
+        // Ensure the destination type is valid.
+        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'commit' instruction");
 
         // Retrieve the input and randomizer.
         let input = registers.load_circuit(stack, &self.operands[0])?;
@@ -185,20 +172,15 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
 
         // Commits the input.
         let output = match VARIANT {
-            0 => circuit::Literal::Field(A::commit_bhp256(&input.to_bits_le(), &randomizer)),
-            1 => circuit::Literal::Field(A::commit_bhp512(&input.to_bits_le(), &randomizer)),
-            2 => circuit::Literal::Field(A::commit_bhp768(&input.to_bits_le(), &randomizer)),
-            3 => circuit::Literal::Field(A::commit_bhp1024(&input.to_bits_le(), &randomizer)),
-            4 => circuit::Literal::Field(A::commit_ped64(&input.to_bits_le(), &randomizer)),
-            5 => circuit::Literal::Field(A::commit_ped128(&input.to_bits_le(), &randomizer)),
-            6 => circuit::Literal::Group(A::commit_to_group_bhp256(&input.to_bits_le(), &randomizer)),
-            7 => circuit::Literal::Group(A::commit_to_group_bhp512(&input.to_bits_le(), &randomizer)),
-            8 => circuit::Literal::Group(A::commit_to_group_bhp768(&input.to_bits_le(), &randomizer)),
-            9 => circuit::Literal::Group(A::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)),
-            10 => circuit::Literal::Group(A::commit_to_group_ped64(&input.to_bits_le(), &randomizer)),
-            11 => circuit::Literal::Group(A::commit_to_group_ped128(&input.to_bits_le(), &randomizer)),
-            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
+            0 => circuit::Literal::Group(A::commit_to_group_bhp256(&input.to_bits_le(), &randomizer)),
+            1 => circuit::Literal::Group(A::commit_to_group_bhp512(&input.to_bits_le(), &randomizer)),
+            2 => circuit::Literal::Group(A::commit_to_group_bhp768(&input.to_bits_le(), &randomizer)),
+            3 => circuit::Literal::Group(A::commit_to_group_bhp1024(&input.to_bits_le(), &randomizer)),
+            4 => circuit::Literal::Group(A::commit_to_group_ped64(&input.to_bits_le(), &randomizer)),
+            5 => circuit::Literal::Group(A::commit_to_group_ped128(&input.to_bits_le(), &randomizer)),
+            6.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
+        let output = output.downcast_lossy(self.destination_type)?;
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.
@@ -230,13 +212,14 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
+        // Ensure the destination type is valid.
+        ensure!(is_valid_destination_type(self.destination_type), "Invalid destination type in 'commit' instruction");
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0..=5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
-            6..=11 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Group))]),
-            12.. => bail!("Invalid 'commit' variant: {VARIANT}"),
+            0..=5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(self.destination_type))]),
+            6.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         }
     }
 }
@@ -263,8 +246,23 @@ impl<N: Network, const VARIANT: u8> Parser for CommitInstruction<N, VARIANT> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
-
-        Ok((string, Self { operands: vec![first, second], destination }))
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "as" from the string.
+        let (string, _) = tag("as")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the destination register type from the string.
+        let (string, destination_type) = LiteralType::parse(string)?;
+        // Ensure the destination type is allowed.
+        match destination_type {
+            LiteralType::Address | LiteralType::Field | LiteralType::Group => {
+                Ok((string, Self { operands: vec![first, second], destination, destination_type }))
+            }
+            _ => map_res(fail, |_: ParserResult<Self>| {
+                Err(error(format!("Failed to parse 'commit': '{destination_type}' is invalid")))
+            })(string),
+        }
     }
 }
 
@@ -304,7 +302,7 @@ impl<N: Network, const VARIANT: u8> Display for CommitInstruction<N, VARIANT> {
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
         self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
-        write!(f, "into {}", self.destination)
+        write!(f, "into {} as {}", self.destination, self.destination_type)
     }
 }
 
@@ -319,9 +317,11 @@ impl<N: Network, const VARIANT: u8> FromBytes for CommitInstruction<N, VARIANT> 
         }
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
+        // Read the destination register type.
+        let destination_type = LiteralType::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, destination })
+        Ok(Self { operands, destination, destination_type })
     }
 }
 
@@ -335,7 +335,9 @@ impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
         // Write the operands.
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
         // Write the destination register.
-        self.destination.write_le(&mut writer)
+        self.destination.write_le(&mut writer)?;
+        // Write the destination register type.
+        self.destination_type.write_le(&mut writer)
     }
 }
 
@@ -365,6 +367,7 @@ mod tests {
         type_b: LiteralType,
         mode_a: circuit::Mode,
         mode_b: circuit::Mode,
+        destination_type: LiteralType,
         cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
         use crate::{Process, Program};
@@ -386,13 +389,13 @@ mod tests {
             function {function_name}:
                 input {r0} as {type_a}.{mode_a};
                 input {r1} as {type_b}.{mode_b};
-                {opcode} {r0} {r1} into {r2};
+                {opcode} {r0} {r1} into {r2} as {destination_type};
                 finalize {r0} {r1};
 
             finalize {function_name}:
                 input {r0} as {type_a}.public;
                 input {r1} as {type_b}.public;
-                {opcode} {r0} {r1} into {r2};
+                {opcode} {r0} {r1} into {r2} as {destination_type};
         "
         ))?;
 
@@ -411,12 +414,14 @@ mod tests {
         operation: impl FnOnce(
             Vec<Operand<CurrentNetwork>>,
             Register<CurrentNetwork>,
+            LiteralType,
         ) -> CommitInstruction<CurrentNetwork, VARIANT>,
         opcode: Opcode,
         literal_a: &Literal<CurrentNetwork>,
         literal_b: &Literal<CurrentNetwork>,
         mode_a: &circuit::Mode,
         mode_b: &circuit::Mode,
+        destination_type: LiteralType,
         cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) {
         println!("Checking '{opcode}' for '{literal_a}.{mode_a}' and '{literal_b}.{mode_b}'");
@@ -426,9 +431,10 @@ mod tests {
         let type_b = literal_b.to_type();
 
         // Initialize the stack.
-        let (stack, operands, destination) = sample_stack(opcode, type_a, type_b, *mode_a, *mode_b, cache).unwrap();
+        let (stack, operands, destination) =
+            sample_stack(opcode, type_a, type_b, *mode_a, *mode_b, destination_type, cache).unwrap();
         // Initialize the operation.
-        let operation = operation(operands, destination.clone());
+        let operation = operation(operands, destination.clone(), destination_type);
         // Initialize the function name.
         let function_name = Identifier::from_str("run").unwrap();
         // Initialize a destination operand.
@@ -475,10 +481,26 @@ mod tests {
                 "The results of the evaluation and execution are inconsistent"
             );
             assert_eq!(output_a, output_c, "The results of the evaluation and finalization are inconsistent");
+
+            // Check that the output type is consistent with the declared type.
+            match output_a {
+                Value::Plaintext(Plaintext::Literal(literal, _)) => {
+                    assert_eq!(
+                        literal.to_type(),
+                        destination_type,
+                        "The output type is inconsistent with the declared type"
+                    );
+                }
+                _ => unreachable!("The output type is inconsistent with the declared type"),
+            }
         }
 
         // Reset the circuit.
         <CurrentAleo as circuit::Environment>::reset();
+    }
+
+    fn valid_destination_types() -> &'static [LiteralType] {
+        &[LiteralType::Address, LiteralType::Field, LiteralType::Group]
     }
 
     macro_rules! test_commit {
@@ -487,7 +509,7 @@ mod tests {
                 #[test]
                 fn [<test _ $name _ is _ consistent>]() {
                     // Initialize the operation.
-                    let operation = |operands, destination| $commit::<CurrentNetwork> { operands, destination };
+                    let operation = |operands, destination, destination_type| $commit::<CurrentNetwork> { operands, destination, destination_type };
                     // Initialize the opcode.
                     let opcode = $commit::<CurrentNetwork>::opcode();
 
@@ -509,7 +531,9 @@ mod tests {
                             for literal_b in &literals_b {
                                 for mode_a in &modes_a {
                                     for mode_b in &modes_b {
-                                        check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, &mut cache);
+                                        for destination_type in valid_destination_types() {
+                                            check_commit(operation, opcode, literal_a, literal_b, mode_a, mode_b, *destination_type, &mut cache);
+                                        }
                                     }
                                 }
                             }
@@ -524,11 +548,6 @@ mod tests {
     test_commit!(commit_bhp512, CommitBHP512);
     test_commit!(commit_bhp768, CommitBHP768);
     test_commit!(commit_bhp1024, CommitBHP1024);
-
-    test_commit!(commit_to_group_bhp256, CommitToGroupBHP256);
-    test_commit!(commit_to_group_bhp512, CommitToGroupBHP512);
-    test_commit!(commit_to_group_bhp768, CommitToGroupBHP768);
-    test_commit!(commit_to_group_bhp1024, CommitToGroupBHP1024);
 
     // Note this test must be explicitly written, instead of using the macro, because CommitPED64 and CommitToGroupPED64 fails on certain input types.
     #[test]
@@ -558,15 +577,22 @@ mod tests {
                         for literal_b in &literals_b {
                             for mode_a in &modes_a {
                                 for mode_b in &modes_b {
-                                    check_commit(
-                                        |operands, destination| $operation::<CurrentNetwork> { operands, destination },
-                                        $operation::<CurrentNetwork>::opcode(),
-                                        literal_a,
-                                        literal_b,
-                                        mode_a,
-                                        mode_b,
-                                        &mut cache,
-                                    );
+                                    for destination_type in valid_destination_types() {
+                                        check_commit(
+                                            |operands, destination, destination_type| $operation::<CurrentNetwork> {
+                                                operands,
+                                                destination,
+                                                destination_type,
+                                            },
+                                            $operation::<CurrentNetwork>::opcode(),
+                                            literal_a,
+                                            literal_b,
+                                            mode_a,
+                                            mode_b,
+                                            *destination_type,
+                                            &mut cache,
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -575,7 +601,6 @@ mod tests {
             };
         }
         check_commit!(CommitPED64);
-        check_commit!(CommitToGroupPED64);
     }
 
     // Note this test must be explicitly written, instead of using the macro, because CommitPED128 and CommitToGroupPED64 fails on certain input types.
@@ -608,15 +633,22 @@ mod tests {
                         for literal_b in &literals_b {
                             for mode_a in &modes_a {
                                 for mode_b in &modes_b {
-                                    check_commit(
-                                        |operands, destination| $operation::<CurrentNetwork> { operands, destination },
-                                        $operation::<CurrentNetwork>::opcode(),
-                                        literal_a,
-                                        literal_b,
-                                        mode_a,
-                                        mode_b,
-                                        &mut cache,
-                                    );
+                                    for destination_type in valid_destination_types() {
+                                        check_commit(
+                                            |operands, destination, destination_type| $operation::<CurrentNetwork> {
+                                                operands,
+                                                destination,
+                                                destination_type,
+                                            },
+                                            $operation::<CurrentNetwork>::opcode(),
+                                            literal_a,
+                                            literal_b,
+                                            mode_a,
+                                            mode_b,
+                                            *destination_type,
+                                            &mut cache,
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -625,16 +657,19 @@ mod tests {
             };
         }
         check_commit!(CommitPED128);
-        check_commit!(CommitToGroupPED128);
     }
 
     #[test]
     fn test_parse() {
-        let (string, commit) = CommitBHP512::<CurrentNetwork>::parse("commit.bhp512 r0 r1 into r2").unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(commit.operands.len(), 2, "The number of operands is incorrect");
-        assert_eq!(commit.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(commit.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(commit.destination, Register::Locator(2), "The destination register is incorrect");
+        for destination_type in valid_destination_types() {
+            let instruction = format!("commit.bhp512 r0 r1 into r2 as {destination_type}");
+            let (string, commit) = CommitBHP512::<CurrentNetwork>::parse(&instruction).unwrap();
+            assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+            assert_eq!(commit.operands.len(), 2, "The number of operands is incorrect");
+            assert_eq!(commit.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+            assert_eq!(commit.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+            assert_eq!(commit.destination, Register::Locator(2), "The destination register is incorrect");
+            assert_eq!(commit.destination_type, *destination_type, "The destination type is incorrect");
+        }
     }
 }

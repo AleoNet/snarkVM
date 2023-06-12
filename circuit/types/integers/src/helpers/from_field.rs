@@ -18,6 +18,10 @@ impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
     type Field = Field<E>;
 
     /// Casts an integer from a base field.
+    ///
+    /// This method guarantees the following:
+    ///   1. If the field element is larger than the integer domain, then the operation will fail.
+    ///   2. If the field element is smaller than the integer domain, then the operation will succeed.
     fn from_field(field: Self::Field) -> Self {
         // Note: We are reconstituting the integer from the base field.
         // This is safe as the number of bits in the integer is less than the base field modulus,
@@ -55,6 +59,29 @@ mod tests {
                 }
             });
             Circuit::reset();
+
+            // Sample a random field.
+            let expected = Field::<Circuit>::new(mode, Uniform::rand(rng));
+            // Determine the integer domain.
+            let integer_max = match I::type_name() {
+                "u8" | "i8" => console::Field::<<Circuit as Environment>::Network>::from_u8(u8::MAX),
+                "u16" | "i16" => console::Field::<<Circuit as Environment>::Network>::from_u16(u16::MAX),
+                "u32" | "i32" => console::Field::<<Circuit as Environment>::Network>::from_u32(u32::MAX),
+                "u64" | "i64" => console::Field::<<Circuit as Environment>::Network>::from_u64(u64::MAX),
+                "u128" | "i128" => console::Field::<<Circuit as Environment>::Network>::from_u128(u128::MAX),
+                _ => panic!("Unsupported integer type."),
+            };
+            // Filter for field elements that exceed the integer domain.
+            if expected.eject_value() > integer_max {
+                // Perform the operation.
+                let result = std::panic::catch_unwind(|| {
+                    Integer::<_, I>::from_field(expected); // This should fail.
+                });
+                assert!(result.is_err() || !Circuit::is_satisfied());
+            } else {
+                // Perform the operation.
+                Integer::<_, I>::from_field(expected); // This should not fail.
+            }
         }
     }
 

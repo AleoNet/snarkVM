@@ -34,8 +34,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Retrieve the latest cumulative weight.
         let latest_cumulative_weight = latest_block.cumulative_weight();
 
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new(latest_height + 1);
         // Select the transactions from the memory pool.
-        let transactions = self.vm.speculate(candidate_transactions.iter())?;
+        let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
 
         // TODO (raychu86): Clean this up or create a `total_supply_delta` in `Transactions`.
         // Calculate the new total supply of microcredits after the block.
