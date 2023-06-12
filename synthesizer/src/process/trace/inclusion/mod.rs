@@ -210,8 +210,13 @@ impl<N: Network> InclusionAssignment<N> {
         // Enforce that the candidate serial number is equal to the serial number.
         A::assert_eq(&candidate_serial_number, &serial_number);
 
-        // Enforce the starting leaf is the claimed commitment.
-        A::assert_eq(state_path.transition_leaf().id(), commitment);
+        // Enforce the starting leaf is the claimed commitment or serial_number.
+        if self.is_global {
+            A::assert_eq(state_path.transition_leaf().id(), commitment);
+        } else {
+            A::assert_eq(state_path.transition_leaf().id(), serial_number);
+        }
+        
         // Enforce the state path from leaf to root is correct.
         A::assert(state_path.verify(&is_global, &local_state_root));
 
