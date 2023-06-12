@@ -29,6 +29,11 @@ use snarkvm_curves::bls12_377::Fr;
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
 
+/// Samples a new finalize state.
+fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
+    FinalizeGlobalState::new(block_height)
+}
+
 #[test]
 fn test_process_execute_mint() {
     // Initialize a new program.
@@ -843,7 +848,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
@@ -953,7 +958,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
 
     // Check that the account balance is now 0.
     let candidate = finalize_store
@@ -1081,7 +1086,7 @@ finalize mint_public:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
 
     // Check the account balance.
     let candidate = finalize_store
@@ -1230,7 +1235,7 @@ function mint:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
 
     // Check the account balance.
     let candidate = finalize_store
@@ -1342,7 +1347,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
@@ -1767,7 +1772,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(&finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
 
     // Check that the struct is stored as expected.
     let candidate = finalize_store

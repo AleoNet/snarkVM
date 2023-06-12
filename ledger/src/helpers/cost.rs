@@ -35,7 +35,7 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
         .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
         .ok_or(anyhow!("The storage cost computation overflowed for a deployment"))?;
 
-    // Compute the namespace cost in microcredits: 10^(10 - num_characters).
+    // Compute the namespace cost in credits: 10^(10 - num_characters).
     let namespace_cost = 10u64
         .checked_pow(10u32.saturating_sub(num_characters))
         .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?

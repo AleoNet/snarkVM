@@ -73,14 +73,18 @@ impl<N: Network> FinalizeTypes<N> {
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
                     )
                 }
-                // Ensure the caller type (address) matches the member type.
-                Operand::Caller => {
-                    // Retrieve the caller type.
-                    let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                    // Ensure the caller type matches the member type.
+                // If the operand is a caller, throw an error.
+                Operand::Caller => bail!(
+                    "Struct member '{struct_name}.{member_name}' cannot be cast from a caller in a finalize scope."
+                ),
+                // Ensure the block height type (u32) matches the member type.
+                Operand::BlockHeight => {
+                    // Retrieve the block height type.
+                    let block_height_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U32));
+                    // Ensure the block height type matches the member type.
                     ensure!(
-                        caller_type == RegisterType::Plaintext(*member_type),
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
+                        block_height_type == RegisterType::Plaintext(*member_type),
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{block_height_type}' in the operand '{operand}'.",
                     )
                 }
             }

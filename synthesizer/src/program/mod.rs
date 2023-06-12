@@ -561,6 +561,7 @@ impl<N: Network> Program<N> {
         "value",
         // Reserved (catch all)
         "global",
+        "block",
         "return",
         "break",
         "assert",

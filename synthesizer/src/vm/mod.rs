@@ -29,7 +29,7 @@ use crate::{
     cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, Process, Query, Trace},
+    process::{Authorization, FinalizeGlobalState, Process, Query, Trace},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
 };
@@ -166,10 +166,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new(block.height());
+
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(block.transactions()) {
+        match self.finalize(state, block.transactions()) {
             Ok(_) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
@@ -204,6 +207,11 @@ pub(crate) mod test_helpers {
     use std::borrow::Borrow;
 
     pub(crate) type CurrentNetwork = Testnet3;
+
+    /// Samples a new finalize state.
+    pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
+        FinalizeGlobalState::new(block_height)
+    }
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
         // Initialize a new VM.
@@ -480,7 +488,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(transactions.iter())?;
+        let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
