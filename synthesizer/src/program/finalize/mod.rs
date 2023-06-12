@@ -24,7 +24,7 @@ mod parse;
 use crate::Instruction;
 use console::{
     network::prelude::*,
-    program::{Identifier, PlaintextType, Register, RegisterType},
+    program::{Identifier, LiteralType, PlaintextType, Register, RegisterType},
 };
 
 use indexmap::IndexSet;
@@ -109,9 +109,18 @@ impl<N: Network> Finalize<N> {
             Command::Instruction(Instruction::HashBHP1024(_)) => Ok(100_000),
             Command::Instruction(Instruction::HashPED64(_)) => Ok(20_000),
             Command::Instruction(Instruction::HashPED128(_)) => Ok(30_000),
-            Command::Instruction(Instruction::HashPSD2(_)) => Ok(60_000),
-            Command::Instruction(Instruction::HashPSD4(_)) => Ok(100_000),
-            Command::Instruction(Instruction::HashPSD8(_)) => Ok(200_000),
+            Command::Instruction(Instruction::HashPSD2(hash)) => match hash.destination_type() {
+                LiteralType::Group => Ok(600_000),
+                _ => Ok(60_000),
+            },
+            Command::Instruction(Instruction::HashPSD4(hash)) => match hash.destination_type() {
+                LiteralType::Group => Ok(700_000),
+                _ => Ok(100_000),
+            },
+            Command::Instruction(Instruction::HashPSD8(hash)) => match hash.destination_type() {
+                LiteralType::Group => Ok(800_000),
+                _ => Ok(200_000),
+            },
             Command::Instruction(Instruction::HashManyPSD2(_)) => {
                 bail!("`hash_many.psd2` is not supported in finalize.")
             }
