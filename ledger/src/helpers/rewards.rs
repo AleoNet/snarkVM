@@ -16,7 +16,6 @@ use console::{network::prelude::*, types::Address};
 use synthesizer::coinbase::ProverSolution;
 
 use anyhow::Result;
-use std::collections::HashMap;
 
 /// Returns the prover rewards for a given coinbase reward and list of prover solutions.
 ///
