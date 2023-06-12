@@ -80,28 +80,55 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Ensure there are no duplicate transition IDs.
         if has_duplicates(transaction.transition_ids()) {
-            bail!("Found duplicate transition in the transactions list");
+            bail!("Found duplicate transition in the transaction");
         }
 
-        // Ensure there are no duplicate transition public keys.
-        if has_duplicates(transaction.transition_public_keys()) {
-            bail!("Found duplicate transition public keys in the transactions list");
+        /* Input */
+
+        // Ensure there are no duplicate input IDs.
+        if has_duplicates(transaction.input_ids()) {
+            bail!("Found duplicate input IDs in the transaction");
         }
 
         // Ensure there are no duplicate serial numbers.
         if has_duplicates(transaction.serial_numbers()) {
-            bail!("Found duplicate serial numbers in the transactions list");
+            bail!("Found duplicate serial numbers in the transaction");
+        }
+
+        // Ensure there are no duplicate tags.
+        if has_duplicates(transaction.tags()) {
+            bail!("Found duplicate tags in the transaction");
+        }
+
+        /* Output */
+
+        // Ensure there are no duplicate output IDs.
+        if has_duplicates(transaction.output_ids()) {
+            bail!("Found duplicate output IDs in the transaction");
         }
 
         // Ensure there are no duplicate commitments.
         if has_duplicates(transaction.commitments()) {
-            bail!("Found duplicate commitments in the transactions list");
+            bail!("Found duplicate commitments in the transaction");
         }
 
         // Ensure there are no duplicate nonces.
         if has_duplicates(transaction.nonces()) {
-            bail!("Found duplicate nonces in the transactions list");
+            bail!("Found duplicate nonces in the transaction");
         }
+
+        /* Metadata */
+
+        // Ensure there are no duplicate transition public keys.
+        if has_duplicates(transaction.transition_public_keys()) {
+            bail!("Found duplicate transition public keys in the transaction");
+        }
+
+        // Ensure there are no duplicate transition commitments.
+        if has_duplicates(transaction.transition_commitments()) {
+            bail!("Found duplicate transition commitments in the transaction");
+        }
+
         lap!(timer, "Check for duplicate elements");
 
         match transaction {

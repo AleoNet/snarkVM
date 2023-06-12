@@ -26,6 +26,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Transaction '{transaction_id}' already exists in the ledger")
         }
 
+        // Ensure the ledger does not already contain the given transition ID.
+        for transition_id in transaction.transition_ids() {
+            if self.contains_transition_id(transition_id)? {
+                bail!("Transition ID '{transition_id}' already exists in the ledger")
+            }
+        }
+
         // Ensure the mint transaction is attributed to a validator in the committee.
         if transaction.is_mint() {
             // Retrieve the execution.
@@ -80,6 +87,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Ensure the transaction is valid.
         self.vm().check_transaction(transaction, rejected_id)?;
 
+        /* Program */
+
+        // If the transaction is a deployment, then perform deployment checks.
+        if let Transaction::Deploy(_, _, deployment, _) = &transaction {
+            // Ensure the edition is correct.
+            if deployment.edition() != N::EDITION {
+                bail!("Invalid program deployment: expected edition {}", N::EDITION)
+            }
+            // Ensure the program ID is not already in the ledger.
+            if self.contains_program_id(deployment.program_id())? {
+                bail!("Program ID '{}' already exists in the ledger", deployment.program_id())
+            }
+        }
+
         /* Input */
 
         // Ensure the ledger does not already contain the given input ID.
@@ -123,20 +144,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         for nonce in transaction.nonces() {
             if self.contains_nonce(nonce)? {
                 bail!("Nonce '{nonce}' already exists in the ledger")
-            }
-        }
-
-        /* Program */
-
-        // If the transaction is a deployment, then perform deployment checks.
-        if let Transaction::Deploy(_, _, deployment, _) = &transaction {
-            // Ensure the edition is correct.
-            if deployment.edition() != N::EDITION {
-                bail!("Invalid program deployment: expected edition {}", N::EDITION)
-            }
-            // Ensure the program ID is not already in the ledger.
-            if self.contains_program_id(deployment.program_id())? {
-                bail!("Program ID '{}' already exists in the ledger", deployment.program_id())
             }
         }
 

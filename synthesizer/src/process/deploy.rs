@@ -37,31 +37,6 @@ impl<N: Network> Process<N> {
         deployment
     }
 
-    /// Verifies the given deployment is ordered.
-    #[inline]
-    pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        deployment: &Deployment<N>,
-        rng: &mut R,
-    ) -> Result<()> {
-        let timer = timer!("Process::verify_deployment");
-        // Retrieve the program ID.
-        let program_id = deployment.program().id();
-        // Ensure the program does not already exist in the process.
-        ensure!(!self.contains_program(program_id), "Program '{program_id}' already exists");
-        // Ensure the program is well-formed, by computing the stack.
-        let stack = Stack::new(self, deployment.program())?;
-        lap!(timer, "Compute the stack");
-
-        // Ensure the verifying keys are well-formed and the certificates are valid.
-        let verification = stack.verify_deployment::<A, R>(deployment, rng);
-        lap!(timer, "Verify the deployment");
-
-        finish!(timer);
-
-        verification
-    }
-
     /// Adds the newly-deployed program.
     /// This method assumes the given deployment **is valid**.
     #[inline]
