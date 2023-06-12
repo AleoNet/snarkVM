@@ -180,8 +180,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         if prover_solutions.len() > N::MAX_PROVER_SOLUTIONS {
             bail!(
                 "Cannot accumulate beyond {} prover solutions, found {}.",
-                prover_solutions.len(),
-                N::MAX_PROVER_SOLUTIONS
+                N::MAX_PROVER_SOLUTIONS,
+                prover_solutions.len()
             );
         }
 
