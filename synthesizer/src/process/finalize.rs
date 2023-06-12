@@ -64,6 +64,7 @@ impl<N: Network> Process<N> {
     #[inline]
     pub(crate) fn finalize_execution<P: FinalizeStorage<N>>(
         &self,
+        state: FinalizeGlobalState,
         store: &FinalizeStore<N, P>,
         execution: &Execution<N>,
     ) -> Result<Vec<FinalizeOperation<N>>> {
@@ -114,7 +115,8 @@ impl<N: Network> Process<N> {
                     };
 
                     // Initialize the registers.
-                    let mut registers = FinalizeRegisters::<N>::new(stack.get_finalize_types(finalize.name())?.clone());
+                    let mut registers =
+                        FinalizeRegisters::<N>::new(state, stack.get_finalize_types(finalize.name())?.clone());
 
                     // Store the inputs.
                     finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(
