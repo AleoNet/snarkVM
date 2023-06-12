@@ -38,7 +38,8 @@ pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (
     // Compute the namespace cost in microcredits: 10^(10 - num_characters).
     let namespace_cost = 10u64
         .checked_pow(10u32.saturating_sub(num_characters))
-        .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?;
+        .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?
+        .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
 
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
