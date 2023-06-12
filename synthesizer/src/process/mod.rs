@@ -24,6 +24,7 @@ mod evaluate;
 mod execute;
 mod execute_fee;
 mod finalize;
+mod verify_deployment;
 mod verify_execution;
 mod verify_fee;
 
