@@ -24,10 +24,9 @@ impl<E: Environment, const RATE: usize> HashToScalar for Poseidon<E, RATE> {
     fn hash_to_scalar(&self, input: &[Self::Input]) -> Self::Scalar {
         // Hash the input to the base field.
         let output = self.hash(input);
-
-        // Truncate the output to the size in data bits (1 bit less than the MODULUS) of the scalar.
-        // Slicing here is safe as the base field is larger than the scalar field.
-        Scalar::from_bits_le(&output.to_bits_le()[..E::ScalarField::size_in_data_bits()])
+        // Convert the output to the scalar field,
+        // truncating to the size in data bits (1 bit less than the MODULUS) of the scalar.
+        Scalar::from_field_lossy(output)
     }
 }
 

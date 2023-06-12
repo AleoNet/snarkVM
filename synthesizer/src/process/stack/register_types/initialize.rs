@@ -573,18 +573,6 @@ impl<N: Network> RegisterTypes<N> {
             "hash_many.psd2",
             "hash_many.psd4",
             "hash_many.psd8",
-            "hash_to_group.bhp256",
-            "hash_to_group.bhp512",
-            "hash_to_group.bhp768",
-            "hash_to_group.bhp1024",
-            "hash_to_group.ped64",
-            "hash_to_group.ped128",
-            "hash_to_group.psd2",
-            "hash_to_group.psd4",
-            "hash_to_group.psd8",
-            "hash_to_scalar.psd2",
-            "hash_to_scalar.psd4",
-            "hash_to_scalar.psd8",
         ]
         .contains(&opcode)
         {
@@ -638,54 +626,6 @@ impl<N: Network> RegisterTypes<N> {
             ),
             "hash_many.psd8" => ensure!(
                 matches!(instruction, Instruction::HashManyPSD8(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp256" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP256(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp512" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP512(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp768" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP768(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.bhp1024" => ensure!(
-                matches!(instruction, Instruction::HashToGroupBHP1024(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.ped64" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPED64(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.ped128" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPED128(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.psd2" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPSD2(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.psd4" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPSD4(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_group.psd8" => ensure!(
-                matches!(instruction, Instruction::HashToGroupPSD8(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_scalar.psd2" => ensure!(
-                matches!(instruction, Instruction::HashToScalarPSD2(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_scalar.psd4" => ensure!(
-                matches!(instruction, Instruction::HashToScalarPSD4(..)),
-                "Instruction '{instruction}' is not for opcode '{opcode}'."
-            ),
-            "hash_to_scalar.psd8" => ensure!(
-                matches!(instruction, Instruction::HashToScalarPSD8(..)),
                 "Instruction '{instruction}' is not for opcode '{opcode}'."
             ),
             _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),

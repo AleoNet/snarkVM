@@ -20,6 +20,8 @@ mod bitwise;
 mod bytes;
 mod compare;
 mod from_bits;
+mod from_field;
+mod from_field_lossy;
 mod one;
 mod parse;
 mod random;

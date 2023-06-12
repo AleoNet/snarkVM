@@ -16,6 +16,7 @@ use super::*;
 
 pub mod from_bits;
 pub mod from_field;
+pub mod from_field_lossy;
 pub mod msb;
 pub mod one;
 pub mod to_bits;

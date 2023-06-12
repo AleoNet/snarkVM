@@ -791,7 +791,7 @@ finalize transfer_public:
         for finalize_logic in &[
             "finalize ped_hash:
     input r0 as u128.public;
-    hash.ped64 r0 into r1;
+    hash.ped64 r0 into r1 as field;
     set r1 into hashes[r0];",
             "finalize ped_hash:
     input r0 as u128.public;
@@ -824,7 +824,7 @@ mapping hashes:
 
 function ped_hash:
     input r0 as u128.public;
-    // hash.ped64 r0 into r1; // <--- This will cause a E::halt.
+    // hash.ped64 r0 into r1 as field; // <--- This will cause a E::halt.
     finalize r0;
 
 {finalize_logic}"
