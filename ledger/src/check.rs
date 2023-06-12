@@ -212,7 +212,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         /* Input */
 
         // Ensure there are no duplicate input IDs.
-        if has_duplicates(block.transitions().flat_map(|t| t.input_ids())) {
+        if has_duplicates(block.input_ids()) {
             bail!("Found duplicate input IDs in the block");
         }
 
@@ -229,7 +229,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         /* Output */
 
         // Ensure there are no duplicate output IDs.
-        if has_duplicates(block.transitions().flat_map(|t| t.output_ids())) {
+        if has_duplicates(block.output_ids()) {
             bail!("Found duplicate output IDs in the block");
         }
 
