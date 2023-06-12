@@ -59,8 +59,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Compute the next cumulative weight.
         let next_cumulative_weight = latest_cumulative_weight.saturating_add(cumulative_proof_target);
 
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new(next_height);
         // Select the transactions from the memory pool.
-        let transactions = self.vm.speculate(candidate_transactions.iter())?;
+        let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
 
         // Compute the next total supply in microcredits.
         let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, &transactions)?;

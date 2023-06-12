@@ -39,7 +39,7 @@ use console::{
 use synthesizer::{
     block::{Block, ConfirmedTransaction, Header, Metadata, Transaction, Transactions},
     coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
-    process::Query,
+    process::{FinalizeGlobalState, Query},
     program::Program,
     store::{ConsensusStorage, ConsensusStore},
     vm::VM,

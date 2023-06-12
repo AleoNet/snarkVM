@@ -22,12 +22,35 @@ use crate::{
 use console::{
     network::prelude::*,
     program::{Literal, Plaintext, Register, Value},
+    types::U32,
 };
 
 use indexmap::IndexMap;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct FinalizeGlobalState {
+    /// The block height.
+    block_height: u32,
+}
+
+impl FinalizeGlobalState {
+    /// Initializes a new global state.
+    #[inline]
+    pub const fn new(block_height: u32) -> Self {
+        Self { block_height }
+    }
+
+    /// Returns the block height.
+    #[inline]
+    pub const fn block_height(&self) -> u32 {
+        self.block_height
+    }
+}
+
 #[derive(Clone)]
 pub struct FinalizeRegisters<N: Network> {
+    /// The global state for the finalize scope.
+    state: FinalizeGlobalState,
     /// The mapping of all registers to their defined types.
     finalize_types: FinalizeTypes<N>,
     /// The mapping of assigned registers to their values.
@@ -37,7 +60,13 @@ pub struct FinalizeRegisters<N: Network> {
 impl<N: Network> FinalizeRegisters<N> {
     /// Initializes a new set of registers, given the finalize types.
     #[inline]
-    pub fn new(finalize_types: FinalizeTypes<N>) -> Self {
-        Self { finalize_types, registers: IndexMap::new() }
+    pub fn new(state: FinalizeGlobalState, finalize_types: FinalizeTypes<N>) -> Self {
+        Self { state, finalize_types, registers: IndexMap::new() }
+    }
+
+    /// Returns the global state for the finalize scope.
+    #[inline]
+    pub const fn state(&self) -> &FinalizeGlobalState {
+        &self.state
     }
 }

@@ -40,6 +40,7 @@ use console::{
 };
 use snarkvm_synthesizer::{
     finalize::Finalize,
+    FinalizeGlobalState,
     FinalizeRegisters,
     FinalizeTypes,
     Instruction,
@@ -71,8 +72,10 @@ fn setup_finalize_registers(
     }
     finalize_string.push_str(&finalize_body.to_string());
     let finalize = Finalize::<Testnet3>::from_str(&finalize_string).unwrap();
+    // Construct the finalize state.
+    let state = FinalizeGlobalState::new(1);
     // Initialize a fresh set of finalize registers.
-    let mut registers = FinalizeRegisters::new(FinalizeTypes::from_finalize(stack, &finalize).unwrap());
+    let mut registers = FinalizeRegisters::new(state, FinalizeTypes::from_finalize(stack, &finalize).unwrap());
     // Add the arguments into the registers.
     for (i, arg) in args.iter().enumerate() {
         registers.store(stack, &Register::Locator(i as u64), arg.clone()).unwrap();
