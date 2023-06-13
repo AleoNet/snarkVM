@@ -207,7 +207,7 @@ finalize lock_public:
     set r6 into account[r0];
 
     // Construct the timelock.
-    cast r1 r2 into r7 as timelock.public;
+    cast r1 r2 into r7 as timelock;
     // Set the timelock for the sender.
     set r7 into timelocked[r0];
 
