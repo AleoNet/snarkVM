@@ -400,12 +400,23 @@ impl<N: Network> RegisterTypes<N> {
                     }
                 }
             }
-            Opcode::Cast => {
-                // Retrieve the cast operation.
-                let operation = match instruction {
-                    Instruction::Cast(operation) => operation,
-                    _ => bail!("Instruction '{instruction}' is not a cast operation."),
-                };
+            Opcode::Cast(opcode) => {
+                // Ensure the instruction belongs to the defined set.
+                if !["cast", "cast.lossy"].contains(&opcode) {
+                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
+                }
+                // Ensure the instruction is the correct one.
+                match opcode {
+                    "cast" => ensure!(
+                        matches!(instruction, Instruction::Cast(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "cast.lossy" => ensure!(
+                        matches!(instruction, Instruction::CastLossy(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
+                }
 
                 // Ensure the instruction has one destination register.
                 ensure!(
@@ -414,7 +425,12 @@ impl<N: Network> RegisterTypes<N> {
                 );
 
                 // Ensure the casted register type is defined.
-                match operation.register_type() {
+                let register_type = match instruction {
+                    Instruction::Cast(cast) => cast.register_type(),
+                    Instruction::CastLossy(cast) => cast.register_type(),
+                    _ => unreachable!("instruction has been checked to be a cast operation"),
+                };
+                match register_type {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }

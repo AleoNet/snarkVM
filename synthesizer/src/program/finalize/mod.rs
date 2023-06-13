@@ -85,7 +85,9 @@ impl<N: Network> Finalize<N> {
             Command::Instruction(Instruction::AssertEq(_)) => Ok(2_000),
             Command::Instruction(Instruction::AssertNeq(_)) => Ok(2_000),
             Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
+            // TODO (d0cd): Update cast pricing given support for casting between literals.
             Command::Instruction(Instruction::Cast(_)) => Ok(2_000),
+            Command::Instruction(Instruction::CastLossy(_)) => Ok(2_000),
             Command::Instruction(Instruction::CommitBHP256(_)) => Ok(200_000),
             Command::Instruction(Instruction::CommitBHP512(_)) => Ok(200_000),
             Command::Instruction(Instruction::CommitBHP768(_)) => Ok(200_000),

@@ -126,8 +126,18 @@ impl<N: Network> FromBytes for CastType<N> {
 }
 
 /// Casts the operands into the declared type.
+pub type Cast<N> = CastInstruction<N, { Variant::Checked as u8 }>;
+/// Casts the operands into the declared type, with lossy truncation.
+pub type CastLossy<N> = CastInstruction<N, { Variant::Lossy as u8 }>;
+
+enum Variant {
+    Checked,
+    Lossy,
+}
+
+/// Casts the operands into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Cast<N: Network> {
+pub struct CastInstruction<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
@@ -136,11 +146,15 @@ pub struct Cast<N: Network> {
     cast_type: CastType<N>,
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, const VARIANT: u8> CastInstruction<N, VARIANT> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Cast
+        match VARIANT {
+            0 => Opcode::Assert("cast"),
+            1 => Opcode::Assert("cast.lossy"),
+            _ => panic!("Invalid 'cast' instruction opcode"),
+        }
     }
 
     /// Returns the operands in the operation.
@@ -173,7 +187,7 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, const VARIANT: u8> CastInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(
@@ -204,10 +218,14 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => match VARIANT {
+                        0 => literal.cast(literal_type)?,
+                        1 => literal.cast_lossy(literal_type)?,
+                        _ => bail!("Invalid 'cast' variant: {VARIANT}"),
+                    },
                     _ => bail!("Casting to a literal requires a literal"),
                 };
-                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::from(value))))
+                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
@@ -332,15 +350,17 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                        literal.cast(literal_type)?
-                    }
+                    circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => match VARIANT {
+                        0 => literal.cast(literal_type)?,
+                        1 => literal.cast_lossy(literal_type)?,
+                        _ => bail!("Invalid 'cast' variant: {VARIANT}"),
+                    },
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store_circuit(
                     stack,
                     &self.destination,
-                    circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::from(value))),
+                    circuit::Value::Plaintext(circuit::Plaintext::from(value)),
                 )
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_))) => {
@@ -505,10 +525,14 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => match VARIANT {
+                        0 => literal.cast(literal_type)?,
+                        1 => literal.cast_lossy(literal_type)?,
+                        _ => bail!("Invalid 'cast' variant: {VARIANT}"),
+                    },
                     _ => bail!("Casting to a literal requires a literal"),
                 };
-                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::from(value))))
+                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
@@ -654,7 +678,7 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, const VARIANT: u8> CastInstruction<N, VARIANT> {
     /// A helper method to handle casting to a struct.
     fn cast_to_struct(
         &self,
@@ -706,7 +730,7 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Parser for Cast<N> {
+impl<N: Network, const VARIANT: u8> Parser for CastInstruction<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -758,7 +782,7 @@ impl<N: Network> Parser for Cast<N> {
     }
 }
 
-impl<N: Network> FromStr for Cast<N> {
+impl<N: Network, const VARIANT: u8> FromStr for CastInstruction<N, VARIANT> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -776,14 +800,14 @@ impl<N: Network> FromStr for Cast<N> {
     }
 }
 
-impl<N: Network> Debug for Cast<N> {
+impl<N: Network, const VARIANT: u8> Debug for CastInstruction<N, VARIANT> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Cast<N> {
+impl<N: Network, const VARIANT: u8> Display for CastInstruction<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
@@ -806,7 +830,7 @@ impl<N: Network> Display for Cast<N> {
     }
 }
 
-impl<N: Network> FromBytes for Cast<N> {
+impl<N: Network, const VARIANT: u8> FromBytes for CastInstruction<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of operands.
@@ -850,7 +874,7 @@ impl<N: Network> FromBytes for Cast<N> {
     }
 }
 
-impl<N: Network> ToBytes for Cast<N> {
+impl<N: Network, const VARIANT: u8> ToBytes for CastInstruction<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.

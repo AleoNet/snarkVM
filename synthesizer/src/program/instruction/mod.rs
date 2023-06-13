@@ -75,6 +75,8 @@ pub enum Instruction<N: Network> {
     Call(Call<N>),
     /// Casts the operands into the declared type.
     Cast(Cast<N>),
+    /// Casts the operands into the declared type, with lossy truncation.
+    CastLossy(CastLossy<N>),
     /// Performs a BHP commitment on inputs of 256-bit chunks.
     CommitBHP256(CommitBHP256<N>),
     /// Performs a BHP commitment on inputs of 512-bit chunks.
@@ -265,6 +267,7 @@ macro_rules! instruction {
             SubWrapped,
             Ternary,
             Xor,
+            CastLossy, // TODO (d0cd): This is placed here so as to not break serializers.
         }}
     };
     // A variant **without** curly braces:
@@ -425,7 +428,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            59,
+            60,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
