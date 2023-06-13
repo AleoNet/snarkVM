@@ -64,7 +64,7 @@ version = "1.9"
 version = "0.10.3"
 
 [dependencies.js-sys]
-version = "0.3.63"
+version = "0.3.64"
 optional = true
 
 [dependencies.lazy_static]
