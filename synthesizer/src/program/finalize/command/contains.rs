@@ -213,11 +213,11 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, get) = Contains::<CurrentNetwork>::parse("contains account[r0] into r1;").unwrap();
+        let (string, contains) = Contains::<CurrentNetwork>::parse("contains account[r0] into r1;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(get.operands().len(), 1, "The number of operands is incorrect");
-        assert_eq!(get.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(get.destination, Register::Locator(1), "The second operand is incorrect");
+        assert_eq!(contains.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(contains.operands().len(), 1, "The number of operands is incorrect");
+        assert_eq!(contains.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(contains.destination, Register::Locator(1), "The second operand is incorrect");
     }
 }

@@ -168,10 +168,10 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, set) = Remove::<CurrentNetwork>::parse("remove account[r1];").unwrap();
+        let (string, remove) = Remove::<CurrentNetwork>::parse("remove account[r1];").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(set.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(set.operands().len(), 1, "The number of operands is incorrect");
-        assert_eq!(set.key, Operand::Register(Register::Locator(1)), "The first operand is incorrect");
+        assert_eq!(remove.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(remove.operands().len(), 1, "The number of operands is incorrect");
+        assert_eq!(remove.key, Operand::Register(Register::Locator(1)), "The first operand is incorrect");
     }
 }
