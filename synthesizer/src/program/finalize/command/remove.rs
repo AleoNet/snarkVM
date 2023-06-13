@@ -12,7 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Opcode, Operand, RegistersLoad, Stack, StackProgram};
+use crate::{
+    FinalizeOperation,
+    FinalizeStorage,
+    FinalizeStore,
+    Opcode,
+    Operand,
+    RegistersLoad,
+    RollbackOperation,
+    Stack,
+    StackProgram,
+};
 use console::{network::prelude::*, program::Identifier};
 
 /// A remove command, e.g. `remove mapping[r0];`
@@ -59,7 +69,7 @@ impl<N: Network> Remove<N> {
         stack: &Stack<N>,
         store: &FinalizeStore<N, P>,
         registers: &mut impl RegistersLoad<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
