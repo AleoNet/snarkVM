@@ -13,6 +13,8 @@
 // limitations under the License.
 
 use super::*;
+use crate::scalar::integers::IntegerType;
+use snarkvm_console_types::integers::Integer;
 
 impl<N: Network> Literal<N> {
     /// Casts the literal to the given literal type.
@@ -28,20 +30,20 @@ impl<N: Network> Literal<N> {
     pub fn cast(&self, to_type: LiteralType) -> Result<Self> {
         match self {
             Self::Address(address) => cast_group_to_type(address.to_group(), to_type),
-            Self::Boolean(..) => bail!("Cannot cast a boolean literal to another type."),
-            Self::Field(field) => cast_to_field_type(field, to_type),
+            Self::Boolean(boolean) => cast_boolean_to_type(boolean, to_type),
+            Self::Field(field) => cast_field_to_type(field, to_type),
             Self::Group(group) => cast_group_to_type(group, to_type),
-            Self::I8(..) => bail!("Cannot cast an i8 literal to another type (yet)."),
-            Self::I16(..) => bail!("Cannot cast an i16 literal to another type (yet)."),
-            Self::I32(..) => bail!("Cannot cast an i32 literal to another type (yet)."),
-            Self::I64(..) => bail!("Cannot cast an i64 literal to another type (yet)."),
-            Self::I128(..) => bail!("Cannot cast an i128 literal to another type (yet)."),
-            Self::U8(..) => bail!("Cannot cast a u8 literal to another type (yet)."),
-            Self::U16(..) => bail!("Cannot cast a u16 literal to another type (yet)."),
-            Self::U32(..) => bail!("Cannot cast a u32 literal to another type (yet)."),
-            Self::U64(..) => bail!("Cannot cast a u64 literal to another type (yet)."),
-            Self::U128(..) => bail!("Cannot cast a u128 literal to another type (yet)."),
-            Self::Scalar(..) => bail!("Cannot cast a scalar literal to another type (yet)."),
+            Self::I8(i8) => cast_integer_to_type(i8, to_type),
+            Self::I16(i16) => cast_integer_to_type(i16, to_type),
+            Self::I32(i32) => cast_integer_to_type(i32, to_type),
+            Self::I64(i64) => cast_integer_to_type(i64, to_type),
+            Self::I128(i128) => cast_integer_to_type(i128, to_type),
+            Self::U8(u8) => cast_integer_to_type(u8, to_type),
+            Self::U16(u16) => cast_integer_to_type(u16, to_type),
+            Self::U32(u32) => cast_integer_to_type(u32, to_type),
+            Self::U64(u64) => cast_integer_to_type(u64, to_type),
+            Self::U128(u128) => cast_integer_to_type(u128, to_type),
+            Self::Scalar(scalar) => cast_scalar_to_type(scalar, to_type),
             Self::String(..) => bail!("Cannot cast a string literal to another type."),
         }
     }
@@ -59,32 +61,58 @@ impl<N: Network> Literal<N> {
     pub fn cast_lossy(&self, to_type: LiteralType) -> Result<Self> {
         match self {
             Self::Address(address) => cast_lossy_group_to_type(address.to_group(), to_type),
-            Self::Boolean(..) => bail!("Cannot lossily cast a boolean literal to another type."),
+            Self::Boolean(boolean) => cast_lossy_boolean_to_type(boolean, to_type),
             Self::Field(field) => cast_lossy_field_to_type(field, to_type),
             Self::Group(group) => cast_lossy_group_to_type(group, to_type),
-            Self::I8(..) => bail!("Cannot lossily cast an i8 literal to another type (yet)."),
-            Self::I16(..) => bail!("Cannot lossily cast an i16 literal to another type (yet)."),
-            Self::I32(..) => bail!("Cannot lossily cast an i32 literal to another type (yet)."),
-            Self::I64(..) => bail!("Cannot lossily cast an i64 literal to another type (yet)."),
-            Self::I128(..) => bail!("Cannot lossily cast an i128 literal to another type (yet)."),
-            Self::U8(..) => bail!("Cannot lossily cast a u8 literal to another type (yet)."),
-            Self::U16(..) => bail!("Cannot lossily cast a u16 literal to another type (yet)."),
-            Self::U32(..) => bail!("Cannot lossily cast a u32 literal to another type (yet)."),
-            Self::U64(..) => bail!("Cannot lossily cast a u64 literal to another type (yet)."),
-            Self::U128(..) => bail!("Cannot lossily cast a u128 literal to another type (yet)."),
-            Self::Scalar(..) => bail!("Cannot lossily cast a scalar literal to another type (yet)."),
+            Self::I8(i8) => cast_lossy_integer_to_type(i8, to_type),
+            Self::I16(i16) => cast_lossy_integer_to_type(i16, to_type),
+            Self::I32(i32) => cast_lossy_integer_to_type(i32, to_type),
+            Self::I64(i64) => cast_lossy_integer_to_type(i64, to_type),
+            Self::I128(i128) => cast_lossy_integer_to_type(i128, to_type),
+            Self::U8(u8) => cast_lossy_integer_to_type(u8, to_type),
+            Self::U16(u16) => cast_lossy_integer_to_type(u16, to_type),
+            Self::U32(u32) => cast_lossy_integer_to_type(u32, to_type),
+            Self::U64(u64) => cast_lossy_integer_to_type(u64, to_type),
+            Self::U128(u128) => cast_lossy_integer_to_type(u128, to_type),
+            Self::Scalar(scalar) => cast_lossy_scalar_to_type(scalar, to_type),
             Self::String(..) => bail!("Cannot lossily cast a string literal to another type."),
         }
     }
 }
 
-/// Casts a field literal to the given literal type.
-fn cast_to_field_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
+/// Casts a boolean literal to the given literal type.
+fn cast_boolean_to_type<N: Network>(boolean: &Boolean<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
-        LiteralType::Address => bail!("Cannot cast a field literal to an address type (yet)."),
-        LiteralType::Boolean => bail!("Cannot cast a field literal to a boolean type (yet)."),
+        LiteralType::Boolean => Ok(Literal::Boolean(*boolean)),
+        _ => cast_field_to_type(&Field::from_bits_le(&boolean.to_bits_le())?, to_type),
+    }
+}
+
+/// Casts a boolean literal to the given literal type, with lossy truncation.
+fn cast_lossy_boolean_to_type<N: Network>(boolean: &Boolean<N>, to_type: LiteralType) -> Result<Literal<N>> {
+    match to_type {
+        LiteralType::Boolean => Ok(Literal::Boolean(*boolean)),
+        _ => cast_lossy_field_to_type(&Field::from_bits_le(&boolean.to_bits_le())?, to_type),
+    }
+}
+
+/// Casts a field literal to the given literal type.
+fn cast_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
+    match to_type {
+        LiteralType::Address => Ok(Literal::Address(Address::from_field(field)?)),
+        LiteralType::Boolean => {
+            // Convert the field element into bits.
+            let bits_le = field.to_bits_le();
+            // Ensure the upper bits are all zero.
+            ensure!(
+                bits_le[1..].iter().all(|&bit| !bit),
+                "Failed to convert boolean to field: upper bits are not zero"
+            );
+            // Convert the lower bit into a boolean.
+            Ok(Literal::Boolean(Boolean::new(bits_le[0])))
+        }
         LiteralType::Field => Ok(Literal::Field(*field)),
-        LiteralType::Group => bail!("Cannot cast a field literal to a group type (yet)."),
+        LiteralType::Group => Ok(Literal::Group(Group::from_x_coordinate(*field)?)),
         LiteralType::I8 => Ok(Literal::I8(I8::from_field(field)?)),
         LiteralType::I16 => Ok(Literal::I16(I16::from_field(field)?)),
         LiteralType::I32 => Ok(Literal::I32(I32::from_field(field)?)),
@@ -103,10 +131,15 @@ fn cast_to_field_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Res
 /// Casts a field literal to the given literal type, with lossy truncation.
 fn cast_lossy_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
-        LiteralType::Address => bail!("Cannot lossily cast a field literal to an address type (yet)."),
-        LiteralType::Boolean => bail!("Cannot lossily cast a field literal to a boolean type (yet)."),
+        LiteralType::Address => Ok(Literal::Address(Address::from_field(field)?)),
+        LiteralType::Boolean => {
+            // Convert the field element into bits.
+            let bits_le = field.to_bits_le();
+            // Convert the lower bit into a boolean.
+            Ok(Literal::Boolean(Boolean::new(bits_le[0])))
+        }
         LiteralType::Field => Ok(Literal::Field(*field)),
-        LiteralType::Group => bail!("Cannot lossily cast a field literal to a group type (yet).."),
+        LiteralType::Group => Ok(Literal::Group(Group::from_x_coordinate(*field)?)),
         LiteralType::I8 => Ok(Literal::I8(I8::from_field_lossy(field)?)),
         LiteralType::I16 => Ok(Literal::I16(I16::from_field_lossy(field)?)),
         LiteralType::I32 => Ok(Literal::I32(I32::from_field_lossy(field)?)),
@@ -127,7 +160,7 @@ fn cast_group_to_type<N: Network>(group: &Group<N>, to_type: LiteralType) -> Res
     match to_type {
         LiteralType::Address => Ok(Literal::Address(Address::new(*group))),
         LiteralType::Group => Ok(Literal::Group(*group)),
-        _ => cast_to_field_type(&group.to_x_coordinate(), to_type),
+        _ => cast_field_to_type(&group.to_x_coordinate(), to_type),
     }
 }
 
@@ -137,5 +170,37 @@ fn cast_lossy_group_to_type<N: Network>(group: &Group<N>, to_type: LiteralType) 
         LiteralType::Address => Ok(Literal::Address(Address::new(*group))),
         LiteralType::Group => Ok(Literal::Group(*group)),
         _ => cast_lossy_field_to_type(&group.to_x_coordinate(), to_type),
+    }
+}
+
+/// Casts an integer literal to the given literal type.
+fn cast_integer_to_type<N: Network, I: IntegerType>(
+    integer: &Integer<N, I>,
+    to_type: LiteralType,
+) -> Result<Literal<N>> {
+    cast_field_to_type(&integer.to_field()?, to_type)
+}
+
+/// Casts an integer literal to the given literal type, with lossy truncation.
+fn cast_lossy_integer_to_type<N: Network, I: IntegerType>(
+    integer: &Integer<N, I>,
+    to_type: LiteralType,
+) -> Result<Literal<N>> {
+    cast_lossy_field_to_type(&integer.to_field()?, to_type)
+}
+
+/// Casts a scalar literal to the given literal type.
+fn cast_scalar_to_type<N: Network>(scalar: &Scalar<N>, to_type: LiteralType) -> Result<Literal<N>> {
+    match to_type {
+        LiteralType::Scalar => Ok(Literal::Scalar(*scalar)),
+        _ => cast_field_to_type(&scalar.to_field()?, to_type),
+    }
+}
+
+/// Casts a scalar literal to the given literal type, with lossy truncation.
+fn cast_lossy_scalar_to_type<N: Network>(scalar: &Scalar<N>, to_type: LiteralType) -> Result<Literal<N>> {
+    match to_type {
+        LiteralType::Scalar => Ok(Literal::Scalar(*scalar)),
+        _ => cast_lossy_field_to_type(&scalar.to_field()?, to_type),
     }
 }
