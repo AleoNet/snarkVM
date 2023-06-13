@@ -155,26 +155,6 @@ finalize transfer_public_to_private:
     // Updates the balance of the sender.
     set r3 into account[r0];
 
-// The `fee` function charges the specified amount from the sender's record.
-function fee:
-    // Input the sender's record.
-    input r0 as credits.record;
-    // Input the amount.
-    input r1 as u64.public;
-    // Input the deployment or execution root.
-    input r2 as field.public;
-    // Ensure the amount is nonzero.
-    assert.neq r1 0u64;
-    // Checks the given record has a sufficient amount.
-    // This `sub` operation is safe, and the proof will fail
-    // if an underflow occurs. The destination register `r3` holds
-    // the change amount for the sender.
-    sub r0.microcredits r1 into r3;
-    // Construct a record with the change amount for the sender.
-    cast r0.owner r3 into r4 as credits.record;
-    // Output the sender's change record.
-    output r4 as credits.record;
-
 // The `join` function combines two records into one.
 function join:
     // Input the first record.
@@ -207,4 +187,24 @@ function split:
     // Output the first record.
     output r3 as credits.record;
     // Output the second record.
+    output r4 as credits.record;
+
+// The `fee` function charges the specified amount from the sender's record.
+function fee:
+    // Input the sender's record.
+    input r0 as credits.record;
+    // Input the amount.
+    input r1 as u64.public;
+    // Input the deployment or execution root.
+    input r2 as field.public;
+    // Ensure the amount is nonzero.
+    assert.neq r1 0u64;
+    // Checks the given record has a sufficient amount.
+    // This `sub` operation is safe, and the proof will fail
+    // if an underflow occurs. The destination register `r3` holds
+    // the change amount for the sender.
+    sub r0.microcredits r1 into r3;
+    // Construct a record with the change amount for the sender.
+    cast r0.owner r3 into r4 as credits.record;
+    // Output the sender's change record.
     output r4 as credits.record;

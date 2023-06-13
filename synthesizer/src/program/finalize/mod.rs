@@ -151,9 +151,11 @@ impl<N: Network> Finalize<N> {
             Command::Instruction(Instruction::SubWrapped(_)) => Ok(2_000),
             Command::Instruction(Instruction::Ternary(_)) => Ok(2_000),
             Command::Instruction(Instruction::Xor(_)) => Ok(2_000),
-            Command::Get(_) => Ok(1_000_000),
-            Command::GetOrUse(_) => Ok(1_000_000),
+            Command::Contains(_) => Ok(250_000),
+            Command::Get(_) => Ok(500_000),
+            Command::GetOrUse(_) => Ok(500_000),
             Command::Set(_) => Ok(1_000_000),
+            Command::Remove(_) => Ok(10_000),
         };
         self.commands.iter().map(|command| cost(command)).sum()
     }
@@ -212,6 +214,13 @@ impl<N: Network> Finalize<N> {
                     ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
                 }
             }
+            Command::Contains(contains) => {
+                // Ensure the destination register is a locator.
+                ensure!(
+                    matches!(contains.destination(), Register::Locator(..)),
+                    "Destination register must be a locator"
+                );
+            }
             Command::Get(get) => {
                 // Ensure the destination register is a locator.
                 ensure!(matches!(get.destination(), Register::Locator(..)), "Destination register must be a locator");
@@ -224,6 +233,10 @@ impl<N: Network> Finalize<N> {
                 );
             }
             Command::Set(_) => {
+                // Increment the number of write commands.
+                self.num_writes += 1;
+            }
+            Command::Remove(_) => {
                 // Increment the number of write commands.
                 self.num_writes += 1;
             }
