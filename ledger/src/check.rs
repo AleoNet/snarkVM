@@ -408,7 +408,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         })?;
 
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(
+        let state = FinalizeGlobalState::new::<N>(
             block.round(),
             block.height(),
             block.cumulative_weight(),

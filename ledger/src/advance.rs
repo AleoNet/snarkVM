@@ -60,7 +60,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_cumulative_weight = latest_cumulative_weight.saturating_add(cumulative_proof_target);
 
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(
+        let state = FinalizeGlobalState::new::<N>(
             next_round,
             next_height,
             next_cumulative_weight,
@@ -76,47 +76,30 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Checkpoint the timestamp for the next block.
         let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
-        // TODO (raychu86): Pay the provers. Currently we do not pay the provers with the `credits.aleo` program
-        //  and instead, will track prover leaderboards via the `coinbase_solution` in each block.
-        if let Some(prover_solutions) = candidate_solutions {
-            // Calculate the coinbase reward.
-            let coinbase_reward = coinbase_reward(
-                latest_block.last_coinbase_timestamp(),
-                next_timestamp,
-                next_height,
-                N::STARTING_SUPPLY,
-                N::ANCHOR_TIME,
-            )? as u128;
+        // TODO (raychu86): Pay the provers.
+        let (_prover_rewards, _staking_rewards) = match candidate_solutions {
+            Some(prover_solutions) => {
+                // Calculate the coinbase reward.
+                let coinbase_reward = coinbase_reward(
+                    latest_block.last_coinbase_timestamp(),
+                    next_timestamp,
+                    next_height,
+                    N::STARTING_SUPPLY,
+                    N::ANCHOR_TIME,
+                )?;
 
-            // Initialize a vector to store the prover rewards.
-            let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::new();
-
-            // Calculate the rewards for the individual provers.
-            for prover_solution in prover_solutions {
-                // Prover compensation is defined as:
-                //   1/2 * coinbase_reward * (prover_target / cumulative_prover_target)
-                //   = (coinbase_reward * prover_target) / (2 * cumulative_prover_target)
-
-                // Compute the numerator.
-                let numerator = coinbase_reward
-                    .checked_mul(prover_solution.to_target()? as u128)
-                    .ok_or_else(|| anyhow!("Prover reward numerator overflowed"))?;
-                // Compute the denominator.
-                let denominator = cumulative_proof_target
-                    .checked_mul(2)
-                    .ok_or_else(|| anyhow!("Prover reward denominator overflowed"))?;
-                // Compute the quotient.
-                let quotient =
-                    numerator.checked_div(denominator).ok_or_else(|| anyhow!("Prover reward quotient overflowed"))?;
-
-                // Cast the prover reward as a u64.
-                let prover_reward = u64::try_from(quotient)?;
-                // Ensure the prover reward is within a safe bound.
-                ensure!(prover_reward <= 1_000_000_000, "Prover reward is too large");
-                // Append the prover reward to the vector.
-                prover_rewards.push((prover_solution.address(), prover_reward));
+                // Calculate the prover rewards.
+                let prover_rewards = prover_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
+                // Calculate the staking rewards.
+                let staking_rewards = vec![0];
+                // Output the prover and staking rewards.
+                (prover_rewards, staking_rewards)
             }
-        }
+            None => {
+                // Output the prover and staking rewards.
+                (vec![], vec![])
+            }
+        };
 
         // Construct the next coinbase target.
         let next_coinbase_target = coinbase_target(

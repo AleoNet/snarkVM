@@ -167,7 +167,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(
+        let state = FinalizeGlobalState::new::<N>(
             block.round(),
             block.height(),
             block.cumulative_weight(),
@@ -501,6 +501,7 @@ function compute:
             previous_block.round() + 1,
             previous_block.height() + 1,
             Testnet3::STARTING_SUPPLY,
+            0,
             0,
             Testnet3::GENESIS_COINBASE_TARGET,
             Testnet3::GENESIS_PROOF_TARGET,

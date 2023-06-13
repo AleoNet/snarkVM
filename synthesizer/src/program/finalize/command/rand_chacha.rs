@@ -25,7 +25,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Literal, LiteralType, Plaintext, Register, Value},
+    program::{Literal, LiteralType, Plaintext, Register, Value},
     types::{Address, Boolean, Field, Group, Scalar, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
 };
 
@@ -101,10 +101,10 @@ impl<N: Network> RandChaCha<N> {
         preimage.extend_from_slice(&registers.function_name().to_bits_le());
         preimage.extend_from_slice(&self.destination.locator().to_bits_le());
         preimage.extend_from_slice(&self.destination_type.type_id().to_bits_le());
-        preimage.extend_from_slice(&seeds.iter().map(|seed| seed.to_bits_le()).flatten().collect::<Vec<_>>());
+        preimage.extend_from_slice(&seeds.iter().flat_map(|seed| seed.to_bits_le()).collect::<Vec<_>>());
 
         // Hash the preimage.
-        let digest = N::hash_bhp1024(&preimage)?;
+        let digest = N::hash_bhp1024(&preimage)?.to_bytes_le()?;
         // Ensure the digest is 32-bytes.
         ensure!(digest.len() == 32, "The digest for the ChaChaRng seed must be 32-bytes");
 
@@ -183,9 +183,9 @@ impl<N: Network> Parser for RandChaCha<N> {
 
         // Ensure the destination type is allowed.
         if destination_type == LiteralType::String {
-            map_res(fail, |_: ParserResult<Self>| {
+            return map_res(fail, |_: ParserResult<Self>| {
                 Err(error(format!("Failed to parse 'rand.chacha': '{destination_type}' is invalid")))
-            })(string)
+            })(string);
         }
 
         match operands.len() <= MAX_ADDITIONAL_SEEDS {
@@ -267,7 +267,7 @@ impl<N: Network> FromBytes for RandChaCha<N> {
         }
 
         // Return the command.
-        Ok(Self { destination, destination_type })
+        Ok(Self { operands, destination, destination_type })
     }
 }
 
@@ -297,18 +297,52 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
+    fn valid_destination_types() -> &'static [LiteralType] {
+        &[
+            LiteralType::Address,
+            LiteralType::Boolean,
+            LiteralType::Field,
+            LiteralType::Group,
+            LiteralType::I8,
+            LiteralType::I16,
+            LiteralType::I32,
+            LiteralType::I64,
+            LiteralType::I128,
+            LiteralType::U8,
+            LiteralType::U16,
+            LiteralType::U32,
+            LiteralType::U64,
+            LiteralType::U128,
+            LiteralType::Scalar,
+        ]
+    }
+
     #[test]
     fn test_parse() {
-        let (string, rand) = RandChaCha::<CurrentNetwork>::parse("rand.chacha into r1 as field;").unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(rand.operands().len(), 0, "The number of operands is incorrect");
-        assert_eq!(rand.destination(), Register::Locator(1), "The destination is incorrect");
+        for destination_type in valid_destination_types() {
+            let instruction = format!("rand.chacha into r1 as {destination_type};");
+            let (string, rand) = RandChaCha::<CurrentNetwork>::parse(&instruction).unwrap();
+            assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+            assert_eq!(rand.operands.len(), 0, "The number of operands is incorrect");
+            assert_eq!(rand.destination, Register::Locator(1), "The destination is incorrect");
+            assert_eq!(rand.destination_type, *destination_type, "The destination type is incorrect");
 
-        let (string, rand) = RandChaCha::<CurrentNetwork>::parse("rand.chacha into r1 as field;").unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(rand.operands().len(), 0, "The number of operands is incorrect");
-        assert_eq!(rand.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(rand.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(rand.destination, Register::Locator(2), "The second operand is incorrect");
+            let instruction = format!("rand.chacha r0 into r1 as {destination_type};");
+            let (string, rand) = RandChaCha::<CurrentNetwork>::parse(&instruction).unwrap();
+            assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+            assert_eq!(rand.operands.len(), 1, "The number of operands is incorrect");
+            assert_eq!(rand.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+            assert_eq!(rand.destination, Register::Locator(1), "The second operand is incorrect");
+            assert_eq!(rand.destination_type, *destination_type, "The destination type is incorrect");
+
+            let instruction = format!("rand.chacha r0 r1 into r2 as {destination_type};");
+            let (string, rand) = RandChaCha::<CurrentNetwork>::parse(&instruction).unwrap();
+            assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+            assert_eq!(rand.operands.len(), 2, "The number of operands is incorrect");
+            assert_eq!(rand.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+            assert_eq!(rand.operands[1], Operand::Register(Register::Locator(1)), "The first operand is incorrect");
+            assert_eq!(rand.destination, Register::Locator(2), "The second operand is incorrect");
+            assert_eq!(rand.destination_type, *destination_type, "The destination type is incorrect");
+        }
     }
 }

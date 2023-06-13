@@ -14,7 +14,7 @@
 
 use super::*;
 use crate::{
-    finalize::{Get, GetOrUse, RandChaCha, Set, MAX_ADDITIONAL_SEEDS},
+    finalize::{Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
     RegisterTypes,
 };
 
@@ -135,11 +135,47 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
+            Command::Contains(contains) => self.check_contains(stack, finalize_name, contains)?,
             Command::Get(get) => self.check_get(stack, finalize_name, get)?,
             Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize_name, get_or_use)?,
             Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize_name, rand_chacha)?,
             Command::Set(set) => self.check_set(stack, finalize_name, set)?,
+            Command::Remove(remove) => self.check_remove(stack, finalize_name, remove)?,
         }
+        Ok(())
+    }
+
+    /// Ensures the given `contains` command is well-formed.
+    #[inline]
+    fn check_contains(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize_name: &Identifier<N>,
+        contains: &Contains<N>,
+    ) -> Result<()> {
+        // Ensure the declared mapping in `contains` is defined in the program.
+        if !stack.program().contains_mapping(contains.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", contains.mapping_name(), stack.program_id())
+        }
+        // Retrieve the mapping from the program.
+        // Note that the unwrap is safe, as we have already checked the mapping exists.
+        let mapping = stack.program().get_mapping(contains.mapping_name()).unwrap();
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Retrieve the register type of the key.
+        let key_type = self.get_type_from_operand(stack, contains.key())?;
+        // Check that the key type in the mapping matches the key type in the instruction.
+        if *mapping_key_type != key_type {
+            bail!(
+                "Key type in `contains` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'."
+            )
+        }
+        // Get the destination register.
+        let destination = contains.destination().clone();
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+        // Insert the destination register.
+        self.add_destination(destination, PlaintextType::Literal(LiteralType::Boolean))?;
         Ok(())
     }
 
@@ -284,6 +320,32 @@ impl<N: Network> FinalizeTypes<N> {
             bail!(
                 "Value type in `set` '{value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
+        }
+        Ok(())
+    }
+
+    /// Ensures the given `remove` command is well-formed.
+    #[inline]
+    fn check_remove(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize_name: &Identifier<N>,
+        remove: &Remove<N>,
+    ) -> Result<()> {
+        // Ensure the declared mapping in `remove` is defined in the program.
+        if !stack.program().contains_mapping(remove.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", remove.mapping_name(), stack.program_id())
+        }
+        // Retrieve the mapping from the program.
+        // Note that the unwrap is safe, as we have already checked the mapping exists.
+        let mapping = stack.program().get_mapping(remove.mapping_name()).unwrap();
+        // Get the mapping key type.
+        let mapping_key_type = mapping.key().plaintext_type();
+        // Retrieve the register type of the key.
+        let key_type = self.get_type_from_operand(stack, remove.key())?;
+        // Check that the key type in the mapping matches the key type.
+        if *mapping_key_type != key_type {
+            bail!("Key type in `remove` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         Ok(())
     }

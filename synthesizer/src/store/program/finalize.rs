@@ -462,6 +462,24 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.key_map().contains_key_confirmed(&key_id)
     }
 
+    /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
+    fn contains_key_speculative(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<bool> {
+        // Retrieve the mapping ID.
+        let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
+            Some(mapping_id) => mapping_id,
+            None => return Ok(false),
+        };
+        // Compute the key ID.
+        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        // Return whether the key ID exists.
+        self.key_map().contains_key_speculative(&key_id)
+    }
+
     /// Returns the mapping names for the given `program ID`.
     fn get_mapping_names_speculative(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
         // Retrieve the mapping names.
@@ -680,6 +698,16 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         key: &Plaintext<N>,
     ) -> Result<bool> {
         self.storage.contains_key_confirmed(program_id, mapping_name, key)
+    }
+
+    /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
+    pub fn contains_key_speculative(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<bool> {
+        self.storage.contains_key_speculative(program_id, mapping_name, key)
     }
 }
 

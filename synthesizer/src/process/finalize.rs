@@ -117,8 +117,8 @@ impl<N: Network> Process<N> {
                     // Initialize the registers.
                     let mut registers = FinalizeRegisters::<N>::new(
                         state,
-                        transition.id(),
-                        function_name,
+                        *transition.id(),
+                        *function_name,
                         stack.get_finalize_types(finalize.name())?.clone(),
                     );
 
