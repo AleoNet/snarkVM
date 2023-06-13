@@ -3,19 +3,6 @@
 // The author disclaims liability for damages of any kind arising from the use of this program.
 program credits.aleo;
 
-// The `timelock` struct tracks the amount of microcredits
-// to be unlocked at a specified block height.
-struct timelock:
-    // The amount of microcredits that will be unlocked.
-    microcredits as u64;
-    // The block height at which the microcredits will be unlocked.
-    unlock_height as u32;
-
-// The `timelocked` mapping is used to lock microcredits for a specified period.
-mapping timelocked:
-    key owner as address.public;
-    value locked as timelock.public;
-
 // The `account` mapping is used to store credits publicly.
 mapping account:
     key owner as address.public;
@@ -167,84 +154,6 @@ finalize transfer_public_to_private:
     sub r2 r1 into r3;
     // Updates the balance of the sender.
     set r3 into account[r0];
-
-function lock_public:
-    // Input the amount.
-    input r0 as u64.public;
-    // Input the number of blocks to lock.
-    input r1 as u32.public;
-    // Ensure the amount is nonzero.
-    assert.neq r0 0u64;
-    // Lock the credits publicly.
-    finalize self.caller r0 r1;
-
-finalize lock_public:
-    // Input the sender.
-    input r0 as address.public;
-    // Input the amount.
-    input r1 as u64.public;
-    // Input the number of blocks to lock.
-    input r2 as u32.public;
-
-    // Check if the sender already has a timelock.
-    contains timelocked[r0] into r3;
-    // Enforce the sender does not already have a timelock.
-    assert.eq r3 false;
-
-    // Enforce the number of blocks to lock is nonzero.
-    assert.neq r2 0u32;
-    // Compute the unlock height.
-    // This `add` operation is safe, and the finalize scope will fail
-    // if an overflow occurs. The destination register `r4` holds
-    // the unlock height.
-    add r2 block.height into r4;
-
-    // Retrieve the balance of the sender.
-    get.or_use account[r0] 0u64 into r5;
-    // Decrement the sender's balance by the amount.
-    // This `sub` operation is safe, and the finalize scope will fail
-    // if an underflow occurs. The destination register `r6` holds
-    // the change amount to be returned to the sender.
-    sub r5 r1 into r6;
-    // Updates the balance of the sender.
-    set r6 into account[r0];
-
-    // Construct the timelock.
-    cast r1 r4 into r7 as timelock;
-    // Set the timelock for the sender.
-    set r7 into timelocked[r0];
-
-function unlock_public:
-    // Input the sender.
-    input r0 as address.public;
-    // Unlock the credits publicly.
-    finalize self.caller;
-
-finalize unlock_public:
-    // Input the sender.
-    input r0 as address.public;
-
-    // Check if the sender already has a timelock.
-    // If the sender does not have a timelock, the finalize scope will fail.
-    get timelocked[r0] into r1;
-
-    // Determine if the unlock height is less than or equal to the current block height.
-    lte r1.unlock_height block.height into r2;
-    // Enforce the unlock height is less than or equal to the current block height.
-    assert.eq r2 true;
-
-    // Retrieve the balance of the sender.
-    get.or_use account[r0] 0u64 into r3;
-    // Increment the sender's balance by the amount.
-    // This `add` operation is safe, and the finalize scope will fail
-    // if an overflow occurs. The destination register `r5` holds
-    // the amount to be returned to the sender.
-    add r3 r1.microcredits into r4;
-    // Updates the balance of the sender.
-    set r4 into account[r0];
-
-    // Remove the timelock for the sender.
-    remove timelocked[r0];
 
 // The `join` function combines two records into one.
 function join:
