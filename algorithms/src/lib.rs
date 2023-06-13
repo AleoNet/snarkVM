@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![warn(unsafe_code)]
 #![allow(clippy::module_inception)]
 #![allow(clippy::type_complexity)]
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
@@ -38,6 +39,8 @@ pub mod msm;
 pub mod polycommit;
 #[cfg(feature = "snark")]
 pub mod snark;
+
+pub mod srs;
 
 pub mod errors;
 pub use errors::*;

@@ -26,10 +26,11 @@ pub use finalize::FinalizeMode;
 use crate::{
     atomic_batch_scope,
     atomic_finalize,
-    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions, Transition},
+    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions},
+    cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, Inclusion, InclusionAssignment, Process, Query},
+    process::{Authorization, FinalizeGlobalState, Process, Query, Trace},
     program::Program,
     store::{
         BlockStore,
@@ -40,12 +41,11 @@ use crate::{
         TransactionStore,
         TransitionStore,
     },
-    CallMetrics,
 };
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
+    program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
     types::Field,
 };
 
@@ -187,10 +187,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Adds the given block into the VM.
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new(block.height());
+
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(block.transactions()) {
+        match self.finalize(state, block.transactions()) {
             Ok(_) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
@@ -233,19 +236,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::{
+        block::{Block, Fee, Header, Metadata, Transition},
         program::Program,
         store::helpers::memory::ConsensusMemory,
-        Block,
-        Fee,
-        Header,
-        Inclusion,
-        Metadata,
-        Transition,
     };
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::Value,
+        types::Field,
     };
 
     use indexmap::IndexMap;
@@ -253,6 +252,11 @@ pub(crate) mod test_helpers {
     use std::borrow::Borrow;
 
     pub(crate) type CurrentNetwork = Testnet3;
+
+    /// Samples a new finalize state.
+    pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
+        FinalizeGlobalState::new(block_height)
+    }
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
         // Initialize a new VM.
@@ -366,7 +370,7 @@ function compute:
                 // Deploy.
                 let transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction));
+                assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })
@@ -407,13 +411,14 @@ function compute:
                 .into_iter();
 
                 // Authorize.
-                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "transfer", inputs, rng).unwrap();
+                let authorization =
+                    vm.authorize(&caller_private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
                 let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(!vm.verify_transaction(&transaction));
+                assert!(!vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })
@@ -452,17 +457,14 @@ function compute:
                 ]
                 .into_iter();
 
-                // Authorize.
-                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "mint", inputs, rng).unwrap();
-                assert_eq!(authorization.len(), 1);
-
-                // Execute the fee.
-                let fee = vm.execute_fee_raw(&caller_private_key, record, 100, None, rng).unwrap().1;
+                // Prepare the fee.
+                let fee = Some((record, 100));
 
                 // Execute.
-                let transaction = vm.execute_authorization(authorization, Some(fee), None, rng).unwrap();
+                let transaction =
+                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, fee, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_transaction(&transaction));
+                assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })
@@ -493,12 +495,14 @@ function compute:
                 // Update the VM.
                 vm.add_next_block(&genesis).unwrap();
 
+                // Sample a random rejected ID.
+                let rejected_id = Field::rand(rng);
+
                 // Execute.
-                let (_response, fee, _metrics) =
-                    vm.execute_fee_raw(&caller_private_key, record, 1u64, None, rng).unwrap();
+                let (_response, fee) =
+                    vm.execute_fee_raw(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
                 // Verify.
-                assert!(vm.verify_fee(&fee));
-                assert!(Inclusion::verify_fee(&fee).is_ok());
+                assert!(vm.verify_fee(&fee, rejected_id));
                 // Return the fee.
                 fee
             })
@@ -529,7 +533,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(transactions.iter())?;
+        let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
@@ -546,10 +550,8 @@ function compute:
 
         let header = Header::from(
             *vm.block_store().current_state_root(),
-            transactions.to_root().unwrap(),
-            Field::zero(),
-            // TODO (howardwu): Revisit this.
-            // vm.finalize_store().current_finalize_root(),
+            transactions.to_transactions_root().unwrap(),
+            transactions.to_finalize_root().unwrap(),
             Field::zero(),
             metadata,
         )?;

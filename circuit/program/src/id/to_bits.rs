@@ -49,7 +49,7 @@ impl<A: Aleo> ToBits for &ProgramID<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{data::identifier::tests::sample_console_identifier_as_string, Circuit};
+    use crate::{data::identifier::tests::sample_lowercase_console_identifier_as_string, Circuit};
 
     use anyhow::Result;
 
@@ -58,7 +58,7 @@ mod tests {
     fn check_to_bits_le(mode: Mode) -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_console_identifier_as_string::<Circuit>()?;
+            let expected_name_string = sample_lowercase_console_identifier_as_string::<Circuit>()?;
             let expected = console::ProgramID::<<Circuit as Environment>::Network>::from_str(&format!(
                 "{expected_name_string}.aleo"
             ))?;
@@ -72,7 +72,7 @@ mod tests {
     fn check_to_bits_be(mode: Mode) -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_console_identifier_as_string::<Circuit>()?;
+            let expected_name_string = sample_lowercase_console_identifier_as_string::<Circuit>()?;
             let expected = console::ProgramID::<<Circuit as Environment>::Network>::from_str(&format!(
                 "{expected_name_string}.aleo"
             ))?;

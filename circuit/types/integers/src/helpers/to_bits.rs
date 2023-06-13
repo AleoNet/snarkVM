@@ -70,7 +70,7 @@ mod tests {
                 assert_eq!(I::BITS, candidate.len() as u64);
 
                 // Ensure every bit matches.
-                let mut expected = expected.to_le();
+                let mut expected = *expected;
                 for candidate_bit in candidate {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
                     expected = expected.wrapping_shr(1);
@@ -99,7 +99,7 @@ mod tests {
                 assert_eq!(I::BITS, candidate.len() as u64);
 
                 // Ensure every bit matches.
-                let mut expected = expected.to_le();
+                let mut expected = *expected;
                 for candidate_bit in candidate.iter().rev() {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
                     expected = expected.wrapping_shr(1);

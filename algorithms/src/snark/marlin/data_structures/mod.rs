@@ -24,10 +24,6 @@ pub use circuit_proving_key::*;
 pub(super) mod circuit_verifying_key;
 pub use circuit_verifying_key::*;
 
-/// The Marlin prepared circuit verifying key.
-pub(super) mod prepared_circuit_verifying_key;
-pub use prepared_circuit_verifying_key::*;
-
 /// The Marlin zkSNARK proof.
 pub(super) mod proof;
 pub use proof::*;
@@ -37,5 +33,4 @@ pub(super) mod test_circuit;
 pub use test_circuit::*;
 
 /// The Marlin universal SRS.
-pub(super) mod universal_srs;
-pub use universal_srs::*;
+pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;

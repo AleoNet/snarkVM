@@ -32,8 +32,12 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
             Operand::ProgramID(program_id) => {
                 return Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))));
             }
-            // If the operand is the caller, load the value of the caller.
+            // If the operand is the caller, throw an error.
             Operand::Caller => bail!("Forbidden operation: Cannot use 'self.caller' in 'finalize'"),
+            // If the operand is the block height, load the block height.
+            Operand::BlockHeight => {
+                return Ok(Value::Plaintext(Plaintext::from(Literal::U32(U32::new(self.state.block_height())))));
+            }
         };
 
         // Retrieve the plaintext value.

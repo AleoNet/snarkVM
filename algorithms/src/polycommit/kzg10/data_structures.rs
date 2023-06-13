@@ -17,7 +17,7 @@ use crate::{
     AlgebraicSponge,
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
 use snarkvm_parameters::testnet3::PowersOfG;
 use snarkvm_utilities::{
     borrow::Cow,
@@ -29,6 +29,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
+use crate::srs::{UniversalProver, UniversalVerifier};
 use anyhow::Result;
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
@@ -45,8 +46,6 @@ pub struct UniversalParams<E: PairingEngine> {
     powers: Arc<RwLock<PowersOfG<E>>>,
     /// The generator of G2.
     pub h: E::G2Affine,
-    /// Supported degree bounds.
-    supported_degree_bounds: Vec<usize>,
     /// The generator of G2, prepared for use in pairings.
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
@@ -59,9 +58,8 @@ impl<E: PairingEngine> UniversalParams<E> {
         let h = E::G2Affine::prime_subgroup_generator();
         let prepared_h = h.prepare();
         let prepared_beta_h = powers.read().beta_h().prepare();
-        let supported_degree_bounds = vec![1 << 10, 1 << 15, 1 << 20, 1 << 25, 1 << 30];
 
-        Ok(Self { powers, h, supported_degree_bounds, prepared_h, prepared_beta_h })
+        Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 
     pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
@@ -74,8 +72,8 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(E::G1Projective::batch_normalization_into_affine(basis))
     }
 
-    pub fn power_of_beta_g(&self, which_power: usize) -> Result<E::G1Affine> {
-        self.powers.write().power_of_beta_g(which_power)
+    pub fn power_of_beta_g(&self, index: usize) -> Result<E::G1Affine> {
+        self.powers.write().power_of_beta_g(index)
     }
 
     pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
@@ -90,16 +88,26 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.read().beta_h()
     }
 
-    pub fn neg_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
-        self.powers.read().negative_powers_of_beta_h()
-    }
-
     pub fn max_degree(&self) -> usize {
         self.powers.read().max_num_powers() - 1
     }
 
-    pub fn supported_degree_bounds(&self) -> &[usize] {
-        &self.supported_degree_bounds
+    pub fn to_universal_prover(&self) -> Result<UniversalProver<E>> {
+        Ok(UniversalProver::<E> { max_degree: self.max_degree(), _unused: None })
+    }
+
+    pub fn to_universal_verifier(&self) -> Result<UniversalVerifier<E>> {
+        let g = self.power_of_beta_g(0)?;
+        let h = self.h;
+        let beta_h = self.beta_h();
+        let gamma_g = self.powers_of_beta_times_gamma_g()[&0];
+        let prepared_h = self.prepared_h.clone();
+        let prepared_beta_h = self.prepared_beta_h.clone();
+
+        Ok(UniversalVerifier {
+            vk: VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h },
+            prepared_negative_powers_of_beta_h: self.powers.read().prepared_negative_powers_of_beta_h(),
+        })
     }
 }
 
@@ -111,21 +119,13 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         // Deserialize `h`.
         let h: E::G2Affine = FromBytes::read_le(&mut reader)?;
 
-        // Deserialize `supported_degree_bounds`.
-        let supported_degree_bounds_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut supported_degree_bounds = Vec::with_capacity(supported_degree_bounds_len as usize);
-        for _ in 0..supported_degree_bounds_len {
-            let degree_bound: u32 = FromBytes::read_le(&mut reader)?;
-            supported_degree_bounds.push(degree_bound as usize);
-        }
-
         // Deserialize `prepared_h`.
         let prepared_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
         // Deserialize `prepared_beta_h`.
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self { powers, h, supported_degree_bounds, prepared_h, prepared_beta_h })
+        Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 }
 
@@ -136,12 +136,6 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
 
         // Serialize `h`.
         self.h.write_le(&mut writer)?;
-
-        // Serialize `supported_degree_bounds`.
-        (self.supported_degree_bounds.len() as u32).write_le(&mut writer)?;
-        for degree_bound in &self.supported_degree_bounds {
-            (*degree_bound as u32).write_le(&mut writer)?;
-        }
 
         // Serialize `prepared_h`.
         self.prepared_h.write_le(&mut writer)?;
@@ -273,61 +267,6 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
-    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
-        let mut res = Vec::new();
-
-        res.extend_from_slice(&self.g.to_field_elements().unwrap());
-        res.extend_from_slice(&self.gamma_g.to_field_elements().unwrap());
-        res.extend_from_slice(&self.h.to_field_elements().unwrap());
-        res.extend_from_slice(&self.beta_h.to_field_elements().unwrap());
-
-        Ok(res)
-    }
-}
-
-/// `PreparedVerifierKey` is the fully prepared version for checking evaluation proofs for a given commitment.
-/// We omit gamma here for simplicity.
-#[derive(Clone, Debug, Default)]
-pub struct PreparedVerifierKey<E: PairingEngine> {
-    /// The generator of G1, prepared for power series.
-    pub prepared_g: Vec<E::G1Affine>,
-    /// The generator of G1 that is used for making a commitment hiding, prepared for power series
-    pub prepared_gamma_g: Vec<E::G1Affine>,
-    /// The generator of G2, prepared for use in pairings.
-    pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
-    /// \beta times the above generator of G2, prepared for use in pairings.
-    pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
-}
-
-impl<E: PairingEngine> PreparedVerifierKey<E> {
-    /// prepare `PreparedVerifierKey` from `VerifierKey`
-    pub fn prepare(vk: &VerifierKey<E>) -> Self {
-        let supported_bits = E::Fr::size_in_bits();
-
-        let mut prepared_g = Vec::<E::G1Affine>::new();
-        let mut g = E::G1Projective::from(vk.g);
-        for _ in 0..supported_bits {
-            prepared_g.push(g.into());
-            g.double_in_place();
-        }
-
-        let mut prepared_gamma_g = Vec::<E::G1Affine>::new();
-        let mut gamma_g = E::G1Projective::from(vk.gamma_g);
-        for _ in 0..supported_bits {
-            prepared_gamma_g.push(gamma_g.into());
-            gamma_g.double_in_place();
-        }
-
-        Self {
-            prepared_g,
-            prepared_gamma_g,
-            prepared_h: vk.prepared_h.clone(),
-            prepared_beta_h: vk.prepared_beta_h.clone(),
-        }
-    }
-}
-
 /// `KZGCommitment` commits to a polynomial. It is output by `KZG10::commit`.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KZGCommitment<E: PairingEngine>(
@@ -373,30 +312,6 @@ impl<E: PairingEngine> KZGCommitment<E> {
 impl<E: PairingEngine> ToConstraintField<E::Fq> for KZGCommitment<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         self.0.to_field_elements()
-    }
-}
-
-/// `PreparedKZGCommitment` commits to a polynomial and prepares for mul_bits.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct PreparedKZGCommitment<E: PairingEngine>(
-    /// The commitment is a group element.
-    pub Vec<E::G1Affine>,
-);
-
-impl<E: PairingEngine> PreparedKZGCommitment<E> {
-    /// prepare `PreparedKZGCommitment` from `KZGCommitment`
-    pub fn prepare(comm: &KZGCommitment<E>) -> Self {
-        let mut prepared_comm = Vec::<E::G1Affine>::new();
-        let mut cur = E::G1Projective::from(comm.0);
-
-        let supported_bits = E::Fr::size_in_bits();
-
-        for _ in 0..supported_bits {
-            prepared_comm.push(cur.into());
-            cur.double_in_place();
-        }
-
-        Self(prepared_comm)
     }
 }
 

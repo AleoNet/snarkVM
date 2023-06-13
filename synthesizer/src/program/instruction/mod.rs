@@ -115,6 +115,12 @@ pub enum Instruction<N: Network> {
     HashPSD4(HashPSD4<N>),
     /// Performs a Poseidon hash with an input rate of 8.
     HashPSD8(HashPSD8<N>),
+    /// Performs a Poseidon hash with an input rate of 2.
+    HashManyPSD2(HashManyPSD2<N>),
+    /// Performs a Poseidon hash with an input rate of 4.
+    HashManyPSD4(HashManyPSD4<N>),
+    /// Performs a Poseidon hash with an input rate of 8.
+    HashManyPSD8(HashManyPSD8<N>),
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
     Inv(Inv<N>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
@@ -229,6 +235,9 @@ macro_rules! instruction {
             HashPSD2,
             HashPSD4,
             HashPSD8,
+            HashManyPSD2,
+            HashManyPSD4,
+            HashManyPSD8,
             Inv,
             IsEq,
             IsNeq,
@@ -416,7 +425,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            56,
+            59,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

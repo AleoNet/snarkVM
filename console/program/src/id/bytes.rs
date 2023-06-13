@@ -19,7 +19,7 @@ impl<N: Network> FromBytes for ProgramID<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let name = FromBytes::read_le(&mut reader)?;
         let network = FromBytes::read_le(&mut reader)?;
-        Ok(Self::from((name, network)))
+        Self::try_from((name, network)).map_err(|e| error(format!("{e}")))
     }
 }
 

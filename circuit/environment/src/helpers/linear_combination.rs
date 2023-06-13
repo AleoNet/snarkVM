@@ -126,7 +126,7 @@ impl<F: PrimeField> LinearCombination<F> {
 
     /// Returns the number of nonzeros in the linear combination.
     pub(super) fn num_nonzeros(&self) -> u64 {
-        // Increment by one if the constant is nonzero and the number of terms is nonzero.
+        // Increment by one if the constant is nonzero.
         match self.constant.is_zero() {
             true => self.terms.len() as u64,
             false => (self.terms.len() as u64).saturating_add(1),

@@ -104,7 +104,7 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
     /// Initializes a new integer.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         let mut bits_le = Vec::with_capacity(I::BITS as usize);
-        let mut value = value.to_le();
+        let mut value = *value;
         for _ in 0..I::BITS {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
             value = value.wrapping_shr(1u32);

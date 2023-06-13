@@ -214,7 +214,7 @@ finalize mint_public:
     input r1 as u64.public;
 
     // Get `account[r0]` into `r2`, defaulting to 0u64 if the entry does not exist.
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     // Add `r1` to `r2`. If the operation overflows, `mint_public` is reverted.
     add r2 r1 into r3;
     // Set `r3` into `account[r0]`.
@@ -264,7 +264,7 @@ function compute:
 finalize compute:
     input r0 as address.public;
     input r1 as u64.public;
-    get.or_init account[r0] 0u64 into r2;
+    get.or_use account[r0] 0u64 into r2;
     add r2 r1 into r3;
     set r3 into account[r0];
     ",

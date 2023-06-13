@@ -12,5 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// The universal public parameters for the argument system.
-pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;
+use snarkvm_curves::PairingEngine;
+
+/// `UniversalProver` is used to compute evaluation proofs for a given commitment.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UniversalProver<E: PairingEngine> {
+    /// The maximum degree supported by the universal SRS.
+    pub max_degree: usize,
+    pub _unused: Option<E>,
+}

@@ -304,14 +304,29 @@ impl<N: Network> Block<N> {
         self.transactions.transition_public_keys()
     }
 
+    /// Returns an iterator over the transition commitments, for all transactions.
+    pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.transition_commitments()
+    }
+
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.tags()
     }
 
+    /// Returns an iterator over the input IDs, for all transition inputs that are records.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.input_ids()
+    }
+
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.serial_numbers()
+    }
+
+    /// Returns an iterator over the output IDs, for all transition inputs that are records.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.output_ids()
     }
 
     /// Returns an iterator over the commitments, for all transition outputs that are records.

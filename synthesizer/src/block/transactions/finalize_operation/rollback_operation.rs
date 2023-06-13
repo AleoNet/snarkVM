@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+use console::{
+    network::prelude::*,
+    program::{Identifier, Plaintext, ProgramID, Value},
+    types::Field,
+};
+
+use snarkvm_utilities::DeserializeExt;
 
 /// Enum of operations that can be performed to rollback a finalize operation.
 #[derive(Clone, Debug, PartialEq, Eq)]

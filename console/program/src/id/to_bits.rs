@@ -45,7 +45,7 @@ impl<N: Network> ToBits for &ProgramID<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::identifier::tests::sample_identifier_as_string;
+    use crate::data::identifier::tests::sample_lowercase_identifier_as_string;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -58,7 +58,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
+            let expected_name_string = sample_lowercase_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_name_field = Field::<CurrentNetwork>::from_bits_le(&expected_name_string.to_bits_le())?;
             let expected_network_field = Field::<CurrentNetwork>::from_bits_le(&"aleo".to_string().to_bits_le())?;
@@ -83,7 +83,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_identifier_as_string::<CurrentNetwork>(&mut rng)?;
+            let expected_name_string = sample_lowercase_identifier_as_string::<CurrentNetwork>(&mut rng)?;
             // Recover the field element from the bits.
             let expected_name_field = Field::<CurrentNetwork>::from_bits_le(&expected_name_string.to_bits_le())?;
             let expected_network_field = Field::<CurrentNetwork>::from_bits_le(&"aleo".to_string().to_bits_le())?;

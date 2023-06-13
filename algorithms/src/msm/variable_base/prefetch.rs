@@ -130,6 +130,7 @@ macro_rules! unroll {
 
 /// Prefetches as many cache lines as is occupied by the type T.
 /// We assume 64B cache lines.
+#[allow(unsafe_code)]
 #[inline(always)]
 pub fn prefetch<T>(p: *const T) {
     unsafe {

@@ -132,8 +132,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             );
             product_evaluations
         };
-        let (commitment, _rand) =
-            KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, &Default::default(), None)?;
+        let (commitment, _rand) = KZG10::commit_lagrange(&pk.lagrange_basis(), &product_evaluations, None, None)?;
 
         let partial_solution = PartialSolution::new(address, nonce, commitment);
 
@@ -181,8 +180,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         if prover_solutions.len() > N::MAX_PROVER_SOLUTIONS {
             bail!(
                 "Cannot accumulate beyond {} prover solutions, found {}.",
-                prover_solutions.len(),
-                N::MAX_PROVER_SOLUTIONS
+                N::MAX_PROVER_SOLUTIONS,
+                prover_solutions.len()
             );
         }
 

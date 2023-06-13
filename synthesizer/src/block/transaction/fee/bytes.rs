@@ -27,16 +27,16 @@ impl<N: Network> FromBytes for Fee<N> {
         let transition = Transition::read_le(&mut reader)?;
         // Read the global state root.
         let global_state_root = N::StateRoot::read_le(&mut reader)?;
-        // Read the inclusion proof variant.
-        let inclusion_variant = u8::read_le(&mut reader)?;
-        // Read the inclusion proof.
-        let inclusion_proof = match inclusion_variant {
+        // Read the proof variant.
+        let proof_variant = u8::read_le(&mut reader)?;
+        // Read the proof.
+        let proof = match proof_variant {
             0 => None,
             1 => Some(Proof::read_le(&mut reader)?),
-            _ => return Err(error("Invalid inclusion proof variant '{inclusion_variant}'")),
+            _ => return Err(error(format!("Invalid proof variant '{proof_variant}'"))),
         };
         // Return the new `Fee` instance.
-        Ok(Self::from(transition, global_state_root, inclusion_proof))
+        Ok(Self::from(transition, global_state_root, proof))
     }
 }
 
@@ -49,8 +49,8 @@ impl<N: Network> ToBytes for Fee<N> {
         self.transition.write_le(&mut writer)?;
         // Write the global state root.
         self.global_state_root.write_le(&mut writer)?;
-        // Write the inclusion proof.
-        match self.inclusion_proof {
+        // Write the proof.
+        match self.proof {
             None => 0u8.write_le(&mut writer)?,
             Some(ref proof) => {
                 1u8.write_le(&mut writer)?;
