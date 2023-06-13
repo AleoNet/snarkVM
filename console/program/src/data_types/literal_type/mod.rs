@@ -80,4 +80,9 @@ impl LiteralType {
             Self::String => "string",
         }
     }
+
+    /// Returns the unique numeric identifier for the literal type.
+    pub fn type_id(&self) -> u8 {
+        *self as u8
+    }
 }

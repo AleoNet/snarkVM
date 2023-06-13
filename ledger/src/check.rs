@@ -408,7 +408,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         })?;
 
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(block.height());
+        let state = FinalizeGlobalState::new(
+            block.round(),
+            block.height(),
+            block.cumulative_weight(),
+            block.cumulative_proof_target(),
+            block.previous_hash(),
+        )?;
         // Ensure the transactions after speculation match.
         if block.transactions() != &self.vm.speculate(state, block.transactions().iter().map(|tx| tx.deref()))? {
             bail!("The transactions after speculation do not match the transactions in the block");

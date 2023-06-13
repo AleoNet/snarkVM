@@ -21,6 +21,9 @@ pub use get::*;
 mod get_or_use;
 pub use get_or_use::*;
 
+mod rand_chacha;
+pub use rand_chacha::*;
+
 mod set;
 pub use set::*;
 
@@ -36,6 +39,8 @@ pub enum Command<N: Network> {
     /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
     /// If the key is not present, `default` is stored `destination`.
     GetOrUse(GetOrUse<N>),
+    /// Generates a random value using the `rand.chacha` command and stores the result into `destination`.
+    RandChaCha(RandChaCha<N>),
     /// Sets the value stored at the `key` operand in the `mapping` to `value`.
     Set(Set<N>),
 }
@@ -56,6 +61,8 @@ impl<N: Network> Command<N> {
             Command::Get(get) => get.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get.or_use' command, and return the (optional) finalize operation.
             Command::GetOrUse(get_or_use) => get_or_use.finalize(stack, store, registers).map(|_| None),
+            // Finalize the `rand.chacha` command, and return no finalize operation.
+            Command::RandChaCha(rand_chacha) => rand_chacha.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'set' command, and return the finalize operation.
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
         }
