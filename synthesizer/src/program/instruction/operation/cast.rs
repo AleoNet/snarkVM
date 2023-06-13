@@ -510,9 +510,6 @@ impl<N: Network> Cast<N> {
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::from(value))))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(..))) => {
-                bail!("Casting to literal is currently unsupported")
-            }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
             }

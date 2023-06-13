@@ -353,7 +353,7 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
-                        bail!("Casting to literal is currently unsupported")
+                        ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }
                     RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                         // Ensure the struct name exists in the program.
