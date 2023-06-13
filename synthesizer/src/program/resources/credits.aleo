@@ -171,7 +171,7 @@ finalize transfer_public_to_private:
 function lock_public:
     // Input the amount.
     input r0 as u64.public;
-    // Input the unlock height.
+    // Input the number of blocks to lock.
     input r1 as u32.public;
     // Ensure the amount is nonzero.
     assert.neq r0 0u64;
@@ -183,7 +183,7 @@ finalize lock_public:
     input r0 as address.public;
     // Input the amount.
     input r1 as u64.public;
-    // Input the unlock height.
+    // Input the number of blocks to lock.
     input r2 as u32.public;
 
     // Check if the sender already has a timelock.
@@ -191,10 +191,13 @@ finalize lock_public:
     // Enforce the sender does not already have a timelock.
     assert.eq r3 false;
 
-    // Determine if the unlock height is greater than the current block height.
-    gt r2 block.height into r4;
-    // Enforce the unlock height is greater than the current block height.
-    assert.eq r4 true;
+    // Enforce the number of blocks to lock is nonzero.
+    assert.neq r2 0u32;
+    // Compute the unlock height.
+    // This `add` operation is safe, and the finalize scope will fail
+    // if an overflow occurs. The destination register `r4` holds
+    // the unlock height.
+    add r2 block.height into r4;
 
     // Retrieve the balance of the sender.
     get.or_use account[r0] 0u64 into r5;
@@ -207,7 +210,7 @@ finalize lock_public:
     set r6 into account[r0];
 
     // Construct the timelock.
-    cast r1 r2 into r7 as timelock;
+    cast r1 r4 into r7 as timelock;
     // Set the timelock for the sender.
     set r7 into timelocked[r0];
 
