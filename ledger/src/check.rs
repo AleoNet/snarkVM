@@ -204,45 +204,55 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
-        for transaction_id in block.transaction_ids() {
-            // Ensure the transaction in the block do not already exist.
-            if self.contains_transaction_id(transaction_id)? {
-                bail!("Transaction '{transaction_id}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate transition IDs.
+        if has_duplicates(block.transition_ids()) {
+            bail!("Found duplicate transition in the block");
         }
 
         /* Input */
 
-        // Ensure the ledger does not already contain a given serial numbers.
-        for serial_number in block.serial_numbers() {
-            if self.contains_serial_number(serial_number)? {
-                bail!("Serial number '{serial_number}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate input IDs.
+        if has_duplicates(block.input_ids()) {
+            bail!("Found duplicate input IDs in the block");
+        }
+
+        // Ensure there are no duplicate serial numbers.
+        if has_duplicates(block.serial_numbers()) {
+            bail!("Found duplicate serial numbers in the block");
+        }
+
+        // Ensure there are no duplicate tags.
+        if has_duplicates(block.tags()) {
+            bail!("Found duplicate tags in the block");
         }
 
         /* Output */
 
-        // Ensure the ledger does not already contain a given commitments.
-        for commitment in block.commitments() {
-            if self.contains_commitment(commitment)? {
-                bail!("Commitment '{commitment}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate output IDs.
+        if has_duplicates(block.output_ids()) {
+            bail!("Found duplicate output IDs in the block");
         }
 
-        // Ensure the ledger does not already contain a given nonces.
-        for nonce in block.nonces() {
-            if self.contains_nonce(nonce)? {
-                bail!("Nonce '{nonce}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate commitments.
+        if has_duplicates(block.commitments()) {
+            bail!("Found duplicate commitments in the block");
+        }
+
+        // Ensure there are no duplicate nonces.
+        if has_duplicates(block.nonces()) {
+            bail!("Found duplicate nonces in the block");
         }
 
         /* Metadata */
 
-        // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in block.transition_public_keys() {
-            if self.contains_tpk(tpk)? {
-                bail!("Transition public key '{tpk}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate transition public keys.
+        if has_duplicates(block.transition_public_keys()) {
+            bail!("Found duplicate transition public keys in the block");
+        }
+
+        // Ensure there are no duplicate transition commitments.
+        if has_duplicates(block.transition_commitments()) {
+            bail!("Found duplicate transition commitments in the block");
         }
 
         /* Block Header */
