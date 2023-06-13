@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod contains;
+pub use contains::*;
+
 mod finalize;
 pub use finalize::*;
 
@@ -20,6 +23,9 @@ pub use get::*;
 
 mod get_or_use;
 pub use get_or_use::*;
+
+mod remove;
+pub use remove::*;
 
 mod set;
 pub use set::*;
@@ -31,6 +37,8 @@ use console::network::prelude::*;
 pub enum Command<N: Network> {
     /// Evaluates the instruction.
     Instruction(Instruction<N>),
+    /// Returns true if the `key` operand is present in `mapping`, and stores the result into `destination`.
+    Contains(Contains<N>),
     /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
     Get(Get<N>),
     /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
@@ -38,6 +46,8 @@ pub enum Command<N: Network> {
     GetOrUse(GetOrUse<N>),
     /// Sets the value stored at the `key` operand in the `mapping` to `value`.
     Set(Set<N>),
+    /// Removes the (`key`, `value`) entry from the `mapping`.
+    Remove(Remove<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -52,12 +62,16 @@ impl<N: Network> Command<N> {
         match self {
             // Finalize the instruction, and return no finalize operation.
             Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
+            // Finalize the 'contains' command, and return no finalize operation.
+            Command::Contains(contains) => contains.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get' command, and return no finalize operation.
             Command::Get(get) => get.finalize(stack, store, registers).map(|_| None),
-            // Finalize the 'get.or_use' command, and return the (optional) finalize operation.
+            // Finalize the 'get.or_use' command, and return no finalize operation.
             Command::GetOrUse(get_or_use) => get_or_use.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'set' command, and return the finalize operation.
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
+            // Finalize the 'remove' command, and return the finalize operation.
+            Command::Remove(remove) => remove.finalize(stack, store, registers).map(Some),
         }
     }
 }
@@ -70,14 +84,18 @@ impl<N: Network> FromBytes for Command<N> {
         match variant {
             // Read the instruction.
             0 => Ok(Self::Instruction(Instruction::read_le(&mut reader)?)),
+            // Read the `contains` operation.
+            1 => Ok(Self::Contains(Contains::read_le(&mut reader)?)),
             // Read the `get` operation.
-            1 => Ok(Self::Get(Get::read_le(&mut reader)?)),
+            2 => Ok(Self::Get(Get::read_le(&mut reader)?)),
             // Read the `get.or_use` operation.
-            2 => Ok(Self::GetOrUse(GetOrUse::read_le(&mut reader)?)),
+            3 => Ok(Self::GetOrUse(GetOrUse::read_le(&mut reader)?)),
             // Read the `set` operation.
-            3 => Ok(Self::Set(Set::read_le(&mut reader)?)),
+            4 => Ok(Self::Set(Set::read_le(&mut reader)?)),
+            // Read the `remove` operation.
+            5 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
             // Invalid variant.
-            4.. => Err(error(format!("Invalid command variant: {variant}"))),
+            6.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -92,23 +110,35 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the instruction.
                 instruction.write_le(&mut writer)
             }
-            Self::Get(get) => {
+            Self::Contains(contains) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
+                // Write the `contains` operation.
+                contains.write_le(&mut writer)
+            }
+            Self::Get(get) => {
+                // Write the variant.
+                2u8.write_le(&mut writer)?;
                 // Write the `get` operation.
                 get.write_le(&mut writer)
             }
             Self::GetOrUse(get_or_use) => {
                 // Write the variant.
-                2u8.write_le(&mut writer)?;
+                3u8.write_le(&mut writer)?;
                 // Write the defaulting `get` operation.
                 get_or_use.write_le(&mut writer)
             }
             Self::Set(set) => {
                 // Write the variant.
-                3u8.write_le(&mut writer)?;
+                4u8.write_le(&mut writer)?;
                 // Write the set.
                 set.write_le(&mut writer)
+            }
+            Self::Remove(remove) => {
+                // Write the variant.
+                5u8.write_le(&mut writer)?;
+                // Write the remove.
+                remove.write_le(&mut writer)
             }
         }
     }
@@ -121,9 +151,11 @@ impl<N: Network> Parser for Command<N> {
         // Parse the command.
         // Note that the order of the parsers is important.
         alt((
+            map(Contains::parse, |contains| Self::Contains(contains)),
             map(GetOrUse::parse, |get_or_use| Self::GetOrUse(get_or_use)),
             map(Get::parse, |get| Self::Get(get)),
             map(Set::parse, |set| Self::Set(set)),
+            map(Remove::parse, |remove| Self::Remove(remove)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -159,9 +191,11 @@ impl<N: Network> Display for Command<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
+            Self::Contains(contains) => Display::fmt(contains, f),
             Self::Get(get) => Display::fmt(get, f),
             Self::GetOrUse(get_or_use) => Display::fmt(get_or_use, f),
             Self::Set(set) => Display::fmt(set, f),
+            Self::Remove(remove) => Display::fmt(remove, f),
         }
     }
 }
@@ -189,6 +223,12 @@ mod tests {
         let expected = "increment object[r0] by r1;";
         Command::<CurrentNetwork>::parse(expected).unwrap_err();
 
+        // Contains
+        let expected = "contains object[r0] into r1;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
         // Get
         let expected = "get object[r0] into r1;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
@@ -203,6 +243,12 @@ mod tests {
 
         // Set
         let expected = "set r0 into object[r1];";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Remove
+        let expected = "remove object[r0];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
@@ -224,6 +270,12 @@ mod tests {
         let expected = "increment object[r0] by r1;";
         Command::<CurrentNetwork>::parse(expected).unwrap_err();
 
+        // Contains
+        let expected = "contains object[r0] into r1;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Contains(Contains::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
         // Get
         let expected = "get object[r0] into r1;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
@@ -240,6 +292,12 @@ mod tests {
         let expected = "set r0 into object[r1];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Set(Set::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Remove
+        let expected = "remove object[r0];";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Remove(Remove::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }
