@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod downcast;
+mod cast;
 mod equal;
 mod from_bits;
 mod size_in_bits;
