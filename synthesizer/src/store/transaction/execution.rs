@@ -1,25 +1,22 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     atomic_batch_scope,
-    block::{Transaction, Transition},
+    block::{Execution, Transaction, Transition},
     cow_to_cloned,
     cow_to_copied,
-    process::Execution,
     snark::Proof,
     store::{
         helpers::{Map, MapRead},
@@ -40,7 +37,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
     type IDMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, bool)>;
     /// The mapping of `transition ID` to `transaction ID`.
     type ReverseIDMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
-    /// The mapping of `transaction ID` to `(global state root, (optional) inclusion proof)`.
+    /// The mapping of `transaction ID` to `(global state root, (optional) proof)`.
     type InclusionMap: for<'a> Map<'a, N::TransactionID, (N::StateRoot, Option<Proof<N>>)>;
     /// The fee storage.
     type FeeStorage: FeeStorage<N>;
@@ -90,6 +87,14 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         self.fee_store().atomic_checkpoint();
     }
 
+    /// Clears the latest atomic batch checkpoint.
+    fn clear_latest_checkpoint(&self) {
+        self.id_map().clear_latest_checkpoint();
+        self.reverse_id_map().clear_latest_checkpoint();
+        self.inclusion_map().clear_latest_checkpoint();
+        self.fee_store().clear_latest_checkpoint();
+    }
+
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.id_map().atomic_rewind();
@@ -129,8 +134,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         let transition_ids = execution.transitions().map(Transition::id).copied().collect();
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
-        // Retrieve the inclusion proof.
-        let inclusion_proof = execution.inclusion_proof().cloned();
+        // Retrieve the proof.
+        let proof = execution.proof().cloned();
 
         atomic_batch_scope!(self, {
             // Store the transition IDs.
@@ -144,8 +149,8 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 self.transition_store().insert(transition)?;
             }
 
-            // Store the global state root and inclusion proof.
-            self.inclusion_map().insert(*transaction_id, (global_state_root, inclusion_proof))?;
+            // Store the global state root and proof.
+            self.inclusion_map().insert(*transaction_id, (global_state_root, proof))?;
 
             // Store the fee.
             if let Some(fee) = fee {
@@ -177,7 +182,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
                 self.transition_store().remove(&transition_id)?;
             }
 
-            // Remove the global state root and inclusion proof.
+            // Remove the global state root and proof.
             self.inclusion_map().remove(transaction_id)?;
 
             // Remove the fee.
@@ -214,10 +219,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
 
-        // Retrieve the global state root and inclusion proof.
-        let (global_state_root, inclusion_proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
+        // Retrieve the global state root and proof.
+        let (global_state_root, proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
             Some(inclusion) => cow_to_cloned!(inclusion),
-            None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
+            None => bail!("Failed to get the proof for the transaction '{transaction_id}'"),
         };
 
         // Initialize a vector for the transitions.
@@ -232,7 +237,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         }
 
         // Return the execution.
-        Ok(Some(Execution::from(transitions.into_iter(), global_state_root, inclusion_proof)?))
+        Ok(Some(Execution::from(transitions.into_iter(), global_state_root, proof)?))
     }
 
     /// Returns the transaction for the given `transaction ID`.
@@ -243,10 +248,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
             None => return Ok(None),
         };
 
-        // Retrieve the global state root and inclusion proof.
-        let (global_state_root, inclusion_proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
+        // Retrieve the global state root and proof.
+        let (global_state_root, proof) = match self.inclusion_map().get_confirmed(transaction_id)? {
             Some(inclusion) => cow_to_cloned!(inclusion),
-            None => bail!("Failed to get the inclusion proof for the transaction '{transaction_id}'"),
+            None => bail!("Failed to get the proof for the transaction '{transaction_id}'"),
         };
 
         // Initialize a vector for the transitions.
@@ -261,7 +266,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Send + Sync {
         }
 
         // Construct the execution.
-        let execution = Execution::from(transitions.into_iter(), global_state_root, inclusion_proof)?;
+        let execution = Execution::from(transitions.into_iter(), global_state_root, proof)?;
 
         // Construct the transaction.
         let transaction = match has_fee {
@@ -328,6 +333,11 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Checkpoints the atomic batch.
     pub fn atomic_checkpoint(&self) {
         self.storage.atomic_checkpoint();
+    }
+
+    /// Clears the latest atomic batch checkpoint.
+    pub fn clear_latest_checkpoint(&self) {
+        self.storage.clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.

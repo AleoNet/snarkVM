@@ -1,21 +1,18 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
-use snarkvm_synthesizer::CallMetrics;
 
 impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
@@ -27,7 +24,7 @@ impl<N: Network> Package<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Inclusion<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Trace<N>)> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -97,9 +94,9 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, execution, inclusion, metrics) = process.execute::<A, R>(authorization, rng)?;
+        let (response, trace) = process.execute::<A>(authorization)?;
 
-        Ok((response, execution, inclusion, metrics))
+        Ok((response, trace))
     }
 }
 
@@ -127,7 +124,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution, _inclusion, _metrics) =
+        let (_response, _trace) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
@@ -152,7 +149,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _execution, _inclusion, _metrics) =
+        let (_response, _trace) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).

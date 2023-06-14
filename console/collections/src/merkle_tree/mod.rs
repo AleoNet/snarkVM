@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod helpers;
 pub use helpers::*;
@@ -354,6 +352,8 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         // Allocate a vector to store the inputs to the path hasher.
         let mut inputs = Vec::with_capacity(updated_hashes[0].len());
         // For each level in the tree, compute the path hashes.
+        // In the first iteration, we compute the path hashes for the updated leaf hashes.
+        // In the subsequent iterations, we compute the path hashes for the updated path hashes, until we reach the root.
         for level in 0..tree_depth as usize {
             let mut current = 0;
             while current < updated_hashes[level].len() {
@@ -370,6 +370,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
                     false => false,
                 };
                 // Get the sibling hash.
+                // Note: This algorithm assumes that the sibling hash is either the next hash in the vector,
+                // or in the original Merkle tree. Consequently, updates need to be provided in sequential order.
+                // This is enforced by the type of `updates: `BTreeMap<usize, LH::Leaf>`.
+                // If this assumption is violated, then the algorithm will compute incorrect path hashes in the Merkle tree.
                 let sibling_leaf_hash = match sibling_is_next_hash {
                     true => updated_hashes[level][current + 1].1,
                     false => self.tree[sibling_leaf_index],

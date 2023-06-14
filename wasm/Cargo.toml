@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-wasm"
-version = "0.11.0"
+version = "0.11.7"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [lib]
@@ -28,30 +28,30 @@ crate-type = [ "cdylib", "rlib" ]
 
 [dependencies.snarkvm-console]
 path = "../console"
-version = "0.11.0"
+version = "=0.11.7"
 features = [ "wasm" ]
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.11.0"
+version = "=0.11.7"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.11.0"
+version = "=0.11.7"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
-version = "0.11.0"
+version = "=0.11.7"
 features = [ "wasm" ]
 optional = true
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.11.0"
+version = "=0.11.7"
 optional = true
 
 [dependencies.rand]
@@ -59,7 +59,7 @@ version = "0.8"
 default-features = false
 
 [dependencies.serde]
-version = "1.0.162"
+version = "1.0.164"
 default-features = false
 features = [ "derive" ]
 
@@ -72,7 +72,7 @@ version = "0.2"
 features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.34"
+version = "0.3.36"
 
 [features]
 default = [ "full" ]

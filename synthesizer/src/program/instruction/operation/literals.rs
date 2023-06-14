@@ -1,20 +1,28 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-use crate::{Load, LoadCircuit, Opcode, Operand, Operation, Stack, Store, StoreCircuit};
+use crate::{
+    Opcode,
+    Operand,
+    Operation,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, PlaintextType, Register, RegisterType},
@@ -66,7 +74,11 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn evaluate(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
@@ -104,8 +116,8 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N>,
-        registers: &mut (impl LoadCircuit<N, A> + StoreCircuit<N, A>),
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
@@ -137,13 +149,21 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Finalizes the instruction.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut (impl Load<N> + Store<N>)) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
         self.evaluate(stack, registers)
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} inputs, found {} inputs", O::OPCODE, input_types.len())

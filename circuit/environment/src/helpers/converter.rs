@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{Circuit, LinearCombination, Variable, R1CS};
 use snarkvm_curves::edwards_bls12::Fq;
@@ -106,13 +104,13 @@ impl<F: PrimeField> R1CS<F> {
                 // Initialize a linear combination for the second system.
                 let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
 
-                // Keep an accumulator for constant values in the linear combination.
-                let mut constant_accumulator = lc.to_constant();
                 // Process every term in the linear combination.
                 for (variable, coefficient) in lc.to_terms() {
                     match variable {
-                        Variable::Constant(value) => {
-                            constant_accumulator += **value;
+                        Variable::Constant(_) => {
+                            unreachable!(
+                                "Failed during constraint translation. The first system by definition cannot have constant variables in the terms"
+                            )
                         }
                         Variable::Public(index, _) => {
                             let gadget = converter.public.get(index).unwrap();
@@ -136,8 +134,10 @@ impl<F: PrimeField> R1CS<F> {
                 }
 
                 // Finally, add the accumulated constant value to the linear combination.
-                linear_combination +=
-                    (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                if !lc.to_constant().is_zero() {
+                    linear_combination +=
+                        (lc.to_constant(), snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                }
 
                 // Return the linear combination of the second system.
                 linear_combination
@@ -228,18 +228,20 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover().unwrap();
+        let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_pp = FS::sample_parameters();
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
         println!("Called circuit setup");
 
-        let proof = MarlinInst::prove(&fs_pp, &index_pk, &Circuit, rng).unwrap();
+        let proof = MarlinInst::prove(universal_prover, &fs_pp, &index_pk, &Circuit, rng).unwrap();
         println!("Called prover");
 
-        assert!(MarlinInst::verify(&fs_pp, &index_vk, [*one, *one], &proof).unwrap());
+        assert!(MarlinInst::verify(universal_verifier, &fs_pp, &index_vk, [*one, *one], &proof).unwrap());
         println!("Called verifier");
         println!("\nShould not verify (i.e. verifier messages should print below):");
-        assert!(!MarlinInst::verify(&fs_pp, &index_vk, [*one, *one + *one], &proof).unwrap());
+        assert!(!MarlinInst::verify(universal_verifier, &fs_pp, &index_vk, [*one, *one + *one], &proof).unwrap());
     }
 }

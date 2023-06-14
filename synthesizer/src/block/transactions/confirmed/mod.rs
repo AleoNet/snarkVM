@@ -1,28 +1,22 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod bytes;
 mod serialize;
 mod string;
 
-use crate::{
-    block::Transaction,
-    process::{Deployment, Execution},
-    store::FinalizeOperation,
-};
+use crate::block::{Deployment, Execution, FinalizeOperation, Transaction};
 use console::network::prelude::*;
 
 pub type NumFinalizeSize = u16;
@@ -83,7 +77,7 @@ impl<N: Network> ConfirmedTransaction<N> {
             }
         }
         // Return the accepted deploy transaction.
-        Ok(ConfirmedTransaction::AcceptedDeploy(index, transaction, finalize_operations))
+        Ok(Self::AcceptedDeploy(index, transaction, finalize_operations))
     }
 
     /// Returns a new instance of an accepted execute transaction.
@@ -106,7 +100,7 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
         // Ensure the transaction is an execute transaction.
         match transaction.is_execute() {
-            true => Ok(ConfirmedTransaction::AcceptedExecute(index, transaction, finalize_operations)),
+            true => Ok(Self::AcceptedExecute(index, transaction, finalize_operations)),
             false => bail!("Transaction '{}' is not an execute transaction", transaction.id()),
         }
     }
@@ -119,9 +113,7 @@ impl<N: Network> ConfirmedTransaction<N> {
     ) -> Result<Self> {
         // Ensure the transaction is a fee transaction.
         match transaction.is_fee() {
-            true => {
-                Ok(ConfirmedTransaction::RejectedDeploy(index, transaction, Box::new(Rejected(rejected_deployment))))
-            }
+            true => Ok(Self::RejectedDeploy(index, transaction, Box::new(Rejected(rejected_deployment)))),
             false => bail!("Transaction '{}' is not a fee transaction", transaction.id()),
         }
     }
@@ -130,7 +122,7 @@ impl<N: Network> ConfirmedTransaction<N> {
     pub fn rejected_execute(index: u32, transaction: Transaction<N>, rejected_execution: Execution<N>) -> Result<Self> {
         // Ensure the transaction is a fee transaction.
         match transaction.is_fee() {
-            true => Ok(ConfirmedTransaction::RejectedExecute(index, transaction, Rejected(rejected_execution))),
+            true => Ok(Self::RejectedExecute(index, transaction, Rejected(rejected_execution))),
             false => bail!("Transaction '{}' is not a fee transaction", transaction.id()),
         }
     }
@@ -140,8 +132,8 @@ impl<N: Network> ConfirmedTransaction<N> {
     /// Returns 'true' if the confirmed transaction is accepted.
     pub fn is_accepted(&self) -> bool {
         match self {
-            ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => true,
-            ConfirmedTransaction::RejectedDeploy(..) | ConfirmedTransaction::RejectedExecute(..) => false,
+            Self::AcceptedDeploy(..) | Self::AcceptedExecute(..) => true,
+            Self::RejectedDeploy(..) | Self::RejectedExecute(..) => false,
         }
     }
 
@@ -155,39 +147,47 @@ impl<N: Network> ConfirmedTransaction<N> {
     /// Returns the confirmed transaction index.
     pub fn index(&self) -> u32 {
         match self {
-            ConfirmedTransaction::AcceptedDeploy(index, ..) => *index,
-            ConfirmedTransaction::AcceptedExecute(index, ..) => *index,
-            ConfirmedTransaction::RejectedDeploy(index, ..) => *index,
-            ConfirmedTransaction::RejectedExecute(index, ..) => *index,
+            Self::AcceptedDeploy(index, ..) => *index,
+            Self::AcceptedExecute(index, ..) => *index,
+            Self::RejectedDeploy(index, ..) => *index,
+            Self::RejectedExecute(index, ..) => *index,
         }
     }
 
     /// Returns the transaction.
     pub fn transaction(&self) -> &Transaction<N> {
         match self {
-            ConfirmedTransaction::AcceptedDeploy(_, transaction, _) => transaction,
-            ConfirmedTransaction::AcceptedExecute(_, transaction, _) => transaction,
-            ConfirmedTransaction::RejectedDeploy(_, transaction, _) => transaction,
-            ConfirmedTransaction::RejectedExecute(_, transaction, _) => transaction,
+            Self::AcceptedDeploy(_, transaction, _) => transaction,
+            Self::AcceptedExecute(_, transaction, _) => transaction,
+            Self::RejectedDeploy(_, transaction, _) => transaction,
+            Self::RejectedExecute(_, transaction, _) => transaction,
         }
     }
 
     /// Returns the transaction.
     pub fn into_transaction(self) -> Transaction<N> {
         match self {
-            ConfirmedTransaction::AcceptedDeploy(_, transaction, _) => transaction,
-            ConfirmedTransaction::AcceptedExecute(_, transaction, _) => transaction,
-            ConfirmedTransaction::RejectedDeploy(_, transaction, _) => transaction,
-            ConfirmedTransaction::RejectedExecute(_, transaction, _) => transaction,
+            Self::AcceptedDeploy(_, transaction, _) => transaction,
+            Self::AcceptedExecute(_, transaction, _) => transaction,
+            Self::RejectedDeploy(_, transaction, _) => transaction,
+            Self::RejectedExecute(_, transaction, _) => transaction,
         }
     }
 
     /// Returns the number of finalize operations.
     pub fn num_finalize(&self) -> usize {
         match self {
-            ConfirmedTransaction::AcceptedDeploy(_, _, finalize)
-            | ConfirmedTransaction::AcceptedExecute(_, _, finalize) => finalize.len(),
-            ConfirmedTransaction::RejectedDeploy(..) | ConfirmedTransaction::RejectedExecute(..) => 0,
+            Self::AcceptedDeploy(_, _, finalize) | Self::AcceptedExecute(_, _, finalize) => finalize.len(),
+            Self::RejectedDeploy(..) | Self::RejectedExecute(..) => 0,
+        }
+    }
+
+    /// Returns the finalize operations for the confirmed transaction.
+    pub fn finalize_operations(&self) -> Option<&Vec<FinalizeOperation<N>>> {
+        match self {
+            Self::AcceptedDeploy(_, _, finalize) => Some(finalize),
+            Self::AcceptedExecute(_, _, finalize) => Some(finalize),
+            Self::RejectedDeploy(..) | Self::RejectedExecute(..) => None,
         }
     }
 }

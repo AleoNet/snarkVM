@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 pub mod input;
 pub use input::Input;
@@ -25,7 +23,6 @@ mod merkle;
 mod serialize;
 mod string;
 
-use crate::snark::Proof;
 use console::{
     network::prelude::*,
     program::{
@@ -62,8 +59,6 @@ pub struct Transition<N: Network> {
     outputs: Vec<Output<N>>,
     /// The inputs for finalize.
     finalize: Option<Vec<Value<N>>>,
-    /// The transition proof.
-    proof: Proof<N>,
     /// The transition public key.
     tpk: Group<N>,
     /// The transition commitment.
@@ -79,14 +74,13 @@ impl<N: Network> Transition<N> {
         inputs: Vec<Input<N>>,
         outputs: Vec<Output<N>>,
         finalize: Option<Vec<Value<N>>>,
-        proof: Proof<N>,
         tpk: Group<N>,
         tcm: Field<N>,
     ) -> Result<Self> {
         // Compute the transition ID.
         let id = *Self::function_tree(&inputs, &outputs)?.root();
         // Return the transition.
-        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, tpk, tcm })
     }
 
     /// Initializes a new transition from a request and response.
@@ -96,7 +90,6 @@ impl<N: Network> Transition<N> {
         finalize: Option<Vec<Value<N>>>,
         output_types: &[ValueType<N>],
         output_registers: &[Option<Register<N>>],
-        proof: Proof<N>,
     ) -> Result<Self> {
         let network_id = *request.network_id();
         let program_id = *request.program_id();
@@ -256,7 +249,7 @@ impl<N: Network> Transition<N> {
         // Retrieve the `tcm`.
         let tcm = *request.tcm();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, finalize, proof, tpk, tcm)
+        Self::new(program_id, function_name, inputs, outputs, finalize, tpk, tcm)
     }
 }
 
@@ -291,11 +284,6 @@ impl<N: Network> Transition<N> {
         self.finalize.as_ref()
     }
 
-    /// Returns the proof.
-    pub const fn proof(&self) -> &Proof<N> {
-        &self.proof
-    }
-
     /// Returns the transition public key.
     pub const fn tpk(&self) -> &Group<N> {
         &self.tpk
@@ -304,6 +292,39 @@ impl<N: Network> Transition<N> {
     /// Returns the transition commitment.
     pub const fn tcm(&self) -> &Field<N> {
         &self.tcm
+    }
+}
+
+impl<N: Network> Transition<N> {
+    /// Returns `true` if this is a `mint` transition.
+    #[inline]
+    pub fn is_mint(&self) -> bool {
+        // The transition is a `mint` transition if it:
+        self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "mint"
+            && self.inputs.len() == 2
+            && self.outputs.len() == 1
+            && self.finalize.is_none()
+    }
+
+    /// Returns `true` if this is a `fee` transition.
+    #[inline]
+    pub fn is_fee(&self) -> bool {
+        self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "fee"
+            && self.inputs.len() == 3
+            && self.outputs.len() == 1
+            && self.finalize.is_none()
+    }
+
+    /// Returns `true` if this is a `split` transition.
+    #[inline]
+    pub fn is_split(&self) -> bool {
+        self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "split"
+            && self.inputs.len() == 2
+            && self.outputs.len() == 2
+            && self.finalize.is_none()
     }
 }
 

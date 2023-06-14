@@ -1,28 +1,26 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
-impl<N: Network> Stack<N> {
+impl<N: Network> StackExecute<N> for Stack<N> {
     /// Executes a program closure on the given inputs.
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_closure<A: circuit::Aleo<Network = N>>(
+    fn execute_closure<A: circuit::Aleo<Network = N>>(
         &self,
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
@@ -106,6 +104,10 @@ impl<N: Network> Stack<N> {
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
                     ))),
+                    // If the operand is the block height, throw an error.
+                    Operand::BlockHeight => {
+                        bail!("Illegal operation: cannot retrieve the block height in a closure scope")
+                    }
                 }
             })
             .collect();
@@ -122,11 +124,7 @@ impl<N: Network> Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        mut call_stack: CallStack<N>,
-        rng: &mut R,
-    ) -> Result<Response<N>> {
+    fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
         // Ensure the call stack is not `Evaluate`.
@@ -264,6 +262,10 @@ impl<N: Network> Stack<N> {
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
                     ))),
+                    // If the operand is the block height, throw an error.
+                    Operand::BlockHeight => {
+                        bail!("Illegal operation: cannot retrieve the block height in a function scope")
+                    }
                 }
             })
             .collect::<Result<Vec<_>>>()?;
@@ -336,18 +338,11 @@ impl<N: Network> Stack<N> {
                 for operand in command.operands() {
                     // Retrieve the finalize input.
                     let value = registers.load_circuit(self, operand)?;
-                    // TODO (howardwu): Expand the scope of 'finalize' to support other register types.
-                    //  See `RegisterTypes::initialize_function_types()` for the same set of checks.
-                    // Ensure the value is a literal (for now).
+                    // Ensure the value is a literal or a struct.
+                    // See `RegisterTypes::initialize_function_types()` for the same set of checks.
                     match value {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..)) => (),
-                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => {
-                            bail!(
-                                "'{}/{}' attempts to pass an 'struct' into 'finalize'",
-                                self.program_id(),
-                                function.name()
-                            );
-                        }
+                        circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => (),
                         circuit::Value::Record(..) => {
                             bail!(
                                 "'{}/{}' attempts to pass a 'record' into 'finalize'",
@@ -430,36 +425,30 @@ impl<N: Network> Stack<N> {
             lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
-        else if let CallStack::Execute(_, ref execution, ref inclusion, ref metrics) = registers.call_stack() {
+        else if let CallStack::Execute(_, ref trace) = registers.call_stack() {
             registers.ensure_console_and_circuit_registers_match()?;
 
+            // Construct the transition.
+            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
-            // Execute the circuit.
-            let proof = match proving_key.prove(function.name(), &assignment, rng) {
-                Ok(proof) => proof,
-                Err(error) => bail!("Execution proof failed - {error}"),
-            };
-            lap!(timer, "Execute the circuit");
-
-            // Construct the transition.
-            let transition =
-                Transition::from(&console_request, &response, finalize, &output_types, &output_registers, proof)?;
-
-            // Add the transition commitments.
-            inclusion.write().insert_transition(console_request.input_ids(), &transition)?;
-            // Add the transition to the execution.
-            execution.write().push(transition);
-
-            // Add the metrics.
-            metrics.write().push(CallMetrics {
+            // Construct the call metrics.
+            let metrics = CallMetrics {
                 program_id: *self.program_id(),
                 function_name: *function.name(),
                 num_instructions: function.instructions().len(),
                 num_request_constraints,
                 num_function_constraints,
                 num_response_constraints,
-            });
+            };
+
+            // Add the transition to the trace.
+            trace.write().insert_transition(
+                console_request.input_ids(),
+                &transition,
+                (proving_key, assignment),
+                metrics,
+            )?;
         }
 
         finish!(timer);
@@ -467,7 +456,9 @@ impl<N: Network> Stack<N> {
         // Return the response.
         Ok(response)
     }
+}
 
+impl<N: Network> Stack<N> {
     /// Prints the current state of the circuit.
     #[cfg(debug_assertions)]
     pub(crate) fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
@@ -476,11 +467,11 @@ impl<N: Network> Stack<N> {
         // Determine if the circuit is satisfied.
         let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
         // Determine the count.
-        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+        let (num_constant, num_public, num_private, num_constraints, num_nonzeros) = A::count();
 
         // Print the log.
         println!(
-            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
+            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, NonZeros: {num_nonzeros:?})",
             scope.into().bold(),
             width = 20
         );

@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -51,7 +49,7 @@ impl<A: Aleo> ToBits for &ProgramID<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{data::identifier::tests::sample_console_identifier_as_string, Circuit};
+    use crate::{data::identifier::tests::sample_lowercase_console_identifier_as_string, Circuit};
 
     use anyhow::Result;
 
@@ -60,7 +58,7 @@ mod tests {
     fn check_to_bits_le(mode: Mode) -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_console_identifier_as_string::<Circuit>()?;
+            let expected_name_string = sample_lowercase_console_identifier_as_string::<Circuit>()?;
             let expected = console::ProgramID::<<Circuit as Environment>::Network>::from_str(&format!(
                 "{expected_name_string}.aleo"
             ))?;
@@ -74,7 +72,7 @@ mod tests {
     fn check_to_bits_be(mode: Mode) -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let expected_name_string = sample_console_identifier_as_string::<Circuit>()?;
+            let expected_name_string = sample_lowercase_console_identifier_as_string::<Circuit>()?;
             let expected = console::ProgramID::<<Circuit as Environment>::Network>::from_str(&format!(
                 "{expected_name_string}.aleo"
             ))?;

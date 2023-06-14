@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -20,6 +18,10 @@ impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
     type Field = Field<E>;
 
     /// Casts an integer from a base field.
+    ///
+    /// This method guarantees the following:
+    ///   1. If the field element is larger than the integer domain, then the operation will fail.
+    ///   2. If the field element is smaller than the integer domain, then the operation will succeed.
     fn from_field(field: Self::Field) -> Self {
         // Note: We are reconstituting the integer from the base field.
         // This is safe as the number of bits in the integer is less than the base field modulus,
@@ -57,6 +59,29 @@ mod tests {
                 }
             });
             Circuit::reset();
+
+            // Sample a random field.
+            let expected = Field::<Circuit>::new(mode, Uniform::rand(rng));
+            // Determine the integer domain.
+            let integer_max = match I::type_name() {
+                "u8" | "i8" => console::Field::<<Circuit as Environment>::Network>::from_u8(u8::MAX),
+                "u16" | "i16" => console::Field::<<Circuit as Environment>::Network>::from_u16(u16::MAX),
+                "u32" | "i32" => console::Field::<<Circuit as Environment>::Network>::from_u32(u32::MAX),
+                "u64" | "i64" => console::Field::<<Circuit as Environment>::Network>::from_u64(u64::MAX),
+                "u128" | "i128" => console::Field::<<Circuit as Environment>::Network>::from_u128(u128::MAX),
+                _ => panic!("Unsupported integer type."),
+            };
+            // Filter for field elements that exceed the integer domain.
+            if expected.eject_value() > integer_max {
+                // Perform the operation.
+                let result = std::panic::catch_unwind(|| {
+                    Integer::<_, I>::from_field(expected); // This should fail.
+                });
+                assert!(result.is_err() || !Circuit::is_satisfied());
+            } else {
+                // Perform the operation.
+                Integer::<_, I>::from_field(expected); // This should not fail.
+            }
         }
     }
 

@@ -1,21 +1,22 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 pub mod confirmed;
 pub use confirmed::*;
+
+mod finalize_operation;
+pub use finalize_operation::*;
 
 mod bytes;
 mod merkle;
@@ -25,7 +26,7 @@ mod string;
 use crate::block::{Transaction, Transition};
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
+    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, FINALIZE_OPERATIONS_DEPTH, TRANSACTIONS_DEPTH},
     types::{Field, Group, U64},
 };
 
@@ -154,7 +155,7 @@ impl<N: Network> Transactions<N> {
     pub const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
     /// Returns an iterator over all transactions, for all transactions in `self`.
-    pub fn iter(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
+    pub fn iter(&self) -> impl '_ + ExactSizeIterator<Item = &ConfirmedTransaction<N>> {
         self.transactions.values()
     }
 
@@ -165,7 +166,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
-    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
+    pub fn transaction_ids(&self) -> impl '_ + ExactSizeIterator<Item = &N::TransactionID> {
         self.transactions.keys()
     }
 
@@ -194,14 +195,29 @@ impl<N: Network> Transactions<N> {
         self.iter().flat_map(|tx| tx.transition_public_keys())
     }
 
+    /// Returns an iterator over the transition commitments, for all transactions.
+    pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.iter().flat_map(|tx| tx.transition_commitments())
+    }
+
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.iter().flat_map(|tx| tx.tags())
     }
 
+    /// Returns an iterator over the input IDs, for all transition inputs that are records.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.iter().flat_map(|tx| tx.input_ids())
+    }
+
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.iter().flat_map(|tx| tx.serial_numbers())
+    }
+
+    /// Returns an iterator over the output IDs, for all transition inputs that are records.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.iter().flat_map(|tx| tx.output_ids())
     }
 
     /// Returns an iterator over the commitments, for all transition outputs that are records.
@@ -223,6 +239,11 @@ impl<N: Network> Transactions<N> {
     pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
         self.iter().map(|tx| tx.fee())
     }
+
+    /// Returns an iterator over the finalize operations, for all transactions.
+    pub fn finalize_operations(&self) -> impl '_ + Iterator<Item = &FinalizeOperation<N>> {
+        self.iter().flat_map(|tx| tx.finalize_operations()).flatten()
+    }
 }
 
 impl<N: Network> IntoIterator for Transactions<N> {
@@ -237,7 +258,7 @@ impl<N: Network> IntoIterator for Transactions<N> {
 
 impl<N: Network> Transactions<N> {
     /// Returns a consuming iterator over the transaction IDs, for all transactions in `self`.
-    pub fn into_transaction_ids(self) -> impl Iterator<Item = N::TransactionID> {
+    pub fn into_transaction_ids(self) -> impl ExactSizeIterator<Item = N::TransactionID> {
         self.transactions.into_keys()
     }
 

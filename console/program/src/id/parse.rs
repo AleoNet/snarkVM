@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -20,12 +18,11 @@ impl<N: Network> Parser for ProgramID<N> {
     /// Parses a string into a program ID of the form `{name}.{network}`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the name from the string.
-        let (string, name) = Identifier::parse(string)?;
-        // Parse the "." and network-level domain (NLD) from the string.
-        let (string, (_, network)) = pair(tag("."), Identifier::parse)(string)?;
-        // Return the program ID.
-        Ok((string, Self { name, network }))
+        // Parse the name, ".", and network-level domain (NLD) from the string.
+        map_res(pair(Identifier::parse, pair(tag("."), Identifier::parse)), |(name, (_, network))| {
+            // Return the program ID.
+            Self::try_from((name, network))
+        })(string)
     }
 }
 
@@ -85,6 +82,11 @@ mod tests {
         assert_eq!("bar.aleo", id.to_string());
 
         assert!(ProgramID::<CurrentNetwork>::from_str("foo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("Bar.aleo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("foO.aleo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("0foo.aleo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("0_foo.aleo").is_err());
+        assert!(ProgramID::<CurrentNetwork>::from_str("_foo.aleo").is_err());
 
         Ok(())
     }

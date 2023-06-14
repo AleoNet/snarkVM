@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod closure;
 pub use closure::*;
@@ -36,7 +34,43 @@ mod parse;
 mod serialize;
 
 use console::{
-    network::prelude::*,
+    network::prelude::{
+        alt,
+        anyhow,
+        bail,
+        de,
+        ensure,
+        error,
+        fmt,
+        many0,
+        many1,
+        map,
+        map_res,
+        tag,
+        take,
+        Debug,
+        Deserialize,
+        Deserializer,
+        Display,
+        Error,
+        Formatter,
+        FromBytes,
+        FromBytesDeserializer,
+        FromStr,
+        IoResult,
+        Network,
+        Parser,
+        ParserResult,
+        Read,
+        Result,
+        Sanitizer,
+        Serialize,
+        Serializer,
+        ToBytes,
+        ToBytesSerializer,
+        TypeName,
+        Write,
+    },
     program::{EntryType, Identifier, PlaintextType, ProgramID, RecordType, Struct},
 };
 
@@ -82,8 +116,6 @@ impl<N: Network> Program<N> {
     pub fn new(id: ProgramID<N>) -> Result<Self> {
         // Ensure the program name is valid.
         ensure!(!Self::is_reserved_keyword(id.name()), "Program name is invalid: {}", id.name());
-        // Ensure the program network-level domain is `aleo`.
-        ensure!(id.is_aleo(), "Program network is invalid: {}", id.network());
 
         Ok(Self {
             id,
@@ -100,55 +132,7 @@ impl<N: Network> Program<N> {
     /// Initializes the credits program.
     #[inline]
     pub fn credits() -> Result<Self> {
-        Self::from_str(
-            r"
-program credits.aleo;
-
-record credits:
-    owner as address.private;
-    microcredits as u64.private;
-
-function mint:
-    input r0 as address.public;
-    input r1 as u64.public;
-    cast r0 r1 into r2 as credits.record;
-    output r2 as credits.record;
-
-function transfer:
-    input r0 as credits.record;
-    input r1 as address.private;
-    input r2 as u64.private;
-    sub r0.microcredits r2 into r3;
-    cast r1 r2 into r4 as credits.record;
-    cast r0.owner r3 into r5 as credits.record;
-    output r4 as credits.record;
-    output r5 as credits.record;
-
-function join:
-    input r0 as credits.record;
-    input r1 as credits.record;
-    add r0.microcredits r1.microcredits into r2;
-    cast r0.owner r2 into r3 as credits.record;
-    output r3 as credits.record;
-
-function split:
-    input r0 as credits.record;
-    input r1 as u64.private;
-    sub r0.microcredits r1 into r2;
-    cast r0.owner r1 into r3 as credits.record;
-    cast r0.owner r2 into r4 as credits.record;
-    output r3 as credits.record;
-    output r4 as credits.record;
-
-function fee:
-    input r0 as credits.record;
-    input r1 as u64.public;
-    assert.neq r1 0u64;
-    sub r0.microcredits r1 into r2;
-    cast r0.owner r2 into r3 as credits.record;
-    output r3 as credits.record;
-",
-        )
+        Self::from_str(include_str!("./resources/credits.aleo"))
     }
 
     /// Returns the ID of the program.
@@ -577,6 +561,7 @@ impl<N: Network> Program<N> {
         "value",
         // Reserved (catch all)
         "global",
+        "block",
         "return",
         "break",
         "assert",
@@ -629,7 +614,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, Execution, Inclusion};
+    use crate::{CallStack, StackEvaluate, StackExecute, Trace};
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey},
@@ -639,6 +624,7 @@ mod tests {
     };
 
     use parking_lot::RwLock;
+    use snarkvm_utilities::TestRng;
     use std::sync::Arc;
 
     type CurrentNetwork = Testnet3;
@@ -1106,11 +1092,9 @@ function compute:
         assert_eq!(authorization.len(), 1);
 
         // Re-run to ensure state continues to work.
-        let execution = Arc::new(RwLock::new(Execution::new()));
-        let inclusion = Arc::new(RwLock::new(Inclusion::new()));
-        let metrics = Arc::new(RwLock::new(Vec::new()));
-        let call_stack = CallStack::execute(authorization, execution, inclusion, metrics).unwrap();
-        let response = stack.execute_function::<CurrentAleo, _>(call_stack, rng).unwrap();
+        let trace = Arc::new(RwLock::new(Trace::new()));
+        let call_stack = CallStack::execute(authorization, trace).unwrap();
+        let response = stack.execute_function::<CurrentAleo>(call_stack).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);

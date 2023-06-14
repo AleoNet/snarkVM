@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 use snarkvm_console_algorithms::{Poseidon, BHP1024, BHP512};
@@ -400,10 +398,10 @@ fn test_merkle_tree_bhp_update_and_update_many_match() -> Result<()> {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, Field::<CurrentEnvironment>::rand(rng).to_bits_le())
                 })
-                .collect::<BTreeMap<usize, Vec<bool>>>();
+                .collect::<Vec<(usize, Vec<bool>)>>();
 
-            // Construct the batch updates for the single updates.
-            let batch_updates = single_updates.clone();
+            // Construct the batch updates from the single updates.
+            let batch_updates = single_updates.iter().cloned().collect::<BTreeMap<usize, Vec<bool>>>();
 
             // Initialize a Merkle tree for the single updates.
             let mut single_merkle_tree =
@@ -456,10 +454,10 @@ fn test_merkle_tree_poseidon_update_and_update_many_match() -> Result<()> {
                     let index: u128 = Uniform::rand(rng);
                     ((index % num_leaves) as usize, vec![Uniform::rand(rng)])
                 })
-                .collect::<BTreeMap<usize, Vec<_>>>();
+                .collect::<Vec<(usize, Vec<_>)>>();
 
             // Construct the batch updates for the single updates.
-            let batch_updates = single_updates.clone();
+            let batch_updates = single_updates.iter().cloned().collect::<BTreeMap<usize, Vec<_>>>();
 
             // Initialize a Merkle tree for the single updates.
             let mut single_merkle_tree =

@@ -1,39 +1,25 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod authorization;
 pub use authorization::*;
-
-mod deployment;
-pub use deployment::*;
-
-mod execution;
-pub use execution::*;
-
-mod fee;
-pub use fee::*;
 
 mod finalize_registers;
 pub use finalize_registers::*;
 
 mod finalize_types;
 pub use finalize_types::*;
-
-mod inclusion;
-pub use inclusion::*;
 
 mod register_types;
 pub use register_types::*;
@@ -51,18 +37,9 @@ mod execute;
 mod helpers;
 
 use crate::{
-    CallOperator,
-    Certificate,
-    Closure,
-    Function,
-    Instruction,
-    Operand,
-    Process,
-    Program,
-    ProvingKey,
-    Transition,
-    UniversalSRS,
-    VerifyingKey,
+    block::{Deployment, Transition},
+    process::{CallMetrics, Process, Trace},
+    program::{CallOperator, Closure, Function, Instruction, Operand, Program},
 };
 use console::{
     account::{Address, PrivateKey},
@@ -79,6 +56,7 @@ use console::{
         ProgramID,
         Record,
         RecordType,
+        Register,
         RegisterType,
         Request,
         Response,
@@ -87,6 +65,7 @@ use console::{
     },
     types::{Field, Group},
 };
+use snarkvm_synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -95,23 +74,13 @@ use std::sync::Arc;
 
 pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
 
-#[derive(Copy, Clone, Debug)]
-pub struct CallMetrics<N: Network> {
-    pub program_id: ProgramID<N>,
-    pub function_name: Identifier<N>,
-    pub num_instructions: usize,
-    pub num_request_constraints: u64,
-    pub num_function_constraints: u64,
-    pub num_response_constraints: u64,
-}
-
 #[derive(Clone)]
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
-    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>, Arc<RwLock<Inclusion<N>>>, Arc<RwLock<Vec<CallMetrics<N>>>>),
+    Execute(Authorization<N>, Arc<RwLock<Trace<N>>>),
 }
 
 impl<N: Network> CallStack<N> {
@@ -121,13 +90,8 @@ impl<N: Network> CallStack<N> {
     }
 
     /// Initializes a call stack as `Self::Execute`.
-    pub fn execute(
-        authorization: Authorization<N>,
-        execution: Arc<RwLock<Execution<N>>>,
-        inclusion: Arc<RwLock<Inclusion<N>>>,
-        metrics: Arc<RwLock<Vec<CallMetrics<N>>>>,
-    ) -> Result<Self> {
-        Ok(CallStack::Execute(authorization, execution, inclusion, metrics))
+    pub fn execute(authorization: Authorization<N>, trace: Arc<RwLock<Trace<N>>>) -> Result<Self> {
+        Ok(CallStack::Execute(authorization, trace))
     }
 }
 
@@ -147,12 +111,9 @@ impl<N: Network> CallStack<N> {
                 Arc::new(RwLock::new(assignments.read().clone())),
             ),
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
-            CallStack::Execute(authorization, execution, inclusion, metrics) => CallStack::Execute(
-                authorization.replicate(),
-                Arc::new(RwLock::new(execution.read().clone())),
-                Arc::new(RwLock::new(inclusion.read().clone())),
-                Arc::new(RwLock::new(metrics.read().clone())),
-            ),
+            CallStack::Execute(authorization, trace) => {
+                CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(trace.read().clone())))
+            }
         }
     }
 
@@ -221,8 +182,6 @@ impl<N: Network> Stack<N> {
         let program_id = program.id();
         // Ensure the program does not already exist in the process.
         ensure!(!process.contains_program(program_id), "Program '{program_id}' already exists");
-        // Ensure the program network-level domain (NLD) is correct.
-        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.
         ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
 
@@ -239,22 +198,24 @@ impl<N: Network> Stack<N> {
         // Return the stack.
         Stack::initialize(process, program)
     }
+}
 
+impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the program.
     #[inline]
-    pub const fn program(&self) -> &Program<N> {
+    fn program(&self) -> &Program<N> {
         &self.program
     }
 
     /// Returns the program ID.
     #[inline]
-    pub const fn program_id(&self) -> &ProgramID<N> {
+    fn program_id(&self) -> &ProgramID<N> {
         self.program.id()
     }
 
     /// Returns `true` if the stack contains the external record.
     #[inline]
-    pub fn contains_external_record(&self, locator: &Locator<N>) -> bool {
+    fn contains_external_record(&self, locator: &Locator<N>) -> bool {
         // Retrieve the external program.
         match self.get_external_program(locator.program_id()) {
             // Return `true` if the external record exists.
@@ -266,14 +227,14 @@ impl<N: Network> Stack<N> {
 
     /// Returns the external stack for the given program ID.
     #[inline]
-    pub fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+    fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
         // Retrieve the external stack.
         self.external_stacks.get(program_id).ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
     }
 
     /// Returns the external program for the given program ID.
     #[inline]
-    pub fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+    fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
         match self.program.id() == program_id {
             true => bail!("Attempted to get the main program '{}' as an external program", self.program.id()),
             // Retrieve the external stack, and return the external program.
@@ -283,7 +244,7 @@ impl<N: Network> Stack<N> {
 
     /// Returns `true` if the stack contains the external record.
     #[inline]
-    pub fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
+    fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
         // Retrieve the external program.
         let external_program = self.get_external_program(locator.program_id())?;
         // Return the external record, if it exists.
@@ -292,7 +253,7 @@ impl<N: Network> Stack<N> {
 
     /// Returns the function with the given function name.
     #[inline]
-    pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
+    fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
         // Ensure the function exists.
         match self.program.contains_function(function_name) {
             true => self.program.get_function(function_name),
@@ -302,7 +263,7 @@ impl<N: Network> Stack<N> {
 
     /// Returns the expected number of calls for the given function name.
     #[inline]
-    pub fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
+    fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
         // Determine the number of calls for this function (including the function itself).
         let mut num_calls = 1;
         for instruction in self.get_function(function_name)?.instructions() {
@@ -324,18 +285,20 @@ impl<N: Network> Stack<N> {
 
     /// Returns the register types for the given closure or function name.
     #[inline]
-    pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
+    fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
         // Retrieve the register types.
         self.register_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' do not exist"))
     }
 
     /// Returns the register types for the given finalize name.
     #[inline]
-    pub fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>> {
+    fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>> {
         // Retrieve the finalize types.
         self.finalize_types.get(name).ok_or_else(|| anyhow!("Finalize types for '{name}' do not exist"))
     }
+}
 
+impl<N: Network> Stack<N> {
     /// Returns `true` if the proving key for the given function name exists.
     #[inline]
     pub fn contains_proving_key(&self, function_name: &Identifier<N>) -> bool {

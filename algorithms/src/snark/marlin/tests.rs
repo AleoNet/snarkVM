@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     snark::marlin::TestCircuit,
@@ -36,12 +34,14 @@ mod marlin {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
             struct $test_struct {}
             impl $test_struct {
-                pub(crate) fn test_circuit<'a>(num_constraints: usize, num_variables: usize) {
+                pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
                     let rng = &mut snarkvm_utilities::rand::TestRng::default();
                     let random = Fr::rand(rng);
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree).unwrap();
+                    let universal_prover = &universal_srs.to_universal_prover().unwrap();
+                    let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
                     let fs_parameters = FS::sample_parameters();
 
                     for _ in 0..25 {
@@ -51,16 +51,16 @@ mod marlin {
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
 
-                        let certificate = $marlin_inst::prove_vk(&fs_parameters, &index_vk, &index_pk).unwrap();
-                        assert!($marlin_inst::verify_vk(&fs_parameters, &circ, &index_vk, &certificate).unwrap());
+                        let certificate = $marlin_inst::prove_vk(universal_prover, &fs_parameters, &index_vk, &index_pk).unwrap();
+                        assert!($marlin_inst::verify_vk(universal_verifier, &fs_parameters, &circ, &index_vk, &certificate).unwrap());
 
-                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, rng).unwrap();
+                        let proof = $marlin_inst::prove(universal_prover, &fs_parameters, &index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, public_inputs, &proof).unwrap());
+                        assert!($marlin_inst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [random, random], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
                     }
 
                     for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
@@ -88,27 +88,18 @@ mod marlin {
 
                             let mut pks_to_constraints = BTreeMap::new();
                             let mut vks_to_inputs = BTreeMap::new();
-                            let mut constraint_refs = Vec::with_capacity(index_keys.len());
+
                             for (index_pk, index_vk) in index_keys.iter() {
-                                let circuit_constraints = &constraints[&index_pk.circuit.id];
-                                let mut circuit_constraint_refs = Vec::with_capacity(circuit_constraints.len());
-                                for constraint in circuit_constraints.iter() {
-                                    circuit_constraint_refs.push(constraint)
-                                }
-                                constraint_refs.push(circuit_constraint_refs);
-                                let circuit_inputs = &inputs[&index_pk.circuit.id];
-                                vks_to_inputs.insert(index_vk, circuit_inputs.as_slice());
-                            }
-                            for (i, (index_pk, _)) in index_keys.iter().enumerate() {
-                                pks_to_constraints.insert(index_pk, constraint_refs[i].as_slice());
+                                pks_to_constraints.insert(index_pk, constraints[&index_pk.circuit.id].as_slice());
+                                vks_to_inputs.insert(index_vk, inputs[&index_pk.circuit.id].as_slice());
                             }
 
                             let proof =
-                                $marlin_inst::prove_batch(&fs_parameters, &pks_to_constraints, rng).unwrap();
+                                $marlin_inst::prove_batch(universal_prover, &fs_parameters, &pks_to_constraints, rng).unwrap();
                             println!("Called prover");
 
                             assert!(
-                                $marlin_inst::verify_batch(&fs_parameters, &vks_to_inputs, &proof).unwrap(),
+                                $marlin_inst::verify_batch(universal_verifier, &fs_parameters, &vks_to_inputs, &proof).unwrap(),
                                 "Batch verification failed with {instance_batch_size} instances and {circuit_batch_size} circuits for circuits: {constraints:?}"
                             );
                             println!("Called verifier");
@@ -128,6 +119,7 @@ mod marlin {
                             }
                             assert!(
                                 !$marlin_inst::verify_batch(
+                                    universal_verifier,
                                     &fs_parameters,
                                     &vks_to_fake_inputs,
                                     &proof
@@ -144,7 +136,7 @@ mod marlin {
                     let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree).unwrap();
 
                     let mul_depth = 1;
                     let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -171,7 +163,7 @@ mod marlin {
                     let rng = &mut TestRng::default();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(&max_degree).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(max_degree).unwrap();
 
                     let mul_depth = 1;
                     let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -294,7 +286,9 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover().unwrap();
+        let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
         for _ in 0..num_times {
@@ -304,13 +298,22 @@ mod marlin_hiding {
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&fs_parameters, &index_pk, &circuit, rng).unwrap();
+            let proof = MarlinInst::prove(universal_prover, &fs_parameters, &index_pk, &circuit, rng).unwrap();
             println!("Called prover");
 
-            assert!(MarlinInst::verify(&fs_parameters, &index_vk, public_inputs, &proof).unwrap());
+            assert!(MarlinInst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
             println!("Called verifier");
             println!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(!MarlinInst::verify(&fs_parameters, &index_vk, [Fr::rand(rng), Fr::rand(rng)], &proof).unwrap());
+            assert!(
+                !MarlinInst::verify(
+                    universal_verifier,
+                    &fs_parameters,
+                    &index_vk,
+                    [Fr::rand(rng), Fr::rand(rng)],
+                    &proof
+                )
+                .unwrap()
+            );
         }
     }
 
@@ -322,7 +325,7 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
 
         let mul_depth = 1;
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -344,7 +347,7 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
 
         let mul_depth = 1;
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
@@ -430,21 +433,25 @@ mod marlin_hiding {
         let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover().unwrap();
+        let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
 
-        let proof = MarlinInst::prove(&fs_parameters, &index_pk, &circuit, rng).unwrap();
+        let proof = MarlinInst::prove(universal_prover, &fs_parameters, &index_pk, &circuit, rng).unwrap();
         println!("Called prover");
 
         universal_srs.download_powers_for(0..2usize.pow(18)).unwrap();
         let (new_pk, new_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         assert_eq!(index_pk, new_pk);
         assert_eq!(index_vk, new_vk);
-        assert!(MarlinInst::verify(&fs_parameters, &index_vk, public_inputs.clone(), &proof).unwrap());
-        assert!(MarlinInst::verify(&fs_parameters, &new_vk, public_inputs, &proof).unwrap());
+        assert!(
+            MarlinInst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs.clone(), &proof).unwrap()
+        );
+        assert!(MarlinInst::verify(universal_verifier, &fs_parameters, &new_vk, public_inputs, &proof).unwrap());
     }
 
     #[test]
@@ -452,10 +459,12 @@ mod marlin_hiding {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover().unwrap();
+        let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        // Indexing, proving, and verifying for a circuit with 1 << 13 constraints and 1 << 13 variables.
+        // Indexing, proving, and verifying for a circuit with 1 << 15 constraints and 1 << 15 variables.
         let mul_depth = 2;
         let num_constraints = 2usize.pow(15) - 10;
         let num_variables = 2usize.pow(15) - 10;
@@ -463,9 +472,9 @@ mod marlin_hiding {
         let (pk1, vk1) = MarlinInst::circuit_setup(&universal_srs, &circuit1).unwrap();
         println!("Called circuit setup");
 
-        let proof1 = MarlinInst::prove(&fs_parameters, &pk1, &circuit1, rng).unwrap();
+        let proof1 = MarlinInst::prove(universal_prover, &fs_parameters, &pk1, &circuit1, rng).unwrap();
         println!("Called prover");
-        assert!(MarlinInst::verify(&fs_parameters, &vk1, public_inputs1.clone(), &proof1).unwrap());
+        assert!(MarlinInst::verify(universal_verifier, &fs_parameters, &vk1, public_inputs1.clone(), &proof1).unwrap());
 
         /*****************************************************************************/
 
@@ -477,10 +486,10 @@ mod marlin_hiding {
         let (pk2, vk2) = MarlinInst::circuit_setup(&universal_srs, &circuit2).unwrap();
         println!("Called circuit setup");
 
-        let proof2 = MarlinInst::prove(&fs_parameters, &pk2, &circuit2, rng).unwrap();
+        let proof2 = MarlinInst::prove(universal_prover, &fs_parameters, &pk2, &circuit2, rng).unwrap();
         println!("Called prover");
-        assert!(MarlinInst::verify(&fs_parameters, &vk2, public_inputs2, &proof2).unwrap());
+        assert!(MarlinInst::verify(universal_verifier, &fs_parameters, &vk2, public_inputs2, &proof2).unwrap());
         /*****************************************************************************/
-        assert!(MarlinInst::verify(&fs_parameters, &vk1, public_inputs1, &proof1).unwrap());
+        assert!(MarlinInst::verify(universal_verifier, &fs_parameters, &vk1, public_inputs1, &proof1).unwrap());
     }
 }

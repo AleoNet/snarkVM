@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.11.0"
+version = "0.11.7"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
@@ -28,11 +28,13 @@ name = "block"
 path = "benches/block.rs"
 harness = false
 
-[[bench]]
-name = "coinbase_puzzle"
-path = "benches/coinbase_puzzle.rs"
-harness = false
-required-features = [ "setup" ]
+# Note: This benchmark is disabled since its use of macros significantly increases build times.
+#   Currently, it is only used to back into costs for the finalize operations and does not need
+#   to be run on every build.
+# [[bench]]
+# name = "instruction"
+# path = "benches/instruction.rs"
+# harness = false
 
 [[bench]]
 name = "transaction"
@@ -40,7 +42,7 @@ path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ ]
+default = [ "coinbase", "snark" ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 rocks = [ "rocksdb" ]
@@ -49,41 +51,64 @@ serial = [
   "snarkvm-algorithms/serial",
   "snarkvm-curves/serial",
   "snarkvm-fields/serial",
+  "snarkvm-synthesizer-coinbase/serial",
+  "snarkvm-synthesizer-snark/serial",
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
+test = [ ]
 timer = [ "aleo-std/timer" ]
-wasm = [ ]
+wasm = [
+  "coinbase",
+  "snark",
+  "console/wasm",
+  "snarkvm-algorithms/wasm",
+  "snarkvm-synthesizer-coinbase/wasm",
+  "snarkvm-synthesizer-snark/wasm",
+  "snarkvm-utilities/wasm"
+]
+coinbase = [ "snarkvm-synthesizer-coinbase" ]
+snark = [ "snarkvm-synthesizer-snark" ]
+
+[dependencies.snarkvm-synthesizer-coinbase]
+path = "./coinbase"
+version = "=0.11.7"
+optional = true
+
+[dependencies.snarkvm-synthesizer-snark]
+path = "./snark"
+version = "=0.11.7"
+optional = true
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "0.11.0"
+version = "=0.11.7"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "0.11.0"
+version = "=0.11.7"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.11.0"
+version = "=0.11.7"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.11.0"
+version = "=0.11.7"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.11.0"
+version = "=0.11.7"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.11.0"
+version = "=0.11.7"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
@@ -107,7 +132,7 @@ features = [ "serde", "rayon" ]
 version = "0.10.1"
 
 [dependencies.once_cell]
-version = "1.17"
+version = "1.18"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -122,10 +147,14 @@ version = "0.8"
 version = "1"
 
 [dependencies.rocksdb]
-version = "0.20"
+version = "0.21"
 default-features = false
 features = [ "lz4" ]
 optional = true
+
+[dependencies.reqwest]
+version = "0.11.18"
+features = [ "json" ]
 
 [dependencies.serde]
 version = "1.0"
@@ -150,13 +179,19 @@ features = [ "test" ]
 version = "1.3"
 
 [dev-dependencies.criterion]
-version = "0.4.0"
+version = "0.5.1"
+
+[dev-dependencies.serde_yaml]
+version = "0.9"
 
 [dev-dependencies.serial_test]
 version = "2"
 
 [dev-dependencies.tempfile]
-version = "3.4"
+version = "3.6"
 
 [dev-dependencies.tracing-test]
 version = "0.2"
+
+[dev-dependencies.walkdir]
+version = "2"

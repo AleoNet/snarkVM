@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -38,12 +36,12 @@ impl<N: Network> Stack<N> {
         // Retrieve the input types.
         let input_types = function.input_types();
         // Ensure the number of inputs matches the number of input types.
-        if function.inputs().len() != input_types.len() {
+        if inputs.len() != input_types.len() {
             bail!(
-                "Function '{function_name}' in program '{}' expects {} inputs, but {} types were found.",
+                "Function '{function_name}' in program '{}' expects {} inputs, but {} inputs were found.",
                 self.program.id(),
-                function.inputs().len(),
-                input_types.len()
+                input_types.len(),
+                inputs.len()
             )
         }
         lap!(timer, "Verify the number of inputs");
@@ -56,7 +54,7 @@ impl<N: Network> Stack<N> {
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self.execute_function::<A, R>(call_stack, rng)?;
+        let _response = self.execute_function::<A>(call_stack)?;
         lap!(timer, "Construct the authorization from the function");
 
         finish!(timer);

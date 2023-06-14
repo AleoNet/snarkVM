@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod bytes;
 mod equal;
@@ -22,7 +20,7 @@ mod serialize;
 mod to_bits;
 mod to_fields;
 
-use crate::{Entry, Identifier, Plaintext, Record};
+use crate::{Entry, Identifier, Literal, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -32,6 +30,48 @@ pub enum Value<N: Network> {
     Plaintext(Plaintext<N>),
     /// A record value.
     Record(Record<N, Plaintext<N>>),
+}
+
+impl<N: Network> From<Literal<N>> for Value<N> {
+    /// Initializes the value from a literal.
+    fn from(literal: Literal<N>) -> Self {
+        Self::Plaintext(Plaintext::from(literal))
+    }
+}
+
+impl<N: Network> From<&Literal<N>> for Value<N> {
+    /// Initializes the value from a literal.
+    fn from(literal: &Literal<N>) -> Self {
+        Self::from(Plaintext::from(literal))
+    }
+}
+
+impl<N: Network> From<Plaintext<N>> for Value<N> {
+    /// Initializes the value from a plaintext.
+    fn from(plaintext: Plaintext<N>) -> Self {
+        Self::Plaintext(plaintext)
+    }
+}
+
+impl<N: Network> From<&Plaintext<N>> for Value<N> {
+    /// Initializes the value from a plaintext.
+    fn from(plaintext: &Plaintext<N>) -> Self {
+        Self::from(plaintext.clone())
+    }
+}
+
+impl<N: Network> From<Record<N, Plaintext<N>>> for Value<N> {
+    /// Initializes the value from a record.
+    fn from(record: Record<N, Plaintext<N>>) -> Self {
+        Self::Record(record)
+    }
+}
+
+impl<N: Network> From<&Record<N, Plaintext<N>>> for Value<N> {
+    /// Initializes the value from a record.
+    fn from(record: &Record<N, Plaintext<N>>) -> Self {
+        Self::from(record.clone())
+    }
 }
 
 impl<N: Network> From<&Value<N>> for Value<N> {

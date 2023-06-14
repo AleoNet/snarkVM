@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger"
-version = "0.11.0"
+version = "0.11.7"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A node ledger for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -13,7 +13,7 @@ keywords = [
   "zero-knowledge"
 ]
 categories = [ "cryptography", "web-programming" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [features]
@@ -24,15 +24,15 @@ timer = [ "aleo-std/timer" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "0.11.0"
+version = "=0.11.7"
 
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
 path = "../synthesizer"
-version = "0.11.0"
+version = "=0.11.7"
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
@@ -43,7 +43,7 @@ version = "1.9"
 features = [ "rayon" ]
 
 [dependencies.once_cell]
-version = "1.13"
+version = "1.18"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -54,6 +54,9 @@ version = "0.8"
 [dependencies.rayon]
 version = "1"
 optional = true
+
+[dependencies.time]
+version = "0.3"
 
 [dependencies.tracing]
 version = "0.1"

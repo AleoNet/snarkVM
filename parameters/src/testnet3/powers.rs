@@ -1,21 +1,19 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
-use snarkvm_curves::traits::PairingEngine;
+use snarkvm_curves::traits::{PairingCurve, PairingEngine};
 use snarkvm_utilities::{
     CanonicalDeserialize,
     CanonicalSerialize,
@@ -69,6 +67,10 @@ pub struct PowersOfG<E: PairingEngine> {
     /// Group elements of form `{ \beta^{max_degree - i} H }`, where `i`
     /// is of the form `2^k - 1` for `k` in `1` to `log_2(max_degree)`.
     negative_powers_of_beta_h: Arc<BTreeMap<usize, E::G2Affine>>,
+    /// Information required to enforce degree bounds. Each pair is of the form `(degree_bound, shifting_advice)`.
+    /// Each pair is in the form `(degree_bound, \beta^{max_degree - i} H),` where `H` is the generator of G2,
+    /// and `i` is of the form `2^k - 1` for `k` in `1` to `log_2(max_degree)`.
+    prepared_negative_powers_of_beta_h: Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>>,
     /// beta * h
     beta_h: E::G2Affine,
 }
@@ -83,15 +85,23 @@ impl<E: PairingEngine> PowersOfG<E> {
             Arc::new(BTreeMap::deserialize_uncompressed_unchecked(&**POWERS_OF_BETA_GAMMA_G)?);
 
         // Reconstruct negative powers of beta_h.
-        let negative_powers_of_beta_h =
+        let negative_powers_of_beta_h: Arc<BTreeMap<usize, E::G2Affine>> =
             Arc::new(BTreeMap::deserialize_uncompressed_unchecked(&**NEG_POWERS_OF_BETA_H)?);
+
+        // Compute the prepared negative powers of beta_h.
+        let prepared_negative_powers_of_beta_h: Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>> =
+            Arc::new(negative_powers_of_beta_h.iter().map(|(d, affine)| (*d, affine.prepare())).collect());
 
         let beta_h = E::G2Affine::deserialize_uncompressed_unchecked(&**BETA_H)?;
 
-        // Initialize the powers.
-        let powers = Self { powers_of_beta_g, powers_of_beta_times_gamma_g, negative_powers_of_beta_h, beta_h };
         // Return the powers.
-        Ok(powers)
+        Ok(Self {
+            powers_of_beta_g,
+            powers_of_beta_times_gamma_g,
+            negative_powers_of_beta_h,
+            prepared_negative_powers_of_beta_h,
+            beta_h,
+        })
     }
 
     /// Download the powers of beta G specified by `range`.
@@ -128,6 +138,10 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.negative_powers_of_beta_h.clone()
     }
 
+    pub fn prepared_negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>> {
+        self.prepared_negative_powers_of_beta_h.clone()
+    }
+
     pub fn beta_h(&self) -> E::G2Affine {
         self.beta_h
     }
@@ -157,11 +171,28 @@ impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let powers_of_beta_g = PowersOfBetaG::deserialize_with_mode(&mut reader, compress, Validate::No)?;
+
+        // Reconstruct powers of beta_times_gamma_g.
         let powers_of_beta_times_gamma_g =
             Arc::new(BTreeMap::deserialize_with_mode(&mut reader, compress, Validate::No)?);
-        let negative_powers_of_beta_h = Arc::new(BTreeMap::deserialize_with_mode(&mut reader, compress, Validate::No)?);
+
+        // Reconstruct negative powers of beta_h.
+        let negative_powers_of_beta_h: Arc<BTreeMap<usize, E::G2Affine>> =
+            Arc::new(BTreeMap::deserialize_with_mode(&mut reader, compress, Validate::No)?);
+
+        // Compute the prepared negative powers of beta_h.
+        let prepared_negative_powers_of_beta_h: Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>> =
+            Arc::new(negative_powers_of_beta_h.iter().map(|(d, affine)| (*d, affine.prepare())).collect());
+
         let beta_h = E::G2Affine::deserialize_with_mode(&mut reader, compress, Validate::No)?;
-        let powers = Self { powers_of_beta_g, powers_of_beta_times_gamma_g, negative_powers_of_beta_h, beta_h };
+
+        let powers = Self {
+            powers_of_beta_g,
+            powers_of_beta_times_gamma_g,
+            negative_powers_of_beta_h,
+            prepared_negative_powers_of_beta_h,
+            beta_h,
+        };
         if let Validate::Yes = validate {
             powers.check()?;
         }
@@ -174,6 +205,7 @@ impl<E: PairingEngine> Valid for PowersOfG<E> {
         self.powers_of_beta_g.check()?;
         self.powers_of_beta_times_gamma_g.check()?;
         self.negative_powers_of_beta_h.check()?;
+        self.prepared_negative_powers_of_beta_h.check()?;
         self.beta_h.check()
     }
 }

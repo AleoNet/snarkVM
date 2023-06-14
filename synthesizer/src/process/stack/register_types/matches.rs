@@ -1,24 +1,27 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<N: Network> RegisterTypes<N> {
     /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.
-    pub fn matches_struct(&self, stack: &Stack<N>, operands: &[Operand<N>], struct_: &Struct<N>) -> Result<()> {
+    pub fn matches_struct(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operands: &[Operand<N>],
+        struct_: &Struct<N>,
+    ) -> Result<()> {
         // Retrieve the struct name.
         let struct_name = struct_.name();
         // Ensure the struct name is valid.
@@ -85,6 +88,10 @@ impl<N: Network> RegisterTypes<N> {
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
                     )
                 }
+                // If the operand is a block height type, throw an error.
+                Operand::BlockHeight => bail!(
+                    "Struct member '{struct_name}.{member_name}' cannot be from a block height in a non-finalize scope"
+                ),
             }
         }
         Ok(())
@@ -93,7 +100,12 @@ impl<N: Network> RegisterTypes<N> {
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
-    pub fn matches_record(&self, stack: &Stack<N>, operands: &[Operand<N>], record_type: &RecordType<N>) -> Result<()> {
+    pub fn matches_record(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operands: &[Operand<N>],
+        record_type: &RecordType<N>,
+    ) -> Result<()> {
         // Retrieve the record name.
         let record_name = record_type.name();
         // Ensure the record name is valid.
@@ -139,6 +151,9 @@ impl<N: Network> RegisterTypes<N> {
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
             Operand::Caller => {}
+            Operand::BlockHeight => {
+                bail!("Forbidden operation: Cannot cast a block height as a record owner")
+            }
         }
 
         // Ensure the operand types match the record entry types.
@@ -172,25 +187,31 @@ impl<N: Network> RegisterTypes<N> {
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{register_type}' in the operand '{operand}'.",
                             )
                         }
-                        // Ensure the program ID type (address) matches the member type.
+                        // Ensure the program ID type (address) matches the entry type.
                         Operand::ProgramID(..) => {
                             // Retrieve the program ID type.
                             let program_ref_type =
                                 RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                            // Ensure the program ID type matches the member type.
+                            // Ensure the program ID type matches the entry type.
                             ensure!(
                                 program_ref_type == RegisterType::Plaintext(*plaintext_type),
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{program_ref_type}' in the operand '{operand}'.",
                             )
                         }
-                        // Ensure the caller type (address) matches the member type.
+                        // Ensure the caller type (address) matches the entry type.
                         Operand::Caller => {
                             // Retrieve the caller type.
                             let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                            // Ensure the caller type matches the member type.
+                            // Ensure the caller type matches the entry type.
                             ensure!(
                                 caller_type == RegisterType::Plaintext(*plaintext_type),
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
+                            )
+                        }
+                        // Fail if the operand is a block height.
+                        Operand::BlockHeight => {
+                            bail!(
+                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found a block height in the operand '{operand}'."
                             )
                         }
                     }
