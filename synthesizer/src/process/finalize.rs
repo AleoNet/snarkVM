@@ -131,9 +131,88 @@ impl<N: Network> Process<N> {
                     )?;
 
                     // Evaluate the commands.
-                    for command in finalize.commands() {
-                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            command.finalize(stack, store, &mut registers)
+                    let mut counter = 0;
+                    let commands = finalize.commands();
+                    while counter < commands.len() {
+                        // A helper function to determine if the branch is taken.
+                        #[inline]
+                        fn branch_is_taken<N: Network, const VARIANT: u8>(
+                            branch: &Branch<N, VARIANT>,
+                            stack: &Stack<N>,
+                            registers: &mut FinalizeRegisters<N>,
+                        ) -> Result<Option<Identifier<N>>> {
+                            // Ensure the number of operands is correct.
+                            let operands = branch.operands();
+                            if operands.len() != 2 {
+                                bail!(
+                                    "Command '{}' expects 2 operands, found {} operands",
+                                    Branch::<N, VARIANT>::opcode(),
+                                    operands.len()
+                                )
+                            }
+
+                            // Retrieve the inputs.
+                            let input_a = registers.load(stack, &operands[0])?;
+                            let input_b = registers.load(stack, &operands[1])?;
+
+                            // Compare the operands.
+                            match VARIANT {
+                                // The `branch.eq` variant.
+                                0 if input_a == input_b => Ok(Some(*branch.position())),
+                                0 if input_a != input_b => Ok(None),
+                                // The `branch.neq` variant.
+                                1 if input_a == input_b => Ok(None),
+                                1 if input_a != input_b => Ok(Some(*branch.position())),
+                                _ => bail!("Invalid 'branch' variant: {VARIANT}"),
+                            }
+                        }
+
+                        let command = &commands[counter];
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match &command {
+                            Command::BranchEq(branch_eq) => {
+                                counter = match branch_is_taken(branch_eq, stack, &mut registers)? {
+                                    Some(label) => {
+                                        let index = match finalize.position_indices().get(&label) {
+                                            Some(index) => *index,
+                                            None => {
+                                                bail!("The label '{}' does not exist in the 'finalize' function", label)
+                                            }
+                                        };
+                                        ensure!(
+                                            counter < index,
+                                            "The label '{}' is defined before the 'branch' command",
+                                            label
+                                        );
+                                        index
+                                    }
+                                    None => counter + 1,
+                                };
+                                Ok(None)
+                            }
+                            Command::BranchNeq(branch_neq) => {
+                                counter = match branch_is_taken(branch_neq, stack, &mut registers)? {
+                                    Some(label) => {
+                                        let index = match finalize.position_indices().get(&label) {
+                                            Some(index) => *index,
+                                            None => {
+                                                bail!("The label '{}' does not exist in the 'finalize' function", label)
+                                            }
+                                        };
+                                        ensure!(
+                                            counter < index,
+                                            "The label '{}' is defined before the 'branch' command",
+                                            label
+                                        );
+                                        index
+                                    }
+                                    None => counter + 1,
+                                };
+                                Ok(None)
+                            }
+                            _ => {
+                                counter += 1;
+                                command.finalize(stack, store, &mut registers)
+                            }
                         }));
                         match result {
                             // If the evaluation succeeds with an operation, add it to the list.
@@ -146,7 +225,6 @@ impl<N: Network> Process<N> {
                             Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
                         }
                     }
-
                     lap!(timer, "Finalize transition for {function_name}");
                 }
             }
