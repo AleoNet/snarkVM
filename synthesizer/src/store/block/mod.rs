@@ -436,7 +436,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the block hash that contains the given `puzzle commitment`.
+    /// Returns the block height that contains the given `puzzle commitment`.
     fn find_block_height_from_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<Option<u32>> {
         match self.coinbase_puzzle_commitment_map().get_confirmed(puzzle_commitment)? {
             Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
