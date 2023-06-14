@@ -263,12 +263,27 @@ impl<N: Network> Finalize<N> {
                 // Ensure that the `Position` is not already defined.
                 ensure!(
                     self.position_indices.get(position.name()).is_none(),
-                    format!(" The position `{}` is not unique.", position.name())
+                    format!("The position `{}` is not unique", position.name())
                 );
                 // Track the index of the `Position`.
                 self.position_indices.insert(*position.name(), self.commands.len());
             }
-            Command::BranchEq(_) | Command::BranchNeq(_) => {}
+            Command::BranchEq(branch) => {
+                // Ensure that the position referenced by the branch is **not** yet defined.
+                // This ensures that the branche **only** jumps forward.
+                ensure!(
+                    self.position_indices.get(branch.position()).is_none(),
+                    format!("Cannot branch to an earlier position '{}' in the program", branch.position())
+                );
+            }
+            Command::BranchNeq(branch) => {
+                // Ensure that the position referenced by the branch is **not** yet defined.
+                // This ensures that the branche **only** jumps forward.
+                ensure!(
+                    self.position_indices.get(branch.position()).is_none(),
+                    format!("Cannot branch to an earlier position '{}' in the program", branch.position())
+                );
+            }
         }
 
         // Insert the command.
