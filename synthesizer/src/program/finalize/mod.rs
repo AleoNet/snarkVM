@@ -75,6 +75,11 @@ impl<N: Network> Finalize<N> {
         self.num_writes
     }
 
+    /// Returns the mapping of labels defined in `Position` commands to their index in `commands`.
+    pub const fn label_indices(&self) -> &IndexMap<Identifier<N>, usize> {
+        &self.label_indices
+    }
+
     /// Returns the minimum number of microcredits required to run the finalize.
     pub fn cost_in_microcredits(&self) -> Result<u64> {
         // Defines the cost of each command.
@@ -162,6 +167,7 @@ impl<N: Network> Finalize<N> {
             Command::Remove(_) => Ok(10_000),
             Command::Set(_) => Ok(1_000_000),
             Command::Position(_) => Ok(1_000),
+            Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
         };
         self.commands.iter().map(|command| cost(command)).sum()
     }
@@ -262,6 +268,7 @@ impl<N: Network> Finalize<N> {
                 // Add the label to mapping of labels to their index in `self.commands`.
                 self.label_indices.insert(*position.label(), self.commands.len());
             }
+            Command::BranchEq(_) | Command::BranchNeq(_) => {}
         }
 
         // Insert the command.

@@ -186,13 +186,13 @@ impl<N: Network> ToBytes for Command<N> {
             }
             Self::BranchEq(branch_eq) => {
                 // Write the variant.
-                5u8.write_le(&mut writer)?;
+                8u8.write_le(&mut writer)?;
                 // Write the `branch.eq` command.
                 branch_eq.write_le(&mut writer)
             }
             Self::BranchNeq(branch_neq) => {
                 // Write the variant.
-                6u8.write_le(&mut writer)?;
+                9u8.write_le(&mut writer)?;
                 // Write the `branch.neq` command.
                 branch_neq.write_le(&mut writer)
             }
