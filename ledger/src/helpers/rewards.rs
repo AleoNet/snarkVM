@@ -13,44 +13,44 @@
 // limitations under the License.
 
 use console::{network::prelude::*, types::Address};
-use synthesizer::coinbase::ProverSolution;
+use synthesizer::{block::Ratify, coinbase::ProverSolution};
 
 use anyhow::Result;
 
-/// Returns the prover rewards for a given coinbase reward and list of prover solutions.
+/// Returns the proving rewards for a given coinbase reward and list of prover solutions.
 ///
 /// The prover reward is defined as:
 ///   1/2 * coinbase_reward * (prover_target / cumulative_prover_target)
 ///   = (coinbase_reward * prover_target) / (2 * cumulative_prover_target)
-pub fn prover_rewards<N: Network>(
+pub fn proving_rewards<N: Network>(
     prover_solutions: Vec<ProverSolution<N>>,
     coinbase_reward: u64,
     cumulative_proof_target: u128,
-) -> Result<Vec<(Address<N>, u64)>> {
-    // Initialize a vector to store the prover rewards.
-    let mut prover_rewards: Vec<(Address<N>, u64)> = Vec::with_capacity(prover_solutions.len());
+) -> Result<Vec<Ratify<N>>> {
+    // Initialize a vector to store the proving rewards.
+    let mut proving_rewards = Vec::with_capacity(prover_solutions.len());
 
     // Calculate the rewards for the individual provers.
     for prover_solution in prover_solutions {
         // Compute the numerator.
         let numerator = (coinbase_reward as u128)
             .checked_mul(prover_solution.to_target()? as u128)
-            .ok_or_else(|| anyhow!("Prover reward numerator overflowed"))?;
+            .ok_or_else(|| anyhow!("Proving reward numerator overflowed"))?;
         // Compute the denominator.
         let denominator =
-            cumulative_proof_target.checked_mul(2).ok_or_else(|| anyhow!("Prover reward denominator overflowed"))?;
+            cumulative_proof_target.checked_mul(2).ok_or_else(|| anyhow!("Proving reward denominator overflowed"))?;
         // Compute the quotient.
         let quotient =
-            numerator.checked_div(denominator).ok_or_else(|| anyhow!("Prover reward quotient overflowed"))?;
+            numerator.checked_div(denominator).ok_or_else(|| anyhow!("Proving reward quotient overflowed"))?;
 
-        // Cast the prover reward as a u64.
+        // Cast the proving reward as a u64.
         let prover_reward = u64::try_from(quotient)?;
-        // Ensure the prover reward is within a safe bound.
+        // Ensure the proving reward is within a safe bound.
         ensure!(prover_reward <= 1_000_000_000, "Prover reward is too large");
-        // Append the prover reward to the vector.
-        prover_rewards.push((prover_solution.address(), prover_reward));
+        // Append the proving reward to the vector.
+        proving_rewards.push(Ratify::ProvingReward(prover_solution.address(), prover_reward));
     }
 
-    // Return the prover rewards.
-    Ok(prover_rewards)
+    // Return the proving rewards.
+    Ok(proving_rewards)
 }

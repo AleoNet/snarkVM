@@ -71,7 +71,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // TODO (raychu86): Pay the provers.
-        let (_prover_rewards, _staking_rewards) = match candidate_solutions {
+        let (proving_rewards, staking_rewards) = match candidate_solutions {
             Some(prover_solutions) => {
                 // Calculate the coinbase reward.
                 let coinbase_reward = coinbase_reward(
@@ -83,17 +83,32 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Calculate the proving rewards.
-                let prover_rewards = prover_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
+                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
                 // Calculate the staking rewards.
-                let staking_rewards = vec![0];
-                // Output the prover and staking rewards.
-                (prover_rewards, staking_rewards)
+                let staking_rewards = Vec::<Ratify<N>>::new();
+                // Output the proving and staking rewards.
+                (proving_rewards, staking_rewards)
             }
             None => {
-                // Output the prover and staking rewards.
+                // Output the proving and staking rewards.
                 (vec![], vec![])
             }
         };
+
+        // Construct the ratifications.
+        let mut ratifications = Vec::<Ratify<N>>::new();
+        ratifications.extend_from_slice(&proving_rewards);
+        ratifications.extend_from_slice(&staking_rewards);
+
+        // Compute the ratifications root.
+        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
+            // TODO (howardwu): Formalize the Merklization of each Ratify enum.
+            &ratifications
+                .iter()
+                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
+                .collect::<Result<Vec<_>, _>>()?,
+        )?
+        .root();
 
         // Construct the next coinbase target.
         let next_coinbase_target = coinbase_target(
@@ -133,13 +148,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             latest_state_root,
             transactions.to_transactions_root()?,
             transactions.to_finalize_root()?,
-            *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root(),
+            ratifications_root,
             coinbase_accumulator_point,
             metadata,
         )?;
 
         // Construct the new block.
-        Block::new(private_key, latest_block.hash(), header, transactions, vec![], coinbase, rng)
+        Block::new(private_key, latest_block.hash(), header, transactions, ratifications, coinbase, rng)
     }
 
     /// Adds the given block as the next block in the ledger.
