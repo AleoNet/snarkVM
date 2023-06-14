@@ -33,11 +33,22 @@ mod tests;
 use console::{
     account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
     network::prelude::*,
-    program::{Ciphertext, Entry, Identifier, Literal, Plaintext, ProgramID, Record, StatePath, Value},
+    program::{
+        Ciphertext,
+        Entry,
+        Identifier,
+        Literal,
+        Plaintext,
+        ProgramID,
+        Record,
+        StatePath,
+        Value,
+        RATIFICATIONS_DEPTH,
+    },
     types::{Field, Group},
 };
 use synthesizer::{
-    block::{Block, ConfirmedTransaction, Header, Metadata, Transaction, Transactions},
+    block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions},
     coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
     process::{FinalizeGlobalState, Query},
     program::Program,

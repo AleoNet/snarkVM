@@ -12,21 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub struct GenesisBytes;
+mod bytes;
+mod serialize;
+mod string;
 
-impl GenesisBytes {
-    pub const fn load_bytes() -> &'static [u8] {
-        include_bytes!("./resources/block.genesis")
-    }
+use console::{network::prelude::*, types::Address};
+
+type Variant = u8;
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum Ratify<N: Network> {
+    /// The proving reward.
+    ProvingReward(Address<N>, u64),
+    /// The staking reward.
+    StakingReward(Address<N>, u64),
 }
 
 #[cfg(test)]
-mod tests {
+mod test_helpers {
     use super::*;
+    use console::network::Testnet3;
 
-    #[test]
-    fn test_genesis_block() {
-        let bytes = GenesisBytes::load_bytes();
-        assert_eq!(22763, bytes.len() as u64, "Update me if serialization has changed");
+    type CurrentNetwork = Testnet3;
+
+    pub(crate) fn sample_ratify_objects(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
+        vec![Ratify::ProvingReward(Address::new(rng.gen()), 100), Ratify::StakingReward(Address::new(rng.gen()), 200)]
     }
 }
