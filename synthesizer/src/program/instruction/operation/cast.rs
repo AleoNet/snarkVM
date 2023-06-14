@@ -207,7 +207,7 @@ impl<N: Network> Cast<N> {
                     Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(literal_type)?,
                     _ => bail!("Casting to a literal requires a literal"),
                 };
-                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::from(value))))
+                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
@@ -340,7 +340,7 @@ impl<N: Network> Cast<N> {
                 registers.store_circuit(
                     stack,
                     &self.destination,
-                    circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::from(value))),
+                    circuit::Value::Plaintext(circuit::Plaintext::from(value)),
                 )
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_))) => {
@@ -508,7 +508,7 @@ impl<N: Network> Cast<N> {
                     Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(literal_type)?,
                     _ => bail!("Casting to a literal requires a literal"),
                 };
-                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::from(value))))
+                registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
