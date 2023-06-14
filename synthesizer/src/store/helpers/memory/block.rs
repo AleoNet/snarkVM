@@ -49,7 +49,7 @@ pub struct BlockMemory<N: Network> {
     /// The coinbase solution map.
     coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
-    coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, N::BlockHash>,
+    coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The signature map.
     signature_map: MemoryMap<N::BlockHash, Signature<N>>,
 }
@@ -67,7 +67,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
     type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
-    type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, N::BlockHash>;
+    type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.

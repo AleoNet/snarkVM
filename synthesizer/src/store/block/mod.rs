@@ -141,8 +141,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type RatificationsMap: for<'a> Map<'a, N::BlockHash, Vec<Ratify<N>>>;
     /// The mapping of `block hash` to `block coinbase solution`.
     type CoinbaseSolutionMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
-    /// The mapping of `puzzle commitment` to `block hash`.
-    type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, N::BlockHash>;
+    /// The mapping of `puzzle commitment` to `block height`.
+    type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
     /// The mapping of `block hash` to `block signature`.
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
 
@@ -339,7 +339,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the block coinbase puzzle commitment.
             if let Some(coinbase) = block.coinbase() {
                 for puzzle_commitment in coinbase.partial_solutions().iter().map(|s| s.commitment()) {
-                    self.coinbase_puzzle_commitment_map().insert(puzzle_commitment, block.hash())?;
+                    self.coinbase_puzzle_commitment_map().insert(puzzle_commitment, block.height())?;
                 }
             }
 
@@ -436,13 +436,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the block hash that contains the given `puzzle commitment`.
-    fn find_block_hash_from_puzzle_commitment(
-        &self,
-        puzzle_commitment: &PuzzleCommitment<N>,
-    ) -> Result<Option<N::BlockHash>> {
+    /// Returns the block height that contains the given `puzzle commitment`.
+    fn find_block_height_from_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<Option<u32>> {
         match self.coinbase_puzzle_commitment_map().get_confirmed(puzzle_commitment)? {
-            Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
+            Some(block_height) => Ok(Some(cow_to_copied!(block_height))),
             None => Ok(None),
         }
     }
@@ -843,12 +840,12 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.find_block_hash(transaction_id)
     }
 
-    /// Returns the block hash that contains the given `puzzle commitment`.
-    pub fn find_block_hash_from_puzzle_commitment(
+    /// Returns the block height that contains the given `puzzle commitment`.
+    pub fn find_block_height_from_puzzle_commitment(
         &self,
         puzzle_commitment: &PuzzleCommitment<N>,
-    ) -> Result<Option<N::BlockHash>> {
-        self.storage.find_block_hash_from_puzzle_commitment(puzzle_commitment)
+    ) -> Result<Option<u32>> {
+        self.storage.find_block_height_from_puzzle_commitment(puzzle_commitment)
     }
 }
 
