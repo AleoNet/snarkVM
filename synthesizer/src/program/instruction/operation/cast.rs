@@ -85,7 +85,7 @@ impl<N: Network> Debug for CastType<N> {
 impl<N: Network> FromStr for CastType<N> {
     type Err = Error;
 
-    /// Returns a register type from a string literal.
+    /// Returns a cast type from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
