@@ -82,7 +82,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     N::ANCHOR_TIME,
                 )?;
 
-                // Calculate the prover rewards.
+                // Calculate the proving rewards.
                 let prover_rewards = prover_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = vec![0];
@@ -133,12 +133,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             latest_state_root,
             transactions.to_transactions_root()?,
             transactions.to_finalize_root()?,
+            *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root(),
             coinbase_accumulator_point,
             metadata,
         )?;
 
         // Construct the new block.
-        Block::new(private_key, latest_block.hash(), header, transactions, coinbase, rng)
+        Block::new(private_key, latest_block.hash(), header, transactions, vec![], coinbase, rng)
     }
 
     /// Adds the given block as the next block in the ledger.

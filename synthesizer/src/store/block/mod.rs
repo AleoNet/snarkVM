@@ -14,7 +14,7 @@
 
 use crate::{
     atomic_batch_scope,
-    block::{Block, Header, NumFinalizeSize, Transaction, Transactions},
+    block::{Block, Header, NumFinalizeSize, Ratify, Transaction, Transactions},
     cow_to_cloned,
     cow_to_copied,
     store::{
@@ -137,6 +137,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransactionStorage: TransactionStorage<N, TransitionStorage = Self::TransitionStorage>;
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
+    /// The mapping of `block hash` to `block ratifications`.
+    type RatificationsMap: for<'a> Map<'a, N::BlockHash, Vec<Ratify<N>>>;
     /// The mapping of `block hash` to `block coinbase solution`.
     type CoinbaseSolutionMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
     /// The mapping of `puzzle commitment` to `block hash`.
@@ -163,6 +165,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn confirmed_transactions_map(&self) -> &Self::ConfirmedTransactionsMap;
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
+    /// Returns the ratifications map.
+    fn ratifications_map(&self) -> &Self::RatificationsMap;
     /// Returns the coinbase solution map.
     fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap;
     /// Returns the coinbase puzzle commitment map.
@@ -190,6 +194,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().start_atomic();
         self.confirmed_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
+        self.ratifications_map().start_atomic();
         self.coinbase_solution_map().start_atomic();
         self.coinbase_puzzle_commitment_map().start_atomic();
         self.signature_map().start_atomic();
@@ -205,6 +210,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.transactions_map().is_atomic_in_progress()
             || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
+            || self.ratifications_map().is_atomic_in_progress()
             || self.coinbase_solution_map().is_atomic_in_progress()
             || self.coinbase_puzzle_commitment_map().is_atomic_in_progress()
             || self.signature_map().is_atomic_in_progress()
@@ -220,6 +226,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().atomic_checkpoint();
         self.confirmed_transactions_map().atomic_checkpoint();
         self.transaction_store().atomic_checkpoint();
+        self.ratifications_map().atomic_checkpoint();
         self.coinbase_solution_map().atomic_checkpoint();
         self.coinbase_puzzle_commitment_map().atomic_checkpoint();
         self.signature_map().atomic_checkpoint();
@@ -235,6 +242,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().clear_latest_checkpoint();
         self.confirmed_transactions_map().clear_latest_checkpoint();
         self.transaction_store().clear_latest_checkpoint();
+        self.ratifications_map().clear_latest_checkpoint();
         self.coinbase_solution_map().clear_latest_checkpoint();
         self.coinbase_puzzle_commitment_map().clear_latest_checkpoint();
         self.signature_map().clear_latest_checkpoint();
@@ -250,6 +258,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().atomic_rewind();
         self.confirmed_transactions_map().atomic_rewind();
         self.transaction_store().atomic_rewind();
+        self.ratifications_map().atomic_rewind();
         self.coinbase_solution_map().atomic_rewind();
         self.coinbase_puzzle_commitment_map().atomic_rewind();
         self.signature_map().atomic_rewind();
@@ -265,6 +274,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().abort_atomic();
         self.confirmed_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
+        self.ratifications_map().abort_atomic();
         self.coinbase_solution_map().abort_atomic();
         self.coinbase_puzzle_commitment_map().abort_atomic();
         self.signature_map().abort_atomic();
@@ -280,6 +290,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.transactions_map().finish_atomic()?;
         self.confirmed_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()?;
+        self.ratifications_map().finish_atomic()?;
         self.coinbase_solution_map().finish_atomic()?;
         self.coinbase_puzzle_commitment_map().finish_atomic()?;
         self.signature_map().finish_atomic()
@@ -318,6 +329,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 // Store the transaction.
                 self.transaction_store().insert(&transaction)?;
             }
+
+            // Store the block ratifications.
+            self.ratifications_map().insert(block.hash(), block.ratifications().clone())?;
 
             // Store the block coinbase solution.
             self.coinbase_solution_map().insert(block.hash(), block.coinbase().cloned())?;
@@ -384,6 +398,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 // Remove the transaction.
                 self.transaction_store().remove(transaction_id)?;
             }
+
+            // Remove the block ratifications.
+            self.ratifications_map().remove(block_hash)?;
 
             // Remove the block coinbase solution.
             self.coinbase_solution_map().remove(block_hash)?;
@@ -586,6 +603,14 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         to_confirmed_transaction(confirmed_type, transaction, blob).map(Some)
     }
 
+    /// Returns the block ratifications for the given `block hash`.
+    fn get_block_ratifications(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<Ratify<N>>>> {
+        match self.ratifications_map().get_confirmed(block_hash)? {
+            Some(ratifications) => Ok(Some(cow_to_cloned!(ratifications))),
+            None => Ok(None),
+        }
+    }
+
     /// Returns the block coinbase solution for the given `block hash`.
     fn get_block_coinbase(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
         match self.coinbase_solution_map().get_confirmed(block_hash)? {
@@ -630,6 +655,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(transactions) => transactions,
             None => bail!("Missing transactions for block {height} ('{block_hash}')"),
         };
+        // Retrieve the block ratifications.
+        let ratifications = match self.get_block_ratifications(block_hash)? {
+            Some(ratifications) => ratifications,
+            None => bail!("Missing ratifications for block {height} ('{block_hash}')"),
+        };
         // Retrieve the block coinbase solution.
         let coinbase = match self.get_block_coinbase(block_hash) {
             Ok(coinbase_solution) => coinbase_solution,
@@ -642,7 +672,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         };
 
         // Return the block.
-        Ok(Some(Block::from(previous_hash, header, transactions, coinbase, signature)?))
+        Ok(Some(Block::from(previous_hash, header, transactions, ratifications, coinbase, signature)?))
     }
 }
 
@@ -861,6 +891,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block transactions for the given `block hash`.
     pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
         self.storage.get_block_transactions(block_hash)
+    }
+
+    /// Returns the block ratifications for the given `block hash`.
+    pub fn get_block_ratifications(&self, block_hash: &N::BlockHash) -> Result<Option<Vec<Ratify<N>>>> {
+        self.storage.get_block_ratifications(block_hash)
     }
 
     /// Returns the block coinbase solution for the given `block hash`.
