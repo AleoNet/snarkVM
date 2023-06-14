@@ -36,7 +36,6 @@ fn test_process_execute() {
         // Add the program into the process.
         let mut process = process.clone();
         let program = test.program();
-        println!("program:\n{}", program);
         process.add_program(program).unwrap();
 
         // Initialize the RNG.
