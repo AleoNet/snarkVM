@@ -204,7 +204,7 @@ impl<N: Network> Finalize<N> {
                     // Ensure the instruction is not a `call`.
                     Instruction::Call(_) => bail!("Forbidden operation: Finalize cannot invoke a 'call'"),
                     // Ensure the instruction is not a `cast` to a record.
-                    Instruction::Cast(cast) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)) => {
+                    Instruction::Cast(cast) if !matches!(cast.destination_type(), &RegisterType::Plaintext(_)) => {
                         bail!("Forbidden operation: Finalize cannot cast to a record")
                     }
                     _ => {}

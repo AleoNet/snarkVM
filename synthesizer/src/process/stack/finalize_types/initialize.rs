@@ -363,8 +363,8 @@ impl<N: Network> FinalizeTypes<N> {
 
                 // Ensure the casted register type is defined.
                 let register_type = match instruction {
-                    Instruction::Cast(cast) => cast.register_type(),
-                    Instruction::CastLossy(cast) => cast.register_type(),
+                    Instruction::Cast(cast) => cast.destination_type(),
+                    Instruction::CastLossy(cast) => cast.destination_type(),
                     _ => unreachable!("instruction has been checked to be a cast operation"),
                 };
                 match register_type {
