@@ -21,7 +21,7 @@ use utilities::*;
 use console::{
     account::{PrivateKey, ViewKey},
     network::{prelude::*, Testnet3},
-    program::{Entry, Identifier, Literal, Plaintext, Record, Value, U64},
+    program::{Entry, Identifier, Literal, Plaintext, Record, Value, RATIFICATIONS_DEPTH, U64},
     types::Field,
 };
 use snarkvm_synthesizer::{
@@ -30,6 +30,7 @@ use snarkvm_synthesizer::{
     ConfirmedTransaction,
     ConsensusStorage,
     ConsensusStore,
+    FinalizeGlobalState,
     Header,
     Metadata,
     Transaction,
@@ -64,7 +65,12 @@ fn test_vm_execute_and_finalize() {
         // Deploy the program.
         let transaction =
             vm.deploy(&genesis_private_key, test.program(), (fee_records.pop().unwrap().0, 0), None, rng).unwrap();
-        let transactions = vm.speculate([transaction].iter()).unwrap();
+        let transactions = vm
+            .speculate(
+                FinalizeGlobalState::from(vm.block_store().heights().max().map_or(0, |height| *height), [0u8; 32]),
+                [transaction].iter(),
+            )
+            .unwrap();
         let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
 
@@ -163,7 +169,13 @@ fn test_vm_execute_and_finalize() {
                     output
                         .insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
                     // Speculate on the transaction.
-                    let transactions = match vm.speculate([transaction].iter()) {
+                    let transactions = match vm.speculate(
+                        FinalizeGlobalState::from(
+                            vm.block_store().heights().max().map_or(0, |height| *height),
+                            [0u8; 32],
+                        ),
+                        [transaction].iter(),
+                    ) {
                         Ok(transactions) => {
                             output.insert(
                                 serde_yaml::Value::String("speculate".to_string()),
@@ -281,7 +293,12 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let transactions = vm.speculate(transactions.iter()).unwrap();
+        let transactions = vm
+            .speculate(
+                FinalizeGlobalState::from(vm.block_store().heights().max().map_or(0, |height| *height), [0u8; 32]),
+                transactions.iter(),
+            )
+            .unwrap();
         let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
@@ -310,6 +327,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         previous_block.height() + 1,
         CurrentNetwork::STARTING_SUPPLY,
         0,
+        0,
         CurrentNetwork::GENESIS_COINBASE_TARGET,
         CurrentNetwork::GENESIS_PROOF_TARGET,
         previous_block.last_coinbase_target(),
@@ -319,14 +337,15 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     // Construct the block header.
     let header = Header::from(
         *vm.block_store().current_state_root(),
-        transactions.to_root().unwrap(),
-        Field::zero(),
+        transactions.to_transactions_root().unwrap(),
+        transactions.to_finalize_root().unwrap(),
+        *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),
         Field::zero(),
         metadata,
     )?;
 
     // Construct the new block.
-    Block::new(private_key, previous_block.hash(), header, transactions, None, rng)
+    Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)
 }
 
 // A helper function to invoke `credits.aleo/split`.

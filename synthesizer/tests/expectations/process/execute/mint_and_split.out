@@ -8,12 +8,12 @@
     {
       owner: aleo1j2hfs6yru47h2nvsjdefwtw6nwaj0y4zcl02juyy29txm7nt6y9qln7uhp.private,
       microcredits: 50u64.private,
-      _nonce: 6697573578252224130760802721828817645635064955425012266449207961415823671584group.public
+      _nonce: 3411817647166723249209455478091802003564060058588019002010436326092290983101group.public
     }
   - |-
     {
       owner: aleo1j2hfs6yru47h2nvsjdefwtw6nwaj0y4zcl02juyy29txm7nt6y9qln7uhp.private,
       microcredits: 50u64.private,
-      _nonce: 1934010419170189618788494556114317443625926726858803523368268025659981886589group.public
+      _nonce: 835119414177601242064025769775125152925898296567474178445874119363739372246group.public
     }
 - Input record for 'mint_and_split.aleo' must belong to the signer
