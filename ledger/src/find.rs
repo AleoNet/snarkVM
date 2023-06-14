@@ -26,11 +26,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the block hash that contains the given `puzzle commitment`.
-    pub fn find_block_hash_from_puzzle_commitment(
+    pub fn find_block_height_from_puzzle_commitment(
         &self,
         puzzle_commitment: &PuzzleCommitment<N>,
-    ) -> Result<Option<N::BlockHash>> {
-        self.vm.block_store().find_block_hash_from_puzzle_commitment(puzzle_commitment)
+    ) -> Result<Option<u32>> {
+        self.vm.block_store().find_block_height_from_puzzle_commitment(puzzle_commitment)
     }
 
     /// Returns the transaction ID that contains the given `program ID`.

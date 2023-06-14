@@ -55,7 +55,7 @@ pub struct BlockDB<N: Network> {
     /// The coinbase solution map.
     coinbase_solution_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
-    coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, N::BlockHash>,
+    coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, u32>,
     /// The signature map.
     signature_map: DataMap<N::BlockHash, Signature<N>>,
 }
@@ -73,7 +73,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type TransitionStorage = TransitionDB<N>;
     type RatificationsMap = DataMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
-    type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, N::BlockHash>;
+    type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, u32>;
     type SignatureMap = DataMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
