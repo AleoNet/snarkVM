@@ -19,8 +19,8 @@ use console::{network::prelude::*, program::Identifier};
 /// Indicates a position to which the program can branch to.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Position<N: Network> {
-    /// The label to reference when branching to this position.
-    label: Identifier<N>,
+    /// The name to reference when branching to this position.
+    name: Identifier<N>,
 }
 
 impl<N: Network> Position<N> {
@@ -30,10 +30,10 @@ impl<N: Network> Position<N> {
         Opcode::Command("position")
     }
 
-    /// Returns the label.
+    /// Returns the name.
     #[inline]
-    pub fn label(&self) -> &Identifier<N> {
-        &self.label
+    pub fn name(&self) -> &Identifier<N> {
+        &self.name
     }
 }
 
@@ -57,15 +57,15 @@ impl<N: Network> Parser for Position<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
-        // Parse the label from the string.
-        let (string, label) = Identifier::parse(string)?;
+        // Parse the name from the string.
+        let (string, name) = Identifier::parse(string)?;
 
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { label }))
+        Ok((string, Self { name }))
     }
 }
 
@@ -99,26 +99,26 @@ impl<N: Network> Display for Position<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
         write!(f, "{} ", Self::opcode())?;
-        // Print the label.
-        write!(f, "{};", self.label)
+        // Print the name.
+        write!(f, "{};", self.name)
     }
 }
 
 impl<N: Network> FromBytes for Position<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the label.
-        let label = Identifier::read_le(&mut reader)?;
+        // Read the name.
+        let name = Identifier::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { label })
+        Ok(Self { name })
     }
 }
 
 impl<N: Network> ToBytes for Position<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the label.
-        self.label.write_le(&mut writer)
+        // Write the name.
+        self.name.write_le(&mut writer)
     }
 }
 
@@ -133,6 +133,6 @@ mod tests {
     fn test_parse() {
         let (string, position) = Position::<CurrentNetwork>::parse("position exit;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(position.label, Identifier::from_str("exit").unwrap());
+        assert_eq!(position.name, Identifier::from_str("exit").unwrap());
     }
 }

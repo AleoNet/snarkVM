@@ -15,9 +15,9 @@
 use crate::{Opcode, Operand};
 use console::{network::prelude::*, program::Identifier};
 
-/// Jumps to the position indicated by `label`, if `first` equals `second`.
+/// Jumps to `position`, if `first` equals `second`.
 pub type BranchEq<N> = Branch<N, { Variant::BranchEq as u8 }>;
-/// Jumps to position indicated by `label`, if `first` does **not** equal `second`.
+/// Jumps to `position`, if `first` does **not** equal `second`.
 pub type BranchNeq<N> = Branch<N, { Variant::BranchNeq as u8 }>;
 
 enum Variant {
@@ -25,13 +25,13 @@ enum Variant {
     BranchNeq,
 }
 
-/// Compares `first` and `second` and jumps to position indicated by `label`, if the condition is met.
+/// Compares `first` and `second` and jumps to `position`, if the condition is met.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Branch<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,
-    /// The label.
-    label: Identifier<N>,
+    /// The position.
+    position: Identifier<N>,
 }
 
 impl<N: Network, const VARIANT: u8> Branch<N, VARIANT> {
@@ -54,10 +54,10 @@ impl<N: Network, const VARIANT: u8> Branch<N, VARIANT> {
         &self.operands
     }
 
-    /// Returns the label.
+    /// Returns the position.
     #[inline]
-    pub fn label(&self) -> &Identifier<N> {
-        &self.label
+    pub fn position(&self) -> &Identifier<N> {
+        &self.position
     }
 }
 
@@ -81,10 +81,10 @@ impl<N: Network, const VARIANT: u8> Parser for Branch<N, VARIANT> {
         let (string, _) = tag("to")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the label from the string.
-        let (string, label) = Identifier::parse(string)?;
+        // Parse the position from the string.
+        let (string, position) = Identifier::parse(string)?;
 
-        Ok((string, Self { operands: vec![first, second], label }))
+        Ok((string, Self { operands: vec![first, second], position }))
     }
 }
 
@@ -124,7 +124,7 @@ impl<N: Network, const VARIANT: u8> Display for Branch<N, VARIANT> {
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
         self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
-        write!(f, "to {}", self.label)
+        write!(f, "to {}", self.position)
     }
 }
 
@@ -137,11 +137,11 @@ impl<N: Network, const VARIANT: u8> FromBytes for Branch<N, VARIANT> {
         for _ in 0..2 {
             operands.push(Operand::read_le(&mut reader)?);
         }
-        // Read the label.
-        let label = Identifier::read_le(&mut reader)?;
+        // Read the position.
+        let position = Identifier::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, label })
+        Ok(Self { operands, position })
     }
 }
 
@@ -154,8 +154,8 @@ impl<N: Network, const VARIANT: u8> ToBytes for Branch<N, VARIANT> {
         }
         // Write the operands.
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
-        // Write the label.
-        self.label.write_le(&mut writer)
+        // Write the position.
+        self.position.write_le(&mut writer)
     }
 }
 
@@ -177,13 +177,13 @@ mod tests {
         assert_eq!(branch.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(branch.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(branch.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(branch.label, Identifier::from_str("exit").unwrap(), "The label is incorrect");
+        assert_eq!(branch.position, Identifier::from_str("exit").unwrap(), "The position is incorrect");
 
         let (string, branch) = BranchNeq::<CurrentNetwork>::parse("branch.neq r3 r4 to start").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(branch.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(branch.operands[0], Operand::Register(Register::Locator(3)), "The first operand is incorrect");
         assert_eq!(branch.operands[1], Operand::Register(Register::Locator(4)), "The second operand is incorrect");
-        assert_eq!(branch.label, Identifier::from_str("start").unwrap(), "The label is incorrect");
+        assert_eq!(branch.position, Identifier::from_str("start").unwrap(), "The position is incorrect");
     }
 }

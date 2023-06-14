@@ -61,9 +61,9 @@ pub enum Command<N: Network> {
     Set(Set<N>),
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
-    /// Jumps to the position indicated by `label`, if `first` equals `second`.
+    /// Jumps to the `position`, if `first` equals `second`.
     BranchEq(BranchEq<N>),
-    /// Jumps to the position indicated by `label`, if `first` does **not** equal `second`.
+    /// Jumps to the `position`, if `first` does **not** equal `second`.
     BranchNeq(BranchNeq<N>),
 }
 

@@ -141,7 +141,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize.name(), rand_chacha)?,
             Command::Remove(remove) => self.check_remove(stack, finalize.name(), remove)?,
             Command::Set(set) => self.check_set(stack, finalize.name(), set)?,
-            // Note that the `Position` labels are checked for uniqueness when constructing `Finalize`.
+            // Note that the `Position`s are checked for uniqueness when constructing `Finalize`.
             Command::Position(_) => (),
             Command::BranchEq(branch_eq) => self.check_branch(stack, finalize, branch_eq)?,
             Command::BranchNeq(branch_neq) => self.check_branch(stack, finalize, branch_neq)?,
@@ -179,9 +179,9 @@ impl<N: Network> FinalizeTypes<N> {
         );
         // Check that the `Position` has been defined.
         ensure!(
-            finalize.label_indices().get(branch.label()).is_some(),
+            finalize.position_indices().get(branch.position()).is_some(),
             "Command 'branch.eq' expects a defined position to jump to. Found undefined position '{}'",
-            branch.label()
+            branch.position()
         );
         Ok(())
     }
