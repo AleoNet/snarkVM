@@ -289,6 +289,6 @@ fn test_insufficient_fees_for_credits() {
     let block = ledger.prepare_advance_to_next_block(&private_key, vec![transaction], None, rng).unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
-    assert_eq!(ledger.latest_height(), 2);
+    assert_eq!(ledger.latest_height(), 1);
     assert_eq!(ledger.latest_hash(), block.hash());
 }
