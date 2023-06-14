@@ -840,7 +840,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.find_block_hash(transaction_id)
     }
 
-    /// Returns the block hash that contains the given `puzzle commitment`.
+    /// Returns the block height that contains the given `puzzle commitment`.
     pub fn find_block_height_from_puzzle_commitment(
         &self,
         puzzle_commitment: &PuzzleCommitment<N>,
