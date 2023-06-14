@@ -141,7 +141,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type RatificationsMap: for<'a> Map<'a, N::BlockHash, Vec<Ratify<N>>>;
     /// The mapping of `block hash` to `block coinbase solution`.
     type CoinbaseSolutionMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
-    /// The mapping of `puzzle commitment` to `block hash`.
+    /// The mapping of `puzzle commitment` to `block height`.
     type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
     /// The mapping of `block hash` to `block signature`.
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
