@@ -438,6 +438,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Invalid finalize root: expected '{expected_finalize_root}', got '{}'", block.finalize_root())
         }
 
+        /* Ratifications Root */
+
+        // Compute the ratifications root of the block.
+        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
+            &block
+                .ratifications()
+                .iter()
+                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
+                .collect::<Result<Vec<_>, _>>()?,
+        )?
+        .root();
+        // Ensure that the block's ratifications root matches the declared ratifications.
+        if block.ratifications_root() != ratifications_root {
+            bail!("Invalid ratifications root: expected '{ratifications_root}', got '{}'", block.ratifications_root())
+        }
+
         /* Coinbase Proof */
 
         // Ensure the coinbase solution is valid, if it exists.
