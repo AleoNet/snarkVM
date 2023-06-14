@@ -23,7 +23,7 @@ use reqwest::Url;
 use crate::{
     console::{
         account::{PrivateKey, ViewKey},
-        program::{Ciphertext, Field, Identifier, Network, Plaintext, ProgramID, Record, Response, Value},
+        program::{Ciphertext, Field, Identifier, Network, Plaintext, ProgramID, Record, Value},
     },
     synthesizer::{
         store::helpers::memory::{BlockMemory, ConsensusMemory},

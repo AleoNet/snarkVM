@@ -22,8 +22,8 @@ impl<N: Network> Client<N> {
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
         inputs: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>>,
-        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
-    ) -> Result<(Response<N>, Response<N>, Transaction<N>)> {
+        (credits, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+    ) -> Result<Transaction<N>> {
         let rng = &mut rand::thread_rng();
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
@@ -39,16 +39,15 @@ impl<N: Network> Client<N> {
             }
         }
 
-        // Compute the authorization.
-        let authorization = self.vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Compute the execution.
-        let (response, execution, _) = self.vm.execute(authorization, Some(query.clone()), rng)?;
-        // Execute the fee.
-        let (fee_response, fee, _) =
-            self.vm.execute_fee(private_key, credits, fee_in_microcredits, Some(query), rng)?;
-
-        // Return the response and transaction.
-        Ok((response, fee_response, Transaction::from_execution(execution, Some(fee))?))
+        // Return the transaction
+        self.vm.execute(
+            private_key,
+            (program_id, function_name),
+            inputs.into_iter(),
+            Some((credits, priority_fee_in_microcredits)),
+            Some(query),
+            rng,
+        )
     }
 }
 
@@ -91,8 +90,7 @@ mod tests {
         // Prepare the inputs.
         let inputs = [record.to_string(), address.to_string(), (**amount).to_string()];
         // Execute the program.
-        let (_response, _fee_response, transaction) =
-            client.execute(&private_key, "credits.aleo", "transfer", inputs, (fee_record, 10)).unwrap();
+        let transaction = client.execute(&private_key, "credits.aleo", "transfer", inputs, (fee_record, 10)).unwrap();
         assert_eq!(transaction.transitions().count(), 2);
 
         // let response = reqwest::blocking::Client::new()
