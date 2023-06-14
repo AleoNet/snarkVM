@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.11.7"
+version = "0.12.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -27,14 +27,6 @@ edition = "2021"
 name = "block"
 path = "benches/block.rs"
 harness = false
-
-# Note: This benchmark is disabled since its use of macros significantly increases build times.
-#   Currently, it is only used to back into costs for the finalize operations and does not need
-#   to be run on every build.
-# [[bench]]
-# name = "instruction"
-# path = "benches/instruction.rs"
-# harness = false
 
 [[bench]]
 name = "transaction"
@@ -72,39 +64,39 @@ snark = [ "snarkvm-synthesizer-snark" ]
 
 [dependencies.snarkvm-synthesizer-coinbase]
 path = "./coinbase"
-version = "=0.11.7"
+version = "=0.12.0"
 optional = true
 
 [dependencies.snarkvm-synthesizer-snark]
 path = "./snark"
-version = "=0.11.7"
+version = "=0.12.0"
 optional = true
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "=0.11.7"
+version = "=0.12.0"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "=0.11.7"
+version = "=0.12.0"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "=0.11.7"
+version = "=0.12.0"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.11.7"
+version = "=0.12.0"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.11.7"
+version = "=0.12.0"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.11.7"
+version = "=0.12.0"
 default-features = false
 
 [dependencies.aleo-std]
