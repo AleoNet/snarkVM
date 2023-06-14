@@ -1,4 +1,5 @@
 /*
+randomness: 12345
 cases:
   - function: hello
     inputs: [0u32, 1u32]

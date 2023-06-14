@@ -1,4 +1,5 @@
 /*
+randomness: 54321
 cases:
   - function: generator
     inputs: [1scalar]

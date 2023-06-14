@@ -1,4 +1,5 @@
 /*
+randomness: 808
 cases:
   - function: test_cast
     inputs: [0group]
