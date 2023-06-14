@@ -1,0 +1,22 @@
+- execute:
+    test_branch.aleo/run_test:
+      outputs: []
+      finalize:
+      - 0u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"2126606953213833323983424945474545491107020763759058528548194133718833317178field","checksum":"237596743483963356614031037933471558660565794435651241723023563340941649705field","value":"record1qyqsplhuzxkta00jsdpmhc8yuaqvczds3ucapmkzkfpe9qxxeqx6tesgqyxx66trwfhkxun9v35hguerqqpqzqyy6nwp8zlavf7az3ftkq9g0t9r2lfh5jl882ud72fyx0pc5w4qz2vw3fjuy4z0g3x5qezvcenzuavuyrtycf0ttk88tchrcmplycgs55u9jf4"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    test_branch.aleo/run_test:
+      outputs: []
+      finalize:
+      - 1u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"3056344507507675022493404160426012006816483789263690431822214184908847503591field","checksum":"1634235206097883176824819150640885330381569801250349174090553265354674148254field","value":"record1qyqsqe3wrrama6mv48rvr4etmxpdwle4ltmgvc86jenxt5x5ce9warq8qyxx66trwfhkxun9v35hguerqqpqzq9lqh84xm5c2j2hfg7pgpkjy3xcjnjerg42xac94l2dgm9n365nzqsllylj7w0ywu0u7mcumc0cl4ddzlvfc73u8799pxuk9xyu4gmpyqla2pc"}'
+      finalize: []
+  speculate: the execution was rejected
+  add_next_block: succeeded.

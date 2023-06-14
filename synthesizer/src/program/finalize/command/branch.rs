@@ -65,24 +65,34 @@ impl<N: Network, const VARIANT: u8> Parser for Branch<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
         // Parse the first operand from the string.
         let (string, first) = Operand::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
         // Parse the second operand from the string.
         let (string, second) = Operand::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
         // Parse the "to" from the string.
         let (string, _) = tag("to")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the position from the string.
         let (string, position) = Identifier::parse(string)?;
+
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the ";" from the string.
+        let (string, _) = tag(";")(string)?;
 
         Ok((string, Self { operands: vec![first, second], position }))
     }
@@ -124,7 +134,7 @@ impl<N: Network, const VARIANT: u8> Display for Branch<N, VARIANT> {
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
         self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
-        write!(f, "to {}", self.position)
+        write!(f, "to {};", self.position)
     }
 }
 
@@ -172,14 +182,14 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, branch) = BranchEq::<CurrentNetwork>::parse("branch.eq r0 r1 to exit").unwrap();
+        let (string, branch) = BranchEq::<CurrentNetwork>::parse("branch.eq r0 r1 to exit;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(branch.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(branch.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(branch.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
         assert_eq!(branch.position, Identifier::from_str("exit").unwrap(), "The position is incorrect");
 
-        let (string, branch) = BranchNeq::<CurrentNetwork>::parse("branch.neq r3 r4 to start").unwrap();
+        let (string, branch) = BranchNeq::<CurrentNetwork>::parse("branch.neq r3 r4 to start;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(branch.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(branch.operands[0], Operand::Register(Register::Locator(3)), "The first operand is incorrect");
