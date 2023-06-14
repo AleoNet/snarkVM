@@ -31,7 +31,7 @@ type CurrentAleo = AleoV0;
 
 /// Samples a new finalize state.
 fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
-    FinalizeGlobalState::new(block_height)
+    FinalizeGlobalState::from(block_height, [0u8; 32])
 }
 
 #[test]

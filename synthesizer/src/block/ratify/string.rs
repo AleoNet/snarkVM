@@ -14,15 +14,25 @@
 
 use super::*;
 
-impl FromBytes for LiteralType {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index = u8::read_le(&mut reader)?;
-        FromPrimitive::from_u8(index).ok_or_else(|| error("Failed to deserialize literal type variant {index}"))
+impl<N: Network> FromStr for Ratify<N> {
+    type Err = Error;
+
+    /// Initializes the ratify object from a JSON-string.
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(input)?)
     }
 }
 
-impl ToBytes for LiteralType {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.type_id().write_le(&mut writer)
+impl<N: Network> Debug for Ratify<N> {
+    /// Prints the ratify object as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Ratify<N> {
+    /// Displays the ratify object as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

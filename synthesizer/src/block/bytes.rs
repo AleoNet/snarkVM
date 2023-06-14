@@ -25,13 +25,23 @@ impl<N: Network> FromBytes for Block<N> {
             return Err(error("Invalid block version"));
         }
 
-        // Read the block.
+        // Read the block hash.
         let block_hash: N::BlockHash = FromBytes::read_le(&mut reader)?;
+        // Read the previous block hash.
         let previous_hash = FromBytes::read_le(&mut reader)?;
+        // Read the header.
         let header = FromBytes::read_le(&mut reader)?;
+        // Read the transactions.
         let transactions = FromBytes::read_le(&mut reader)?;
 
-        // Write the coinbase.
+        // Read the ratifications.
+        let num_ratifications = u32::read_le(&mut reader)?;
+        let mut ratifications = Vec::with_capacity(num_ratifications as usize);
+        for _ in 0..num_ratifications {
+            ratifications.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        // Read the coinbase.
         let coinbase_variant = u8::read_le(&mut reader)?;
         let coinbase = match coinbase_variant {
             0 => None,
@@ -43,8 +53,8 @@ impl<N: Network> FromBytes for Block<N> {
         let signature = FromBytes::read_le(&mut reader)?;
 
         // Construct the block.
-        let block =
-            Self::from(previous_hash, header, transactions, coinbase, signature).map_err(|e| error(e.to_string()))?;
+        let block = Self::from(previous_hash, header, transactions, ratifications, coinbase, signature)
+            .map_err(|e| error(e.to_string()))?;
 
         // Ensure the block hash matches.
         match block_hash == block.hash() {
@@ -61,11 +71,20 @@ impl<N: Network> ToBytes for Block<N> {
         // Write the version.
         0u8.write_le(&mut writer)?;
 
-        // Write the block.
+        // Write the block hash.
         self.block_hash.write_le(&mut writer)?;
+        // Write the previous block hash.
         self.previous_hash.write_le(&mut writer)?;
+        // Write the header.
         self.header.write_le(&mut writer)?;
+        // Write the transactions.
         self.transactions.write_le(&mut writer)?;
+
+        // Write the ratifications.
+        (u32::try_from(self.ratifications.len()).map_err(|e| error(e.to_string())))?.write_le(&mut writer)?;
+        for ratification in &self.ratifications {
+            ratification.write_le(&mut writer)?;
+        }
 
         // Write the coinbase solution.
         match self.coinbase {

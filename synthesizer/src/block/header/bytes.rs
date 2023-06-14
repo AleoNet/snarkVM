@@ -29,12 +29,20 @@ impl<N: Network> FromBytes for Header<N> {
         let previous_state_root = Field::<N>::read_le(&mut reader)?;
         let transactions_root = Field::<N>::read_le(&mut reader)?;
         let finalize_root = Field::<N>::read_le(&mut reader)?;
+        let ratifications_root = Field::<N>::read_le(&mut reader)?;
         let coinbase_accumulator_point = Field::<N>::read_le(&mut reader)?;
         let metadata = Metadata::read_le(&mut reader)?;
 
         // Construct the block header.
-        Self::from(previous_state_root, transactions_root, finalize_root, coinbase_accumulator_point, metadata)
-            .map_err(|e| error(e.to_string()))
+        Self::from(
+            previous_state_root,
+            transactions_root,
+            finalize_root,
+            ratifications_root,
+            coinbase_accumulator_point,
+            metadata,
+        )
+        .map_err(|e| error(e.to_string()))
     }
 }
 
@@ -49,6 +57,7 @@ impl<N: Network> ToBytes for Header<N> {
         self.previous_state_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
         self.finalize_root.write_le(&mut writer)?;
+        self.ratifications_root.write_le(&mut writer)?;
         self.coinbase_accumulator_point.write_le(&mut writer)?;
         self.metadata.write_le(&mut writer)
     }

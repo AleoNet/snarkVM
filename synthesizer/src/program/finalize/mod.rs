@@ -151,11 +151,14 @@ impl<N: Network> Finalize<N> {
             Command::Instruction(Instruction::SubWrapped(_)) => Ok(2_000),
             Command::Instruction(Instruction::Ternary(_)) => Ok(2_000),
             Command::Instruction(Instruction::Xor(_)) => Ok(2_000),
+            // TODO: The following 'finalize' commands are currently priced higher than expected.
+            //  Expect these numbers to change as their usage is stabilized.
             Command::Contains(_) => Ok(250_000),
             Command::Get(_) => Ok(500_000),
             Command::GetOrUse(_) => Ok(500_000),
-            Command::Set(_) => Ok(1_000_000),
+            Command::RandChaCha(_) => Ok(500_000),
             Command::Remove(_) => Ok(10_000),
+            Command::Set(_) => Ok(1_000_000),
         };
         self.commands.iter().map(|command| cost(command)).sum()
     }
@@ -232,11 +235,18 @@ impl<N: Network> Finalize<N> {
                     "Destination register must be a locator"
                 );
             }
-            Command::Set(_) => {
+            Command::RandChaCha(rand_chacha) => {
+                // Ensure the destination register is a locator.
+                ensure!(
+                    matches!(rand_chacha.destination(), Register::Locator(..)),
+                    "Destination register must be a locator"
+                );
+            }
+            Command::Remove(_) => {
                 // Increment the number of write commands.
                 self.num_writes += 1;
             }
-            Command::Remove(_) => {
+            Command::Set(_) => {
                 // Increment the number of write commands.
                 self.num_writes += 1;
             }
