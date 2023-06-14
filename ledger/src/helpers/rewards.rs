@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::{network::prelude::*, types::Address};
+use console::network::prelude::*;
 use synthesizer::{block::Ratify, coinbase::ProverSolution};
 
 use anyhow::Result;
