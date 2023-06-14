@@ -157,7 +157,7 @@ impl<N: Network> Parser for RandChaCha<N> {
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
         // Parse the operands from the string.
-        let (string, operands) = many1(parse_operand)(string)?;
+        let (string, operands) = many0(parse_operand)(string)?;
 
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
