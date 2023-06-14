@@ -308,6 +308,7 @@ impl Environment for Circuit {
             assert_eq!(0, (**circuit).borrow().num_private());
             assert_eq!(0, (**circuit).borrow().num_constraints());
         });
+        IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
     }
 }
 
