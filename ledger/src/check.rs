@@ -288,11 +288,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.last_coinbase_timestamp() != block.timestamp() {
                         bail!("The last coinbase timestamp does not match the block timestamp")
                     }
+                    // Compute the cumulative proof target.
+                    let cumulative_proof_target = coinbase.to_cumulative_proof_target()?;
                     // Ensure that the cumulative weight includes the next block's cumulative proof target.
                     if block.cumulative_weight()
-                        != self.latest_cumulative_weight().saturating_add(coinbase.to_cumulative_proof_target()?)
+                        != self.latest_cumulative_weight().saturating_add(cumulative_proof_target)
                     {
                         bail!("The cumulative weight does not include the block cumulative proof target")
+                    }
+                    // Ensure that the block cumulative proof target matches the coinbase cumulative proof target.
+                    if block.cumulative_proof_target() != cumulative_proof_target {
+                        bail!("The blocks cumulative proof target does not match the coinbase cumulative proof target")
                     }
                 }
                 None => {
@@ -307,6 +313,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     // Ensure that the cumulative weight is the same as the previous block.
                     if block.cumulative_weight() != self.latest_cumulative_weight() {
                         bail!("The cumulative weight does not match the previous block's cumulative weight")
+                    }
+                    // Ensure that the block cumulative proof target is zero.
+                    if block.cumulative_proof_target() != 0 {
+                        bail!("The cumulative proof target is not zero")
                     }
                 }
             }
