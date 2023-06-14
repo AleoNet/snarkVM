@@ -259,6 +259,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the transaction ID that contains the given `program ID`.
     fn find_transaction_id_from_program_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        // Check if the program ID is for 'credits.aleo'.
+        // This case is handled separately, as it is a default program of the VM.
+        // TODO (howardwu): After we update 'fee' rules and 'Ratify' in genesis, we can remove this.
+        if program_id == &ProgramID::from_str("credits.aleo")? {
+            return Ok(None);
+        }
+
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
             Some(edition) => edition,
@@ -290,6 +297,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the edition for the given `program ID`.
     fn get_edition(&self, program_id: &ProgramID<N>) -> Result<Option<u16>> {
+        // Check if the program ID is for 'credits.aleo'.
+        // This case is handled separately, as it is a default program of the VM.
+        // TODO (howardwu): After we update 'fee' rules and 'Ratify' in genesis, we can remove this.
+        if program_id == &ProgramID::from_str("credits.aleo")? {
+            return Ok(None);
+        }
+
         match self.edition_map().get_confirmed(program_id)? {
             Some(edition) => Ok(Some(cow_to_copied!(edition))),
             None => Ok(None),
@@ -298,6 +312,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the program for the given `program ID`.
     fn get_program(&self, program_id: &ProgramID<N>) -> Result<Option<Program<N>>> {
+        // Check if the program ID is for 'credits.aleo'.
+        // This case is handled separately, as it is a default program of the VM.
+        // TODO (howardwu): After we update 'fee' rules and 'Ratify' in genesis, we can remove this.
+        if program_id == &ProgramID::from_str("credits.aleo")? {
+            return Ok(Some(Program::credits()?));
+        }
+
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
             Some(edition) => edition,
@@ -316,6 +337,15 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
     ) -> Result<Option<VerifyingKey<N>>> {
+        // Check if the program ID is for 'credits.aleo'.
+        // This case is handled separately, as it is a default program of the VM.
+        // TODO (howardwu): After we update 'fee' rules and 'Ratify' in genesis, we can remove this.
+        if program_id == &ProgramID::from_str("credits.aleo")? {
+            // Load the verifying key.
+            let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
+            return Ok(Some(VerifyingKey::new(verifying_key.clone())));
+        }
+
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
             Some(edition) => edition,
@@ -334,6 +364,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
     ) -> Result<Option<Certificate<N>>> {
+        // Check if the program ID is for 'credits.aleo'.
+        // This case is handled separately, as it is a default program of the VM.
+        // TODO (howardwu): After we update 'fee' rules and 'Ratify' in genesis, we can remove this.
+        if program_id == &ProgramID::from_str("credits.aleo")? {
+            return Ok(None);
+        }
+
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
             Some(edition) => edition,
@@ -394,6 +431,13 @@ pub trait DeploymentStorage<N: Network>: Clone + Send + Sync {
 
     /// Returns the owner for the given `program ID`.
     fn get_owner(&self, program_id: &ProgramID<N>) -> Result<Option<ProgramOwner<N>>> {
+        // Check if the program ID is for 'credits.aleo'.
+        // This case is handled separately, as it is a default program of the VM.
+        // TODO (howardwu): After we update 'fee' rules and 'Ratify' in genesis, we can remove this.
+        if program_id == &ProgramID::from_str("credits.aleo")? {
+            return Ok(None);
+        }
+
         // TODO (raychu86): Consider program upgrades and edition changes.
         // Retrieve the edition.
         let edition = match self.get_edition(program_id)? {
