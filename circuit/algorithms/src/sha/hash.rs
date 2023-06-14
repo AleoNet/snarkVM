@@ -12,23 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-pub mod bhp;
-pub use bhp::*;
+impl<E: Environment, const NUM_BITS: usize> Hash for Sha<E, NUM_BITS> {
+    type Input = Boolean<E>;
+    type Output = Field<E>;
 
-pub mod elligator2;
-pub use elligator2::Elligator2;
-
-pub mod pedersen;
-pub use pedersen::*;
-
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod sha;
-pub use sha::*;
-
-pub mod traits;
-pub use traits::*;
+    #[inline]
+    fn hash(&self, _input: &[Self::Input]) -> Self::Output {
+        Field::<E>::one()
+    }
+}

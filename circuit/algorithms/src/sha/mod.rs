@@ -12,23 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+mod constants;
+mod hash;
 
-pub mod bhp;
-pub use bhp::*;
+use crate::Hash;
+use snarkvm_circuit_types::prelude::*;
+use std::borrow::Cow;
 
-pub mod elligator2;
-pub use elligator2::Elligator2;
+/// Sha hash with a 256-bit output.
+pub type Sha256<E> = Sha<E, 256>;
 
-pub mod pedersen;
-pub use pedersen::*;
-
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod sha;
-pub use sha::*;
-
-pub mod traits;
-pub use traits::*;
+#[derive(Clone)]
+pub struct Sha<E: Environment, const NUM_BITS: usize> {
+    /// Internal state of the hash function.
+    state: Vec<Boolean<E>>,
+}
