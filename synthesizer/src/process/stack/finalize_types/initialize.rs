@@ -14,7 +14,7 @@
 
 use super::*;
 use crate::{
-    finalize::{Contains, Get, GetOrUse, Remove, Set},
+    finalize::{Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
     RegisterTypes,
 };
 
@@ -138,6 +138,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Contains(contains) => self.check_contains(stack, finalize_name, contains)?,
             Command::Get(get) => self.check_get(stack, finalize_name, get)?,
             Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize_name, get_or_use)?,
+            Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize_name, rand_chacha)?,
             Command::Set(set) => self.check_set(stack, finalize_name, set)?,
             Command::Remove(remove) => self.check_remove(stack, finalize_name, remove)?,
         }
@@ -253,6 +254,37 @@ impl<N: Network> FinalizeTypes<N> {
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
         self.add_destination(destination, *mapping_value_type)?;
+        Ok(())
+    }
+
+    /// Ensure the given `rand.chacha` command is well-formed.
+    #[inline]
+    fn check_rand_chacha(
+        &mut self,
+        _stack: &(impl StackMatches<N> + StackProgram<N>),
+        _finalize_name: &Identifier<N>,
+        rand_chacha: &RandChaCha<N>,
+    ) -> Result<()> {
+        // Ensure the number of operands is within bounds.
+        if rand_chacha.operands().len() > MAX_ADDITIONAL_SEEDS {
+            bail!("The number of operands must be <= {MAX_ADDITIONAL_SEEDS}")
+        }
+
+        // Get the destination register.
+        let destination = rand_chacha.destination().clone();
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+
+        // Get the destination type.
+        let destination_type = rand_chacha.destination_type();
+        // Ensure the destination type is allowed.
+        ensure!(
+            !matches!(destination_type, LiteralType::String),
+            "Destination type '{destination_type}' is not allowed."
+        );
+
+        // Insert the destination register.
+        self.add_destination(destination, PlaintextType::from(destination_type))?;
         Ok(())
     }
 

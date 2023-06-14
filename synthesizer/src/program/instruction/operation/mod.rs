@@ -832,7 +832,9 @@ pub(crate) mod test_helpers {
     ) -> Result<FinalizeRegisters<CurrentNetwork>> {
         // Initialize the registers.
         let mut finalize_registers = FinalizeRegisters::<CurrentNetwork>::new(
-            FinalizeGlobalState::new(1),
+            FinalizeGlobalState::from(1, [0; 32]),
+            <CurrentNetwork as Network>::TransitionID::default(),
+            *function_name,
             stack.get_finalize_types(function_name)?.clone(),
         );
 

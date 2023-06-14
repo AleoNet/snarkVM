@@ -167,7 +167,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     pub fn add_next_block(&self, block: &Block<N>) -> Result<()> {
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(block.height());
+        let state = FinalizeGlobalState::new::<N>(
+            block.round(),
+            block.height(),
+            block.cumulative_weight(),
+            block.cumulative_proof_target(),
+            block.previous_hash(),
+        )?;
 
         // First, insert the block.
         self.block_store().insert(block)?;
@@ -210,7 +216,7 @@ pub(crate) mod test_helpers {
 
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
-        FinalizeGlobalState::new(block_height)
+        FinalizeGlobalState::from(block_height, [0u8; 32])
     }
 
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
@@ -495,6 +501,7 @@ function compute:
             previous_block.round() + 1,
             previous_block.height() + 1,
             Testnet3::STARTING_SUPPLY,
+            0,
             0,
             Testnet3::GENESIS_COINBASE_TARGET,
             Testnet3::GENESIS_PROOF_TARGET,

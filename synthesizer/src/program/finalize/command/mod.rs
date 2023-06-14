@@ -24,6 +24,9 @@ pub use get::*;
 mod get_or_use;
 pub use get_or_use::*;
 
+mod rand_chacha;
+pub use crate::program::finalize::command::rand_chacha::*;
+
 mod remove;
 pub use remove::*;
 
@@ -44,10 +47,12 @@ pub enum Command<N: Network> {
     /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
     /// If the key is not present, `default` is stored `destination`.
     GetOrUse(GetOrUse<N>),
-    /// Sets the value stored at the `key` operand in the `mapping` to `value`.
-    Set(Set<N>),
+    /// Generates a random value using the `rand.chacha` command and stores the result into `destination`.
+    RandChaCha(RandChaCha<N>),
     /// Removes the (`key`, `value`) entry from the `mapping`.
     Remove(Remove<N>),
+    /// Sets the value stored at the `key` operand in the `mapping` to `value`.
+    Set(Set<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -68,10 +73,12 @@ impl<N: Network> Command<N> {
             Command::Get(get) => get.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get.or_use' command, and return no finalize operation.
             Command::GetOrUse(get_or_use) => get_or_use.finalize(stack, store, registers).map(|_| None),
-            // Finalize the 'set' command, and return the finalize operation.
-            Command::Set(set) => set.finalize(stack, store, registers).map(Some),
+            // Finalize the `rand.chacha` command, and return no finalize operation.
+            Command::RandChaCha(rand_chacha) => rand_chacha.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'remove' command, and return the finalize operation.
             Command::Remove(remove) => remove.finalize(stack, store, registers).map(Some),
+            // Finalize the 'set' command, and return the finalize operation.
+            Command::Set(set) => set.finalize(stack, store, registers).map(Some),
         }
     }
 }
@@ -90,12 +97,14 @@ impl<N: Network> FromBytes for Command<N> {
             2 => Ok(Self::Get(Get::read_le(&mut reader)?)),
             // Read the `get.or_use` operation.
             3 => Ok(Self::GetOrUse(GetOrUse::read_le(&mut reader)?)),
-            // Read the `set` operation.
-            4 => Ok(Self::Set(Set::read_le(&mut reader)?)),
+            // Read the `rand.chacha` operation.
+            4 => Ok(Self::RandChaCha(RandChaCha::read_le(&mut reader)?)),
             // Read the `remove` operation.
             5 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
+            // Read the `set` operation.
+            6 => Ok(Self::Set(Set::read_le(&mut reader)?)),
             // Invalid variant.
-            6.. => Err(error(format!("Invalid command variant: {variant}"))),
+            7.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -128,17 +137,23 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the defaulting `get` operation.
                 get_or_use.write_le(&mut writer)
             }
-            Self::Set(set) => {
+            Self::RandChaCha(rand_chacha) => {
                 // Write the variant.
                 4u8.write_le(&mut writer)?;
-                // Write the set.
-                set.write_le(&mut writer)
+                // Write the `rand.chacha` operation.
+                rand_chacha.write_le(&mut writer)
             }
             Self::Remove(remove) => {
                 // Write the variant.
                 5u8.write_le(&mut writer)?;
                 // Write the remove.
                 remove.write_le(&mut writer)
+            }
+            Self::Set(set) => {
+                // Write the variant.
+                6u8.write_le(&mut writer)?;
+                // Write the set.
+                set.write_le(&mut writer)
             }
         }
     }
@@ -154,8 +169,9 @@ impl<N: Network> Parser for Command<N> {
             map(Contains::parse, |contains| Self::Contains(contains)),
             map(GetOrUse::parse, |get_or_use| Self::GetOrUse(get_or_use)),
             map(Get::parse, |get| Self::Get(get)),
-            map(Set::parse, |set| Self::Set(set)),
+            map(RandChaCha::parse, |rand_chacha| Self::RandChaCha(rand_chacha)),
             map(Remove::parse, |remove| Self::Remove(remove)),
+            map(Set::parse, |set| Self::Set(set)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -194,8 +210,9 @@ impl<N: Network> Display for Command<N> {
             Self::Contains(contains) => Display::fmt(contains, f),
             Self::Get(get) => Display::fmt(get, f),
             Self::GetOrUse(get_or_use) => Display::fmt(get_or_use, f),
-            Self::Set(set) => Display::fmt(set, f),
+            Self::RandChaCha(rand_chacha) => Display::fmt(rand_chacha, f),
             Self::Remove(remove) => Display::fmt(remove, f),
+            Self::Set(set) => Display::fmt(set, f),
         }
     }
 }
@@ -241,14 +258,26 @@ mod tests {
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
-        // Set
-        let expected = "set r0 into object[r1];";
+        // RandChaCha
+        let expected = "rand.chacha into r1 as field;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // RandChaCha
+        let expected = "rand.chacha r0 r1 into r2 as group;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
         // Remove
         let expected = "remove object[r0];";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Set
+        let expected = "set r0 into object[r1];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
@@ -288,16 +317,28 @@ mod tests {
         assert_eq!(Command::GetOrUse(GetOrUse::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
-        // Set
-        let expected = "set r0 into object[r1];";
+        // RandChaCha
+        let expected = "rand.chacha into r1 as field;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::Set(Set::from_str(expected).unwrap()), command);
+        assert_eq!(Command::RandChaCha(RandChaCha::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // RandChaCha
+        let expected = "rand.chacha r0 r1 into r2 as group;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::RandChaCha(RandChaCha::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
         // Remove
         let expected = "remove object[r0];";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Remove(Remove::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Set
+        let expected = "set r0 into object[r1];";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Set(Set::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }
