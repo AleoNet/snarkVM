@@ -141,28 +141,18 @@ impl<N: Network> Process<N> {
                             stack: &Stack<N>,
                             registers: &mut FinalizeRegisters<N>,
                         ) -> Result<Option<Identifier<N>>> {
-                            // Ensure the number of operands is correct.
-                            let operands = branch.operands();
-                            if operands.len() != 2 {
-                                bail!(
-                                    "Command '{}' expects 2 operands, found {} operands",
-                                    Branch::<N, VARIANT>::opcode(),
-                                    operands.len()
-                                )
-                            }
-
                             // Retrieve the inputs.
-                            let input_a = registers.load(stack, &operands[0])?;
-                            let input_b = registers.load(stack, &operands[1])?;
+                            let first = registers.load(stack, branch.first())?;
+                            let second = registers.load(stack, branch.second())?;
 
                             // Compare the operands.
                             match VARIANT {
                                 // The `branch.eq` variant.
-                                0 if input_a == input_b => Ok(Some(*branch.position())),
-                                0 if input_a != input_b => Ok(None),
+                                0 if first == second => Ok(Some(*branch.position())),
+                                0 if first != second => Ok(None),
                                 // The `branch.neq` variant.
-                                1 if input_a == input_b => Ok(None),
-                                1 if input_a != input_b => Ok(Some(*branch.position())),
+                                1 if first == second => Ok(None),
+                                1 if first != second => Ok(Some(*branch.position())),
                                 _ => bail!("Invalid 'branch' variant: {VARIANT}"),
                             }
                         }

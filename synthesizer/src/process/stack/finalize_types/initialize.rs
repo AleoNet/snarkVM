@@ -157,30 +157,23 @@ impl<N: Network> FinalizeTypes<N> {
         finalize: &Finalize<N>,
         branch: &Branch<N, VARIANT>,
     ) -> Result<()> {
-        // Check that there are exactly two operands.
-        ensure!(
-            branch.operands().len() == 2,
-            "Command 'branch.eq' expects 2 operands, found {} operands.",
-            branch.operands().len()
-        );
-        // Initialize a vector to store the register types of the operands.
-        let mut operand_types = Vec::with_capacity(branch.operands().len());
-        // Iterate over the operands, and retrieve the register type of each operand.
-        for operand in branch.operands() {
-            // Retrieve and append the register type.
-            operand_types.push(RegisterType::Plaintext(self.get_type_from_operand(stack, operand)?));
-        }
+        // Get the type of the first operand.
+        let first_type = self.get_type_from_operand(stack, branch.first())?;
+        // Get the type of the second operand.
+        let second_type = self.get_type_from_operand(stack, branch.second())?;
         // Check that the operands have the same type.
         ensure!(
-            operand_types[0] == operand_types[1],
-            "Command 'branch.eq' expects operands of the same type. Found operands of type '{}' and '{}'",
-            operand_types[0],
-            operand_types[1]
+            first_type == second_type,
+            "Command '{}.eq' expects operands of the same type. Found operands of type '{}' and '{}'",
+            Branch::<N, VARIANT>::opcode(),
+            first_type,
+            second_type
         );
         // Check that the `Position` has been defined.
         ensure!(
             finalize.position_indices().get(branch.position()).is_some(),
-            "Command 'branch.eq' expects a defined position to jump to. Found undefined position '{}'",
+            "Command '{}' expects a defined position to jump to. Found undefined position '{}'",
+            Branch::<N, VARIANT>::opcode(),
             branch.position()
         );
         Ok(())

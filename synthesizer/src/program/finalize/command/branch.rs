@@ -28,8 +28,10 @@ enum Variant {
 /// Compares `first` and `second` and jumps to `position`, if the condition is met.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Branch<N: Network, const VARIANT: u8> {
-    /// The operands.
-    operands: Vec<Operand<N>>,
+    /// The first operand.
+    first: Operand<N>,
+    /// The second operand.
+    second: Operand<N>,
     /// The position.
     position: Identifier<N>,
 }
@@ -45,13 +47,16 @@ impl<N: Network, const VARIANT: u8> Branch<N, VARIANT> {
         }
     }
 
-    /// Returns the operands in the operation.
+    /// Returns the first operand.
     #[inline]
-    pub fn operands(&self) -> &[Operand<N>] {
-        // Sanity check that there are exactly two operands.
-        debug_assert!(self.operands.len() == 2, "Instruction '{}' must have two operands", Self::opcode());
-        // Return the operands.
-        &self.operands
+    pub fn first(&self) -> &Operand<N> {
+        &self.first
+    }
+
+    /// Returns the second operand.
+    #[inline]
+    pub fn second(&self) -> &Operand<N> {
+        &self.second
     }
 
     /// Returns the position.
@@ -94,7 +99,7 @@ impl<N: Network, const VARIANT: u8> Parser for Branch<N, VARIANT> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { operands: vec![first, second], position }))
+        Ok((string, Self { first, second, position }))
     }
 }
 
@@ -126,44 +131,33 @@ impl<N: Network, const VARIANT: u8> Debug for Branch<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> Display for Branch<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Ensure the number of operands is 2.
-        if self.operands.len() != 2 {
-            eprintln!("The number of operands must be 2, found {}", self.operands.len());
-            return Err(fmt::Error);
-        }
         // Print the operation.
-        write!(f, "{} ", Self::opcode())?;
-        self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
-        write!(f, "to {};", self.position)
+        write!(f, "{} {} {} to {}", Self::opcode(), self.first, self.second, self.position)
     }
 }
 
 impl<N: Network, const VARIANT: u8> FromBytes for Branch<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Initialize the vector for the operands.
-        let mut operands = Vec::with_capacity(2);
-        // Read the operands.
-        for _ in 0..2 {
-            operands.push(Operand::read_le(&mut reader)?);
-        }
+        // Read the first operand.
+        let first = Operand::read_le(&mut reader)?;
+        // Read the second operand.
+        let second = Operand::read_le(&mut reader)?;
         // Read the position.
         let position = Identifier::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, position })
+        Ok(Self { first, second, position })
     }
 }
 
 impl<N: Network, const VARIANT: u8> ToBytes for Branch<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the number of operands is 2.
-        if self.operands.len() != 2 {
-            return Err(error(format!("The number of operands must be 2, found {}", self.operands.len())));
-        }
-        // Write the operands.
-        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
+        // Write the first operand.
+        self.first.write_le(&mut writer)?;
+        // Write the second operand.
+        self.second.write_le(&mut writer)?;
         // Write the position.
         self.position.write_le(&mut writer)
     }
@@ -184,16 +178,14 @@ mod tests {
     fn test_parse() {
         let (string, branch) = BranchEq::<CurrentNetwork>::parse("branch.eq r0 r1 to exit;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(branch.operands.len(), 2, "The number of operands is incorrect");
-        assert_eq!(branch.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(branch.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(branch.first, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(branch.second, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
         assert_eq!(branch.position, Identifier::from_str("exit").unwrap(), "The position is incorrect");
 
         let (string, branch) = BranchNeq::<CurrentNetwork>::parse("branch.neq r3 r4 to start;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(branch.operands.len(), 2, "The number of operands is incorrect");
-        assert_eq!(branch.operands[0], Operand::Register(Register::Locator(3)), "The first operand is incorrect");
-        assert_eq!(branch.operands[1], Operand::Register(Register::Locator(4)), "The second operand is incorrect");
+        assert_eq!(branch.first, Operand::Register(Register::Locator(3)), "The first operand is incorrect");
+        assert_eq!(branch.second, Operand::Register(Register::Locator(4)), "The second operand is incorrect");
         assert_eq!(branch.position, Identifier::from_str("start").unwrap(), "The position is incorrect");
     }
 }
