@@ -13,7 +13,6 @@
 // limitations under the License.
 
 mod command;
-
 pub use command::*;
 
 mod input;
@@ -168,8 +167,8 @@ impl<N: Network> Finalize<N> {
             Command::RandChaCha(_) => Ok(500_000),
             Command::Remove(_) => Ok(10_000),
             Command::Set(_) => Ok(1_000_000),
-            Command::Position(_) => Ok(1_000),
             Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
+            Command::Position(_) => Ok(1_000),
         };
         self.commands.iter().map(|command| cost(command)).sum()
     }
@@ -261,21 +260,13 @@ impl<N: Network> Finalize<N> {
                 // Increment the number of write commands.
                 self.num_writes += 1;
             }
-            Command::Position(position) => {
-                // Ensure that the `Position` is not already defined.
-                ensure!(
-                    self.positions.get(position.name()).is_none(),
-                    format!("The position `{}` is not unique", position.name())
-                );
-                // Track the index of the `Position`.
-                self.positions.insert(*position.name(), self.commands.len());
-            }
             Command::BranchEq(branch) => {
                 // Ensure that the position referenced by the branch is **not** yet defined.
                 // This ensures that the branch **only** jumps forward.
                 ensure!(
                     self.positions.get(branch.position()).is_none(),
-                    format!("Cannot branch to an earlier position '{}' in the program", branch.position())
+                    "Cannot branch to an earlier position '{}' in the program",
+                    branch.position()
                 );
             }
             Command::BranchNeq(branch) => {
@@ -283,8 +274,19 @@ impl<N: Network> Finalize<N> {
                 // This ensures that the branch **only** jumps forward.
                 ensure!(
                     self.positions.get(branch.position()).is_none(),
-                    format!("Cannot branch to an earlier position '{}' in the program", branch.position())
+                    "Cannot branch to an earlier position '{}' in the program",
+                    branch.position()
                 );
+            }
+            Command::Position(position) => {
+                // Ensure that the `Position` is not already defined.
+                ensure!(
+                    self.positions.get(position.name()).is_none(),
+                    "The position `{}` is not unique",
+                    position.name()
+                );
+                // Track the index of the `Position`.
+                self.positions.insert(*position.name(), self.commands.len());
             }
         }
 

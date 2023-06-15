@@ -59,12 +59,12 @@ pub enum Command<N: Network> {
     Remove(Remove<N>),
     /// Sets the value stored at the `key` operand in the `mapping` to `value`.
     Set(Set<N>),
-    /// Indicates a position to which the program can branch to.
-    Position(Position<N>),
     /// Jumps to the `position`, if `first` equals `second`.
     BranchEq(BranchEq<N>),
     /// Jumps to the `position`, if `first` does **not** equal `second`.
     BranchNeq(BranchNeq<N>),
+    /// Indicates a position to which the program can branch to.
+    Position(Position<N>),
 }
 
 impl<N: Network> Command<N> {
@@ -91,11 +91,12 @@ impl<N: Network> Command<N> {
             Command::Remove(remove) => remove.finalize(stack, store, registers).map(Some),
             // Finalize the 'set' command, and return the finalize operation.
             Command::Set(set) => set.finalize(stack, store, registers).map(Some),
-            // Finalize the `position` command, and return no finalize operation.
-            Command::Position(position) => position.finalize().map(|_| None),
+            // 'branch.eq' and 'branch.neq' instructions are processed by the caller of this method.
             Command::BranchEq(_) | Command::BranchNeq(_) => {
                 bail!("`branch` instructions cannot be finalized directly.")
             }
+            // Finalize the `position` command, and return no finalize operation.
+            Command::Position(position) => position.finalize().map(|_| None),
         }
     }
 }
@@ -120,12 +121,12 @@ impl<N: Network> FromBytes for Command<N> {
             5 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
             // Read the `set` operation.
             6 => Ok(Self::Set(Set::read_le(&mut reader)?)),
-            // Read the `position` command.
-            7 => Ok(Self::Position(Position::read_le(&mut reader)?)),
             // Read the `branch.eq` command.
-            8 => Ok(Self::BranchEq(BranchEq::read_le(&mut reader)?)),
+            7 => Ok(Self::BranchEq(BranchEq::read_le(&mut reader)?)),
             // Read the `branch.neq` command.
-            9 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
+            8 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
+            // Read the `position` command.
+            9 => Ok(Self::Position(Position::read_le(&mut reader)?)),
             // Invalid variant.
             10.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
@@ -178,23 +179,23 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the set.
                 set.write_le(&mut writer)
             }
-            Self::Position(position) => {
-                // Write the variant.
-                7u8.write_le(&mut writer)?;
-                // Write the position command.
-                position.write_le(&mut writer)
-            }
             Self::BranchEq(branch_eq) => {
                 // Write the variant.
-                8u8.write_le(&mut writer)?;
+                7u8.write_le(&mut writer)?;
                 // Write the `branch.eq` command.
                 branch_eq.write_le(&mut writer)
             }
             Self::BranchNeq(branch_neq) => {
                 // Write the variant.
-                9u8.write_le(&mut writer)?;
+                8u8.write_le(&mut writer)?;
                 // Write the `branch.neq` command.
                 branch_neq.write_le(&mut writer)
+            }
+            Self::Position(position) => {
+                // Write the variant.
+                9u8.write_le(&mut writer)?;
+                // Write the position command.
+                position.write_le(&mut writer)
             }
         }
     }
@@ -213,9 +214,9 @@ impl<N: Network> Parser for Command<N> {
             map(RandChaCha::parse, |rand_chacha| Self::RandChaCha(rand_chacha)),
             map(Remove::parse, |remove| Self::Remove(remove)),
             map(Set::parse, |set| Self::Set(set)),
-            map(Position::parse, |position| Self::Position(position)),
             map(BranchEq::parse, |branch_eq| Self::BranchEq(branch_eq)),
             map(BranchNeq::parse, |branch_neq| Self::BranchNeq(branch_neq)),
+            map(Position::parse, |position| Self::Position(position)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -257,9 +258,9 @@ impl<N: Network> Display for Command<N> {
             Self::RandChaCha(rand_chacha) => Display::fmt(rand_chacha, f),
             Self::Remove(remove) => Display::fmt(remove, f),
             Self::Set(set) => Display::fmt(set, f),
-            Self::Position(position) => Display::fmt(position, f),
             Self::BranchEq(branch_eq) => Display::fmt(branch_eq, f),
             Self::BranchNeq(branch_neq) => Display::fmt(branch_neq, f),
+            Self::Position(position) => Display::fmt(position, f),
         }
     }
 }
@@ -329,12 +330,6 @@ mod tests {
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
-        // Position
-        let expected = "position exit;";
-        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        let bytes = command.to_bytes_le().unwrap();
-        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
-
         // BranchEq
         let expected = "branch.eq r0 r1 to exit;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
@@ -343,6 +338,12 @@ mod tests {
 
         // BranchNeq
         let expected = "branch.neq r2 r3 to start;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Position
+        let expected = "position exit;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
@@ -406,12 +407,6 @@ mod tests {
         assert_eq!(Command::Set(Set::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
-        // Position
-        let expected = "position exit;";
-        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
-        assert_eq!(expected, command.to_string());
-
         // BranchEq
         let expected = "branch.eq r0 r1 to exit;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
@@ -422,6 +417,12 @@ mod tests {
         let expected = "branch.neq r2 r3 to start;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::BranchNeq(BranchNeq::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Position
+        let expected = "position exit;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }
