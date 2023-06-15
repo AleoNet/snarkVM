@@ -22,16 +22,19 @@ use console::{
 };
 use snarkvm_synthesizer::Process;
 
+use rayon::prelude::*;
+
 #[test]
 fn test_process_execute() {
     // Load the tests.
     let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/process/execute");
     // Initialize a process.
-    let mut process = Process::<CurrentNetwork>::load().unwrap();
+    let process = Process::<CurrentNetwork>::load().unwrap();
 
     // Run each test and compare it against its corresponding expectation.
-    for test in &tests {
+    tests.par_iter().for_each(|test| {
         // Add the program into the process.
+        let mut process = process.clone();
         let program = test.program();
         process.add_program(program).unwrap();
 
@@ -108,5 +111,5 @@ fn test_process_execute() {
         test.check(&outputs).unwrap();
         // Save the output.
         test.save(&outputs).unwrap();
-    }
+    });
 }

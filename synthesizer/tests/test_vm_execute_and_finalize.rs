@@ -15,6 +15,7 @@
 mod utilities;
 
 use indexmap::IndexMap;
+use rayon::prelude::*;
 use std::borrow::Borrow;
 use utilities::*;
 
@@ -45,7 +46,7 @@ fn test_vm_execute_and_finalize() {
     let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/vm/execute_and_finalize");
 
     // Run each test and compare it against its corresponding expectation.
-    for test in &tests {
+    tests.par_iter().for_each(|test| {
         // Initialize the RNG.
         let rng = &mut match test.randomness() {
             None => TestRng::default(),
@@ -223,7 +224,7 @@ fn test_vm_execute_and_finalize() {
         test.check(&outputs).unwrap();
         // Save the output.
         test.save(&outputs).unwrap();
-    }
+    });
 }
 
 // A helper function to initialize the VM.
