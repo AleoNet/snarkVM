@@ -16,6 +16,12 @@ package = "snarkvm-console-network"
 path = "../../console/network"
 version = "=0.12.2"
 
+[dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "=0.12.2"
+default-features = false
+features = ["r1cs"]
+
 [dependencies.snarkvm-circuit-environment-witness]
 path = "./witness"
 version = "=0.12.2"
@@ -28,11 +34,6 @@ default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "=0.12.2"
-default-features = false
-
-[dependencies.snarkvm-r1cs]
-path = "../../r1cs"
 version = "=0.12.2"
 default-features = false
 

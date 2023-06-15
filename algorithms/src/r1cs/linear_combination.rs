@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::Variable;
+use crate::r1cs::Variable;
 use snarkvm_fields::Field;
 
 use std::{
@@ -429,7 +429,7 @@ impl<F: Field> Sub<(F, LinearCombination<F>)> for LinearCombination<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::Index;
+    use crate::r1cs::Index;
 
     use super::*;
     use snarkvm_curves::bls12_377::Fr;

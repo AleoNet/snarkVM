@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[macro_use]
-extern crate thiserror;
-
 mod assignment;
 pub use assignment::*;
 
@@ -47,7 +44,7 @@ pub use test_constraint_checker::TestConstraintChecker;
 
 use snarkvm_utilities::serialize::*;
 
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 /// Represents a variable in a constraint system.
 #[derive(PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug, Hash)]

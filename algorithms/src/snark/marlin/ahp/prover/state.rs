@@ -16,10 +16,10 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    r1cs::SynthesisResult,
     snark::marlin::{ahp::verifier, AHPError, AHPForR1CS, Circuit, MarlinMode},
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::SynthesisResult;
 
 /// Circuit Specific State of the Prover
 pub struct CircuitSpecificState<F: PrimeField> {

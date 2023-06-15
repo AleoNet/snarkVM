@@ -2450,7 +2450,6 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-ledger",
  "snarkvm-parameters",
- "snarkvm-r1cs",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
  "snarkvm-wasm",
@@ -2468,11 +2467,14 @@ dependencies = [
  "anyhow",
  "bincode",
  "blake2",
+ "cfg-if",
  "criterion",
  "crossbeam-channel",
  "expect-test",
+ "fxhash",
  "hashbrown 0.14.0",
  "hex",
+ "indexmap",
  "itertools",
  "lazy_static",
  "parking_lot",
@@ -2490,7 +2492,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-parameters",
- "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
  "wasm-bindgen-futures",
@@ -2574,7 +2575,6 @@ dependencies = [
  "snarkvm-console-types",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-r1cs",
  "snarkvm-utilities",
 ]
 
@@ -2979,21 +2979,6 @@ dependencies = [
  "thiserror",
  "wasm-bindgen-test",
  "web-sys",
-]
-
-[[package]]
-name = "snarkvm-r1cs"
-version = "0.12.2"
-dependencies = [
- "anyhow",
- "cfg-if",
- "fxhash",
- "indexmap",
- "itertools",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-utilities",
- "thiserror",
 ]
 
 [[package]]
