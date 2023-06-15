@@ -86,6 +86,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let program = deployment.program();
             let program_id = program.id();
 
+            // Return early if the program is already loaded.
+            if process.contains_program(program_id) {
+                return Ok(());
+            }
+
             // Iterate through the program imports.
             for import_program_id in program.imports().keys() {
                 // Add the imports to the process if does not exist yet.
@@ -790,6 +795,8 @@ function a:
         // Check that the iterator ordering is not the same as the deployment ordering.
         let deployment_transaction_ids =
             vm.transaction_store().deployment_transaction_ids().map(|id| *id).collect::<Vec<_>>();
+        // This `assert_ne` check is here to ensure that we are properly loading imports even though any order will work for `VM::from`.
+        // Note: `deployment_transaction_ids` is sorted lexicographically by transaction id, so the order may change if we update internal methods.
         assert_ne!(deployment_transaction_ids, vec![
             first_deployment.id(),
             second_deployment.id(),
