@@ -67,7 +67,7 @@ impl<N: Network, const VARIANT: u8> Branch<N, VARIANT> {
 }
 
 impl<N: Network, const VARIANT: u8> Parser for Branch<N, VARIANT> {
-    /// Parses a string into an operation.
+    /// Parses a string into an command.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -106,7 +106,7 @@ impl<N: Network, const VARIANT: u8> Parser for Branch<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> FromStr for Branch<N, VARIANT> {
     type Err = Error;
 
-    /// Parses a string into an operation.
+    /// Parses a string into a command.
     #[inline]
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
@@ -122,22 +122,22 @@ impl<N: Network, const VARIANT: u8> FromStr for Branch<N, VARIANT> {
 }
 
 impl<N: Network, const VARIANT: u8> Debug for Branch<N, VARIANT> {
-    /// Prints the operation as a string.
+    /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 impl<N: Network, const VARIANT: u8> Display for Branch<N, VARIANT> {
-    /// Prints the operation to a string.
+    /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Print the operation.
-        write!(f, "{} {} {} to {}", Self::opcode(), self.first, self.second, self.position)
+        // Print the command.
+        write!(f, "{} {} {} to {};", Self::opcode(), self.first, self.second, self.position)
     }
 }
 
 impl<N: Network, const VARIANT: u8> FromBytes for Branch<N, VARIANT> {
-    /// Reads the operation from a buffer.
+    /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the first operand.
         let first = Operand::read_le(&mut reader)?;
@@ -146,13 +146,13 @@ impl<N: Network, const VARIANT: u8> FromBytes for Branch<N, VARIANT> {
         // Read the position.
         let position = Identifier::read_le(&mut reader)?;
 
-        // Return the operation.
+        // Return the command.
         Ok(Self { first, second, position })
     }
 }
 
 impl<N: Network, const VARIANT: u8> ToBytes for Branch<N, VARIANT> {
-    /// Writes the operation to a buffer.
+    /// Writes the command to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the first operand.
         self.first.write_le(&mut writer)?;

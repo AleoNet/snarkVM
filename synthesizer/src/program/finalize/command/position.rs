@@ -47,7 +47,7 @@ impl<N: Network> Position<N> {
 }
 
 impl<N: Network> Parser for Position<N> {
-    /// Parses a string into an operation.
+    /// Parses a string into a command.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -115,7 +115,7 @@ impl<N: Network> FromBytes for Position<N> {
 }
 
 impl<N: Network> ToBytes for Position<N> {
-    /// Writes the operation to a buffer.
+    /// Writes the command to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the name.
         self.name.write_le(&mut writer)

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod command;
+
 pub use command::*;
 
 mod input;
@@ -27,7 +28,8 @@ use console::{
     program::{Identifier, LiteralType, PlaintextType, Register, RegisterType},
 };
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
+use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Finalize<N: Network> {
@@ -41,13 +43,13 @@ pub struct Finalize<N: Network> {
     /// The number of write commands.
     num_writes: u16,
     /// A mapping from `Position`s to their index in `commands`.
-    position_indices: IndexMap<Identifier<N>, usize>,
+    positions: HashMap<Identifier<N>, usize>,
 }
 
 impl<N: Network> Finalize<N> {
     /// Initializes a new finalize with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), commands: Vec::new(), num_writes: 0, position_indices: IndexMap::new() }
+        Self { name, inputs: IndexSet::new(), commands: Vec::new(), num_writes: 0, positions: HashMap::new() }
     }
 
     /// Returns the name of the associated function.
@@ -76,8 +78,8 @@ impl<N: Network> Finalize<N> {
     }
 
     /// Returns the mapping of `Position`s to their index in `commands`.
-    pub const fn position_indices(&self) -> &IndexMap<Identifier<N>, usize> {
-        &self.position_indices
+    pub const fn positions(&self) -> &HashMap<Identifier<N>, usize> {
+        &self.positions
     }
 
     /// Returns the minimum number of microcredits required to run the finalize.
@@ -262,25 +264,25 @@ impl<N: Network> Finalize<N> {
             Command::Position(position) => {
                 // Ensure that the `Position` is not already defined.
                 ensure!(
-                    self.position_indices.get(position.name()).is_none(),
+                    self.positions.get(position.name()).is_none(),
                     format!("The position `{}` is not unique", position.name())
                 );
                 // Track the index of the `Position`.
-                self.position_indices.insert(*position.name(), self.commands.len());
+                self.positions.insert(*position.name(), self.commands.len());
             }
             Command::BranchEq(branch) => {
                 // Ensure that the position referenced by the branch is **not** yet defined.
-                // This ensures that the branche **only** jumps forward.
+                // This ensures that the branch **only** jumps forward.
                 ensure!(
-                    self.position_indices.get(branch.position()).is_none(),
+                    self.positions.get(branch.position()).is_none(),
                     format!("Cannot branch to an earlier position '{}' in the program", branch.position())
                 );
             }
             Command::BranchNeq(branch) => {
                 // Ensure that the position referenced by the branch is **not** yet defined.
-                // This ensures that the branche **only** jumps forward.
+                // This ensures that the branch **only** jumps forward.
                 ensure!(
-                    self.position_indices.get(branch.position()).is_none(),
+                    self.positions.get(branch.position()).is_none(),
                     format!("Cannot branch to an earlier position '{}' in the program", branch.position())
                 );
             }

@@ -164,14 +164,14 @@ impl<N: Network> FinalizeTypes<N> {
         // Check that the operands have the same type.
         ensure!(
             first_type == second_type,
-            "Command '{}.eq' expects operands of the same type. Found operands of type '{}' and '{}'",
+            "Command '{}' expects operands of the same type. Found operands of type '{}' and '{}'",
             Branch::<N, VARIANT>::opcode(),
             first_type,
             second_type
         );
         // Check that the `Position` has been defined.
         ensure!(
-            finalize.position_indices().get(branch.position()).is_some(),
+            finalize.positions().get(branch.position()).is_some(),
             "Command '{}' expects a defined position to jump to. Found undefined position '{}'",
             Branch::<N, VARIANT>::opcode(),
             branch.position()

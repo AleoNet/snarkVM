@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use crate::finalize::Finalize;
 
 impl<N: Network> Process<N> {
     /// Finalizes the deployment.
@@ -134,25 +135,35 @@ impl<N: Network> Process<N> {
                     let mut counter = 0;
                     let commands = finalize.commands();
                     while counter < commands.len() {
-                        // A helper function to determine if the branch is taken.
+                        // A helper function that returns the index to branch to.
                         #[inline]
-                        fn branch_is_taken<N: Network, const VARIANT: u8>(
+                        fn branch_to<N: Network, const VARIANT: u8>(
+                            counter: usize,
                             branch: &Branch<N, VARIANT>,
+                            finalize: &Finalize<N>,
                             stack: &Stack<N>,
                             registers: &mut FinalizeRegisters<N>,
-                        ) -> Result<Option<Identifier<N>>> {
+                        ) -> Result<usize> {
                             // Retrieve the inputs.
                             let first = registers.load(stack, branch.first())?;
                             let second = registers.load(stack, branch.second())?;
 
-                            // Compare the operands.
+                            // A helper to get the index corresponding to a position.
+                            let get_position_index = |position: &Identifier<N>| match finalize.positions().get(position)
+                            {
+                                Some(index) if *index > counter => Ok(*index),
+                                Some(_) => bail!("Cannot branch to an earlier position '{position}' in the program"),
+                                None => bail!("The position '{position}' does not exist."),
+                            };
+
+                            // Compare the operands and determine the index to branch to.
                             match VARIANT {
                                 // The `branch.eq` variant.
-                                0 if first == second => Ok(Some(*branch.position())),
-                                0 if first != second => Ok(None),
+                                0 if first == second => get_position_index(branch.position()),
+                                0 if first != second => Ok(counter + 1),
                                 // The `branch.neq` variant.
-                                1 if first == second => Ok(None),
-                                1 if first != second => Ok(Some(*branch.position())),
+                                1 if first == second => Ok(counter + 1),
+                                1 if first != second => get_position_index(branch.position()),
                                 _ => bail!("Invalid 'branch' variant: {VARIANT}"),
                             }
                         }
@@ -160,50 +171,20 @@ impl<N: Network> Process<N> {
                         let command = &commands[counter];
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match &command {
                             Command::BranchEq(branch_eq) => {
-                                counter = match branch_is_taken(branch_eq, stack, &mut registers)? {
-                                    Some(label) => {
-                                        let index = match finalize.position_indices().get(&label) {
-                                            Some(index) => *index,
-                                            None => {
-                                                bail!("The label '{}' does not exist in the 'finalize' function", label)
-                                            }
-                                        };
-                                        ensure!(
-                                            counter < index,
-                                            "The label '{}' is defined before the 'branch' command",
-                                            label
-                                        );
-                                        index
-                                    }
-                                    None => counter + 1,
-                                };
+                                counter = branch_to(counter, branch_eq, finalize, stack, &mut registers)?;
                                 Ok(None)
                             }
                             Command::BranchNeq(branch_neq) => {
-                                counter = match branch_is_taken(branch_neq, stack, &mut registers)? {
-                                    Some(label) => {
-                                        let index = match finalize.position_indices().get(&label) {
-                                            Some(index) => *index,
-                                            None => {
-                                                bail!("The label '{}' does not exist in the 'finalize' function", label)
-                                            }
-                                        };
-                                        ensure!(
-                                            counter < index,
-                                            "The label '{}' is defined before the 'branch' command",
-                                            label
-                                        );
-                                        index
-                                    }
-                                    None => counter + 1,
-                                };
+                                counter = branch_to(counter, branch_neq, finalize, stack, &mut registers)?;
                                 Ok(None)
                             }
                             _ => {
+                                let operations = command.finalize(stack, store, &mut registers);
                                 counter += 1;
-                                command.finalize(stack, store, &mut registers)
+                                operations
                             }
                         }));
+
                         match result {
                             // If the evaluation succeeds with an operation, add it to the list.
                             Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
