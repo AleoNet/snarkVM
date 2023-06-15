@@ -18,12 +18,14 @@ use utilities::*;
 use console::network::prelude::*;
 use snarkvm_synthesizer::Instruction;
 
+use rayon::prelude::*;
+
 #[test]
 fn test_instruction_parse() {
     // Load the tests.
     let tests = load_tests::<_, LineParseTest>("./tests/parser/instruction", "./expectations/parser/instruction");
     // Run each test and compare it against its corresponding expectation.
-    for test in &tests {
+    tests.par_iter().for_each(|test| {
         // Run the parser on each of the test strings.
         let outputs = test
             .test_strings()
@@ -34,5 +36,5 @@ fn test_instruction_parse() {
         test.check(&outputs).unwrap();
         // Save the output.
         test.save(&outputs).unwrap();
-    }
+    });
 }
