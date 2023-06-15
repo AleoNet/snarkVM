@@ -688,7 +688,7 @@ finalize getter:
         let first_execution = vm
             .execute(
                 &caller_private_key,
-                ("test_1.aleo", "init"),
+                ("test_program_1.aleo", "init"),
                 Vec::<Value<Testnet3>>::new().iter(),
                 Some((third_record, 1)),
                 None,
@@ -698,7 +698,7 @@ finalize getter:
         let second_execution = vm
             .execute(
                 &caller_private_key,
-                ("test_2.aleo", "init"),
+                ("test_program_2.aleo", "init"),
                 Vec::<Value<Testnet3>>::new().iter(),
                 Some((fourth_record, 1)),
                 None,
