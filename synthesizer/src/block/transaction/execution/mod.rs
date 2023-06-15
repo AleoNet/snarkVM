@@ -13,16 +13,19 @@
 // limitations under the License.
 
 mod bytes;
+mod cost;
 mod serialize;
 mod string;
 
 use crate::{
     block::{Transaction, Transition},
     snark::Proof,
+    Program,
 };
-use console::{account::Field, network::prelude::*};
+use console::{account::Field, network::prelude::*, program::ProgramID};
 
 use indexmap::IndexMap;
+use std::collections::HashMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Execution<N: Network> {

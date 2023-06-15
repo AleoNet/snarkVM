@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod bytes;
+mod cost;
 mod serialize;
 mod string;
 
