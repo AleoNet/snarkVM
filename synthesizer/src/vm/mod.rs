@@ -647,7 +647,7 @@ function compute:
 
         // Deploy the programs.
         let first_program = r"
-program test_1.aleo;
+program test_program_1.aleo;
 mapping map_0:
     key left as field.public;
     value right as field.public;
@@ -661,7 +661,7 @@ finalize getter:
     get map_0[0field] into r0;
         ";
         let second_program = r"
-program test_2.aleo;
+program test_program_2.aleo;
 mapping map_0:
     key left as field.public;
     value right as field.public;
