@@ -263,6 +263,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         self.storage.remove(transaction_id)
     }
 
+    /// Returns the deployment store.
+    pub fn deployment_store(&self) -> &DeploymentStore<N, T::DeploymentStorage> {
+        self.storage.deployment_store()
+    }
+
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, T::TransitionStorage> {
         self.storage.transition_store()
