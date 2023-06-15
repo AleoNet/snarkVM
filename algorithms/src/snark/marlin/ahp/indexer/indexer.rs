@@ -15,6 +15,7 @@
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
+    r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem},
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
@@ -28,7 +29,6 @@ use crate::{
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::cfg_into_iter;
 
 use anyhow::{anyhow, Result};
