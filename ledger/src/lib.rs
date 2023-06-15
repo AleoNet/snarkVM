@@ -185,6 +185,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         Ok(ledger)
     }
 
+    pub fn add_authorized_account(&self, address: Address<N>) {
+        self.current_committee.write().insert(address);
+    }
+
     /// Returns the VM.
     pub const fn vm(&self) -> &VM<N, C> {
         &self.vm
