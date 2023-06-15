@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::errors::SynthesisError;
+use crate::r1cs::errors::SynthesisError;
 
 pub trait Assignment<T> {
     fn get(self) -> Result<T, SynthesisError>;

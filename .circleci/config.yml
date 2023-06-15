@@ -479,15 +479,6 @@ jobs:
           workspace_member: parameters
           cache_key: snarkvm-parameters-cache
 
-  r1cs:
-    docker:
-      - image: cimg/rust:1.69
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: r1cs
-          cache_key: snarkvm-r1cs-cache
-
   synthesizer:
     docker:
       - image: cimg/rust:1.69
@@ -656,7 +647,6 @@ workflows:
       - fields
       - ledger
       - parameters
-      - r1cs
       - synthesizer
       - synthesizer-coinbase
       - synthesizer-snark
@@ -679,7 +669,6 @@ workflows:
                 curves,
                 fields,
                 parameters,
-                r1cs,
                 synthesizer,
                 utilities,
               ]

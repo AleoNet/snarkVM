@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{LinearCombination, Variable};
+use crate::r1cs::{LinearCombination, Variable};
 use snarkvm_fields::Field;
 
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};

@@ -24,6 +24,7 @@ use crate::{
         Randomness,
         SonicKZG10,
     },
+    r1cs::ConstraintSynthesizer,
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
         proof,
@@ -42,7 +43,6 @@ use crate::{
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
-use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use anyhow::{anyhow, Result};

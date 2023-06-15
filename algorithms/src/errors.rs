@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::snark::marlin::ahp::AHPError;
+use crate::{r1cs::SynthesisError, snark::marlin::ahp::AHPError};
 use snarkvm_fields::ConstraintFieldError;
-use snarkvm_r1cs::SynthesisError;
 
 #[derive(Debug, Error)]
 pub enum SNARKError {
