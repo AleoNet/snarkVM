@@ -712,7 +712,7 @@ finalize getter:
 
     #[test]
     fn test_load_deployments_with_imports() {
-        let rng = &mut TestRng::default();
+        let rng = &mut TestRng::fixed(123456789);
 
         // Initialize a new caller.
         let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
