@@ -32,6 +32,7 @@ use crate::{
     process::{Authorization, FinalizeGlobalState, Process, Query, Trace},
     program::Program,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
+    TransactionStorage,
 };
 use console::{
     account::{Address, PrivateKey},
@@ -69,16 +70,54 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         }
 
+        // A helper function to load the program into the process, and recursively load all imports.
+        fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
+            process: &mut Process<N>,
+            transaction_store: &TransactionStore<N, T>,
+            transaction_id: N::TransactionID,
+        ) -> Result<()> {
+            // Retrieve the deployment from the transaction id.
+            let deployment = match transaction_store.get_deployment(&transaction_id)? {
+                Some(deployment) => deployment,
+                None => bail!("Deployment transaction '{transaction_id}' is not found in storage."),
+            };
+
+            // Fetch the program from the deployment.
+            let program = deployment.program();
+            let program_id = program.id();
+
+            // Iterate through the program imports.
+            for import_program_id in program.imports().keys() {
+                // Add the imports to the process if does not exist yet.
+                if !process.contains_program(import_program_id) {
+                    // Fetch the deployment transaction id.
+                    let transaction_id = match transaction_store
+                        .deployment_store()
+                        .find_transaction_id_from_program_id(import_program_id)?
+                    {
+                        Some(id) => id,
+                        None => bail!("Transaction id for '{program_id}' is not found in storage."),
+                    };
+
+                    // Recursively load the deployment and its imports.
+                    load_deployment_and_imports(process, transaction_store, transaction_id)?
+                }
+            }
+
+            // Load the deployment if it does not exist in the process yet.
+            if !process.contains_program(program_id) {
+                process.load_deployment(&deployment)?;
+            }
+
+            Ok(())
+        }
+
         // Retrieve the transaction store.
         let transaction_store = store.transaction_store();
         // Load the deployments from the store.
         for transaction_id in transaction_store.deployment_transaction_ids() {
-            // Retrieve the deployment.
-            match transaction_store.get_deployment(&transaction_id)? {
-                // Load the deployment.
-                Some(deployment) => process.load_deployment(&deployment)?,
-                None => bail!("Deployment transaction '{transaction_id}' is not found in storage."),
-            };
+            // Load the deployment and its imports.
+            load_deployment_and_imports(&mut process, transaction_store, *transaction_id)?;
         }
 
         // Return the new VM.
@@ -665,5 +704,91 @@ finalize getter:
         let execution_block =
             sample_next_block(&vm, &caller_private_key, &[first_execution, second_execution], rng).unwrap();
         vm.add_next_block(&execution_block).unwrap();
+    }
+
+    #[test]
+    fn test_load_deployments_with_imports() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Fetch the unspent records.
+        let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<Vec<(_, _)>>();
+        trace!("Unspent Records:\n{:#?}", records);
+        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
+        let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
+        let third_record = records[2].1.clone().decrypt(&caller_view_key).unwrap();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Create the deployment for the first program.
+        let first_program = r"
+program first_program.aleo;
+
+function c:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    add r0 r1 into r2;
+    output r2 as u8.private;
+        ";
+        let first_deployment = vm
+            .deploy(&caller_private_key, &Program::from_str(first_program).unwrap(), (first_record, 1), None, rng)
+            .unwrap();
+
+        // Deploy the first program.
+        let deployment_block = sample_next_block(&vm, &caller_private_key, &[first_deployment.clone()], rng).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Create the deployment for the second program.
+        let second_program = r"
+import first_program.aleo;
+
+program second_program.aleo;
+
+function b:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    call first_program.aleo/c r0 r1 into r2;
+    output r2 as u8.private;
+        ";
+        let second_deployment = vm
+            .deploy(&caller_private_key, &Program::from_str(second_program).unwrap(), (second_record, 1), None, rng)
+            .unwrap();
+
+        // Deploy the second program.
+        let deployment_block = sample_next_block(&vm, &caller_private_key, &[second_deployment.clone()], rng).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Create the deployment for the third program.
+        let third_program = r"
+import second_program.aleo;
+import first_program.aleo;
+
+program third_program.aleo;
+
+function a:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    call second_program.aleo/b r0 r1 into r2;
+    output r2 as u8.private;
+        ";
+        let third_deployment = vm
+            .deploy(&caller_private_key, &Program::from_str(third_program).unwrap(), (third_record, 1), None, rng)
+            .unwrap();
+
+        // Deploy the third program.
+        let deployment_block = sample_next_block(&vm, &caller_private_key, &[third_deployment.clone()], rng).unwrap();
+        vm.add_next_block(&deployment_block).unwrap();
+
+        // Enforce that the VM can load properly with the imports.
+        assert!(VM::from(vm.store.clone()).is_ok());
     }
 }
