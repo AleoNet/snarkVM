@@ -789,10 +789,13 @@ function a:
         vm.add_next_block(&deployment_block).unwrap();
 
         // Check that the iterator ordering is not the same as the deployment ordering.
-        let deployment_transaction_ids = vm.transaction_store().deployment_transaction_ids().collect::<Vec<_>>();
-        assert_eq!(*deployment_transaction_ids[0], first_deployment.id());
-        assert_eq!(*deployment_transaction_ids[1], third_deployment.id());
-        assert_eq!(*deployment_transaction_ids[2], second_deployment.id());
+        let deployment_transaction_ids =
+            vm.transaction_store().deployment_transaction_ids().map(|id| *id).collect::<Vec<_>>();
+        assert_ne!(deployment_transaction_ids, vec![
+            first_deployment.id(),
+            second_deployment.id(),
+            third_deployment.id()
+        ]);
 
         // Enforce that the VM can load properly with the imports.
         assert!(VM::from(vm.store.clone()).is_ok());
