@@ -43,6 +43,9 @@ path = "../../console/account"
 [dev-dependencies.anyhow]
 version = "1.0.73"
 
+[dev-dependencies.paste]
+version = "1.0.12"
+
 [dev-dependencies.rand]
 version = "0.8"
 

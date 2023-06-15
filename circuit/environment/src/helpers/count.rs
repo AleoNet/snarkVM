@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::prelude::{bail, Error, Result};
-
 use core::{
     fmt::{Debug, Display, Formatter},
     ops::{Add, Mul, Sub},
