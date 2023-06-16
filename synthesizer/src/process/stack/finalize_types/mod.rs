@@ -16,14 +16,8 @@ mod initialize;
 mod matches;
 
 use crate::{
-    process::{StackMatches, StackProgram},
-    program::{
-        finalize::{Command, Finalize},
-        Instruction,
-        Opcode,
-        Operand,
-        Program,
-    },
+    process::{Finalize, Program, StackMatches, StackProgram},
+    program::{Command, Instruction, InstructionTrait, Opcode, Operand},
 };
 use console::{
     network::prelude::*,

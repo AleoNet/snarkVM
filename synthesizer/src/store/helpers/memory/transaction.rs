@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    program::Program,
+    process::Program,
     snark::{Certificate, Proof, VerifyingKey},
     store::{
         helpers::memory::{MemoryMap, TransitionMemory},

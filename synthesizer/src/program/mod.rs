@@ -16,6 +16,7 @@ mod closure;
 pub use closure::*;
 
 pub mod finalize;
+pub use finalize::*;
 
 mod function;
 pub use function::*;
@@ -91,7 +92,7 @@ enum ProgramDefinition {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Program<N: Network> {
+pub struct ProgramCore<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> {
     /// The ID of the program.
     id: ProgramID<N>,
     /// A map of the declared imports for the program.
@@ -107,10 +108,10 @@ pub struct Program<N: Network> {
     /// A map of the declared closures for the program.
     closures: IndexMap<Identifier<N>, Closure<N>>,
     /// A map of the declared functions for the program.
-    functions: IndexMap<Identifier<N>, Function<N>>,
+    functions: IndexMap<Identifier<N>, FunctionCore<N, Instruction, Command>>,
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ProgramCore<N, Instruction, Command> {
     /// Initializes an empty program.
     #[inline]
     pub fn new(id: ProgramID<N>) -> Result<Self> {
@@ -156,7 +157,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns the functions in the program.
-    pub const fn functions(&self) -> &IndexMap<Identifier<N>, Function<N>> {
+    pub const fn functions(&self) -> &IndexMap<Identifier<N>, FunctionCore<N, Instruction, Command>> {
         &self.functions
     }
 
@@ -241,7 +242,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns the function with the given name.
-    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
+    pub fn get_function(&self, name: &Identifier<N>) -> Result<FunctionCore<N, Instruction, Command>> {
         // Attempt to retrieve the function.
         let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
         // Ensure the function name matches.
@@ -257,7 +258,7 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ProgramCore<N, Instruction, Command> {
     /// Adds a new import statement to the program.
     ///
     /// # Errors
@@ -479,7 +480,7 @@ impl<N: Network> Program<N> {
     /// This method will halt if an output register does not already exist.
     /// This method will halt if an output type references a non-existent definition.
     #[inline]
-    fn add_function(&mut self, function: Function<N>) -> Result<()> {
+    fn add_function(&mut self, function: FunctionCore<N, Instruction, Command>) -> Result<()> {
         // Retrieve the function name.
         let function_name = *function.name();
 
@@ -512,7 +513,7 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ProgramCore<N, Instruction, Command> {
     #[rustfmt::skip]
     const KEYWORDS: &'static [&'static str] = &[
         // Mode
@@ -590,8 +591,7 @@ impl<N: Network> Program<N> {
 
     /// Returns `true` if the given name is a reserved opcode.
     pub fn is_reserved_opcode(name: &str) -> bool {
-        // Check if the given name matches any opcode (in its entirety; including past the first '.' if it exists).
-        Instruction::<N>::OPCODES.iter().any(|opcode| **opcode == name)
+        Instruction::is_reserved_opcode(name)
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
@@ -603,7 +603,9 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> TypeName for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> TypeName
+    for ProgramCore<N, Instruction, Command>
+{
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -614,7 +616,13 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, StackEvaluate, StackExecute, Trace};
+    use crate::{
+        process::{Function, Program},
+        CallStack,
+        StackEvaluate,
+        StackExecute,
+        Trace,
+    };
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey},

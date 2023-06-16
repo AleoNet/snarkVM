@@ -24,7 +24,15 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{FinalizeRegisters, Registers, StackEvaluate, StackExecute, StackMatches, StackProgram};
+use crate::{
+    program::InstructionTrait,
+    FinalizeRegisters,
+    Registers,
+    StackEvaluate,
+    StackExecute,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::{
         prelude::{
@@ -337,6 +345,21 @@ macro_rules! opcodes {
     ($_object:expr, |$_reader:ident| $_operation:block, { $( $variant:ident, )+ }) => { [$( $variant::<N>::opcode() ),+] }
 }
 
+impl<N: Network> InstructionTrait<N> for Instruction<N> {
+    /// Returns the destination register of the instruction.
+    #[inline]
+    fn destinations(&self) -> Vec<Register<N>> {
+        instruction!(self, |instruction| instruction.destinations())
+    }
+
+    /// Returns `true` if the given name is a reserved opcode.
+    #[inline]
+    fn is_reserved_opcode(name: &str) -> bool {
+        // Check if the given name matches any opcode (in its entirety; including past the first '.' if it exists).
+        Instruction::<N>::OPCODES.iter().any(|opcode| **opcode == name)
+    }
+}
+
 impl<N: Network> Instruction<N> {
     /// The list of all instruction opcodes.
     pub const OPCODES: &'static [Opcode] = &instruction!(opcodes, Instruction, |None| {});
@@ -351,12 +374,6 @@ impl<N: Network> Instruction<N> {
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
         instruction!(self, |instruction| instruction.operands())
-    }
-
-    /// Returns the destination register of the instruction.
-    #[inline]
-    pub fn destinations(&self) -> Vec<Register<N>> {
-        instruction!(self, |instruction| instruction.destinations())
     }
 
     /// Evaluates the instruction.

@@ -21,7 +21,7 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::Instruction;
+use crate::{program::InstructionTrait, Instruction};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, RegisterType},

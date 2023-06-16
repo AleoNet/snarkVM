@@ -39,7 +39,15 @@ pub use position::*;
 mod set;
 pub use set::*;
 
-use crate::{program::Instruction, FinalizeOperation, FinalizeRegisters, FinalizeStorage, FinalizeStore, Stack};
+use crate::{
+    program::Instruction,
+    CommandTrait,
+    FinalizeOperation,
+    FinalizeRegisters,
+    FinalizeStorage,
+    FinalizeStore,
+    Stack,
+};
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -66,6 +74,8 @@ pub enum Command<N: Network> {
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
 }
+
+impl<N: Network> CommandTrait<N> for Command<N> {}
 
 impl<N: Network> Command<N> {
     /// Finalizes the command.

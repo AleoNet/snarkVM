@@ -15,7 +15,18 @@
 mod initialize;
 mod matches;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, StackMatches, StackProgram};
+use crate::{
+    program::InstructionTrait,
+    CallOperator,
+    Closure,
+    Function,
+    Instruction,
+    Opcode,
+    Operand,
+    Program,
+    StackMatches,
+    StackProgram,
+};
 use console::{
     network::prelude::*,
     program::{

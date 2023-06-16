@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Finalize<N> {
+impl<N: Network, Command: CommandTrait<N>> Parser for FinalizeCore<N, Command> {
     /// Parses a string into finalize.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -52,7 +52,7 @@ impl<N: Network> Parser for Finalize<N> {
     }
 }
 
-impl<N: Network> FromStr for Finalize<N> {
+impl<N: Network, Command: CommandTrait<N>> FromStr for FinalizeCore<N, Command> {
     type Err = Error;
 
     /// Returns a finalize from a string literal.
@@ -69,14 +69,14 @@ impl<N: Network> FromStr for Finalize<N> {
     }
 }
 
-impl<N: Network> Debug for Finalize<N> {
+impl<N: Network, Command: CommandTrait<N>> Debug for FinalizeCore<N, Command> {
     /// Prints the finalize as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Finalize<N> {
+impl<N: Network, Command: CommandTrait<N>> Display for FinalizeCore<N, Command> {
     /// Prints the finalize as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the finalize to a string.
@@ -89,6 +89,7 @@ impl<N: Network> Display for Finalize<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Finalize;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

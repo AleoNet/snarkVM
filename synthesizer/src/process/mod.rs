@@ -35,7 +35,7 @@ use crate::{
     atomic_batch_scope,
     block::{Deployment, Execution, Fee, FinalizeOperation, Input, Transition},
     finalize::{Branch, Command},
-    program::{finalize::Finalize, Function, Instruction, Program},
+    program::Instruction,
     store::{FinalizeStorage, FinalizeStore},
 };
 use console::{
@@ -53,6 +53,10 @@ use std::{collections::HashMap, sync::Arc};
 
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
+
+pub type Program<N> = crate::program::ProgramCore<N, Instruction<N>, Command<N>>;
+pub type Function<N> = crate::program::FunctionCore<N, Instruction<N>, Command<N>>;
+pub type Finalize<N> = crate::program::FinalizeCore<N, Command<N>>;
 
 #[derive(Clone)]
 pub struct Process<N: Network> {

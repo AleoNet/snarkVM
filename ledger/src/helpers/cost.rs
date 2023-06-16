@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::{network::prelude::*, program::ProgramID};
+use console::{
+    network::prelude::*,
+    program::{LiteralType, ProgramID},
+};
 use synthesizer::{
     block::{Deployment, Execution},
-    program::Program,
+    process::{Finalize, Program},
+    program::{Command, Instruction},
 };
 
 use anyhow::Result;
@@ -69,7 +73,7 @@ pub fn execution_cost<N: Network>(
         let program = lookup.get(program_id).ok_or(anyhow!("Program '{program_id}' is missing"))?;
         // Retrieve the finalize cost.
         let cost = match program.get_function(function_name)?.finalize() {
-            Some((_, finalize)) => finalize.cost_in_microcredits()?,
+            Some((_, finalize)) => cost_in_microcredits(finalize)?,
             None => continue,
         };
         // Accumulate the finalize cost.
@@ -84,4 +88,96 @@ pub fn execution_cost<N: Network>(
         .ok_or(anyhow!("The total cost computation overflowed for an execution"))?;
 
     Ok((total_cost, (storage_cost, finalize_cost)))
+}
+
+/// Returns the minimum number of microcredits required to run the finalize.
+pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
+    // Defines the cost of each command.
+    let cost = |command: &Command<N>| match command {
+        Command::Instruction(Instruction::Abs(_)) => Ok(2_000),
+        Command::Instruction(Instruction::AbsWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Add(_)) => Ok(2_000),
+        Command::Instruction(Instruction::AddWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::And(_)) => Ok(2_000),
+        Command::Instruction(Instruction::AssertEq(_)) => Ok(2_000),
+        Command::Instruction(Instruction::AssertNeq(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
+        Command::Instruction(Instruction::Cast(_)) => Ok(2_000),
+        Command::Instruction(Instruction::CommitBHP256(_)) => Ok(200_000),
+        Command::Instruction(Instruction::CommitBHP512(_)) => Ok(200_000),
+        Command::Instruction(Instruction::CommitBHP768(_)) => Ok(200_000),
+        Command::Instruction(Instruction::CommitBHP1024(_)) => Ok(200_000),
+        Command::Instruction(Instruction::CommitPED64(_)) => Ok(100_000),
+        Command::Instruction(Instruction::CommitPED128(_)) => Ok(100_000),
+        Command::Instruction(Instruction::Div(_)) => Ok(10_000),
+        Command::Instruction(Instruction::DivWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Double(_)) => Ok(2_000),
+        Command::Instruction(Instruction::GreaterThan(_)) => Ok(2_000),
+        Command::Instruction(Instruction::GreaterThanOrEqual(_)) => Ok(2_000),
+        Command::Instruction(Instruction::HashBHP256(_)) => Ok(200_000),
+        Command::Instruction(Instruction::HashBHP512(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashBHP768(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashBHP1024(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashPED64(_)) => Ok(20_000),
+        Command::Instruction(Instruction::HashPED128(_)) => Ok(30_000),
+        Command::Instruction(Instruction::HashPSD2(hash)) => match hash.destination_type() {
+            LiteralType::Address | LiteralType::Group => Ok(600_000),
+            _ => Ok(60_000),
+        },
+        Command::Instruction(Instruction::HashPSD4(hash)) => match hash.destination_type() {
+            LiteralType::Address | LiteralType::Group => Ok(700_000),
+            _ => Ok(100_000),
+        },
+        Command::Instruction(Instruction::HashPSD8(hash)) => match hash.destination_type() {
+            LiteralType::Address | LiteralType::Group => Ok(800_000),
+            _ => Ok(200_000),
+        },
+        Command::Instruction(Instruction::HashManyPSD2(_)) => {
+            bail!("`hash_many.psd2` is not supported in finalize.")
+        }
+        Command::Instruction(Instruction::HashManyPSD4(_)) => {
+            bail!("`hash_many.psd4` is not supported in finalize.")
+        }
+        Command::Instruction(Instruction::HashManyPSD8(_)) => {
+            bail!("`hash_many.psd8` is not supported in finalize.")
+        }
+        Command::Instruction(Instruction::Inv(_)) => Ok(10_000),
+        Command::Instruction(Instruction::IsEq(_)) => Ok(2_000),
+        Command::Instruction(Instruction::IsNeq(_)) => Ok(2_000),
+        Command::Instruction(Instruction::LessThan(_)) => Ok(2_000),
+        Command::Instruction(Instruction::LessThanOrEqual(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Modulo(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Mul(_)) => Ok(150_000),
+        Command::Instruction(Instruction::MulWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Nand(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Neg(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Nor(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Not(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Or(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Pow(_)) => Ok(20_000),
+        Command::Instruction(Instruction::PowWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Rem(_)) => Ok(2_000),
+        Command::Instruction(Instruction::RemWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Shl(_)) => Ok(2_000),
+        Command::Instruction(Instruction::ShlWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Shr(_)) => Ok(2_000),
+        Command::Instruction(Instruction::ShrWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Square(_)) => Ok(2_000),
+        Command::Instruction(Instruction::SquareRoot(_)) => Ok(120_000),
+        Command::Instruction(Instruction::Sub(_)) => Ok(10_000),
+        Command::Instruction(Instruction::SubWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Ternary(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Xor(_)) => Ok(2_000),
+        // TODO: The following 'finalize' commands are currently priced higher than expected.
+        //  Expect these numbers to change as their usage is stabilized.
+        Command::Contains(_) => Ok(250_000),
+        Command::Get(_) => Ok(500_000),
+        Command::GetOrUse(_) => Ok(500_000),
+        Command::RandChaCha(_) => Ok(500_000),
+        Command::Remove(_) => Ok(10_000),
+        Command::Set(_) => Ok(1_000_000),
+        Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
+        Command::Position(_) => Ok(1_000),
+    };
+    finalize.commands().iter().map(|command| cost(command)).sum()
 }

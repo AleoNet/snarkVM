@@ -38,8 +38,8 @@ mod helpers;
 
 use crate::{
     block::{Deployment, Transition},
-    process::{CallMetrics, Process, Trace},
-    program::{CallOperator, Closure, Function, Instruction, Operand, Program},
+    process::{CallMetrics, Function, Process, Program, Trace},
+    program::{CallOperator, Closure, Instruction, Operand},
 };
 use console::{
     account::{Address, PrivateKey},
