@@ -28,6 +28,7 @@ use console::{
 };
 
 use indexmap::IndexSet;
+use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Finalize<N: Network> {
@@ -40,12 +41,14 @@ pub struct Finalize<N: Network> {
     commands: Vec<Command<N>>,
     /// The number of write commands.
     num_writes: u16,
+    /// A mapping from `Position`s to their index in `commands`.
+    positions: HashMap<Identifier<N>, usize>,
 }
 
 impl<N: Network> Finalize<N> {
     /// Initializes a new finalize with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), commands: Vec::new(), num_writes: 0 }
+        Self { name, inputs: IndexSet::new(), commands: Vec::new(), num_writes: 0, positions: HashMap::new() }
     }
 
     /// Returns the name of the associated function.
@@ -71,6 +74,11 @@ impl<N: Network> Finalize<N> {
     /// Returns the number of write commands.
     pub const fn num_writes(&self) -> u16 {
         self.num_writes
+    }
+
+    /// Returns the mapping of `Position`s to their index in `commands`.
+    pub const fn positions(&self) -> &HashMap<Identifier<N>, usize> {
+        &self.positions
     }
 
     /// Returns the minimum number of microcredits required to run the finalize.
@@ -159,6 +167,8 @@ impl<N: Network> Finalize<N> {
             Command::RandChaCha(_) => Ok(500_000),
             Command::Remove(_) => Ok(10_000),
             Command::Set(_) => Ok(1_000_000),
+            Command::BranchEq(_) | Command::BranchNeq(_) => Ok(5_000),
+            Command::Position(_) => Ok(1_000),
         };
         self.commands.iter().map(|command| cost(command)).sum()
     }
@@ -249,6 +259,34 @@ impl<N: Network> Finalize<N> {
             Command::Set(_) => {
                 // Increment the number of write commands.
                 self.num_writes += 1;
+            }
+            Command::BranchEq(branch) => {
+                // Ensure that the position referenced by the branch is **not** yet defined.
+                // This ensures that the branch **only** jumps forward.
+                ensure!(
+                    self.positions.get(branch.position()).is_none(),
+                    "Cannot branch to an earlier position '{}' in the program",
+                    branch.position()
+                );
+            }
+            Command::BranchNeq(branch) => {
+                // Ensure that the position referenced by the branch is **not** yet defined.
+                // This ensures that the branch **only** jumps forward.
+                ensure!(
+                    self.positions.get(branch.position()).is_none(),
+                    "Cannot branch to an earlier position '{}' in the program",
+                    branch.position()
+                );
+            }
+            Command::Position(position) => {
+                // Ensure that the `Position` is not already defined.
+                ensure!(
+                    self.positions.get(position.name()).is_none(),
+                    "The position `{}` is not unique",
+                    position.name()
+                );
+                // Track the index of the `Position`.
+                self.positions.insert(*position.name(), self.commands.len());
             }
         }
 
