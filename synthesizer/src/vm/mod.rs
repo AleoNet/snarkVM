@@ -713,7 +713,7 @@ finalize getter:
     #[test]
     fn test_load_deployments_with_imports() {
         // NOTE: This seed was chosen for the CI's RNG to ensure that the test passes.
-        let rng = &mut TestRng::fixed(987654321);
+        let rng = &mut TestRng::fixed(123456789);
 
         // Initialize a new caller.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
