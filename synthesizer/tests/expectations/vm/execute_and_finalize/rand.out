@@ -1,0 +1,43 @@
+- execute: Function 'rand_chacha_with_literals' in program 'test_branch.aleo' expects 8 inputs, but 5 inputs were found.
+- execute:
+    test_branch.aleo/rand_chacha_with_struct:
+      outputs: []
+      finalize:
+      - |-
+        {
+          first: 0field,
+          second: 0field,
+          third: 0field,
+          fourth: 0field,
+          fifth: 0field
+        }
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"1552945352654573563765527240784728238308579131338743302478823107737736247165field","checksum":"5760744366854661036268220089401239053719348617104788258007382892730529438805field","value":"record1qyqspdnewlj7a9pspage3040jv8setlv0mmpf5903xt793hngs7aeycsqyxx66trwfhkxun9v35hguerqqpqzqr5nd3wua4tmah6dqwddnusvhuphk2erayvaefeu6j3dsaxtaavpt4u0z2zqpn292mdt4jju99tc2mr46wrgcta4qstw2nejdg4r9rsghmklc9"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    test_branch.aleo/rand_chacha_check:
+      outputs: []
+      finalize:
+      - 0field
+      - 'true'
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"272561780301363850573863434446866999900617306222241881455647059682133680320field","checksum":"6450725670239136032031309549991496662467798362615065372883393574024032452182field","value":"record1qyqsp9u4jwjujyftrtc5gca9n22jdjnsgx9ymxlq7tvlhjpy3yk3degxqyxx66trwfhkxun9v35hguerqqpqzq9w3d3wpeccgtl3244rkx3matgftz6daknlraw75jxdgrvhz57zq2fhahmaa28cvz6waxk3glp0482w4qk28ajvjz9l3q5vdn5xaefsccpcynv"}'
+      finalize: []
+  speculate: the execution was rejected
+  add_next_block: 'Failed to finalize transactions: Failed to reject a rejected execute transaction'
+- execute:
+    test_branch.aleo/rand_chacha_check:
+      outputs: []
+      finalize:
+      - 1field
+      - 'true'
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"1997223360894173431280080992953165089239934647426325960593982020734674563817field","checksum":"3135178616995095399016809450155324186848810235337480329251124135440361510061field","value":"record1qyqsptgsxszqzwefcmm2mfnh8hx53qmkezpts32rl29jrpj2mnfmfwqzqyxx66trwfhkxun9v35hguerqqpqzq9fl2nxny98ctkj2258a7p9drrszpm98jq8g5yc0lv59rfd2860qwx3kqkgv899gep629mwqrnlssm04lluvkhsuz3ppntrlks4hnjq5vq2rej"}'
+      finalize: []
+  speculate: the execution was rejected
+  add_next_block: 'Failed to finalize transactions: Failed to reject a rejected execute transaction'

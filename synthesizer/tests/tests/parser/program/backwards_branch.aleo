@@ -1,4 +1,4 @@
-program duplicate_position.aleo;
+program backwards_branch.aleo;
 
 function compute:
     finalize;
