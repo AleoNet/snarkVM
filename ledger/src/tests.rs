@@ -17,7 +17,7 @@ use crate::{
     RecordsFilter,
 };
 use console::{
-    account::{PrivateKey, ViewKey},
+    account::PrivateKey,
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Value},
 };
@@ -86,12 +86,8 @@ fn test_state_path() {
 fn test_insufficient_finalize_fees() {
     let rng = &mut TestRng::default();
 
-    // Sample the genesis private key.
-    let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-    let view_key = ViewKey::try_from(&private_key).unwrap();
-
-    // Initialize the ledger.
-    let ledger = crate::test_helpers::sample_ledger(private_key, rng);
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
 
     // Deploy a test program to the ledger.
     let program = Program::<CurrentNetwork>::from_str(
