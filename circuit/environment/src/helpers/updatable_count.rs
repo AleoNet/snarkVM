@@ -494,7 +494,7 @@ mod test {
     fn check_position() {
         let count = count_is!(0, 0, 0, 0);
         assert_eq!(count.file, "circuit/environment/src/helpers/updatable_count.rs");
-        assert_eq!(count.line, 493);
+        assert_eq!(count.line, 495);
         assert_eq!(count.column, 21);
     }
 
