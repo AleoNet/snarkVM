@@ -228,7 +228,7 @@ version = "1.0"
 optional = true
 
 [dependencies.ureq]
-version = "2.6"
+version = "2.7"
 features = [ "json" ]
 
 [dev-dependencies.bincode]

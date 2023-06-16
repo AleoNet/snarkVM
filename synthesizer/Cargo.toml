@@ -162,7 +162,7 @@ features = [ "preserve_order" ]
 version = "0.1"
 
 [dependencies.ureq]
-version = "2.6.2"
+version = "2.7.0"
 features = [ "json" ]
 
 [dev-dependencies.console]
