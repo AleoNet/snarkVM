@@ -366,3 +366,37 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.execute(private_key, ("credits.aleo", "transfer_private"), inputs.iter(), fee, query, rng)
     }
 }
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use crate::Ledger;
+    use console::{account::PrivateKey, network::Testnet3, prelude::*};
+    use synthesizer::{
+        block::Block,
+        store::{helpers::memory::ConsensusMemory, ConsensusStore},
+        vm::VM,
+    };
+
+    pub(crate) type CurrentNetwork = Testnet3;
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>;
+
+    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
+        Block::<CurrentNetwork>::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap()
+    }
+
+    pub(crate) fn sample_ledger(
+        private_key: PrivateKey<CurrentNetwork>,
+        rng: &mut (impl Rng + CryptoRng),
+    ) -> CurrentLedger {
+        // Initialize the store.
+        let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+        // Create a genesis block.
+        let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
+        // Initialize the ledger with the genesis block.
+        let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+        // Ensure the genesis block is correct.
+        assert_eq!(genesis, ledger.get_block(0).unwrap());
+        // Return the ledger.
+        ledger
+    }
+}
