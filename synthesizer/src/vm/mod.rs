@@ -716,11 +716,13 @@ finalize getter:
         let rng = &mut TestRng::fixed(987654321);
 
         // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
 
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+        let genesis = vm.genesis(&caller_private_key, rng).unwrap();
 
         // Fetch the unspent records.
         let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<Vec<(_, _)>>();
