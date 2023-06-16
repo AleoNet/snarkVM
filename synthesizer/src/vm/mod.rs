@@ -723,6 +723,8 @@ finalize getter:
         let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
         let genesis = vm.genesis(&caller_private_key, rng).unwrap();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
 
         // Fetch the unspent records.
         let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<Vec<(_, _)>>();
@@ -730,11 +732,6 @@ finalize getter:
         let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
         let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
         let third_record = records[2].1.clone().decrypt(&caller_view_key).unwrap();
-
-        // Initialize the VM.
-        let vm = sample_vm();
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
 
         // Create the deployment for the first program.
         let first_program = r"
