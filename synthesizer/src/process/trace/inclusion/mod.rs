@@ -65,7 +65,7 @@ impl<N: Network> Inclusion<N> {
         }
 
         // Retrieve the transition index.
-        let transition_index = self.input_tasks.len() as u8;
+        let transition_index = self.input_tasks.len() as u16;
 
         // Initialize the input tasks.
         let input_tasks = self.input_tasks.entry(*transition.id()).or_default();
@@ -89,7 +89,7 @@ impl<N: Network> Inclusion<N> {
             // Filter the outputs for records.
             if let Output::Record(commitment, ..) = output {
                 // Compute the transaction leaf.
-                let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
+                let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
                 // Compute the transition leaf.
                 let transition_leaf = output.to_transition_leaf((input_ids.len() + index) as u8);
                 // Compute the transition path.
