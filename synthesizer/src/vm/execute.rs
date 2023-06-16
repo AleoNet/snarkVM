@@ -151,9 +151,6 @@ mod tests {
         // Fetch the unspent records.
         let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
 
-        // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Update the VM.
@@ -408,5 +405,37 @@ mod tests {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
             assert_eq!(2076, execution_size_in_bytes, "Update me if serialization has changed");
         }
+    }
+
+    #[test]
+    fn test_fee_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, records) = prepare_vm(rng).unwrap();
+
+        // Fetch the unspent record.
+        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Sample a random rejected ID.
+        let rejected_id = Field::rand(rng);
+
+        // Execute the fee.
+        let (_response, fee) = vm.execute_fee_raw(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
+
+        // Create the fee transaction.
+        let transaction = Transaction::from_fee(fee.clone()).unwrap();
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(1935, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the fee.
+        let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
+        assert_eq!(1969, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }
