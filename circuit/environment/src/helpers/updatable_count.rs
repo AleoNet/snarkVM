@@ -106,8 +106,6 @@ impl UpdatableCount {
     pub fn assert_matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         if !self.matches(num_constants, num_public, num_private, num_constraints) {
             let mut files = FILES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-            println!("env: {:?}", env::var("UPDATE_COUNT"));
-            println!("self.file: {:?}", self.file);
             match env::var("UPDATE_COUNT") {
                 // If `UPDATE_COUNT` is set and the `query_string` matches the file containing the macro invocation
                 // that constructed this `UpdatableCount`, then update the macro invocation.
