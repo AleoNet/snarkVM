@@ -12,22 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+pub type IResult<T> = Result<T, HaltError>;
 
-#[macro_use]
-extern crate thiserror;
-
-mod environment;
-pub use environment::*;
-
-mod iresult;
-pub use iresult::*;
-
-mod helpers;
-pub use helpers::*;
-
-pub mod traits;
-pub use traits::*;
-
-pub mod prelude;
+#[derive(Debug, Error)]
+pub enum HaltError {
+    #[error("{}", _0)]
+    Anyhow(#[from] anyhow::Error),
+    #[error("{}", _0)]
+    Halt(String),
+}
