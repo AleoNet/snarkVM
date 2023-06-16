@@ -808,7 +808,7 @@ function a:
     }
 
     #[test]
-    fn test_multiple_executions() {
+    fn test_multiple_external_calls() {
         let rng = &mut TestRng::default();
 
         // Initialize a new caller.
@@ -837,7 +837,7 @@ function a:
             r"
 import credits.aleo;
 
-program test_multiple_executions.aleo;
+program test_multiple_external_calls.aleo;
 
 function multitransfer:
     input r0 as credits.aleo/credits.record;
@@ -863,7 +863,7 @@ function multitransfer:
         let execution = vm
             .execute(
                 &caller_private_key,
-                ("test_multiple_executions.aleo", "multitransfer"),
+                ("test_multiple_external_calls.aleo", "multitransfer"),
                 inputs.into_iter(),
                 Some((record_2, 1)),
                 None,
