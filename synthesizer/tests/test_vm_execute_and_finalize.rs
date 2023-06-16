@@ -229,6 +229,7 @@ fn test_vm_execute_and_finalize() {
 
 // A helper function to initialize the VM.
 // Returns a VM and the first record in the genesis block.
+#[allow(clippy::type_complexity)]
 fn initialize_vm<R: Rng + CryptoRng>(
     private_key: &PrivateKey<CurrentNetwork>,
     rng: &mut R,
