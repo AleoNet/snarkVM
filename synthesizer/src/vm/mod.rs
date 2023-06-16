@@ -713,26 +713,25 @@ finalize getter:
     #[test]
     fn test_load_deployments_with_imports() {
         // NOTE: This seed was chosen for the CI's RNG to ensure that the test passes.
-        let rng = &mut TestRng::fixed(987654321);
+        let rng = &mut TestRng::fixed(123456789);
 
         // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
 
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+        let genesis = vm.genesis(&caller_private_key, rng).unwrap();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
 
         // Fetch the unspent records.
         let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<Vec<(_, _)>>();
         trace!("Unspent Records:\n{:#?}", records);
-        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
-        let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
-        let third_record = records[2].1.clone().decrypt(&caller_view_key).unwrap();
-
-        // Initialize the VM.
-        let vm = sample_vm();
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
+        let first_record = records[0].1.decrypt(&caller_view_key).unwrap();
+        let second_record = records[1].1.decrypt(&caller_view_key).unwrap();
+        let third_record = records[2].1.decrypt(&caller_view_key).unwrap();
 
         // Create the deployment for the first program.
         let first_program = r"
