@@ -57,11 +57,11 @@ fn test_vm_execute_and_finalize() {
         let genesis_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
         // Initialize the VM.
-        let (vm, record) = initialize_vm(&genesis_private_key, rng);
+        let (vm, records) = initialize_vm(&genesis_private_key, rng);
 
         // Pre-construct the necessary fee records.
         let num_fee_records = 1 + test.cases().len();
-        let mut fee_records = construct_fee_records(&vm, &genesis_private_key, record, num_fee_records, rng);
+        let mut fee_records = construct_fee_records(&vm, &genesis_private_key, records, num_fee_records, rng);
 
         // Deploy the program.
         let transaction =
@@ -232,7 +232,7 @@ fn test_vm_execute_and_finalize() {
 fn initialize_vm<R: Rng + CryptoRng>(
     private_key: &PrivateKey<CurrentNetwork>,
     rng: &mut R,
-) -> (VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>, Record<CurrentNetwork, Plaintext<CurrentNetwork>>) {
+) -> (VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>, Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>) {
     // Initialize a VM.
     let vm: VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> =
         VM::from(ConsensusStore::open(None).unwrap()).unwrap();
@@ -243,24 +243,22 @@ fn initialize_vm<R: Rng + CryptoRng>(
     // Select a record to spend.
     let view_key = ViewKey::try_from(private_key).unwrap();
     let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-    let record = records.values().next().unwrap().decrypt(&view_key).unwrap();
+    let records = records.values().map(|record| record.decrypt(&view_key).unwrap()).collect::<Vec<_>>();
 
     // Add the genesis block to the VM.
     vm.add_next_block(&genesis).unwrap();
 
-    (vm, record)
+    (vm, records)
 }
 
 // A helper function construct the desired number of fee records from an initial record, all owned by the same key.
 fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     vm: &VM<CurrentNetwork, C>,
     private_key: &PrivateKey<CurrentNetwork>,
-    record: Record<CurrentNetwork, Plaintext<CurrentNetwork>>,
+    records: Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>,
     num_fee_records: usize,
     rng: &mut R,
 ) -> Vec<(Record<CurrentNetwork, Plaintext<CurrentNetwork>>, u64)> {
-    let num_levels_of_splits = num_fee_records.next_power_of_two().ilog2();
-
     // Helper function to get the balance of a `credits.aleo` record.
     let get_balance = |record: &Record<Testnet3, Plaintext<Testnet3>>| -> u64 {
         match record.data().get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
@@ -272,10 +270,15 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
     println!("Splitting the initial fee record into {} fee records.", num_fee_records);
 
     // Construct fee records for the tests.
-    let balance = get_balance(&record);
-    let mut fee_records = vec![(record, balance)];
+    let mut fee_records = records
+        .into_iter()
+        .map(|record| {
+            let balance = get_balance(&record);
+            (record, balance)
+        })
+        .collect::<Vec<_>>();
     let mut fee_counter = 1;
-    for _ in 0..num_levels_of_splits {
+    while fee_records.len() < num_fee_records {
         let mut transactions = Vec::with_capacity(fee_records.len());
         for (fee_record, balance) in fee_records.drain(..).collect_vec() {
             if fee_counter < num_fee_records {
