@@ -14,7 +14,9 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FromBytes
+    for FunctionCore<N, Instruction, Command>
+{
     /// Reads the function from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -49,7 +51,7 @@ impl<N: Network> FromBytes for Function<N> {
         let variant = u8::read_le(&mut reader)?;
         let finalize = match variant {
             0 => None,
-            1 => Some((FinalizeCommand::read_le(&mut reader)?, Finalize::read_le(&mut reader)?)),
+            1 => Some((Command::FinalizeCommand::read_le(&mut reader)?, FinalizeCore::read_le(&mut reader)?)),
             _ => return Err(error(format!("Failed to deserialize a function: invalid finalize variant ({variant})"))),
         };
 
@@ -67,7 +69,9 @@ impl<N: Network> FromBytes for Function<N> {
     }
 }
 
-impl<N: Network> ToBytes for Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ToBytes
+    for FunctionCore<N, Instruction, Command>
+{
     /// Writes the function to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -129,6 +133,7 @@ impl<N: Network> ToBytes for Function<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Function;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

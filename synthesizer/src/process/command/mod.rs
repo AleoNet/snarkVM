@@ -28,7 +28,7 @@ mod get_or_use;
 pub use get_or_use::*;
 
 mod rand_chacha;
-pub use crate::program::finalize::command::rand_chacha::*;
+pub use crate::process::command::rand_chacha::*;
 
 mod remove;
 pub use remove::*;
@@ -39,8 +39,15 @@ pub use position::*;
 mod set;
 pub use set::*;
 
-use crate::{program::Instruction, FinalizeOperation, FinalizeRegisters, FinalizeStorage, FinalizeStore, Stack};
-use console::network::prelude::*;
+use crate::{
+    process::{FinalizeOperation, FinalizeRegisters, Instruction, Stack},
+    program::{CommandTrait, InstructionTrait},
+    store::{FinalizeStorage, FinalizeStore},
+};
+use console::{
+    network::prelude::*,
+    program::{Identifier, Register, RegisterType},
+};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Command<N: Network> {
@@ -65,6 +72,65 @@ pub enum Command<N: Network> {
     BranchNeq(BranchNeq<N>),
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
+}
+
+impl<N: Network> CommandTrait<N> for Command<N> {
+    type FinalizeCommand = FinalizeCommand<N>;
+
+    /// Returns the destination registers of the command.
+    #[inline]
+    fn destinations(&self) -> Vec<Register<N>> {
+        match self {
+            Command::Instruction(instruction) => instruction.destinations(),
+            Command::Contains(contains) => vec![contains.destination().clone()],
+            Command::Get(get) => vec![get.destination().clone()],
+            Command::GetOrUse(get_or_use) => vec![get_or_use.destination().clone()],
+            Command::RandChaCha(rand_chacha) => vec![rand_chacha.destination().clone()],
+            Command::Remove(_)
+            | Command::Set(_)
+            | Command::BranchEq(_)
+            | Command::BranchNeq(_)
+            | Command::Position(_) => vec![],
+        }
+    }
+
+    /// Returns the branch target, if the command is a branch command.
+    /// Otherwise, returns `None`.
+    #[inline]
+    fn branch_to(&self) -> Option<&Identifier<N>> {
+        match self {
+            Command::BranchEq(branch_eq) => Some(branch_eq.position()),
+            Command::BranchNeq(branch_neq) => Some(branch_neq.position()),
+            _ => None,
+        }
+    }
+
+    /// Returns the position name, if the command is a position command.
+    /// Otherwise, returns `None`.
+    #[inline]
+    fn position(&self) -> Option<&Identifier<N>> {
+        match self {
+            Command::Position(position) => Some(position.name()),
+            _ => None,
+        }
+    }
+
+    /// Returns `true` if the command is a call instruction.
+    #[inline]
+    fn is_call(&self) -> bool {
+        matches!(self, Command::Instruction(Instruction::Call(_)))
+    }
+
+    /// Returns `true` if the command is a cast to record instruction.
+    fn is_cast_to_record(&self) -> bool {
+        matches!(self, Command::Instruction(Instruction::Cast(cast)) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)))
+    }
+
+    /// Returns `true` if the command is a write operation.
+    #[inline]
+    fn is_write(&self) -> bool {
+        matches!(self, Command::Set(_) | Command::Remove(_))
+    }
 }
 
 impl<N: Network> Command<N> {

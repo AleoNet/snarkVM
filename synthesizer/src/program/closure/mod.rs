@@ -21,7 +21,7 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::Instruction;
+use crate::program::InstructionTrait;
 use console::{
     network::prelude::*,
     program::{Identifier, Register, RegisterType},
@@ -30,19 +30,19 @@ use console::{
 use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Closure<N: Network> {
+pub struct ClosureCore<N: Network, Instruction: InstructionTrait<N>> {
     /// The name of the closure.
     name: Identifier<N>,
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
     inputs: IndexSet<Input<N>>,
     /// The instructions, in order of execution.
-    instructions: Vec<Instruction<N>>,
+    instructions: Vec<Instruction>,
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
 }
 
-impl<N: Network> Closure<N> {
+impl<N: Network, Instruction: InstructionTrait<N>> ClosureCore<N, Instruction> {
     /// Initializes a new closure with the given name.
     pub fn new(name: Identifier<N>) -> Self {
         Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new() }
@@ -59,7 +59,7 @@ impl<N: Network> Closure<N> {
     }
 
     /// Returns the closure instructions.
-    pub fn instructions(&self) -> &[Instruction<N>] {
+    pub fn instructions(&self) -> &[Instruction] {
         &self.instructions
     }
 
@@ -69,7 +69,7 @@ impl<N: Network> Closure<N> {
     }
 }
 
-impl<N: Network> Closure<N> {
+impl<N: Network, Instruction: InstructionTrait<N>> ClosureCore<N, Instruction> {
     /// Adds the input statement to the closure.
     ///
     /// # Errors
@@ -101,7 +101,7 @@ impl<N: Network> Closure<N> {
     /// This method will halt if there are output statements already.
     /// This method will halt if the maximum number of instructions has been reached.
     #[inline]
-    pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
+    pub fn add_instruction(&mut self, instruction: Instruction) -> Result<()> {
         // Ensure that there are no outputs in memory.
         ensure!(self.outputs.is_empty(), "Cannot add instructions after outputs have been added");
 
@@ -140,7 +140,7 @@ impl<N: Network> Closure<N> {
     }
 }
 
-impl<N: Network> TypeName for Closure<N> {
+impl<N: Network, Instruction: InstructionTrait<N>> TypeName for ClosureCore<N, Instruction> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {

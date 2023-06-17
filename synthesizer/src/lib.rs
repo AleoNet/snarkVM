@@ -26,7 +26,6 @@ extern crate tracing;
 
 #[cfg(feature = "coinbase")]
 pub use snarkvm_synthesizer_coinbase as coinbase;
-
 #[cfg(feature = "snark")]
 pub use snarkvm_synthesizer_snark as snark;
 
