@@ -21,7 +21,7 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::program::finalize::{CommandTrait, FinalizeCommandTrait, FinalizeCore};
+use crate::finalize::{CommandTrait, FinalizeCommandTrait, FinalizeCore};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, ValueType},

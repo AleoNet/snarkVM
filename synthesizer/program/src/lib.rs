@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments)]
+#![warn(clippy::cast_possible_truncation)]
+
 mod closure;
 pub use closure::*;
 
@@ -26,6 +30,9 @@ pub use import::*;
 
 mod mapping;
 pub use mapping::*;
+
+mod operand;
+pub use operand::*;
 
 mod bytes;
 mod parse;
@@ -613,27 +620,13 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Typ
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        process::{Function, Opcode, Program},
-        CallStack,
-        StackEvaluate,
-        StackExecute,
-        Trace,
-    };
-    use circuit::network::AleoV0;
     use console::{
-        account::{Address, PrivateKey},
         network::Testnet3,
-        program::{Locator, Plaintext, Record, Value, ValueType},
-        types::Field,
+        program::{Locator, ValueType},
     };
-
-    use parking_lot::RwLock;
-    use snarkvm_utilities::TestRng;
-    use std::sync::Arc;
+    use synthesizer::process::{Function, Opcode, Program};
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_program_mapping() -> Result<()> {
@@ -646,14 +639,11 @@ mapping message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
-
-        // Add the mapping to the program.
-        program.add_mapping(mapping.clone())?;
+        let program = Program::<CurrentNetwork>::from_str(&format!("program unknown.aleo; {mapping}"))?;
         // Ensure the mapping was added.
         assert!(program.contains_mapping(&Identifier::from_str("message")?));
         // Ensure the retrieved mapping matches.
-        assert_eq!(mapping, program.get_mapping(&Identifier::from_str("message")?)?);
+        assert_eq!(mapping.to_string(), program.get_mapping(&Identifier::from_str("message")?)?.to_string());
 
         Ok(())
     }
@@ -669,10 +659,7 @@ struct message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
-
-        // Add the struct to the program.
-        program.add_struct(struct_.clone())?;
+        let program = Program::<CurrentNetwork>::from_str(&format!("program unknown.aleo; {struct_}"))?;
         // Ensure the struct was added.
         assert!(program.contains_struct(&Identifier::from_str("message")?));
         // Ensure the retrieved struct matches.
@@ -693,10 +680,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
-
-        // Add the record to the program.
-        program.add_record(record.clone())?;
+        let program = Program::<CurrentNetwork>::from_str(&format!("program unknown.aleo; {record}"))?;
         // Ensure the record was added.
         assert!(program.contains_record(&Identifier::from_str("foo")?));
         // Ensure the retrieved record matches.
@@ -718,10 +702,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
-
-        // Add the function to the program.
-        program.add_function(function.clone())?;
+        let program = Program::<CurrentNetwork>::from_str(&format!("program unknown.aleo; {function}"))?;
         // Ensure the function was added.
         assert!(program.contains_function(&Identifier::from_str("compute")?));
         // Ensure the retrieved function matches.
@@ -793,390 +774,5 @@ function swap:
         assert_eq!(function.output_types()[1], ValueType::ExternalRecord(Locator::from_str("usdc.aleo/usdc")?));
 
         Ok(())
-    }
-
-    #[test]
-    fn test_program_evaluate_function() {
-        let program = Program::<CurrentNetwork>::from_str(
-            r"
-    program example.aleo;
-
-    function foo:
-        input r0 as field.public;
-        input r1 as field.private;
-        add r0 r1 into r2;
-        output r2 as field.private;
-    ",
-        )
-        .unwrap();
-
-        // Declare the function name.
-        let function_name = Identifier::from_str("foo").unwrap();
-        // Declare the function inputs.
-        let inputs = [
-            Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("2field").unwrap()),
-            Value::Plaintext(Plaintext::from_str("3field").unwrap()),
-        ];
-
-        // Construct the process.
-        let process = crate::process::test_helpers::sample_process(&program);
-
-        // Compute the authorization.
-        let authorization = {
-            // Initialize an RNG.
-            let rng = &mut TestRng::default();
-
-            // Initialize caller private key.
-            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-
-            // Authorize the function call.
-            let authorization = process
-                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, inputs.iter(), rng)
-                .unwrap();
-            assert_eq!(authorization.len(), 1);
-            authorization
-        };
-
-        // Retrieve the stack.
-        let stack = process.get_stack(program.id()).unwrap();
-
-        // Declare the expected output.
-        let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
-
-        // Run the function.
-        let response =
-            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
-
-        // Re-run to ensure state continues to work.
-        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
-    }
-
-    #[test]
-    fn test_program_evaluate_struct_and_function() {
-        // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
-            r"
-program example.aleo;
-
-struct message:
-    first as field;
-    second as field;
-
-function compute:
-    input r0 as message.private;
-    add r0.first r0.second into r1;
-    output r1 as field.private;",
-        )
-        .unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-
-        // Declare the function name.
-        let function_name = Identifier::from_str("compute").unwrap();
-        // Declare the input value.
-        let input =
-            Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("{ first: 2field, second: 3field }").unwrap());
-        // Declare the expected output value.
-        let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
-
-        // Construct the process.
-        let process = crate::process::test_helpers::sample_process(&program);
-
-        // Compute the authorization.
-        let authorization = {
-            // Initialize an RNG.
-            let rng = &mut TestRng::default();
-
-            // Initialize caller private key.
-            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-
-            // Authorize the function call.
-            let authorization = process
-                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
-                .unwrap();
-            assert_eq!(authorization.len(), 1);
-            authorization
-        };
-
-        // Retrieve the stack.
-        let stack = process.get_stack(program.id()).unwrap();
-
-        // Compute the output value.
-        let response =
-            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
-
-        // Re-run to ensure state continues to work.
-        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
-    }
-
-    #[test]
-    fn test_program_evaluate_record_and_function() {
-        // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
-            r"
-program token.aleo;
-
-record token:
-    owner as address.private;
-    token_amount as u64.private;
-
-function compute:
-    input r0 as token.record;
-    add r0.token_amount r0.token_amount into r1;
-    output r1 as u64.private;",
-        )
-        .unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-
-        // Declare the function name.
-        let function_name = Identifier::from_str("compute").unwrap();
-
-        // Initialize an RNG.
-        let rng = &mut TestRng::default();
-
-        // Initialize caller private key.
-        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-        let caller = Address::try_from(&caller_private_key).unwrap();
-
-        // Declare the input value.
-        let input_record = Record::from_str(&format!(
-            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
-        ))
-        .unwrap();
-        let input = Value::<CurrentNetwork>::Record(input_record);
-
-        // Declare the expected output value.
-        let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
-
-        // Construct the process.
-        let process = crate::process::test_helpers::sample_process(&program);
-
-        // Authorize the function call.
-        let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
-            .unwrap();
-        assert_eq!(authorization.len(), 1);
-
-        // Retrieve the stack.
-        let stack = process.get_stack(program.id()).unwrap();
-
-        // Compute the output value.
-        let response =
-            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
-
-        // Re-run to ensure state continues to work.
-        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
-    }
-
-    #[test]
-    fn test_program_evaluate_call() {
-        // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
-            r"
-program example_call.aleo;
-
-// (a + (a + b)) + (a + b) == (3a + 2b)
-closure execute:
-    input r0 as field;
-    input r1 as field;
-    add r0 r1 into r2;
-    add r0 r2 into r3;
-    add r2 r3 into r4;
-    output r4 as field;
-    output r3 as field;
-    output r2 as field;
-
-function compute:
-    input r0 as field.private;
-    input r1 as field.public;
-    call execute r0 r1 into r2 r3 r4;
-    output r2 as field.private;
-    output r3 as field.private;
-    output r4 as field.private;",
-        )
-        .unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-
-        // Declare the function name.
-        let function_name = Identifier::from_str("compute").unwrap();
-
-        // Declare the input value.
-        let r0 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
-        let r1 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
-
-        // Declare the expected output value.
-        let r2 = Value::Plaintext(Plaintext::from_str("19field").unwrap());
-        let r3 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
-        let r4 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
-
-        {
-            // Construct the process.
-            let process = crate::process::test_helpers::sample_process(&program);
-            // Check that the circuit key can be synthesized.
-            process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
-        }
-
-        // Construct the process.
-        let process = crate::process::test_helpers::sample_process(&program);
-
-        // Compute the authorization.
-        let authorization = {
-            // Initialize an RNG.
-            let rng = &mut TestRng::default();
-
-            // Initialize caller private key.
-            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-
-            // Authorize the function call.
-            let authorization = process
-                .authorize::<CurrentAleo, _>(
-                    &caller_private_key,
-                    program.id(),
-                    function_name,
-                    [r0.clone(), r1.clone()].iter(),
-                    rng,
-                )
-                .unwrap();
-            assert_eq!(authorization.len(), 1);
-            authorization
-        };
-
-        // Retrieve the stack.
-        let stack = process.get_stack(program.id()).unwrap();
-
-        // Compute the output value.
-        let response =
-            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(3, candidate.len());
-        assert_eq!(r2, candidate[0]);
-        assert_eq!(r3, candidate[1]);
-        assert_eq!(r4, candidate[2]);
-
-        // Re-run to ensure state continues to work.
-        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(3, candidate.len());
-        assert_eq!(r2, candidate[0]);
-        assert_eq!(r3, candidate[1]);
-        assert_eq!(r4, candidate[2]);
-
-        use circuit::Environment;
-
-        // Ensure the environment is clean.
-        assert_eq!(0, CurrentAleo::num_constants());
-        assert_eq!(1, CurrentAleo::num_public());
-        assert_eq!(0, CurrentAleo::num_private());
-        assert_eq!(0, CurrentAleo::num_constraints());
-
-        // Initialize an RNG.
-        let rng = &mut TestRng::default();
-        // Initialize a burner private key.
-        let burner_private_key = PrivateKey::new(rng).unwrap();
-        // Authorize the function call, with a burner private key.
-        let authorization = process
-            .authorize::<CurrentAleo, _>(&burner_private_key, program.id(), function_name, [r0, r1].iter(), rng)
-            .unwrap();
-        assert_eq!(authorization.len(), 1);
-
-        // Re-run to ensure state continues to work.
-        let trace = Arc::new(RwLock::new(Trace::new()));
-        let call_stack = CallStack::execute(authorization, trace).unwrap();
-        let response = stack.execute_function::<CurrentAleo>(call_stack).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(3, candidate.len());
-        assert_eq!(r2, candidate[0]);
-        assert_eq!(r3, candidate[1]);
-        assert_eq!(r4, candidate[2]);
-    }
-
-    #[test]
-    fn test_program_evaluate_cast() {
-        // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
-            r"
-program token_with_cast.aleo;
-
-record token:
-    owner as address.private;
-    token_amount as u64.private;
-
-function compute:
-    input r0 as token.record;
-    cast r0.owner r0.token_amount into r1 as token.record;
-    output r1 as token.record;",
-        )
-        .unwrap();
-        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-
-        // Declare the function name.
-        let function_name = Identifier::from_str("compute").unwrap();
-
-        // Initialize an RNG.
-        let rng = &mut TestRng::default();
-
-        // Initialize caller private key.
-        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-        let caller = Address::try_from(&caller_private_key).unwrap();
-
-        // Declare the input value.
-        let input_record = Record::from_str(&format!(
-            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: 0group.public }}"
-        ))
-        .unwrap();
-        let input = Value::<CurrentNetwork>::Record(input_record);
-
-        // Construct the process.
-        let process = crate::process::test_helpers::sample_process(&program);
-
-        // Authorize the function call.
-        let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [input].iter(), rng)
-            .unwrap();
-        assert_eq!(authorization.len(), 1);
-        let request = authorization.peek_next().unwrap();
-
-        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-        let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(1)]).unwrap();
-        let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
-
-        // Declare the expected output value.
-        let expected = Value::from_str(&format!(
-            "{{ owner: {caller}.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
-        ))
-        .unwrap();
-
-        // Retrieve the stack.
-        let stack = process.get_stack(program.id()).unwrap();
-
-        // Compute the output value.
-        let response =
-            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
-
-        // Re-run to ensure state continues to work.
-        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(expected, candidate[0]);
     }
 }

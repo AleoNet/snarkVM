@@ -14,7 +14,6 @@
 
 use crate::{
     Opcode,
-    Operand,
     RegistersCaller,
     RegistersCallerCircuit,
     RegistersLoad,
@@ -43,6 +42,7 @@ use console::{
     },
     types::Field,
 };
+use snarkvm_synthesizer_program::Operand;
 
 use indexmap::IndexMap;
 

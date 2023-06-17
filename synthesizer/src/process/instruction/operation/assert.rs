@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Opcode, Operand, RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram};
+use crate::{Opcode, RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
 };
+use snarkvm_synthesizer_program::Operand;
 
 /// Asserts two operands are equal to each other.
 pub type AssertEq<N> = AssertInstruction<N, { Variant::AssertEq as u8 }>;

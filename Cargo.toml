@@ -65,6 +65,7 @@ members = [
   "parameters",
   "synthesizer",
   "synthesizer/coinbase",
+  "synthesizer/program",
   "synthesizer/snark",
   "utilities",
   "utilities/derives",
@@ -83,11 +84,11 @@ required-features = [ "cli" ]
 default = [
   "circuit",
   "console",
-  "synthesizer",
-  "cli",
   "ledger",
   "parameters",
-  "utilities"
+  "synthesizer",
+  "utilities",
+  "cli"
 ]
 full = [
   "algorithms",

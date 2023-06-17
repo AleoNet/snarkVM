@@ -15,12 +15,13 @@
 mod load;
 mod store;
 
-use crate::process::{FinalizeTypes, Operand, RegistersLoad, RegistersStore, StackMatches, StackProgram};
+use crate::process::{FinalizeTypes, RegistersLoad, RegistersStore, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Plaintext, Register, Value},
     types::U32,
 };
+use snarkvm_synthesizer_program::Operand;
 
 use indexmap::IndexMap;
 

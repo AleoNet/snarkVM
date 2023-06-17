@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Opcode, Operand};
+use crate::Opcode;
 use console::{network::prelude::*, program::Identifier};
+use snarkvm_synthesizer_program::Operand;
 
 /// Jumps to `position`, if `first` equals `second`.
 pub type BranchEq<N> = Branch<N, { Variant::BranchEq as u8 }>;

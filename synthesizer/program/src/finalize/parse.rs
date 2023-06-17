@@ -89,8 +89,8 @@ impl<N: Network, Command: CommandTrait<N>> Display for FinalizeCore<N, Command> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::Finalize;
     use console::network::Testnet3;
+    use synthesizer::process::Finalize;
 
     type CurrentNetwork = Testnet3;
 
@@ -106,8 +106,8 @@ finalize foo:
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
-        assert_eq!(2, finalize.inputs.len());
-        assert_eq!(1, finalize.commands.len());
+        assert_eq!(2, finalize.inputs().len());
+        assert_eq!(1, finalize.commands().len());
 
         // Finalize with 0 inputs.
         let finalize = Finalize::<CurrentNetwork>::parse(
@@ -118,8 +118,8 @@ finalize foo:
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
-        assert_eq!(0, finalize.inputs.len());
-        assert_eq!(1, finalize.commands.len());
+        assert_eq!(0, finalize.inputs().len());
+        assert_eq!(1, finalize.commands().len());
     }
 
     #[test]
@@ -133,8 +133,8 @@ finalize foo:
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
-        assert_eq!(1, finalize.inputs.len());
-        assert_eq!(1, finalize.commands.len());
+        assert_eq!(1, finalize.inputs().len());
+        assert_eq!(1, finalize.commands().len());
     }
 
     #[test]

@@ -12,20 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    FinalizeStorage,
-    FinalizeStore,
-    Opcode,
-    Operand,
-    RegistersLoad as LoadTrait,
-    RegistersStore,
-    Stack,
-    StackProgram,
-};
+use crate::{FinalizeStorage, FinalizeStore, Opcode, RegistersLoad as LoadTrait, RegistersStore, Stack, StackProgram};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},
 };
+use snarkvm_synthesizer_program::Operand;
 
 /// A get command that uses the provided default in case of failure, e.g. `get.or_use accounts[r0] r1 into r2;`.
 /// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.

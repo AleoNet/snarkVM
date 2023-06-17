@@ -3010,6 +3010,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
  "tempfile",
@@ -3037,6 +3038,17 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-synthesizer-program"
+version = "0.12.3"
+dependencies = [
+ "bincode",
+ "indexmap",
+ "serde_json",
+ "snarkvm-console",
+ "snarkvm-synthesizer",
 ]
 
 [[package]]

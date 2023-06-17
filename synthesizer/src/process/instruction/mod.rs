@@ -15,9 +15,6 @@
 mod opcode;
 pub use opcode::*;
 
-mod operand;
-pub use operand::*;
-
 mod operation;
 pub use operation::*;
 
@@ -62,6 +59,7 @@ use console::{
     },
     program::{Register, RegisterType},
 };
+use snarkvm_synthesizer_program::Operand;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Instruction<N: Network> {
