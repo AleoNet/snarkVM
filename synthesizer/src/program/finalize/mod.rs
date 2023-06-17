@@ -33,6 +33,11 @@ pub trait FinalizeCommandTrait: Clone + PartialEq + Eq + Parser + FromBytes + To
 
 pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
     type FinalizeCommand: FinalizeCommandTrait;
+
+    /// Returns the destination registers of the command.
+    fn destinations(&self) -> Vec<Register<N>>;
+    /// Returns `true` if the command is a write operation.
+    fn is_write(&self) -> bool;
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -123,6 +128,18 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         // Ensure the number of write commands has not been exceeded.
         ensure!(self.num_writes < N::MAX_WRITES, "Cannot add more than {} 'set' commands", N::MAX_WRITES);
 
+        // Check the destination registers.
+        for register in command.destinations() {
+            // Ensure the destination register is a locator.
+            ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+        }
+
+        // Check if the command is a write command.
+        if command.is_write() {
+            // Increment the number of write commands.
+            self.num_writes += 1;
+        }
+
         // // Perform additional checks on the command.
         // match &command {
         //     Command::Instruction(instruction) => {
@@ -135,54 +152,8 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         //             }
         //             _ => {}
         //         }
-        //         // Ensure the destination register is a locator.
-        //         for register in instruction.destinations() {
-        //             ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
-        //         }
         //     }
-        //     Command::Contains(contains) => {
-        //         // Ensure the destination register is a locator.
-        //         ensure!(
-        //             matches!(contains.destination(), Register::Locator(..)),
-        //             "Destination register must be a locator"
-        //         );
-        //     }
-        //     Command::Get(get) => {
-        //         // Ensure the destination register is a locator.
-        //         ensure!(matches!(get.destination(), Register::Locator(..)), "Destination register must be a locator");
-        //     }
-        //     Command::GetOrUse(get_or_use) => {
-        //         // Ensure the destination register is a locator.
-        //         ensure!(
-        //             matches!(get_or_use.destination(), Register::Locator(..)),
-        //             "Destination register must be a locator"
-        //         );
-        //     }
-        //     Command::RandChaCha(rand_chacha) => {
-        //         // Ensure the destination register is a locator.
-        //         ensure!(
-        //             matches!(rand_chacha.destination(), Register::Locator(..)),
-        //             "Destination register must be a locator"
-        //         );
-        //     }
-        //     Command::Remove(_) => {
-        //         // Increment the number of write commands.
-        //         self.num_writes += 1;
-        //     }
-        //     Command::Set(_) => {
-        //         // Increment the number of write commands.
-        //         self.num_writes += 1;
-        //     }
-        //     Command::BranchEq(branch) => {
-        //         // Ensure that the position referenced by the branch is **not** yet defined.
-        //         // This ensures that the branch **only** jumps forward.
-        //         ensure!(
-        //             self.positions.get(branch.position()).is_none(),
-        //             "Cannot branch to an earlier position '{}' in the program",
-        //             branch.position()
-        //         );
-        //     }
-        //     Command::BranchNeq(branch) => {
+        //     Command::BranchEq(branch) | Command::BranchNeq(branch) => {
         //         // Ensure that the position referenced by the branch is **not** yet defined.
         //         // This ensures that the branch **only** jumps forward.
         //         ensure!(

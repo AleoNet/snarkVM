@@ -40,15 +40,11 @@ mod set;
 pub use set::*;
 
 use crate::{
-    process::Instruction,
-    CommandTrait,
-    FinalizeOperation,
-    FinalizeRegisters,
-    FinalizeStorage,
-    FinalizeStore,
-    Stack,
+    process::{FinalizeOperation, FinalizeRegisters, Instruction, Stack},
+    program::{CommandTrait, InstructionTrait},
+    store::{FinalizeStorage, FinalizeStore},
 };
-use console::network::prelude::*;
+use console::{network::prelude::*, program::Register};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Command<N: Network> {
@@ -77,6 +73,29 @@ pub enum Command<N: Network> {
 
 impl<N: Network> CommandTrait<N> for Command<N> {
     type FinalizeCommand = FinalizeCommand<N>;
+
+    /// Returns the destination registers of the command.
+    #[inline]
+    fn destinations(&self) -> Vec<Register<N>> {
+        match self {
+            Command::Instruction(instruction) => instruction.destinations(),
+            Command::Contains(contains) => vec![contains.destination().clone()],
+            Command::Get(get) => vec![get.destination().clone()],
+            Command::GetOrUse(get_or_use) => vec![get_or_use.destination().clone()],
+            Command::RandChaCha(rand_chacha) => vec![rand_chacha.destination().clone()],
+            Command::Remove(_)
+            | Command::Set(_)
+            | Command::BranchEq(_)
+            | Command::BranchNeq(_)
+            | Command::Position(_) => vec![],
+        }
+    }
+
+    /// Returns `true` if the command is a write operation.
+    #[inline]
+    fn is_write(&self) -> bool {
+        matches!(self, Command::Set(_) | Command::Remove(_))
+    }
 }
 
 impl<N: Network> Command<N> {

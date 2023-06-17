@@ -346,7 +346,7 @@ macro_rules! opcodes {
 }
 
 impl<N: Network> InstructionTrait<N> for Instruction<N> {
-    /// Returns the destination register of the instruction.
+    /// Returns the destination registers of the instruction.
     #[inline]
     fn destinations(&self) -> Vec<Register<N>> {
         instruction!(self, |instruction| instruction.destinations())
