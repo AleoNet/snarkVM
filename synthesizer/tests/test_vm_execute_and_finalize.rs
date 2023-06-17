@@ -286,7 +286,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let transactions = vm.speculate(construct_finalize_global_state(&vm), transactions.iter()).unwrap();
+        let transactions = vm.speculate(construct_finalize_global_state(vm), transactions.iter()).unwrap();
         let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
