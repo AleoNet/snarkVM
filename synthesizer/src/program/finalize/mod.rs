@@ -40,8 +40,10 @@ pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
     fn branch_to(&self) -> Option<&Identifier<N>>;
     /// Returns the position name, if the command is a position command.
     fn position(&self) -> Option<&Identifier<N>>;
-    /// Returns `true` if the command is a call operation.
+    /// Returns `true` if the command is a call instruction.
     fn is_call(&self) -> bool;
+    /// Returns `true` if the command is a cast to record instruction.
+    fn is_cast_to_record(&self) -> bool;
     /// Returns `true` if the command is a write operation.
     fn is_write(&self) -> bool;
 }
@@ -136,6 +138,8 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
 
         // Ensure the command is not a call instruction.
         ensure!(!command.is_call(), "Forbidden operation: Finalize cannot invoke a 'call'");
+        // Ensure the command is not a cast to record instruction.
+        ensure!(!command.is_cast_to_record(), "Forbidden operation: Finalize cannot cast to a record");
 
         // Check the destination registers.
         for register in command.destinations() {
@@ -162,19 +166,6 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
             // Increment the number of write commands.
             self.num_writes += 1;
         }
-
-        // // Perform additional checks on the command.
-        // match &command {
-        //     Command::Instruction(instruction) => {
-        //         match instruction {
-        //             // Ensure the instruction is not a `cast` to a record.
-        //             Instruction::Cast(cast) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)) => {
-        //                 bail!("Forbidden operation: Finalize cannot cast to a record")
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        // }
 
         // Insert the command.
         self.commands.push(command);

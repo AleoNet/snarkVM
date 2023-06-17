@@ -46,7 +46,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Register},
+    program::{Identifier, Register, RegisterType},
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -115,10 +115,15 @@ impl<N: Network> CommandTrait<N> for Command<N> {
         }
     }
 
-    /// Returns `true` if the command is a call operation.
+    /// Returns `true` if the command is a call instruction.
     #[inline]
     fn is_call(&self) -> bool {
         matches!(self, Command::Instruction(Instruction::Call(_)))
+    }
+
+    /// Returns `true` if the command is a cast to record instruction.
+    fn is_cast_to_record(&self) -> bool {
+        matches!(self, Command::Instruction(Instruction::Cast(cast)) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)))
     }
 
     /// Returns `true` if the command is a write operation.
