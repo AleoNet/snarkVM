@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod command;
-pub use command::*;
-
 mod input;
 use input::*;
 
@@ -29,7 +26,14 @@ use console::{
 use indexmap::IndexSet;
 use std::collections::HashMap;
 
-pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {}
+pub trait FinalizeCommandTrait: Clone + PartialEq + Eq + Parser + FromBytes + ToBytes {
+    /// Returns the number of operands.
+    fn num_operands(&self) -> usize;
+}
+
+pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
+    type FinalizeCommand: FinalizeCommandTrait;
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct FinalizeCore<N: Network, Command: CommandTrait<N>> {

@@ -52,7 +52,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
                 // Read the record.
                 2 => program.add_record(RecordType::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the closure.
-                3 => program.add_closure(Closure::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
+                3 => program.add_closure(ClosureCore::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the function.
                 4 => program.add_function(FunctionCore::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Invalid variant.

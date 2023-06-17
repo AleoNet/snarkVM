@@ -18,8 +18,7 @@ use console::{
 };
 use synthesizer::{
     block::{Deployment, Execution},
-    process::{Finalize, Program},
-    program::{Command, Instruction},
+    process::{Command, Finalize, Instruction, Program},
 };
 
 use anyhow::Result;

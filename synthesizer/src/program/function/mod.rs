@@ -21,7 +21,7 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::program::finalize::{CommandTrait, FinalizeCommand, FinalizeCore};
+use crate::program::finalize::{CommandTrait, FinalizeCommandTrait, FinalizeCore};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, ValueType},
@@ -48,7 +48,7 @@ pub struct FunctionCore<N: Network, Instruction: InstructionTrait<N>, Command: C
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
     /// The optional finalize command and logic.
-    finalize: Option<(FinalizeCommand<N>, FinalizeCore<N, Command>)>,
+    finalize: Option<(Command::FinalizeCommand, FinalizeCore<N, Command>)>,
 }
 
 impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FunctionCore<N, Instruction, Command> {
@@ -88,12 +88,12 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
     }
 
     /// Returns the function finalize logic.
-    pub const fn finalize(&self) -> Option<&(FinalizeCommand<N>, FinalizeCore<N, Command>)> {
+    pub const fn finalize(&self) -> Option<&(Command::FinalizeCommand, FinalizeCore<N, Command>)> {
         self.finalize.as_ref()
     }
 
     /// Returns the function finalize command.
-    pub fn finalize_command(&self) -> Option<&FinalizeCommand<N>> {
+    pub fn finalize_command(&self) -> Option<&Command::FinalizeCommand> {
         self.finalize.as_ref().map(|(command, _)| command)
     }
 
@@ -192,7 +192,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
     /// This method will halt if the maximum number of finalize inputs has been reached.
     /// This method will halt if the number of finalize operands does not match the number of finalize inputs.
     #[inline]
-    fn add_finalize(&mut self, command: FinalizeCommand<N>, finalize: FinalizeCore<N, Command>) -> Result<()> {
+    fn add_finalize(&mut self, command: Command::FinalizeCommand, finalize: FinalizeCore<N, Command>) -> Result<()> {
         // Ensure there is no finalize scope in memory.
         ensure!(self.finalize.is_none(), "Cannot add multiple finalize scopes to function '{}'", self.name);
         // Ensure the finalize scope name matches the function name.
@@ -201,9 +201,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
         ensure!(finalize.inputs().len() <= N::MAX_INPUTS, "Cannot add more than {} inputs to finalize", N::MAX_INPUTS);
         // Ensure the finalize command has the same number of operands as the finalize inputs.
         ensure!(
-            command.operands().len() == finalize.inputs().len(),
+            command.num_operands() == finalize.inputs().len(),
             "The 'finalize' command has {} operands, but 'finalize' takes {} inputs",
-            command.operands().len(),
+            command.num_operands(),
             finalize.inputs().len()
         );
 

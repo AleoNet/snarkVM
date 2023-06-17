@@ -16,14 +16,9 @@ mod initialize;
 mod matches;
 
 use crate::{
+    process::{Closure, Function, Instruction, Opcode, Operand, Program},
     program::InstructionTrait,
     CallOperator,
-    Closure,
-    Function,
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
     StackMatches,
     StackProgram,
 };

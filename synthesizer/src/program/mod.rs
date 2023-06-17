@@ -24,9 +24,6 @@ pub use function::*;
 mod import;
 pub use import::*;
 
-mod instruction;
-pub use instruction::*;
-
 mod mapping;
 pub use mapping::*;
 
@@ -106,7 +103,7 @@ pub struct ProgramCore<N: Network, Instruction: InstructionTrait<N>, Command: Co
     /// A map of the declared record types for the program.
     records: IndexMap<Identifier<N>, RecordType<N>>,
     /// A map of the declared closures for the program.
-    closures: IndexMap<Identifier<N>, Closure<N>>,
+    closures: IndexMap<Identifier<N>, ClosureCore<N, Instruction>>,
     /// A map of the declared functions for the program.
     functions: IndexMap<Identifier<N>, FunctionCore<N, Instruction, Command>>,
 }
@@ -152,7 +149,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     }
 
     /// Returns the closures in the program.
-    pub const fn closures(&self) -> &IndexMap<Identifier<N>, Closure<N>> {
+    pub const fn closures(&self) -> &IndexMap<Identifier<N>, ClosureCore<N, Instruction>> {
         &self.closures
     }
 
@@ -224,7 +221,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     }
 
     /// Returns the closure with the given name.
-    pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N>> {
+    pub fn get_closure(&self, name: &Identifier<N>) -> Result<ClosureCore<N, Instruction>> {
         // Attempt to retrieve the closure.
         let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))?;
         // Ensure the closure name matches.
@@ -435,7 +432,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     /// This method will halt if an output register does not already exist.
     /// This method will halt if an output type references a non-existent definition.
     #[inline]
-    fn add_closure(&mut self, closure: Closure<N>) -> Result<()> {
+    fn add_closure(&mut self, closure: ClosureCore<N, Instruction>) -> Result<()> {
         // Retrieve the closure name.
         let closure_name = *closure.name();
 
@@ -617,7 +614,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Typ
 mod tests {
     use super::*;
     use crate::{
-        process::{Function, Program},
+        process::{Function, Opcode, Program},
         CallStack,
         StackEvaluate,
         StackExecute,

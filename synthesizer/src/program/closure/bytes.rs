@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Closure<N> {
+impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, Instruction> {
     /// Reads the closure from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -58,7 +58,7 @@ impl<N: Network> FromBytes for Closure<N> {
     }
 }
 
-impl<N: Network> ToBytes for Closure<N> {
+impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, Instruction> {
     /// Writes the closure to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -108,6 +108,7 @@ impl<N: Network> ToBytes for Closure<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Closure;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

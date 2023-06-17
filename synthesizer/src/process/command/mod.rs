@@ -28,7 +28,7 @@ mod get_or_use;
 pub use get_or_use::*;
 
 mod rand_chacha;
-pub use crate::program::finalize::command::rand_chacha::*;
+pub use crate::process::command::rand_chacha::*;
 
 mod remove;
 pub use remove::*;
@@ -40,7 +40,7 @@ mod set;
 pub use set::*;
 
 use crate::{
-    program::Instruction,
+    process::Instruction,
     CommandTrait,
     FinalizeOperation,
     FinalizeRegisters,
@@ -75,7 +75,9 @@ pub enum Command<N: Network> {
     Position(Position<N>),
 }
 
-impl<N: Network> CommandTrait<N> for Command<N> {}
+impl<N: Network> CommandTrait<N> for Command<N> {
+    type FinalizeCommand = FinalizeCommand<N>;
+}
 
 impl<N: Network> Command<N> {
     /// Finalizes the command.

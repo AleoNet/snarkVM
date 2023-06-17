@@ -51,7 +51,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
         let variant = u8::read_le(&mut reader)?;
         let finalize = match variant {
             0 => None,
-            1 => Some((FinalizeCommand::read_le(&mut reader)?, FinalizeCore::read_le(&mut reader)?)),
+            1 => Some((Command::FinalizeCommand::read_le(&mut reader)?, FinalizeCore::read_le(&mut reader)?)),
             _ => return Err(error(format!("Failed to deserialize a function: invalid finalize variant ({variant})"))),
         };
 

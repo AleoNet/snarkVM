@@ -25,7 +25,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
             M(Mapping<N>),
             I(Struct<N>),
             R(RecordType<N>),
-            C(Closure<N>),
+            C(ClosureCore<N, Instruction>),
             F(FunctionCore<N, Instruction, Command>),
         }
 
@@ -49,7 +49,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
             map(Mapping::parse, |mapping| P::<N, Instruction, Command>::M(mapping)),
             map(Struct::parse, |struct_| P::<N, Instruction, Command>::I(struct_)),
             map(RecordType::parse, |record| P::<N, Instruction, Command>::R(record)),
-            map(Closure::parse, |closure| P::<N, Instruction, Command>::C(closure)),
+            map(ClosureCore::parse, |closure| P::<N, Instruction, Command>::C(closure)),
             map(FunctionCore::parse, |function| P::<N, Instruction, Command>::F(function)),
         )))(string)?;
         // Parse the whitespace and comments from the string.

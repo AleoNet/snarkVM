@@ -41,7 +41,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         let (string, outputs) = many0(Output::parse)(string)?;
 
         // Parse an optional finalize command from the string.
-        let (string, command) = opt(FinalizeCommand::parse)(string)?;
+        let (string, command) = opt(Command::FinalizeCommand::parse)(string)?;
         // If there is a finalize command, parse the finalize scope.
         let (string, finalize) = match command {
             Some(command) => {

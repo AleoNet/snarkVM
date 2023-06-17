@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod command;
+pub use command::*;
+
+mod instruction;
+pub use instruction::*;
+
 mod stack;
 pub use stack::*;
 
@@ -34,8 +40,6 @@ mod tests;
 use crate::{
     atomic_batch_scope,
     block::{Deployment, Execution, Fee, FinalizeOperation, Input, Transition},
-    finalize::{Branch, Command},
-    program::Instruction,
     store::{FinalizeStorage, FinalizeStore},
 };
 use console::{
@@ -57,6 +61,7 @@ use colored::Colorize;
 pub type Program<N> = crate::program::ProgramCore<N, Instruction<N>, Command<N>>;
 pub type Function<N> = crate::program::FunctionCore<N, Instruction<N>, Command<N>>;
 pub type Finalize<N> = crate::program::FinalizeCore<N, Command<N>>;
+pub type Closure<N> = crate::program::ClosureCore<N, Instruction<N>>;
 
 #[derive(Clone)]
 pub struct Process<N: Network> {

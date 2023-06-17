@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Opcode, Operand, RegistersLoad, Stack};
+use crate::{FinalizeCommandTrait, Opcode, Operand, RegistersLoad, Stack};
 use console::{network::prelude::*, program::Register};
 
 /// Finalizes the operands on-chain.
@@ -27,6 +27,13 @@ enum Variant {
 pub struct FinalizeOperation<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,
+}
+
+impl<N: Network, const VARIANT: u8> FinalizeCommandTrait for FinalizeOperation<N, VARIANT> {
+    /// Returns the number of operands.
+    fn num_operands(&self) -> usize {
+        self.operands.len()
+    }
 }
 
 impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
