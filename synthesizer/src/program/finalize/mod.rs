@@ -36,6 +36,12 @@ pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
 
     /// Returns the destination registers of the command.
     fn destinations(&self) -> Vec<Register<N>>;
+    /// Returns the branch target, if the command is a branch command.
+    fn branch_to(&self) -> Option<&Identifier<N>>;
+    /// Returns the position name, if the command is a position command.
+    fn position(&self) -> Option<&Identifier<N>>;
+    /// Returns `true` if the command is a call operation.
+    fn is_call(&self) -> bool;
     /// Returns `true` if the command is a write operation.
     fn is_write(&self) -> bool;
 }
@@ -128,10 +134,27 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         // Ensure the number of write commands has not been exceeded.
         ensure!(self.num_writes < N::MAX_WRITES, "Cannot add more than {} 'set' commands", N::MAX_WRITES);
 
+        // Ensure the command is not a call instruction.
+        ensure!(!command.is_call(), "Forbidden operation: Finalize cannot invoke a 'call'");
+
         // Check the destination registers.
         for register in command.destinations() {
             // Ensure the destination register is a locator.
             ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+        }
+
+        // Check if the command is a branch command.
+        if let Some(position) = command.branch_to() {
+            // Ensure the branch target is a position.
+            ensure!(self.positions.contains_key(position), "Cannot branch to an earlier position '{position}'");
+        }
+
+        // Check if the command is a position command.
+        if let Some(position) = command.position() {
+            // Ensure the position is not yet defined.
+            ensure!(!self.positions.contains_key(position), "Cannot redefine position '{position}'");
+            // Insert the position.
+            self.positions.insert(*position, self.commands.len());
         }
 
         // Check if the command is a write command.
@@ -144,33 +167,12 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         // match &command {
         //     Command::Instruction(instruction) => {
         //         match instruction {
-        //             // Ensure the instruction is not a `call`.
-        //             Instruction::Call(_) => bail!("Forbidden operation: Finalize cannot invoke a 'call'"),
         //             // Ensure the instruction is not a `cast` to a record.
         //             Instruction::Cast(cast) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)) => {
         //                 bail!("Forbidden operation: Finalize cannot cast to a record")
         //             }
         //             _ => {}
         //         }
-        //     }
-        //     Command::BranchEq(branch) | Command::BranchNeq(branch) => {
-        //         // Ensure that the position referenced by the branch is **not** yet defined.
-        //         // This ensures that the branch **only** jumps forward.
-        //         ensure!(
-        //             self.positions.get(branch.position()).is_none(),
-        //             "Cannot branch to an earlier position '{}' in the program",
-        //             branch.position()
-        //         );
-        //     }
-        //     Command::Position(position) => {
-        //         // Ensure that the `Position` is not already defined.
-        //         ensure!(
-        //             self.positions.get(position.name()).is_none(),
-        //             "The position `{}` is not unique",
-        //             position.name()
-        //         );
-        //         // Track the index of the `Position`.
-        //         self.positions.insert(*position.name(), self.commands.len());
         //     }
         // }
 

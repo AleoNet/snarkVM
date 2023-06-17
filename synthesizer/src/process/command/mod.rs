@@ -44,7 +44,10 @@ use crate::{
     program::{CommandTrait, InstructionTrait},
     store::{FinalizeStorage, FinalizeStore},
 };
-use console::{network::prelude::*, program::Register};
+use console::{
+    network::prelude::*,
+    program::{Identifier, Register},
+};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Command<N: Network> {
@@ -89,6 +92,33 @@ impl<N: Network> CommandTrait<N> for Command<N> {
             | Command::BranchNeq(_)
             | Command::Position(_) => vec![],
         }
+    }
+
+    /// Returns the branch target, if the command is a branch command.
+    /// Otherwise, returns `None`.
+    #[inline]
+    fn branch_to(&self) -> Option<&Identifier<N>> {
+        match self {
+            Command::BranchEq(branch_eq) => Some(branch_eq.position()),
+            Command::BranchNeq(branch_neq) => Some(branch_neq.position()),
+            _ => None,
+        }
+    }
+
+    /// Returns the position name, if the command is a position command.
+    /// Otherwise, returns `None`.
+    #[inline]
+    fn position(&self) -> Option<&Identifier<N>> {
+        match self {
+            Command::Position(position) => Some(position.name()),
+            _ => None,
+        }
+    }
+
+    /// Returns `true` if the command is a call operation.
+    #[inline]
+    fn is_call(&self) -> bool {
+        matches!(self, Command::Instruction(Instruction::Call(_)))
     }
 
     /// Returns `true` if the command is a write operation.
