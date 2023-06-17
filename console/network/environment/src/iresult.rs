@@ -21,3 +21,32 @@ pub enum HaltError {
     #[error("{}", _0)]
     Halt(String),
 }
+
+/// Construct a halting error that can be returned early.
+#[macro_export]
+macro_rules! haltable {
+    ($fmt:expr) => {
+        $crate::HaltError::Halt(std::fmt::format(core::format_args!($fmt)))
+    };
+    ($fmt:expr, $($arg:tt)*) => {
+        $crate::HaltError::Halt(std::fmt::format(core::format_args!($fmt, $($arg)*)))
+    };
+}
+
+/// Return early with a halting error.
+///
+/// This macro is equivalent to `return Err(`[`haltable!($args...)`][haltable!]`)`.
+///
+/// The surrounding function's or closure's return value is required to be
+/// `Result<_,`[`console::HaltError`][console::HaltError]`>`.
+///
+/// [error!]: crate::HaltError
+#[macro_export]
+macro_rules! halt {
+    ($fmt:expr) => {
+        return Err($crate::haltable!($fmt))
+    };
+    ($fmt:expr, $($arg:tt)*) => {
+        return Err($crate::haltable!($fmt, $($arg)*))
+    };
+}

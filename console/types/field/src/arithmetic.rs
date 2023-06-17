@@ -133,27 +133,27 @@ impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
 }
 
 impl<E: Environment> Div<Field<E>> for Field<E> {
-    type Output = Field<E>;
+    type Output = IResult<Field<E>>;
 
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: Field<E>) -> Self::Output {
         match other.is_zero() {
-            true => E::halt(format!("Field division by zero: {self} / {other}")),
-            false => Field::new(self.field / other.field),
+            true => halt!("Field division by zero: {self} / {other}"),
+            false => Ok(Field::new(self.field / other.field)),
         }
     }
 }
 
 impl<E: Environment> Div<&Field<E>> for Field<E> {
-    type Output = Field<E>;
+    type Output = IResult<Field<E>>;
 
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: &Field<E>) -> Self::Output {
         match other.is_zero() {
-            true => E::halt(format!("Field division by zero: {self} / {other}")),
-            false => Field::new(self.field / other.field),
+            true => halt!("Field division by zero: {self} / {other}"),
+            false => Ok(Field::new(self.field / other.field)),
         }
     }
 }

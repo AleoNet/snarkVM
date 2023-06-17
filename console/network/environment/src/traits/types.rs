@@ -76,8 +76,8 @@ pub trait FieldTrait:
     + Compare
     + Debug
     + Deref
-    + Div<Self, Output = Self>
-    + for<'a> Div<&'a Self, Output = Self>
+    + Div<Self, Output = IResult<Self>>
+    + for<'a> Div<&'a Self, Output = IResult<Self>>
     + DivAssign<Self>
     + for<'a> DivAssign<&'a Self>
     + Double<Output = Self>
