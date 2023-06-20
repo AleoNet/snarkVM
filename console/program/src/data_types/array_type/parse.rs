@@ -22,20 +22,30 @@ impl<N: Network> Parser for ArrayType<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the opening brackets and following whitespaces.
-        let (string, opening_brackets) = many1(pair(tag("["), Sanitizer::parse_whitespaces))(string)?;
+        let (string, num_dimensions) =
+            map_res(many1(pair(tag("["), Sanitizer::parse_whitespaces)), |opening_brackets| {
+                match opening_brackets.len() <= N::MAX_DATA_DEPTH {
+                    true => match u8::try_from(opening_brackets.len()) {
+                        Ok(num_dimensions) => Ok(num_dimensions),
+                        Err(_) => Err(format!("The number of dimensions must not exceed '{}'", N::MAX_DATA_DEPTH)),
+                    },
+                    false => Err(format!("The number of dimensions must not exceed '{}'", N::MAX_DATA_DEPTH)),
+                }
+            })(string)?;
         // Parse the element type.
         let (mut remaining_string, element_type) = ElementType::parse(string)?;
-        // Count the number of opening brackets and parse the same number of dimensions.
-        let mut dimensions = Vec::with_capacity(opening_brackets.len());
-        for _ in 0..opening_brackets.len() {
+        // Parse `num_dimensions` dimensions.
+        // Note: `dimensions` needs to be explicitly specified since Rust does not yet support constant expressions that depends on a generic parameter.
+        let mut dimensions = [0; 32];
+        for i in 0..num_dimensions {
             // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(remaining_string)?;
             // Parse the dimension from the string.
             let (string, dimension) =
                 map_res(recognize(many1(terminated(one_of("0123456789"), many0(char('_'))))), |digits: &str| {
-                    digits.replace("_", "").parse::<u64>()
+                    digits.replace('_', "").parse::<u32>()
                 })(string)?;
-            dimensions.push(dimension);
+            dimensions[i as usize] = dimension;
             // Parse the semicolon.
             let (string, _) = tag(";")(string)?;
             // Parse the whitespaces from the string.
@@ -45,7 +55,7 @@ impl<N: Network> Parser for ArrayType<N> {
             remaining_string = string;
         }
         // Return the array type.
-        map_res(take(0usize), |_| ArrayType::new(element_type, dimensions))(string)
+        map_res(take(0usize), move |_| ArrayType::new(element_type, dimensions, num_dimensions))(string)
     }
 }
 
@@ -76,6 +86,16 @@ impl<N: Network> Debug for ArrayType<N> {
 impl<N: Network> Display for ArrayType<N> {
     /// Prints the array type as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}; {}]", self.element_type, self.length)
+        // Write the opening brackets.
+        for _ in 0..self.dimensions.len() {
+            write!(f, "[")?;
+        }
+        // Write the element type.
+        write!(f, "{}", self.element_type())?;
+        // Write the dimensions and closing brackets.
+        for dimension in &self.dimensions {
+            write!(f, "; {}]", dimension)?;
+        }
+        Ok(())
     }
 }

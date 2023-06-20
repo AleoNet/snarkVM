@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod array_type;
+pub use array_type::ArrayType;
+
+mod element_type;
+pub use element_type::ElementType;
+
 mod literal_type;
 pub use literal_type::LiteralType;
 

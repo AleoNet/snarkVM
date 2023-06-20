@@ -16,46 +16,59 @@ mod bytes;
 mod parse;
 mod serialize;
 
+use crate::ElementType;
 use snarkvm_console_network::prelude::*;
 
-use crate::{ElementType, PlaintextType};
-use core::fmt::{self, Debug, Display};
+use core::fmt::{Debug, Display};
+
+// Note: `MAX_DIMENSIONS` needs to be explicitly specified since Rust does not yet support generic parameters in const operations.
+pub type ArrayType<N> = GenericArrayType<N, 32>;
+
+// TODO (d0cd): Attempt to enforce more type safety in the ArrayType
+//  - Consider using `NonzeroU8` for `num_dimensions`
+//  - Find a way to enforce size the static size of `dimensions`.
+// TODO (d0cd): This implementation of `ArrayType` results in a stack entry of ~136 bytes.
+//  - Instead if arrays were non-copy, we could store a reference to the `dimensions` in the stack entry.
+//  - The issue is that this would make all dependent enums non-copy as well.
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ArrayType<N: Network> {
+pub struct GenericArrayType<N: Network, const MAX_DIMENSIONS: u8> {
     /// The element type.
     element_type: ElementType<N>,
     /// The dimensions of the array.
-    dimensions: Vec<u64>,
+    dimensions: [u32; 32],
+    /// The number of dimensions of the array.
+    num_dimensions: u8,
 }
 
-impl<N: Network> ArrayType<N> {
+impl<N: Network, const MAX_DIMENSIONS: u8> GenericArrayType<N, MAX_DIMENSIONS> {
     /// Constructs a new array type.
-    pub fn new(element_type: ElementType<N>, dimensions: Vec<u64>) -> Result<Self> {
-        ensure!(!dimensions.is_empty(), "Cannot have an empty array");
-        ensure!(dimensions.len() < N::MAX_DATA_DEPTH);
+    // Note: `dimensions` needs to be explicitly specified since Rust does not yet support generic parameters in const operations.
+    pub fn new(element_type: ElementType<N>, dimensions: [u32; 32], num_dimensions: u8) -> Result<Self> {
+        ensure!(num_dimensions != 0, "Cannot have an empty array");
+        ensure!(num_dimensions <= MAX_DIMENSIONS, "Cannot exceed the maximum data depth of 32");
         for dimension in &dimensions {
-            ensure!(dimension != 0, "Cannot have an array dimension of zero")
+            ensure!(*dimension != 0, "Cannot have an array dimension of zero")
         }
         // TODO (d0cd): Should each dimension of the array be restricted to N::MAX_DATA_ENTRIES?
         //  Initial thoughts are no since it feels restrictive, but we may have to do this due to the merklization.
 
-        Ok(Self { element_type, dimensions })
+        Ok(Self { element_type, dimensions, num_dimensions })
     }
 
     /// Returns the element type.
-    pub fn element_type(&self) -> &PlaintextType<N> {
+    pub fn element_type(&self) -> &ElementType<N> {
         &self.element_type
     }
 
     /// Returns the dimensions of the array.
-    pub fn dimensions(&self) -> &[u64] {
+    pub fn dimensions(&self) -> &[u32] {
         &self.dimensions
     }
 
     /// Returns the length of the array.
-    pub fn length(&self) -> u64 {
-        // Note the unwrap is safe since `ArrayType` must have at least one element in `self.dimensions`.
+    pub fn length(&self) -> u32 {
+        // Note the unwrap is safe since `GenericArrayType` must have at least one element in `self.dimensions`.
         *self.dimensions.last().unwrap()
     }
 }

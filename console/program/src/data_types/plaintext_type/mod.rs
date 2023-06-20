@@ -16,10 +16,13 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{Identifier, LiteralType};
+use crate::{ArrayType, Identifier, LiteralType};
 use snarkvm_console_network::prelude::*;
 
-/// A `ValueType` defines the type parameter for an entry in an `Struct`.
+// TODO (d0cd): Consider defining arrays types independently of plaintext types.
+//  - This would create separation of arrays from records, if desired
+
+/// A `PlaintextType` is a literal, struct, or array type.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PlaintextType<N: Network> {
     /// A literal type contains its type name.
@@ -28,6 +31,9 @@ pub enum PlaintextType<N: Network> {
     /// An struct type contains its identifier.
     /// The format of the type is `<identifier>`.
     Struct(Identifier<N>),
+    /// An array type contains its element type and length.
+    /// The format of the type is `[<element_type>; <length>]`.
+    Array(ArrayType<N>),
 }
 
 impl<N: Network> From<LiteralType> for PlaintextType<N> {
@@ -41,5 +47,12 @@ impl<N: Network> From<Identifier<N>> for PlaintextType<N> {
     /// Initializes a plaintext type from a struct type.
     fn from(struct_: Identifier<N>) -> Self {
         PlaintextType::Struct(struct_)
+    }
+}
+
+impl<N: Network> From<ArrayType<N>> for PlaintextType<N> {
+    /// Initializes a plaintext type from an array type.
+    fn from(array: ArrayType<N>) -> Self {
+        PlaintextType::Array(array)
     }
 }
