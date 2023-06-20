@@ -21,6 +21,9 @@ mod execute_fee;
 mod finalize;
 mod verify;
 
+#[cfg(test)]
+mod tests;
+
 pub use finalize::FinalizeMode;
 
 use crate::{
