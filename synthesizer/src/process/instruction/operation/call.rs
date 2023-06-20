@@ -719,11 +719,11 @@ impl<N: Network> ToBytes for Call<N> {
         // Write the name of the call.
         self.operator.write_le(&mut writer)?;
         // Write the number of operands.
-        (self.operands.len() as u8).write_le(&mut writer)?;
+        u8::try_from(self.operands.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the operands.
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
         // Write the number of destination register.
-        (self.destinations.len() as u8).write_le(&mut writer)?;
+        u8::try_from(self.destinations.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the destination registers.
         self.destinations.iter().try_for_each(|destination| destination.write_le(&mut writer))
     }

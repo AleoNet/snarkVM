@@ -65,7 +65,7 @@ impl<N: Network> Inclusion<N> {
         }
 
         // Retrieve the transition index.
-        let transition_index = self.input_tasks.len() as u16;
+        let transition_index = u16::try_from(self.input_tasks.len())?;
 
         // Initialize the input tasks.
         let input_tasks = self.input_tasks.entry(*transition.id()).or_default();
@@ -88,10 +88,12 @@ impl<N: Network> Inclusion<N> {
         for (index, output) in transition.outputs().iter().enumerate() {
             // Filter the outputs for records.
             if let Output::Record(commitment, ..) = output {
+                // Compute the output index.
+                let output_index = u8::try_from(input_ids.len().saturating_add(index))?;
                 // Compute the transaction leaf.
                 let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
                 // Compute the transition leaf.
-                let transition_leaf = output.to_transition_leaf((input_ids.len() + index) as u8);
+                let transition_leaf = output.to_transition_leaf(output_index);
                 // Compute the transition path.
                 let transition_path = transition.to_path(&transition_leaf)?;
                 // Add the record's local Merklization to the output commitments.
@@ -127,21 +129,18 @@ impl<N: Network> Inclusion<N> {
                 // Filter the inputs for records.
                 if let Input::Record(serial_number, _) = input {
                     // Add the public inputs to the batch verifier inputs.
-                    batch_verifier_inputs.push(vec![
-                        N::Field::one(),
-                        **global_state_root,
-                        *local_state_root,
-                        **serial_number,
-                    ]);
+                    let verifier_inputs =
+                        vec![N::Field::one(), **global_state_root, *local_state_root, **serial_number];
+                    batch_verifier_inputs.push(verifier_inputs);
                 }
             }
 
             // If this is not the last transition, append the transaction leaf to the transaction tree.
             if transition_index + 1 != num_transitions {
                 // Construct the transaction leaf.
-                let transaction_leaf = TransactionLeaf::new_execution(transition_index as u16, **transition.id());
+                let leaf = TransactionLeaf::new_execution(u16::try_from(transition_index)?, **transition.id());
                 // Insert the leaf into the transaction tree.
-                transaction_tree.append(&[transaction_leaf.to_bits_le()])?;
+                transaction_tree.append(&[leaf.to_bits_le()])?;
             }
         }
 

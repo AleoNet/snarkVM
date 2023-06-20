@@ -279,7 +279,7 @@ impl<N: Network> ToBytes for RandChaCha<N> {
         }
 
         // Write the number of operands.
-        (self.operands.len() as u8).write_le(&mut writer)?;
+        u8::try_from(self.operands.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the operands.
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
         // Write the destination register.

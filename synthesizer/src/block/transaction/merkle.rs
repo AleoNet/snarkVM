@@ -31,7 +31,7 @@ impl<N: Network> Transaction<N> {
                 if *id == **fee.id() {
                     // Return the transaction leaf.
                     return Ok(TransactionLeaf::new_fee(
-                        deployment.program().functions().len() as u16, // The last index.
+                        u16::try_from(deployment.program().functions().len())?, // The last index.
                         *id,
                     ));
                 }
@@ -41,7 +41,7 @@ impl<N: Network> Transaction<N> {
                     // Check if the function hash matches the given ID.
                     if *id == N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())? {
                         // Return the transaction leaf.
-                        return Ok(TransactionLeaf::new_deployment(index as u16, *id));
+                        return Ok(TransactionLeaf::new_deployment(u16::try_from(index)?, *id));
                     }
                 }
                 // Error if the function hash was not found.
@@ -53,7 +53,7 @@ impl<N: Network> Transaction<N> {
                     if *id == **fee.id() {
                         // Return the transaction leaf.
                         return Ok(TransactionLeaf::new_execution(
-                            execution.len() as u16, // The last index.
+                            u16::try_from(execution.len())?, // The last index.
                             *id,
                         ));
                     }
@@ -64,7 +64,7 @@ impl<N: Network> Transaction<N> {
                     // Check if the transition ID matches the given ID.
                     if *id == **transition.id() {
                         // Return the transaction leaf.
-                        return Ok(TransactionLeaf::new_execution(index as u16, *id));
+                        return Ok(TransactionLeaf::new_execution(u16::try_from(index)?, *id));
                     }
                 }
                 // Error if the transition ID was not found.
@@ -111,7 +111,7 @@ impl<N: Network> Transaction<N> {
         let leaves = program.functions().values().enumerate().map(|(index, function)| {
             // Construct the transaction leaf.
             Ok(TransactionLeaf::new_deployment(
-                index as u16,
+                u16::try_from(index)?,
                 N::hash_bhp1024(&[program.id().to_bits_le(), function.to_bytes_le()?.to_bits_le()].concat())?,
             )
             .to_bits_le())
@@ -121,7 +121,7 @@ impl<N: Network> Transaction<N> {
             Some(fee) => {
                 // Construct the transaction leaf.
                 let leaf = TransactionLeaf::new_fee(
-                    program.functions().len() as u16, // The last index.
+                    u16::try_from(program.functions().len())?, // The last index.
                     **fee.transition_id(),
                 )
                 .to_bits_le();
@@ -141,21 +141,21 @@ impl<N: Network> Transaction<N> {
         // Prepare the leaves.
         let leaves = execution.transitions().enumerate().map(|(index, transition)| {
             // Construct the transaction leaf.
-            TransactionLeaf::new_execution(index as u16, **transition.id()).to_bits_le()
+            Ok::<_, Error>(TransactionLeaf::new_execution(u16::try_from(index)?, **transition.id()).to_bits_le())
         });
         // If the fee is present, add it to the leaves.
         let leaves = match fee {
             Some(fee) => {
                 // Construct the transaction leaf.
                 let leaf = TransactionLeaf::new_fee(
-                    execution.len() as u16, // The last index.
+                    u16::try_from(execution.len())?, // The last index.
                     **fee.transition_id(),
                 )
                 .to_bits_le();
                 // Add the leaf to the leaves.
-                leaves.chain([leaf].into_iter()).collect::<Vec<_>>()
+                leaves.chain([Ok(leaf)].into_iter()).collect::<Result<Vec<_>, _>>()?
             }
-            None => leaves.collect::<Vec<_>>(),
+            None => leaves.collect::<Result<Vec<_>, _>>()?,
         };
 
         // Compute the execution tree.
