@@ -14,7 +14,6 @@
 
 use crate::{
     Opcode,
-    Operand,
     Operation,
     RegistersLoad,
     RegistersLoadCircuit,
@@ -27,6 +26,7 @@ use console::{
     network::prelude::*,
     program::{Literal, LiteralType, PlaintextType, Register, RegisterType},
 };
+use snarkvm_synthesizer_program::Operand;
 
 use core::marker::PhantomData;
 

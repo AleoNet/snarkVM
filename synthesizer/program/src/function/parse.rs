@@ -133,8 +133,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Dis
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::Function;
     use console::network::Testnet3;
+    use synthesizer::process::Function;
 
     type CurrentNetwork = Testnet3;
 
@@ -151,9 +151,9 @@ function foo:
         .unwrap()
         .1;
         assert_eq!("foo", function.name().to_string());
-        assert_eq!(2, function.inputs.len());
-        assert_eq!(1, function.instructions.len());
-        assert_eq!(1, function.outputs.len());
+        assert_eq!(2, function.inputs().len());
+        assert_eq!(1, function.instructions().len());
+        assert_eq!(1, function.outputs().len());
 
         // Function with 0 inputs.
         let function = Function::<CurrentNetwork>::parse(
@@ -165,9 +165,9 @@ function foo:
         .unwrap()
         .1;
         assert_eq!("foo", function.name().to_string());
-        assert_eq!(0, function.inputs.len());
-        assert_eq!(1, function.instructions.len());
-        assert_eq!(1, function.outputs.len());
+        assert_eq!(0, function.inputs().len());
+        assert_eq!(1, function.instructions().len());
+        assert_eq!(1, function.outputs().len());
     }
 
     #[test]
@@ -182,9 +182,9 @@ function foo:
         .unwrap()
         .1;
         assert_eq!("foo", function.name().to_string());
-        assert_eq!(1, function.inputs.len());
-        assert_eq!(1, function.instructions.len());
-        assert_eq!(1, function.outputs.len());
+        assert_eq!(1, function.inputs().len());
+        assert_eq!(1, function.instructions().len());
+        assert_eq!(1, function.outputs().len());
     }
 
     #[test]
@@ -197,9 +197,9 @@ function foo:
         .unwrap()
         .1;
         assert_eq!("foo", function.name().to_string());
-        assert_eq!(1, function.inputs.len());
-        assert_eq!(0, function.instructions.len());
-        assert_eq!(0, function.outputs.len());
+        assert_eq!(1, function.inputs().len());
+        assert_eq!(0, function.instructions().len());
+        assert_eq!(0, function.outputs().len());
     }
 
     #[test]
@@ -233,9 +233,9 @@ finalize mint_public:
         .unwrap()
         .1;
         assert_eq!("mint_public", function.name().to_string());
-        assert_eq!(2, function.inputs.len());
-        assert_eq!(0, function.instructions.len());
-        assert_eq!(0, function.outputs.len());
+        assert_eq!(2, function.inputs().len());
+        assert_eq!(0, function.instructions().len());
+        assert_eq!(0, function.outputs().len());
         assert!(function.finalize_command().is_some());
         assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
         assert_eq!(3, function.finalize_logic().as_ref().unwrap().commands().len());
@@ -255,9 +255,9 @@ finalize foo:
         .unwrap()
         .1;
         assert_eq!("foo", function.name().to_string());
-        assert_eq!(1, function.inputs.len());
-        assert_eq!(1, function.instructions.len());
-        assert_eq!(0, function.outputs.len());
+        assert_eq!(1, function.inputs().len());
+        assert_eq!(1, function.instructions().len());
+        assert_eq!(0, function.outputs().len());
         assert_eq!(1, function.finalize_logic().as_ref().unwrap().inputs().len());
         assert_eq!(1, function.finalize_logic().as_ref().unwrap().commands().len());
 
@@ -280,9 +280,9 @@ finalize compute:
         )
         .unwrap()
         .1;
-        assert_eq!(3, function.inputs.len());
-        assert_eq!(1, function.instructions.len());
-        assert_eq!(0, function.outputs.len());
+        assert_eq!(3, function.inputs().len());
+        assert_eq!(1, function.instructions().len());
+        assert_eq!(0, function.outputs().len());
         assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
         assert_eq!(3, function.finalize_logic().as_ref().unwrap().commands().len());
     }

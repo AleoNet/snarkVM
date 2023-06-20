@@ -15,7 +15,6 @@
 use crate::{
     CallStack,
     Opcode,
-    Operand,
     Registers,
     RegistersCall,
     RegistersCaller,
@@ -33,6 +32,7 @@ use console::{
     network::prelude::*,
     program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
 };
+use snarkvm_synthesizer_program::Operand;
 
 /// The operator references a function name or closure name.
 #[derive(Clone, PartialEq, Eq, Hash)]

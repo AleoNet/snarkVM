@@ -149,7 +149,7 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
 
         // Check if the command is a branch command.
         if let Some(position) = command.branch_to() {
-            // Ensure the branch target is a position.
+            // Ensure the branch target does not reference an earlier position.
             ensure!(!self.positions.contains_key(position), "Cannot branch to an earlier position '{position}'");
         }
 

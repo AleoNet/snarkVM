@@ -17,7 +17,6 @@ use crate::{
     FinalizeStorage,
     FinalizeStore,
     Opcode,
-    Operand,
     RegistersLoad as LoadTrait,
     RegistersStore,
     Stack,
@@ -28,6 +27,7 @@ use console::{
     program::{Literal, LiteralType, Plaintext, Register, Value},
     types::{Address, Boolean, Field, Group, Scalar, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
 };
+use snarkvm_synthesizer_program::Operand;
 
 use rand::SeedableRng;
 
