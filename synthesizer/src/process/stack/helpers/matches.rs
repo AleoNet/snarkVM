@@ -247,6 +247,9 @@ impl<N: Network> Stack<N> {
 
                 Ok(())
             }
+            PlaintextType::Array(array_type) => {
+                todo!("Implement matching for array types")
+            }
         }
     }
 }

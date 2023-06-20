@@ -120,6 +120,8 @@ impl<N: Network> FinalizeTypes<N> {
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
                 }
+                // TODO (d0cd): Check this logic.
+                PlaintextType::Array(..) => bail!("'{register}' references an array."),
             }
         }
         // Output the member type.

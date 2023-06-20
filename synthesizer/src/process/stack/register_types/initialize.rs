@@ -103,8 +103,9 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the register type is a literal or a struct.
                 // See `Stack::execute_function()` for the same set of checks.
                 match register_type {
-                    RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-                    RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
+                    RegisterType::Plaintext(PlaintextType::Literal(..))
+                    | RegisterType::Plaintext(PlaintextType::Struct(..))
+                    | RegisterType::Plaintext(PlaintextType::Array(..)) => (),
                     RegisterType::Record(..) => {
                         bail!(
                             "'{}/{}' attempts to pass a 'record' into 'finalize'",
@@ -195,6 +196,10 @@ impl<N: Network> RegisterTypes<N> {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
+            RegisterType::Plaintext(PlaintextType::Array(array_name)) => {
+                // Ensure the element type is defined in the program.
+                todo!("Ensure the element type is defined in the program.");
+            }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -248,6 +253,10 @@ impl<N: Network> RegisterTypes<N> {
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
+            }
+            RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                // Ensure the element type is defined in the program.
+                todo!("Ensure the element type is defined in the program.");
             }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
@@ -427,6 +436,10 @@ impl<N: Network> RegisterTypes<N> {
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), &struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                        // Ensure that the element type is defined.
+                        todo!("Ensure that the element type is defined.")
                     }
                     RegisterType::Record(record_name) => {
                         // Ensure the record type is defined in the program.

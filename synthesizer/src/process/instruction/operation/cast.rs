@@ -212,6 +212,9 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet implemented")
+            }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
@@ -392,6 +395,9 @@ impl<N: Network> Cast<N> {
                 // Store the struct.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet implemented")
+            }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
@@ -513,6 +519,9 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet supported")
+            }
             CastType::RegisterType(RegisterType::Record(_record_name)) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
             }
@@ -588,6 +597,9 @@ impl<N: Network> Cast<N> {
                         ),
                     }
                 }
+            }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet supported")
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Retrieve the record type and ensure is defined in the program.
@@ -744,6 +756,9 @@ impl<N: Network> Parser for Cast<N> {
             | CastType::GroupYCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet supported")
+            }
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -792,6 +807,9 @@ impl<N: Network> Display for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet supported")
+            }
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -837,6 +855,9 @@ impl<N: Network> FromBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet supported")
+            }
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -858,6 +879,9 @@ impl<N: Network> ToBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => {
+                todo!("Casting to an array is not yet supported")
+            }
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };

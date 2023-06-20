@@ -138,6 +138,8 @@ impl<N: Network> RegisterTypes<N> {
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
                 }
+                // Ensure the plaintext type is not an array, as the register references a member.
+                RegisterType::Plaintext(PlaintextType::Array(..)) => bail!("'{register}' references an array."),
                 RegisterType::Record(record_name) => {
                     // Ensure the record type exists.
                     ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");

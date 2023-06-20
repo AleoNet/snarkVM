@@ -106,7 +106,7 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match plaintext_type {
-            PlaintextType::Literal(..) => (),
+            PlaintextType::Literal(..) | PlaintextType::Array(..) => (),
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
@@ -492,6 +492,9 @@ impl<N: Network> FinalizeTypes<N> {
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), &struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                        todo!("Casting to an array is not yet supported.")
                     }
                     RegisterType::Record(..) => {
                         bail!("Illegal operation: Cannot cast to a record.")
