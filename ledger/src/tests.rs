@@ -87,7 +87,8 @@ fn test_insufficient_finalize_fees() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
-    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, address, .. } =
+        crate::test_helpers::sample_test_env(rng);
 
     // Deploy a test program to the ledger.
     let program = Program::<CurrentNetwork>::from_str(
@@ -133,9 +134,25 @@ finalize foo:
     assert_eq!(ledger.latest_height(), 1);
     assert_eq!(ledger.latest_hash(), block.hash());
 
+    // Create a transfer transaction to produce a record with insufficient balance to pay for fees.
+    let transfer_transaction = ledger.create_transfer(&private_key, address, 100, 0, None).unwrap();
+
+    // Construct the next block.
+    let block =
+        ledger.prepare_advance_to_next_block(&private_key, vec![transfer_transaction.clone()], None, rng).unwrap();
+    // Advance to the next block.
+    ledger.advance_to_next_block(&block).unwrap();
+    assert_eq!(ledger.latest_height(), 2);
+    assert_eq!(ledger.latest_hash(), block.hash());
+
     // Execute the test program, without providing enough fees for finalize, and ensure that the ledger deems the transaction invalid.
-    // Fetch the unspent records.
-    let records = find_records();
+
+    // Find records from the transfer transaction.
+    let records = transfer_transaction
+        .records()
+        .map(|(_, record)| record.decrypt(&view_key))
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     // Prepare the inputs.
     let inputs = [Value::<CurrentNetwork>::from_str("1u8").unwrap()].into_iter();
