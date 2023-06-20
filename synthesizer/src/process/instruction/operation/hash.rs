@@ -361,10 +361,7 @@ impl<N: Network, const VARIANT: u8> Display for HashInstruction<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is correct.
-        check_number_of_operands(VARIANT, Self::opcode(), self.operands.len()).map_err(|e| {
-            eprintln!("{e}");
-            fmt::Error
-        })?;
+        check_number_of_operands(VARIANT, Self::opcode(), self.operands.len()).map_err(|_| fmt::Error)?;
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
         self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;

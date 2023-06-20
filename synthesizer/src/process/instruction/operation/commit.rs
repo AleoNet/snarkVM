@@ -296,7 +296,6 @@ impl<N: Network, const VARIANT: u8> Display for CommitInstruction<N, VARIANT> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is 2.
         if self.operands.len() != 2 {
-            eprintln!("The number of operands must be 2, found {}", self.operands.len());
             return Err(fmt::Error);
         }
         // Print the operation.

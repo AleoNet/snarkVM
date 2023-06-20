@@ -227,7 +227,6 @@ impl<N: Network> Display for RandChaCha<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
         if self.operands.len() > MAX_ADDITIONAL_SEEDS {
-            eprintln!("The number of operands must be <= {MAX_ADDITIONAL_SEEDS}");
             return Err(fmt::Error);
         }
 

@@ -747,7 +747,7 @@ impl<N: Network> Parser for Cast<N> {
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
-        match operands.len() <= max_operands {
+        match !operands.is_empty() && (operands.len() <= max_operands) {
             true => Ok((string, Self { operands, destination, cast_type })),
             false => {
                 map_res(fail, |_: ParserResult<Self>| Err(error("Failed to parse 'cast' opcode: too many operands")))(
@@ -795,8 +795,7 @@ impl<N: Network> Display for Cast<N> {
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
-        if self.operands.len().is_zero() || self.operands.len() > max_operands {
-            eprintln!("The number of operands must be nonzero and <= {max_operands}");
+        if self.operands.is_empty() || self.operands.len() > max_operands {
             return Err(fmt::Error);
         }
         // Print the operation.
@@ -862,7 +861,7 @@ impl<N: Network> ToBytes for Cast<N> {
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
-        if self.operands.len().is_zero() || self.operands.len() > max_operands {
+        if self.operands.is_empty() || self.operands.len() > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
         }
 

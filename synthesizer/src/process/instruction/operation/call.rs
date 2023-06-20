@@ -648,12 +648,10 @@ impl<N: Network> Display for Call<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
         if self.operands.len() > N::MAX_OPERANDS {
-            eprintln!("The number of operands must be <= {}", N::MAX_OPERANDS);
             return Err(fmt::Error);
         }
         // Ensure the number of destinations is within the bounds.
         if self.destinations.len() > N::MAX_OPERANDS {
-            eprintln!("The number of destinations must be <= {}", N::MAX_OPERANDS);
             return Err(fmt::Error);
         }
         // Print the operation.
