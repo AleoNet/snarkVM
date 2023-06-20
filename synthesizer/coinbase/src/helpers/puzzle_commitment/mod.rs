@@ -32,6 +32,11 @@ impl<N: Network> PuzzleCommitment<N> {
         Self { commitment }
     }
 
+    /// Initializes a new instance of the puzzle commitment.
+    pub fn from_g1_affine(commitment: <<N as Environment>::PairingCurve as PairingEngine>::G1Affine) -> Self {
+        Self::from(KZGCommitment(commitment))
+    }
+
     /// Returns the proof target.
     pub fn to_target(&self) -> Result<u64> {
         let hash_to_u64 = sha256d_to_u64(&self.commitment.to_bytes_le()?);
