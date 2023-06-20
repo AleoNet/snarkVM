@@ -17,6 +17,7 @@ mod serialize;
 mod string;
 
 use super::*;
+use snarkvm_algorithms::crypto_hash::sha256d_to_u64;
 
 /// A coinbase puzzle commitment to a polynomial.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -29,6 +30,12 @@ impl<N: Network> PuzzleCommitment<N> {
     /// Initializes a new instance of the puzzle commitment.
     pub const fn new(commitment: KZGCommitment<<N as Environment>::PairingCurve>) -> Self {
         Self { commitment }
+    }
+
+    /// Returns the proof target.
+    pub fn to_target(&self) -> Result<u64> {
+        let hash_to_u64 = sha256d_to_u64(&self.commitment.to_bytes_le()?);
+        if hash_to_u64 == 0 { Ok(u64::MAX) } else { Ok(u64::MAX / hash_to_u64) }
     }
 }
 
