@@ -19,10 +19,16 @@ mod string;
 
 use crate::{
     block::{Transaction, Transition},
+    process::{Command, Instruction},
     snark::Proof,
+    Finalize,
     Program,
 };
-use console::{account::Field, network::prelude::*, program::ProgramID};
+use console::{
+    account::Field,
+    network::prelude::*,
+    program::{LiteralType, ProgramID},
+};
 
 use indexmap::IndexMap;
 use std::collections::HashMap;

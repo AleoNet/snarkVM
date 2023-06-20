@@ -201,7 +201,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::test_helpers::CurrentLedger;
+    use crate::test_helpers::CurrentLedger;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

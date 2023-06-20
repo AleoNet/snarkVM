@@ -26,7 +26,8 @@ extern crate tracing;
 
 #[cfg(feature = "coinbase")]
 pub use snarkvm_synthesizer_coinbase as coinbase;
-
+#[cfg(feature = "program")]
+pub use snarkvm_synthesizer_program as program;
 #[cfg(feature = "snark")]
 pub use snarkvm_synthesizer_snark as snark;
 
@@ -35,9 +36,6 @@ pub use block::*;
 
 pub mod process;
 pub use process::*;
-
-pub mod program;
-pub use program::*;
 
 pub mod store;
 pub use store::*;
@@ -48,12 +46,14 @@ pub use vm::*;
 pub mod prelude {
     #[cfg(feature = "coinbase")]
     pub use crate::coinbase::*;
+    #[cfg(feature = "program")]
+    pub use crate::program::*;
     #[cfg(feature = "snark")]
     pub use crate::snark::*;
 
     // TODO (howardwu): These will be refactored into their own modules.
     //  Config flags should be added to these after modularization so that they can be disabled.
-    pub use crate::{block::*, cow_to_cloned, cow_to_copied, process::*, program::*, store::*, vm::*};
+    pub use crate::{block::*, cow_to_cloned, cow_to_copied, process::*, store::*, vm::*};
 }
 
 // /// Initializes a new **testing-only** instance of the ledger.

@@ -485,9 +485,19 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --features=rocks
+          flags: --lib --bins --features=rocks
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-cache
+
+  synthesizer-integration:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --test '*' --features=rocks
+          workspace_member: synthesizer
+          cache_key: snarkvm-synthesizer-integration-cache
 
   synthesizer-coinbase:
     docker:
@@ -497,6 +507,15 @@ jobs:
       - run_serial:
           workspace_member: synthesizer/coinbase
           cache_key: snarkvm-synthesizer-coinbase-cache
+
+  synthesizer-program:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
 
   synthesizer-snark:
     docker:
@@ -648,7 +667,9 @@ workflows:
       - ledger
       - parameters
       - synthesizer
+      - synthesizer-integration
       - synthesizer-coinbase
+      - synthesizer-program
       - synthesizer-snark
       - utilities
       - utilities-derives

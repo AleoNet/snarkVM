@@ -21,9 +21,9 @@ use utilities::*;
 
 use console::{
     account::{PrivateKey, ViewKey},
-    network::{prelude::*, Testnet3},
+    network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Record, Value, RATIFICATIONS_DEPTH, U64},
-    types::Field,
+    types::{Boolean, Field},
 };
 use snarkvm_synthesizer::{
     helpers::memory::ConsensusMemory,
@@ -49,7 +49,7 @@ fn test_vm_execute_and_finalize() {
     tests.par_iter().for_each(|test| {
         // Initialize the RNG.
         let rng = &mut match test.randomness() {
-            None => TestRng::default(),
+            None => TestRng::fixed(123456789),
             Some(randomness) => TestRng::fixed(randomness),
         };
 
@@ -66,12 +66,7 @@ fn test_vm_execute_and_finalize() {
         // Deploy the program.
         let transaction =
             vm.deploy(&genesis_private_key, test.program(), (fee_records.pop().unwrap().0, 0), None, rng).unwrap();
-        let transactions = vm
-            .speculate(
-                FinalizeGlobalState::from(vm.block_store().heights().max().map_or(0, |height| *height), [0u8; 32]),
-                [transaction].iter(),
-            )
-            .unwrap();
+        let transactions = vm.speculate(construct_finalize_global_state(&vm), [transaction].iter()).unwrap();
         let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
 
@@ -97,9 +92,12 @@ fn test_vm_execute_and_finalize() {
                     .as_sequence()
                     .expect("expected sequence for inputs")
                     .iter()
-                    .map(|input| {
-                        Value::<CurrentNetwork>::from_str(input.as_str().expect("expected string for input"))
-                            .expect("unable to parse input")
+                    .map(|input| match &input {
+                        serde_yaml::Value::Bool(bool) => {
+                            Value::<CurrentNetwork>::from(Literal::Boolean(Boolean::new(*bool)))
+                        }
+                        _ => Value::<CurrentNetwork>::from_str(input.as_str().expect("expected string for input"))
+                            .expect("unable to parse input"),
                     })
                     .collect_vec();
                 // TODO: Support fee records for custom private keys.
@@ -170,13 +168,7 @@ fn test_vm_execute_and_finalize() {
                     output
                         .insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
                     // Speculate on the transaction.
-                    let transactions = match vm.speculate(
-                        FinalizeGlobalState::from(
-                            vm.block_store().heights().max().map_or(0, |height| *height),
-                            [0u8; 32],
-                        ),
-                        [transaction].iter(),
-                    ) {
+                    let transactions = match vm.speculate(construct_finalize_global_state(&vm), [transaction].iter()) {
                         Ok(transactions) => {
                             output.insert(
                                 serde_yaml::Value::String("speculate".to_string()),
@@ -261,7 +253,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
     rng: &mut R,
 ) -> Vec<(Record<CurrentNetwork, Plaintext<CurrentNetwork>>, u64)> {
     // Helper function to get the balance of a `credits.aleo` record.
-    let get_balance = |record: &Record<Testnet3, Plaintext<Testnet3>>| -> u64 {
+    let get_balance = |record: &Record<CurrentNetwork, Plaintext<CurrentNetwork>>| -> u64 {
         match record.data().get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
             Entry::Private(Plaintext::Literal(Literal::U64(amount), ..)) => **amount,
             _ => unreachable!("Invalid entry type for credits.aleo."),
@@ -298,12 +290,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let transactions = vm
-            .speculate(
-                FinalizeGlobalState::from(vm.block_store().heights().max().map_or(0, |height| *height), [0u8; 32]),
-                transactions.iter(),
-            )
-            .unwrap();
+        let transactions = vm.speculate(construct_finalize_global_state(vm), transactions.iter()).unwrap();
         let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
@@ -355,13 +342,13 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
 
 // A helper function to invoke `credits.aleo/split`.
 #[allow(clippy::type_complexity)]
-fn split<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
-    vm: &VM<Testnet3, C>,
-    private_key: &PrivateKey<Testnet3>,
-    record: Record<Testnet3, Plaintext<Testnet3>>,
+fn split<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
+    vm: &VM<CurrentNetwork, C>,
+    private_key: &PrivateKey<CurrentNetwork>,
+    record: Record<CurrentNetwork, Plaintext<CurrentNetwork>>,
     amount: u64,
     rng: &mut R,
-) -> (Vec<Record<Testnet3, Plaintext<Testnet3>>>, Vec<Transaction<Testnet3>>) {
+) -> (Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>, Vec<Transaction<CurrentNetwork>>) {
     let inputs = vec![Value::Record(record), Value::Plaintext(Plaintext::from(Literal::U64(U64::new(amount))))];
     let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, None, rng).unwrap();
     let records = transaction
@@ -370,4 +357,35 @@ fn split<C: ConsensusStorage<Testnet3>, R: Rng + CryptoRng>(
         .collect_vec();
     assert_eq!(records.len(), 2);
     (records, vec![transaction])
+}
+
+// Construct `FinalizeGlobalState` from the current `VM` state.
+fn construct_finalize_global_state<C: ConsensusStorage<CurrentNetwork>>(
+    vm: &VM<CurrentNetwork, C>,
+) -> FinalizeGlobalState {
+    // Retrieve the latest block.
+    let block_height = *vm.block_store().heights().max().unwrap().clone();
+    let latest_block_hash = vm.block_store().get_block_hash(block_height).unwrap().unwrap();
+    let latest_block = vm.block_store().get_block(&latest_block_hash).unwrap().unwrap();
+    // Retrieve the latest round.
+    let latest_round = latest_block.round();
+    // Retrieve the latest height.
+    let latest_height = latest_block.height();
+    // Retrieve the latest cumulative weight.
+    let latest_cumulative_weight = latest_block.cumulative_weight();
+
+    // Compute the next round number./
+    let next_round = latest_round.saturating_add(1);
+    // Compute the next height.
+    let next_height = latest_height.saturating_add(1);
+
+    // Construct the finalize state.
+    FinalizeGlobalState::new::<CurrentNetwork>(
+        next_round,
+        next_height,
+        latest_cumulative_weight,
+        0u128,
+        latest_block.hash(),
+    )
+    .unwrap()
 }

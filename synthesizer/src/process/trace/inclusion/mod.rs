@@ -24,7 +24,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TRANSACTION_DEPTH},
+    program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TransitionPath, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
 
@@ -38,18 +38,17 @@ struct InputTask<N: Network> {
     gamma: Group<N>,
     /// The serial number.
     serial_number: Field<N>,
-    /// The transition leaf.
-    leaf: TransitionLeaf<N>,
-    /// A boolean indicating whether the input was produced by the current transaction.
-    is_local: bool,
+    /// Contains the local transaction leaf, local transition path, and local transition leaf,
+    /// if this input is a record from a previous local transition.
+    local: Option<(TransactionLeaf<N>, TransitionPath<N>, TransitionLeaf<N>)>,
 }
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct Inclusion<N: Network> {
-    /// A map of transition IDs to a list of input tasks.
+    /// A map of `transition IDs` to a list of `input tasks`.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
-    /// A map of commitments to (transition ID, output index) pairs.
-    output_commitments: HashMap<Field<N>, (N::TransitionID, u8)>,
+    /// A map of `commitments` to `(local transaction leaf, local transition path, local transition leaf)` pairs.
+    output_commitments: HashMap<Field<N>, (TransactionLeaf<N>, TransitionPath<N>, TransitionLeaf<N>)>,
 }
 
 impl<N: Network> Inclusion<N> {
@@ -65,11 +64,14 @@ impl<N: Network> Inclusion<N> {
             bail!("Inclusion expected the same number of input IDs as transition inputs")
         }
 
+        // Retrieve the transition index.
+        let transition_index = self.input_tasks.len() as u16;
+
         // Initialize the input tasks.
         let input_tasks = self.input_tasks.entry(*transition.id()).or_default();
 
         // Process the inputs.
-        for (index, (input, input_id)) in transition.inputs().iter().zip_eq(input_ids).enumerate() {
+        for input_id in input_ids {
             // Filter the inputs for records.
             if let InputID::Record(commitment, gamma, serial_number, ..) = input_id {
                 // Add the record to the input tasks.
@@ -77,8 +79,7 @@ impl<N: Network> Inclusion<N> {
                     commitment: *commitment,
                     gamma: *gamma,
                     serial_number: *serial_number,
-                    leaf: input.to_transition_leaf(index as u8),
-                    is_local: self.output_commitments.contains_key(commitment),
+                    local: self.output_commitments.get(commitment).cloned(),
                 });
             }
         }
@@ -87,8 +88,14 @@ impl<N: Network> Inclusion<N> {
         for (index, output) in transition.outputs().iter().enumerate() {
             // Filter the outputs for records.
             if let Output::Record(commitment, ..) = output {
-                // Add the record to the output commitments.
-                self.output_commitments.insert(*commitment, (*transition.id(), (input_ids.len() + index) as u8));
+                // Compute the transaction leaf.
+                let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
+                // Compute the transition leaf.
+                let transition_leaf = output.to_transition_leaf((input_ids.len() + index) as u8);
+                // Compute the transition path.
+                let transition_path = transition.to_path(&transition_leaf)?;
+                // Add the record's local Merklization to the output commitments.
+                self.output_commitments.insert(*commitment, (transaction_leaf, transition_path, transition_leaf));
             }
         }
 

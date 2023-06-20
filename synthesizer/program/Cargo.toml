@@ -1,0 +1,50 @@
+[package]
+name = "snarkvm-synthesizer-program"
+version = "0.12.3"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Program for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[features]
+default = [ ]
+serial = [ "console/serial" ]
+wasm = [ "console/wasm" ]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.12.3"
+default-features = false
+features = [ "network" ]
+
+[dependencies.indexmap]
+version = "1.9"
+
+[dev-dependencies.bincode]
+version = "1"
+
+[dev-dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
+[dev-dependencies.synthesizer]
+package = "snarkvm-synthesizer"
+path = "../"

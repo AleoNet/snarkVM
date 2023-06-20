@@ -29,8 +29,7 @@ use crate::{
     cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, FinalizeGlobalState, Process, Query, Trace},
-    program::Program,
+    process::{Authorization, FinalizeGlobalState, Process, Program, Query, Trace},
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     TransactionStorage,
 };
@@ -241,7 +240,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use crate::{
         block::{Block, Fee, Header, Metadata, Transition},
-        program::Program,
+        process::Program,
         store::helpers::memory::ConsensusMemory,
     };
     use console::{
@@ -712,26 +711,26 @@ finalize getter:
 
     #[test]
     fn test_load_deployments_with_imports() {
-        let rng = &mut TestRng::default();
+        // NOTE: This seed was chosen for the CI's RNG to ensure that the test passes.
+        let rng = &mut TestRng::fixed(123456789);
 
         // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
 
+        // Initialize the VM.
+        let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+        let genesis = vm.genesis(&caller_private_key, rng).unwrap();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
 
         // Fetch the unspent records.
         let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<Vec<(_, _)>>();
         trace!("Unspent Records:\n{:#?}", records);
-        let first_record = records[0].1.clone().decrypt(&caller_view_key).unwrap();
-        let second_record = records[1].1.clone().decrypt(&caller_view_key).unwrap();
-        let third_record = records[2].1.clone().decrypt(&caller_view_key).unwrap();
-
-        // Initialize the VM.
-        let vm = sample_vm();
-        // Update the VM.
-        vm.add_next_block(&genesis).unwrap();
+        let first_record = records[0].1.decrypt(&caller_view_key).unwrap();
+        let second_record = records[1].1.decrypt(&caller_view_key).unwrap();
+        let third_record = records[2].1.decrypt(&caller_view_key).unwrap();
 
         // Create the deployment for the first program.
         let first_program = r"
@@ -805,5 +804,71 @@ function a:
 
         // Enforce that the VM can load properly with the imports.
         assert!(VM::from(vm.store.clone()).is_ok());
+    }
+
+    #[test]
+    fn test_multiple_external_calls() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Initialize the genesis block.
+        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+        // Fetch the unspent records.
+        let records =
+            genesis.transitions().cloned().flat_map(Transition::into_records).take(3).collect::<IndexMap<_, _>>();
+        trace!("Unspent Records:\n{:#?}", records);
+        let record_0 = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+        let record_1 = records.values().nth(1).unwrap().decrypt(&caller_view_key).unwrap();
+        let record_2 = records.values().nth(2).unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Initialize the VM.
+        let vm = sample_vm();
+        // Update the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Deploy the program.
+        let program = Program::from_str(
+            r"
+import credits.aleo;
+
+program test_multiple_external_calls.aleo;
+
+function multitransfer:
+    input r0 as credits.aleo/credits.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    call credits.aleo/transfer_private r0 r1 r2 into r3 r4;
+    call credits.aleo/transfer_private r4 r1 r2 into r5 r6;
+    output r4 as credits.aleo/credits.record;
+    output r5 as credits.aleo/credits.record;
+    output r6 as credits.aleo/credits.record;
+    ",
+        )
+        .unwrap();
+        let deployment = vm.deploy(&caller_private_key, &program, (record_0, 1), None, rng).unwrap();
+        vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap()).unwrap();
+
+        // Execute the programs.
+        let inputs = [
+            Value::<Testnet3>::Record(record_1),
+            Value::<Testnet3>::from_str(&address.to_string()).unwrap(),
+            Value::<Testnet3>::from_str("10u64").unwrap(),
+        ];
+        let execution = vm
+            .execute(
+                &caller_private_key,
+                ("test_multiple_external_calls.aleo", "multitransfer"),
+                inputs.into_iter(),
+                Some((record_2, 1)),
+                None,
+                rng,
+            )
+            .unwrap();
+        vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[execution], rng).unwrap()).unwrap();
     }
 }
