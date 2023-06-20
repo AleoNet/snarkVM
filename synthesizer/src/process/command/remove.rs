@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Opcode, Operand, RegistersLoad, Stack, StackProgram};
+use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Opcode, RegistersLoad, Stack, StackProgram};
 use console::{network::prelude::*, program::Identifier};
+use snarkvm_synthesizer_program::Operand;
 
 /// A remove command, e.g. `remove mapping[r0];`
 /// Removes the (`key`, `value`) entry in `mapping`.

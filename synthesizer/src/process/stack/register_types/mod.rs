@@ -16,7 +16,7 @@ mod initialize;
 mod matches;
 
 use crate::{
-    process::{Closure, Function, Instruction, Opcode, Operand, Program},
+    process::{Closure, Function, Instruction, Opcode, Program},
     program::InstructionTrait,
     CallOperator,
     StackMatches,
@@ -36,6 +36,7 @@ use console::{
         ValueType,
     },
 };
+use snarkvm_synthesizer_program::Operand;
 
 use indexmap::IndexMap;
 

@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Opcode, Operand, RegistersLoad, Stack, StackProgram};
+use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Opcode, RegistersLoad, Stack, StackProgram};
 use console::{
     network::prelude::*,
     program::{Identifier, Value},
 };
+use snarkvm_synthesizer_program::Operand;
 
 /// A set command, e.g. `set r1 into mapping[r0];`
 /// Sets the `key` entry as `value` in `mapping`.

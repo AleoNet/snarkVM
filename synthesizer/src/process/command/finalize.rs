@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{FinalizeCommandTrait, Opcode, Operand, RegistersLoad, Stack};
+use crate::{Opcode, RegistersLoad, Stack};
 use console::{network::prelude::*, program::Register};
+use snarkvm_synthesizer_program::{FinalizeCommandTrait, Operand};
 
 /// Finalizes the operands on-chain.
 pub type FinalizeCommand<N> = FinalizeOperation<N, { Variant::FinalizeCommand as u8 }>;

@@ -14,7 +14,6 @@
 
 use crate::{
     Opcode,
-    Operand,
     RegistersLoad,
     RegistersLoadCircuit,
     RegistersStore,
@@ -27,6 +26,7 @@ use console::{
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
     types::Boolean,
 };
+use snarkvm_synthesizer_program::Operand;
 
 /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
 pub type IsEq<N> = IsInstruction<N, { Variant::IsEq as u8 }>;

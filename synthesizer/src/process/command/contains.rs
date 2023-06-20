@@ -12,21 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    FinalizeStorage,
-    FinalizeStore,
-    Opcode,
-    Operand,
-    RegistersLoad as LoadTrait,
-    RegistersStore,
-    Stack,
-    StackProgram,
-};
+use crate::{FinalizeStorage, FinalizeStore, Opcode, RegistersLoad as LoadTrait, RegistersStore, Stack, StackProgram};
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Register, Value},
     types::Boolean,
 };
+use snarkvm_synthesizer_program::Operand;
 
 /// A contains command, e.g. `contains accounts[r0] into r1;`.
 /// Contains is `true` if a (`key`, `value`) entry exists in `mapping`, stores the result in `destination`.

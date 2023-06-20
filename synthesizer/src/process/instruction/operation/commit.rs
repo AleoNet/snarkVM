@@ -14,7 +14,6 @@
 
 use crate::{
     Opcode,
-    Operand,
     RegistersLoad,
     RegistersLoadCircuit,
     RegistersStore,
@@ -26,6 +25,7 @@ use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
 };
+use snarkvm_synthesizer_program::Operand;
 
 /// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
 pub type CommitBHP256<N> = CommitInstruction<N, { Committer::CommitBHP256 as u8 }>;

@@ -87,8 +87,8 @@ impl<N: Network, Instruction: InstructionTrait<N>> Display for ClosureCore<N, In
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::Closure;
     use console::network::Testnet3;
+    use synthesizer::process::Closure;
 
     type CurrentNetwork = Testnet3;
 
@@ -105,9 +105,9 @@ closure foo:
         .unwrap()
         .1;
         assert_eq!("foo", closure.name().to_string());
-        assert_eq!(2, closure.inputs.len());
-        assert_eq!(1, closure.instructions.len());
-        assert_eq!(1, closure.outputs.len());
+        assert_eq!(2, closure.inputs().len());
+        assert_eq!(1, closure.instructions().len());
+        assert_eq!(1, closure.outputs().len());
     }
 
     #[test]
@@ -122,9 +122,9 @@ closure foo:
         .unwrap()
         .1;
         assert_eq!("foo", closure.name().to_string());
-        assert_eq!(1, closure.inputs.len());
-        assert_eq!(1, closure.instructions.len());
-        assert_eq!(1, closure.outputs.len());
+        assert_eq!(1, closure.inputs().len());
+        assert_eq!(1, closure.instructions().len());
+        assert_eq!(1, closure.outputs().len());
     }
 
     #[test]
