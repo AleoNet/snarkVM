@@ -185,7 +185,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         Ok(ledger)
     }
 
-    pub fn add_authorized_account(&self, address: Address<N>) {
+    /// TODO: Delete this after testing for snarkOS team.
+    pub fn insert_committee_member(&self, address: Address<N>) {
         self.current_committee.write().insert(address);
     }
 
