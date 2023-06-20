@@ -432,10 +432,10 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(1935, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1969, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the fee.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(1969, fee_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1935, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }
