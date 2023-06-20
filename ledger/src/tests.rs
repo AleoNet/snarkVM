@@ -136,8 +136,6 @@ finalize foo:
     // Execute the test program, without providing enough fees for finalize, and ensure that the ledger deems the transaction invalid.
     // Fetch the unspent records.
     let records = find_records();
-    // Select a record to spend.
-    let record = records.values().next().unwrap().clone();
 
     // Prepare the inputs.
     let inputs = [Value::<CurrentNetwork>::from_str("1u8").unwrap()].into_iter();
