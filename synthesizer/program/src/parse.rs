@@ -153,38 +153,23 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Dis
             match definition {
                 ProgramDefinition::Mapping => match self.mappings.get(identifier) {
                     Some(mapping) => program.push_str(&format!("{mapping}\n\n")),
-                    None => {
-                        eprintln!("Mapping '{identifier}' is not defined.");
-                        return Err(fmt::Error);
-                    }
+                    None => return Err(fmt::Error),
                 },
                 ProgramDefinition::Struct => match self.structs.get(identifier) {
                     Some(struct_) => program.push_str(&format!("{struct_}\n\n")),
-                    None => {
-                        eprintln!("Struct '{identifier}' is not defined.");
-                        return Err(fmt::Error);
-                    }
+                    None => return Err(fmt::Error),
                 },
                 ProgramDefinition::Record => match self.records.get(identifier) {
                     Some(record) => program.push_str(&format!("{record}\n\n")),
-                    None => {
-                        eprintln!("Record '{identifier}' is not defined.");
-                        return Err(fmt::Error);
-                    }
+                    None => return Err(fmt::Error),
                 },
                 ProgramDefinition::Closure => match self.closures.get(identifier) {
                     Some(closure) => program.push_str(&format!("{closure}\n\n")),
-                    None => {
-                        eprintln!("Closure '{identifier}' is not defined.");
-                        return Err(fmt::Error);
-                    }
+                    None => return Err(fmt::Error),
                 },
                 ProgramDefinition::Function => match self.functions.get(identifier) {
                     Some(function) => program.push_str(&format!("{function}\n\n")),
-                    None => {
-                        eprintln!("Function '{identifier}' is not defined.");
-                        return Err(fmt::Error);
-                    }
+                    None => return Err(fmt::Error),
                 },
             }
         }
