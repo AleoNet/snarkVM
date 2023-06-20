@@ -15,10 +15,7 @@
 mod load;
 mod store;
 
-use crate::{
-    process::{FinalizeTypes, RegistersLoad, RegistersStore, StackMatches, StackProgram},
-    program::Operand,
-};
+use crate::process::{FinalizeTypes, Operand, RegistersLoad, RegistersStore, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Plaintext, Register, Value},

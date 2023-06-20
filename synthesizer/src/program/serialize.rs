@@ -14,7 +14,9 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Serialize
+    for ProgramCore<N, Instruction, Command>
+{
     /// Serializes the program into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
@@ -24,7 +26,9 @@ impl<N: Network> Serialize for Program<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Program<N> {
+impl<'de, N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Deserialize<'de>
+    for ProgramCore<N, Instruction, Command>
+{
     /// Deserializes the program from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
@@ -37,6 +41,7 @@ impl<'de, N: Network> Deserialize<'de> for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Program;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

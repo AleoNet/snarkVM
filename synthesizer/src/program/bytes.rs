@@ -14,7 +14,9 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FromBytes
+    for ProgramCore<N, Instruction, Command>
+{
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
@@ -27,7 +29,7 @@ impl<N: Network> FromBytes for Program<N> {
         let id = ProgramID::read_le(&mut reader)?;
 
         // Initialize the program.
-        let mut program = Program::new(id).map_err(|e| error(e.to_string()))?;
+        let mut program = ProgramCore::new(id).map_err(|e| error(e.to_string()))?;
 
         // Read the number of program imports.
         let imports_len = u8::read_le(&mut reader)?;
@@ -50,9 +52,9 @@ impl<N: Network> FromBytes for Program<N> {
                 // Read the record.
                 2 => program.add_record(RecordType::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the closure.
-                3 => program.add_closure(Closure::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
+                3 => program.add_closure(ClosureCore::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the function.
-                4 => program.add_function(Function::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
+                4 => program.add_function(FunctionCore::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Invalid variant.
                 _ => return Err(error(format!("Failed to parse program. Invalid component variant '{variant}'"))),
             }
@@ -62,7 +64,9 @@ impl<N: Network> FromBytes for Program<N> {
     }
 }
 
-impl<N: Network> ToBytes for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ToBytes
+    for ProgramCore<N, Instruction, Command>
+{
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u8.write_le(&mut writer)?;
@@ -137,6 +141,7 @@ impl<N: Network> ToBytes for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Program;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

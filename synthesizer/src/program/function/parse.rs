@@ -14,7 +14,9 @@
 
 use super::*;
 
-impl<N: Network> Parser for Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Parser
+    for FunctionCore<N, Instruction, Command>
+{
     /// Parses a string into a function.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -39,12 +41,12 @@ impl<N: Network> Parser for Function<N> {
         let (string, outputs) = many0(Output::parse)(string)?;
 
         // Parse an optional finalize command from the string.
-        let (string, command) = opt(FinalizeCommand::parse)(string)?;
+        let (string, command) = opt(Command::FinalizeCommand::parse)(string)?;
         // If there is a finalize command, parse the finalize scope.
         let (string, finalize) = match command {
             Some(command) => {
                 // Parse the finalize scope from the string.
-                let (string, finalize) = Finalize::parse(string)?;
+                let (string, finalize) = FinalizeCore::parse(string)?;
                 // Return the finalize command and logic.
                 (string, Some((command, finalize)))
             }
@@ -79,7 +81,9 @@ impl<N: Network> Parser for Function<N> {
     }
 }
 
-impl<N: Network> FromStr for Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FromStr
+    for FunctionCore<N, Instruction, Command>
+{
     type Err = Error;
 
     /// Returns a function from a string literal.
@@ -96,14 +100,18 @@ impl<N: Network> FromStr for Function<N> {
     }
 }
 
-impl<N: Network> Debug for Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Debug
+    for FunctionCore<N, Instruction, Command>
+{
     /// Prints the function as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Display
+    for FunctionCore<N, Instruction, Command>
+{
     /// Prints the function as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the function to a string.
@@ -125,6 +133,7 @@ impl<N: Network> Display for Function<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Function;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

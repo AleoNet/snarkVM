@@ -14,17 +14,19 @@
 
 use super::*;
 
-impl<N: Network> Parser for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Parser
+    for ProgramCore<N, Instruction, Command>
+{
     /// Parses a string into a program.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // A helper to parse a program.
-        enum P<N: Network> {
+        enum P<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> {
             M(Mapping<N>),
             I(Struct<N>),
             R(RecordType<N>),
-            C(Closure<N>),
-            F(Function<N>),
+            C(ClosureCore<N, Instruction>),
+            F(FunctionCore<N, Instruction, Command>),
         }
 
         // Parse the imports from the string.
@@ -44,11 +46,11 @@ impl<N: Network> Parser for Program<N> {
 
         // Parse the struct or function from the string.
         let (string, components) = many1(alt((
-            map(Mapping::parse, |mapping| P::<N>::M(mapping)),
-            map(Struct::parse, |struct_| P::<N>::I(struct_)),
-            map(RecordType::parse, |record| P::<N>::R(record)),
-            map(Closure::parse, |closure| P::<N>::C(closure)),
-            map(Function::parse, |function| P::<N>::F(function)),
+            map(Mapping::parse, |mapping| P::<N, Instruction, Command>::M(mapping)),
+            map(Struct::parse, |struct_| P::<N, Instruction, Command>::I(struct_)),
+            map(RecordType::parse, |record| P::<N, Instruction, Command>::R(record)),
+            map(ClosureCore::parse, |closure| P::<N, Instruction, Command>::C(closure)),
+            map(FunctionCore::parse, |function| P::<N, Instruction, Command>::F(function)),
         )))(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
@@ -56,7 +58,7 @@ impl<N: Network> Parser for Program<N> {
         // Return the program.
         map_res(take(0usize), move |_| {
             // Initialize a new program.
-            let mut program = match Program::<N>::new(id) {
+            let mut program = match ProgramCore::<N, Instruction, Command>::new(id) {
                 Ok(program) => program,
                 Err(error) => {
                     eprintln!("{error}");
@@ -97,7 +99,9 @@ impl<N: Network> Parser for Program<N> {
     }
 }
 
-impl<N: Network> FromStr for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FromStr
+    for ProgramCore<N, Instruction, Command>
+{
     type Err = Error;
 
     /// Returns a program from a string literal.
@@ -114,7 +118,9 @@ impl<N: Network> FromStr for Program<N> {
     }
 }
 
-impl<N: Network> Debug for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Debug
+    for ProgramCore<N, Instruction, Command>
+{
     /// Prints the program as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
@@ -122,7 +128,9 @@ impl<N: Network> Debug for Program<N> {
 }
 
 #[allow(clippy::format_push_string)]
-impl<N: Network> Display for Program<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Display
+    for ProgramCore<N, Instruction, Command>
+{
     /// Prints the program as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         // Initialize a string for the program.
@@ -190,6 +198,7 @@ impl<N: Network> Display for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Program;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

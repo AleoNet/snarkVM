@@ -25,7 +25,7 @@ use crate::{
     atomic_batch_scope,
     block::{Deployment, Execution, Transaction},
     cow_to_copied,
-    program::Program,
+    process::Program,
     snark::{Certificate, VerifyingKey},
     store::{
         helpers::{Map, MapRead},

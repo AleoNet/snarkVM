@@ -50,8 +50,7 @@ use console::{
 use synthesizer::{
     block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions},
     coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
-    process::{FinalizeGlobalState, Query},
-    program::Program,
+    process::{FinalizeGlobalState, Program, Query},
     store::{ConsensusStorage, ConsensusStore},
     vm::VM,
 };
@@ -184,6 +183,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         finish!(timer);
         Ok(ledger)
+    }
+
+    /// TODO: Delete this after testing for snarkOS team.
+    pub fn insert_committee_member(&self, address: Address<N>) {
+        self.current_committee.write().insert(address);
     }
 
     /// Returns the VM.

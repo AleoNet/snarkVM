@@ -21,10 +21,7 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::{
-    program::finalize::{Finalize, FinalizeCommand},
-    Instruction,
-};
+use crate::program::finalize::{CommandTrait, FinalizeCommandTrait, FinalizeCore};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, ValueType},
@@ -32,22 +29,29 @@ use console::{
 
 use indexmap::IndexSet;
 
+pub trait InstructionTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
+    /// Returns the destination registers of the instruction.
+    fn destinations(&self) -> Vec<Register<N>>;
+    /// Returns `true` if the given name is a reserved opcode.
+    fn is_reserved_opcode(name: &str) -> bool;
+}
+
 #[derive(Clone, PartialEq, Eq)]
-pub struct Function<N: Network> {
+pub struct FunctionCore<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> {
     /// The name of the function.
     name: Identifier<N>,
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
     inputs: IndexSet<Input<N>>,
     /// The instructions, in order of execution.
-    instructions: Vec<Instruction<N>>,
+    instructions: Vec<Instruction>,
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
     /// The optional finalize command and logic.
-    finalize: Option<(FinalizeCommand<N>, Finalize<N>)>,
+    finalize: Option<(Command::FinalizeCommand, FinalizeCore<N, Command>)>,
 }
 
-impl<N: Network> Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FunctionCore<N, Instruction, Command> {
     /// Initializes a new function with the given name.
     pub fn new(name: Identifier<N>) -> Self {
         Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new(), finalize: None }
@@ -69,7 +73,7 @@ impl<N: Network> Function<N> {
     }
 
     /// Returns the function instructions.
-    pub fn instructions(&self) -> &[Instruction<N>] {
+    pub fn instructions(&self) -> &[Instruction] {
         &self.instructions
     }
 
@@ -84,22 +88,22 @@ impl<N: Network> Function<N> {
     }
 
     /// Returns the function finalize logic.
-    pub const fn finalize(&self) -> Option<&(FinalizeCommand<N>, Finalize<N>)> {
+    pub const fn finalize(&self) -> Option<&(Command::FinalizeCommand, FinalizeCore<N, Command>)> {
         self.finalize.as_ref()
     }
 
     /// Returns the function finalize command.
-    pub fn finalize_command(&self) -> Option<&FinalizeCommand<N>> {
+    pub fn finalize_command(&self) -> Option<&Command::FinalizeCommand> {
         self.finalize.as_ref().map(|(command, _)| command)
     }
 
     /// Returns the function finalize logic.
-    pub fn finalize_logic(&self) -> Option<&Finalize<N>> {
+    pub fn finalize_logic(&self) -> Option<&FinalizeCore<N, Command>> {
         self.finalize.as_ref().map(|(_, finalize)| finalize)
     }
 }
 
-impl<N: Network> Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FunctionCore<N, Instruction, Command> {
     /// Adds the input statement to the function.
     ///
     /// # Errors
@@ -136,7 +140,7 @@ impl<N: Network> Function<N> {
     /// This method will halt if the maximum number of instructions has been reached.
     /// This method will halt if a finalize command has been added.
     #[inline]
-    pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
+    pub fn add_instruction(&mut self, instruction: Instruction) -> Result<()> {
         // Ensure that there are no output statements in memory.
         ensure!(self.outputs.is_empty(), "Cannot add instructions after outputs have been added");
 
@@ -188,7 +192,7 @@ impl<N: Network> Function<N> {
     /// This method will halt if the maximum number of finalize inputs has been reached.
     /// This method will halt if the number of finalize operands does not match the number of finalize inputs.
     #[inline]
-    fn add_finalize(&mut self, command: FinalizeCommand<N>, finalize: Finalize<N>) -> Result<()> {
+    fn add_finalize(&mut self, command: Command::FinalizeCommand, finalize: FinalizeCore<N, Command>) -> Result<()> {
         // Ensure there is no finalize scope in memory.
         ensure!(self.finalize.is_none(), "Cannot add multiple finalize scopes to function '{}'", self.name);
         // Ensure the finalize scope name matches the function name.
@@ -197,9 +201,9 @@ impl<N: Network> Function<N> {
         ensure!(finalize.inputs().len() <= N::MAX_INPUTS, "Cannot add more than {} inputs to finalize", N::MAX_INPUTS);
         // Ensure the finalize command has the same number of operands as the finalize inputs.
         ensure!(
-            command.operands().len() == finalize.inputs().len(),
+            command.num_operands() == finalize.inputs().len(),
             "The 'finalize' command has {} operands, but 'finalize' takes {} inputs",
-            command.operands().len(),
+            command.num_operands(),
             finalize.inputs().len()
         );
 
@@ -209,7 +213,9 @@ impl<N: Network> Function<N> {
     }
 }
 
-impl<N: Network> TypeName for Function<N> {
+impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> TypeName
+    for FunctionCore<N, Instruction, Command>
+{
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {

@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Finalize<N> {
+impl<N: Network, Command: CommandTrait<N>> FromBytes for FinalizeCore<N, Command> {
     /// Reads the finalize from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -47,7 +47,7 @@ impl<N: Network> FromBytes for Finalize<N> {
     }
 }
 
-impl<N: Network> ToBytes for Finalize<N> {
+impl<N: Network, Command: CommandTrait<N>> ToBytes for FinalizeCore<N, Command> {
     /// Writes the finalize to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -85,6 +85,7 @@ impl<N: Network> ToBytes for Finalize<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::Finalize;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

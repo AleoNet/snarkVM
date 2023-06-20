@@ -14,7 +14,7 @@
 
 use super::*;
 use crate::{
-    finalize::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
+    process::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
     RegisterTypes,
 };
 
