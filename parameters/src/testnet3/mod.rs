@@ -17,39 +17,40 @@ pub use genesis::*;
 
 pub mod powers;
 pub use powers::*;
+use crate::macros::get_dir;
 
 const REMOTE_URL: &str = "https://testnet3.parameters.aleo.org";
 
 // Degrees
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
-impl_remote!(Degree16, REMOTE_URL, "resources/", "powers-of-beta-16", "usrs");
-impl_remote!(Degree17, REMOTE_URL, "resources/", "powers-of-beta-17", "usrs");
-impl_remote!(Degree18, REMOTE_URL, "resources/", "powers-of-beta-18", "usrs");
-impl_remote!(Degree19, REMOTE_URL, "resources/", "powers-of-beta-19", "usrs");
-impl_remote!(Degree20, REMOTE_URL, "resources/", "powers-of-beta-20", "usrs");
-impl_remote!(Degree21, REMOTE_URL, "resources/", "powers-of-beta-21", "usrs");
-impl_remote!(Degree22, REMOTE_URL, "resources/", "powers-of-beta-22", "usrs");
-impl_remote!(Degree23, REMOTE_URL, "resources/", "powers-of-beta-23", "usrs");
-impl_remote!(Degree24, REMOTE_URL, "resources/", "powers-of-beta-24", "usrs");
-impl_remote!(Degree25, REMOTE_URL, "resources/", "powers-of-beta-25", "usrs");
-impl_remote!(Degree26, REMOTE_URL, "resources/", "powers-of-beta-26", "usrs");
-impl_remote!(Degree27, REMOTE_URL, "resources/", "powers-of-beta-27", "usrs");
-impl_remote!(Degree28, REMOTE_URL, "resources/", "powers-of-beta-28", "usrs");
+impl_mobile_local!(Degree16, "resources/", "powers-of-beta-16", "usrs");
+impl_mobile_local!(Degree17, "resources/", "powers-of-beta-17", "usrs");
+impl_mobile_local!(Degree18, "resources/", "powers-of-beta-18", "usrs");
+impl_mobile_local!(Degree19, "resources/", "powers-of-beta-19", "usrs");
+impl_mobile_local!(Degree20, "resources/", "powers-of-beta-20", "usrs");
+impl_mobile_local!(Degree21, "resources/", "powers-of-beta-21", "usrs");
+impl_mobile_local!(Degree22, "resources/", "powers-of-beta-22", "usrs");
+impl_mobile_local!(Degree23, "resources/", "powers-of-beta-23", "usrs");
+impl_mobile_local!(Degree24, "resources/", "powers-of-beta-24", "usrs");
+impl_mobile_local!(Degree25, "resources/", "powers-of-beta-25", "usrs");
+impl_mobile_local!(Degree26, "resources/", "powers-of-beta-26", "usrs");
+impl_mobile_local!(Degree27, "resources/", "powers-of-beta-27", "usrs");
+impl_mobile_local!(Degree28, "resources/", "powers-of-beta-28", "usrs");
 
 // Shifted Degrees
 impl_local!(ShiftedDegree15, "resources/", "shifted-powers-of-beta-15", "usrs");
-impl_remote!(ShiftedDegree16, REMOTE_URL, "resources/", "shifted-powers-of-beta-16", "usrs");
-impl_remote!(ShiftedDegree17, REMOTE_URL, "resources/", "shifted-powers-of-beta-17", "usrs");
-impl_remote!(ShiftedDegree18, REMOTE_URL, "resources/", "shifted-powers-of-beta-18", "usrs");
-impl_remote!(ShiftedDegree19, REMOTE_URL, "resources/", "shifted-powers-of-beta-19", "usrs");
-impl_remote!(ShiftedDegree20, REMOTE_URL, "resources/", "shifted-powers-of-beta-20", "usrs");
-impl_remote!(ShiftedDegree21, REMOTE_URL, "resources/", "shifted-powers-of-beta-21", "usrs");
-impl_remote!(ShiftedDegree22, REMOTE_URL, "resources/", "shifted-powers-of-beta-22", "usrs");
-impl_remote!(ShiftedDegree23, REMOTE_URL, "resources/", "shifted-powers-of-beta-23", "usrs");
-impl_remote!(ShiftedDegree24, REMOTE_URL, "resources/", "shifted-powers-of-beta-24", "usrs");
-impl_remote!(ShiftedDegree25, REMOTE_URL, "resources/", "shifted-powers-of-beta-25", "usrs");
-impl_remote!(ShiftedDegree26, REMOTE_URL, "resources/", "shifted-powers-of-beta-26", "usrs");
-impl_remote!(ShiftedDegree27, REMOTE_URL, "resources/", "shifted-powers-of-beta-27", "usrs");
+impl_mobile_local!(ShiftedDegree16, "resources/", "shifted-powers-of-beta-16", "usrs");
+impl_mobile_local!(ShiftedDegree17, "resources/", "shifted-powers-of-beta-17", "usrs");
+impl_mobile_local!(ShiftedDegree18, "resources/", "shifted-powers-of-beta-18", "usrs");
+impl_mobile_local!(ShiftedDegree19, "resources/", "shifted-powers-of-beta-19", "usrs");
+impl_mobile_local!(ShiftedDegree20, "resources/", "shifted-powers-of-beta-20", "usrs");
+impl_mobile_local!(ShiftedDegree21, "resources/", "shifted-powers-of-beta-21", "usrs");
+impl_mobile_local!(ShiftedDegree22, "resources/", "shifted-powers-of-beta-22", "usrs");
+impl_mobile_local!(ShiftedDegree23, "resources/", "shifted-powers-of-beta-23", "usrs");
+impl_mobile_local!(ShiftedDegree24, "resources/", "shifted-powers-of-beta-24", "usrs");
+impl_mobile_local!(ShiftedDegree25, "resources/", "shifted-powers-of-beta-25", "usrs");
+impl_mobile_local!(ShiftedDegree26, "resources/", "shifted-powers-of-beta-26", "usrs");
+impl_mobile_local!(ShiftedDegree27, "resources/", "shifted-powers-of-beta-27", "usrs");
 
 // Powers of Beta Times Gamma * G
 impl_local!(Gamma, "resources/", "powers-of-beta-gamma", "usrs");
@@ -59,29 +60,29 @@ impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
 // Mint
-impl_remote!(MintProver, REMOTE_URL, "resources/", "mint", "prover");
-impl_remote!(MintVerifier, REMOTE_URL, "resources/", "mint", "verifier");
+impl_mobile_local!(MintProver, "resources/", "mint", "prover");
+impl_mobile_local!(MintVerifier, "resources/", "mint", "verifier");
 // TransferPrivate
-impl_remote!(TransferPrivateProver, REMOTE_URL, "resources/", "transfer_private", "prover");
-impl_remote!(TransferPrivateVerifier, REMOTE_URL, "resources/", "transfer_private", "verifier");
+impl_mobile_local!(TransferPrivateProver, "resources/", "transfer_private", "prover");
+impl_mobile_local!(TransferPrivateVerifier, "resources/", "transfer_private", "verifier");
 // TransferPublic
-impl_remote!(TransferPublicProver, REMOTE_URL, "resources/", "transfer_public", "prover");
-impl_remote!(TransferPublicVerifier, REMOTE_URL, "resources/", "transfer_public", "verifier");
+impl_mobile_local!(TransferPublicProver, "resources/", "transfer_public", "prover");
+impl_mobile_local!(TransferPublicVerifier, "resources/", "transfer_public", "verifier");
 // TransferPrivateToPublic
-impl_remote!(TransferPrivateToPublicProver, REMOTE_URL, "resources/", "transfer_private_to_public", "prover");
-impl_remote!(TransferPrivateToPublicVerifier, REMOTE_URL, "resources/", "transfer_private_to_public", "verifier");
+impl_mobile_local!(TransferPrivateToPublicProver, "resources/", "transfer_private_to_public", "prover");
+impl_mobile_local!(TransferPrivateToPublicVerifier, "resources/", "transfer_private_to_public", "verifier");
 // TransferPublicToPrivate
-impl_remote!(TransferPublicToPrivateProver, REMOTE_URL, "resources/", "transfer_public_to_private", "prover");
-impl_remote!(TransferPublicToPrivateVerifier, REMOTE_URL, "resources/", "transfer_public_to_private", "verifier");
+impl_mobile_local!(TransferPublicToPrivateProver, "resources/", "transfer_public_to_private", "prover");
+impl_mobile_local!(TransferPublicToPrivateVerifier, "resources/", "transfer_public_to_private", "verifier");
 // Join
-impl_remote!(JoinProver, REMOTE_URL, "resources/", "join", "prover");
-impl_remote!(JoinVerifier, REMOTE_URL, "resources/", "join", "verifier");
+impl_mobile_local!(JoinProver, "resources/", "join", "prover");
+impl_mobile_local!(JoinVerifier, "resources/", "join", "verifier");
 // Split
-impl_remote!(SplitProver, REMOTE_URL, "resources/", "split", "prover");
-impl_remote!(SplitVerifier, REMOTE_URL, "resources/", "split", "verifier");
+impl_mobile_local!(SplitProver, "resources/", "split", "prover");
+impl_mobile_local!(SplitVerifier, "resources/", "split", "verifier");
 // Fee
-impl_remote!(FeeProver, REMOTE_URL, "resources/", "fee", "prover");
-impl_remote!(FeeVerifier, REMOTE_URL, "resources/", "fee", "verifier");
+impl_mobile_local!(FeeProver, "resources/", "fee", "prover");
+impl_mobile_local!(FeeVerifier, "resources/", "fee", "verifier");
 
 #[macro_export]
 macro_rules! insert_credit_keys {
@@ -113,8 +114,8 @@ macro_rules! insert_key {
 }
 
 // Inclusion
-impl_remote!(InclusionProver, REMOTE_URL, "resources/", "inclusion", "prover");
-impl_remote!(InclusionVerifier, REMOTE_URL, "resources/", "inclusion", "verifier");
+impl_mobile_local!(InclusionProver, "resources/", "inclusion", "prover");
+impl_mobile_local!(InclusionVerifier, "resources/", "inclusion", "verifier");
 
 /// The function name for the inclusion circuit.
 pub const TESTNET3_INCLUSION_FUNCTION_NAME: &str = "inclusion";

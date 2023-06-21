@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #![allow(clippy::module_inception)]
-#![forbid(unsafe_code)]
 
 #[cfg(feature = "wasm")]
 #[macro_use]

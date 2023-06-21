@@ -12,6 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub static mut DIR: Option<String> = None;
+
+pub fn set_dir(dir: String) {
+    unsafe {
+        DIR = Some(dir);
+    }
+}
+
+pub fn get_dir() -> Option<String> {
+    unsafe {
+        DIR.clone()
+    }
+}
+
 #[macro_export]
 macro_rules! checksum {
     ($bytes: expr) => {{
@@ -169,6 +183,7 @@ macro_rules! impl_load_bytes_logic_local {
 macro_rules! impl_load_bytes_logic_remote {
     ($remote_url: expr, $local_dir: expr, $filename: expr, $metadata: expr, $expected_checksum: expr, $expected_size: expr) => {
         // Compose the correct file path for the parameter file.
+        eprintln!("===> impl_load_bytes_logic_remote load_bytes: {} ", $filename);
         let mut file_path = aleo_std::aleo_dir();
         file_path.push($local_dir);
         file_path.push($filename);
@@ -243,6 +258,76 @@ macro_rules! impl_load_bytes_logic_remote {
 
         return Ok(buffer)
     }
+}
+
+#[macro_export]
+macro_rules! impl_mobile_local {
+    ($name: ident, $local_dir: expr, $fname: tt, "usrs") => {
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub struct $name;
+
+        impl $name {
+
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+                let dir: Option<String> = get_dir();
+                if dir.is_none() {
+                    return Err($crate::errors::ParameterError::Message(
+                        "The parameter directory was not set".to_string(),
+                    ));
+                }
+                let _filepath = format!("{}{}.usrs", dir.unwrap(), $fname);
+                let buffer = std::fs::read(_filepath)
+                    .map_err(|_| {
+                        $crate::errors::ParameterError::Message(
+                            "Failed to read usrs file".to_string(),
+                        )
+                    })?;
+
+                Ok(buffer.to_vec())
+            }
+        }
+
+        paste::item! {
+            #[cfg(test)]
+            #[test]
+            fn [< test_ $fname _usrs >]() {
+                assert!($name::load_bytes().is_ok());
+            }
+        }
+    };
+    ($name: ident, $local_dir: expr, $fname: tt, $ftype: tt) => {
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub struct $name;
+
+        impl $name {
+
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+                let dir: Option<String> = get_dir();
+                if dir.is_none() {
+                    return Err($crate::errors::ParameterError::Message(
+                        "The parameter directory was not set".to_string(),
+                    ));
+                }
+                let _filepath = format!("{}{}.usrs", dir.unwrap(), $fname);
+                let buffer = std::fs::read(_filepath)
+                    .map_err(|_| {
+                        $crate::errors::ParameterError::Message(
+                            "Failed to read usrs file".to_string(),
+                        )
+                    })?;
+
+                Ok(buffer.to_vec())
+            }
+        }
+
+        paste::item! {
+            #[cfg(test)]
+            #[test]
+            fn [< test_ $fname _ $ftype >]() {
+                assert!($name::load_bytes().is_ok());
+            }
+        }
+    };
 }
 
 #[macro_export]
