@@ -91,22 +91,6 @@ fn get_balance(record: &Record<CurrentNetwork, Plaintext<CurrentNetwork>>) -> Re
     }
 }
 
-// fn check_inputs(inputs: &[Input<CurrentNetwork>], expected: &[]) -> Result<()> {
-//     // Check that the
-//
-//     Ok(())
-// }
-//
-// fn check_outputs(inputs: &[Output<CurrentNetwork>], expected: &]) -> Result<()> {
-//     // Check that the
-//
-//     Ok(())
-// }
-//
-// fn check_finalize_state() -> Result<()> {
-//     Ok(())
-// }
-
 #[test]
 fn test_credits_program_mint() {
     let rng = &mut TestRng::default();
@@ -138,7 +122,7 @@ fn test_credits_program_mint() {
     };
     let transitions = execution.transitions().collect::<Vec<_>>();
     assert_eq!(transitions.len(), 1);
-    let transition: &Transition<CurrentNetwork> = &transitions[0];
+    let transition: &Transition<CurrentNetwork> = transitions[0];
 
     /* Inputs */
 
@@ -171,7 +155,140 @@ fn test_credits_program_mint() {
 }
 
 #[test]
-fn test_credits_program_transfer_public() {}
+fn test_credits_program_transfer_public() {
+    let rng = &mut TestRng::default();
+
+    // Initialize a new caller.
+    let (caller_private_key, caller_view_key, caller_address) = caller_account(rng);
+
+    // Initialize a new recipient.
+    let (_, _, recipient_address) = recipient_account(rng);
+
+    // Initialize the VM.
+    let (vm, _, records) = initialize_vm(rng);
+
+    // Select records to spend.
+    let transfer_record = records[0].clone();
+    let fee_record = records[1].clone();
+    let second_fee_record = records[2].clone();
+
+    // Prepare the inputs.
+    let amount_1 = 123456u64;
+    let inputs = [
+        Value::<CurrentNetwork>::Record(transfer_record.clone()),
+        Value::<CurrentNetwork>::from_str(&caller_address.to_string()).unwrap(),
+        Value::<CurrentNetwork>::from_str(&format!("{amount_1}u64")).unwrap(),
+    ]
+    .into_iter();
+
+    // Create a transfer_private_to_public transaction.
+    let transaction = vm
+        .execute(
+            &caller_private_key,
+            ("credits.aleo", "transfer_private_to_public"),
+            inputs,
+            Some((fee_record, 0)),
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Construct and add the new block.
+    let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+    vm.add_next_block(&block).unwrap();
+
+    // Prepare the inputs.
+    let amount_2 = 100000u64;
+    let inputs = [
+        Value::<CurrentNetwork>::from_str(&recipient_address.to_string()).unwrap(),
+        Value::<CurrentNetwork>::from_str(&format!("{amount_2}u64")).unwrap(),
+    ]
+    .into_iter();
+
+    // Create a transfer_private_to_public transaction.
+    let transaction = vm
+        .execute(
+            &caller_private_key,
+            ("credits.aleo", "transfer_public"),
+            inputs,
+            Some((second_fee_record, 0)),
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Check that the transaction is valid.
+    assert!(vm.verify_transaction(&transaction, None));
+
+    // Check that the transaction is an execute transaction with 1 transition.
+    assert!(transaction.is_execute());
+    let Transaction::Execute(_, execution, Some(fee)) = &transaction else {
+        unreachable!("Invalid transaction type.")
+    };
+    let transitions = execution.transitions().collect::<Vec<_>>();
+    assert_eq!(transitions.len(), 1);
+    let transition: &Transition<CurrentNetwork> = transitions[0];
+
+    /* Inputs */
+    // Check that the transition inputs are correct.
+    let transition_inputs = transition.inputs();
+    assert_eq!(transition_inputs.len(), 2);
+
+    // Check that the first input is the recipient address.
+    let Input::Public(_, Some(Plaintext::Literal(Literal::Address(input_address), _))) = &transition_inputs[0] else {
+        unreachable!("Invalid input type for `credits.aleo/transfer_public`.")
+    };
+    assert_eq!(input_address, &recipient_address);
+    // Check that the second input is the amount.
+    let Input::Public(_, Some(Plaintext::Literal(Literal::U64(input_amount), _))) = &transition_inputs[1] else {
+        unreachable!("Invalid input type for `credits.aleo/transfer_public`.");
+    };
+    assert_eq!(**input_amount, amount_2);
+
+    /* Outputs */
+
+    // Check that the transition outputs are correct.
+    let transition_outputs = transition.outputs();
+    assert_eq!(transition_outputs.len(), 0);
+
+    /* Fee */
+
+    // Check that the change record is correct.
+    let fee_records = fee.transition().records().map(|(_, record)| record).collect::<Vec<_>>();
+    assert_eq!(fee_records.len(), 1);
+    assert_eq!(**fee_records[0].decrypt(&caller_view_key).unwrap().owner(), caller_address);
+
+    /* Finalize */
+
+    let program_id = ProgramID::from_str("credits.aleo").unwrap();
+    let mapping_name = Identifier::from_str("account").unwrap();
+    let caller_key = Plaintext::from(Literal::Address(caller_address));
+    let recipient_key = Plaintext::from(Literal::Address(recipient_address));
+
+    // Check the initial finalize state.
+    let expected_amount_for_caller = Value::from(Literal::U64(U64::new(amount_1)));
+    assert_eq!(
+        vm.finalize_store().get_value_speculative(&program_id, &mapping_name, &caller_key).unwrap(),
+        Some(expected_amount_for_caller)
+    );
+    assert!(vm.finalize_store().get_value_speculative(&program_id, &mapping_name, &recipient_key).unwrap().is_none());
+
+    // Construct and add the new block.
+    let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+    vm.add_next_block(&block).unwrap();
+
+    // Check that the finalize state is correct.
+    let expected_amount_for_caller = Value::from(Literal::U64(U64::new(amount_1 - amount_2)));
+    let expected_amount_for_recipient = Value::from(Literal::U64(U64::new(amount_2)));
+    assert_eq!(
+        vm.finalize_store().get_value_speculative(&program_id, &mapping_name, &caller_key).unwrap(),
+        Some(expected_amount_for_caller)
+    );
+    assert_eq!(
+        vm.finalize_store().get_value_speculative(&program_id, &mapping_name, &recipient_key).unwrap(),
+        Some(expected_amount_for_recipient)
+    );
+}
 
 #[test]
 fn test_credits_program_transfer_private() {
@@ -214,7 +331,7 @@ fn test_credits_program_transfer_private() {
     };
     let transitions = execution.transitions().collect::<Vec<_>>();
     assert_eq!(transitions.len(), 1);
-    let transition: &Transition<CurrentNetwork> = &transitions[0];
+    let transition: &Transition<CurrentNetwork> = transitions[0];
 
     /* Inputs */
 
@@ -230,9 +347,9 @@ fn test_credits_program_transfer_private() {
         *serial_number,
         Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::serial_number(caller_private_key, *commitment).unwrap()
     );
-    // Check that the first input is the private recipient address.
+    // Check that the second input is the private recipient address.
     assert!(matches!(transition_inputs[1], Input::Private(_, Some(_))));
-    // Check that the second input is the private amount.
+    // Check that the third input is the private amount.
     assert!(matches!(transition_inputs[2], Input::Private(_, Some(_))));
 
     /* Outputs */
@@ -309,7 +426,7 @@ fn test_credits_program_transfer_private_to_public() {
     };
     let transitions = execution.transitions().collect::<Vec<_>>();
     assert_eq!(transitions.len(), 1);
-    let transition: &Transition<CurrentNetwork> = &transitions[0];
+    let transition: &Transition<CurrentNetwork> = transitions[0];
 
     /* Inputs */
 
@@ -375,10 +492,302 @@ fn test_credits_program_transfer_private_to_public() {
 }
 
 #[test]
-fn test_credits_program_transfer_public_to_private() {}
+fn test_credits_program_transfer_public_to_private() {
+    let rng = &mut TestRng::default();
+
+    // Initialize a new caller.
+    let (caller_private_key, caller_view_key, caller_address) = caller_account(rng);
+
+    // Initialize a new recipient.
+    let (_, recipient_view_key, recipient_address) = recipient_account(rng);
+
+    // Initialize the VM.
+    let (vm, _, records) = initialize_vm(rng);
+
+    // Select records to spend.
+    let transfer_record = records[0].clone();
+    let fee_record = records[1].clone();
+    let second_fee_record = records[2].clone();
+
+    // Prepare the inputs.
+    let amount_1 = 123456u64;
+    let inputs = [
+        Value::<CurrentNetwork>::Record(transfer_record.clone()),
+        Value::<CurrentNetwork>::from_str(&caller_address.to_string()).unwrap(),
+        Value::<CurrentNetwork>::from_str(&format!("{amount_1}u64")).unwrap(),
+    ]
+    .into_iter();
+
+    // Create a transfer_private_to_public transaction.
+    let transaction = vm
+        .execute(
+            &caller_private_key,
+            ("credits.aleo", "transfer_private_to_public"),
+            inputs,
+            Some((fee_record, 0)),
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Construct and add the new block.
+    let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+    vm.add_next_block(&block).unwrap();
+
+    // Prepare the inputs.
+    let amount_2 = 100000u64;
+    let inputs = [
+        Value::<CurrentNetwork>::from_str(&recipient_address.to_string()).unwrap(),
+        Value::<CurrentNetwork>::from_str(&format!("{amount_2}u64")).unwrap(),
+    ]
+    .into_iter();
+
+    // Create a transfer_private_to_public transaction.
+    let transaction = vm
+        .execute(
+            &caller_private_key,
+            ("credits.aleo", "transfer_public_to_private"),
+            inputs,
+            Some((second_fee_record, 0)),
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Check that the transaction is valid.
+    assert!(vm.verify_transaction(&transaction, None));
+
+    // Check that the transaction is an execute transaction with 1 transition.
+    assert!(transaction.is_execute());
+    let Transaction::Execute(_, execution, Some(fee)) = &transaction else {
+        unreachable!("Invalid transaction type.")
+    };
+    let transitions = execution.transitions().collect::<Vec<_>>();
+    assert_eq!(transitions.len(), 1);
+    let transition: &Transition<CurrentNetwork> = transitions[0];
+
+    /* Inputs */
+    // Check that the transition inputs are correct.
+    let transition_inputs = transition.inputs();
+    assert_eq!(transition_inputs.len(), 2);
+
+    // Check that the first input is the recipient address.
+    let Input::Public(_, Some(Plaintext::Literal(Literal::Address(input_address), _))) = &transition_inputs[0] else {
+        unreachable!("Invalid input type for `credits.aleo/transfer_public_to_private`.")
+    };
+    assert_eq!(input_address, &recipient_address);
+    // Check that the second input is the amount.
+    let Input::Public(_, Some(Plaintext::Literal(Literal::U64(input_amount), _))) = &transition_inputs[1] else {
+        unreachable!("Invalid input type for `credits.aleo/transfer_public_to_private`.");
+    };
+    assert_eq!(**input_amount, amount_2);
+
+    /* Outputs */
+
+    // Check that the transition outputs are correct.
+    let transition_outputs = transition.outputs();
+    assert_eq!(transition_outputs.len(), 1);
+
+    // Check that the output record is correct.
+    let (_, record) = transition_outputs[0].record().unwrap();
+    let record = record.decrypt(&recipient_view_key).unwrap();
+    assert_eq!(**record.owner(), recipient_address);
+    assert_eq!(get_balance(&record).unwrap(), amount_2);
+
+    /* Fee */
+
+    // Check that the change record is correct.
+    let fee_records = fee.transition().records().map(|(_, record)| record).collect::<Vec<_>>();
+    assert_eq!(fee_records.len(), 1);
+    assert_eq!(**fee_records[0].decrypt(&caller_view_key).unwrap().owner(), caller_address);
+
+    /* Finalize */
+
+    let program_id = ProgramID::from_str("credits.aleo").unwrap();
+    let mapping_name = Identifier::from_str("account").unwrap();
+    let caller_key = Plaintext::from(Literal::Address(caller_address));
+
+    // Check the initial finalize state.
+    let expected_amount_for_caller = Value::from(Literal::U64(U64::new(amount_1)));
+    assert_eq!(
+        vm.finalize_store().get_value_speculative(&program_id, &mapping_name, &caller_key).unwrap(),
+        Some(expected_amount_for_caller)
+    );
+
+    // Construct and add the new block.
+    let block = sample_next_block(&vm, &caller_private_key, &[transaction], rng).unwrap();
+    vm.add_next_block(&block).unwrap();
+
+    // Check that the finalize state is correct.
+    let expected_amount_for_caller = Value::from(Literal::U64(U64::new(amount_1 - amount_2)));
+    assert_eq!(
+        vm.finalize_store().get_value_speculative(&program_id, &mapping_name, &caller_key).unwrap(),
+        Some(expected_amount_for_caller)
+    );
+}
 
 #[test]
-fn test_credits_program_join() {}
+fn test_credits_program_join() {
+    let rng = &mut TestRng::default();
+
+    // Initialize a new caller.
+    let (caller_private_key, caller_view_key, caller_address) = caller_account(rng);
+
+    // Initialize the VM.
+    let (vm, genesis, records) = initialize_vm(rng);
+
+    // Select records to spend.
+    let first_record = records[0].clone();
+    let second_record = records[1].clone();
+    let fee_record = records[2].clone();
+
+    // Prepare the inputs.
+    let inputs =
+        [Value::<CurrentNetwork>::Record(first_record.clone()), Value::<CurrentNetwork>::Record(second_record.clone())]
+            .into_iter();
+
+    // Create a join transaction.
+    let transaction =
+        vm.execute(&caller_private_key, ("credits.aleo", "join"), inputs, Some((fee_record, 0)), None, rng).unwrap();
+
+    // Check that the transaction is valid.
+    assert!(vm.verify_transaction(&transaction, None));
+
+    // Check that the transaction is an execute transaction with 1 transition.
+    assert!(transaction.is_execute());
+    let Transaction::Execute(_, execution, Some(fee)) = transaction else {
+        unreachable!("Invalid transaction type.")
+    };
+    let transitions = execution.transitions().collect::<Vec<_>>();
+    assert_eq!(transitions.len(), 1);
+    let transition: &Transition<CurrentNetwork> = transitions[0];
+
+    /* Inputs */
+
+    let commitments = genesis.commitments().collect::<Vec<_>>();
+
+    // Check that the transition inputs are correct.
+    let transition_inputs = transition.inputs();
+    assert_eq!(transition_inputs.len(), 2);
+    // Check that the first input is the encrypted input record.
+    let Input::Record(serial_number, _) = &transition_inputs[0] else {
+        unreachable!("Invalid input type for `credits.aleo/join`.")
+    };
+    assert_eq!(
+        *serial_number,
+        Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::serial_number(caller_private_key, *commitments[0])
+            .unwrap()
+    );
+    // Check that the second input is the encrypted input record.
+    let Input::Record(serial_number, _) = &transition_inputs[1] else {
+        unreachable!("Invalid input type for `credits.aleo/join`.")
+    };
+    assert_eq!(
+        *serial_number,
+        Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::serial_number(caller_private_key, *commitments[1])
+            .unwrap()
+    );
+
+    /* Outputs */
+
+    // Check that the transition outputs are correct.
+    let transition_outputs = transition.outputs();
+    assert_eq!(transition_outputs.len(), 1);
+
+    // Check that the output record is correct.
+    let (_, record) = transition_outputs[0].record().unwrap();
+    let record = record.decrypt(&caller_view_key).unwrap();
+    assert_eq!(**record.owner(), caller_address);
+    assert_eq!(
+        get_balance(&record).unwrap(),
+        get_balance(&first_record).unwrap() + get_balance(&second_record).unwrap()
+    );
+
+    /* Fee */
+
+    // Check that the change record is correct.
+    let fee_records = fee.transition().records().map(|(_, record)| record).collect::<Vec<_>>();
+    assert_eq!(fee_records.len(), 1);
+    assert_eq!(**fee_records[0].decrypt(&caller_view_key).unwrap().owner(), caller_address);
+}
 
 #[test]
-fn test_credits_program_split() {}
+fn test_credits_program_split() {
+    let rng = &mut TestRng::default();
+
+    // Initialize a new caller.
+    let (caller_private_key, caller_view_key, caller_address) = caller_account(rng);
+
+    // Initialize the VM.
+    let (vm, genesis, records) = initialize_vm(rng);
+
+    // Select records to spend.
+    let split_record = records[0].clone();
+    let fee_record = records[1].clone();
+
+    // Prepare the inputs.
+    let amount = 123456u64;
+    let inputs = [
+        Value::<CurrentNetwork>::Record(split_record.clone()),
+        Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
+    ]
+    .into_iter();
+
+    // Create a split transaction.
+    let transaction =
+        vm.execute(&caller_private_key, ("credits.aleo", "split"), inputs, Some((fee_record, 0)), None, rng).unwrap();
+
+    // Check that the transaction is valid.
+    assert!(vm.verify_transaction(&transaction, None));
+
+    // Check that the transaction is an execute transaction with 1 transition.
+    assert!(transaction.is_execute());
+    let Transaction::Execute(_, execution, Some(fee)) = transaction else {
+        unreachable!("Invalid transaction type.")
+    };
+    let transitions = execution.transitions().collect::<Vec<_>>();
+    assert_eq!(transitions.len(), 1);
+    let transition: &Transition<CurrentNetwork> = transitions[0];
+
+    /* Inputs */
+
+    // Check that the transition inputs are correct.
+    let transition_inputs = transition.inputs();
+    assert_eq!(transition_inputs.len(), 2);
+    // Check that the first input is the encrypted input record.
+    let Input::Record(serial_number, _) = &transition_inputs[0] else {
+        unreachable!("Invalid input type for `credits.aleo/split`.")
+    };
+    let commitment = genesis.commitments().next().ok_or_else(|| anyhow!("No commitments found")).unwrap();
+    assert_eq!(
+        *serial_number,
+        Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::serial_number(caller_private_key, *commitment).unwrap()
+    );
+    // Check that the second input is the private recipient amount.
+    assert!(matches!(transition_inputs[1], Input::Private(_, Some(_))));
+
+    /* Outputs */
+
+    // Check that the transition outputs are correct.
+    let transition_outputs = transition.outputs();
+    assert_eq!(transition_outputs.len(), 2);
+
+    // Check that the output record is correct.
+    let (_, record) = transition_outputs[0].record().unwrap();
+    let record = record.decrypt(&caller_view_key).unwrap();
+    assert_eq!(**record.owner(), caller_address);
+    assert_eq!(get_balance(&record).unwrap(), amount);
+
+    // Check that the output record is correct.
+    let (_, record) = transition_outputs[1].record().unwrap();
+    let record = record.decrypt(&caller_view_key).unwrap();
+    assert_eq!(**record.owner(), caller_address);
+    assert_eq!(get_balance(&record).unwrap(), get_balance(&split_record).unwrap() - amount);
+
+    /* Fee */
+
+    // Check that the change record is correct.
+    let fee_records = fee.transition().records().map(|(_, record)| record).collect::<Vec<_>>();
+    assert_eq!(fee_records.len(), 1);
+    assert_eq!(**fee_records[0].decrypt(&caller_view_key).unwrap().owner(), caller_address);
+}
