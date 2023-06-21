@@ -33,7 +33,7 @@ package = "snarkvm-console"
 path = "../../console"
 version = "=0.12.4"
 default-features = false
-features = [ "network" ]
+features = [ "network", "program", "types" ]
 
 [dependencies.indexmap]
 version = "1.9"
