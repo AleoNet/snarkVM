@@ -1,0 +1,13 @@
+- |+
+  0: at line 1, in Tag:
+  branch.lt r0 r1 to destination;
+  ^
+
+  1: at line 1, in Alt:
+  branch.lt r0 r1 to destination;
+  ^
+
+  2: at line 1, in Alt:
+  branch.lt r0 r1 to destination;
+  ^
+
