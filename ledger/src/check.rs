@@ -288,11 +288,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.last_coinbase_timestamp() != block.timestamp() {
                         bail!("The last coinbase timestamp does not match the block timestamp")
                     }
+                    // Compute the cumulative proof target.
+                    let cumulative_proof_target = coinbase.to_cumulative_proof_target()?;
                     // Ensure that the cumulative weight includes the next block's cumulative proof target.
                     if block.cumulative_weight()
-                        != self.latest_cumulative_weight().saturating_add(coinbase.to_cumulative_proof_target()?)
+                        != self.latest_cumulative_weight().saturating_add(cumulative_proof_target)
                     {
                         bail!("The cumulative weight does not include the block cumulative proof target")
+                    }
+                    // Ensure that the block cumulative proof target matches the coinbase cumulative proof target.
+                    if block.cumulative_proof_target() != cumulative_proof_target {
+                        bail!("The blocks cumulative proof target does not match the coinbase cumulative proof target")
                     }
                 }
                 None => {
@@ -307,6 +313,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     // Ensure that the cumulative weight is the same as the previous block.
                     if block.cumulative_weight() != self.latest_cumulative_weight() {
                         bail!("The cumulative weight does not match the previous block's cumulative weight")
+                    }
+                    // Ensure that the block cumulative proof target is zero.
+                    if block.cumulative_proof_target() != 0 {
+                        bail!("The cumulative proof target is not zero")
                     }
                 }
             }
@@ -408,7 +418,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         })?;
 
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(block.height());
+        let state = FinalizeGlobalState::new::<N>(
+            block.round(),
+            block.height(),
+            block.cumulative_weight(),
+            block.cumulative_proof_target(),
+            block.previous_hash(),
+        )?;
         // Ensure the transactions after speculation match.
         if block.transactions() != &self.vm.speculate(state, block.transactions().iter().map(|tx| tx.deref()))? {
             bail!("The transactions after speculation do not match the transactions in the block");
@@ -420,6 +436,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let expected_finalize_root = block.transactions().to_finalize_root()?;
         if block.finalize_root() != expected_finalize_root {
             bail!("Invalid finalize root: expected '{expected_finalize_root}', got '{}'", block.finalize_root())
+        }
+
+        /* Ratifications Root */
+
+        // Compute the ratifications root of the block.
+        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
+            &block
+                .ratifications()
+                .iter()
+                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
+                .collect::<Result<Vec<_>, _>>()?,
+        )?
+        .root();
+        // Ensure that the block's ratifications root matches the declared ratifications.
+        if block.ratifications_root() != ratifications_root {
+            bail!("Invalid ratifications root: expected '{ratifications_root}', got '{}'", block.ratifications_root())
         }
 
         /* Coinbase Proof */

@@ -454,6 +454,7 @@ finalize transfer_public:
             previous_block.height() + 1,
             CurrentNetwork::STARTING_SUPPLY,
             0,
+            0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
@@ -465,11 +466,12 @@ finalize transfer_public:
             *vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
+            crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             metadata,
         )?;
 
-        let block = Block::new(private_key, previous_block.hash(), header, transactions, None, rng)?;
+        let block = Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)?;
 
         // Track the new records.
         let new_records = block

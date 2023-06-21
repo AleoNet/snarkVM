@@ -15,6 +15,9 @@
 mod header;
 pub use header::*;
 
+mod ratify;
+pub use ratify::*;
+
 mod transaction;
 pub use transaction::*;
 
@@ -47,6 +50,8 @@ pub struct Block<N: Network> {
     header: Header<N>,
     /// The transactions in this block.
     transactions: Transactions<N>,
+    /// The ratifications in this block.
+    ratifications: Vec<Ratify<N>>,
     /// The coinbase solution.
     coinbase: Option<CoinbaseSolution<N>>,
     /// The signature for this block.
@@ -54,12 +59,13 @@ pub struct Block<N: Network> {
 }
 
 impl<N: Network> Block<N> {
-    /// Initializes a new block from a given previous hash, header, transactions, coinbase, and signature.
+    /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
+        ratifications: Vec<Ratify<N>>,
         coinbase: Option<CoinbaseSolution<N>>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -70,14 +76,15 @@ impl<N: Network> Block<N> {
         // Sign the block hash.
         let signature = private_key.sign(&[block_hash], rng)?;
         // Construct the block.
-        Self::from(previous_hash, header, transactions, coinbase, signature)
+        Self::from(previous_hash, header, transactions, ratifications, coinbase, signature)
     }
 
-    /// Initializes a new block from a given previous hash, header, transactions, coinbase, and signature.
+    /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
+        ratifications: Vec<Ratify<N>>,
         coinbase: Option<CoinbaseSolution<N>>,
         signature: Signature<N>,
     ) -> Result<Self> {
@@ -101,7 +108,15 @@ impl<N: Network> Block<N> {
         );
 
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, coinbase, signature })
+        Ok(Self {
+            block_hash: block_hash.into(),
+            previous_hash,
+            header,
+            transactions,
+            ratifications,
+            coinbase,
+            signature,
+        })
     }
 }
 
@@ -114,6 +129,11 @@ impl<N: Network> Block<N> {
     /// Returns the previous block hash.
     pub const fn previous_hash(&self) -> N::BlockHash {
         self.previous_hash
+    }
+
+    /// Returns the ratifications in this block.
+    pub const fn ratifications(&self) -> &Vec<Ratify<N>> {
+        &self.ratifications
     }
 
     /// Returns the coinbase solution.
@@ -146,6 +166,16 @@ impl<N: Network> Block<N> {
     /// Returns the finalize root in the block header.
     pub const fn finalize_root(&self) -> Field<N> {
         self.header.finalize_root()
+    }
+
+    /// Returns the ratifications root in the block header.
+    pub const fn ratifications_root(&self) -> Field<N> {
+        self.header.ratifications_root()
+    }
+
+    /// Returns the coinbase accumulator point in the block header.
+    pub const fn coinbase_accumulator_point(&self) -> Field<N> {
+        self.header.coinbase_accumulator_point()
     }
 
     /// Returns the metadata in the block header.
@@ -181,6 +211,11 @@ impl<N: Network> Block<N> {
     /// Returns the cumulative weight for this block.
     pub const fn cumulative_weight(&self) -> u128 {
         self.header.cumulative_weight()
+    }
+
+    /// Returns the cumulative proof target for this block.
+    pub const fn cumulative_proof_target(&self) -> u128 {
+        self.header.cumulative_proof_target()
     }
 
     /// Returns the coinbase target for this block.
@@ -445,6 +480,7 @@ pub(crate) mod test_helpers {
                     Default::default(),
                     Header::genesis(&transactions).unwrap(),
                     transactions.clone(),
+                    vec![],
                     None,
                     rng,
                 )

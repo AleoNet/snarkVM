@@ -18,7 +18,7 @@ pub enum AHPError {
     /// The batch size is zero.
     BatchSizeIsZero,
     /// An error occurred during constraint generation.
-    ConstraintSystemError(snarkvm_r1cs::errors::SynthesisError),
+    ConstraintSystemError(crate::r1cs::errors::SynthesisError),
     /// The instance generated during proving does not match that in the index.
     InstanceDoesNotMatchIndex,
     /// The number of public inputs is incorrect.
@@ -31,8 +31,8 @@ pub enum AHPError {
     PolynomialDegreeTooLarge,
 }
 
-impl From<snarkvm_r1cs::errors::SynthesisError> for AHPError {
-    fn from(other: snarkvm_r1cs::errors::SynthesisError) -> Self {
+impl From<crate::r1cs::errors::SynthesisError> for AHPError {
+    fn from(other: crate::r1cs::errors::SynthesisError) -> Self {
         AHPError::ConstraintSystemError(other)
     }
 }

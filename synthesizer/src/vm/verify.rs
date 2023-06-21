@@ -431,6 +431,7 @@ mod tests {
             1,
             CurrentNetwork::STARTING_SUPPLY,
             0,
+            0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
@@ -443,6 +444,7 @@ mod tests {
             *vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
+            crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             deployment_metadata,
         )
@@ -450,7 +452,8 @@ mod tests {
 
         // Construct a new block for the deploy transaction.
         let deployment_block =
-            Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, None, rng).unwrap();
+            Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, vec![], None, rng)
+                .unwrap();
 
         // Add the deployment block.
         vm.add_next_block(&deployment_block).unwrap();

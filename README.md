@@ -27,7 +27,6 @@
 |   snarkvm-fields    | ![crates.io](https://img.shields.io/crates/v/snarkvm-fields.svg?color=neon)      | :white_check_mark: | :white_check_mark: |
 |   snarkvm-ledger    | ![crates.io](https://img.shields.io/crates/v/snarkvm-ledger.svg?color=neon)      | :white_check_mark: | :white_check_mark: |
 | snarkvm-parameters  | ![crates.io](https://img.shields.io/crates/v/snarkvm-parameters.svg?color=neon)  | :white_check_mark: | :white_check_mark: |
-|    snarkvm-r1cs     | ![crates.io](https://img.shields.io/crates/v/snarkvm-r1cs.svg?color=neon)        | :white_check_mark: | :white_check_mark: |
 | snarkvm-synthesizer | ![crates.io](https://img.shields.io/crates/v/snarkvm-synthesizer.svg?color=neon) | :white_check_mark: | :white_check_mark: |
 |  snarkvm-utilities  | ![crates.io](https://img.shields.io/crates/v/snarkvm-utilities.svg?color=neon)   | :white_check_mark: | :white_check_mark: |
 |    snarkvm-wasm     | ![crates.io](https://img.shields.io/crates/v/snarkvm-wasm.svg?color=neon)        | :white_check_mark: | :white_check_mark: |

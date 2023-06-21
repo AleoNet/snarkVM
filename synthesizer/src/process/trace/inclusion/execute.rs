@@ -47,26 +47,22 @@ macro_rules! prepare_execution_impl {
                         let local_state_root = (*transaction_tree.root()).into();
 
                         // Construct the state path.
-                        let state_path = match task.is_local {
-                            true => {
+                        let state_path = match &task.local {
+                            Some((transaction_leaf, transition_path, transition_leaf)) => {
                                 // Compute the transaction path.
                                 let transaction_path =
-                                    transaction_tree.prove(transition_index, &transaction_leaf.to_bits_le())?;
-                                // Compute the transition leaf.
-                                let transition_leaf = task.leaf;
-                                // Compute the transition path.
-                                let transition_path = transition.to_path(&transition_leaf)?;
+                                    transaction_tree.prove(transaction_leaf.index() as usize, &transaction_leaf.to_bits_le())?;
                                 // Output the state path.
                                 StatePath::new_local(
                                     global_state_root,
                                     local_state_root,
                                     transaction_path,
-                                    transaction_leaf,
-                                    transition_path,
-                                    transition_leaf,
+                                    *transaction_leaf,
+                                    transition_path.clone(),
+                                    *transition_leaf,
                                 )?
                             }
-                            false => {
+                            None => {
                                 $query.$get_state_path_for_commitment(&task.commitment)
                                 $(.$await)?
                             }?
@@ -84,7 +80,7 @@ macro_rules! prepare_execution_impl {
                             task.gamma,
                             task.serial_number,
                             local_state_root,
-                            !task.is_local,
+                            task.local.is_none(), // Equivalent to 'is_global'
                         );
 
                         // Add the assignment to the assignments.
