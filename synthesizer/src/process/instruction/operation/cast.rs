@@ -252,7 +252,7 @@ impl<N: Network> Cast<N> {
                     inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
                 {
                     // Compute the register type.
-                    let register_type = RegisterType::from(ValueType::from(*entry_type));
+                    let register_type = RegisterType::from(ValueType::from(entry_type.clone()));
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match entry {
                         Value::Plaintext(plaintext) => {
@@ -369,7 +369,7 @@ impl<N: Network> Cast<N> {
                 let mut members = IndexMap::new();
                 for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
                     // Compute the register type.
-                    let register_type = RegisterType::Plaintext(*member_type);
+                    let register_type = RegisterType::Plaintext(member_type.clone());
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match member {
                         circuit::Value::Plaintext(plaintext) => {
@@ -438,7 +438,7 @@ impl<N: Network> Cast<N> {
                     inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
                 {
                     // Compute the register type.
-                    let register_type = RegisterType::from(ValueType::from(*entry_type));
+                    let register_type = RegisterType::from(ValueType::from(entry_type.clone()));
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match entry {
                         circuit::Value::Plaintext(plaintext) => {
@@ -657,11 +657,11 @@ impl<N: Network> Cast<N> {
             }
         }
 
-        Ok(vec![match self.cast_type {
+        Ok(vec![match &self.cast_type {
             CastType::GroupXCoordinate | CastType::GroupYCoordinate => {
                 RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))
             }
-            CastType::RegisterType(register_type) => register_type,
+            CastType::RegisterType(register_type) => register_type.clone(),
         }])
     }
 }

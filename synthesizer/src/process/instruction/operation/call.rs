@@ -516,7 +516,7 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} outputs, found {}", closure.outputs().len(), self.destinations.len())
             }
             // Return the output register types.
-            Ok(closure.outputs().iter().map(|output| *output.register_type()).collect())
+            Ok(closure.outputs().iter().map(|output| output.register_type()).cloned().collect())
         }
         // If the operator is a function, retrieve the function and compute the output types.
         else if let Ok(function) = program.get_function(resource) {
@@ -536,7 +536,7 @@ impl<N: Network> Call<N> {
             function
                 .output_types()
                 .into_iter()
-                .map(|output_type| match (is_external, output_type) {
+                .map(|output_type| match (is_external, &output_type) {
                     // If the output is a record and the function is external, return the external record type.
                     (true, ValueType::Record(record_name)) => Ok(RegisterType::ExternalRecord(Locator::from_str(
                         &format!("{}/{}", program.id(), record_name),

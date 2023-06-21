@@ -20,14 +20,11 @@ impl<N: Network> FromBytes for ArrayType<N> {
         let element_type = ElementType::read_le(&mut reader)?;
         // Read the number of dimensions of the array.
         let num_dimensions = u8::read_le(&mut reader)?;
-        // Initialize a buffer for the dimensions of the array.
-        // Note: `dimensions` needs to be explicitly specified since Rust does not yet support constant expressions that depends on a generic parameter.
-        let mut dimensions = [0; 32];
-        for dimension in dimensions.iter_mut().take(std::cmp::min(num_dimensions as usize, N::MAX_DATA_DEPTH)) {
-            *dimension = u32::read_le(&mut reader)?;
-        }
+        // Read the dimensions of the array.
+        // Note that this method can read more than N::MAX_DATA_DEPTH dimensions, which is checked when initializing the array type.
+        let dimensions = (0..num_dimensions).map(|_| u32::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
         // Return the array type.
-        ArrayType::new(element_type, dimensions, num_dimensions).map_err(|e| error(e.to_string()))
+        ArrayType::new(element_type, dimensions).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -36,10 +33,12 @@ impl<N: Network> ToBytes for ArrayType<N> {
         // Write the element type.
         self.element_type.write_le(&mut writer)?;
         // Write the number of dimensions of the array.
-        self.num_dimensions.write_le(&mut writer)?;
+        u8::try_from(self.dimensions.len())
+            .or_halt_with::<N>("The length of `self.dimensions` must less than a u8::MAX")
+            .write_le(&mut writer)?;
         // Write the dimensions of the array,
-        for i in 0..self.num_dimensions {
-            self.dimensions[i as usize].write_le(&mut writer)?;
+        for dimension in &self.dimensions {
+            dimension.write_le(&mut writer)?;
         }
         Ok(())
     }

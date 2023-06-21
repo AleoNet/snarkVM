@@ -58,33 +58,36 @@ impl<N: Network> RegisterTypes<N> {
                     // Retrieve the register type.
                     let register_type = self.get_type(stack, register)?;
                     // Ensure the register type is not a record.
-                    ensure!(
-                        !matches!(register_type, RegisterType::Record(..)),
-                        "Casting a record into a struct is illegal"
-                    );
-                    // Ensure the register type matches the member type.
-                    ensure!(
-                        register_type == RegisterType::Plaintext(*member_type),
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{register_type}' in the operand '{operand}'.",
-                    )
+                    match register_type {
+                        RegisterType::Plaintext(type_) => {
+                            // Ensure the register type matches the member type.
+                            ensure!(
+                                &type_ == member_type,
+                                "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{type_}' in the operand '{operand}'.",
+                            )
+                        }
+                        RegisterType::Record(..) | RegisterType::ExternalRecord(..) => {
+                            bail!("Casting a record into a struct is illegal")
+                        }
+                    }
                 }
                 // Ensure the program ID type (address) matches the member type.
                 Operand::ProgramID(..) => {
                     // Retrieve the program ID type.
-                    let program_ref_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    let program_ref_type = PlaintextType::Literal(LiteralType::Address);
                     // Ensure the program ID type matches the member type.
                     ensure!(
-                        program_ref_type == RegisterType::Plaintext(*member_type),
+                        &program_ref_type == member_type,
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the caller type (address) matches the member type.
                 Operand::Caller => {
                     // Retrieve the caller type.
-                    let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    let caller_type = PlaintextType::Literal(LiteralType::Address);
                     // Ensure the caller type matches the member type.
                     ensure!(
-                        caller_type == RegisterType::Plaintext(*member_type),
+                        &caller_type == member_type,
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
                     )
                 }
@@ -177,34 +180,36 @@ impl<N: Network> RegisterTypes<N> {
                             // Retrieve the register type.
                             let register_type = self.get_type(stack, register)?;
                             // Ensure the register type is not a record.
-                            ensure!(
-                                !matches!(register_type, RegisterType::Record(..)),
-                                "Casting a record into a record entry is illegal"
-                            );
-                            // Ensure the register type matches the entry type.
-                            ensure!(
-                                register_type == RegisterType::Plaintext(*plaintext_type),
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{register_type}' in the operand '{operand}'.",
-                            )
+                            match register_type {
+                                RegisterType::Plaintext(type_) => {
+                                    // Ensure the register type matches the entry type.
+                                    ensure!(
+                                        &type_ == plaintext_type,
+                                        "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{type_}' in the operand '{operand}'.",
+                                    )
+                                }
+                                RegisterType::Record(..) | RegisterType::ExternalRecord(..) => {
+                                    bail!("Casting a record into a record entry is illegal")
+                                }
+                            }
                         }
                         // Ensure the program ID type (address) matches the entry type.
                         Operand::ProgramID(..) => {
                             // Retrieve the program ID type.
-                            let program_ref_type =
-                                RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                            let program_ref_type = PlaintextType::Literal(LiteralType::Address);
                             // Ensure the program ID type matches the entry type.
                             ensure!(
-                                program_ref_type == RegisterType::Plaintext(*plaintext_type),
+                                &program_ref_type == plaintext_type,
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{program_ref_type}' in the operand '{operand}'.",
                             )
                         }
                         // Ensure the caller type (address) matches the entry type.
                         Operand::Caller => {
                             // Retrieve the caller type.
-                            let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                            let caller_type = PlaintextType::Literal(LiteralType::Address);
                             // Ensure the caller type matches the entry type.
                             ensure!(
-                                caller_type == RegisterType::Plaintext(*plaintext_type),
+                                &caller_type == plaintext_type,
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
                             )
                         }

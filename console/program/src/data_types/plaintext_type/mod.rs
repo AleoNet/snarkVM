@@ -23,7 +23,7 @@ use snarkvm_console_network::prelude::*;
 //  - This would create separation of arrays from records, if desired
 
 /// A `PlaintextType` is a literal, struct, or array type.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum PlaintextType<N: Network> {
     /// A literal type contains its type name.
     /// The format of the type is `<type_name>`.

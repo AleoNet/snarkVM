@@ -83,13 +83,13 @@ impl<N: Network> FinalizeTypes<N> {
         // Initialize a tracker for the type of the register.
         let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+            self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?.clone()
         } else {
             // Retrieve the destination register type.
-            *self
-                .destinations
+            self.destinations
                 .get(&register.locator())
                 .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+                .clone()
         };
 
         // Retrieve the member path if the register is a member. Otherwise, return the type.
@@ -116,7 +116,7 @@ impl<N: Network> FinalizeTypes<N> {
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
-                        Some(plaintext_type) => *plaintext_type,
+                        Some(plaintext_type) => plaintext_type.clone(),
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
                 }

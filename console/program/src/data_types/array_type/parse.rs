@@ -25,19 +25,15 @@ impl<N: Network> Parser for ArrayType<N> {
         let (string, num_dimensions) =
             map_res(many1(pair(tag("["), Sanitizer::parse_whitespaces)), |opening_brackets| {
                 match opening_brackets.len() <= N::MAX_DATA_DEPTH {
-                    true => match u8::try_from(opening_brackets.len()) {
-                        Ok(num_dimensions) => Ok(num_dimensions),
-                        Err(_) => Err(format!("The number of dimensions must not exceed '{}'", N::MAX_DATA_DEPTH)),
-                    },
+                    true => Ok(opening_brackets.len()),
                     false => Err(format!("The number of dimensions must not exceed '{}'", N::MAX_DATA_DEPTH)),
                 }
             })(string)?;
         // Parse the element type.
         let (mut remaining_string, element_type) = ElementType::parse(string)?;
         // Parse `num_dimensions` dimensions.
-        // Note: `dimensions` needs to be explicitly specified since Rust does not yet support constant expressions that depends on a generic parameter.
-        let mut dimensions = [0; 32];
-        for i in 0..num_dimensions {
+        let mut dimensions = Vec::with_capacity(num_dimensions);
+        for _ in 0..num_dimensions {
             // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(remaining_string)?;
             // Parse the dimension from the string.
@@ -45,7 +41,7 @@ impl<N: Network> Parser for ArrayType<N> {
                 map_res(recognize(many1(terminated(one_of("0123456789"), many0(char('_'))))), |digits: &str| {
                     digits.replace('_', "").parse::<u32>()
                 })(string)?;
-            dimensions[i as usize] = dimension;
+            dimensions.push(dimension);
             // Parse the semicolon.
             let (string, _) = tag(";")(string)?;
             // Parse the whitespaces from the string.
@@ -55,7 +51,7 @@ impl<N: Network> Parser for ArrayType<N> {
             remaining_string = string;
         }
         // Return the array type.
-        map_res(take(0usize), move |_| ArrayType::new(element_type, dimensions, num_dimensions))(string)
+        map_res(take(0usize), move |_| ArrayType::new(element_type, dimensions.clone()))(string)
     }
 }
 

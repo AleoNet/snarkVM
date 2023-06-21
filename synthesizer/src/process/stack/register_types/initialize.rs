@@ -72,7 +72,7 @@ impl<N: Network> RegisterTypes<N> {
             ensure!(!matches!(input.value_type(), ValueType::Constant(..)), "Constant inputs are not supported");
 
             // Check the input register type.
-            register_types.check_input(stack, input.register(), &RegisterType::from(*input.value_type()))?;
+            register_types.check_input(stack, input.register(), &RegisterType::from(input.value_type().clone()))?;
         }
 
         // Step 2. Check the instructions are well-formed.
@@ -84,7 +84,7 @@ impl<N: Network> RegisterTypes<N> {
         // Step 3. Check the outputs are well-formed.
         for output in function.outputs() {
             // Check the output operand type.
-            register_types.check_output(stack, output.operand(), &RegisterType::from(*output.value_type()))?;
+            register_types.check_output(stack, output.operand(), &RegisterType::from(output.value_type().clone()))?;
         }
 
         // Step 4. If the function has a finalize command, check that its operands are all defined.
@@ -215,7 +215,7 @@ impl<N: Network> RegisterTypes<N> {
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), *register_type)?;
+        self.add_input(register.clone(), register_type.clone())?;
 
         // Ensure the register type and the input type match.
         if *register_type != self.get_type(stack, register)? {
