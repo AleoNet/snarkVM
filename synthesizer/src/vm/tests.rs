@@ -175,7 +175,7 @@ fn test_credits_program_transfer_public() {
     // Prepare the inputs.
     let amount_1 = 123456u64;
     let inputs = [
-        Value::<CurrentNetwork>::Record(transfer_record.clone()),
+        Value::<CurrentNetwork>::Record(transfer_record),
         Value::<CurrentNetwork>::from_str(&caller_address.to_string()).unwrap(),
         Value::<CurrentNetwork>::from_str(&format!("{amount_1}u64")).unwrap(),
     ]
@@ -512,7 +512,7 @@ fn test_credits_program_transfer_public_to_private() {
     // Prepare the inputs.
     let amount_1 = 123456u64;
     let inputs = [
-        Value::<CurrentNetwork>::Record(transfer_record.clone()),
+        Value::<CurrentNetwork>::Record(transfer_record),
         Value::<CurrentNetwork>::from_str(&caller_address.to_string()).unwrap(),
         Value::<CurrentNetwork>::from_str(&format!("{amount_1}u64")).unwrap(),
     ]
