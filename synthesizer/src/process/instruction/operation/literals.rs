@@ -208,7 +208,9 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
         // Ensure the number of operands is within the bounds.
         if NUM_OPERANDS > N::MAX_OPERANDS {
-            N::halt(format!("The number of operands must be <= {}", N::MAX_OPERANDS))
+            return map_res(fail, |_: ParserResult<Self>| {
+                Err(format!("The number of operands must be <= {}", N::MAX_OPERANDS))
+            })(string);
         }
 
         // Initialize a vector to store the operands.
@@ -276,12 +278,10 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
         if NUM_OPERANDS > N::MAX_OPERANDS {
-            eprintln!("The number of operands must be <= {}", N::MAX_OPERANDS);
             return Err(fmt::Error);
         }
         // Ensure the number of operands is correct.
         if self.operands.len() > NUM_OPERANDS {
-            eprintln!("The number of operands must be {NUM_OPERANDS}");
             return Err(fmt::Error);
         }
         // Print the operation.

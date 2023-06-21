@@ -109,7 +109,13 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeOperation<N, VARIANT> {
         // Parse the ';' from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { operands }))
+        // Ensure the number of operands is less than or equal to MAX_INPUTS.
+        match operands.len() <= N::MAX_INPUTS {
+            true => Ok((string, Self { operands })),
+            false => map_res(fail, |_: ParserResult<Self>| {
+                Err(error(format!("The number of operands must be <= {}, found {}", N::MAX_INPUTS, operands.len())))
+            })(string),
+        }
     }
 }
 
@@ -143,7 +149,6 @@ impl<N: Network, const VARIANT: u8> Display for FinalizeOperation<N, VARIANT> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
         if self.operands.len() > N::MAX_INPUTS {
-            eprintln!("The number of operands must be <= {}, found {}", N::MAX_INPUTS, self.operands.len());
             return Err(fmt::Error);
         }
         // Print the operation.
@@ -187,7 +192,7 @@ impl<N: Network, const VARIANT: u8> ToBytes for FinalizeOperation<N, VARIANT> {
             )));
         }
         // Write the number of operands.
-        (self.operands.len() as u8).write_le(&mut writer)?;
+        u8::try_from(self.operands.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the operands.
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))
     }

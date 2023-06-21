@@ -14,10 +14,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
-// TODO (howardwu): Handle (protocol-safe) cast warnings.
-// #![warn(clippy::cast_possible_truncation)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
+#![warn(clippy::cast_possible_truncation)]
 
 mod closure;
 pub use closure::*;
