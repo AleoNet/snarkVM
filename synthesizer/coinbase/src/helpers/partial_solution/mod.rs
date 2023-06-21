@@ -17,7 +17,6 @@ mod serialize;
 mod string;
 
 use super::*;
-use snarkvm_algorithms::crypto_hash::sha256d_to_u64;
 
 /// The partial solution for the coinbase puzzle from a prover.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -61,7 +60,6 @@ impl<N: Network> PartialSolution<N> {
 
     /// Returns the target of the solution.
     pub fn to_target(&self) -> Result<u64> {
-        let hash_to_u64 = sha256d_to_u64(&self.commitment.to_bytes_le()?);
-        if hash_to_u64 == 0 { Ok(u64::MAX) } else { Ok(u64::MAX / hash_to_u64) }
+        self.commitment.to_target()
     }
 }
