@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::snark::marlin::{
-    ahp::{indexer::Circuit, AHPError, AHPForR1CS},
-    prover,
-    MarlinMode,
+use crate::{
+    r1cs::ConstraintSynthesizer,
+    snark::marlin::{
+        ahp::{indexer::Circuit, AHPError, AHPForR1CS},
+        prover,
+        MarlinMode,
+    },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::ConstraintSynthesizer;
 use std::collections::BTreeMap;
 
 use snarkvm_utilities::cfg_iter;

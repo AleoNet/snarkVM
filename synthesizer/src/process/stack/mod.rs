@@ -38,8 +38,7 @@ mod helpers;
 
 use crate::{
     block::{Deployment, Transition},
-    process::{CallMetrics, Process, Trace},
-    program::{CallOperator, Closure, Function, Instruction, Operand, Program},
+    process::{CallMetrics, CallOperator, Closure, Function, Instruction, Process, Program, Trace},
 };
 use console::{
     account::{Address, PrivateKey},
@@ -65,6 +64,7 @@ use console::{
     },
     types::{Field, Group},
 };
+use snarkvm_synthesizer_program::Operand;
 use snarkvm_synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};

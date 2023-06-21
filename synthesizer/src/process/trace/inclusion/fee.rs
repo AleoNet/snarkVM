@@ -53,7 +53,7 @@ macro_rules! prepare_fee_impl {
                         task.gamma,
                         task.serial_number,
                         local_state_root,
-                        !task.is_local,
+                        task.local.is_none(), // Equivalent to 'is_global'.
                     );
 
                     // Add the assignment to the assignments.

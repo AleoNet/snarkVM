@@ -17,6 +17,7 @@
 use crate::{
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
     polycommit::sonic_pc::LabeledPolynomial,
+    r1cs::{ConstraintSystem, Index as VarIndex},
     snark::marlin::{
         ahp::{indexer::Matrix, AHPForR1CS, CircuitId, UnnormalizedBivariateLagrangePoly},
         MarlinHidingMode,
@@ -24,7 +25,6 @@ use crate::{
 };
 use itertools::Itertools;
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
 use hashbrown::HashMap;

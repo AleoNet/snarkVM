@@ -41,8 +41,6 @@ pub use snarkvm_fields as fields;
 pub use snarkvm_ledger as ledger;
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
-#[cfg(feature = "r1cs")]
-pub use snarkvm_r1cs as r1cs;
 #[cfg(feature = "synthesizer")]
 pub use snarkvm_synthesizer as synthesizer;
 #[cfg(feature = "utilities")]

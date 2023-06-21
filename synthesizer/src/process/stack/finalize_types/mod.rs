@@ -16,19 +16,14 @@ mod initialize;
 mod matches;
 
 use crate::{
-    process::{StackMatches, StackProgram},
-    program::{
-        finalize::{Command, Finalize},
-        Instruction,
-        Opcode,
-        Operand,
-        Program,
-    },
+    process::{Command, Finalize, Instruction, Opcode, Program, StackMatches, StackProgram},
+    program::InstructionTrait,
 };
 use console::{
     network::prelude::*,
     program::{Identifier, LiteralType, PlaintextType, Register, RegisterType, Struct},
 };
+use snarkvm_synthesizer_program::Operand;
 
 use indexmap::IndexMap;
 

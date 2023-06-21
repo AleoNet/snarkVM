@@ -18,17 +18,17 @@ use crate::{
         EvaluationDomain,
     },
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
+    r1cs::SynthesisError,
     snark::marlin::{
         ahp::{matrices, verifier, AHPError, CircuitId, CircuitInfo},
         prover,
         MarlinMode,
     },
 };
-use itertools::Itertools;
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::SynthesisError;
 
 use core::{borrow::Borrow, marker::PhantomData};
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).

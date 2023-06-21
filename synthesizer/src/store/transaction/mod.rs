@@ -25,7 +25,7 @@ use crate::{
     atomic_batch_scope,
     block::{Deployment, Execution, Transaction},
     cow_to_copied,
-    program::Program,
+    process::Program,
     snark::{Certificate, VerifyingKey},
     store::{
         helpers::{Map, MapRead},
@@ -261,6 +261,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Removes the transaction for the given `transaction ID`.
     pub fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
         self.storage.remove(transaction_id)
+    }
+
+    /// Returns the deployment store.
+    pub fn deployment_store(&self) -> &DeploymentStore<N, T::DeploymentStorage> {
+        self.storage.deployment_store()
     }
 
     /// Returns the transition store.

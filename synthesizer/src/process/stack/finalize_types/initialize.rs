@@ -14,7 +14,7 @@
 
 use super::*;
 use crate::{
-    finalize::{Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
+    process::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
     RegisterTypes,
 };
 
@@ -38,7 +38,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 2. Check the commands are well-formed.
         for command in finalize.commands() {
             // Check the command opcode, operands, and destinations.
-            finalize_types.check_command(stack, finalize.name(), command)?;
+            finalize_types.check_command(stack, finalize, command)?;
         }
 
         Ok(finalize_types)
@@ -130,18 +130,52 @@ impl<N: Network> FinalizeTypes<N> {
     fn check_command(
         &mut self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        finalize_name: &Identifier<N>,
+        finalize: &Finalize<N>,
         command: &Command<N>,
     ) -> Result<()> {
         match command {
-            Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
-            Command::Contains(contains) => self.check_contains(stack, finalize_name, contains)?,
-            Command::Get(get) => self.check_get(stack, finalize_name, get)?,
-            Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize_name, get_or_use)?,
-            Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize_name, rand_chacha)?,
-            Command::Set(set) => self.check_set(stack, finalize_name, set)?,
-            Command::Remove(remove) => self.check_remove(stack, finalize_name, remove)?,
+            Command::Instruction(instruction) => self.check_instruction(stack, finalize.name(), instruction)?,
+            Command::Contains(contains) => self.check_contains(stack, finalize.name(), contains)?,
+            Command::Get(get) => self.check_get(stack, finalize.name(), get)?,
+            Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize.name(), get_or_use)?,
+            Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize.name(), rand_chacha)?,
+            Command::Remove(remove) => self.check_remove(stack, finalize.name(), remove)?,
+            Command::Set(set) => self.check_set(stack, finalize.name(), set)?,
+            Command::BranchEq(branch_eq) => self.check_branch(stack, finalize, branch_eq)?,
+            Command::BranchNeq(branch_neq) => self.check_branch(stack, finalize, branch_neq)?,
+            // Note that the `Position`s are checked for uniqueness when constructing `Finalize`.
+            Command::Position(_) => (),
         }
+        Ok(())
+    }
+
+    /// Checks that the given variant of the `branch` command is well-formed.
+    #[inline]
+    fn check_branch<const VARIANT: u8>(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize: &Finalize<N>,
+        branch: &Branch<N, VARIANT>,
+    ) -> Result<()> {
+        // Get the type of the first operand.
+        let first_type = self.get_type_from_operand(stack, branch.first())?;
+        // Get the type of the second operand.
+        let second_type = self.get_type_from_operand(stack, branch.second())?;
+        // Check that the operands have the same type.
+        ensure!(
+            first_type == second_type,
+            "Command '{}' expects operands of the same type. Found operands of type '{}' and '{}'",
+            Branch::<N, VARIANT>::opcode(),
+            first_type,
+            second_type
+        );
+        // Check that the `Position` has been defined.
+        ensure!(
+            finalize.positions().get(branch.position()).is_some(),
+            "Command '{}' expects a defined position to jump to. Found undefined position '{}'",
+            Branch::<N, VARIANT>::opcode(),
+            branch.position()
+        );
         Ok(())
     }
 

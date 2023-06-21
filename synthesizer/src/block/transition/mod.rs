@@ -179,7 +179,7 @@ impl<N: Network> Transition<N> {
                     }
                     (OutputID::Private(output_hash), Value::Plaintext(plaintext)) => {
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u16(u16::try_from(num_inputs + index)?);
                         // Compute the ciphertext, with the input view key as `Hash(function ID || tvk || index)`.
                         let ciphertext =
                             plaintext.encrypt_symmetric(N::hash_psd4(&[function_id, *request.tvk(), index])?)?;
@@ -226,7 +226,7 @@ impl<N: Network> Transition<N> {
                     }
                     (OutputID::ExternalRecord(hash), Value::Record(record)) => {
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u16(u16::try_from(num_inputs + index)?);
                         // Construct the preimage as `(function ID || output || tvk || index)`.
                         let mut preimage = vec![function_id];
                         preimage.extend(record.to_fields()?);
