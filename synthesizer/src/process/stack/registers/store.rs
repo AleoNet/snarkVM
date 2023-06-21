@@ -57,6 +57,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStore<N> for Registers<
             }
             // Ensure the register is not a register member.
             Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
+            // Ensure the register is not a register index.
+            Register::Index(..) => bail!("Cannot store to a register index: '{register}'"),
         }
     }
 }
@@ -106,6 +108,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersStoreCircuit<N, A> for 
             }
             // Ensure the register is not a register member.
             Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
+            // Ensure the register is not a register index.
+            Register::Index(..) => bail!("Cannot store to a register index: '{register}'"),
         }
     }
 }

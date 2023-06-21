@@ -31,7 +31,25 @@ impl<N: Network> FromBytes for Register<N> {
                 }
                 Ok(Self::Member(locator, identifiers))
             }
-            2.. => Err(error(format!("Failed to deserialize register variant {variant}"))),
+            2 => {
+                // Read the number of indices.
+                let num_indices = match u8::read_le(&mut reader)? {
+                    index if index as usize <= N::MAX_DATA_DEPTH => index,
+                    _ => {
+                        return Err(error(format!(
+                            "Failed to deserialize register: number of indices exceeds '{}'",
+                            N::MAX_DATA_DEPTH
+                        )));
+                    }
+                };
+                // Read the indices.
+                let mut indices = Vec::with_capacity(num_indices as usize);
+                for _ in 0..num_indices {
+                    indices.push(u32::read_le(&mut reader)?);
+                }
+                Ok(Self::Index(locator, indices))
+            }
+            3.. => Err(error(format!("Failed to deserialize register variant {variant}"))),
         }
     }
 }
@@ -56,6 +74,19 @@ impl<N: Network> ToBytes for Register<N> {
                     .or_halt_with::<N>("Register path length exceeds u16::MAX")
                     .write_le(&mut writer)?;
                 identifiers.write_le(&mut writer)
+            }
+            Self::Index(locator, indices) => {
+                // Ensure the number of indices is within the limit.
+                if indices.len() > N::MAX_DATA_DEPTH {
+                    return Err(error("Failed to serialize register: too many indices"));
+                }
+
+                u8::write_le(&2u8, &mut writer)?;
+                variable_length_integer(locator).write_le(&mut writer)?;
+                u8::try_from(indices.len())
+                    .or_halt_with::<N>("Register index count exceeds u8::MAX")
+                    .write_le(&mut writer)?;
+                indices.write_le(&mut writer)
             }
         }
     }

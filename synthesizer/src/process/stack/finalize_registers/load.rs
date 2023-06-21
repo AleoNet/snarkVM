@@ -50,6 +50,8 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
             Register::Locator(..) => plaintext_value.clone(),
             // If the register is a register member, then load the specific plaintext value.
             Register::Member(_, ref path) => plaintext_value.find(path)?,
+            // If the register is a register index, then load the specific plaintext value.
+            Register::Index(..) => todo!("Implement loading register index"),
         };
 
         // Retrieve the type of the register.

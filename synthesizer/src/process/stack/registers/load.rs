@@ -59,6 +59,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
                     },
                 }
             }
+            // If the register is a register member, then load the specific stack value.
+            Register::Index(..) => todo!("Loading register indices is not yet supported"),
         };
 
         // Retrieve the register type.
@@ -137,6 +139,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
                     },
                 }
             }
+            // If the register is a register index, then load the specific stack value.
+            Register::Index(..) => todo!("Loading register indices is not yet supported"),
         };
 
         // Retrieve the register type.

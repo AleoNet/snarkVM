@@ -81,6 +81,11 @@ mod tests {
             check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}.a.b.c.e")).unwrap());
             check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}.a.b.c.e.f")).unwrap());
             check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}.hello_world_foo_bar")).unwrap());
+            check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}[0]")).unwrap());
+            check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1]")).unwrap());
+            check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1][2]")).unwrap());
+            check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1][2][3]")).unwrap());
+            check_serde_json(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1][2][3][4]")).unwrap());
         }
     }
 
@@ -94,6 +99,11 @@ mod tests {
             check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}.a.b.c.e")).unwrap());
             check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}.a.b.c.e.f")).unwrap());
             check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}.hello_world_foo_bar")).unwrap());
+            check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}[0]")).unwrap());
+            check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1]")).unwrap());
+            check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1][2]")).unwrap());
+            check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1][2][3]")).unwrap());
+            check_bincode(Register::<CurrentNetwork>::from_str(&format!("r{i}[0][1][2][3][4]")).unwrap());
         }
     }
 }

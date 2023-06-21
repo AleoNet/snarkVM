@@ -14,6 +14,7 @@
 
 use super::*;
 
+// TODO (d0cd) parser for register indexing.
 impl<N: Network> Parser for Register<N> {
     /// Parses a string into a register.
     /// The register is of the form `r{locator}` or `r{locator}.{identifier}`.
@@ -81,6 +82,13 @@ impl<N: Network> Display for Register<N> {
                 }
                 Ok(())
             }
+            Self::Index(locator, index) => {
+                write!(f, "r{locator}")?;
+                for index in index {
+                    write!(f, "[{index}]")?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -107,6 +115,13 @@ mod tests {
         assert_eq!("r2.owner", Register::<CurrentNetwork>::Member(2, vec![Identifier::from_str("owner")?]).to_string());
         assert_eq!("r3.owner", Register::<CurrentNetwork>::Member(3, vec![Identifier::from_str("owner")?]).to_string());
         assert_eq!("r4.owner", Register::<CurrentNetwork>::Member(4, vec![Identifier::from_str("owner")?]).to_string());
+
+        // Register::Index
+        assert_eq!("r0[0]", Register::<CurrentNetwork>::Index(0, vec![0]).to_string());
+        assert_eq!("r1[0][1]", Register::<CurrentNetwork>::Index(1, vec![0, 1]).to_string());
+        assert_eq!("r2[0][1][2]", Register::<CurrentNetwork>::Index(2, vec![0, 1, 2]).to_string());
+        assert_eq!("r3[0][1][2][3]", Register::<CurrentNetwork>::Index(3, vec![0, 1, 2, 3]).to_string());
+        assert_eq!("r4[0][1][2][3][4]", Register::<CurrentNetwork>::Index(4, vec![0, 1, 2, 3, 4]).to_string());
         Ok(())
     }
 
@@ -139,6 +154,16 @@ mod tests {
         assert_eq!(
             Register::<CurrentNetwork>::Member(4, vec![Identifier::from_str("owner")?]).to_string(),
             "r4.owner".to_string()
+        );
+
+        // Register::Index
+        assert_eq!(Register::<CurrentNetwork>::Index(0, vec![0]).to_string(), "r0[0]".to_string());
+        assert_eq!(Register::<CurrentNetwork>::Index(1, vec![0, 1]).to_string(), "r1[0][1]".to_string());
+        assert_eq!(Register::<CurrentNetwork>::Index(2, vec![0, 1, 2]).to_string(), "r2[0][1][2]".to_string());
+        assert_eq!(Register::<CurrentNetwork>::Index(3, vec![0, 1, 2, 3]).to_string(), "r3[0][1][2][3]".to_string());
+        assert_eq!(
+            Register::<CurrentNetwork>::Index(4, vec![0, 1, 2, 3, 4]).to_string(),
+            "r4[0][1][2][3][4]".to_string()
         );
         Ok(())
     }
@@ -188,6 +213,19 @@ mod tests {
             );
         }
 
+        // Register::Index
+        assert_eq!(("", Register::<CurrentNetwork>::Index(0, vec![0])), Register::parse("r0[0]").unwrap());
+        assert_eq!(("", Register::<CurrentNetwork>::Index(1, vec![0, 1])), Register::parse("r1[0][1]").unwrap());
+        assert_eq!(("", Register::<CurrentNetwork>::Index(2, vec![0, 1, 2])), Register::parse("r2[0][1][2]").unwrap());
+        assert_eq!(
+            ("", Register::<CurrentNetwork>::Index(3, vec![0, 1, 2, 3])),
+            Register::parse("r3[0][1][2][3]").unwrap()
+        );
+        assert_eq!(
+            ("", Register::<CurrentNetwork>::Index(4, vec![0, 1, 2, 3, 4])),
+            Register::parse("r4[0][1][2][3][4]").unwrap()
+        );
+
         Ok(())
     }
 
@@ -198,11 +236,20 @@ mod tests {
 
         // Register::Member with multiple identifiers that exceed the maximum depth.
         for i in CurrentNetwork::MAX_DATA_DEPTH + 1..CurrentNetwork::MAX_DATA_DEPTH * 2 {
-            let mut string = "r0.".to_string();
+            let mut string = "r0".to_string();
             for _ in 0..i {
-                string.push_str("owner.");
+                string.push_str(".owner");
             }
-            string.pop(); // Remove last '.'
+
+            assert!(Register::<CurrentNetwork>::parse(&string).is_err());
+        }
+
+        // Register::Index with multiple indexes that exceed the maximum depth.
+        for i in CurrentNetwork::MAX_DATA_DEPTH + 1..CurrentNetwork::MAX_DATA_DEPTH * 2 {
+            let mut string = "r0".to_string();
+            for _ in 0..i {
+                string.push_str("[0]");
+            }
 
             assert!(Register::<CurrentNetwork>::parse(&string).is_err());
         }

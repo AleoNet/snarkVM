@@ -103,6 +103,7 @@ impl<N: Network> FinalizeTypes<N> {
                 // Output the member path.
                 path
             }
+            Register::Index(..) => todo!("Implement pathing for index registers"),
         };
 
         // Traverse the member path to find the register type.

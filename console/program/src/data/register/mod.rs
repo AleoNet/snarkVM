@@ -26,6 +26,8 @@ pub enum Register<N: Network> {
     Locator(u64),
     /// A register member contains its locator and identifier(s) in memory.
     Member(u64, Vec<Identifier<N>>),
+    /// A register index contains its locator and indices in memory.
+    Index(u64, Vec<u32>),
 }
 
 impl<N: Network> Register<N> {
@@ -35,6 +37,7 @@ impl<N: Network> Register<N> {
         match self {
             Self::Locator(locator) => *locator,
             Self::Member(locator, _) => *locator,
+            Self::Index(locator, _) => *locator,
         }
     }
 }
@@ -104,6 +107,21 @@ mod tests {
                 vec![Identifier::from_str("owner")?]
             ))
         );
+
+        // Register::Index
+        assert_eq!(
+            Some(Ordering::Equal),
+            Register::<CurrentNetwork>::Index(0, vec![0]).partial_cmp(&Register::<CurrentNetwork>::Index(0, vec![0]))
+        );
+        assert_eq!(
+            Some(Ordering::Less),
+            Register::<CurrentNetwork>::Index(0, vec![0]).partial_cmp(&Register::<CurrentNetwork>::Index(1, vec![0]))
+        );
+        assert_eq!(
+            Some(Ordering::Greater),
+            Register::<CurrentNetwork>::Index(1, vec![0]).partial_cmp(&Register::<CurrentNetwork>::Index(0, vec![0]))
+        );
+
         Ok(())
     }
 
@@ -137,6 +155,14 @@ mod tests {
             Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]),
             Register::<CurrentNetwork>::Member(4, vec![Identifier::from_str("owner")?])
         );
+
+        // Register::Index
+        assert_eq!(Register::<CurrentNetwork>::Index(0, vec![0]), Register::<CurrentNetwork>::Index(0, vec![0]));
+        assert_ne!(Register::<CurrentNetwork>::Index(0, vec![0]), Register::<CurrentNetwork>::Index(1, vec![0]));
+        assert_ne!(Register::<CurrentNetwork>::Index(0, vec![0]), Register::<CurrentNetwork>::Index(2, vec![0]));
+        assert_ne!(Register::<CurrentNetwork>::Index(0, vec![0]), Register::<CurrentNetwork>::Index(3, vec![0]));
+        assert_ne!(Register::<CurrentNetwork>::Index(0, vec![0]), Register::<CurrentNetwork>::Index(4, vec![0]));
+
         Ok(())
     }
 }

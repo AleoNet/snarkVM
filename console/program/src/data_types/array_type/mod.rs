@@ -33,7 +33,7 @@ impl<N: Network> ArrayType<N> {
     /// Constructs a new array type.
     // Note: `dimensions` needs to be explicitly specified since Rust does not yet support generic parameters in const operations.
     pub fn new(element_type: ElementType<N>, dimensions: Vec<u32>) -> Result<Self> {
-        ensure!(dimensions.len() != 0, "The array must have at least one dimension");
+        ensure!(!dimensions.is_empty(), "The array must have at least one dimension");
         ensure!(
             dimensions.len() <= N::MAX_DATA_DEPTH,
             "A multi-dimensional array cannot exceed the maximum data depth of '{}'",

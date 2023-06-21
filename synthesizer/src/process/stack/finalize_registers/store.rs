@@ -60,6 +60,8 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
             }
             // Ensure the register is not a register member.
             Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
+            // Ensure the register is not a register index.
+            Register::Index(..) => bail!("Cannot store to a register index: '{register}'"),
         }
     }
 }

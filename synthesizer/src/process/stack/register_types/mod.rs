@@ -121,6 +121,8 @@ impl<N: Network> RegisterTypes<N> {
                 // Output the member path.
                 path
             }
+            // If the register is an index, then traverse the sequence of indices to output the register type.
+            Register::Index(_, indices) => todo!("Implement pathing for index registers."),
         };
 
         // Traverse the member path to find the register type.
