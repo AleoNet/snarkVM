@@ -111,9 +111,11 @@ impl<N: Network> Metadata<N> {
                     // Ensure the last coinbase target is at or above the minimum.
                     && self.last_coinbase_target >= N::GENESIS_COINBASE_TARGET
                     // Ensure the last coinbase timestamp is after the genesis timestamp.
-                    && self.last_coinbase_timestamp >= N::GENESIS_TIMESTAMP
+                    && self.last_coinbase_timestamp > N::GENESIS_TIMESTAMP
                     // Ensure the timestamp in the block is after the genesis timestamp.
                     && self.timestamp > N::GENESIS_TIMESTAMP
+                    // Ensure the timestamp in the block is at or after the last coinbase timestamp.
+                    && self.timestamp >= self.last_coinbase_timestamp
             }
         }
     }
