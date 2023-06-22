@@ -96,14 +96,13 @@ impl<N: Network> FinalizeTypes<N> {
         let path = match &register {
             // If the register is a locator, then output the register type.
             Register::Locator(..) => return Ok(plaintext_type),
-            // If the register is a member, then traverse the member path to output the register type.
-            Register::Member(_, path) => {
+            // If the register is an access, then traverse the accesses to output the register type.
+            Register::Access(_, path) => {
                 // Ensure the member path is valid.
                 ensure!(!path.is_empty(), "Register '{register}' references no members.");
                 // Output the member path.
                 path
             }
-            Register::Index(..) => todo!("Implement pathing for index registers"),
         };
 
         // Traverse the member path to find the register type.

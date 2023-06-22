@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network> Value<N> {
     /// Returns the value from the given path.
-    pub fn find(&self, path: &[Identifier<N>]) -> Result<Self> {
+    pub fn find(&self, path: &[Access<N>]) -> Result<Self> {
         match self {
             Self::Plaintext(plaintext) => Ok(Self::Plaintext(plaintext.find(path)?)),
             Self::Record(record) => {

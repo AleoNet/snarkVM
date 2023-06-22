@@ -16,7 +16,7 @@ use super::*;
 
 impl<A: Aleo> Plaintext<A> {
     /// Returns the plaintext member from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Plaintext<A>> {
+    pub fn find(&self, path: &[Access<A>]) -> Result<Plaintext<A>> {
         // Ensure the path is not empty.
         if path.is_empty() {
             A::halt("Attempted to find member with an empty path.")

@@ -38,9 +38,7 @@ impl<N: Network> Parser for ArrayType<N> {
             let (string, _) = Sanitizer::parse_whitespaces(remaining_string)?;
             // Parse the dimension from the string.
             let (string, dimension) =
-                map_res(recognize(many1(terminated(one_of("0123456789"), many0(char('_'))))), |digits: &str| {
-                    digits.replace('_', "").parse::<u32>()
-                })(string)?;
+                map_res(recognize(many1(one_of("0123456789"))), |digits: &str| digits.parse::<u32>())(string)?;
             dimensions.push(dimension);
             // Parse the semicolon.
             let (string, _) = tag(";")(string)?;

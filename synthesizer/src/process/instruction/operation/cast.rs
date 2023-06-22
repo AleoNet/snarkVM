@@ -903,7 +903,10 @@ impl<N: Network> ToBytes for Cast<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{network::Testnet3, program::Identifier};
+    use console::{
+        network::Testnet3,
+        program::{Access, Identifier},
+    };
 
     type CurrentNetwork = Testnet3;
 
@@ -915,12 +918,12 @@ mod tests {
         assert_eq!(cast.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(
             cast.operands[0],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
+            Operand::Register(Register::Access(0, vec![Access::Member(Identifier::from_str("owner").unwrap())])),
             "The first operand is incorrect"
         );
         assert_eq!(
             cast.operands[1],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
+            Operand::Register(Register::Access(0, vec![Access::Member(Identifier::from_str("token_amount").unwrap())])),
             "The second operand is incorrect"
         );
         assert_eq!(cast.destination, Register::Locator(1), "The destination register is incorrect");

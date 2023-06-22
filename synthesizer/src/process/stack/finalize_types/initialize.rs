@@ -66,8 +66,8 @@ impl<N: Network> FinalizeTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member or index.
-            Register::Member(..) | Register::Index(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 
@@ -89,8 +89,8 @@ impl<N: Network> FinalizeTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member or index.
-            Register::Member(..) | Register::Index(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 }

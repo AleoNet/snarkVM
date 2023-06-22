@@ -25,7 +25,7 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Ciphertext, Identifier, Literal, Visibility};
+use crate::{Access, Ciphertext, Identifier, Literal, Visibility};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar, U16, U8};
 

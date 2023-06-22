@@ -46,8 +46,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
         let stack_value = match register {
             // If the register is a locator, then return the stack value.
             Register::Locator(..) => stack_value.clone(),
-            // If the register is a register member, then load the specific stack value.
-            Register::Member(_, ref path) => {
+            // If the register is a register access, then load the specific stack value.
+            Register::Access(_, ref path) => {
                 match stack_value {
                     // Retrieve the plaintext member from the path.
                     Value::Plaintext(plaintext) => Value::Plaintext(plaintext.find(path)?),
@@ -59,8 +59,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
                     },
                 }
             }
-            // If the register is a register member, then load the specific stack value.
-            Register::Index(..) => todo!("Loading register indices is not yet supported"),
         };
 
         // Retrieve the register type.
@@ -123,8 +121,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
         let circuit_value = match register {
             // If the register is a locator, then return the stack value.
             Register::Locator(..) => circuit_value.clone(),
-            // If the register is a register member, then load the specific stack value.
-            Register::Member(_, ref path) => {
+            // If the register is a register access, then load the specific stack value.
+            Register::Access(_, ref path) => {
                 // Inject the path.
                 let path = path.iter().map(|member| circuit::Identifier::constant(*member)).collect::<Vec<_>>();
 
@@ -139,8 +137,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
                     },
                 }
             }
-            // If the register is a register index, then load the specific stack value.
-            Register::Index(..) => todo!("Loading register indices is not yet supported"),
         };
 
         // Retrieve the register type.

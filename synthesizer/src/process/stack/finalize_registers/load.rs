@@ -48,10 +48,8 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
         let plaintext_value = match register {
             // If the register is a locator, then return the plaintext value.
             Register::Locator(..) => plaintext_value.clone(),
-            // If the register is a register member, then load the specific plaintext value.
-            Register::Member(_, ref path) => plaintext_value.find(path)?,
-            // If the register is a register index, then load the specific plaintext value.
-            Register::Index(..) => todo!("Implement loading register index"),
+            // If the register is a register access, then load the specific plaintext value.
+            Register::Access(_, ref path) => plaintext_value.find(path)?,
         };
 
         // Retrieve the type of the register.

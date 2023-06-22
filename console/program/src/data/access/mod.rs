@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+mod bytes;
+mod parse;
+mod serialize;
 
-impl<N: Network> Entry<N, Plaintext<N>> {
-    /// Returns the entry from the given path.
-    pub fn find(&self, path: &[Access<N>]) -> Result<Entry<N, Plaintext<N>>> {
-        match self {
-            Self::Constant(plaintext) => Ok(Self::Constant(plaintext.find(path)?)),
-            Self::Public(plaintext) => Ok(Self::Public(plaintext.find(path)?)),
-            Self::Private(plaintext) => Ok(Self::Private(plaintext.find(path)?)),
-        }
-    }
+use crate::{Identifier, U32};
+
+use snarkvm_console_network::prelude::*;
+
+/// A register `Access`.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum Access<N: Network> {
+    /// The access is an index.
+    Index(U32<N>),
+    /// The access is a member.
+    Member(Identifier<N>),
 }
