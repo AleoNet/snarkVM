@@ -87,7 +87,8 @@ fn test_insufficient_finalize_fees() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
-    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, address, .. } =
+        crate::test_helpers::sample_test_env(rng);
 
     // Deploy a test program to the ledger.
     let program = Program::<CurrentNetwork>::from_str(
@@ -119,7 +120,7 @@ finalize foo:
     let records = find_records();
     // Prepare the additional fee.
     let credits = records.values().next().unwrap().clone();
-    let additional_fee = (credits, 6466000);
+    let additional_fee = (credits, 0);
 
     // Deploy.
     let transaction = ledger.vm.deploy(&private_key, &program, additional_fee, None, rng).unwrap();
@@ -133,29 +134,49 @@ finalize foo:
     assert_eq!(ledger.latest_height(), 1);
     assert_eq!(ledger.latest_hash(), block.hash());
 
+    // Create a transfer transaction to produce a record with insufficient balance to pay for fees.
+    let transfer_transaction = ledger.create_transfer(&private_key, address, 100, 0, None).unwrap();
+
+    // Construct the next block.
+    let block =
+        ledger.prepare_advance_to_next_block(&private_key, vec![transfer_transaction.clone()], None, rng).unwrap();
+    // Advance to the next block.
+    ledger.advance_to_next_block(&block).unwrap();
+    assert_eq!(ledger.latest_height(), 2);
+    assert_eq!(ledger.latest_hash(), block.hash());
+
     // Execute the test program, without providing enough fees for finalize, and ensure that the ledger deems the transaction invalid.
-    // Fetch the unspent records.
-    let records = find_records();
-    // Select a record to spend.
-    let record = records.values().next().unwrap().clone();
+
+    // Find records from the transfer transaction.
+    let records = transfer_transaction
+        .records()
+        .map(|(_, record)| record.decrypt(&view_key))
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
     // Prepare the inputs.
     let inputs = [Value::<CurrentNetwork>::from_str("1u8").unwrap()].into_iter();
 
-    // Execute.
-    let transaction = ledger
-        .vm
-        .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some((record.clone(), 1_000)), None, rng)
-        .unwrap();
-    // Verify.
-    assert!(ledger.vm.verify_transaction(&transaction, None));
-    // Ensure that the ledger deems the transaction invalid.
-    assert!(ledger.check_transaction_basic(&transaction, None).is_err());
+    // Check that the record has the correct balance.
+    let insufficient_record = records[0].clone();
+    if let Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) =
+        &insufficient_record.data().get(&Identifier::from_str("microcredits").unwrap())
+    {
+        assert_eq!(**amount, 100)
+    }
+    // Ensure that we can't produce a transaction with a record that has insufficient balance to pay for fees.
+    assert!(
+        ledger
+            .vm
+            .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some((insufficient_record, 0)), None, rng)
+            .is_err()
+    );
 
+    let sufficient_record = records[1].clone();
     // Execute with enough fees.
     let transaction = ledger
         .vm
-        .execute(&private_key, ("dummy.aleo", "foo"), inputs, Some((record, 2_000_000_000)), None, rng)
+        .execute(&private_key, ("dummy.aleo", "foo"), inputs, Some((sufficient_record, 0)), None, rng)
         .unwrap();
     // Verify.
     assert!(ledger.vm.verify_transaction(&transaction, None));

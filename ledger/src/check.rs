@@ -14,8 +14,6 @@
 
 use super::*;
 
-use std::collections::HashMap;
-
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given transaction is well-formed and unique.
     pub fn check_transaction_basic(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
@@ -63,16 +61,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             let fee = *transaction.fee()?;
             // Retrieve the minimum cost of the transaction.
             let (cost, _) = match transaction {
-                Transaction::Deploy(_, _, deployment, _) => deployment_cost(deployment)?,
-                Transaction::Execute(_, execution, _) => {
-                    // Prepare the program lookup.
-                    let lookup = execution
-                        .transitions()
-                        .map(|transition| Ok((*transition.program_id(), self.get_program(*transition.program_id())?)))
-                        .collect::<Result<HashMap<_, _>>>()?;
-                    // Compute the execution cost.
-                    execution_cost(execution, lookup)?
-                }
+                // Compute the deployment cost.
+                Transaction::Deploy(_, _, deployment, _) => Deployment::cost(deployment)?,
+                // Compute the execution cost.
+                Transaction::Execute(_, execution, _) => Execution::cost(self.vm(), execution)?,
                 // TODO (howardwu): Plug in the Rejected struct, to compute the cost.
                 Transaction::Fee(_, _) => (0, (0, 0)),
             };
