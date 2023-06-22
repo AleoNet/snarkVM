@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer-program"
-version = "0.12.4"
+version = "0.12.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Program for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -31,7 +31,7 @@ wasm = [ "console/wasm" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.12.4"
+version = "=0.12.5"
 default-features = false
 features = [ "network", "program", "types" ]
 
