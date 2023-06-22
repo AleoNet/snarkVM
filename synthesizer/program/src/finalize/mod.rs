@@ -157,6 +157,8 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         if let Some(position) = command.position() {
             // Ensure the position is not yet defined.
             ensure!(!self.positions.contains_key(position), "Cannot redefine position '{position}'");
+            // Ensure that there are less than `u8::MAX` positions.
+            ensure!(self.positions.len() < u8::MAX as usize, "Cannot add more than {} positions", u8::MAX);
             // Insert the position.
             self.positions.insert(*position, self.commands.len());
         }
