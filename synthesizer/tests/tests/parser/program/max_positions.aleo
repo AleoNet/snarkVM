@@ -1,4 +1,4 @@
-program too_many_positions.aleo;
+program max_positions.aleo;
 
 function foo:
     finalize;
