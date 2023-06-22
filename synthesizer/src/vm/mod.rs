@@ -179,7 +179,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
         // Prepare the mint transactions.
-        let transactions = (0u32..Block::<N>::NUM_GENESIS_TRANSACTIONS as u32)
+        let transactions = (0u32..u32::try_from(Block::<N>::NUM_GENESIS_TRANSACTIONS)?)
             .map(|index| {
                 // Execute the mint function.
                 let transaction = self.execute(private_key, locator, inputs.iter(), None, None, rng)?;

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer"
-version = "0.12.3"
+version = "0.12.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Synthesizer for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -68,44 +68,44 @@ snark = [ "snarkvm-synthesizer-snark" ]
 
 [dependencies.snarkvm-synthesizer-coinbase]
 path = "./coinbase"
-version = "=0.12.3"
+version = "=0.12.4"
 optional = true
 
 [dependencies.snarkvm-synthesizer-program]
 path = "./program"
-version = "=0.12.3"
+version = "=0.12.4"
 optional = true
 
 [dependencies.snarkvm-synthesizer-snark]
 path = "./snark"
-version = "=0.12.3"
+version = "=0.12.4"
 optional = true
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
-version = "=0.12.3"
+version = "=0.12.4"
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "=0.12.3"
+version = "=0.12.4"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "=0.12.3"
+version = "=0.12.4"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.12.3"
+version = "=0.12.4"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "=0.12.3"
+version = "=0.12.4"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.12.3"
+version = "=0.12.4"
 default-features = false
 
 [dependencies.aleo-std]
