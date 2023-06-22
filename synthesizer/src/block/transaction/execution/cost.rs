@@ -16,9 +16,21 @@ use super::*;
 
 impl<N: Network> Execution<N> {
     /// Returns the *minimum* cost in microcredits to publish the given execution (total cost, (storage cost, namespace cost)).
-    pub fn cost(execution: &Self, lookup: HashMap<ProgramID<N>, Program<N>>) -> Result<(u64, (u64, u64))> {
+    pub fn cost<C: ConsensusStorage<N>>(vm: &VM<N, C>, execution: &Self) -> Result<(u64, (u64, u64))> {
         // Compute the storage cost in microcredits.
         let storage_cost = execution.size_in_bytes()?;
+
+        // Prepare the program lookup.
+        let lookup = execution
+            .transitions()
+            .map(|transition| {
+                let program_id = transition.program_id();
+                Ok((
+                    *program_id,
+                    vm.transaction_store().get_program(program_id)?.ok_or(anyhow!("Program {program_id} not found"))?,
+                ))
+            })
+            .collect::<Result<HashMap<_, _>>>()?;
 
         // Compute the finalize cost in microcredits.
         let mut finalize_cost = 0u64;

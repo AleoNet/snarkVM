@@ -42,7 +42,7 @@ use console::{
 
 use aleo_std::prelude::{finish, lap, timer};
 use parking_lot::RwLock;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {

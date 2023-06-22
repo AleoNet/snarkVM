@@ -21,14 +21,11 @@ use crate::{
     block::{Transaction, Transition},
     process::{Command, Instruction},
     snark::Proof,
+    store::ConsensusStorage,
     Finalize,
-    Program,
+    VM,
 };
-use console::{
-    account::Field,
-    network::prelude::*,
-    program::{LiteralType, ProgramID},
-};
+use console::{account::Field, network::prelude::*, program::LiteralType};
 
 use indexmap::IndexMap;
 use std::collections::HashMap;
