@@ -16,7 +16,7 @@ use super::*;
 
 impl<A: Aleo> Value<A> {
     /// Returns the value from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Self> {
+    pub fn find(&self, path: &[Access<A>]) -> Result<Self> {
         match self {
             Self::Plaintext(plaintext) => Ok(Self::Plaintext(plaintext.find(path)?)),
             Self::Record(record) => {

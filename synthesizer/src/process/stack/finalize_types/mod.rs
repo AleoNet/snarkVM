@@ -25,6 +25,7 @@ use console::{
 };
 use snarkvm_synthesizer_program::Operand;
 
+use console::program::Access;
 use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -113,6 +114,10 @@ impl<N: Network> FinalizeTypes<N> {
                 PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
                 // Traverse the member path to output the register type.
                 PlaintextType::Struct(struct_name) => {
+                    let path_name = match path_name {
+                        Access::Member(member_name) => member_name,
+                        Access::Index(..) => bail!("Access must reference a member."),
+                    };
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.

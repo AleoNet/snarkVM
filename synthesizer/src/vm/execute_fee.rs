@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::Access;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
@@ -58,7 +59,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // TODO (raychu86): Ensure that the fee record is associated with the `credits.aleo` program
         // Ensure that the record has enough balance to pay the fee.
-        match fee_record.find(&[Identifier::from_str("microcredits")?]) {
+        match fee_record.find(&[Access::Member(Identifier::from_str("microcredits")?)]) {
             Ok(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => {
                 if *amount < fee_in_microcredits {
                     bail!("Fee record does not have enough balance to pay the fee")

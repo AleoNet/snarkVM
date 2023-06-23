@@ -21,7 +21,7 @@ use crate::{Identifier, U32};
 use snarkvm_console_network::prelude::*;
 
 /// A register `Access`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Access<N: Network> {
     /// The access is an index.
     Index(U32<N>),

@@ -124,7 +124,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
             // If the register is a register access, then load the specific stack value.
             Register::Access(_, ref path) => {
                 // Inject the path.
-                let path = path.iter().map(|member| circuit::Identifier::constant(*member)).collect::<Vec<_>>();
+                let path = path.iter().map(|member| circuit::Access::constant(*member)).collect::<Vec<_>>();
 
                 match circuit_value {
                     // Retrieve the plaintext member from the path.

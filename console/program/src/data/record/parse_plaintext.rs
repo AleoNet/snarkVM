@@ -159,6 +159,10 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 Entry::Constant(Plaintext::Struct(..))
                 | Entry::Public(Plaintext::Struct(..))
                 | Entry::Private(Plaintext::Struct(..)) => entry.fmt_internal(f, depth + 1)?,
+                // If the entry is an array, print the entry without indentation.
+                Entry::Constant(Plaintext::Array(..))
+                | Entry::Public(Plaintext::Array(..))
+                | Entry::Private(Plaintext::Array(..)) => entry.fmt_internal(f, depth)?,
             }
             // Print the comma.
             write!(f, ",")?;

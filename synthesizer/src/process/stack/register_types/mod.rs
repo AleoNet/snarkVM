@@ -38,6 +38,7 @@ use console::{
 };
 use snarkvm_synthesizer_program::Operand;
 
+use console::program::Access;
 use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -131,6 +132,10 @@ impl<N: Network> RegisterTypes<N> {
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
                 // Traverse the member path to output the register type.
                 RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                    let path_name = match path_name {
+                        Access::Member(member_name) => member_name,
+                        Access::Index(..) => bail!("Access must reference a member."),
+                    };
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
@@ -144,10 +149,14 @@ impl<N: Network> RegisterTypes<N> {
                     // Ensure the record type exists.
                     ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");
                     // Retrieve the member type from the record.
-                    if path_name == &Identifier::from_str("owner")? {
+                    if path_name == &Access::Member(Identifier::from_str("owner")?) {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
                     } else {
+                        let path_name = match path_name {
+                            Access::Member(member_name) => member_name,
+                            Access::Index(..) => bail!("Access must reference a member."),
+                        };
                         // Retrieve the entry type from the record.
                         match stack.program().get_record(record_name)?.entries().get(path_name) {
                             // Update the entry type.
@@ -164,10 +173,14 @@ impl<N: Network> RegisterTypes<N> {
                     // Ensure the external record type exists.
                     ensure!(stack.contains_external_record(locator), "External record '{locator}' does not exist");
                     // Retrieve the member type from the external record.
-                    if path_name == &Identifier::from_str("owner")? {
+                    if path_name == &Access::Member(Identifier::from_str("owner")?) {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
                     } else {
+                        let path_name = match path_name {
+                            Access::Member(path_name) => path_name,
+                            Access::Index(..) => bail!("Access must reference a member."),
+                        };
                         // Retrieve the entry type from the external record.
                         match stack.get_external_record(locator)?.entries().get(path_name) {
                             // Update the entry type.

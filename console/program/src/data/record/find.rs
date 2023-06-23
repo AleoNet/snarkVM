@@ -18,12 +18,16 @@ impl<N: Network> Record<N, Plaintext<N>> {
     /// Returns the entry from the given path.
     pub fn find(&self, path: &[Access<N>]) -> Result<Entry<N, Plaintext<N>>> {
         // If the path is of length one, check if the path is requesting the `owner`.
-        if path.len() == 1 && path[0] == Identifier::from_str("owner")? {
+        if path.len() == 1 && path[0] == Access::Member(Identifier::from_str("owner")?) {
             return Ok(self.owner.to_entry());
         }
 
         // Ensure the path is not empty.
         if let Some((first, rest)) = path.split_first() {
+            let first = match first {
+                Access::Member(id) => id,
+                Access::Index(_) => bail!("A record access must be a member."),
+            };
             // Retrieve the top-level entry.
             match self.data.get(first) {
                 Some(entry) => match rest.is_empty() {

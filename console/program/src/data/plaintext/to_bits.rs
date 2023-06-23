@@ -49,6 +49,26 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_le
                 })
                 .clone(),
+            Self::Array(array, bits_le) => bits_le
+                .get_or_init(|| {
+                    let mut bits_le = vec![true, false]; // Variant bits.
+                    bits_le.extend(
+                        u32::try_from(array.len())
+                            .or_halt_with::<N>("Plaintext array length exceeds u32::MAX")
+                            .to_bits_le(),
+                    );
+                    for value in array {
+                        let value_bits = value.to_bits_le();
+                        bits_le.extend(
+                            u64::try_from(value_bits.len())
+                                .or_halt_with::<N>("Plaintext member exceeds u64::MAX bits")
+                                .to_bits_le(),
+                        );
+                        bits_le.extend(value_bits);
+                    }
+                    bits_le
+                })
+                .clone(),
         }
     }
 
@@ -79,6 +99,26 @@ impl<N: Network> ToBits for Plaintext<N> {
                         bits_be.extend(
                             u16::try_from(value_bits.len())
                                 .or_halt_with::<N>("Plaintext member exceeds u16::MAX bits")
+                                .to_bits_be(),
+                        );
+                        bits_be.extend(value_bits);
+                    }
+                    bits_be
+                })
+                .clone(),
+            Self::Array(array, bits_be) => bits_be
+                .get_or_init(|| {
+                    let mut bits_be = vec![true, false]; // Variant bits.
+                    bits_be.extend(
+                        u32::try_from(array.len())
+                            .or_halt_with::<N>("Plaintext array length exceeds u32::MAX")
+                            .to_bits_be(),
+                    );
+                    for value in array {
+                        let value_bits = value.to_bits_be();
+                        bits_be.extend(
+                            u64::try_from(value_bits.len())
+                                .or_halt_with::<N>("Plaintext member exceeds u64::MAX bits")
                                 .to_bits_be(),
                         );
                         bits_be.extend(value_bits);

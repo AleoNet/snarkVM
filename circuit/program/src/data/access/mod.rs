@@ -14,7 +14,13 @@
 
 use crate::Identifier;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{Eject, Inject, Mode, U32};
+use snarkvm_circuit_types::{environment::prelude::*, Eject, Inject, Mode, Parser, ParserResult, U32};
+
+use std::{
+    fmt,
+    fmt::{Debug, Display, Formatter},
+    str::FromStr,
+};
 
 /// A register `Access`.
 #[derive(Clone)]
@@ -56,5 +62,60 @@ impl<A: Aleo> Eject for Access<A> {
             Self::Index(index) => console::Access::Index(index.eject_value()),
             Self::Member(identifier) => console::Access::Member(identifier.eject_value()),
         }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Parser for Access<A> {
+    /// Parses a UTF-8 string into an access.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the identifier from the string.
+        let (string, access) = console::Access::parse(string)?;
+
+        Ok((string, Access::constant(access)))
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> FromStr for Access<A> {
+    type Err = Error;
+
+    /// Parses a UTF-8 string into an identifier.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Debug for Access<A> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Display for Access<A> {
+    /// Prints the identifier as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.eject_value())
+    }
+}
+
+impl<A: Aleo> Eq for Access<A> {}
+
+impl<A: Aleo> PartialEq for Access<A> {
+    /// Implements the `Eq` trait for the access.
+    fn eq(&self, other: &Self) -> bool {
+        self.eject_value() == other.eject_value()
     }
 }

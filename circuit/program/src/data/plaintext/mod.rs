@@ -35,6 +35,8 @@ pub enum Plaintext<A: Aleo> {
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
     /// A plaintext struct.
     Struct(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
+    /// A plaintext array.
+    Array(Vec<Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
 }
 
 #[cfg(console)]
@@ -46,6 +48,7 @@ impl<A: Aleo> Inject for Plaintext<A> {
         match plaintext {
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
             Self::Primitive::Struct(struct_, _) => Self::Struct(Inject::new(mode, struct_), Default::default()),
+            Self::Primitive::Array(array, _) => Self::Array(Inject::new(mode, array), Default::default()),
         }
     }
 }
@@ -63,6 +66,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
                 .map(|(identifier, value)| (identifier, value).eject_mode())
                 .collect::<Vec<_>>()
                 .eject_mode(),
+            Self::Array(array, _) => array.iter().map(|value| value.eject_mode()).collect::<Vec<_>>().eject_mode(),
         }
     }
 
@@ -72,6 +76,9 @@ impl<A: Aleo> Eject for Plaintext<A> {
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
             Self::Struct(struct_, _) => {
                 console::Plaintext::Struct(struct_.iter().map(|pair| pair.eject_value()).collect(), Default::default())
+            }
+            Self::Array(array, _) => {
+                console::Plaintext::Array(array.iter().map(|value| value.eject_value()).collect(), Default::default())
             }
         }
     }

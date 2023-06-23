@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO (d0cd): Check that all elements are the same type?
+
 use super::*;
 
 impl<N: Network> FromBytes for Plaintext<N> {
@@ -42,7 +44,26 @@ impl<N: Network> FromBytes for Plaintext<N> {
                 // Return the struct.
                 Self::Struct(members, Default::default())
             }
-            2.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
+            2 => {
+                // Read the number of elements in the array.
+                let num_elements = u32::read_le(&mut reader)?;
+                // Read the elements.
+                let mut elements = Vec::with_capacity(num_elements as usize);
+                for _ in 0..num_elements {
+                    // Read the plaintext value (in 2 steps to prevent infinite recursion).
+                    // TODO (d0cd): Is this too many bytes?
+                    let num_bytes = u64::read_le(&mut reader)?;
+                    // Read the plaintext bytes.
+                    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+                    // Recover the plaintext value.
+                    let plaintext = Plaintext::read_le(&mut bytes.as_slice())?;
+                    // Add the element.
+                    elements.push(plaintext);
+                }
+                // Return the array.
+                Self::Array(elements, Default::default())
+            }
+            3.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
         };
         Ok(plaintext)
     }
@@ -74,6 +95,28 @@ impl<N: Network> ToBytes for Plaintext<N> {
                     // Write the number of bytes.
                     u16::try_from(bytes.len())
                         .or_halt_with::<N>("Plaintext member exceeds u16::MAX bytes.")
+                        .write_le(&mut writer)?;
+                    // Write the bytes.
+                    bytes.write_le(&mut writer)?;
+                }
+                Ok(())
+            }
+            Self::Array(array, ..) => {
+                2u8.write_le(&mut writer)?;
+
+                // Write the number of elements in the array.
+                u32::try_from(array.len())
+                    .or_halt_with::<N>("Plaintext array length exceeds u32::MAX.")
+                    .write_le(&mut writer)?;
+
+                // Write each element.
+                for element in array {
+                    // Write the element value (performed in 2 steps to prevent infinite recursion).
+                    let bytes = element.to_bytes_le().map_err(|e| error(e.to_string()))?;
+                    // Write the number of bytes.
+                    // TODO (d0cd): Is this too many bytes?
+                    u64::try_from(bytes.len())
+                        .or_halt_with::<N>("Plaintext element exceeds u64::MAX bytes.")
                         .write_le(&mut writer)?;
                     // Write the bytes.
                     bytes.write_le(&mut writer)?;

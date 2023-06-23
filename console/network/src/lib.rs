@@ -112,6 +112,7 @@ pub trait Network:
 
     /// The maximum number of entries in data.
     const MAX_DATA_ENTRIES: usize = 32;
+    // TODO (d0cd) Maximum entries in an array?
     /// The maximum recursive depth of an entry.
     /// Note: This value must be strictly less than u8::MAX.
     const MAX_DATA_DEPTH: usize = 32;

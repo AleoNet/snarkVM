@@ -53,6 +53,8 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
                 parse_literal,
                 // Parse a struct.
                 parse_struct,
+                // Parse an array.
+                parse_array,
             ))(string)?;
             // Return the identifier, plaintext, and visibility.
             Ok((string, (identifier, plaintext, mode)))
@@ -94,6 +96,39 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             Ok((string, (Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default()), mode)))
         }
 
+        /// Parses an entry as an array: `[plaintext_0.visibility, ..., plaintext_n.visibility]`.
+        /// Observe the `visibility` is the same for all members of the plaintext value.
+        fn parse_array<N: Network>(string: &str) -> ParserResult<(Plaintext<N>, Mode)> {
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the "[" from the string.
+            let (string, _) = tag("[")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the members.
+            let (string, (members, mode)) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
+                // Ensure the members all have the same visibility.
+                let mode = members.iter().map(|(_, _, mode)| mode).dedup().collect::<Vec<_>>();
+                let mode = match mode.len() == 1 {
+                    true => *mode[0],
+                    false => return Err(error("Members of array in entry have different visibilities")),
+                };
+                // Ensure the number of structs is within the maximum limit.
+                // TODO (d0cd): Revisit these limits
+                match members.len() <= u32::MAX as usize {
+                    // Return the members and the visibility.
+                    true => Ok((members.into_iter().map(|(_, p, _)| p).collect::<Vec<_>>(), mode)),
+                    false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),
+                }
+            })(string)?;
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the ']' from the string.
+            let (string, _) = tag("]")(string)?;
+            // Output the plaintext and visibility.
+            Ok((string, (Plaintext::Array(members.into_iter().collect::<Vec<_>>(), Default::default()), mode)))
+        }
+
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse to determine the entry (order matters).
@@ -102,6 +137,8 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             parse_literal,
             // Parse a struct.
             parse_struct,
+            // Parse an array.
+            parse_array,
         ))(string)?;
 
         // Return the entry.
@@ -179,7 +216,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal}.{visibility},", "", indent = (depth + 1) * INDENT),
                         },
-                        Plaintext::Struct(..) => {
+                        Plaintext::Struct(..) | Plaintext::Array(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
@@ -198,6 +235,24 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                         }
                     }
                 })
+            }
+            // Prints the array, i.e. [ 10i64.public, 198u64.public ]
+            Plaintext::Array(array, _) => {
+                write!(f, "{indent}[ ", indent = depth * INDENT)?;
+                array.iter().enumerate().try_for_each(|(i, plaintext)| {
+                    // Print the member.
+                    match self {
+                        Self::Constant(..) => Self::Constant(plaintext.clone()).fmt_internal(f, 0)?,
+                        Self::Public(..) => Self::Public(plaintext.clone()).fmt_internal(f, 0)?,
+                        Self::Private(..) => Self::Private(plaintext.clone()).fmt_internal(f, 0)?,
+                    }
+                    // If this is not the last member, print a comma.
+                    if i != array.len() - 1 {
+                        write!(f, ",")?;
+                    }
+                    Ok(())
+                })?;
+                write!(f, "]")
             }
         }
     }

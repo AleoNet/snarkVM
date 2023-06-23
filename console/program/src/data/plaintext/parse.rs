@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO (d0cd): Check that all elements are the same type?
+
 use super::*;
 
 impl<N: Network> Parser for Plaintext<N> {
@@ -60,6 +62,28 @@ impl<N: Network> Parser for Plaintext<N> {
             Ok((string, Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default())))
         }
 
+        /// Parses a plaintext as an array: `[plaintext_0, ..., plaintext_n]`.
+        fn parse_array<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the "[" from the string.
+            let (string, _) = tag("[")(string)?;
+            // Parse the members.
+            let (string, element) = map_res(separated_list1(tag(","), Plaintext::parse), |members: Vec<_>| {
+                // Ensure the number of structs is within the maximum limit.
+                match members.len() <= u32::MAX as usize {
+                    true => Ok(members),
+                    false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),
+                }
+            })(string)?;
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the ']' from the string.
+            let (string, _) = tag("]")(string)?;
+            // Output the plaintext.
+            Ok((string, Plaintext::Array(element, Default::default())))
+        }
+
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse to determine the plaintext (order matters).
@@ -68,6 +92,8 @@ impl<N: Network> Parser for Plaintext<N> {
             map(Literal::parse, |literal| Self::Literal(literal, Default::default())),
             // Parse a plaintext struct.
             parse_struct,
+            // Parse a plaintext array.
+            parse_array,
         ))(string)
     }
 }
@@ -129,7 +155,7 @@ impl<N: Network> Plaintext<N> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal},", "", indent = (depth + 1) * INDENT),
                         },
-                        Self::Struct(..) => {
+                        Self::Struct(..) | Self::Array(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
@@ -144,6 +170,20 @@ impl<N: Network> Plaintext<N> {
                         }
                     }
                 })
+            }
+            // Prints the array, i.e. [ 10i64, 198u64 ]
+            Self::Array(array, ..) => {
+                write!(f, "{indent}[ ", indent = depth * INDENT)?;
+                array.iter().enumerate().try_for_each(|(i, plaintext)| {
+                    // Print the member.
+                    plaintext.fmt_internal(f, 0)?;
+                    // If this is not the last member, print a comma.
+                    if i != array.len() - 1 {
+                        write!(f, ",")?;
+                    }
+                    Ok(())
+                })?;
+                write!(f, " ]")
             }
         }
     }

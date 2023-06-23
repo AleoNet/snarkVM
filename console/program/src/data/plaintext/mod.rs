@@ -32,12 +32,16 @@ use snarkvm_console_types::prelude::*;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 
+// TODO (d0cd): Check array (de)serialization, to_bits, from_bits, ToBytes, FromBytes
+
 #[derive(Clone)]
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),
     /// A struct.
     Struct(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
+    /// An array.
+    Array(Vec<Plaintext<N>>, OnceCell<Vec<bool>>),
 }
 
 impl<N: Network> From<Literal<N>> for Plaintext<N> {

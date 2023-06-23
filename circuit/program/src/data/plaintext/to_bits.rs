@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_circuit_types::{U32, U64};
 
 impl<A: Aleo> ToBits for Plaintext<A> {
     type Boolean = Boolean<A>;
@@ -43,6 +44,18 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                     bits_le
                 })
                 .clone(),
+            Self::Array(array, bits_le) => bits_le
+                .get_or_init(|| {
+                    let mut bits_le = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bits.
+                    bits_le.extend(U32::constant(console::U32::new(array.len() as u32)).to_bits_le());
+                    for value in array {
+                        let value_bits = value.to_bits_le();
+                        bits_le.extend(U64::constant(console::U64::new(value_bits.len() as u64)).to_bits_le());
+                        bits_le.extend(value_bits);
+                    }
+                    bits_le
+                })
+                .clone(),
         }
     }
 
@@ -67,6 +80,18 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                         bits_be.extend(identifier.size_in_bits().to_bits_be());
                         bits_be.extend(identifier.to_bits_be());
                         bits_be.extend(U16::constant(console::U16::new(value_bits.len() as u16)).to_bits_be());
+                        bits_be.extend(value_bits);
+                    }
+                    bits_be
+                })
+                .clone(),
+            Self::Array(array, bits_be) => bits_be
+                .get_or_init(|| {
+                    let mut bits_be = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bits.
+                    bits_be.extend(U32::constant(console::U32::new(array.len() as u32)).to_bits_be());
+                    for value in array {
+                        let value_bits = value.to_bits_be();
+                        bits_be.extend(U64::constant(console::U64::new(value_bits.len() as u64)).to_bits_be());
                         bits_be.extend(value_bits);
                     }
                     bits_be
