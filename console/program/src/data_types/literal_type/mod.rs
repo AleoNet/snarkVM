@@ -15,8 +15,10 @@
 mod bytes;
 mod parse;
 mod serialize;
+mod size_in_bits;
 
 use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::{prelude::*, Boolean};
 
 use core::fmt::{self, Debug, Display};
 use num_derive::FromPrimitive;
