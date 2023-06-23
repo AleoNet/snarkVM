@@ -83,7 +83,7 @@ version = "0.10"
 default-features = false
 
 [dependencies.itertools]
-version = "0.10.1"
+version = "0.11.0"
 
 [dependencies.rayon]
 version = "1"
