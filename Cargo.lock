@@ -551,7 +551,7 @@ dependencies = [
  "clap",
  "criterion-plot",
  "is-terminal",
- "itertools",
+ "itertools 0.10.5",
  "num-traits",
  "once_cell",
  "oorandom",
@@ -572,7 +572,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
 dependencies = [
  "cast",
- "itertools",
+ "itertools 0.10.5",
 ]
 
 [[package]]
@@ -1361,6 +1361,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
 dependencies = [
  "either",
 ]
@@ -2479,7 +2488,7 @@ dependencies = [
  "hashbrown 0.14.0",
  "hex",
  "indexmap",
- "itertools",
+ "itertools 0.11.0",
  "lazy_static",
  "parking_lot",
  "rand 0.8.5",
@@ -2568,7 +2577,7 @@ version = "0.12.5"
 dependencies = [
  "criterion",
  "indexmap",
- "itertools",
+ "itertools 0.11.0",
  "nom",
  "num-traits",
  "once_cell",
@@ -2764,7 +2773,7 @@ version = "0.12.5"
 dependencies = [
  "anyhow",
  "indexmap",
- "itertools",
+ "itertools 0.11.0",
  "lazy_static",
  "once_cell",
  "paste",
@@ -2786,7 +2795,7 @@ version = "0.12.5"
 dependencies = [
  "anyhow",
  "bech32",
- "itertools",
+ "itertools 0.11.0",
  "nom",
  "num-traits",
  "rand 0.8.5",
@@ -2928,7 +2937,7 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "derivative",
- "itertools",
+ "itertools 0.11.0",
  "num-traits",
  "rand 0.8.5",
  "rayon",
@@ -2966,7 +2975,7 @@ dependencies = [
  "encoding",
  "hex",
  "indexmap",
- "itertools",
+ "itertools 0.11.0",
  "js-sys",
  "lazy_static",
  "paste",
@@ -2995,7 +3004,7 @@ dependencies = [
  "colored",
  "criterion",
  "indexmap",
- "itertools",
+ "itertools 0.11.0",
  "once_cell",
  "parking_lot",
  "paste",
@@ -3032,7 +3041,7 @@ dependencies = [
  "bincode",
  "blake2",
  "criterion",
- "itertools",
+ "itertools 0.11.0",
  "rand 0.8.5",
  "rayon",
  "serde_json",

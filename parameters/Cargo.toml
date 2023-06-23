@@ -61,7 +61,7 @@ version = "0.4.3"
 version = "1.9"
 
 [dependencies.itertools]
-version = "0.10.3"
+version = "0.11.0"
 
 [dependencies.js-sys]
 version = "0.3.64"
