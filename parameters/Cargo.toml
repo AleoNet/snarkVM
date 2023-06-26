@@ -58,7 +58,7 @@ optional = true
 version = "0.4.3"
 
 [dependencies.indexmap]
-version = "1.9"
+version = "2.0"
 
 [dependencies.itertools]
 version = "0.11.0"
