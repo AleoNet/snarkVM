@@ -2478,6 +2478,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-ledger",
+ "snarkvm-narwhal",
  "snarkvm-parameters",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
@@ -2975,6 +2976,18 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-synthesizer",
  "time",
+ "tracing",
+]
+
+[[package]]
+name = "snarkvm-narwhal"
+version = "0.12.6"
+dependencies = [
+ "bincode",
+ "rand 0.8.5",
+ "serde_json",
+ "snarkvm-console",
+ "snarkvm-synthesizer-coinbase",
  "tracing",
 ]
 
