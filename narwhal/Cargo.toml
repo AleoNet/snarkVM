@@ -24,21 +24,41 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ ]
+default = [ "transmission", "transmission-id" ]
+async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
+
+transmission = [ "bytes", "synthesizer" ]
+transmission-id = [ "console", "synthesizer-coinbase" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
 version = "=0.12.6"
+optional = true
 
-[dependencies.snarkvm-synthesizer-coinbase]
+[dependencies.synthesizer]
+package = "snarkvm-synthesizer"
+path = "../synthesizer"
+version = "=0.12.6"
+optional = true
+
+[dependencies.synthesizer-coinbase]
+package = "snarkvm-synthesizer-coinbase"
 path = "../synthesizer/coinbase"
 version = "=0.12.6"
+optional = true
 
-[dependencies.tracing]
-version = "0.1"
+[dependencies.bytes]
+version = "1"
+optional = true
+
+[dependencies.tokio]
+version = "1.28"
+optional = true
+default-features = false
+features = [ "rt" ]
 
 [dev-dependencies.bincode]
 version = "1.3"

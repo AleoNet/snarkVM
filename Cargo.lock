@@ -2984,11 +2984,13 @@ name = "snarkvm-narwhal"
 version = "0.12.6"
 dependencies = [
  "bincode",
+ "bytes",
  "rand 0.8.5",
  "serde_json",
  "snarkvm-console",
+ "snarkvm-synthesizer",
  "snarkvm-synthesizer-coinbase",
- "tracing",
+ "tokio",
 ]
 
 [[package]]

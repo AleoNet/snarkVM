@@ -12,23 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
-#![warn(clippy::cast_possible_truncation)]
-
-#[cfg(feature = "transmission")]
-mod helpers;
-#[cfg(feature = "transmission")]
-pub use helpers::*;
-
-// mod batch_header;
-// pub use batch_header::*;
-
-#[cfg(feature = "transmission")]
-mod transmission;
-#[cfg(feature = "transmission")]
-pub use transmission::*;
-
-#[cfg(feature = "transmission-id")]
-mod transmission_id;
-#[cfg(feature = "transmission-id")]
-pub use transmission_id::*;
+mod data;
+pub use data::*;
