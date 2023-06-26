@@ -25,10 +25,7 @@ impl<N: Network> Execution<N> {
             .transitions()
             .map(|transition| {
                 let program_id = transition.program_id();
-                Ok((
-                    *program_id,
-                    vm.transaction_store().get_program(program_id)?.ok_or(anyhow!("Program {program_id} not found"))?,
-                ))
+                Ok((*program_id, vm.process().read().get_program(program_id)?.clone()))
             })
             .collect::<Result<HashMap<_, _>>>()?;
 
