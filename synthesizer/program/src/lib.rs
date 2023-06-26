@@ -155,6 +155,16 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         &self.mappings
     }
 
+    /// Returns the structs in the program.
+    pub const fn structs(&self) -> &IndexMap<Identifier<N>, Struct<N>> {
+        &self.structs
+    }
+
+    /// Returns the records in the program.
+    pub const fn records(&self) -> &IndexMap<Identifier<N>, RecordType<N>> {
+        &self.records
+    }
+
     /// Returns the closures in the program.
     pub const fn closures(&self) -> &IndexMap<Identifier<N>, ClosureCore<N, Instruction>> {
         &self.closures
