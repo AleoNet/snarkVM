@@ -60,3 +60,50 @@ impl<N: Network> ArrayType<N> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    use core::str::FromStr;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_array_type() -> Result<()> {
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 4]")?;
+        assert_eq!(type_, ArrayType::<CurrentNetwork>::Literal(LiteralType::Field, U32::new(4)));
+        assert_eq!(
+            type_.to_bytes_le()?,
+            ArrayType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
+        );
+        assert_eq!(type_.element_type(), PlaintextType::Literal(LiteralType::Field));
+        assert_eq!(type_.length(), &U32::new(4));
+
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[foo; 1]")?;
+        assert_eq!(type_, ArrayType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?, U32::new(1)));
+        assert_eq!(
+            type_.to_bytes_le()?,
+            ArrayType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
+        );
+        assert_eq!(type_.element_type(), PlaintextType::Struct(Identifier::from_str("foo")?));
+        assert_eq!(type_.length(), &U32::new(1));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_array_type_fails() -> Result<()> {
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 0]");
+        assert!(type_.is_err());
+
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 4294967296]");
+        assert!(type_.is_err());
+
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[foo; -1]");
+        assert!(type_.is_err());
+
+        Ok(())
+    }
+}
