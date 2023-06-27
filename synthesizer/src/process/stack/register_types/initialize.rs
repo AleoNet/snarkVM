@@ -189,17 +189,23 @@ impl<N: Network> RegisterTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
+            // If the register type is a literal then it is well-defined.
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
+            // If the register type is a struct, then check that the component struct is defined in the program.
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
-            RegisterType::Plaintext(PlaintextType::Array(array_name)) => {
-                // Ensure the element type is defined in the program.
-                todo!("Ensure the element type is defined in the program.");
-            }
+            // If the register type is an array and the element type is a struct, then check that the component struct is defined in the program.
+            RegisterType::Plaintext(PlaintextType::Array(array_type)) => match array_type.element_type() {
+                ElementType::Literal(..) => (),
+                ElementType::Struct(struct_name) => {
+                    if !stack.program().contains_struct(struct_name) {
+                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                    }
+                }
+            },
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {

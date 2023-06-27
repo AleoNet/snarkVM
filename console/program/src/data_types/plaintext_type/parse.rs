@@ -82,6 +82,10 @@ mod tests {
             PlaintextType::parse("signature"),
             Ok(("", PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("signature")?)))
         );
+        assert_eq!(
+            PlaintextType::parse("[field; 5]"),
+            Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 5]")?)))
+        );
         Ok(())
     }
 

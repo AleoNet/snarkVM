@@ -14,42 +14,38 @@
 
 use super::*;
 
-// TODO (d0cd): Make this implementation iterative.
-//  The use of recursion here introduces the possibility of a stack overflow.
-
 impl<N: Network> Parser for ArrayType<N> {
     /// Parses a string into a literal type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the opening brackets and following whitespaces.
         let (string, num_dimensions) =
-            map_res(many1(pair(tag("["), Sanitizer::parse_whitespaces)), |opening_brackets| {
-                match opening_brackets.len() <= N::MAX_DATA_DEPTH {
-                    true => Ok(opening_brackets.len()),
-                    false => Err(format!("The number of dimensions must not exceed '{}'", N::MAX_DATA_DEPTH)),
-                }
-            })(string)?;
+            map(many1(pair(tag("["), Sanitizer::parse_whitespaces)), |opening_brackets| opening_brackets.len())(
+                string,
+            )?;
         // Parse the element type.
         let (mut remaining_string, element_type) = ElementType::parse(string)?;
-        // Parse `num_dimensions` dimensions.
+        // Parse each of the dimensions.
         let mut dimensions = Vec::with_capacity(num_dimensions);
         for _ in 0..num_dimensions {
             // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(remaining_string)?;
-            // Parse the dimension from the string.
-            let (string, dimension) =
-                map_res(recognize(many1(one_of("0123456789"))), |digits: &str| digits.parse::<u32>())(string)?;
-            dimensions.push(dimension);
             // Parse the semicolon.
             let (string, _) = tag(";")(string)?;
             // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the closing bracket.
+            // Parse the dimension from the string.
+            let (string, dimension) =
+                map_res(recognize(many1(one_of("0123456789"))), |digits: &str| digits.parse::<u32>())(string)?;
+            dimensions.push(dimension);
+            // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the closing bracket.
+            let (string, _) = tag("]")(string)?;
             remaining_string = string;
         }
         // Return the array type.
-        map_res(take(0usize), move |_| ArrayType::new(element_type, dimensions.clone()))(string)
+        map_res(take(0usize), move |_| ArrayType::new(element_type, dimensions.clone()))(remaining_string)
     }
 }
 

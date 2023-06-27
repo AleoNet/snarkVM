@@ -25,6 +25,7 @@ use crate::{
 use console::{
     network::prelude::*,
     program::{
+        ElementType,
         EntryType,
         Identifier,
         LiteralType,
@@ -111,26 +112,26 @@ impl<N: Network> RegisterTypes<N> {
                 .clone()
         };
 
-        // Retrieve the member path if the register is a member. Otherwise, return the register type.
+        // Retrieve the access path if the register is an access. Otherwise, return the register type.
         let path = match &register {
             // If the register is a locator, then output the register type.
             Register::Locator(..) => return Ok(register_type),
             // If the register is an access, then traverse the accesses to output the register type.
             Register::Access(_, path) => {
-                // Ensure the member path is valid.
-                ensure!(!path.is_empty(), "Register '{register}' references no members.");
-                // Output the member path.
+                // Ensure the access path is valid.
+                ensure!(!path.is_empty(), "Register '{register}' references no accesses.");
+                // Output the access path.
                 path
             }
         };
 
-        // Traverse the member path to find the register type.
+        // Traverse the access path to find the register type.
         for path_name in path.iter() {
             // Update the register type at each step.
             register_type = match &register_type {
                 // Ensure the plaintext type is not a literal, as the register references a member.
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
-                // Traverse the member path to output the register type.
+                // Access the member to output the register type.
                 RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                     let path_name = match path_name {
                         Access::Member(member_name) => member_name,
@@ -143,8 +144,11 @@ impl<N: Network> RegisterTypes<N> {
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
                 }
-                // Ensure the plaintext type is not an array, as the register references a member.
-                RegisterType::Plaintext(PlaintextType::Array(..)) => bail!("'{register}' references an array."),
+                // Access the index to output the register type.
+                RegisterType::Plaintext(PlaintextType::Array(array_type)) => match path_name {
+                    Access::Member(..) => bail!("Access must reference an index."),
+                    Access::Index(index) => RegisterType::Plaintext(array_type.index(**index)?),
+                },
                 RegisterType::Record(record_name) => {
                     // Ensure the record type exists.
                     ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");

@@ -1,4 +1,3 @@
-// The 'hello.aleo' program.
 program hello.aleo;
 
 function hello:

@@ -178,22 +178,33 @@ impl<N: Network> Stack<N> {
     /// Initializes a new stack, if it does not already exist, given the process and the program.
     #[inline]
     pub fn new(process: &Process<N>, program: &Program<N>) -> Result<Self> {
+        println!("1");
         // Retrieve the program ID.
         let program_id = program.id();
+        println!("2");
         // Ensure the program does not already exist in the process.
         ensure!(!process.contains_program(program_id), "Program '{program_id}' already exists");
+        println!("3");
         // Ensure the program contains functions.
         ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
 
+        println!("4");
+
         // Serialize the program into bytes.
         let program_bytes = program.to_bytes_le()?;
+
+        println!("5");
         // Ensure the program deserializes from bytes correctly.
         ensure!(program == &Program::from_bytes_le(&program_bytes)?, "Program byte serialization failed");
+
+        println!("6");
 
         // Serialize the program into string.
         let program_string = program.to_string();
         // Ensure the program deserializes from a string correctly.
         ensure!(program == &Program::from_str(&program_string)?, "Program string serialization failed");
+
+        println!("7");
 
         // Return the stack.
         Stack::initialize(process, program)

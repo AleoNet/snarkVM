@@ -1,4 +1,3 @@
-// The 'finalize_entry.aleo' program.
 program finalize_entry.aleo;
 
 struct entry:

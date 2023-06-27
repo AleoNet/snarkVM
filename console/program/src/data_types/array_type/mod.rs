@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::ElementType;
+use crate::{ElementType, PlaintextType};
 use snarkvm_console_network::prelude::*;
 
 use core::fmt::{Debug, Display};
@@ -31,7 +31,6 @@ pub struct ArrayType<N: Network> {
 
 impl<N: Network> ArrayType<N> {
     /// Constructs a new array type.
-    // Note: `dimensions` needs to be explicitly specified since Rust does not yet support generic parameters in const operations.
     pub fn new(element_type: ElementType<N>, dimensions: Vec<u32>) -> Result<Self> {
         ensure!(!dimensions.is_empty(), "The array must have at least one dimension");
         ensure!(
@@ -51,6 +50,25 @@ impl<N: Network> ArrayType<N> {
     /// Returns the element type.
     pub fn element_type(&self) -> &ElementType<N> {
         &self.element_type
+    }
+
+    /// Indexes into the array type, returning a plaintext type.
+    pub fn index(&self, index: u32) -> Result<PlaintextType<N>> {
+        ensure!(index < self.length(), "Index '{}' is out of bounds for array of length '{}'", index, self.length());
+        match &self.dimensions.len() {
+            1 => match self.element_type {
+                ElementType::Literal(literal_type) => Ok(PlaintextType::Literal(literal_type)),
+                ElementType::Struct(identifier) => Ok(PlaintextType::Struct(identifier)),
+            },
+            _ => Ok(PlaintextType::Array(Self {
+                element_type: self.element_type.clone(),
+                dimensions: {
+                    let mut dimensions = self.dimensions.clone();
+                    dimensions.pop();
+                    dimensions
+                },
+            })),
+        }
     }
 
     /// Returns the dimensions of the array.

@@ -94,6 +94,8 @@ impl ExpectedTest for ProgramTest {
             .clone();
 
         // Parse the remainder of the test file into a program.
+        println!("Parsing program...");
+        println!("{:?}", &source[first_comment_start + 2 + end_first_comment + 2..]);
         let program = Program::<CurrentNetwork>::from_str(&source[first_comment_start + 2 + end_first_comment + 2..])
             .expect("Failed to parse program.");
 

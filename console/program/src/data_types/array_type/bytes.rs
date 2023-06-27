@@ -34,7 +34,7 @@ impl<N: Network> ToBytes for ArrayType<N> {
         self.element_type.write_le(&mut writer)?;
         // Write the number of dimensions of the array.
         u8::try_from(self.dimensions.len())
-            .or_halt_with::<N>("The length of `self.dimensions` must less than a u8::MAX")
+            .or_halt_with::<N>("The number of dimensions must less than a u8::MAX")
             .write_le(&mut writer)?;
         // Write the dimensions of the array,
         for dimension in &self.dimensions {

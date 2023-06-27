@@ -19,9 +19,6 @@ mod serialize;
 use crate::{ArrayType, Identifier, LiteralType};
 use snarkvm_console_network::prelude::*;
 
-// TODO (d0cd): Consider defining arrays types independently of plaintext types.
-//  - This would create separation of arrays from records, if desired
-
 /// A `PlaintextType` is a literal, struct, or array type.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum PlaintextType<N: Network> {

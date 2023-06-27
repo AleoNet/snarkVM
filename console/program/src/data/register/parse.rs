@@ -26,7 +26,7 @@ impl<N: Network> Parser for Register<N> {
             map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
         // Parse the accesses from the string, if it is a register access.
         let (string, accesses): (&str, Vec<Access<N>>) = map_res(many0(Access::parse), |accesses| {
-            // Ensure the number of identifiers is within the limit.
+            // Ensure the number of identifiers is less than or equal to N::MAX_DATA_DEPTH.
             if accesses.len() <= N::MAX_DATA_DEPTH {
                 Ok(accesses)
             } else {

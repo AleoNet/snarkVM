@@ -62,9 +62,52 @@ impl<N: Network> Display for Access<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             // Prints the access index, i.e. `[12]`
-            Self::Index(index) => write!(f, "[{}]", index),
+            Self::Index(index) => write!(f, "[{}]", **index),
             // Prints the access member, i.e. `.foo`
             Self::Member(identifier) => write!(f, ".{}", identifier),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_parse() -> Result<()> {
+        assert_eq!(Access::parse("[24]"), Ok(("", Access::<CurrentNetwork>::Index(U32::new(24)))));
+        assert_eq!(Access::parse(".data"), Ok(("", Access::<CurrentNetwork>::Member(Identifier::from_str("data")?))));
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_fails() -> Result<()> {
+        // Must be non-empty.
+        assert!(Access::<CurrentNetwork>::parse("").is_err());
+        assert!(Access::<CurrentNetwork>::parse(".").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[]").is_err());
+
+        // Invalid accesses.
+        assert!(Access::<CurrentNetwork>::parse(".0").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[index]").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[0.0]").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[999999999999]").is_err());
+
+        // Must fit within the data capacity of a base field element.
+        let access =
+            Access::<CurrentNetwork>::parse(".foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+        assert!(access.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_display() -> Result<()> {
+        assert_eq!(Access::<CurrentNetwork>::Index(U32::new(1)).to_string(), "[1]");
+        assert_eq!(Access::<CurrentNetwork>::Member(Identifier::from_str("foo")?).to_string(), ".foo");
+        Ok(())
     }
 }

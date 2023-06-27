@@ -128,17 +128,24 @@ impl<N: Network> Process<N> {
     pub fn load() -> Result<Self> {
         let timer = timer!("Process::load");
 
+        println!("1");
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
         lap!(timer, "Initialize process");
+
+        println!("2");
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
         lap!(timer, "Load credits program");
 
+        println!("3");
+
         // Compute the 'credits.aleo' program stack.
         let stack = Stack::new(&process, &program)?;
         lap!(timer, "Initialize stack");
+
+        println!("4");
 
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
@@ -154,16 +161,24 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Load circuit keys");
 
+        println!("5");
+
         // Initialize the inclusion proving key.
         let _ = N::inclusion_proving_key();
         lap!(timer, "Load inclusion proving key");
+
+        println!("6");
 
         // Initialize the inclusion verifying key.
         let _ = N::inclusion_verifying_key();
         lap!(timer, "Load inclusion verifying key");
 
+        println!("7");
+
         // Add the stack to the process.
         process.add_stack(stack);
+
+        println!("8");
 
         finish!(timer, "Process::load");
         // Return the process.

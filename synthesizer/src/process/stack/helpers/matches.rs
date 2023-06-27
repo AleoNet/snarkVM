@@ -251,7 +251,27 @@ impl<N: Network> Stack<N> {
                 Ok(())
             }
             PlaintextType::Array(array_type) => {
-                todo!("Implement matching for array types")
+                // Retrieve the elements.
+                let elements = match plaintext {
+                    Plaintext::Literal(..) => bail!("expected array, found literal"),
+                    Plaintext::Struct(..) => bail!("expected array, found struct"),
+                    Plaintext::Array(elements, ..) => elements,
+                };
+
+                // Ensure the number of array elements match.
+                ensure!(
+                    elements.len() == array_type.length() as usize,
+                    "Array type must be exactly {} entries",
+                    array_type.length()
+                );
+
+                // Ensure that each array element matches.
+                for element in elements {
+                    // Ensure the member plaintext matches (recursive call).
+                    self.matches_plaintext_internal(element, &array_type.index(0)?, depth + 1)?;
+                }
+
+                Ok(())
             }
         }
     }

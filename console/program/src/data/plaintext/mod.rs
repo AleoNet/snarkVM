@@ -155,6 +155,7 @@ mod tests {
             OnceCell::new(),
         );
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+
         Ok(())
     }
 }

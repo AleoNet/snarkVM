@@ -23,7 +23,7 @@ impl<N: Network> FromBytes for Register<N> {
             0 => Ok(Self::Locator(locator)),
             1 => {
                 // Read the number of accesses.
-                let num_accesses = u16::read_le(&mut reader)?;
+                let num_accesses = u8::read_le(&mut reader)?;
                 // Read the identifiers.
                 let mut accesses = Vec::with_capacity(num_accesses as usize);
                 for _ in 0..num_accesses {
