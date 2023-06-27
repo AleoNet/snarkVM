@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Identifier, U32};
+use crate::Identifier;
 
 use snarkvm_console_network::prelude::*;
 
@@ -30,6 +30,35 @@ impl<N: Network> Parser for Access<N> {
         Self: Sized,
     {
         alt((map(pair(tag("."), Identifier::parse), |(_, identifier)| Self::Member(identifier)),))(string)
+    }
+}
+
+impl<N: Network> FromBytes for Access<N> {
+    /// Reads the access from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        let variant = u8::read_le(&mut reader)?;
+        match variant {
+            0 => Ok(Self::Member(Identifier::read_le(&mut reader)?)),
+            1.. => Err(error(format!("Failed to deserialize access variant {variant}"))),
+        }
+    }
+}
+
+impl<N: Network> ToBytes for Access<N> {
+    /// Write the access to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        match self {
+            Access::Member(identifier) => {
+                u8::write_le(&0u8, &mut writer)?;
+                identifier.write_le(&mut writer)
+            }
+        }
     }
 }
 
@@ -84,6 +113,113 @@ impl<'de, N: Network> Deserialize<'de> for Access<N> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "access"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::identifier::tests::sample_identifier;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u32 = 1000;
+
+    fn check_bytes(expected: Access<CurrentNetwork>) -> Result<()> {
+        // Check the byte representation.
+        let expected_bytes = expected.to_bytes_le()?;
+        assert_eq!(expected, Access::read_le(&expected_bytes[..])?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_bytes() -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Member
+            let identifier = sample_identifier(rng)?;
+            check_bytes(Access::Member(identifier))?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse() -> Result<()> {
+        assert_eq!(Access::parse(".data"), Ok(("", Access::<CurrentNetwork>::Member(Identifier::from_str("data")?))));
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_fails() -> Result<()> {
+        // Must be non-empty.
+        assert!(Access::<CurrentNetwork>::parse("").is_err());
+        assert!(Access::<CurrentNetwork>::parse(".").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[]").is_err());
+
+        // Invalid accesses.
+        assert!(Access::<CurrentNetwork>::parse(".0").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[index]").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[0.0]").is_err());
+        assert!(Access::<CurrentNetwork>::parse("[999999999999]").is_err());
+
+        // Must fit within the data capacity of a base field element.
+        let access =
+            Access::<CurrentNetwork>::parse(".foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+        assert!(access.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_display() -> Result<()> {
+        assert_eq!(Access::<CurrentNetwork>::Member(Identifier::from_str("foo")?).to_string(), ".foo");
+        Ok(())
+    }
+
+    fn check_serde_json<
+        T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
+    >(
+        expected: T,
+    ) {
+        // Serialize
+        let expected_string = &expected.to_string();
+        let candidate_string = serde_json::to_string(&expected).unwrap();
+        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
+
+        // Deserialize
+        assert_eq!(expected, T::from_str(expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
+        assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
+    }
+
+    fn check_bincode<
+        T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
+    >(
+        expected: T,
+    ) {
+        // Serialize
+        let expected_bytes = expected.to_bytes_le().unwrap();
+        let expected_bytes_with_size_encoding = bincode::serialize(&expected).unwrap();
+        assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
+
+        // Deserialize
+        assert_eq!(expected, T::read_le(&expected_bytes[..]).unwrap());
+        assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
+    }
+
+    #[test]
+    fn test_serde_json() {
+        for i in 0..1000 {
+            check_serde_json(Access::<CurrentNetwork>::from_str(&format!(".owner_{i}")).unwrap());
+        }
+    }
+
+    #[test]
+    fn test_bincode() {
+        for i in 0..1000 {
+            check_bincode(Access::<CurrentNetwork>::from_str(&format!(".owner_{i}")).unwrap());
         }
     }
 }
