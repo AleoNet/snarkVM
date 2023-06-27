@@ -62,7 +62,6 @@ use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
 use std::{borrow::Cow, sync::Arc};
-use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;

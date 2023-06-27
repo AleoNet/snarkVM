@@ -26,6 +26,7 @@ use synthesizer::{
     vm::VM,
     Program,
 };
+use time::OffsetDateTime;
 
 #[test]
 fn test_load() {
@@ -128,7 +129,9 @@ finalize foo:
     assert!(ledger.vm().verify_transaction(&transaction, None));
 
     // Construct the next block.
-    let block = ledger.prepare_advance_to_next_block(&private_key, vec![transaction], None, rng).unwrap();
+    let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+    let block = ledger.prepare_advance_to_next_block(&private_key, vec![transaction], None, rng, timestamp).unwrap();
+    assert_eq!(block.timestamp(), timestamp);
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 1);
@@ -138,8 +141,15 @@ finalize foo:
     let transfer_transaction = ledger.create_transfer(&private_key, address, 100, 0, None).unwrap();
 
     // Construct the next block.
-    let block =
-        ledger.prepare_advance_to_next_block(&private_key, vec![transfer_transaction.clone()], None, rng).unwrap();
+    let block = ledger
+        .prepare_advance_to_next_block(
+            &private_key,
+            vec![transfer_transaction.clone()],
+            None,
+            rng,
+            OffsetDateTime::now_utc().unix_timestamp(),
+        )
+        .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 2);

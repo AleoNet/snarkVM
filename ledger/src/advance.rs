@@ -22,6 +22,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         candidate_transactions: Vec<Transaction<N>>,
         candidate_solutions: Option<Vec<ProverSolution<N>>>,
         rng: &mut R,
+        next_timestamp: i64,
     ) -> Result<Block<N>> {
         // Retrieve the latest state root.
         let latest_state_root = *self.latest_state_root();
@@ -72,9 +73,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Compute the next total supply in microcredits.
         let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, &transactions)?;
-
-        // Checkpoint the timestamp for the next block.
-        let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // TODO (raychu86): Pay the provers.
         let (proving_rewards, staking_rewards) = match candidate_solutions {
