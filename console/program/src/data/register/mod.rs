@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod access;
+pub use access::Access;
+
 mod bytes;
 mod parse;
 mod serialize;
@@ -24,8 +27,8 @@ use snarkvm_console_network::prelude::*;
 pub enum Register<N: Network> {
     /// A register contains its locator in memory.
     Locator(u64),
-    /// A register member contains its locator and identifier(s) in memory.
-    Member(u64, Vec<Identifier<N>>),
+    /// A register access contains its locator and access(es) in memory.
+    Access(u64, Vec<Access<N>>),
 }
 
 impl<N: Network> Register<N> {
@@ -34,7 +37,7 @@ impl<N: Network> Register<N> {
     pub const fn locator(&self) -> u64 {
         match self {
             Self::Locator(locator) => *locator,
-            Self::Member(locator, _) => *locator,
+            Self::Access(locator, _) => *locator,
         }
     }
 }
@@ -79,27 +82,27 @@ mod tests {
         // Register::Member
         assert_eq!(
             Some(Ordering::Equal),
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]).partial_cmp(&Register::<
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?]).partial_cmp(&Register::<
                 CurrentNetwork,
-            >::Member(
+            >::Access(
                 0,
                 vec![Identifier::from_str("owner")?]
             ))
         );
         assert_eq!(
             Some(Ordering::Less),
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]).partial_cmp(&Register::<
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?]).partial_cmp(&Register::<
                 CurrentNetwork,
-            >::Member(
+            >::Access(
                 1,
                 vec![Identifier::from_str("owner")?]
             ))
         );
         assert_eq!(
             Some(Ordering::Greater),
-            Register::<CurrentNetwork>::Member(1, vec![Identifier::from_str("owner")?]).partial_cmp(&Register::<
+            Register::<CurrentNetwork>::Access(1, vec![Identifier::from_str("owner")?]).partial_cmp(&Register::<
                 CurrentNetwork,
-            >::Member(
+            >::Access(
                 0,
                 vec![Identifier::from_str("owner")?]
             ))
@@ -118,24 +121,24 @@ mod tests {
 
         // Register::Member
         assert_eq!(
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]),
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?])
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?]),
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?])
         );
         assert_ne!(
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]),
-            Register::<CurrentNetwork>::Member(1, vec![Identifier::from_str("owner")?])
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?]),
+            Register::<CurrentNetwork>::Access(1, vec![Identifier::from_str("owner")?])
         );
         assert_ne!(
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]),
-            Register::<CurrentNetwork>::Member(2, vec![Identifier::from_str("owner")?])
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?]),
+            Register::<CurrentNetwork>::Access(2, vec![Identifier::from_str("owner")?])
         );
         assert_ne!(
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]),
-            Register::<CurrentNetwork>::Member(3, vec![Identifier::from_str("owner")?])
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?]),
+            Register::<CurrentNetwork>::Access(3, vec![Identifier::from_str("owner")?])
         );
         assert_ne!(
-            Register::<CurrentNetwork>::Member(0, vec![Identifier::from_str("owner")?]),
-            Register::<CurrentNetwork>::Member(4, vec![Identifier::from_str("owner")?])
+            Register::<CurrentNetwork>::Access(0, vec![Identifier::from_str("owner")?]),
+            Register::<CurrentNetwork>::Access(4, vec![Identifier::from_str("owner")?])
         );
         Ok(())
     }

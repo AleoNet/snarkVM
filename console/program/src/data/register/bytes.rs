@@ -22,14 +22,15 @@ impl<N: Network> FromBytes for Register<N> {
         match variant {
             0 => Ok(Self::Locator(locator)),
             1 => {
-                // Read the number of identifiers.
-                let num_identifiers = u16::read_le(&mut reader)?;
-                // Read the identifiers.
-                let mut identifiers = Vec::with_capacity(num_identifiers as usize);
-                for _ in 0..num_identifiers {
-                    identifiers.push(Identifier::read_le(&mut reader)?);
+                // Read the number of accesses.
+                // TODO (d0cd): Should this be restricted to a u8, since it must be <= N::MAX_DATA_DEPTH?
+                let num_accesses = u16::read_le(&mut reader)?;
+                // Read the accesses.
+                let mut accesses = Vec::with_capacity(num_accesses as usize);
+                for _ in 0..num_accesses {
+                    accesses.push(Access::read_le(&mut reader)?);
                 }
-                Ok(Self::Member(locator, identifiers))
+                Ok(Self::Access(locator, accesses))
             }
             2.. => Err(error(format!("Failed to deserialize register variant {variant}"))),
         }
@@ -44,18 +45,19 @@ impl<N: Network> ToBytes for Register<N> {
                 u8::write_le(&0u8, &mut writer)?;
                 variable_length_integer(locator).write_le(&mut writer)
             }
-            Self::Member(locator, identifiers) => {
-                // Ensure the number of identifiers is within the limit.
-                if identifiers.len() > N::MAX_DATA_DEPTH {
-                    return Err(error("Failed to serialize register: too many identifiers"));
+            Self::Access(locator, accesses) => {
+                // Ensure the number of accesses is within the limit.
+                if accesses.len() > N::MAX_DATA_DEPTH {
+                    return Err(error("Failed to serialize register: too many accesses"));
                 }
 
                 u8::write_le(&1u8, &mut writer)?;
                 variable_length_integer(locator).write_le(&mut writer)?;
-                u16::try_from(identifiers.len())
+                // TODO (d0cd): Should this be restricted to a u8, since it must be <= N::MAX_DATA_DEPTH?
+                u16::try_from(accesses.len())
                     .or_halt_with::<N>("Register path length exceeds u16::MAX")
                     .write_le(&mut writer)?;
-                identifiers.write_le(&mut writer)
+                accesses.write_le(&mut writer)
             }
         }
     }

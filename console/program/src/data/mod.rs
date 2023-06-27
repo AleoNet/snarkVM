@@ -28,7 +28,7 @@ mod record;
 pub use record::{Entry, Owner, Record};
 
 mod register;
-pub use register::Register;
+pub use register::{Access, Register};
 
 mod value;
 pub use value::Value;
