@@ -110,6 +110,8 @@ pub trait Network:
     /// The number of blocks per epoch (1 hour).
     const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
 
+    /// the maximum number of entries in an array.
+    const MAX_ARRAY_ENTRIES: usize = u32::MAX as usize;
     /// The maximum number of entries in data.
     const MAX_DATA_ENTRIES: usize = 32;
     /// The maximum recursive depth of an entry.
