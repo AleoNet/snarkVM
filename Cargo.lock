@@ -2990,6 +2990,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-synthesizer",
  "snarkvm-synthesizer-coinbase",
+ "time",
  "tokio",
 ]
 

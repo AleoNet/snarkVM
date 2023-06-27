@@ -44,7 +44,7 @@ impl<N: Network> From<&N::TransactionID> for TransmissionID<N> {
 }
 
 #[cfg(test)]
-mod test_helpers {
+pub(crate) mod test_helpers {
     use super::*;
     use console::{
         network::Testnet3,

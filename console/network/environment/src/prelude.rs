@@ -24,6 +24,7 @@ pub use snarkvm_utilities::{
     error,
     has_duplicates,
     io::{Read, Result as IoResult, Write},
+    DeserializeExt,
     FromBits as _,
     FromBytes,
     FromBytesDeserializer,

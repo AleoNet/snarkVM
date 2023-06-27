@@ -15,13 +15,20 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::cast_possible_truncation)]
 
-#[cfg(feature = "transmission")]
+#[cfg(any(feature = "batch", feature = "transmission"))]
 mod helpers;
-#[cfg(feature = "transmission")]
+#[cfg(any(feature = "batch", feature = "transmission"))]
 pub use helpers::*;
 
-// mod batch_header;
-// pub use batch_header::*;
+#[cfg(feature = "batch")]
+mod batch;
+#[cfg(feature = "batch")]
+pub use batch::*;
+
+#[cfg(feature = "batch-certificate")]
+mod batch_certificate;
+#[cfg(feature = "batch-certificate")]
+pub use batch_certificate::*;
 
 #[cfg(feature = "transmission")]
 mod transmission;

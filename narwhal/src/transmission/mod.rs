@@ -63,7 +63,7 @@ impl<N: Network> From<Data<Transaction<N>>> for Transmission<N> {
 }
 
 #[cfg(test)]
-mod test_helpers {
+pub(crate) mod test_helpers {
     use super::*;
     use console::{network::Testnet3, prelude::TestRng};
 
