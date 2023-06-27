@@ -14,14 +14,14 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Batch<N> {
-    /// Reads the batch from the buffer.
+impl<N: Network> FromBytes for BatchHeader<N> {
+    /// Reads the batch header from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid batch version"));
+            return Err(error("Invalid batch header version"));
         }
 
         // Read the batch ID.
@@ -31,23 +31,19 @@ impl<N: Network> FromBytes for Batch<N> {
         // Read the timestamp.
         let timestamp = i64::read_le(&mut reader)?;
 
-        // Read the number of transmissions.
+        // Read the number of transmission IDs.
         let num_transmissions = u32::read_le(&mut reader)?;
-        // Read the transmissions.
-        let mut transmissions = IndexMap::new();
+        // Read the transmission IDs.
+        let mut transmission_ids = IndexSet::new();
         for _ in 0..num_transmissions {
-            // Read the transmission ID.
-            let transmission_id = TransmissionID::read_le(&mut reader)?;
-            // Read the transmission.
-            let transmission = Transmission::read_le(&mut reader)?;
-            // Insert the transmission.
-            transmissions.insert(transmission_id, transmission);
+            // Insert the transmission ID.
+            transmission_ids.insert(TransmissionID::read_le(&mut reader)?);
         }
 
         // Read the number of previous certificates.
         let num_previous_certificates = u32::read_le(&mut reader)?;
         // Read the previous certificates.
-        let mut previous_certificates = IndexSet::new();
+        let mut previous_certificates = IndexSet::with_capacity(num_previous_certificates as usize);
         for _ in 0..num_previous_certificates {
             // Read the certificate.
             previous_certificates.insert(BatchCertificate::read_le(&mut reader)?);
@@ -57,12 +53,12 @@ impl<N: Network> FromBytes for Batch<N> {
         let signature = Signature::read_le(&mut reader)?;
 
         // Return the batch.
-        Ok(Self { batch_id, round, timestamp, transmissions, previous_certificates, signature })
+        Ok(Self { batch_id, round, timestamp, transmission_ids, previous_certificates, signature })
     }
 }
 
-impl<N: Network> ToBytes for Batch<N> {
-    /// Writes the batch to the buffer.
+impl<N: Network> ToBytes for BatchHeader<N> {
+    /// Writes the batch header to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u8.write_le(&mut writer)?;
@@ -72,14 +68,12 @@ impl<N: Network> ToBytes for Batch<N> {
         self.round.write_le(&mut writer)?;
         // Write the timestamp.
         self.timestamp.write_le(&mut writer)?;
-        // Write the number of transmissions.
-        u32::try_from(self.transmissions.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
-        // Write the transmissions.
-        for (transmission_id, transmission) in &self.transmissions {
+        // Write the number of transmission IDs.
+        u32::try_from(self.transmission_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        // Write the transmission IDs.
+        for transmission_id in &self.transmission_ids {
             // Write the transmission ID.
             transmission_id.write_le(&mut writer)?;
-            // Write the transmission.
-            transmission.write_le(&mut writer)?;
         }
         // Write the number of previous certificates.
         u32::try_from(self.previous_certificates.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
@@ -104,11 +98,11 @@ mod tests {
     fn test_bytes() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch::test_helpers::sample_batches(rng) {
+        for expected in crate::batch_header::test_helpers::sample_batch_headers(rng) {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
-            assert_eq!(expected, Batch::read_le(&expected_bytes[..]).unwrap());
-            assert!(Batch::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, BatchHeader::read_le(&expected_bytes[..]).unwrap());
+            assert!(BatchHeader::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }

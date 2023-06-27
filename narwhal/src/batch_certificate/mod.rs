@@ -18,17 +18,20 @@ mod string;
 
 use console::{account::Signature, prelude::*, types::Field};
 
+use core::hash::{Hash, Hasher};
+use indexmap::IndexSet;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchCertificate<N: Network> {
     /// The batch ID.
     batch_id: Field<N>,
     /// The `signatures` of the batch ID from the committee.
-    signatures: Vec<Signature<N>>,
+    signatures: IndexSet<Signature<N>>,
 }
 
 impl<N: Network> BatchCertificate<N> {
     /// Initializes a new batch certificate.
-    pub fn new(batch_id: Field<N>, signatures: Vec<Signature<N>>) -> Result<Self> {
+    pub fn new(batch_id: Field<N>, signatures: IndexSet<Signature<N>>) -> Result<Self> {
         // Ensure the signatures are not empty.
         ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
         // Return the batch certificate.
@@ -41,8 +44,18 @@ impl<N: Network> BatchCertificate<N> {
     }
 
     /// Returns the signatures of the batch ID from the committee.
-    pub const fn signatures(&self) -> &Vec<Signature<N>> {
+    pub const fn signatures(&self) -> &IndexSet<Signature<N>> {
         &self.signatures
+    }
+}
+
+impl<N: Network> Hash for BatchCertificate<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.batch_id.hash(state);
+        (self.signatures.len() as u64).hash(state);
+        for signature in &self.signatures {
+            signature.hash(state);
+        }
     }
 }
 
@@ -63,22 +76,22 @@ pub(crate) mod test_helpers {
         // Sample a batch ID.
         let batch_id = Field::rand(rng);
         // Sample a list of signatures.
-        let mut signatures = Vec::with_capacity(5);
+        let mut signatures = IndexSet::with_capacity(5);
         for _ in 0..5 {
             let private_key = PrivateKey::new(rng).unwrap();
-            signatures.push(private_key.sign(&[batch_id], rng).unwrap());
+            signatures.insert(private_key.sign(&[batch_id], rng).unwrap());
         }
         // Return the batch certificate.
         BatchCertificate::new(batch_id, signatures).unwrap()
     }
 
     /// Returns a list of sample batch certificates, sampled at random.
-    pub(crate) fn sample_batch_certificates(rng: &mut TestRng) -> Vec<BatchCertificate<CurrentNetwork>> {
+    pub(crate) fn sample_batch_certificates(rng: &mut TestRng) -> IndexSet<BatchCertificate<CurrentNetwork>> {
         // Initialize a sample vector.
-        let mut sample = Vec::with_capacity(10);
+        let mut sample = IndexSet::with_capacity(10);
         // Append sample batch certificates.
         for _ in 0..10 {
-            sample.push(sample_batch_certificate(rng));
+            sample.insert(sample_batch_certificate(rng));
         }
         // Return the sample vector.
         sample

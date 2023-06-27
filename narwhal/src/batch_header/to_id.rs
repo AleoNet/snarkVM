@@ -14,13 +14,20 @@
 
 use super::*;
 
-impl<N: Network> Batch<N> {
+impl<N: Network> BatchHeader<N> {
+    /// Returns the batch ID.
+    pub fn to_id(&self) -> Result<Field<N>> {
+        Self::compute_batch_id(self.round, self.timestamp, &self.transmission_ids, &self.previous_certificates)
+    }
+}
+
+impl<N: Network> BatchHeader<N> {
     /// Returns the batch ID.
     pub fn compute_batch_id(
         round: u64,
         timestamp: i64,
-        transmissions: &HashMap<TransmissionID<N>, Transmission<N>>,
-        previous_certificates: &[BatchCertificate<N>],
+        transmission_ids: &IndexSet<TransmissionID<N>>,
+        previous_certificates: &IndexSet<BatchCertificate<N>>,
     ) -> Result<Field<N>> {
         let mut preimage = Vec::new();
         // Insert the round number.
@@ -28,9 +35,9 @@ impl<N: Network> Batch<N> {
         // Insert the timestamp.
         preimage.extend_from_slice(&timestamp.to_bytes_le()?);
         // Insert the number of transmissions.
-        preimage.extend_from_slice(&u64::try_from(transmissions.len())?.to_bytes_le()?);
+        preimage.extend_from_slice(&u64::try_from(transmission_ids.len())?.to_bytes_le()?);
         // Insert the transmission IDs.
-        for transmission_id in transmissions.keys() {
+        for transmission_id in transmission_ids {
             preimage.extend_from_slice(&transmission_id.to_bytes_le()?);
         }
         // Insert the number of previous certificates.

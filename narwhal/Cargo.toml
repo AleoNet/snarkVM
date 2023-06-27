@@ -24,13 +24,14 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "batch", "batch-certificate", "transmission", "transmission-id" ]
+default = [ "batch", "batch-certificate", "batch-header", "transmission", "transmission-id" ]
 async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 
-batch = [ "transmission", "transmission-id" ]
-batch-certificate = [ "console", "serde_json" ]
+batch = [ "batch-certificate", "indexmap", "transmission", "transmission-id" ]
+batch-certificate = [ "console", "indexmap", "serde_json" ]
+batch-header = [ "console", "indexmap", "transmission-id" ]
 transmission = [ "bytes", "synthesizer" ]
 transmission-id = [ "console", "synthesizer-coinbase" ]
 
@@ -54,6 +55,11 @@ optional = true
 
 [dependencies.bytes]
 version = "1"
+optional = true
+
+[dependencies.indexmap]
+version = "2.0"
+features = [ "serde" ]
 optional = true
 
 [dependencies.serde_json]

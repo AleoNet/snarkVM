@@ -14,40 +14,40 @@
 
 mod bytes;
 mod serialize;
-mod to_header;
+mod to_id;
 
-use crate::{BatchCertificate, BatchHeader, Transmission, TransmissionID};
+use crate::{BatchCertificate, TransmissionID};
 use console::{
     account::{PrivateKey, Signature},
     prelude::*,
     types::Field,
 };
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Batch<N: Network> {
-    /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificates.
+pub struct BatchHeader<N: Network> {
+    /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificate IDs.
     batch_id: Field<N>,
     /// The round number.
     round: u64,
     /// The timestamp.
     timestamp: i64,
-    /// The map of `transmission IDs` to `transmissions`.
-    transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+    /// The set of `transmission IDs`.
+    transmission_ids: IndexSet<TransmissionID<N>>,
     /// The batch certificates of the previous round.
     previous_certificates: IndexSet<BatchCertificate<N>>,
     /// The signature of the batch ID from the creator.
     signature: Signature<N>,
 }
 
-impl<N: Network> Batch<N> {
-    /// Initializes a new batch.
+impl<N: Network> BatchHeader<N> {
+    /// Initializes a new batch header.
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         round: u64,
-        transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+        transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificates: IndexSet<BatchCertificate<N>>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -57,21 +57,19 @@ impl<N: Network> Batch<N> {
         ensure!(round == 0 || !previous_certificates.is_empty(), "Invalid round number");
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
-        // Construct the transmission IDs.
-        let transmission_ids = transmissions.keys().copied().collect();
         // Compute the batch ID.
-        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificates)?;
+        let batch_id = Self::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificates)?;
         // Sign the preimage.
         let signature = private_key.sign(&[batch_id], rng)?;
-        // Return the batch.
-        Ok(Self { batch_id, round, timestamp, transmissions, previous_certificates, signature })
+        // Return the batch header.
+        Ok(Self { batch_id, round, timestamp, transmission_ids, previous_certificates, signature })
     }
 
-    /// Initializes a new batch.
+    /// Initializes a new batch header.
     pub fn from(
         round: u64,
         timestamp: i64,
-        transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+        transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificates: IndexSet<BatchCertificate<N>>,
         signature: Signature<N>,
     ) -> Result<Self> {
@@ -79,20 +77,18 @@ impl<N: Network> Batch<N> {
         ensure!(round != 0 || previous_certificates.is_empty(), "Invalid round number");
         // If the round is not zero, then there should be at least one previous certificate.
         ensure!(round == 0 || !previous_certificates.is_empty(), "Invalid round number");
-        // Construct the transmission IDs.
-        let transmission_ids = transmissions.keys().copied().collect();
         // Compute the batch ID.
-        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificates)?;
+        let batch_id = Self::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificates)?;
         // Verify the signature.
         if !signature.verify(&signature.to_address(), &[batch_id]) {
-            bail!("Invalid signature for the batch");
+            bail!("Invalid signature for the batch header");
         }
-        // Return the batch.
-        Ok(Self { batch_id, round, timestamp, transmissions, previous_certificates, signature })
+        // Return the batch header.
+        Ok(Self { batch_id, round, timestamp, transmission_ids, previous_certificates, signature })
     }
 }
 
-impl<N: Network> Batch<N> {
+impl<N: Network> BatchHeader<N> {
     /// Returns the batch ID.
     pub const fn batch_id(&self) -> Field<N> {
         self.batch_id
@@ -109,13 +105,8 @@ impl<N: Network> Batch<N> {
     }
 
     /// Returns the transmission IDs.
-    pub fn transmission_ids(&self) -> IndexSet<TransmissionID<N>> {
-        self.transmissions.keys().copied().collect()
-    }
-
-    /// Returns the transmissions.
-    pub const fn transmissions(&self) -> &IndexMap<TransmissionID<N>, Transmission<N>> {
-        &self.transmissions
+    pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
+        &self.transmission_ids
     }
 
     /// Returns the batch certificates for the previous round.
@@ -129,25 +120,20 @@ impl<N: Network> Batch<N> {
     }
 }
 
-impl<N: Network> Batch<N> {
-    /// Returns `true` if the batch is empty.
+impl<N: Network> BatchHeader<N> {
+    /// Returns `true` if the batch header is empty.
     pub fn is_empty(&self) -> bool {
-        self.transmissions.is_empty()
+        self.transmission_ids.is_empty()
     }
 
-    /// Returns the number of transmissions in the batch.
+    /// Returns the number of transmissions in the batch header.
     pub fn len(&self) -> usize {
-        self.transmissions.len()
+        self.transmission_ids.len()
     }
 
     /// Returns `true` if the batch contains the specified `transmission ID`.
     pub fn contains(&self, transmission_id: impl Into<TransmissionID<N>>) -> bool {
-        self.transmissions.contains_key(&transmission_id.into())
-    }
-
-    /// Returns the transmission, given the specified `transmission ID`.
-    pub fn get(&self, transmission_id: impl Into<TransmissionID<N>>) -> Option<&Transmission<N>> {
-        self.transmissions.get(&transmission_id.into())
+        self.transmission_ids.contains(&transmission_id.into())
     }
 }
 
@@ -158,8 +144,8 @@ mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    /// Returns a list of sample batches, sampled at random.
-    pub(crate) fn sample_batches(rng: &mut TestRng) -> Vec<Batch<CurrentNetwork>> {
+    /// Returns a list of sample batch headers, sampled at random.
+    pub(crate) fn sample_batch_headers(rng: &mut TestRng) -> Vec<BatchHeader<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = Vec::with_capacity(10);
         // Append sample batches.
@@ -167,16 +153,12 @@ mod test_helpers {
             // Sample a private key.
             let private_key = PrivateKey::new(rng).unwrap();
             // Sample transmission IDs.
-            let transmission_ids = crate::transmission_id::test_helpers::sample_transmission_ids(rng);
-            // Sample transmissions.
-            let transmissions = crate::transmission::test_helpers::sample_transmissions(rng);
-            // Combine the transmission IDs and transmissions.
-            let transmissions = transmission_ids.into_iter().zip(transmissions.into_iter()).collect::<IndexMap<_, _>>();
-            assert!(!transmissions.is_empty());
+            let transmission_ids =
+                crate::transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
             // Sample certificates.
             let certificates = crate::batch_certificate::test_helpers::sample_batch_certificates(rng);
-            // Append the batch.
-            sample.push(Batch::new(&private_key, rng.gen(), transmissions, certificates, rng).unwrap());
+            // Append the batch header.
+            sample.push(BatchHeader::new(&private_key, rng.gen(), transmission_ids, certificates, rng).unwrap());
         }
         // Return the sample vector.
         sample

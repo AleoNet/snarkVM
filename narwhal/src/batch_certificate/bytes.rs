@@ -29,9 +29,9 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
         // Read the number of signatures.
         let num_signatures = u32::read_le(&mut reader)?;
         // Read the signatures.
-        let mut signatures = Vec::new();
+        let mut signatures = IndexSet::with_capacity(num_signatures as usize);
         for _ in 0..num_signatures {
-            signatures.push(Signature::read_le(&mut reader)?);
+            signatures.insert(Signature::read_le(&mut reader)?);
         }
 
         Ok(Self { batch_id, signatures })

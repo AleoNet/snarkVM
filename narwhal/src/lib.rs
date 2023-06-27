@@ -30,6 +30,11 @@ mod batch_certificate;
 #[cfg(feature = "batch-certificate")]
 pub use batch_certificate::*;
 
+#[cfg(feature = "batch-header")]
+mod batch_header;
+#[cfg(feature = "batch-header")]
+pub use batch_header::*;
+
 #[cfg(feature = "transmission")]
 mod transmission;
 #[cfg(feature = "transmission")]
