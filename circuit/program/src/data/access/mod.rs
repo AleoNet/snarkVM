@@ -14,7 +14,7 @@
 
 use crate::Identifier;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Eject, Inject, Mode, Parser, ParserResult, U32};
+use snarkvm_circuit_types::{environment::prelude::*, Eject, Inject, Mode, Parser, ParserResult};
 
 use std::{
     fmt,
@@ -25,8 +25,7 @@ use std::{
 /// A register `Access`.
 #[derive(Clone)]
 pub enum Access<A: Aleo> {
-    /// The access is an index.
-    Index(U32<A>),
+    // TODO (d0cd): Add the index variant.
     /// The access is a member.
     Member(Identifier<A>),
 }
@@ -38,7 +37,6 @@ impl<A: Aleo> Inject for Access<A> {
     /// Initializes a new access circuit from a primitive.
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
-            Self::Primitive::Index(index) => Self::Index(U32::new(mode, index)),
             Self::Primitive::Member(identifier) => Self::Member(Identifier::new(mode, identifier)),
         }
     }
@@ -51,7 +49,6 @@ impl<A: Aleo> Eject for Access<A> {
     /// Ejects the mode of the access.
     fn eject_mode(&self) -> Mode {
         match self {
-            Self::Index(index) => index.eject_mode(),
             Self::Member(member) => member.eject_mode(),
         }
     }
@@ -59,7 +56,6 @@ impl<A: Aleo> Eject for Access<A> {
     /// Ejects the access.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Self::Index(index) => console::Access::Index(index.eject_value()),
             Self::Member(identifier) => console::Access::Member(identifier.eject_value()),
         }
     }
