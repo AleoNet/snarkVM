@@ -15,17 +15,17 @@
 use super::*;
 
 impl<A: Aleo> Plaintext<A> {
-    /// Returns the plaintext member from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Plaintext<A>> {
+    /// Returns the plaintext from the given path.
+    pub fn find(&self, path: &[Access<A>]) -> Result<Plaintext<A>> {
         // Ensure the path is not empty.
         if path.is_empty() {
-            A::halt("Attempted to find member with an empty path.")
+            A::halt("Attempted to find plaintext with an empty path.")
         }
 
         match self {
             // Halts if the value is not a struct.
             Self::Literal(..) => A::halt("Literal is not a struct"),
-            // Retrieve the value of the member (from the value).
+            // Retrieve the value of the access (from the value).
             Self::Struct(members, ..) => {
                 // Initialize the members starting from the top-level.
                 let mut submembers = members;
@@ -34,7 +34,8 @@ impl<A: Aleo> Plaintext<A> {
                 let mut output = None;
 
                 // Iterate through the path to retrieve the value.
-                for (i, identifier) in path.iter().enumerate() {
+                for (i, access) in path.iter().enumerate() {
+                    let Access::Member(identifier) = access;
                     // If this is not the last item in the path, ensure the value is a struct.
                     if i != path.len() - 1 {
                         match submembers.get(identifier) {

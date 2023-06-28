@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
-
 mod bytes;
 mod parse;
 mod serialize;
 
+use crate::Access;
 use snarkvm_console_network::prelude::*;
 
 /// A register contains the location data to a value in memory.

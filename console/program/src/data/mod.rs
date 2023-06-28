@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod access;
+pub use access::Access;
+
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
@@ -28,7 +31,7 @@ mod record;
 pub use record::{Entry, Owner, Record};
 
 mod register;
-pub use register::{Access, Register};
+pub use register::Register;
 
 mod value;
 pub use value::Value;

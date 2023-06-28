@@ -16,14 +16,15 @@ use super::*;
 
 impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Returns the entry from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Entry<A, Plaintext<A>>> {
+    pub fn find(&self, path: &[Access<A>]) -> Result<Entry<A, Plaintext<A>>> {
         // If the path is of length one, check if the path is requesting the `owner`.
-        if path.len() == 1 && path[0] == Identifier::from_str("owner")? {
+        if path.len() == 1 && path[0] == Access::Member(Identifier::from_str("owner")?) {
             return Ok(self.owner.to_entry());
         }
 
         // Ensure the path is not empty.
         if let Some((first, rest)) = path.split_first() {
+            let Access::Member(first) = first;
             // Retrieve the top-level entry.
             match self.data.get(first) {
                 Some(entry) => match rest.is_empty() {
