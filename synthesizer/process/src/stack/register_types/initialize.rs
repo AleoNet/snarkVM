@@ -148,8 +148,8 @@ impl<N: Network> RegisterTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 
@@ -171,8 +171,8 @@ impl<N: Network> RegisterTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 }
@@ -300,7 +300,7 @@ impl<N: Network> RegisterTypes<N> {
         for (destination, destination_type) in
             instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
         {
-            // Ensure the destination register is a locator (and does not reference a member).
+            // Ensure the destination register is a locator (and does not reference an access).
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
             // Insert the destination register.
             self.add_destination(destination, destination_type)?;

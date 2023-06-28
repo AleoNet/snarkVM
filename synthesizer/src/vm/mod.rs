@@ -26,7 +26,19 @@ use crate::{cast_mut_ref, cast_ref, process};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
+    program::{
+        Access,
+        Entry,
+        Identifier,
+        Literal,
+        Locator,
+        Plaintext,
+        ProgramID,
+        ProgramOwner,
+        Record,
+        Response,
+        Value,
+    },
     types::Field,
 };
 use ledger_block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions};

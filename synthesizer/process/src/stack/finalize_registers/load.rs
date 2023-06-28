@@ -19,7 +19,7 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
     ///
     /// # Errors
     /// This method will halt if the register locator is not found.
-    /// In the case of register members, this method will halt if the member is not found.
+    /// In the case of register accesses, this method will halt if the access is not found.
     #[inline]
     fn load(&self, stack: &(impl StackMatches<N> + StackProgram<N>), operand: &Operand<N>) -> Result<Value<N>> {
         // Retrieve the register.
@@ -44,12 +44,12 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
         let plaintext_value =
             self.registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
 
-        // Return the value for the given register or register member.
+        // Return the value for the given register or register access.
         let plaintext_value = match register {
             // If the register is a locator, then return the plaintext value.
             Register::Locator(..) => plaintext_value.clone(),
-            // If the register is a register member, then load the specific plaintext value.
-            Register::Member(_, ref path) => plaintext_value.find(path)?,
+            // If the register is a register access, then load the specific plaintext value.
+            Register::Access(_, ref path) => plaintext_value.find(path)?,
         };
 
         // Retrieve the type of the register.
