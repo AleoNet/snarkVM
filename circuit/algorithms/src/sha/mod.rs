@@ -13,10 +13,12 @@
 // limitations under the License.
 
 mod constants;
+use constants::*;
+
 mod hash;
 
 use crate::Hash;
-use snarkvm_circuit_types::prelude::*;
+use snarkvm_circuit_types::{integers::Integer, prelude::*, Environment, Inject, IntegerType, Mode};
 use std::borrow::Cow;
 
 /// Sha hash with a 256-bit output.
@@ -24,6 +26,5 @@ pub type Sha256<E> = Sha<E, 256>;
 
 #[derive(Clone)]
 pub struct Sha<E: Environment, const NUM_BITS: usize> {
-    /// Internal state of the hash function.
-    state: Vec<Boolean<E>>,
+    phantom: std::marker::PhantomData<E>,
 }

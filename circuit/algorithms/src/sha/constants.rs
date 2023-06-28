@@ -12,18 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_circuit_types::FromBits;
-use snarkvm_utilities::ToBits;
+use super::*;
+
+impl<E: Environment, const NUM_BITS: usize> Sha<E, NUM_BITS> {
+    #[inline]
+    pub(crate) fn schedule_array_size() -> usize {
+        match NUM_BITS {
+            256 => 64,
+            512 => 80,
+            _ => E::halt("Invalid hash size"),
+        }
+    }
+
+    pub(crate) fn constants<I: IntegerType>(integers: &[I]) -> Vec<Integer<E, I>> {
+        integers
+            .iter()
+            .map(|&x| Integer::<E, I>::new(Mode::Private, console::Integer::<E::Network, I>::new(x)))
+            .collect()
+    }
+}
 
 /// SHA-256 rotation constants.
-const ROT_256: [u32; 12] = [7, 18, 3, 17, 19, 10, 6, 11, 25, 2, 13, 22];
+pub(crate) const ROTATION_256: &[u8] = &[7, 18, 3, 17, 19, 10, 6, 11, 25, 2, 13, 22];
 
 /// Initial SHA-256 hash state.
-const H_256: [u32; 8] =
-    [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+pub(crate) const STATE_256: &[u32] =
+    &[0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
 
 /// SHA-256 round constants.
-pub const K_256: &[u32] = &[
+pub(crate) const ROUND_256: &[u32] = &[
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98,
     0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
     0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8,
@@ -35,10 +52,10 @@ pub const K_256: &[u32] = &[
 ];
 
 /// SHA-512 rotation constants.
-const ROT_512: [u32; 12] = [1, 8, 7, 19, 61, 6, 14, 18, 41, 28, 34, 39];
+pub(crate) const ROTATION_512: &[u8] = &[1, 8, 7, 19, 61, 6, 14, 18, 41, 28, 34, 39];
 
 /// Initial SHA-512 hash state.
-const H_512: [u64; 8] = [
+pub(crate) const STATE_512: &[u64] = &[
     0x6a09e667f3bcc908,
     0xbb67ae8584caa73b,
     0x3c6ef372fe94f82b,
@@ -50,7 +67,7 @@ const H_512: [u64; 8] = [
 ];
 
 /// SHA-512 round constants.
-pub const K_512: &[u64] = &[
+pub(crate) const ROUND_512: &[u64] = &[
     0x428a2f98d728ae22,
     0x7137449123ef65cd,
     0xb5c0fbcfec4d3b2f,
@@ -132,27 +149,3 @@ pub const K_512: &[u64] = &[
     0x5fcb6fab3ad6faec,
     0x6c44198c4a475817,
 ];
-
-pub(crate) fn sha256_rotation_constants<E: snarkvm_circuit_types::Environment>() -> Vec<snarkvm_circuit_types::U32<E>> {
-    R_256.iter().map(|&x| snarkvm_circuit_types::U32::from_bits_le(&x.to_bits_le())).collect()
-}
-
-pub(crate) fn sha512_rotation_constants<E: snarkvm_circuit_types::Environment>() -> Vec<snarkvm_circuit_types::U64<E>> {
-    R_512.iter().map(|&x| snarkvm_circuit_types::U64::from_bits_le(&x.to_bits_le())).collect()
-}
-
-pub(crate) fn sha256_initial_state<E: snarkvm_circuit_types::Environment>() -> Vec<snarkvm_circuit_types::U32<E>> {
-    H_256.iter().map(|&x| snarkvm_circuit_types::U32::from_bits_le(&x.to_bits_le())).collect()
-}
-
-pub(crate) fn sha256_round_constants<E: snarkvm_circuit_types::Environment>() -> Vec<snarkvm_circuit_types::U32<E>> {
-    K_256.iter().map(|&x| snarkvm_circuit_types::U32::from_bits_le(&x.to_bits_le())).collect()
-}
-
-pub(crate) fn sha512_initial_state<E: snarkvm_circuit_types::Environment>() -> Vec<snarkvm_circuit_types::U64<E>> {
-    H_512.iter().map(|&x| snarkvm_circuit_types::U64::from_bits_le(&x.to_bits_le())).collect()
-}
-
-pub(crate) fn sha512_round_constants<E: snarkvm_circuit_types::Environment>() -> Vec<snarkvm_circuit_types::U64<E>> {
-    K_512.iter().map(|&x| snarkvm_circuit_types::U64::from_bits_le(&x.to_bits_le())).collect()
-}
