@@ -308,11 +308,12 @@ macro_rules! impl_mobile_local {
                         "The parameter directory was not set".to_string(),
                     ));
                 }
-                let _filepath = format!("{}{}.usrs", dir.unwrap(), $fname);
+                let _filepath = format!("{}{}.{}", dir.unwrap(), $fname, $ftype);
+                eprintln!("==> _filepath {}", &_filepath);
                 let buffer = std::fs::read(_filepath)
                     .map_err(|_| {
                         $crate::errors::ParameterError::Message(
-                            "Failed to read usrs file".to_string(),
+                            format!("Failed to read {} file", $ftype),
                         )
                     })?;
 
