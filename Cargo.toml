@@ -62,7 +62,7 @@ members = [
   "curves",
   "fields",
   "ledger",
-  "narwhal",
+  "ledger/narwhal",
   "parameters",
   "synthesizer",
   "synthesizer/coinbase",
@@ -86,7 +86,6 @@ default = [
   "circuit",
   "console",
   "ledger",
-  "narwhal",
   "parameters",
   "synthesizer",
   "utilities",
@@ -99,7 +98,6 @@ full = [
   "curves",
   "fields",
   "ledger",
-  "narwhal",
   "parameters",
   "synthesizer",
   "utilities"
@@ -123,7 +121,6 @@ console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger" ]
-narwhal = [ "snarkvm-narwhal" ]
 parameters = [ "snarkvm-parameters" ]
 rocks = [ "snarkvm-synthesizer/rocks" ]
 synthesizer = [ "snarkvm-synthesizer" ]
@@ -159,11 +156,6 @@ optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
-version = "=0.12.6"
-optional = true
-
-[dependencies.snarkvm-narwhal]
-path = "./narwhal"
 version = "=0.12.6"
 optional = true
 

@@ -470,14 +470,14 @@ jobs:
           workspace_member: ledger
           cache_key: snarkvm-ledger-cache
 
-  narwhal:
+  ledger-narwhal:
     docker:
       - image: cimg/rust:1.69
     resource_class: 2xlarge
     steps:
       - run_serial:
-          workspace_member: narwhal
-          cache_key: snarkvm-narwhal-cache
+          workspace_member: ledger/narwhal
+          cache_key: snarkvm-ledger-narwhal-cache
 
   parameters:
     docker:
@@ -674,7 +674,7 @@ workflows:
       - curves
       - fields
       - ledger
-      - narwhal
+      - ledger-narwhal
       - parameters
       - synthesizer
       - synthesizer-integration
@@ -700,7 +700,6 @@ workflows:
                 curves,
                 fields,
                 ledger,
-                narwhal,
                 parameters,
                 synthesizer,
                 utilities,

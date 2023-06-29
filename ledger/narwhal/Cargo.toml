@@ -1,5 +1,5 @@
 [package]
-name = "snarkvm-narwhal"
+name = "snarkvm-ledger-narwhal"
 version = "0.12.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Data structures for a Narwhal-style memory pool in a decentralized virtual machine"
@@ -29,27 +29,27 @@ async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 
-batch = [ "batch-certificate", "indexmap", "transmission", "transmission-id" ]
-batch-certificate = [ "console", "indexmap", "serde_json" ]
+batch = [ "batch-certificate", "batch-header", "indexmap", "transmission", "transmission-id" ]
+batch-certificate = [ "batch-header", "console", "indexmap", "serde_json" ]
 batch-header = [ "console", "indexmap", "transmission-id" ]
 transmission = [ "bytes", "synthesizer" ]
 transmission-id = [ "console", "synthesizer-coinbase" ]
 
 [dependencies.console]
 package = "snarkvm-console"
-path = "../console"
+path = "../../console"
 version = "=0.12.6"
 optional = true
 
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
-path = "../synthesizer"
+path = "../../synthesizer"
 version = "=0.12.6"
 optional = true
 
 [dependencies.synthesizer-coinbase]
 package = "snarkvm-synthesizer-coinbase"
-path = "../synthesizer/coinbase"
+path = "../../synthesizer/coinbase"
 version = "=0.12.6"
 optional = true
 

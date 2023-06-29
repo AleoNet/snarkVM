@@ -2478,7 +2478,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-ledger",
- "snarkvm-narwhal",
  "snarkvm-parameters",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
@@ -2980,7 +2979,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-narwhal"
+name = "snarkvm-ledger-narwhal"
 version = "0.12.6"
 dependencies = [
  "bincode",
