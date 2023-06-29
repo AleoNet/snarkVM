@@ -23,8 +23,8 @@ pub use query::*;
 
 use crate::{
     block::{Execution, Fee, Input, Transition},
+    process::QueryTrait,
     snark::{Proof, ProvingKey, VerifyingKey},
-    store::BlockStorage,
 };
 use circuit::Assignment;
 use console::{
@@ -120,7 +120,7 @@ impl<N: Network> Trace<N> {
     }
 
     /// Returns the inclusion assignments and global state root for the current transition(s).
-    pub fn prepare<B: BlockStorage<N>, Q: Into<Query<N, B>>>(&mut self, query: Q) -> Result<()> {
+    pub fn prepare(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
         let (inclusion_assignments, global_state_root) = match self.is_fee() {
             true => self.inclusion_tasks.prepare_fee(&self.transitions[0], query)?,
@@ -135,7 +135,7 @@ impl<N: Network> Trace<N> {
     }
 
     /// Returns the inclusion assignments and global state root for the current transition(s).
-    pub async fn prepare_async<B: BlockStorage<N>, Q: Into<Query<N, B>>>(&mut self, query: Q) -> Result<()> {
+    pub async fn prepare_async(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
         let (inclusion_assignments, global_state_root) = match self.is_fee() {
             true => self.inclusion_tasks.prepare_fee_async(&self.transitions[0], query).await?,

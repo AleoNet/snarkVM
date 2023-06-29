@@ -20,6 +20,8 @@
 #![allow(clippy::type_complexity)]
 
 #[macro_use]
+extern crate async_trait;
+#[macro_use]
 extern crate tracing;
 
 #[cfg(feature = "coinbase")]

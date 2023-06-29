@@ -406,7 +406,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Initialize a new block store.
-                let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+                let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
 
                 // Construct the process.
                 let process = sample_process(&program);
@@ -426,7 +426,7 @@ function compute:
                 assert_eq!(trace.transitions().len(), 1);
 
                 // Prepare the trace.
-                trace.prepare(&block_store).unwrap();
+                trace.prepare(Query::from(block_store)).unwrap();
                 // Compute the execution.
                 trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap()
             })

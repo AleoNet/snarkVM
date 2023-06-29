@@ -19,8 +19,7 @@ mod fee;
 use crate::Stack;
 use crate::{
     block::{Input, Output, Transaction, Transition},
-    process::Query,
-    store::BlockStorage,
+    process::QueryTrait,
 };
 use console::{
     network::prelude::*,

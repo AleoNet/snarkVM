@@ -78,22 +78,20 @@ macro_rules! prepare_fee_impl {
 
 impl<N: Network> Inclusion<N> {
     /// Returns the inclusion assignments for the given fee transition.
-    pub fn prepare_fee<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+    pub fn prepare_fee(
         &self,
         fee_transition: &Transition<N>,
-        query: Q,
+        query: impl QueryTrait<N>,
     ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
-        let query = query.into();
         prepare_fee_impl!(self, fee_transition, query, get_state_path_for_commitment)
     }
 
     /// Returns the inclusion assignments for the given fee transition.
-    pub async fn prepare_fee_async<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+    pub async fn prepare_fee_async(
         &self,
         fee_transition: &Transition<N>,
-        query: Q,
+        query: impl QueryTrait<N>,
     ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
-        let query = query.into();
         prepare_fee_impl!(self, fee_transition, query, get_state_path_for_commitment_async, await)
     }
 }

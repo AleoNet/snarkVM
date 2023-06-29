@@ -1181,7 +1181,7 @@ finalize compute:
     let mut process = Process::load().unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Initialize a new finalize store.
     let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
@@ -1224,7 +1224,7 @@ finalize compute:
     assert_eq!(0, candidate.len());
 
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -1291,7 +1291,7 @@ finalize compute:
     let mut process = Process::load().unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Initialize a new finalize store.
     let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
@@ -1334,7 +1334,7 @@ finalize compute:
     assert_eq!(0, candidate.len());
 
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -1415,7 +1415,7 @@ finalize mint_public:
     let mut process = Process::load().unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Initialize a new finalize store.
     let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
@@ -1462,7 +1462,7 @@ finalize mint_public:
     assert_eq!(0, candidate.len());
 
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -1541,7 +1541,7 @@ finalize mint_public:
     let mut process = Process::load().unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Initialize a new finalize store.
     let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
@@ -1611,7 +1611,7 @@ function mint:
     assert_eq!(0, candidate.len());
 
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -1680,7 +1680,7 @@ finalize compute:
     let mut process = Process::load().unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Initialize a new finalize store.
     let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
@@ -1723,7 +1723,7 @@ finalize compute:
     assert_eq!(0, candidate.len());
 
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -1851,9 +1851,9 @@ function a:
     }
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -2038,9 +2038,9 @@ fn test_complex_execution_order() {
     }
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -2106,7 +2106,7 @@ finalize compute:
     let mut process = Process::load().unwrap();
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Initialize a new finalize store.
     let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
@@ -2148,7 +2148,7 @@ finalize compute:
     assert_eq!(0, candidate.len());
 
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 

@@ -100,22 +100,20 @@ macro_rules! prepare_execution_impl {
 
 impl<N: Network> Inclusion<N> {
     /// Returns the inclusion assignments for the given transitions.
-    pub fn prepare_execution<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+    pub fn prepare_execution(
         &self,
         transitions: &[Transition<N>],
-        query: Q,
+        query: impl QueryTrait<N>,
     ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
-        let query = query.into();
         prepare_execution_impl!(self, transitions, query, current_state_root, get_state_path_for_commitment)
     }
 
     /// Returns the inclusion assignments for the given transitions.
-    pub async fn prepare_execution_async<B: BlockStorage<N>, Q: Into<Query<N, B>>>(
+    pub async fn prepare_execution_async(
         &self,
         transitions: &[Transition<N>],
-        query: Q,
+        query: impl QueryTrait<N>,
     ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
-        let query = query.into();
         prepare_execution_impl!(self, transitions, query, current_state_root_async, get_state_path_for_commitment_async, await)
     }
 }

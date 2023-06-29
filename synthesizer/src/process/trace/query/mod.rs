@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{BlockStorage, BlockStore, Program};
+use crate::{BlockStorage, BlockStore, Program, QueryTrait};
 use console::{
     network::prelude::*,
     program::{ProgramID, StatePath},
@@ -57,6 +57,55 @@ impl<N: Network, B: BlockStorage<N>> From<&str> for Query<N, B> {
     }
 }
 
+#[async_trait]
+impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
+    /// Returns the current state root.
+    fn current_state_root(&self) -> Result<N::StateRoot> {
+        match self {
+            Self::VM(block_store) => Ok(block_store.current_state_root()),
+            Self::REST(url) => match N::ID {
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
+        }
+    }
+
+    /// Returns the current state root.
+    async fn current_state_root_async(&self) -> Result<N::StateRoot> {
+        match self {
+            Self::VM(block_store) => Ok(block_store.current_state_root()),
+            Self::REST(url) => match N::ID {
+                3 => Ok(Self::get_request_async(&format!("{url}/testnet3/latest/stateRoot")).await?.json().await?),
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
+        }
+    }
+
+    /// Returns a state path for the given `commitment`.
+    fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+        match self {
+            Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            Self::REST(url) => match N::ID {
+                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
+        }
+    }
+
+    /// Returns a state path for the given `commitment`.
+    async fn get_state_path_for_commitment_async(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+        match self {
+            Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
+            Self::REST(url) => match N::ID {
+                3 => {
+                    Ok(Self::get_request_async(&format!("{url}/testnet3/statePath/{commitment}")).await?.json().await?)
+                }
+                _ => bail!("Unsupported network ID in inclusion query"),
+            },
+        }
+    }
+}
+
 impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     /// Returns the program for the given program ID.
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<Program<N>> {
@@ -79,52 +128,6 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
             }
             Self::REST(url) => match N::ID {
                 3 => Ok(Self::get_request_async(&format!("{url}/testnet3/program/{program_id}")).await?.json().await?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
-        }
-    }
-
-    /// Returns the current state root.
-    pub fn current_state_root(&self) -> Result<N::StateRoot> {
-        match self {
-            Self::VM(block_store) => Ok(block_store.current_state_root()),
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/latest/stateRoot"))?.into_json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
-        }
-    }
-
-    /// Returns the current state root.
-    pub async fn current_state_root_async(&self) -> Result<N::StateRoot> {
-        match self {
-            Self::VM(block_store) => Ok(block_store.current_state_root()),
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request_async(&format!("{url}/testnet3/latest/stateRoot")).await?.json().await?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
-        }
-    }
-
-    /// Returns a state path for the given `commitment`.
-    pub fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        match self {
-            Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
-            Self::REST(url) => match N::ID {
-                3 => Ok(Self::get_request(&format!("{url}/testnet3/statePath/{commitment}"))?.into_json()?),
-                _ => bail!("Unsupported network ID in inclusion query"),
-            },
-        }
-    }
-
-    /// Returns a state path for the given `commitment`.
-    pub async fn get_state_path_for_commitment_async(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        match self {
-            Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
-            Self::REST(url) => match N::ID {
-                3 => {
-                    Ok(Self::get_request_async(&format!("{url}/testnet3/statePath/{commitment}")).await?.json().await?)
-                }
                 _ => bail!("Unsupported network ID in inclusion query"),
             },
         }

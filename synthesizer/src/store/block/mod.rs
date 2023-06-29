@@ -973,6 +973,8 @@ mod tests {
     use super::*;
     use crate::store::helpers::memory::BlockMemory;
 
+    type CurrentNetwork = console::network::Testnet3;
+
     #[test]
     fn test_insert_get_remove() {
         let mut rng = TestRng::default();
@@ -982,7 +984,7 @@ mod tests {
         let block_hash = block.hash();
 
         // Initialize a new block store.
-        let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
 
         // Ensure the block does not exist.
         let candidate = block_store.get_block(&block_hash).unwrap();
@@ -1013,7 +1015,7 @@ mod tests {
         assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
 
         // Initialize a new block store.
-        let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
 
         // Ensure the block does not exist.
         let candidate = block_store.get_block(&block_hash).unwrap();
