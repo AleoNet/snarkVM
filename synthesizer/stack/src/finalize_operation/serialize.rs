@@ -14,8 +14,6 @@
 
 use super::*;
 
-use snarkvm_utilities::DeserializeExt;
-
 impl<N: Network> Serialize for FinalizeOperation<N> {
     /// Serializes the finalize operations to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -157,14 +155,14 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        for finalize in crate::block::transactions::finalize_operation::test_helpers::sample_finalize_operations() {
+        for finalize in crate::finalize_operation::test_helpers::sample_finalize_operations() {
             check_serde_json(finalize);
         }
     }
 
     #[test]
     fn test_bincode() {
-        for finalize in crate::block::transactions::finalize_operation::test_helpers::sample_finalize_operations() {
+        for finalize in crate::finalize_operation::test_helpers::sample_finalize_operations() {
             check_bincode(finalize);
         }
     }

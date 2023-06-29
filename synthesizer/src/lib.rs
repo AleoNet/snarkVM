@@ -30,6 +30,8 @@ pub use snarkvm_synthesizer_coinbase as coinbase;
 pub use snarkvm_synthesizer_program as program;
 #[cfg(feature = "snark")]
 pub use snarkvm_synthesizer_snark as snark;
+#[cfg(feature = "stack")]
+pub use snarkvm_synthesizer_stack as stack;
 
 pub mod block;
 pub use block::*;

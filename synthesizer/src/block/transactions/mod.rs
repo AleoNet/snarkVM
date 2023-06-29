@@ -15,15 +15,15 @@
 pub mod confirmed;
 pub use confirmed::*;
 
-mod finalize_operation;
-pub use finalize_operation::*;
-
 mod bytes;
 mod merkle;
 mod serialize;
 mod string;
 
-use crate::block::{Transaction, Transition};
+use crate::{
+    block::{Transaction, Transition},
+    stack::FinalizeOperation,
+};
 use console::{
     network::prelude::*,
     program::{Ciphertext, Record, TransactionsPath, TransactionsTree, FINALIZE_OPERATIONS_DEPTH, TRANSACTIONS_DEPTH},

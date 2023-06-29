@@ -40,9 +40,9 @@ mod set;
 pub use set::*;
 
 use crate::{
-    process::{FinalizeOperation, FinalizeRegisters, Instruction, Stack},
+    process::{FinalizeRegisters, Instruction, Stack},
     program::{CommandTrait, InstructionTrait},
-    stack::FinalizeStoreTrait,
+    stack::{FinalizeOperation, FinalizeStoreTrait},
 };
 use console::{
     network::prelude::*,

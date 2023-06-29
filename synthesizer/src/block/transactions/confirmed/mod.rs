@@ -16,7 +16,10 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::block::{Deployment, Execution, FinalizeOperation, Transaction};
+use crate::{
+    block::{Deployment, Execution, Transaction},
+    stack::FinalizeOperation,
+};
 use console::network::prelude::*;
 
 pub type NumFinalizeSize = u16;

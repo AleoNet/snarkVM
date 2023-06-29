@@ -12,16 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
-#![warn(clippy::cast_possible_truncation)]
-#![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
-
-// mod stack;
-// pub use stack::*;
-
-mod finalize_operation;
-pub use finalize_operation::*;
-
-mod traits;
-pub use traits::*;
+mod finalize_store;
+pub use finalize_store::*;

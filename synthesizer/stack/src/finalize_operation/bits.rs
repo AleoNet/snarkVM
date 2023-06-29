@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_bits_le() {
-        for expected in crate::block::transactions::finalize_operation::test_helpers::sample_finalize_operations() {
+        for expected in crate::finalize_operation::test_helpers::sample_finalize_operations() {
             // Check the bit representation.
             let expected_bits = expected.to_bits_le();
             assert_eq!(expected, FinalizeOperation::from_bits_le(&expected_bits[..]).unwrap());
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_bits_be() {
-        for expected in crate::block::transactions::finalize_operation::test_helpers::sample_finalize_operations() {
+        for expected in crate::finalize_operation::test_helpers::sample_finalize_operations() {
             // Check the bit representation.
             let expected_bits = expected.to_bits_be();
             assert_eq!(expected, FinalizeOperation::from_bits_be(&expected_bits[..]).unwrap());

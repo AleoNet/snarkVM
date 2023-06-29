@@ -13,9 +13,8 @@
 // limitations under the License.
 
 use crate::{
-    block::FinalizeOperation,
     process::{Opcode, RegistersLoad, Stack, StackProgram},
-    stack::FinalizeStoreTrait,
+    stack::{FinalizeOperation, FinalizeStoreTrait},
 };
 use console::{network::prelude::*, program::Identifier};
 use snarkvm_synthesizer_program::Operand;

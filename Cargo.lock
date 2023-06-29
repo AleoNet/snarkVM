@@ -3053,6 +3053,7 @@ dependencies = [
  "snarkvm-synthesizer-coinbase",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+ "snarkvm-synthesizer-stack",
  "snarkvm-utilities",
  "tempfile",
  "tracing",
@@ -3111,9 +3112,7 @@ version = "0.12.6"
 dependencies = [
  "bincode",
  "colored",
- "once_cell",
  "serde_json",
- "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
 ]

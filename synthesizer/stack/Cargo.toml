@@ -26,9 +26,8 @@ edition = "2021"
 [features]
 default = [ ]
 aleo-cli = [ "colored" ]
-cuda = [ "snarkvm-algorithms/cuda" ]
-serial = [ "console/serial", "snarkvm-algorithms/serial" ]
-wasm = [ "console/wasm", "snarkvm-algorithms/wasm" ]
+serial = [ "console/serial" ]
+wasm = [ "console/wasm" ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
@@ -39,29 +38,14 @@ version = "=0.12.6"
 package = "snarkvm-console"
 path = "../../console"
 version = "=0.12.6"
-default-features = false
-features = [ "network" ]
-
-[dependencies.snarkvm-algorithms]
-path = "../../algorithms"
-version = "=0.12.6"
-
-[dependencies.bincode]
-version = "1"
 
 [dependencies.colored]
 version = "2"
 optional = true
 
-[dependencies.once_cell]
-version = "1.18"
-
 [dependencies.serde_json]
 version = "1.0"
 features = [ "preserve_order" ]
 
-[dev-dependencies.console]
-package = "snarkvm-console"
-path = "../../console"
-default-features = false
-features = [ "types" ]
+[dev-dependencies.bincode]
+version = "1"

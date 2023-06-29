@@ -18,7 +18,7 @@ pub use command::*;
 mod instruction;
 pub use instruction::*;
 
-pub mod stack;
+mod stack;
 pub use stack::*;
 
 mod trace;
@@ -42,7 +42,8 @@ mod tests;
 
 use crate::{
     atomic_batch_scope,
-    block::{Deployment, Execution, Fee, FinalizeOperation, Input, Transition},
+    block::{Deployment, Execution, Fee, Input, Transition},
+    stack::FinalizeOperation,
     store::{FinalizeStorage, FinalizeStore},
 };
 use console::{

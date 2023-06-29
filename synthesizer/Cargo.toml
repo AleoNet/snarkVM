@@ -34,7 +34,7 @@ path = "benches/transaction.rs"
 harness = false
 
 [features]
-default = [ "coinbase", "program", "snark" ]
+default = [ "coinbase", "program", "snark", "stack" ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 rocks = [ "rocksdb" ]
@@ -65,6 +65,7 @@ wasm = [
 coinbase = [ "snarkvm-synthesizer-coinbase" ]
 program = [ "snarkvm-synthesizer-program" ]
 snark = [ "snarkvm-synthesizer-snark" ]
+stack = [ "snarkvm-synthesizer-stack" ]
 
 [dependencies.snarkvm-synthesizer-coinbase]
 path = "./coinbase"
@@ -78,6 +79,11 @@ optional = true
 
 [dependencies.snarkvm-synthesizer-snark]
 path = "./snark"
+version = "=0.12.6"
+optional = true
+
+[dependencies.snarkvm-synthesizer-stack]
+path = "./stack"
 version = "=0.12.6"
 optional = true
 
