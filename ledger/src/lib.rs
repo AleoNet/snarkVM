@@ -17,6 +17,8 @@
 #[macro_use]
 extern crate tracing;
 
+pub use snarkvm_ledger_narwhal as narwhal;
+
 mod helpers;
 pub use helpers::*;
 

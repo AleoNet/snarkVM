@@ -26,6 +26,10 @@ package = "snarkvm-console"
 path = "../console"
 version = "=0.12.6"
 
+[dependencies.snarkvm-ledger-narwhal]
+path = "./narwhal"
+version = "=0.12.6"
+
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
 path = "../synthesizer"

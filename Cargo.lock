@@ -2973,6 +2973,7 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "snarkvm-console",
+ "snarkvm-ledger-narwhal",
  "snarkvm-synthesizer",
  "time",
  "tracing",
