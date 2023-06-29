@@ -31,6 +31,7 @@ use crate::{
     process,
     process::{Authorization, FinalizeGlobalState, Process, Program, Trace},
     query::Query,
+    stack::FinalizeStoreTrait,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     TransactionStorage,
 };

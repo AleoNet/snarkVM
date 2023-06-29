@@ -15,7 +15,7 @@
 use crate::{
     block::FinalizeOperation,
     process::{Opcode, RegistersLoad, Stack, StackProgram},
-    store::{FinalizeStorage, FinalizeStore},
+    stack::FinalizeStoreTrait,
 };
 use console::{network::prelude::*, program::Identifier};
 use snarkvm_synthesizer_program::Operand;
@@ -59,10 +59,10 @@ impl<N: Network> Remove<N> {
 impl<N: Network> Remove<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: FinalizeStorage<N>>(
+    pub fn finalize(
         &self,
         stack: &Stack<N>,
-        store: &FinalizeStore<N, P>,
+        store: &impl FinalizeStoreTrait<N>,
         registers: &mut impl RegistersLoad<N>,
     ) -> Result<FinalizeOperation<N>> {
         // Ensure the mapping exists in storage.

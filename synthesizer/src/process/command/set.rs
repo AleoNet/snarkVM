@@ -15,7 +15,7 @@
 use crate::{
     block::FinalizeOperation,
     process::{Opcode, RegistersLoad, Stack, StackProgram},
-    store::{FinalizeStorage, FinalizeStore},
+    stack::FinalizeStoreTrait,
 };
 use console::{
     network::prelude::*,
@@ -70,10 +70,10 @@ impl<N: Network> Set<N> {
 impl<N: Network> Set<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: FinalizeStorage<N>>(
+    pub fn finalize(
         &self,
         stack: &Stack<N>,
-        store: &FinalizeStore<N, P>,
+        store: &impl FinalizeStoreTrait<N>,
         registers: &mut impl RegistersLoad<N>,
     ) -> Result<FinalizeOperation<N>> {
         // Ensure the mapping exists in storage.

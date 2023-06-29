@@ -17,6 +17,7 @@ use crate::{
     block::FinalizeOperation,
     cow_to_cloned,
     cow_to_copied,
+    stack::FinalizeStoreTrait,
     store::helpers::{Map, MapRead},
 };
 use console::{
@@ -640,69 +641,6 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         Ok(Self { storage, _phantom: PhantomData })
     }
 
-    /// Initializes the given `program ID` and `mapping name` in storage.
-    /// If the `mapping name` is already initialized, an error is returned.
-    pub fn initialize_mapping(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-    ) -> Result<FinalizeOperation<N>> {
-        self.storage.initialize_mapping(program_id, mapping_name)
-    }
-
-    /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
-    /// If the `mapping name` is not initialized, an error is returned.
-    /// If the `key` already exists, the method returns an error.
-    pub fn insert_key_value(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-        key: Plaintext<N>,
-        value: Value<N>,
-    ) -> Result<FinalizeOperation<N>> {
-        self.storage.insert_key_value(program_id, mapping_name, key, value)
-    }
-
-    /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
-    /// If the `mapping name` is not initialized, an error is returned.
-    /// If the `key` does not exist, the `(key, value)` pair is initialized.
-    /// If the `key` already exists, the `value` is overwritten.
-    pub fn update_key_value(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-        key: Plaintext<N>,
-        value: Value<N>,
-    ) -> Result<FinalizeOperation<N>> {
-        self.storage.update_key_value(program_id, mapping_name, key, value)
-    }
-
-    /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
-    pub fn remove_key_value(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-        key: &Plaintext<N>,
-    ) -> Result<FinalizeOperation<N>> {
-        self.storage.remove_key_value(program_id, mapping_name, key)
-    }
-
-    /// Removes the mapping for the given `program ID` and `mapping name` from storage,
-    /// along with all associated key-value pairs in storage.
-    pub fn remove_mapping(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-    ) -> Result<FinalizeOperation<N>> {
-        self.storage.remove_mapping(program_id, mapping_name)
-    }
-
-    /// Removes the program for the given `program ID` from storage,
-    /// along with all associated mappings and key-value pairs in storage.
-    pub fn remove_program(&self, program_id: &ProgramID<N>) -> Result<()> {
-        self.storage.remove_program(program_id)
-    }
-
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
@@ -744,15 +682,102 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     }
 }
 
+impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<N, P> {
+    /// Returns `true` if the given `program ID` and `mapping name` exist.
+    fn contains_mapping_confirmed(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<bool> {
+        self.storage.contains_mapping_confirmed(program_id, mapping_name)
+    }
+
+    /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
+    fn contains_key_speculative(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<bool> {
+        self.storage.contains_key_speculative(program_id, mapping_name, key)
+    }
+
+    /// Returns the speculative value for the given `program ID`, `mapping name`, and `key`.
+    fn get_value_speculative(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<Option<Value<N>>> {
+        self.storage.get_value_speculative(program_id, mapping_name, key)
+    }
+
+    /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
+    /// If the `mapping name` is not initialized, an error is returned.
+    /// If the `key` already exists, the method returns an error.
+    fn insert_key_value(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: Plaintext<N>,
+        value: Value<N>,
+    ) -> Result<FinalizeOperation<N>> {
+        self.storage.insert_key_value(program_id, mapping_name, key, value)
+    }
+
+    /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
+    /// If the `mapping name` is not initialized, an error is returned.
+    /// If the `key` does not exist, the `(key, value)` pair is initialized.
+    /// If the `key` already exists, the `value` is overwritten.
+    fn update_key_value(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: Plaintext<N>,
+        value: Value<N>,
+    ) -> Result<FinalizeOperation<N>> {
+        self.storage.update_key_value(program_id, mapping_name, key, value)
+    }
+
+    /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
+    fn remove_key_value(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<FinalizeOperation<N>> {
+        self.storage.remove_key_value(program_id, mapping_name, key)
+    }
+}
+
+impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
+    /// Initializes the given `program ID` and `mapping name` in storage.
+    /// If the `mapping name` is already initialized, an error is returned.
+    pub fn initialize_mapping(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<FinalizeOperation<N>> {
+        self.storage.initialize_mapping(program_id, mapping_name)
+    }
+
+    /// Removes the mapping for the given `program ID` and `mapping name` from storage,
+    /// along with all associated key-value pairs in storage.
+    pub fn remove_mapping(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<FinalizeOperation<N>> {
+        self.storage.remove_mapping(program_id, mapping_name)
+    }
+
+    /// Removes the program for the given `program ID` from storage,
+    /// along with all associated mappings and key-value pairs in storage.
+    pub fn remove_program(&self, program_id: &ProgramID<N>) -> Result<()> {
+        self.storage.remove_program(program_id)
+    }
+}
+
 impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Returns `true` if the given `program ID` exist.
     pub fn contains_program_confirmed(&self, program_id: &ProgramID<N>) -> Result<bool> {
         self.storage.contains_program_confirmed(program_id)
-    }
-
-    /// Returns `true` if the given `program ID` and `mapping name` exist.
-    pub fn contains_mapping_confirmed(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<bool> {
-        self.storage.contains_mapping_confirmed(program_id, mapping_name)
     }
 
     /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
@@ -763,16 +788,6 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         key: &Plaintext<N>,
     ) -> Result<bool> {
         self.storage.contains_key_confirmed(program_id, mapping_name, key)
-    }
-
-    /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
-    pub fn contains_key_speculative(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-        key: &Plaintext<N>,
-    ) -> Result<bool> {
-        self.storage.contains_key_speculative(program_id, mapping_name, key)
     }
 }
 
@@ -796,16 +811,6 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         key: &Plaintext<N>,
     ) -> Result<Option<Value<N>>> {
         self.storage.get_value_confirmed(program_id, mapping_name, key)
-    }
-
-    /// Returns the speculative value for the given `program ID`, `mapping name`, and `key`.
-    pub fn get_value_speculative(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-        key: &Plaintext<N>,
-    ) -> Result<Option<Value<N>>> {
-        self.storage.get_value_speculative(program_id, mapping_name, key)
     }
 }
 

@@ -18,7 +18,7 @@ pub use command::*;
 mod instruction;
 pub use instruction::*;
 
-mod stack;
+pub mod stack;
 pub use stack::*;
 
 mod trace;

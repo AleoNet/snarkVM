@@ -42,7 +42,7 @@ pub use set::*;
 use crate::{
     process::{FinalizeOperation, FinalizeRegisters, Instruction, Stack},
     program::{CommandTrait, InstructionTrait},
-    store::{FinalizeStorage, FinalizeStore},
+    stack::FinalizeStoreTrait,
 };
 use console::{
     network::prelude::*,
@@ -136,10 +136,10 @@ impl<N: Network> CommandTrait<N> for Command<N> {
 impl<N: Network> Command<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize<P: FinalizeStorage<N>>(
+    pub fn finalize(
         &self,
         stack: &Stack<N>,
-        store: &FinalizeStore<N, P>,
+        store: &impl FinalizeStoreTrait<N>,
         registers: &mut FinalizeRegisters<N>,
     ) -> Result<Option<FinalizeOperation<N>>> {
         match self {
@@ -152,7 +152,7 @@ impl<N: Network> Command<N> {
             // Finalize the 'get.or_use' command, and return no finalize operation.
             Command::GetOrUse(get_or_use) => get_or_use.finalize(stack, store, registers).map(|_| None),
             // Finalize the `rand.chacha` command, and return no finalize operation.
-            Command::RandChaCha(rand_chacha) => rand_chacha.finalize(stack, store, registers).map(|_| None),
+            Command::RandChaCha(rand_chacha) => rand_chacha.finalize(stack, registers).map(|_| None),
             // Finalize the 'remove' command, and return the finalize operation.
             Command::Remove(remove) => remove.finalize(stack, store, registers).map(Some),
             // Finalize the 'set' command, and return the finalize operation.
