@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    block::Header,
+    block::{Header, Ratify},
     store::{
         helpers::rocksdb::{
             internal::{self, DataMap, Database},
@@ -50,10 +50,12 @@ pub struct BlockDB<N: Network> {
     confirmed_transactions_map: DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionDB<N>>,
+    /// The ratifications map.
+    ratifications_map: DataMap<N::BlockHash, Vec<Ratify<N>>>,
     /// The coinbase solution map.
     coinbase_solution_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
-    coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, N::BlockHash>,
+    coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, u32>,
     /// The signature map.
     signature_map: DataMap<N::BlockHash, Signature<N>>,
 }
@@ -69,8 +71,9 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionDB<N>;
     type TransitionStorage = TransitionDB<N>;
+    type RatificationsMap = DataMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
-    type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, N::BlockHash>;
+    type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, u32>;
     type SignatureMap = DataMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
@@ -89,6 +92,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
             confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
             transaction_store,
+            ratifications_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Ratifications))?,
             coinbase_solution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbaseSolution))?,
             coinbase_puzzle_commitment_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,
             signature_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Signature))?,
@@ -133,6 +137,11 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage> {
         &self.transaction_store
+    }
+
+    /// Returns the ratifications map.
+    fn ratifications_map(&self) -> &Self::RatificationsMap {
+        &self.ratifications_map
     }
 
     /// Returns the coinbase solution map.

@@ -195,14 +195,29 @@ impl<N: Network> Transactions<N> {
         self.iter().flat_map(|tx| tx.transition_public_keys())
     }
 
+    /// Returns an iterator over the transition commitments, for all transactions.
+    pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.iter().flat_map(|tx| tx.transition_commitments())
+    }
+
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.iter().flat_map(|tx| tx.tags())
     }
 
+    /// Returns an iterator over the input IDs, for all transition inputs that are records.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.iter().flat_map(|tx| tx.input_ids())
+    }
+
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.iter().flat_map(|tx| tx.serial_numbers())
+    }
+
+    /// Returns an iterator over the output IDs, for all transition inputs that are records.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.iter().flat_map(|tx| tx.output_ids())
     }
 
     /// Returns an iterator over the commitments, for all transition outputs that are records.

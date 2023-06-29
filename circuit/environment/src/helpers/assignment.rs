@@ -141,16 +141,16 @@ impl<F: PrimeField> Assignment<F> {
     }
 }
 
-impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
-    /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
-    fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
+impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assignment<F> {
+    /// Synthesizes the constraints from the environment into a `snarkvm_algorithms::r1cs`-compliant constraint system.
+    fn generate_constraints<CS: snarkvm_algorithms::r1cs::ConstraintSystem<F>>(
         &self,
         cs: &mut CS,
-    ) -> Result<(), snarkvm_r1cs::SynthesisError> {
+    ) -> Result<(), snarkvm_algorithms::r1cs::SynthesisError> {
         /// A struct for tracking the mapping of variables from the virtual machine (first) to the gadget constraint system (second).
         struct Converter {
-            public: IndexMap<u64, snarkvm_r1cs::Variable>,
-            private: IndexMap<u64, snarkvm_r1cs::Variable>,
+            public: IndexMap<u64, snarkvm_algorithms::r1cs::Variable>,
+            private: IndexMap<u64, snarkvm_algorithms::r1cs::Variable>,
         }
 
         let mut converter = Converter { public: Default::default(), private: Default::default() };
@@ -167,7 +167,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
             let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(*value))?;
 
             assert_eq!(
-                snarkvm_r1cs::Index::Public((index + 1) as usize),
+                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
                 gadget.get_unchecked(),
                 "Public variables in the second system must match the first system (with an off-by-1 for the public case)"
             );
@@ -184,7 +184,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
             let gadget = cs.alloc(|| format!("Private {i}"), || Ok(*value))?;
 
             assert_eq!(
-                snarkvm_r1cs::Index::Private(i),
+                snarkvm_algorithms::r1cs::Index::Private(i),
                 gadget.get_unchecked(),
                 "Private variables in the second system must match the first system"
             );
@@ -197,9 +197,9 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
         // Enforce all of the constraints.
         for (i, (a, b, c)) in self.constraints.iter().enumerate() {
             // Converts terms from one linear combination in the first system to the second system.
-            let convert_linear_combination = |lc: &AssignmentLC<F>| -> snarkvm_r1cs::LinearCombination<F> {
+            let convert_linear_combination = |lc: &AssignmentLC<F>| -> snarkvm_algorithms::r1cs::LinearCombination<F> {
                 // Initialize a linear combination for the second system.
-                let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
+                let mut linear_combination = snarkvm_algorithms::r1cs::LinearCombination::<F>::zero();
 
                 // Process every term in the linear combination.
                 for (variable, coefficient) in lc.terms.iter() {
@@ -212,7 +212,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                         AssignmentVariable::Public(index) => {
                             let gadget = converter.public.get(index).unwrap();
                             assert_eq!(
-                                snarkvm_r1cs::Index::Public((index + 1) as usize),
+                                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
                                 gadget.get_unchecked(),
                                 "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
                             );
@@ -221,7 +221,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                         AssignmentVariable::Private(index) => {
                             let gadget = converter.private.get(index).unwrap();
                             assert_eq!(
-                                snarkvm_r1cs::Index::Private(*index as usize),
+                                snarkvm_algorithms::r1cs::Index::Private(*index as usize),
                                 gadget.get_unchecked(),
                                 "Failed during constraint translation. The private variable in the second system must match the first system"
                             );
@@ -232,8 +232,10 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
 
                 // Finally, add the accumulated constant value to the linear combination.
                 if !lc.constant.is_zero() {
-                    linear_combination +=
-                        (lc.constant, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                    linear_combination += (
+                        lc.constant,
+                        snarkvm_algorithms::r1cs::Variable::new_unchecked(snarkvm_algorithms::r1cs::Index::Public(0)),
+                    );
                 }
 
                 // Return the linear combination of the second system.
@@ -259,10 +261,9 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_algorithms::{AlgebraicSponge, SNARK};
+    use snarkvm_algorithms::{r1cs::ConstraintSynthesizer, AlgebraicSponge, SNARK};
     use snarkvm_circuit::prelude::*;
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_r1cs::ConstraintSynthesizer;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
@@ -297,10 +298,10 @@ mod tests {
         assert_eq!(0, Circuit::num_private());
         assert_eq!(0, Circuit::num_constraints());
 
-        let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
+        let mut cs = snarkvm_algorithms::r1cs::TestConstraintSystem::new();
         assignment.generate_constraints(&mut cs).unwrap();
         {
-            use snarkvm_r1cs::ConstraintSystem;
+            use snarkvm_algorithms::r1cs::ConstraintSystem;
             assert_eq!(assignment.num_public() + 1, cs.num_public_variables() as u64);
             assert_eq!(assignment.num_private(), cs.num_private_variables() as u64);
             assert_eq!(assignment.num_constraints(), cs.num_constraints() as u64);

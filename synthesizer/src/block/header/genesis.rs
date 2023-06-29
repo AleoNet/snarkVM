@@ -21,11 +21,19 @@ impl<N: Network> Header<N> {
         let previous_state_root = Field::zero();
         let transactions_root = transactions.to_transactions_root()?;
         let finalize_root = transactions.to_finalize_root()?;
+        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root();
         let coinbase_accumulator_point = Field::zero();
         let metadata = Metadata::genesis()?;
 
         // Return the genesis block header.
-        Self::from(previous_state_root, transactions_root, finalize_root, coinbase_accumulator_point, metadata)
+        Self::from(
+            previous_state_root,
+            transactions_root,
+            finalize_root,
+            ratifications_root,
+            coinbase_accumulator_point,
+            metadata,
+        )
     }
 
     /// Returns `true` if the block header is a genesis block header.
@@ -36,6 +44,8 @@ impl<N: Network> Header<N> {
             && self.transactions_root != Field::zero()
             // Ensure the finalize root is nonzero.
             && self.finalize_root != Field::zero()
+            // Ensure the ratifications root is nonzero.
+            && self.ratifications_root != Field::zero()
             // Ensure the coinbase accumulator point is zero.
             && self.coinbase_accumulator_point == Field::zero()
             // Ensure the metadata is a genesis metadata.
@@ -53,10 +63,10 @@ mod tests {
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
-        // Previous state root, transactions root, finalize root, and accumulator point size.
-        (Field::<N>::size_in_bytes() * 4)
+        // Previous state root, transactions root, finalize root, ratifications root, and accumulator point size.
+        (Field::<N>::size_in_bytes() * 5)
             // Metadata size.
-            + 1 + 8 + 4 + 8 + 16 + 8 + 8 + 8 + 8 + 8
+            + 1 + 8 + 4 + 8 + 16 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 3 bytes for versioning.
             + 1 + 2
     }
@@ -98,5 +108,7 @@ mod tests {
 
         // Ensure the genesis block does *not* contain the following.
         assert_ne!(header.transactions_root(), Field::zero());
+        assert_ne!(header.finalize_root(), Field::zero());
+        assert_ne!(header.ratifications_root(), Field::zero());
     }
 }

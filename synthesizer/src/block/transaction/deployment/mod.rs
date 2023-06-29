@@ -13,10 +13,11 @@
 // limitations under the License.
 
 mod bytes;
+mod cost;
 mod serialize;
 mod string;
 
-use crate::{block::Transaction, program::Program};
+use crate::{block::Transaction, process::Program};
 use console::{
     network::prelude::*,
     program::{Identifier, ProgramID},

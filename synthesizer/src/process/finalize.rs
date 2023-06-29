@@ -115,8 +115,12 @@ impl<N: Network> Process<N> {
                     };
 
                     // Initialize the registers.
-                    let mut registers =
-                        FinalizeRegisters::<N>::new(state, stack.get_finalize_types(finalize.name())?.clone());
+                    let mut registers = FinalizeRegisters::<N>::new(
+                        state,
+                        *transition.id(),
+                        *function_name,
+                        stack.get_finalize_types(finalize.name())?.clone(),
+                    );
 
                     // Store the inputs.
                     finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(
@@ -126,11 +130,30 @@ impl<N: Network> Process<N> {
                         },
                     )?;
 
+                    // Initialize a counter for the index of the commands.
+                    let mut counter = 0;
+
                     // Evaluate the commands.
-                    for command in finalize.commands() {
-                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            command.finalize(stack, store, &mut registers)
+                    while counter < finalize.commands().len() {
+                        // Retrieve the command.
+                        let command = &finalize.commands()[counter];
+                        // Finalize the command.
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match &command {
+                            Command::BranchEq(branch_eq) => {
+                                counter = branch_to(counter, branch_eq, finalize, stack, &registers)?;
+                                Ok(None)
+                            }
+                            Command::BranchNeq(branch_neq) => {
+                                counter = branch_to(counter, branch_neq, finalize, stack, &registers)?;
+                                Ok(None)
+                            }
+                            _ => {
+                                let operations = command.finalize(stack, store, &mut registers);
+                                counter += 1;
+                                operations
+                            }
                         }));
+
                         match result {
                             // If the evaluation succeeds with an operation, add it to the list.
                             Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
@@ -142,7 +165,6 @@ impl<N: Network> Process<N> {
                             Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
                         }
                     }
-
                     lap!(timer, "Finalize transition for {function_name}");
                 }
             }
@@ -151,6 +173,38 @@ impl<N: Network> Process<N> {
             // Return the finalize operations.
             Ok(finalize_operations)
         })
+    }
+}
+
+// A helper function that returns the index to branch to.
+#[inline]
+fn branch_to<N: Network, const VARIANT: u8>(
+    counter: usize,
+    branch: &Branch<N, VARIANT>,
+    finalize: &Finalize<N>,
+    stack: &Stack<N>,
+    registers: &FinalizeRegisters<N>,
+) -> Result<usize> {
+    // Retrieve the inputs.
+    let first = registers.load(stack, branch.first())?;
+    let second = registers.load(stack, branch.second())?;
+
+    // A helper to get the index corresponding to a position.
+    let get_position_index = |position: &Identifier<N>| match finalize.positions().get(position) {
+        Some(index) if *index > counter => Ok(*index),
+        Some(_) => bail!("Cannot branch to an earlier position '{position}' in the program"),
+        None => bail!("The position '{position}' does not exist."),
+    };
+
+    // Compare the operands and determine the index to branch to.
+    match VARIANT {
+        // The `branch.eq` variant.
+        0 if first == second => get_position_index(branch.position()),
+        0 if first != second => Ok(counter + 1),
+        // The `branch.neq` variant.
+        1 if first == second => Ok(counter + 1),
+        1 if first != second => get_position_index(branch.position()),
+        _ => bail!("Invalid 'branch' variant: {VARIANT}"),
     }
 }
 

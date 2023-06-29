@@ -80,15 +80,17 @@ impl<N: Network> Transition<N> {
         );
 
         // Prepare the input leaves.
-        let input_leaves =
-            inputs.iter().enumerate().map(|(index, input)| input.to_transition_leaf(index as u8).to_bits_le());
+        let input_leaves = inputs
+            .iter()
+            .enumerate()
+            .map(|(index, input)| Ok::<_, Error>(input.to_transition_leaf(u8::try_from(index)?).to_bits_le()));
         // Prepare the output leaves.
         let output_leaves = outputs
             .iter()
             .enumerate()
-            .map(|(index, output)| output.to_transition_leaf((inputs.len() + index) as u8).to_bits_le());
+            .map(|(index, output)| Ok(output.to_transition_leaf(u8::try_from(inputs.len() + index)?).to_bits_le()));
         // Compute the function tree.
-        N::merkle_tree_bhp::<TRANSITION_DEPTH>(&input_leaves.chain(output_leaves).collect::<Vec<_>>())
+        N::merkle_tree_bhp::<TRANSITION_DEPTH>(&input_leaves.chain(output_leaves).collect::<Result<Vec<_>, _>>()?)
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.11.7"
+version = "0.12.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -63,9 +63,9 @@ members = [
   "fields",
   "ledger",
   "parameters",
-  "r1cs",
   "synthesizer",
   "synthesizer/coinbase",
+  "synthesizer/program",
   "synthesizer/snark",
   "utilities",
   "utilities/derives",
@@ -84,11 +84,11 @@ required-features = [ "cli" ]
 default = [
   "circuit",
   "console",
-  "synthesizer",
-  "cli",
   "ledger",
   "parameters",
-  "utilities"
+  "synthesizer",
+  "utilities",
+  "cli"
 ]
 full = [
   "algorithms",
@@ -98,7 +98,6 @@ full = [
   "fields",
   "ledger",
   "parameters",
-  "r1cs",
   "synthesizer",
   "utilities"
 ]
@@ -122,7 +121,6 @@ curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger" ]
 parameters = [ "snarkvm-parameters" ]
-r1cs = [ "snarkvm-r1cs" ]
 rocks = [ "snarkvm-synthesizer/rocks" ]
 synthesizer = [ "snarkvm-synthesizer" ]
 timer = [ "snarkvm-ledger/timer" ]
@@ -132,58 +130,53 @@ ed25519 = [ "snarkvm-console/ed25519" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "=0.11.7"
-optional = true
-
-[dependencies.snarkvm-r1cs]
-path = "./r1cs"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "=0.11.7"
+version = "=0.12.6"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "=0.11.7"
+version = "=0.12.6"
 optional = true
 
 [dependencies.anstyle]
@@ -203,7 +196,7 @@ version = "2"
 optional = true
 
 [dependencies.indexmap]
-version = "1.9"
+version = "2.0"
 features = [ "rayon" ]
 
 [dependencies.num-format]
@@ -236,7 +229,7 @@ version = "1.0"
 optional = true
 
 [dependencies.ureq]
-version = "2.6"
+version = "2.7"
 features = [ "json" ]
 
 [dev-dependencies.bincode]

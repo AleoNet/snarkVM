@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    block::Header,
+    block::{Header, Ratify},
     store::{
         helpers::memory::{MemoryMap, TransactionMemory, TransitionMemory},
         BlockStorage,
@@ -44,10 +44,12 @@ pub struct BlockMemory<N: Network> {
     confirmed_transactions_map: MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>,
     /// The transaction store.
     transaction_store: TransactionStore<N, TransactionMemory<N>>,
+    /// The ratifications map.
+    ratifications_map: MemoryMap<N::BlockHash, Vec<Ratify<N>>>,
     /// The coinbase solution map.
     coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
-    coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, N::BlockHash>,
+    coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The signature map.
     signature_map: MemoryMap<N::BlockHash, Signature<N>>,
 }
@@ -63,8 +65,9 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
+    type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
-    type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, N::BlockHash>;
+    type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
@@ -83,6 +86,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             transactions_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
+            ratifications_map: MemoryMap::default(),
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),
             signature_map: MemoryMap::default(),
@@ -127,6 +131,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the transaction store.
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage> {
         &self.transaction_store
+    }
+
+    /// Returns the ratifications map.
+    fn ratifications_map(&self) -> &Self::RatificationsMap {
+        &self.ratifications_map
     }
 
     /// Returns the coinbase solution map.

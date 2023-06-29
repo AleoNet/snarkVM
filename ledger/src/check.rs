@@ -14,8 +14,6 @@
 
 use super::*;
 
-use std::collections::HashMap;
-
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given transaction is well-formed and unique.
     pub fn check_transaction_basic(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
@@ -63,16 +61,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             let fee = *transaction.fee()?;
             // Retrieve the minimum cost of the transaction.
             let (cost, _) = match transaction {
-                Transaction::Deploy(_, _, deployment, _) => deployment_cost(deployment)?,
-                Transaction::Execute(_, execution, _) => {
-                    // Prepare the program lookup.
-                    let lookup = execution
-                        .transitions()
-                        .map(|transition| Ok((*transition.program_id(), self.get_program(*transition.program_id())?)))
-                        .collect::<Result<HashMap<_, _>>>()?;
-                    // Compute the execution cost.
-                    execution_cost(execution, lookup)?
-                }
+                // Compute the deployment cost.
+                Transaction::Deploy(_, _, deployment, _) => Deployment::cost(deployment)?,
+                // Compute the execution cost.
+                Transaction::Execute(_, execution, _) => Execution::cost(self.vm(), execution)?,
                 // TODO (howardwu): Plug in the Rejected struct, to compute the cost.
                 Transaction::Fee(_, _) => (0, (0, 0)),
             };
@@ -204,45 +196,55 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
-        for transaction_id in block.transaction_ids() {
-            // Ensure the transaction in the block do not already exist.
-            if self.contains_transaction_id(transaction_id)? {
-                bail!("Transaction '{transaction_id}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate transition IDs.
+        if has_duplicates(block.transition_ids()) {
+            bail!("Found duplicate transition in the block");
         }
 
         /* Input */
 
-        // Ensure the ledger does not already contain a given serial numbers.
-        for serial_number in block.serial_numbers() {
-            if self.contains_serial_number(serial_number)? {
-                bail!("Serial number '{serial_number}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate input IDs.
+        if has_duplicates(block.input_ids()) {
+            bail!("Found duplicate input IDs in the block");
+        }
+
+        // Ensure there are no duplicate serial numbers.
+        if has_duplicates(block.serial_numbers()) {
+            bail!("Found duplicate serial numbers in the block");
+        }
+
+        // Ensure there are no duplicate tags.
+        if has_duplicates(block.tags()) {
+            bail!("Found duplicate tags in the block");
         }
 
         /* Output */
 
-        // Ensure the ledger does not already contain a given commitments.
-        for commitment in block.commitments() {
-            if self.contains_commitment(commitment)? {
-                bail!("Commitment '{commitment}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate output IDs.
+        if has_duplicates(block.output_ids()) {
+            bail!("Found duplicate output IDs in the block");
         }
 
-        // Ensure the ledger does not already contain a given nonces.
-        for nonce in block.nonces() {
-            if self.contains_nonce(nonce)? {
-                bail!("Nonce '{nonce}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate commitments.
+        if has_duplicates(block.commitments()) {
+            bail!("Found duplicate commitments in the block");
+        }
+
+        // Ensure there are no duplicate nonces.
+        if has_duplicates(block.nonces()) {
+            bail!("Found duplicate nonces in the block");
         }
 
         /* Metadata */
 
-        // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in block.transition_public_keys() {
-            if self.contains_tpk(tpk)? {
-                bail!("Transition public key '{tpk}' already exists in the ledger")
-            }
+        // Ensure there are no duplicate transition public keys.
+        if has_duplicates(block.transition_public_keys()) {
+            bail!("Found duplicate transition public keys in the block");
+        }
+
+        // Ensure there are no duplicate transition commitments.
+        if has_duplicates(block.transition_commitments()) {
+            bail!("Found duplicate transition commitments in the block");
         }
 
         /* Block Header */
@@ -278,11 +280,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.last_coinbase_timestamp() != block.timestamp() {
                         bail!("The last coinbase timestamp does not match the block timestamp")
                     }
+                    // Compute the cumulative proof target.
+                    let cumulative_proof_target = coinbase.to_cumulative_proof_target()?;
                     // Ensure that the cumulative weight includes the next block's cumulative proof target.
                     if block.cumulative_weight()
-                        != self.latest_cumulative_weight().saturating_add(coinbase.to_cumulative_proof_target()?)
+                        != self.latest_cumulative_weight().saturating_add(cumulative_proof_target)
                     {
                         bail!("The cumulative weight does not include the block cumulative proof target")
+                    }
+                    // Ensure that the block cumulative proof target matches the coinbase cumulative proof target.
+                    if block.cumulative_proof_target() != cumulative_proof_target {
+                        bail!("The blocks cumulative proof target does not match the coinbase cumulative proof target")
                     }
                 }
                 None => {
@@ -297,6 +305,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     // Ensure that the cumulative weight is the same as the previous block.
                     if block.cumulative_weight() != self.latest_cumulative_weight() {
                         bail!("The cumulative weight does not match the previous block's cumulative weight")
+                    }
+                    // Ensure that the block cumulative proof target is zero.
+                    if block.cumulative_proof_target() != 0 {
+                        bail!("The cumulative proof target is not zero")
                     }
                 }
             }
@@ -398,7 +410,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         })?;
 
         // Construct the finalize state.
-        let state = FinalizeGlobalState::new(block.height());
+        let state = FinalizeGlobalState::new::<N>(
+            block.round(),
+            block.height(),
+            block.cumulative_weight(),
+            block.cumulative_proof_target(),
+            block.previous_hash(),
+        )?;
         // Ensure the transactions after speculation match.
         if block.transactions() != &self.vm.speculate(state, block.transactions().iter().map(|tx| tx.deref()))? {
             bail!("The transactions after speculation do not match the transactions in the block");
@@ -410,6 +428,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let expected_finalize_root = block.transactions().to_finalize_root()?;
         if block.finalize_root() != expected_finalize_root {
             bail!("Invalid finalize root: expected '{expected_finalize_root}', got '{}'", block.finalize_root())
+        }
+
+        /* Ratifications Root */
+
+        // Compute the ratifications root of the block.
+        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
+            &block
+                .ratifications()
+                .iter()
+                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
+                .collect::<Result<Vec<_>, _>>()?,
+        )?
+        .root();
+        // Ensure that the block's ratifications root matches the declared ratifications.
+        if block.ratifications_root() != ratifications_root {
+            bail!("Invalid ratifications root: expected '{ratifications_root}', got '{}'", block.ratifications_root())
         }
 
         /* Coinbase Proof */

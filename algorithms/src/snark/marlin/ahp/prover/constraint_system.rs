@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::snark::marlin::ahp::matrices::make_matrices_square;
+use crate::{
+    r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable},
+    snark::marlin::ahp::matrices::make_matrices_square,
+};
 use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
 
 pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) public_variables: Vec<F>,

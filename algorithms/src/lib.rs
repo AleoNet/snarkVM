@@ -37,6 +37,8 @@ pub mod fft;
 pub mod msm;
 #[cfg(feature = "polycommit")]
 pub mod polycommit;
+#[cfg(feature = "r1cs")]
+pub mod r1cs;
 #[cfg(feature = "snark")]
 pub mod snark;
 
@@ -50,4 +52,9 @@ pub use traits::*;
 
 pub mod prelude {
     pub use crate::{errors::*, traits::*};
+
+    #[cfg(feature = "polycommit")]
+    pub use crate::polycommit::error::*;
+    #[cfg(feature = "r1cs")]
+    pub use crate::r1cs::errors::*;
 }

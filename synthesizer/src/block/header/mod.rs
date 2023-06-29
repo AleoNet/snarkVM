@@ -24,7 +24,7 @@ mod string;
 use crate::block::Transactions;
 use console::{
     network::prelude::*,
-    program::{HeaderLeaf, HeaderPath, HeaderTree, HEADER_DEPTH},
+    program::{HeaderLeaf, HeaderPath, HeaderTree, HEADER_DEPTH, RATIFICATIONS_DEPTH},
     types::Field,
 };
 
@@ -37,6 +37,8 @@ pub struct Header<N: Network> {
     transactions_root: Field<N>,
     /// The Merkle root representing the on-chain finalize including the current block.
     finalize_root: Field<N>,
+    /// The Merkle root representing the ratifications in the block.
+    ratifications_root: Field<N>,
     /// The accumulator point of the coinbase puzzle.
     coinbase_accumulator_point: Field<N>,
     /// The metadata of the block.
@@ -49,12 +51,19 @@ impl<N: Network> Header<N> {
         previous_state_root: Field<N>,
         transactions_root: Field<N>,
         finalize_root: Field<N>,
+        ratifications_root: Field<N>,
         coinbase_accumulator_point: Field<N>,
         metadata: Metadata<N>,
     ) -> Result<Self> {
         // Construct a new block header.
-        let header =
-            Self { previous_state_root, transactions_root, finalize_root, coinbase_accumulator_point, metadata };
+        let header = Self {
+            previous_state_root,
+            transactions_root,
+            finalize_root,
+            ratifications_root,
+            coinbase_accumulator_point,
+            metadata,
+        };
         // Ensure the header is valid.
         match header.is_valid() {
             true => Ok(header),
@@ -71,6 +80,10 @@ impl<N: Network> Header<N> {
                 self.previous_state_root != Field::zero()
                     // Ensure the transactions root is nonzero.
                     && self.transactions_root != Field::zero()
+                    // Ensure the finalize root is nonzero.
+                    && self.finalize_root != Field::zero()
+                    // Ensure the ratifications root is nonzero.
+                    && self.ratifications_root != Field::zero()
                     // Ensure the metadata is valid.
                     && self.metadata.is_valid()
             }
@@ -90,6 +103,11 @@ impl<N: Network> Header<N> {
     /// Returns the finalize root in the block header.
     pub const fn finalize_root(&self) -> Field<N> {
         self.finalize_root
+    }
+
+    /// Returns the ratifications root in the block header.
+    pub const fn ratifications_root(&self) -> Field<N> {
+        self.ratifications_root
     }
 
     /// Returns the coinbase puzzle accumulator point in the block header.
@@ -125,6 +143,11 @@ impl<N: Network> Header<N> {
     /// Returns the cumulative weight for this block.
     pub const fn cumulative_weight(&self) -> u128 {
         self.metadata.cumulative_weight()
+    }
+
+    /// Returns the cumulative proof target for this block.
+    pub const fn cumulative_proof_target(&self) -> u128 {
+        self.metadata.cumulative_proof_target()
     }
 
     /// Returns the coinbase target for this block.

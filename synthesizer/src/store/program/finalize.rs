@@ -480,7 +480,16 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.key_map().contains_key_speculative(&key_id)
     }
 
-    /// Returns the mapping names for the given `program ID`.
+    /// Returns the confirmed mapping names for the given `program ID`.
+    fn get_mapping_names_confirmed(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
+        // Retrieve the mapping names.
+        match self.program_id_map().get_confirmed(program_id)? {
+            Some(names) => Ok(Some(cow_to_cloned!(names))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the speculative mapping names for the given `program ID`.
     fn get_mapping_names_speculative(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
         // Retrieve the mapping names.
         match self.program_id_map().get_speculative(program_id)? {
@@ -489,7 +498,19 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the mapping ID for the given `program ID` and `mapping name`.
+    /// Returns the confirmed mapping ID for the given `program ID` and `mapping name`.
+    fn get_mapping_id_confirmed(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<Option<Field<N>>> {
+        match self.mapping_id_map().get_confirmed(&(*program_id, *mapping_name))? {
+            Some(mapping_id) => Ok(Some(cow_to_copied!(mapping_id))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the speculative mapping ID for the given `program ID` and `mapping name`.
     fn get_mapping_id_speculative(
         &self,
         program_id: &ProgramID<N>,
@@ -501,7 +522,28 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the key ID for the given `program ID`, `mapping name`, and `key`.
+    /// Returns the confirmed key ID for the given `program ID`, `mapping name`, and `key`.
+    fn get_key_id_confirmed(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<Option<Field<N>>> {
+        // Retrieve the mapping ID.
+        let mapping_id = match self.get_mapping_id_confirmed(program_id, mapping_name)? {
+            Some(mapping_id) => mapping_id,
+            None => return Ok(None),
+        };
+        // Compute the key ID.
+        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        // Ensure the key ID exists.
+        match self.key_map().contains_key_confirmed(&key_id)? {
+            true => Ok(Some(key_id)),
+            false => Ok(None),
+        }
+    }
+
+    /// Returns the speculative key ID for the given `program ID`, `mapping name`, and `key`.
     fn get_key_id_speculative(
         &self,
         program_id: &ProgramID<N>,
@@ -522,7 +564,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the key for the given `key ID`.
+    /// Returns the speculative key for the given `key ID`.
     fn get_key_speculative(&self, key_id: &Field<N>) -> Result<Option<Plaintext<N>>> {
         match self.key_map().get_speculative(key_id)? {
             Some(key) => Ok(Some(cow_to_cloned!(key))),
@@ -530,7 +572,22 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the value for the given `program ID`, `mapping name`, and `key`.
+    /// Returns the confirmed value for the given `program ID`, `mapping name`, and `key`.
+    fn get_value_confirmed(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<Option<Value<N>>> {
+        // Retrieve the key ID.
+        match self.get_key_id_confirmed(program_id, mapping_name, key)? {
+            // Retrieve the value.
+            Some(key_id) => self.get_value_from_key_id_confirmed(&key_id),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the speculative value for the given `program ID`, `mapping name`, and `key`.
     fn get_value_speculative(
         &self,
         program_id: &ProgramID<N>,
@@ -545,7 +602,15 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the value for the given `key ID`.
+    /// Returns the confirmed value for the given `key ID`.
+    fn get_value_from_key_id_confirmed(&self, key_id: &Field<N>) -> Result<Option<Value<N>>> {
+        match self.value_map().get_confirmed(key_id)? {
+            Some(value) => Ok(Some(cow_to_cloned!(value))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the speculative value for the given `key ID`.
     fn get_value_from_key_id_speculative(&self, key_id: &Field<N>) -> Result<Option<Value<N>>> {
         match self.value_map().get_speculative(key_id)? {
             Some(value) => Ok(Some(cow_to_cloned!(value))),
@@ -712,12 +777,28 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 }
 
 impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
-    /// Returns the mapping names for the given `program ID`.
+    /// Returns the confirmed mapping names for the given `program ID`.
+    pub fn get_mapping_names_confirmed(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
+        self.storage.get_mapping_names_confirmed(program_id)
+    }
+
+    /// Returns the speculative mapping names for the given `program ID`.
+    #[deprecated]
     pub fn get_mapping_names_speculative(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
         self.storage.get_mapping_names_speculative(program_id)
     }
 
-    /// Returns the value for the given `program ID`, `mapping name`, and `key`.
+    /// Returns the confirmed value for the given `program ID`, `mapping name`, and `key`.
+    pub fn get_value_confirmed(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<Option<Value<N>>> {
+        self.storage.get_value_confirmed(program_id, mapping_name, key)
+    }
+
+    /// Returns the speculative value for the given `program ID`, `mapping name`, and `key`.
     pub fn get_value_speculative(
         &self,
         program_id: &ProgramID<N>,

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.11.7"
+version = "0.12.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,12 +25,12 @@ edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.11.7"
+version = "=0.12.6"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.11.7"
+version = "=0.12.6"
 
 [dependencies.aleo-std]
 version = "0.1.18"
@@ -58,13 +58,13 @@ optional = true
 version = "0.4.3"
 
 [dependencies.indexmap]
-version = "1.9"
+version = "2.0"
 
 [dependencies.itertools]
-version = "0.10.3"
+version = "0.11.0"
 
 [dependencies.js-sys]
-version = "0.3.63"
+version = "0.3.64"
 optional = true
 
 [dependencies.lazy_static]
@@ -88,7 +88,7 @@ default-features = false
 version = "1.0"
 
 [dependencies.web-sys]
-version = "0.3.63"
+version = "0.3.64"
 features = [ "XmlHttpRequest" ]
 optional = true
 
@@ -110,7 +110,7 @@ path = "../console"
 path = "../synthesizer"
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.36"
+version = "0.3.37"
 
 [dev-dependencies.hex]
 version = "0.4.3"
