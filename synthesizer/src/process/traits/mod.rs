@@ -12,7 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+use crate::process::{CallStack, Closure, FinalizeTypes, Function, Program, RegisterTypes};
+use console::{
+    account::Address,
+    network::Network,
+    prelude::{bail, Result},
+    program::{
+        Identifier,
+        Literal,
+        Locator,
+        Plaintext,
+        PlaintextType,
+        ProgramID,
+        Record,
+        RecordType,
+        Register,
+        RegisterType,
+        Response,
+        Value,
+        ValueType,
+    },
+    types::Field,
+};
+use snarkvm_synthesizer_program::Operand;
 
 pub trait StackEvaluate<N: Network>: Clone {
     /// Evaluates a program closure on the given inputs.

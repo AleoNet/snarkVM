@@ -27,9 +27,6 @@ pub use register_types::*;
 mod registers;
 pub use registers::*;
 
-mod traits;
-pub use traits::*;
-
 mod authorize;
 mod deploy;
 mod evaluate;
@@ -38,7 +35,7 @@ mod helpers;
 
 use crate::{
     block::{Deployment, Transition},
-    process::{CallMetrics, CallOperator, Closure, Function, Instruction, Process, Program, Trace},
+    process::{traits::*, CallMetrics, CallOperator, Closure, Function, Instruction, Process, Program, Trace},
 };
 use console::{
     account::{Address, PrivateKey},
@@ -55,7 +52,6 @@ use console::{
         ProgramID,
         Record,
         RecordType,
-        Register,
         RegisterType,
         Request,
         Response,

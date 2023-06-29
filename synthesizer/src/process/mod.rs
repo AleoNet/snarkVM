@@ -24,6 +24,9 @@ pub use stack::*;
 mod trace;
 pub use trace::*;
 
+mod traits;
+pub use traits::*;
+
 mod authorize;
 mod deploy;
 mod evaluate;

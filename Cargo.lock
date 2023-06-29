@@ -3094,6 +3094,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-synthesizer-stack"
+version = "0.12.6"
+dependencies = [
+ "bincode",
+ "colored",
+ "once_cell",
+ "serde_json",
+ "snarkvm-algorithms",
+ "snarkvm-circuit",
+ "snarkvm-console",
+]
+
+[[package]]
 name = "snarkvm-utilities"
 version = "0.12.6"
 dependencies = [

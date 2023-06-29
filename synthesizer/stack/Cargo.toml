@@ -1,0 +1,67 @@
+[package]
+name = "snarkvm-synthesizer-stack"
+version = "0.12.6"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Stack for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[features]
+default = [ ]
+aleo-cli = [ "colored" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
+serial = [ "console/serial", "snarkvm-algorithms/serial" ]
+wasm = [ "console/wasm", "snarkvm-algorithms/wasm" ]
+
+[dependencies.circuit]
+package = "snarkvm-circuit"
+path = "../../circuit"
+version = "=0.12.6"
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.12.6"
+default-features = false
+features = [ "network" ]
+
+[dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "=0.12.6"
+
+[dependencies.bincode]
+version = "1"
+
+[dependencies.colored]
+version = "2"
+optional = true
+
+[dependencies.once_cell]
+version = "1.18"
+
+[dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
+[dev-dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+default-features = false
+features = [ "types" ]
