@@ -55,6 +55,8 @@ impl<N: Network> Batch<N> {
         ensure!(round != 0 || previous_certificates.is_empty(), "Invalid round number");
         // If the round is not zero, then there should be at least one previous certificate.
         ensure!(round == 0 || !previous_certificates.is_empty(), "Invalid round number");
+        // Ensure there are transmissions in the batch.
+        ensure!(!transmissions.is_empty(), "Batch must contain at least one transmission");
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Construct the transmission IDs.
@@ -82,6 +84,8 @@ impl<N: Network> Batch<N> {
         ensure!(round != 0 || previous_certificates.is_empty(), "Invalid round number");
         // If the round is not zero, then there should be at least one previous certificate.
         ensure!(round == 0 || !previous_certificates.is_empty(), "Invalid round number");
+        // Ensure there are transmissions in the batch.
+        ensure!(!transmissions.is_empty(), "Batch must contain at least one transmission");
         // Construct the transmission IDs.
         let transmission_ids = transmissions.keys().copied().collect();
         // Compute the previous certificate IDs.
