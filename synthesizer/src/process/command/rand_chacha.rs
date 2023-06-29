@@ -13,14 +13,8 @@
 // limitations under the License.
 
 use crate::{
-    FinalizeRegisters,
-    FinalizeStorage,
-    FinalizeStore,
-    Opcode,
-    RegistersLoad as LoadTrait,
-    RegistersStore,
-    Stack,
-    StackProgram,
+    process::{FinalizeRegisters, Opcode, RegistersLoad as LoadTrait, RegistersStore, Stack, StackProgram},
+    store::{FinalizeStorage, FinalizeStore},
 };
 use console::{
     network::prelude::*,

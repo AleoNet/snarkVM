@@ -22,13 +22,8 @@ mod bytes;
 mod parse;
 
 use crate::{
+    process::{FinalizeRegisters, Registers, StackEvaluate, StackExecute, StackMatches, StackProgram},
     program::InstructionTrait,
-    FinalizeRegisters,
-    Registers,
-    StackEvaluate,
-    StackExecute,
-    StackMatches,
-    StackProgram,
 };
 use console::{
     network::{

@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{FinalizeStorage, FinalizeStore, Opcode, RegistersLoad as LoadTrait, RegistersStore, Stack, StackProgram};
+use crate::{
+    process::{Opcode, RegistersLoad as LoadTrait, RegistersStore, Stack, StackProgram},
+    store::{FinalizeStorage, FinalizeStore},
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, Value},

@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{FinalizeOperation, FinalizeStorage, FinalizeStore, Opcode, RegistersLoad, Stack, StackProgram};
+use crate::{
+    block::FinalizeOperation,
+    process::{Opcode, RegistersLoad, Stack, StackProgram},
+    store::{FinalizeStorage, FinalizeStore},
+};
 use console::{network::prelude::*, program::Identifier};
 use snarkvm_synthesizer_program::Operand;
 

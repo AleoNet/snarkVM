@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::Opcode;
+use crate::process::Opcode;
 use console::{network::prelude::*, program::Identifier};
 use snarkvm_synthesizer_program::Operand;
 

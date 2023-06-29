@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Opcode, RegistersLoad, Stack};
+use crate::process::{Opcode, RegistersLoad, Stack};
 use console::{network::prelude::*, program::Register};
 use snarkvm_synthesizer_program::{FinalizeCommandTrait, Operand};
 

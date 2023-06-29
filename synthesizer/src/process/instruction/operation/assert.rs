@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Opcode, RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram};
+use crate::process::{Opcode, RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram};
 use console::{
     network::prelude::*,
     program::{Register, RegisterType},
