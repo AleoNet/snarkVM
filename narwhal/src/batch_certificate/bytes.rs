@@ -38,8 +38,8 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             // Insert the signature and timestamp.
             signatures.insert(signature, timestamp);
         }
-
-        Ok(Self { batch_header, signatures })
+        // Return the batch certificate.
+        Self::from(batch_header, signatures).map_err(|e| error(e.to_string()))
     }
 }
 

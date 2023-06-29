@@ -52,8 +52,15 @@ impl<N: Network> FromBytes for BatchHeader<N> {
         // Read the signature.
         let signature = Signature::read_le(&mut reader)?;
 
+        // Construct the batch.
+        let batch = Self::from(round, timestamp, transmission_ids, previous_certificate_ids, signature)
+            .map_err(|e| error(e.to_string()))?;
+
         // Return the batch.
-        Ok(Self { batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
+        match batch.batch_id == batch_id {
+            true => Ok(batch),
+            false => Err(error("Invalid batch ID")),
+        }
     }
 }
 
