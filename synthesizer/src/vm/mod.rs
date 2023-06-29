@@ -29,7 +29,8 @@ use crate::{
     cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, FinalizeGlobalState, Process, Program, Query, Trace},
+    process::{Authorization, FinalizeGlobalState, Process, Program, Trace},
+    query::Query,
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     TransactionStorage,
 };

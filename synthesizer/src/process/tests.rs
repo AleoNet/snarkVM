@@ -13,9 +13,12 @@
 // limitations under the License.
 
 use super::*;
-use crate::store::{
-    helpers::memory::{BlockMemory, FinalizeMemory},
-    BlockStore,
+use crate::{
+    query::Query,
+    store::{
+        helpers::memory::{BlockMemory, FinalizeMemory},
+        BlockStore,
+    },
 };
 use circuit::{network::AleoV0, Assignment};
 use console::{

@@ -50,7 +50,8 @@ use console::{
 use synthesizer::{
     block::{Block, ConfirmedTransaction, Deployment, Execution, Header, Metadata, Ratify, Transaction, Transactions},
     coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
-    process::{FinalizeGlobalState, Program, Query},
+    process::{FinalizeGlobalState, Program},
+    query::Query,
     store::{ConsensusStorage, ConsensusStore},
     vm::VM,
 };

@@ -37,6 +37,9 @@ pub use block::*;
 pub mod process;
 pub use process::*;
 
+pub mod query;
+pub use query::*;
+
 pub mod store;
 pub use store::*;
 

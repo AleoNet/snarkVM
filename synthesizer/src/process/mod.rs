@@ -324,6 +324,7 @@ impl<N: Network> Process<N> {
 pub mod test_helpers {
     use super::*;
     use crate::{
+        query::Query,
         store::{helpers::memory::BlockMemory, BlockStore},
         Process,
         Program,

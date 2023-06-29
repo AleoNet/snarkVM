@@ -18,9 +18,6 @@ pub use call_metrics::*;
 mod inclusion;
 pub use inclusion::*;
 
-mod query;
-pub use query::*;
-
 use crate::{
     block::{Execution, Fee, Input, Transition},
     process::QueryTrait,
