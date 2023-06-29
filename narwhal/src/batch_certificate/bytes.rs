@@ -24,17 +24,22 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             return Err(error("Invalid batch version"));
         }
 
-        // Read the batch ID.
-        let batch_id = Field::read_le(&mut reader)?;
+        // Read the batch header.
+        let batch_header = BatchHeader::read_le(&mut reader)?;
         // Read the number of signatures.
         let num_signatures = u32::read_le(&mut reader)?;
         // Read the signatures.
-        let mut signatures = IndexSet::with_capacity(num_signatures as usize);
+        let mut signatures = IndexMap::with_capacity(num_signatures as usize);
         for _ in 0..num_signatures {
-            signatures.insert(Signature::read_le(&mut reader)?);
+            // Read the signature.
+            let signature = Signature::read_le(&mut reader)?;
+            // Read the timestamp.
+            let timestamp = i64::read_le(&mut reader)?;
+            // Insert the signature and timestamp.
+            signatures.insert(signature, timestamp);
         }
 
-        Ok(Self { batch_id, signatures })
+        Ok(Self { batch_header, signatures })
     }
 }
 
@@ -43,13 +48,16 @@ impl<N: Network> ToBytes for BatchCertificate<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u8.write_le(&mut writer)?;
-        // Write the batch ID.
-        self.batch_id.write_le(&mut writer)?;
+        // Write the batch header.
+        self.batch_header.write_le(&mut writer)?;
         // Write the number of signatures.
         u32::try_from(self.signatures.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the signatures.
-        for signature in &self.signatures {
+        for (signature, timestamp) in &self.signatures {
+            // Write the signature.
             signature.write_le(&mut writer)?;
+            // Write the timestamp.
+            timestamp.write_le(&mut writer)?;
         }
         Ok(())
     }

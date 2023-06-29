@@ -17,7 +17,7 @@ use super::*;
 impl<N: Network> BatchHeader<N> {
     /// Returns the batch ID.
     pub fn to_id(&self) -> Result<Field<N>> {
-        Self::compute_batch_id(self.round, self.timestamp, &self.transmission_ids, &self.previous_certificates)
+        Self::compute_batch_id(self.round, self.timestamp, &self.transmission_ids, &self.previous_certificate_ids)
     }
 }
 
@@ -27,7 +27,7 @@ impl<N: Network> BatchHeader<N> {
         round: u64,
         timestamp: i64,
         transmission_ids: &IndexSet<TransmissionID<N>>,
-        previous_certificates: &IndexSet<BatchCertificate<N>>,
+        previous_certificate_ids: &IndexSet<Field<N>>,
     ) -> Result<Field<N>> {
         let mut preimage = Vec::new();
         // Insert the round number.
@@ -40,18 +40,12 @@ impl<N: Network> BatchHeader<N> {
         for transmission_id in transmission_ids {
             preimage.extend_from_slice(&transmission_id.to_bytes_le()?);
         }
-        // Insert the number of previous certificates.
-        preimage.extend_from_slice(&u64::try_from(previous_certificates.len())?.to_bytes_le()?);
-        // Insert the previous certificates.
-        for certificate in previous_certificates {
-            // Insert the batch ID.
-            preimage.extend_from_slice(&certificate.batch_id().to_bytes_le()?);
-            // Insert the number of signatures.
-            preimage.extend_from_slice(&u64::try_from(certificate.signatures().len())?.to_bytes_le()?);
-            // Insert the signatures.
-            for signature in certificate.signatures() {
-                preimage.extend_from_slice(&signature.to_bytes_le()?);
-            }
+        // Insert the number of previous certificate IDs.
+        preimage.extend_from_slice(&u64::try_from(previous_certificate_ids.len())?.to_bytes_le()?);
+        // Insert the previous certificate IDs.
+        for certificate_id in previous_certificate_ids {
+            // Insert the certificate ID.
+            preimage.extend_from_slice(&certificate_id.to_bytes_le()?);
         }
         // Hash the preimage.
         N::hash_bhp1024(&preimage.to_bits_le())

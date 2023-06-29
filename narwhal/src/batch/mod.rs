@@ -59,10 +59,13 @@ impl<N: Network> Batch<N> {
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Construct the transmission IDs.
         let transmission_ids = transmissions.keys().copied().collect();
+        // Compute the previous certificate IDs.
+        let previous_certificate_ids =
+            previous_certificates.iter().map(|c| c.to_id()).collect::<Result<IndexSet<_>, _>>()?;
         // Compute the batch ID.
-        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificates)?;
+        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Sign the preimage.
-        let signature = private_key.sign(&[batch_id], rng)?;
+        let signature = private_key.sign(&[batch_id, Field::from_u64(timestamp as u64)], rng)?;
         // Return the batch.
         Ok(Self { batch_id, round, timestamp, transmissions, previous_certificates, signature })
     }
@@ -81,10 +84,13 @@ impl<N: Network> Batch<N> {
         ensure!(round == 0 || !previous_certificates.is_empty(), "Invalid round number");
         // Construct the transmission IDs.
         let transmission_ids = transmissions.keys().copied().collect();
+        // Compute the previous certificate IDs.
+        let previous_certificate_ids =
+            previous_certificates.iter().map(|c| c.to_id()).collect::<Result<IndexSet<_>, _>>()?;
         // Compute the batch ID.
-        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificates)?;
+        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
-        if !signature.verify(&signature.to_address(), &[batch_id]) {
+        if !signature.verify(&signature.to_address(), &[batch_id, Field::from_u64(timestamp as u64)]) {
             bail!("Invalid signature for the batch");
         }
         // Return the batch.

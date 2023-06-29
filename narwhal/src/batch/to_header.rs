@@ -21,7 +21,7 @@ impl<N: Network> Batch<N> {
             self.round,
             self.timestamp,
             self.transmission_ids(),
-            self.previous_certificates.clone(),
+            self.previous_certificates.iter().map(|c| c.to_id()).collect::<Result<IndexSet<_>, _>>()?,
             self.signature,
         )
     }

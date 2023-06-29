@@ -40,20 +40,20 @@ impl<N: Network> FromBytes for BatchHeader<N> {
             transmission_ids.insert(TransmissionID::read_le(&mut reader)?);
         }
 
-        // Read the number of previous certificates.
-        let num_previous_certificates = u32::read_le(&mut reader)?;
-        // Read the previous certificates.
-        let mut previous_certificates = IndexSet::with_capacity(num_previous_certificates as usize);
-        for _ in 0..num_previous_certificates {
-            // Read the certificate.
-            previous_certificates.insert(BatchCertificate::read_le(&mut reader)?);
+        // Read the number of previous certificate IDs.
+        let num_previous_certificate_ids = u32::read_le(&mut reader)?;
+        // Read the previous certificate IDs.
+        let mut previous_certificate_ids = IndexSet::with_capacity(num_previous_certificate_ids as usize);
+        for _ in 0..num_previous_certificate_ids {
+            // Read the certificate ID.
+            previous_certificate_ids.insert(Field::read_le(&mut reader)?);
         }
 
         // Read the signature.
         let signature = Signature::read_le(&mut reader)?;
 
         // Return the batch.
-        Ok(Self { batch_id, round, timestamp, transmission_ids, previous_certificates, signature })
+        Ok(Self { batch_id, round, timestamp, transmission_ids, previous_certificate_ids, signature })
     }
 }
 
@@ -75,12 +75,12 @@ impl<N: Network> ToBytes for BatchHeader<N> {
             // Write the transmission ID.
             transmission_id.write_le(&mut writer)?;
         }
-        // Write the number of previous certificates.
-        u32::try_from(self.previous_certificates.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
-        // Write the previous certificates.
-        for certificate in &self.previous_certificates {
-            // Write the certificate.
-            certificate.write_le(&mut writer)?;
+        // Write the number of previous certificate IDs.
+        u32::try_from(self.previous_certificate_ids.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        // Write the previous certificate IDs.
+        for certificate_id in &self.previous_certificate_ids {
+            // Write the certificate ID.
+            certificate_id.write_le(&mut writer)?;
         }
         // Write the signature.
         self.signature.write_le(&mut writer)
