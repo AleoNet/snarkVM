@@ -33,7 +33,22 @@ pub struct BatchCertificate<N: Network> {
 
 impl<N: Network> BatchCertificate<N> {
     /// Initializes a new batch certificate.
-    pub fn new(batch_header: BatchHeader<N>, signatures: IndexMap<Signature<N>, i64>) -> Result<Self> {
+    pub fn from(batch_header: BatchHeader<N>, signatures: IndexMap<Signature<N>, i64>) -> Result<Self> {
+        // Ensure the signatures are not empty.
+        ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
+        // Verify the signatures are valid.
+        for (signature, timestamp) in &signatures {
+            let preimage = [batch_header.batch_id(), Field::from_u64(*timestamp as u64)];
+            if !signature.verify(&signature.to_address(), &preimage) {
+                bail!("Invalid batch certificate signature")
+            }
+        }
+        // Return the batch certificate.
+        Ok(Self { batch_header, signatures })
+    }
+
+    /// Initializes a new batch certificate.
+    pub fn from_unchecked(batch_header: BatchHeader<N>, signatures: IndexMap<Signature<N>, i64>) -> Result<Self> {
         // Ensure the signatures are not empty.
         ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
         // Return the batch certificate.
@@ -88,7 +103,7 @@ pub(crate) mod test_helpers {
             signatures.insert(private_key.sign(&[batch_header.batch_id(), timestamp_field], rng).unwrap(), timestamp);
         }
         // Return the batch certificate.
-        BatchCertificate::new(batch_header, signatures).unwrap()
+        BatchCertificate::from(batch_header, signatures).unwrap()
     }
 
     /// Returns a list of sample batch certificates, sampled at random.

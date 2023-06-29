@@ -35,7 +35,7 @@ impl<'de, N: Network> Deserialize<'de> for BatchCertificate<N> {
         match deserializer.is_human_readable() {
             true => {
                 let mut value = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self::new(
+                Ok(Self::from(
                     DeserializeExt::take_from_value::<D>(&mut value, "batch_header")?,
                     DeserializeExt::take_from_value::<D>(&mut value, "signatures")?,
                 )
