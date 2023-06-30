@@ -1468,7 +1468,7 @@ finalize mint_public:
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
-    let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
+    let execution = trace.prove_execution::<CurrentAleo, _>("token", rng).unwrap();
 
     // Verify the execution.
     process.verify_execution(&execution).unwrap();
@@ -1617,7 +1617,7 @@ function mint:
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
-    let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
+    let execution = trace.prove_execution::<CurrentAleo, _>("token", rng).unwrap();
 
     // Verify the execution.
     process.verify_execution(&execution).unwrap();
@@ -1859,7 +1859,7 @@ function a:
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
-    let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
+    let execution = trace.prove_execution::<CurrentAleo, _>("two", rng).unwrap();
 
     // Verify the execution.
     process.verify_execution(&execution).unwrap();
@@ -2046,7 +2046,7 @@ fn test_complex_execution_order() {
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
-    let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
+    let execution = trace.prove_execution::<CurrentAleo, _>("four", rng).unwrap();
 
     // Verify the execution.
     process.verify_execution(&execution).unwrap();
@@ -2231,6 +2231,105 @@ fn test_sanity_check_transfer_and_fee() {
         assert_eq!(41265, assignment.num_constraints());
         assert_eq!((64422, 92898, 62357), assignment.num_nonzeros());
     }
+}
+
+#[test]
+fn test_process_execute_and_verify_call_to_closure() {
+    // Initialize a new program.
+    let (string, program) = Program::<CurrentNetwork>::parse(
+        r"
+program testing.aleo;
+
+// (a + (a + b)) + (a + b) == (3a + 2b)
+closure execute:
+    input r0 as field;
+    input r1 as field;
+    add r0 r1 into r2;
+    add r0 r2 into r3;
+    add r2 r3 into r4;
+    output r4 as field;
+    output r3 as field;
+    output r2 as field;
+
+closure check_not_equal:
+    input r0 as field;
+    input r1 as field;
+    assert.neq r0 r1;
+
+function compute:
+    input r0 as field.private;
+    input r1 as field.public;
+    call check_not_equal r0 r1;
+    call execute r0 r1 into r2 r3 r4;
+    output r2 as field.private;
+    output r3 as field.private;
+    output r4 as field.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Declare the function name.
+    let function_name = Identifier::from_str("compute").unwrap();
+
+    // Initialize the RNG.
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = super::test_helpers::sample_process(&program);
+    // Check that the circuit key can be synthesized.
+    process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+    // Reset the process.
+    let process = super::test_helpers::sample_process(&program);
+
+    // Initialize a new caller account.
+    let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+    // Declare the input value.
+    let r0 = Value::<CurrentNetwork>::from_str("3field").unwrap();
+    let r1 = Value::<CurrentNetwork>::from_str("5field").unwrap();
+
+    // Authorize the function call.
+    let authorization = process
+        .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, [r0, r1].iter(), rng)
+        .unwrap();
+    assert_eq!(authorization.len(), 1);
+
+    let r2 = Value::from_str("19field").unwrap();
+    let r3 = Value::from_str("11field").unwrap();
+    let r4 = Value::from_str("8field").unwrap();
+
+    // Check again to make sure we didn't modify the authorization before calling `evaluate`.
+    assert_eq!(authorization.len(), 1);
+
+    // Compute the output value.
+    let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(3, candidate.len());
+    assert_eq!(r2, candidate[0]);
+    assert_eq!(r3, candidate[1]);
+    assert_eq!(r4, candidate[2]);
+
+    // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+    assert_eq!(authorization.len(), 1);
+
+    // Execute the request.
+    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(3, candidate.len());
+    assert_eq!(r2, candidate[0]);
+    assert_eq!(r3, candidate[1]);
+    assert_eq!(r4, candidate[2]);
+
+    // Initialize a new block store.
+    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    // Prepare the trace.
+    trace.prepare(block_store).unwrap();
+    // Prove the execution.
+    let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
+
+    // Verify the execution.
+    process.verify_execution(&execution).unwrap();
 }
 
 fn get_assignment(

@@ -15,6 +15,9 @@
 pub mod confirmed;
 pub use confirmed::*;
 
+pub mod rejected;
+pub use rejected::*;
+
 mod bytes;
 mod merkle;
 mod serialize;
@@ -23,7 +26,15 @@ mod string;
 use crate::{Transaction, Transition};
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, FINALIZE_OPERATIONS_DEPTH, TRANSACTIONS_DEPTH},
+    program::{
+        Ciphertext,
+        ProgramOwner,
+        Record,
+        TransactionsPath,
+        TransactionsTree,
+        FINALIZE_OPERATIONS_DEPTH,
+        TRANSACTIONS_DEPTH,
+    },
     types::{Field, Group, U64},
 };
 use synthesizer_program::FinalizeOperation;

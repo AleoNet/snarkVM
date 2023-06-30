@@ -16,24 +16,11 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{Deployment, Execution, Transaction};
+use crate::{rejected::Rejected, Transaction};
 use console::network::prelude::*;
 use synthesizer_program::FinalizeOperation;
 
 pub type NumFinalizeSize = u16;
-
-/// A safety wrapper around a rejected type.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Rejected<T: Clone + Debug + PartialEq + Eq + ToBytes>(pub T);
-
-impl<T: Clone + Debug + PartialEq + Eq + ToBytes> Deref for Rejected<T> {
-    type Target = T;
-
-    /// Returns a reference to the rejected type.
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 /// The confirmed transaction.
 #[derive(Clone, PartialEq, Eq)]
@@ -43,9 +30,9 @@ pub enum ConfirmedTransaction<N: Network> {
     /// The accepted execute transaction is composed of `(index, execute_transaction, finalize_operations)`.
     AcceptedExecute(u32, Transaction<N>, Vec<FinalizeOperation<N>>),
     /// The rejected deploy transaction is composed of `(index, fee_transaction, rejected_deployment)`.
-    RejectedDeploy(u32, Transaction<N>, Box<Rejected<Deployment<N>>>),
+    RejectedDeploy(u32, Transaction<N>, Rejected<N>),
     /// The rejected execute transaction is composed of `(index, fee_transaction, rejected_execution)`.
-    RejectedExecute(u32, Transaction<N>, Rejected<Execution<N>>),
+    RejectedExecute(u32, Transaction<N>, Rejected<N>),
 }
 
 impl<N: Network> ConfirmedTransaction<N> {
@@ -107,23 +94,23 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns a new instance of a rejected deploy transaction.
-    pub fn rejected_deploy(
-        index: u32,
-        transaction: Transaction<N>,
-        rejected_deployment: Deployment<N>,
-    ) -> Result<Self> {
+    pub fn rejected_deploy(index: u32, transaction: Transaction<N>, rejected: Rejected<N>) -> Result<Self> {
+        ensure!(rejected.is_deployment(), "Rejected deployment is not a deployment");
+
         // Ensure the transaction is a fee transaction.
         match transaction.is_fee() {
-            true => Ok(Self::RejectedDeploy(index, transaction, Box::new(Rejected(rejected_deployment)))),
+            true => Ok(Self::RejectedDeploy(index, transaction, rejected)),
             false => bail!("Transaction '{}' is not a fee transaction", transaction.id()),
         }
     }
 
     /// Returns a new instance of a rejected execute transaction.
-    pub fn rejected_execute(index: u32, transaction: Transaction<N>, rejected_execution: Execution<N>) -> Result<Self> {
+    pub fn rejected_execute(index: u32, transaction: Transaction<N>, rejected: Rejected<N>) -> Result<Self> {
+        ensure!(rejected.is_execution(), "Rejected execution is not an execution");
+
         // Ensure the transaction is a fee transaction.
         match transaction.is_fee() {
-            true => Ok(Self::RejectedExecute(index, transaction, Rejected(rejected_execution))),
+            true => Ok(Self::RejectedExecute(index, transaction, rejected)),
             false => bail!("Transaction '{}' is not a fee transaction", transaction.id()),
         }
     }
@@ -231,14 +218,11 @@ pub(crate) mod test_helpers {
         // Sample a fee transaction.
         let fee_transaction = crate::transaction::test_helpers::sample_fee_transaction(rng);
 
-        // Extract the deployment.
-        let deploy = match crate::transaction::test_helpers::sample_deployment_transaction(rng) {
-            Transaction::Deploy(_, _, deploy, _) => (*deploy).clone(),
-            _ => unreachable!(),
-        };
+        // Extract the rejected deployment.
+        let rejected = crate::rejected::test_helpers::sample_rejected_deployment(rng);
 
         // Return the confirmed transaction.
-        ConfirmedTransaction::rejected_deploy(index, fee_transaction, deploy).unwrap()
+        ConfirmedTransaction::rejected_deploy(index, fee_transaction, rejected).unwrap()
     }
 
     /// Samples a rejected execute transaction at the given index.
@@ -246,14 +230,11 @@ pub(crate) mod test_helpers {
         // Sample a fee transaction.
         let fee_transaction = crate::transaction::test_helpers::sample_fee_transaction(rng);
 
-        // Extract the execution.
-        let execute = match crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng) {
-            Transaction::Execute(_, execute, _) => execute,
-            _ => unreachable!(),
-        };
+        // Extract the rejected execution.
+        let rejected = crate::rejected::test_helpers::sample_rejected_execution(rng);
 
         // Return the confirmed transaction.
-        ConfirmedTransaction::rejected_execute(index, fee_transaction, execute).unwrap()
+        ConfirmedTransaction::rejected_execute(index, fee_transaction, rejected).unwrap()
     }
 
     /// Sample a list of randomly confirmed transactions.
