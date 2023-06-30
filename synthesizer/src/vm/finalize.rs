@@ -592,7 +592,7 @@ finalize transfer_public:
             Transaction::Execute(_, execution, fee) => ConfirmedTransaction::RejectedExecute(
                 index,
                 Transaction::from_fee(fee.clone().unwrap()).unwrap(),
-                crate::Rejected::new_execution(execution.clone()),
+                Rejected::new_execution(execution.clone()),
             ),
             _ => panic!("only reject execution transactions"),
         }
@@ -884,11 +884,8 @@ function ped_hash:
             assert!(transaction.is_execute());
             if let Transaction::Execute(_, execution, fee) = transaction {
                 let fee_transaction = Transaction::from_fee(fee.unwrap()).unwrap();
-                let expected_confirmed_transaction = ConfirmedTransaction::RejectedExecute(
-                    0,
-                    fee_transaction,
-                    crate::Rejected::new_execution(execution),
-                );
+                let expected_confirmed_transaction =
+                    ConfirmedTransaction::RejectedExecute(0, fee_transaction, Rejected::new_execution(execution));
 
                 let confirmed_transaction = confirmed_transactions.iter().next().unwrap();
                 assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
