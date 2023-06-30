@@ -221,14 +221,30 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         for instruction in function.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
             if let CallStack::Execute(..) = registers.call_stack() {
+                // Evaluate the instruction.
+                let result = match instruction {
+                    // If the instruction is a `call` instruction, we need to handle it separately.
+                    Instruction::Call(call) => CallTrait::evaluate(call, self, &mut registers),
+                    // Otherwise, evaluate the instruction normally.
+                    _ => instruction.evaluate(self, &mut registers),
+                };
                 // If the evaluation fails, bail and return the error.
-                if let Err(error) = instruction.evaluate(self, &mut registers) {
+                if let Err(error) = result {
                     bail!("Failed to evaluate instruction ({instruction}): {error}");
                 }
             }
 
             // Execute the instruction.
-            instruction.execute(self, &mut registers)?;
+            let result = match instruction {
+                // If the instruction is a `call` instruction, we need to handle it separately.
+                Instruction::Call(call) => CallTrait::execute(call, self, &mut registers),
+                // Otherwise, execute the instruction normally.
+                _ => instruction.execute(self, &mut registers),
+            };
+            // If the execution fails, bail and return the error.
+            if let Err(error) = result {
+                bail!("Failed to execute instruction ({instruction}): {error}");
+            }
 
             // If the instruction was a function call, then set the tracker to `true`.
             if let Instruction::Call(call) = instruction {

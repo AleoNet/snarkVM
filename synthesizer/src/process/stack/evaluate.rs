@@ -155,9 +155,17 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         lap!(timer, "Store the inputs");
 
         // Evaluate the instructions.
+        // Note: We handle the `call` instruction separately, as it requires special handling.
         for instruction in function.instructions() {
+            // Evaluate the instruction.
+            let result = match instruction {
+                // If the instruction is a `call` instruction, we need to handle it separately.
+                Instruction::Call(call) => CallTrait::evaluate(call, self, &mut registers),
+                // Otherwise, evaluate the instruction normally.
+                _ => instruction.evaluate(self, &mut registers),
+            };
             // If the evaluation fails, bail and return the error.
-            if let Err(error) = instruction.evaluate(self, &mut registers) {
+            if let Err(error) = result {
                 bail!("Failed to evaluate instruction ({instruction}): {error}");
             }
         }
