@@ -780,7 +780,7 @@ pub(crate) mod test_helpers {
         RegistersStore,
         RegistersStoreCircuit,
         Stack,
-        StackProgram,
+        StackProgramTypes,
     };
     use circuit::AleoV0;
     use console::{

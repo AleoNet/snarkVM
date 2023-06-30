@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod query;
-pub use query::*;
-
 use crate::{
-    process::{CallStack, Closure, FinalizeTypes, Function, Program, RegisterTypes},
-    stack::FinalizeGlobalState,
+    Closure, Function, Program,
+    FinalizeGlobalState,
 };
 use console::{
     account::Address,
@@ -42,50 +39,6 @@ use console::{
 };
 use snarkvm_synthesizer_program::Operand;
 
-pub trait StackEvaluate<N: Network>: Clone {
-    /// Evaluates a program closure on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    fn evaluate_closure<A: circuit::Aleo<Network = N>>(
-        &self,
-        closure: &Closure<N>,
-        inputs: &[Value<N>],
-        call_stack: CallStack<N>,
-        caller: Address<N>,
-        tvk: Field<N>,
-    ) -> Result<Vec<Value<N>>>;
-
-    /// Evaluates a program function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
-}
-
-pub trait StackExecute<N: Network> {
-    /// Executes a program closure on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    fn execute_closure<A: circuit::Aleo<Network = N>>(
-        &self,
-        closure: &Closure<N>,
-        inputs: &[circuit::Value<A>],
-        call_stack: CallStack<N>,
-        caller: circuit::Address<A>,
-        tvk: circuit::Field<A>,
-    ) -> Result<Vec<circuit::Value<A>>>;
-
-    /// Executes a program function on the given inputs.
-    ///
-    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    fn execute_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
-}
-
 pub trait StackMatches<N: Network> {
     /// Checks that the given value matches the layout of the value type.
     fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()>;
@@ -101,14 +54,6 @@ pub trait StackMatches<N: Network> {
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
     fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()>;
-}
-
-pub trait StackProgramTypes<N: Network> {
-    /// Returns the register types for the given closure or function name.
-    fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>>;
-
-    /// Returns the register types for the given finalize name.
-    fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>>;
 }
 
 pub trait StackProgram<N: Network> {

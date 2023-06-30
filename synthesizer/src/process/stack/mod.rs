@@ -281,7 +281,9 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         }
         Ok(num_calls)
     }
+}
 
+impl<N: Network> StackProgramTypes<N> for Stack<N> {
     /// Returns the register types for the given closure or function name.
     #[inline]
     fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
