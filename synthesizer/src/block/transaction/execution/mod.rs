@@ -19,10 +19,9 @@ mod string;
 
 use crate::{
     block::{Transaction, Transition},
-    process::{Command, Instruction},
     snark::Proof,
+    stack::{Command, Finalize, Instruction},
     store::ConsensusStorage,
-    Finalize,
     VM,
 };
 use console::{account::Field, network::prelude::*, program::LiteralType};

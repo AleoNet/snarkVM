@@ -38,7 +38,8 @@ mod helpers;
 
 use crate::{
     block::{Deployment, Transition},
-    process::{traits::*, CallMetrics, CallOperator, Closure, Function, Instruction, Process, Program, Trace},
+    process::{traits::*, CallMetrics, Process, Trace},
+    stack::{traits::*, CallOperator, Closure, Function, Instruction, Program},
 };
 use console::{
     account::{Address, PrivateKey},

@@ -17,11 +17,24 @@
 #![warn(clippy::cast_possible_truncation)]
 #![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
 
+pub use snarkvm_synthesizer_program as program;
+
+pub type Program<N> = crate::program::ProgramCore<N, Instruction<N>, Command<N>>;
+pub type Function<N> = crate::program::FunctionCore<N, Instruction<N>, Command<N>>;
+pub type Finalize<N> = crate::program::FinalizeCore<N, Command<N>>;
+pub type Closure<N> = crate::program::ClosureCore<N, Instruction<N>>;
+
+mod command;
+pub use command::*;
+
 mod finalize_global_state;
 pub use finalize_global_state::*;
 
 mod finalize_operation;
 pub use finalize_operation::*;
 
-mod traits;
+mod instruction;
+pub use instruction::*;
+
+pub mod traits;
 pub use traits::*;

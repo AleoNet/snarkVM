@@ -326,14 +326,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
     use crate::{
+        block::{Block, Header, Metadata, Transaction, Transition},
+        stack::Program,
         store::helpers::memory::ConsensusMemory,
         vm::{test_helpers, test_helpers::sample_finalize_state},
-        Block,
-        Header,
-        Metadata,
-        Program,
-        Transaction,
-        Transition,
     };
     use console::{
         account::{Address, PrivateKey, ViewKey},

@@ -15,5 +15,5 @@
 mod finalize_store;
 pub use finalize_store::*;
 
-// mod stack_and_registers;
-// pub use stack_and_registers::*;
+mod stack_and_registers;
+pub use stack_and_registers::*;

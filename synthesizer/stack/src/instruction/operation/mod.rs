@@ -771,21 +771,14 @@ crate::operation!(
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{
-        stack::FinalizeGlobalState,
-        Authorization,
-        CallStack,
-        FinalizeRegisters,
-        Registers,
-        RegistersStore,
-        RegistersStoreCircuit,
-        Stack,
-        StackProgramTypes,
-    };
     use circuit::AleoV0;
     use console::{
         network::Testnet3,
         program::{Identifier, Literal, Plaintext, Register, Value},
+    };
+    use synthesizer::{
+        process::{Authorization, CallStack, FinalizeRegisters, Registers, Stack, StackProgramTypes},
+        stack::{FinalizeGlobalState, RegistersStore, RegistersStoreCircuit},
     };
 
     type CurrentNetwork = Testnet3;

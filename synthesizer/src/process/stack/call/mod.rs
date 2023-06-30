@@ -12,22 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::process::{
-    Call,
-    CallOperator,
-    CallStack,
-    Registers,
-    RegistersCall,
-    RegistersCaller,
-    RegistersCallerCircuit,
-    RegistersLoad,
-    RegistersLoadCircuit,
-    RegistersStore,
-    RegistersStoreCircuit,
-    StackEvaluate,
-    StackExecute,
-    StackMatches,
-    StackProgram,
+use crate::{
+    process::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute},
+    stack::{
+        Call,
+        CallOperator,
+        RegistersCaller,
+        RegistersCallerCircuit,
+        RegistersLoad,
+        RegistersLoadCircuit,
+        RegistersStore,
+        RegistersStoreCircuit,
+        StackMatches,
+        StackProgram,
+    },
 };
 use console::{network::prelude::*, program::Request};
 

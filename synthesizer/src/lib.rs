@@ -33,6 +33,9 @@ pub use snarkvm_synthesizer_snark as snark;
 #[cfg(feature = "stack")]
 pub use snarkvm_synthesizer_stack as stack;
 
+#[cfg(feature = "stack")]
+pub use crate::stack::{Program, Function, Finalize, Closure, Instruction, Command};
+
 pub mod block;
 pub use block::*;
 

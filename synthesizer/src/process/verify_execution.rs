@@ -330,8 +330,10 @@ impl<N: Network> Process<N> {
                     .filter_map(|instruction| match instruction {
                         Instruction::Call(call) => {
                             let (pid, fname) = match call.operator() {
-                                crate::CallOperator::Locator(locator) => (locator.program_id(), locator.resource()),
-                                crate::CallOperator::Resource(fname) => (&top.pid, fname),
+                                crate::stack::CallOperator::Locator(locator) => {
+                                    (locator.program_id(), locator.resource())
+                                }
+                                crate::stack::CallOperator::Resource(fname) => (&top.pid, fname),
                             };
                             Some(TransitionMetadata::new(&mut counter, *pid, *fname, None))
                         }

@@ -21,20 +21,15 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{
-    process::{
-        RegistersCaller,
-        RegistersCallerCircuit,
-        RegistersLoad,
-        RegistersLoadCircuit,
-        RegistersStore,
-        RegistersStoreCircuit,
-        StackEvaluate,
-        StackExecute,
-        StackMatches,
-        StackProgram,
-    },
-    program::InstructionTrait,
+use crate::traits::{
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
 };
 use console::{
     network::{
@@ -65,7 +60,7 @@ use console::{
     },
     program::{Register, RegisterType},
 };
-use snarkvm_synthesizer_program::Operand;
+use snarkvm_synthesizer_program::{InstructionTrait, Operand};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Instruction<N: Network> {
@@ -384,7 +379,7 @@ impl<N: Network> Instruction<N> {
     #[inline]
     pub fn evaluate(
         &self,
-        stack: &(impl StackEvaluate<N> + StackMatches<N> + StackProgram<N>),
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate(stack, registers))
@@ -394,7 +389,7 @@ impl<N: Network> Instruction<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack, registers))

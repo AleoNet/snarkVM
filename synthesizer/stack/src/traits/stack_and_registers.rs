@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    Closure, Function, Program,
-    FinalizeGlobalState,
-};
+use crate::{FinalizeGlobalState, Function, Program};
 use console::{
     account::Address,
     network::Network,
@@ -31,7 +28,6 @@ use console::{
         RecordType,
         Register,
         RegisterType,
-        Response,
         Value,
         ValueType,
     },
@@ -91,11 +87,6 @@ pub trait FinalizeRegistersState<N: Network> {
 
     /// Returns the function name for the finalize scope.
     fn function_name(&self) -> &Identifier<N>;
-}
-
-pub trait RegistersCall<N: Network> {
-    /// Returns the current call stack.
-    fn call_stack(&self) -> CallStack<N>;
 }
 
 pub trait RegistersCaller<N: Network> {

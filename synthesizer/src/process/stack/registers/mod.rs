@@ -17,18 +17,18 @@ mod caller;
 mod load;
 mod store;
 
-use crate::process::{
-    CallStack,
-    RegisterTypes,
-    RegistersCall,
-    RegistersCaller,
-    RegistersCallerCircuit,
-    RegistersLoad,
-    RegistersLoadCircuit,
-    RegistersStore,
-    RegistersStoreCircuit,
-    StackMatches,
-    StackProgram,
+use crate::{
+    process::{CallStack, RegisterTypes, RegistersCall},
+    stack::{
+        RegistersCaller,
+        RegistersCallerCircuit,
+        RegistersLoad,
+        RegistersLoadCircuit,
+        RegistersStore,
+        RegistersStoreCircuit,
+        StackMatches,
+        StackProgram,
+    },
 };
 use console::{
     network::prelude::*,

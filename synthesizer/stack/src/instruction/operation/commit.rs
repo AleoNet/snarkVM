@@ -12,14 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::process::{
+use crate::{
+    traits::{RegistersLoad, RegistersLoadCircuit, RegistersStore, RegistersStoreCircuit, StackMatches, StackProgram},
     Opcode,
-    RegistersLoad,
-    RegistersLoadCircuit,
-    RegistersStore,
-    RegistersStoreCircuit,
-    StackMatches,
-    StackProgram,
 };
 use console::{
     network::prelude::*,
@@ -343,13 +338,11 @@ impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{
-        instruction::test_helpers::{sample_finalize_registers, sample_registers},
-        Stack,
-    };
+    use crate::instruction::test_helpers::{sample_finalize_registers, sample_registers};
     use circuit::{AleoV0, Eject};
     use console::{network::Testnet3, program::Identifier};
     use snarkvm_synthesizer_snark::{ProvingKey, VerifyingKey};
+    use synthesizer::process::Stack;
 
     use std::collections::HashMap;
 
@@ -369,7 +362,8 @@ mod tests {
         destination_type: LiteralType,
         cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
     ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
-        use crate::{Process, Program};
+        use crate::Program;
+        use synthesizer::Process;
 
         // Initialize the opcode.
         let opcode = opcode.to_string();

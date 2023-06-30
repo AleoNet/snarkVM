@@ -13,38 +13,39 @@
 // limitations under the License.
 
 use crate::{
-    process::{Opcode, RegistersLoad, RegistersStore, StackMatches, StackProgram},
-    stack::FinalizeStoreTrait,
+    traits::{FinalizeStoreTrait, RegistersLoad, StackMatches, StackProgram},
+    FinalizeOperation,
+    Opcode,
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Register, Value},
+    program::{Identifier, Value},
 };
 use snarkvm_synthesizer_program::Operand;
 
-/// A get command, e.g. `get accounts[r0] into r1;`.
-/// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
+/// A set command, e.g. `set r1 into mapping[r0];`
+/// Sets the `key` entry as `value` in `mapping`.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Get<N: Network> {
+pub struct Set<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The key to access the mapping.
     key: Operand<N>,
-    /// The destination register.
-    destination: Register<N>,
+    /// The value to be set.
+    value: Operand<N>,
 }
 
-impl<N: Network> Get<N> {
+impl<N: Network> Set<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("get")
+        Opcode::Command("set")
     }
 
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> Vec<Operand<N>> {
-        vec![self.key.clone()]
+        vec![self.value.clone(), self.key.clone()]
     }
 
     /// Returns the mapping name.
@@ -59,46 +60,38 @@ impl<N: Network> Get<N> {
         &self.key
     }
 
-    /// Returns the destination register.
+    /// Returns the operand containing the value.
     #[inline]
-    pub const fn destination(&self) -> &Register<N> {
-        &self.destination
+    pub const fn value(&self) -> &Operand<N> {
+        &self.value
     }
 }
 
-impl<N: Network> Get<N> {
+impl<N: Network> Set<N> {
     /// Finalizes the command.
     #[inline]
     pub fn finalize(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
-        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
-    ) -> Result<()> {
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<FinalizeOperation<N>> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
         }
 
-        // Load the operand as a plaintext.
+        // Load the key operand as a plaintext.
         let key = registers.load_plaintext(stack, &self.key)?;
+        // Load the value operand as a plaintext.
+        let value = Value::Plaintext(registers.load_plaintext(stack, &self.value)?);
 
-        // Retrieve the value from storage as a literal.
-        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
-            Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
-            Some(Value::Record(..)) => bail!("Cannot 'get' a 'record'"),
-            // If a key does not exist, then bail.
-            None => bail!("Key '{}' does not exist in mapping '{}/{}'", key, stack.program_id(), self.mapping),
-        };
-
-        // Assign the value to the destination register.
-        registers.store(stack, &self.destination, value)?;
-
-        Ok(())
+        // Update the value in storage, and return the finalize operation.
+        store.update_key_value(stack.program_id(), &self.mapping, key, value)
     }
 }
 
-impl<N: Network> Parser for Get<N> {
+impl<N: Network> Parser for Set<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -106,6 +99,16 @@ impl<N: Network> Parser for Get<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
+        // Parse the value operand from the string.
+        let (string, value) = Operand::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
+        // Parse the "into" keyword from the string.
+        let (string, _) = tag("into")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
@@ -121,26 +124,16 @@ impl<N: Network> Parser for Get<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "]" from the string.
         let (string, _) = tag("]")(string)?;
-
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the "into" keyword from the string.
-        let (string, _) = tag("into")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the destination register from the string.
-        let (string, destination) = Register::parse(string)?;
-
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { mapping, key, destination }))
+        Ok((string, Self { mapping, key, value }))
     }
 }
 
-impl<N: Network> FromStr for Get<N> {
+impl<N: Network> FromStr for Set<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -158,48 +151,48 @@ impl<N: Network> FromStr for Get<N> {
     }
 }
 
-impl<N: Network> Debug for Get<N> {
+impl<N: Network> Debug for Set<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Get<N> {
+impl<N: Network> Display for Set<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
         write!(f, "{} ", Self::opcode())?;
+        // Print the value operand.
+        write!(f, "{} into ", self.value)?;
         // Print the mapping and key operand.
-        write!(f, "{}[{}] into ", self.mapping, self.key)?;
-        // Print the destination register.
-        write!(f, "{};", self.destination)
+        write!(f, "{}[{}];", self.mapping, self.key)
     }
 }
 
-impl<N: Network> FromBytes for Get<N> {
+impl<N: Network> FromBytes for Set<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
         let mapping = Identifier::read_le(&mut reader)?;
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
-        // Read the destination register.
-        let destination = Register::read_le(&mut reader)?;
+        // Read the value operand.
+        let value = Operand::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { mapping, key, destination })
+        Ok(Self { mapping, key, value })
     }
 }
 
-impl<N: Network> ToBytes for Get<N> {
+impl<N: Network> ToBytes for Set<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
         self.mapping.write_le(&mut writer)?;
         // Write the key operand.
         self.key.write_le(&mut writer)?;
-        // Write the destination register.
-        self.destination.write_le(&mut writer)
+        // Write the value operand.
+        self.value.write_le(&mut writer)
     }
 }
 
@@ -212,11 +205,11 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, get) = Get::<CurrentNetwork>::parse("get account[r0] into r1;").unwrap();
+        let (string, set) = Set::<CurrentNetwork>::parse("set r0 into account[r1];").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(get.operands().len(), 1, "The number of operands is incorrect");
-        assert_eq!(get.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(get.destination, Register::Locator(1), "The second operand is incorrect");
+        assert_eq!(set.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(set.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(set.value, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(set.key, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
     }
 }

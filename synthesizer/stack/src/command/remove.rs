@@ -13,41 +13,34 @@
 // limitations under the License.
 
 use crate::{
-    process::{Opcode, RegistersLoad, RegistersStore, StackMatches, StackProgram},
-    stack::FinalizeStoreTrait,
+    traits::{FinalizeStoreTrait, RegistersLoad, StackMatches, StackProgram},
+    FinalizeOperation,
+    Opcode,
 };
-use console::{
-    network::prelude::*,
-    program::{Identifier, Register, Value},
-};
+use console::{network::prelude::*, program::Identifier};
 use snarkvm_synthesizer_program::Operand;
 
-/// A get command that uses the provided default in case of failure, e.g. `get.or_use accounts[r0] r1 into r2;`.
-/// Gets the value stored at `operand` in `mapping` and stores the result in `destination`.
-/// If the key is not present, `default` is stored in `destination`.
+/// A remove command, e.g. `remove mapping[r0];`
+/// Removes the (`key`, `value`) entry in `mapping`.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct GetOrUse<N: Network> {
+pub struct Remove<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The key to access the mapping.
     key: Operand<N>,
-    /// The default value.
-    default: Operand<N>,
-    /// The destination register.
-    destination: Register<N>,
 }
 
-impl<N: Network> GetOrUse<N> {
+impl<N: Network> Remove<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("get.or_use")
+        Opcode::Command("remove")
     }
 
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> Vec<Operand<N>> {
-        vec![self.key.clone(), self.default.clone()]
+        vec![self.key.clone()]
     }
 
     /// Returns the mapping name.
@@ -61,54 +54,30 @@ impl<N: Network> GetOrUse<N> {
     pub const fn key(&self) -> &Operand<N> {
         &self.key
     }
-
-    /// Returns the default value.
-    #[inline]
-    pub const fn default(&self) -> &Operand<N> {
-        &self.default
-    }
-
-    /// Returns the destination register.
-    #[inline]
-    pub const fn destination(&self) -> &Register<N> {
-        &self.destination
-    }
 }
 
-impl<N: Network> GetOrUse<N> {
+impl<N: Network> Remove<N> {
     /// Finalizes the command.
     #[inline]
     pub fn finalize(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
-        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
-    ) -> Result<()> {
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<FinalizeOperation<N>> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {
             bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
         }
 
-        // Load the operand as a plaintext.
+        // Load the key operand as a plaintext.
         let key = registers.load_plaintext(stack, &self.key)?;
-
-        // Retrieve the value from storage as a literal.
-        let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
-            Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
-            Some(Value::Record(..)) => bail!("Cannot 'get.or_use' a 'record'"),
-            // If a key does not exist, then use the default value.
-            None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
-        };
-
-        // Assign the value to the destination register.
-        registers.store(stack, &self.destination, value)?;
-
-        // Return the finalize operation.
-        Ok(())
+        // Update the value in storage, and return the finalize operation.
+        store.remove_key_value(stack.program_id(), &self.mapping, &key)
     }
 }
 
-impl<N: Network> Parser for GetOrUse<N> {
+impl<N: Network> Parser for Remove<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -133,28 +102,14 @@ impl<N: Network> Parser for GetOrUse<N> {
         let (string, _) = tag("]")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the default value from the string.
-        let (string, default) = Operand::parse(string)?;
-
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the "into" keyword from the string.
-        let (string, _) = tag("into")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the destination register from the string.
-        let (string, destination) = Register::parse(string)?;
-
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { mapping, key, default, destination }))
+        Ok((string, Self { mapping, key }))
     }
 }
 
-impl<N: Network> FromStr for GetOrUse<N> {
+impl<N: Network> FromStr for Remove<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -172,52 +127,40 @@ impl<N: Network> FromStr for GetOrUse<N> {
     }
 }
 
-impl<N: Network> Debug for GetOrUse<N> {
+impl<N: Network> Debug for Remove<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for GetOrUse<N> {
+impl<N: Network> Display for Remove<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Print the command.
-        write!(f, "{} ", Self::opcode())?;
-        // Print the mapping and key operand.
-        write!(f, "{}[{}] {} into ", self.mapping, self.key, self.default)?;
-        // Print the destination register.
-        write!(f, "{};", self.destination)
+        // Print the command, mapping, and key operand.
+        write!(f, "{} {}[{}];", Self::opcode(), self.mapping, self.key)
     }
 }
 
-impl<N: Network> FromBytes for GetOrUse<N> {
+impl<N: Network> FromBytes for Remove<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
         let mapping = Identifier::read_le(&mut reader)?;
         // Read the key operand.
         let key = Operand::read_le(&mut reader)?;
-        // Read the default value.
-        let default = Operand::read_le(&mut reader)?;
-        // Read the destination register.
-        let destination = Register::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { mapping, key, default, destination })
+        Ok(Self { mapping, key })
     }
 }
 
-impl<N: Network> ToBytes for GetOrUse<N> {
+impl<N: Network> ToBytes for Remove<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
         self.mapping.write_le(&mut writer)?;
         // Write the key operand.
-        self.key.write_le(&mut writer)?;
-        // Write the default value.
-        self.default.write_le(&mut writer)?;
-        // Write the destination register.
-        self.destination.write_le(&mut writer)
+        self.key.write_le(&mut writer)
     }
 }
 
@@ -230,12 +173,10 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, get_or_use) = GetOrUse::<CurrentNetwork>::parse("get.or_use account[r0] r1 into r2;").unwrap();
+        let (string, remove) = Remove::<CurrentNetwork>::parse("remove account[r1];").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(get_or_use.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(get_or_use.operands().len(), 2, "The number of operands is incorrect");
-        assert_eq!(get_or_use.key, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(get_or_use.default, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(get_or_use.destination, Register::Locator(2), "The second operand is incorrect");
+        assert_eq!(remove.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(remove.operands().len(), 1, "The number of operands is incorrect");
+        assert_eq!(remove.key, Operand::Register(Register::Locator(1)), "The first operand is incorrect");
     }
 }

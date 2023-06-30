@@ -28,7 +28,7 @@ mod get_or_use;
 pub use get_or_use::*;
 
 mod rand_chacha;
-pub use crate::process::command::rand_chacha::*;
+pub use crate::command::rand_chacha::*;
 
 mod remove;
 pub use remove::*;
@@ -40,14 +40,16 @@ mod set;
 pub use set::*;
 
 use crate::{
-    process::{FinalizeRegistersState, Instruction, RegistersLoad, RegistersStore, Stack},
-    program::{CommandTrait, InstructionTrait},
-    stack::{FinalizeOperation, FinalizeStoreTrait},
+    traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
+    FinalizeOperation,
+    FinalizeRegistersState,
+    Instruction,
 };
 use console::{
     network::prelude::*,
     program::{Identifier, Register, RegisterType},
 };
+use snarkvm_synthesizer_program::{CommandTrait, InstructionTrait};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Command<N: Network> {
@@ -138,7 +140,7 @@ impl<N: Network> Command<N> {
     #[inline]
     pub fn finalize(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
     ) -> Result<Option<FinalizeOperation<N>>> {

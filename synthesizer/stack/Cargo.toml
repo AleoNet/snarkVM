@@ -39,9 +39,26 @@ package = "snarkvm-console"
 path = "../../console"
 version = "=0.12.6"
 
+[dependencies.snarkvm-synthesizer-program]
+path = "../program"
+version = "=0.12.6"
+
 [dependencies.colored]
 version = "2"
 optional = true
+
+[dependencies.indexmap]
+version = "2.0"
+features = [ "serde", "rayon" ]
+
+[dependencies.paste]
+version = "1.0.12"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.rand_chacha]
+version = "0.3"
 
 [dependencies.serde_json]
 version = "1.0"
@@ -49,3 +66,12 @@ features = [ "preserve_order" ]
 
 [dev-dependencies.bincode]
 version = "1"
+
+[dev-dependencies.synthesizer]
+package = "snarkvm-synthesizer"
+path = "../"
+version = "=0.12.6"
+
+[dev-dependencies.snarkvm-synthesizer-snark]
+path = "../snark"
+version = "=0.12.6"

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::process::Opcode;
+use crate::Opcode;
 use console::{network::prelude::*, program::Identifier};
 use snarkvm_synthesizer_program::Operand;
 
@@ -167,7 +167,6 @@ impl<N: Network, const VARIANT: u8> ToBytes for Branch<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use console::{
         network::Testnet3,
         program::{Identifier, Register},

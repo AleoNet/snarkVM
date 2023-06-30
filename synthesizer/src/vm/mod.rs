@@ -29,9 +29,9 @@ use crate::{
     cast_mut_ref,
     cast_ref,
     process,
-    process::{Authorization, Process, Program, Trace},
+    process::{Authorization, Process, Trace},
     query::Query,
-    stack::{FinalizeGlobalState, FinalizeStoreTrait},
+    stack::{FinalizeGlobalState, FinalizeStoreTrait, Program},
     store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
     TransactionStorage,
 };
@@ -242,7 +242,7 @@ pub(crate) mod test_helpers {
     use super::*;
     use crate::{
         block::{Block, Fee, Header, Metadata, Transition},
-        process::Program,
+        stack::Program,
         store::helpers::memory::ConsensusMemory,
     };
     use console::{

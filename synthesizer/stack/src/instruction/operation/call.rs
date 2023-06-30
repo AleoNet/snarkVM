@@ -12,14 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::process::{
+use crate::{
+    traits::{RegistersLoad, RegistersLoadCircuit, StackMatches, StackProgram},
     Opcode,
-    RegistersLoad,
-    RegistersLoadCircuit,
-    StackEvaluate,
-    StackExecute,
-    StackMatches,
-    StackProgram,
 };
 use console::{
     network::prelude::*,
@@ -169,14 +164,14 @@ impl<N: Network> Call<N> {
     }
 
     /// Evaluates the instruction.
-    pub fn evaluate(&self, _stack: &impl StackEvaluate<N>, _registers: &mut impl RegistersLoad<N>) -> Result<()> {
+    pub fn evaluate(&self, _stack: &impl StackProgram<N>, _registers: &mut impl RegistersLoad<N>) -> Result<()> {
         bail!("Forbidden operation: Evaluate cannot invoke a 'call' directly. Use 'call' in 'Stack' instead.")
     }
 
     /// Executes the instruction.
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        _stack: &impl StackExecute<N>,
+        _stack: &impl StackProgram<N>,
         _registers: &mut impl RegistersLoadCircuit<N, A>,
     ) -> Result<()> {
         bail!("Forbidden operation: Execute cannot invoke a 'call' directly. Use 'call' in 'Stack' instead.")

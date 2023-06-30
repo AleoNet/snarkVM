@@ -16,7 +16,7 @@ mod utilities;
 use utilities::*;
 
 use console::network::prelude::*;
-use snarkvm_synthesizer::Program;
+use snarkvm_synthesizer::stack::Program;
 
 use rayon::prelude::*;
 

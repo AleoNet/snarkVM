@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::process::{FinalizeRegistersState, Opcode, RegistersLoad, RegistersStore, StackMatches, StackProgram};
+use crate::{
+    traits::{RegistersLoad, RegistersStore, StackMatches, StackProgram},
+    FinalizeRegistersState,
+    Opcode,
+};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, Register, Value},

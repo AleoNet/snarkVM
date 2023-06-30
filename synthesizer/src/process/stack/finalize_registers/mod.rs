@@ -16,8 +16,8 @@ mod load;
 mod store;
 
 use crate::{
-    process::{FinalizeRegistersState, FinalizeTypes, RegistersLoad, RegistersStore, StackMatches, StackProgram},
-    stack::FinalizeGlobalState,
+    process::FinalizeTypes,
+    stack::{FinalizeGlobalState, FinalizeRegistersState, RegistersLoad, RegistersStore, StackMatches, StackProgram},
 };
 use console::{
     network::prelude::*,

@@ -15,7 +15,7 @@
 use crate::{get_expectation_path, print_difference, CurrentNetwork, ExpectedTest};
 
 use console::{account::PrivateKey, program::Identifier};
-use snarkvm_synthesizer::Program;
+use snarkvm_synthesizer::stack::Program;
 
 use anyhow::{bail, Result};
 use itertools::Itertools;
