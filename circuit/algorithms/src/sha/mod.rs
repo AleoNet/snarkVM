@@ -17,14 +17,21 @@ use constants::*;
 
 mod hash;
 
-use crate::Hash;
+use crate::HashMany;
 use snarkvm_circuit_types::{integers::Integer, prelude::*, Environment, Inject, IntegerType, Mode};
 use std::borrow::Cow;
 
 /// Sha hash with a 256-bit output.
 pub type Sha256<E> = Sha<E, 256>;
+pub type SHA512<E> = Sha<E, 512>;
 
 #[derive(Clone)]
 pub struct Sha<E: Environment, const NUM_BITS: usize> {
     phantom: std::marker::PhantomData<E>,
+}
+
+impl<E: Environment, const NUM_BITS: usize> Default for Sha<E, NUM_BITS> {
+    fn default() -> Self {
+        Self { phantom: std::marker::PhantomData }
+    }
 }

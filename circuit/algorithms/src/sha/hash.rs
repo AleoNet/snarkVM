@@ -13,33 +13,16 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_circuit_types::environment::Circuit;
 
-impl<E: Environment, const NUM_BITS: usize> Hash for Sha<E, NUM_BITS> {
+impl<E: Environment, const NUM_BITS: usize> HashMany for Sha<E, NUM_BITS> {
     type Input = Boolean<E>;
-    type Output = Field<E>;
+    type Output = U8<E>;
 
     #[inline]
-    fn hash(&self, input: &[Self::Input]) -> Self::Output {
-        // Set constants
-        let message_length_bits =
-            (input.len() as u64).to_bits_be().into_iter().map(Boolean::<E>::constant).collect::<Vec<_>>();
-        let chunk_size = NUM_BITS * 2;
+    fn hash_many(&self, input: &[Self::Input], _num_outputs: u16) -> Vec<Self::Output> {
+        let mut input = Self::pad_message::<u8>(input);
 
-        // Pad Message with 1 bit
-        let mut input = Cow::Borrowed(input);
-        let padded_length = input.len() + 1;
-        input.to_mut().resize(padded_length, Boolean::constant(true));
-
-        // Determine how many zeros we need to pad the message with
-        let chunks = padded_length / chunk_size + 1;
-        let remaining_bits_length = chunks * NUM_BITS - padded_length;
-        let extension_bit_length = if remaining_bits_length >= 64 {
-            remaining_bits_length - 64
-        } else {
-            remaining_bits_length + NUM_BITS - 64
-        };
-        input.to_mut().resize(padded_length + extension_bit_length, Boolean::constant(false));
-        input.to_mut().extend(message_length_bits);
         match NUM_BITS {
             256 => {
                 let (mut state, round_constants, rotation_constants) = (
@@ -74,31 +57,78 @@ impl<E: Environment, const NUM_BITS: usize> Hash for Sha<E, NUM_BITS> {
 
 impl<E: Environment, const NUM_BITS: usize> Sha<E, NUM_BITS> {
     #[inline]
+    fn pad_message<I: IntegerType>(input: &[Boolean<E>]) -> Cow<[Boolean<E>]> {
+        // Set constants
+        let message_length_bits =
+            U64::<E>::new(Mode::Constant, console::Integer::<E::Network, u64>::new(input.len() as u64));
+        let chunk_size = NUM_BITS * 2;
+
+        // Pad Message with 1 bit
+        let mut input = Cow::Borrowed(input);
+        let padded_length = input.len() + 1;
+        input.to_mut().push(Boolean::constant(true));
+
+        // Determine how many zeros we need to pad the message with
+        let chunks = padded_length / chunk_size + 1;
+        let remaining_bits_length = chunks * chunk_size - padded_length;
+        let extension_bit_length = if remaining_bits_length >= 64 {
+            remaining_bits_length - 64
+        } else {
+            remaining_bits_length + chunk_size - 64
+        };
+
+        // Pad Message with 0 bits and message length until we reach a multiple of 512 bits
+        input.to_mut().extend(vec![Boolean::constant(false); extension_bit_length]);
+        input.to_mut().extend(message_length_bits.to_bits_be());
+        input
+    }
+
+    #[inline]
+    fn right_rotate<I: IntegerType>(x: &Integer<E, I>, shift: &U8<E>) -> Integer<E, I> {
+        // Calculate rotation mask
+        let bits = match NUM_BITS {
+            256 => U8::<E>::constant(console::Integer::<<E as Environment>::Network, u8>::new(32u8)),
+            512 => U8::<E>::constant(console::Integer::<<E as Environment>::Network, u8>::new(64u8)),
+            _ => E::halt("Invalid hash size"),
+        };
+        let one = Integer::<E, I>::one();
+        let mask = (&one << shift) - one;
+
+        // Apply mask and right rotate bits
+        let shifted_bits = x & mask;
+        (x >> shift) | (shifted_bits << &(bits - shift))
+    }
+
+    #[inline]
     pub fn sha<I: IntegerType>(
         input: &[Boolean<E>],
         state: &mut [Integer<E, I>],
         round_constants: &[Integer<E, I>],
         rotation_constants: &[U8<E>],
-    ) -> Field<E> {
+    ) -> Vec<U8<E>> {
         let chunk_size = NUM_BITS * 2;
         let word_size = NUM_BITS / 8;
+
         // Initialize schedule array
         for chunk in input.chunks_exact(chunk_size) {
-            let mut vec = vec![];
+            // Put first 16 values into array
+            let mut schedule_array = vec![];
             for word in chunk.chunks_exact(word_size) {
-                vec.push(Integer::<E, I>::from_bits_be(word));
+                schedule_array.push(Integer::<E, I>::from_bits_be(word));
             }
-            let array_start = vec.len();
-            vec.extend(vec![Integer::<E, I>::zero(); Self::schedule_array_size() - array_start]);
+            println!("schedule_array: {:?}", schedule_array);
+            let array_start = schedule_array.len();
+            schedule_array.extend(vec![Integer::<E, I>::zero(); Self::schedule_array_size() - array_start]);
 
             for i in array_start..Self::schedule_array_size() {
-                let s0 = vec[i - 15].shr_wrapped(&rotation_constants[0])
-                    ^ vec[i - 15].shr_wrapped(&rotation_constants[1])
-                    ^ vec[i - 15].shr_checked(&rotation_constants[2]);
-                let s1 = vec[i - 2].shr_wrapped(&rotation_constants[3])
-                    ^ vec[i - 2].shr_wrapped(&rotation_constants[4])
-                    ^ vec[i - 2].shr_checked(&rotation_constants[5]);
-                vec[i] = &vec[i - 16] + s0 + &vec[i - 7] + s1;
+                let s0 = Self::right_rotate(&schedule_array[i - 15], &rotation_constants[0])
+                    ^ Self::right_rotate(&schedule_array[i - 15], &rotation_constants[1])
+                    ^ (&schedule_array[i - 15] >> (&rotation_constants[2]));
+                let s1 = Self::right_rotate(&schedule_array[i - 2], &rotation_constants[3])
+                    ^ Self::right_rotate(&schedule_array[i - 2], &rotation_constants[4])
+                    ^ (&schedule_array[i - 2] >> &rotation_constants[5]);
+                schedule_array[i] =
+                    s1.add_wrapped(&schedule_array[i - 7]).add_wrapped(&s0).add_wrapped(&schedule_array[i - 16]);
             }
 
             let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h) = (
@@ -113,38 +143,59 @@ impl<E: Environment, const NUM_BITS: usize> Sha<E, NUM_BITS> {
             );
 
             for i in 0..Self::schedule_array_size() {
-                let s1 = &e.shr_wrapped(&rotation_constants[6])
-                    ^ &e.shr_wrapped(&rotation_constants[7])
-                    ^ &e.shr_wrapped(&rotation_constants[8]);
+                let s1 = Self::right_rotate(&e, &rotation_constants[6])
+                    ^ Self::right_rotate(&e, &rotation_constants[7])
+                    ^ Self::right_rotate(&e, &rotation_constants[8]);
                 let ch = (&e & &f) ^ ((!&e) & &g);
-                let temp1 = &h + &s1 + &ch + &round_constants[i] + &vec[i];
-                let s0 = &a.shr_wrapped(&rotation_constants[9])
-                    ^ &a.shr_wrapped(&rotation_constants[10])
-                    ^ &a.shr_wrapped(&rotation_constants[11]);
+                let temp1 = &h + &s1 + &ch + &round_constants[i] + &schedule_array[i];
+                let s0 = Self::right_rotate(&a, &rotation_constants[9])
+                    ^ Self::right_rotate(&a, &rotation_constants[10])
+                    ^ Self::right_rotate(&a, &rotation_constants[11]);
                 let maj = (&a & &b) ^ (&a & &c) ^ (&b & &c);
-                let temp2 = s0 + maj;
+                let temp2 = s0.add_wrapped(&maj);
 
                 h = g;
                 g = f;
                 f = e;
-                e = d + temp1.clone();
+                e = d + &temp1;
                 d = c;
                 c = b;
                 b = a;
                 a = temp1 + temp2;
             }
 
-            state[0] = a + &state[0];
-            state[1] = b + &state[1];
-            state[2] = c + &state[2];
-            state[3] = d + &state[3];
-            state[4] = e + &state[4];
-            state[5] = f + &state[5];
-            state[6] = g + &state[6];
-            state[7] = h + &state[7];
+            state[0] += a;
+            state[1] += b;
+            state[2] += c;
+            state[3] += d;
+            state[4] += e;
+            state[5] += f;
+            state[6] += g;
+            state[7] += h;
         }
 
-        let bytes = state.iter_mut().flat_map(|s| s.to_bits_be()).collect::<Vec<_>>();
-        Field::from_bits_be(&bytes)
+        let digest = state.iter().flat_map(|s| s.to_bits_be()).collect::<Vec<_>>();
+        digest.chunks(8).map(U8::<E>::from_bits_be).collect::<Vec<_>>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use snarkvm_circuit_types::environment::Circuit;
+
+    const SHA256_OF_256U64_AS_LE_BYTES: &[u8] = &[
+        46, 34, 253, 67, 80, 96, 205, 93, 60, 245, 227, 239, 57, 247, 158, 25, 139, 53, 189, 44, 74, 243, 25, 116, 219,
+        54, 96, 27, 58, 47, 76, 145,
+    ];
+
+    #[test]
+    fn sha256_hash_matches() {
+        let sha = Sha256::<Circuit>::default();
+        let input = console::Integer::<<Circuit as Environment>::Network, u64>::new(256u64);
+        let circuit_input = Integer::<Circuit, u64>::new(Mode::Public, input);
+        let hash = sha.hash_many(&circuit_input.to_bits_le(), 5);
+        println!("Result: {:?}", hash);
     }
 }
