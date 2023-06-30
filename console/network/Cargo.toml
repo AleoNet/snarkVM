@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-network"
-version = "0.12.6"
+version = "0.13.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Network console library for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -15,45 +15,45 @@ wasm = [
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-version = "=0.12.6"
+version = "=0.13.0"
 default-features = false
 features = [ "snark" ]
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dependencies.snarkvm-console-collections]
 path = "../collections"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dependencies.snarkvm-console-network-environment]
 path = "./environment"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "=0.12.6"
+version = "=0.13.0"
 default-features = false
 features = [ "field", "group", "scalar" ]
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
-version = "=0.12.6"
+version = "=0.13.0"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "=0.12.6"
+version = "=0.13.0"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../../parameters"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dependencies.anyhow]
 version = "1.0.71"

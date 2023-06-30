@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-circuit-types-integers"
-version = "0.12.6"
+version = "0.13.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Integer circuit for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -9,20 +9,20 @@ edition = "2021"
 [dependencies.console]
 package = "snarkvm-console-types-integers"
 path = "../../../console/types/integers"
-version = "=0.12.6"
+version = "=0.13.0"
 optional = true
 
 [dependencies.snarkvm-circuit-environment]
 path = "../../environment"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dependencies.snarkvm-circuit-types-boolean]
 path = "../boolean"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dependencies.snarkvm-circuit-types-field]
 path = "../field"
-version = "=0.12.6"
+version = "=0.13.0"
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../../utilities"
