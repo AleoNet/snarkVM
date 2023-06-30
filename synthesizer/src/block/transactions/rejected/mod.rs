@@ -71,6 +71,14 @@ impl<N: Network> Rejected<N> {
             _ => bail!("Rejected transaction is not an execution"),
         }
     }
+
+    /// Returns the rejected ID.
+    pub fn to_id(&self) -> Result<Field<N>> {
+        match self {
+            Self::Deployment(_, deployment) => deployment.to_deployment_id(),
+            Self::Execution(execution) => execution.to_execution_id(),
+        }
+    }
 }
 
 #[cfg(test)]

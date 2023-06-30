@@ -123,7 +123,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Construct the fee transaction.
                             // Note: On failure, this will abort the entire atomic batch.
                             let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
-                            // Construct the rejected execution.
+                            // Construct the rejected deployment.
                             let rejected = Rejected::new_deployment(*program_owner, *deployment.clone());
                             // Construct the rejected deploy transaction.
                             ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected).map_err(|e| e.to_string())

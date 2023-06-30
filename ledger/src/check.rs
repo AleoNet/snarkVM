@@ -401,10 +401,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Construct the rejected ID.
             let rejected_id = match transaction {
                 ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
-                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => {
-                    Some(rejected.deployment()?.to_deployment_id()?)
-                }
-                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.execution()?.to_execution_id()?),
+                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => Some(rejected.to_id()?),
+                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
             };
 
             self.check_transaction_basic(transaction, rejected_id)
