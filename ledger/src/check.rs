@@ -401,8 +401,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Construct the rejected ID.
             let rejected_id = match transaction {
                 ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
-                ConfirmedTransaction::RejectedDeploy(_, _, deployment) => Some(deployment.to_deployment_id()?),
-                ConfirmedTransaction::RejectedExecute(_, _, execution) => Some(execution.to_execution_id()?),
+                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => {
+                    Some(rejected.deployment()?.to_deployment_id()?)
+                }
+                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.execution()?.to_execution_id()?),
             };
 
             self.check_transaction_basic(transaction, rejected_id)
@@ -417,8 +419,26 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.cumulative_proof_target(),
             block.previous_hash(),
         )?;
+
+        // Extract the unconfirmed deployment and execution transactions.
+        let unconfirmed_transactions = block
+            .transactions()
+            .iter()
+            .map(|tx| match tx {
+                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
+                    *rejected.program_owner()?,
+                    rejected.deployment()?.clone(),
+                    fee_transaction.fee_transition().ok_or(anyhow!("Missing fee"))?,
+                ),
+                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => {
+                    Transaction::from_execution(rejected.execution()?.clone(), fee_transaction.fee_transition())
+                }
+                _ => Ok(tx.deref().clone()),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         // Ensure the transactions after speculation match.
-        if block.transactions() != &self.vm.speculate(state, block.transactions().iter().map(|tx| tx.deref()))? {
+        if block.transactions() != &self.vm.speculate(state, unconfirmed_transactions.iter())? {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 
