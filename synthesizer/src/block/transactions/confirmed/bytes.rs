@@ -51,7 +51,7 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 // Read the transaction.
                 let transaction = Transaction::<N>::read_le(&mut reader)?;
                 // Read the rejected deployment.
-                let rejected = Deployment::<N>::read_le(&mut reader)?;
+                let rejected = Reject::<N>::read_le(&mut reader)?;
                 // Return the confirmed transaction.
                 Self::rejected_deploy(index, transaction, rejected).map_err(|e| error(e.to_string()))
             }
@@ -61,7 +61,7 @@ impl<N: Network> FromBytes for ConfirmedTransaction<N> {
                 // Read the transaction.
                 let transaction = Transaction::<N>::read_le(&mut reader)?;
                 // Read the rejected execution.
-                let rejected = Execution::<N>::read_le(&mut reader)?;
+                let rejected = Reject::<N>::read_le(&mut reader)?;
                 // Return the confirmed transaction.
                 Self::rejected_execute(index, transaction, rejected).map_err(|e| error(e.to_string()))
             }

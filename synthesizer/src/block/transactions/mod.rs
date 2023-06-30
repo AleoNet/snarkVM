@@ -15,6 +15,9 @@
 pub mod confirmed;
 pub use confirmed::*;
 
+pub mod rejected;
+pub use rejected::*;
+
 mod finalize_operation;
 pub use finalize_operation::*;
 
@@ -26,7 +29,15 @@ mod string;
 use crate::block::{Transaction, Transition};
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Record, TransactionsPath, TransactionsTree, FINALIZE_OPERATIONS_DEPTH, TRANSACTIONS_DEPTH},
+    program::{
+        Ciphertext,
+        ProgramOwner,
+        Record,
+        TransactionsPath,
+        TransactionsTree,
+        FINALIZE_OPERATIONS_DEPTH,
+        TRANSACTIONS_DEPTH,
+    },
     types::{Field, Group, U64},
 };
 

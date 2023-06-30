@@ -45,7 +45,7 @@ impl<N: Network> Serialize for ConfirmedTransaction<N> {
                     object.serialize_field("type", "deploy")?;
                     object.serialize_field("index", index)?;
                     object.serialize_field("transaction", transaction)?;
-                    object.serialize_field("rejected", &rejected_deployment.0)?;
+                    object.serialize_field("rejected", &rejected_deployment)?;
                     object.end()
                 }
                 Self::RejectedExecute(index, transaction, rejected_execution) => {
@@ -54,7 +54,7 @@ impl<N: Network> Serialize for ConfirmedTransaction<N> {
                     object.serialize_field("type", "execute")?;
                     object.serialize_field("index", index)?;
                     object.serialize_field("transaction", transaction)?;
-                    object.serialize_field("rejected", &rejected_execution.0)?;
+                    object.serialize_field("rejected", &rejected_execution)?;
                     object.end()
                 }
             },
@@ -96,13 +96,13 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTransaction<N> {
                     }
                     (Some("rejected"), Some("deploy")) => {
                         // Parse the rejected deployment.
-                        let rejected: Deployment<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
+                        let rejected: Reject<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
                         // Return the rejected deploy transaction.
                         Self::rejected_deploy(index, transaction, rejected).map_err(de::Error::custom)
                     }
                     (Some("rejected"), Some("execute")) => {
                         // Parse the rejected execution.
-                        let rejected: Execution<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
+                        let rejected: Reject<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
                         // Return the rejected execute transaction.
                         Self::rejected_execute(index, transaction, rejected).map_err(de::Error::custom)
                     }
