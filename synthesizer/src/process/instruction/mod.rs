@@ -22,7 +22,18 @@ mod bytes;
 mod parse;
 
 use crate::{
-    process::{FinalizeRegisters, Registers, StackEvaluate, StackExecute, StackMatches, StackProgram},
+    process::{
+        RegistersCaller,
+        RegistersCallerCircuit,
+        RegistersLoad,
+        RegistersLoadCircuit,
+        RegistersStore,
+        RegistersStoreCircuit,
+        StackEvaluate,
+        StackExecute,
+        StackMatches,
+        StackProgram,
+    },
     program::InstructionTrait,
 };
 use console::{
@@ -371,10 +382,10 @@ impl<N: Network> Instruction<N> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate(
         &self,
         stack: &(impl StackEvaluate<N> + StackMatches<N> + StackProgram<N>),
-        registers: &mut Registers<N, A>,
+        registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate(stack, registers))
     }
@@ -384,7 +395,7 @@ impl<N: Network> Instruction<N> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
-        registers: &mut Registers<N, A>,
+        registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
     }
@@ -394,7 +405,7 @@ impl<N: Network> Instruction<N> {
     pub fn finalize(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut FinalizeRegisters<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.finalize(stack, registers))
     }

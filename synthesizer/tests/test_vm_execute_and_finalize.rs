@@ -27,11 +27,11 @@ use console::{
 };
 use snarkvm_synthesizer::{
     helpers::memory::ConsensusMemory,
+    stack::FinalizeGlobalState,
     Block,
     ConfirmedTransaction,
     ConsensusStorage,
     ConsensusStore,
-    FinalizeGlobalState,
     Header,
     Metadata,
     Transaction,

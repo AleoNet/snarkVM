@@ -15,7 +15,10 @@
 mod query;
 pub use query::*;
 
-use crate::process::{CallStack, Closure, FinalizeTypes, Function, Program, RegisterTypes};
+use crate::{
+    process::{CallStack, Closure, FinalizeTypes, Function, Program, RegisterTypes},
+    stack::FinalizeGlobalState,
+};
 use console::{
     account::Address,
     network::Network,
@@ -130,6 +133,17 @@ pub trait StackProgram<N: Network> {
 
     /// Returns the register types for the given finalize name.
     fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>>;
+}
+
+pub trait FinalizeRegistersState<N: Network> {
+    /// Returns the global state for the finalize scope.
+    fn state(&self) -> &FinalizeGlobalState;
+
+    /// Returns the transition ID for the finalize scope.
+    fn transition_id(&self) -> &N::TransitionID;
+
+    /// Returns the function name for the finalize scope.
+    fn function_name(&self) -> &Identifier<N>;
 }
 
 pub trait RegistersCall<N: Network> {

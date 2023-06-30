@@ -17,8 +17,8 @@
 #![warn(clippy::cast_possible_truncation)]
 #![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
 
-// mod stack;
-// pub use stack::*;
+mod finalize_global_state;
+pub use finalize_global_state::*;
 
 mod finalize_operation;
 pub use finalize_operation::*;

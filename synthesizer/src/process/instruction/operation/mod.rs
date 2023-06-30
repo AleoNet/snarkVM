@@ -772,9 +772,9 @@ crate::operation!(
 pub(crate) mod test_helpers {
     use super::*;
     use crate::{
+        stack::FinalizeGlobalState,
         Authorization,
         CallStack,
-        FinalizeGlobalState,
         FinalizeRegisters,
         Registers,
         RegistersStore,

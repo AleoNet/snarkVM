@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::process::{FinalizeRegisters, Opcode, RegistersLoad as LoadTrait, RegistersStore, Stack, StackProgram};
+use crate::process::{FinalizeRegistersState, Opcode, RegistersLoad, RegistersStore, Stack, StackProgram};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, Register, Value},
@@ -70,7 +70,11 @@ impl<N: Network> RandChaCha<N> {
 impl<N: Network> RandChaCha<N> {
     /// Finalizes the command.
     #[inline]
-    pub fn finalize(&self, stack: &Stack<N>, registers: &mut FinalizeRegisters<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
+    ) -> Result<()> {
         // Ensure the number of operands is within bounds.
         if self.operands.len() > MAX_ADDITIONAL_SEEDS {
             bail!("The number of operands must be <= {MAX_ADDITIONAL_SEEDS}")

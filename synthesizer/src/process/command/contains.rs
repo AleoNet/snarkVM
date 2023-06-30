@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    process::{Opcode, RegistersLoad as LoadTrait, RegistersStore, Stack, StackProgram},
+    process::{Opcode, RegistersLoad, RegistersStore, Stack, StackProgram},
     stack::FinalizeStoreTrait,
 };
 use console::{
@@ -74,7 +74,7 @@ impl<N: Network> Contains<N> {
         &self,
         stack: &Stack<N>,
         store: &impl FinalizeStoreTrait<N>,
-        registers: &mut (impl LoadTrait<N> + RegistersStore<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Ensure the mapping exists in storage.
         if !store.contains_mapping_confirmed(stack.program_id(), &self.mapping)? {

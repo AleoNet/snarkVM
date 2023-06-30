@@ -15,6 +15,9 @@
 mod authorization;
 pub use authorization::*;
 
+mod call;
+pub use call::*;
+
 mod finalize_registers;
 pub use finalize_registers::*;
 

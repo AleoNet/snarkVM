@@ -40,7 +40,7 @@ mod set;
 pub use set::*;
 
 use crate::{
-    process::{FinalizeRegisters, Instruction, Stack},
+    process::{FinalizeRegistersState, Instruction, RegistersLoad, RegistersStore, Stack},
     program::{CommandTrait, InstructionTrait},
     stack::{FinalizeOperation, FinalizeStoreTrait},
 };
@@ -140,7 +140,7 @@ impl<N: Network> Command<N> {
         &self,
         stack: &Stack<N>,
         store: &impl FinalizeStoreTrait<N>,
-        registers: &mut FinalizeRegisters<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
     ) -> Result<Option<FinalizeOperation<N>>> {
         match self {
             // Finalize the instruction, and return no finalize operation.
