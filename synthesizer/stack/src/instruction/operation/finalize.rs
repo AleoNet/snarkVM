@@ -20,7 +20,7 @@ use console::{network::prelude::*, program::Register};
 use snarkvm_synthesizer_program::{FinalizeCommandTrait, Operand};
 
 /// Finalizes the operands on-chain.
-pub type FinalizeCommand<N> = FinalizeOperation<N, { Variant::FinalizeCommand as u8 }>;
+pub type FinalizeCommand<N> = FinalizeInstruction<N, { Variant::FinalizeCommand as u8 }>;
 
 enum Variant {
     FinalizeCommand,
@@ -28,19 +28,19 @@ enum Variant {
 
 /// Finalizes an operation on the operands.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct FinalizeOperation<N: Network, const VARIANT: u8> {
+pub struct FinalizeInstruction<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeCommandTrait for FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> FinalizeCommandTrait for FinalizeInstruction<N, VARIANT> {
     /// Returns the number of operands.
     fn num_operands(&self) -> usize {
         self.operands.len()
     }
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -66,7 +66,7 @@ impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(
@@ -91,7 +91,7 @@ impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> Parser for FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -126,7 +126,7 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeOperation<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromStr for FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> FromStr for FinalizeInstruction<N, VARIANT> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -144,14 +144,14 @@ impl<N: Network, const VARIANT: u8> FromStr for FinalizeOperation<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> Debug for FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> Debug for FinalizeInstruction<N, VARIANT> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, const VARIANT: u8> Display for FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> Display for FinalizeInstruction<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
@@ -165,7 +165,7 @@ impl<N: Network, const VARIANT: u8> Display for FinalizeOperation<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromBytes for FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> FromBytes for FinalizeInstruction<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of operands.
@@ -187,7 +187,7 @@ impl<N: Network, const VARIANT: u8> FromBytes for FinalizeOperation<N, VARIANT> 
     }
 }
 
-impl<N: Network, const VARIANT: u8> ToBytes for FinalizeOperation<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> ToBytes for FinalizeInstruction<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is less than or equal to MAX_INPUTS.

@@ -24,6 +24,9 @@ pub use cast::*;
 mod commit;
 pub use commit::*;
 
+mod finalize;
+pub use finalize::*;
+
 mod hash;
 pub use hash::*;
 

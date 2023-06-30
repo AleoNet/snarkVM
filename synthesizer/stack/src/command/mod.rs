@@ -18,9 +18,6 @@ pub use branch::*;
 mod contains;
 pub use contains::*;
 
-mod finalize;
-pub use finalize::*;
-
 mod get;
 pub use get::*;
 
@@ -41,6 +38,7 @@ pub use set::*;
 
 use crate::{
     traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
+    FinalizeCommand,
     FinalizeOperation,
     FinalizeRegistersState,
     Instruction,
