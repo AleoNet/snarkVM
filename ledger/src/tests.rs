@@ -24,7 +24,10 @@ use console::{
 use synthesizer::{
     store::{helpers::memory::ConsensusMemory, ConsensusStore},
     vm::VM,
+    ConfirmedTransaction,
     Program,
+    Rejected,
+    Transaction,
 };
 
 #[test]
@@ -182,4 +185,92 @@ finalize foo:
     assert!(ledger.vm.verify_transaction(&transaction, None));
     // Ensure that the ledger deems the transaction valid.
     assert!(ledger.check_transaction_basic(&transaction, None).is_ok());
+}
+
+#[test]
+fn test_rejected_execution() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Deploy a test program to the ledger.
+    let program_id = "test_rejected_execute.aleo";
+    let program = Program::<CurrentNetwork>::from_str(&format!(
+        "
+program {program_id};
+
+function failed_assert:
+    finalize;
+
+finalize failed_assert:
+    assert.eq false true;"
+    ))
+    .unwrap();
+
+    // A helper function to find records.
+    let find_records = || {
+        let microcredits = Identifier::from_str("microcredits").unwrap();
+        ledger
+            .find_records(&view_key, RecordsFilter::SlowUnspent(private_key))
+            .unwrap()
+            .filter(|(_, record)| match record.data().get(&microcredits) {
+                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => !amount.is_zero(),
+                _ => false,
+            })
+            .collect::<indexmap::IndexMap<_, _>>()
+    };
+
+    // Fetch the unspent records.
+    let records = find_records();
+    let record_1 = records[0].clone();
+    let record_2 = records[1].clone();
+
+    // Deploy the program.
+    let deployment_transaction = ledger.vm().deploy(&private_key, &program, (record_1, 0), None, rng).unwrap();
+
+    // Construct the deployment block.
+    let deployment_block =
+        ledger.prepare_advance_to_next_block(&private_key, vec![deployment_transaction], None, rng).unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&deployment_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&deployment_block).unwrap();
+
+    // Construct a transaction that will cause error from an assert call in `finalize`.
+    let failed_assert_transaction = ledger
+        .vm()
+        .execute(
+            &private_key,
+            (program_id, "failed_assert"),
+            Vec::<Value<_>>::new().into_iter(),
+            Some((record_2, 0)),
+            None,
+            rng,
+        )
+        .unwrap();
+
+    // Construct the next block containing the new transaction.
+    let next_block =
+        ledger.prepare_advance_to_next_block(&private_key, vec![failed_assert_transaction.clone()], None, rng).unwrap();
+
+    // Check that the block contains 1 rejected execution.
+    assert_eq!(next_block.transactions().len(), 1);
+    let confirmed_transaction = next_block.transactions().iter().next().unwrap();
+    assert!(confirmed_transaction.is_rejected());
+    if let Transaction::Execute(_, execution, fee) = failed_assert_transaction {
+        let fee_transaction = Transaction::from_fee(fee.unwrap()).unwrap();
+        let expected_confirmed_transaction =
+            ConfirmedTransaction::RejectedExecute(0, fee_transaction, Rejected(execution));
+
+        assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
+    }
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&next_block).unwrap();
+
+    // Add the block with the rejected transaction to the ledger.
+    ledger.advance_to_next_block(&next_block).unwrap();
 }
