@@ -64,7 +64,7 @@ impl<N: Network> Process<N> {
             // Ensure the number of inputs is within the allowed range.
             ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
             // Ensure the number of outputs is within the allowed range.
-            ensure!(transition.outputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
+            ensure!(transition.outputs().len() <= N::MAX_OUTPUTS, "Transition exceeded maximum number of outputs");
 
             // Compute the function ID as `Hash(network_id, program_id, function_name)`.
             let function_id = N::hash_bhp1024(
