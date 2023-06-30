@@ -22,7 +22,7 @@ mod string;
 
 use crate::{
     block::{Transaction, Transition},
-    stack::FinalizeOperation,
+    program::FinalizeOperation,
 };
 use console::{
     network::prelude::*,

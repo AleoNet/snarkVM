@@ -87,8 +87,8 @@ impl<N: Network, Instruction: InstructionTrait<N>> Display for ClosureCore<N, In
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Closure;
     use console::network::Testnet3;
-    use synthesizer::process::Closure;
 
     type CurrentNetwork = Testnet3;
 

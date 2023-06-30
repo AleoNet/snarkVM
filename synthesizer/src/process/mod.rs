@@ -37,7 +37,7 @@ mod tests;
 use crate::{
     atomic_batch_scope,
     block::{Deployment, Execution, Fee, Input, Transition},
-    stack::{
+    program::{
         Branch,
         Closure,
         Command,
@@ -329,8 +329,8 @@ pub mod test_helpers {
     use crate::{
         block::Transition,
         process::Process,
+        program::Program,
         query::Query,
-        stack::Program,
         store::{helpers::memory::BlockMemory, BlockStore},
     };
     use console::{account::PrivateKey, network::Testnet3, program::Identifier};

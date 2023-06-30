@@ -17,7 +17,7 @@ mod cost;
 mod serialize;
 mod string;
 
-use crate::{block::Transaction, stack::Program};
+use crate::{block::Transaction, program::Program};
 use console::{
     network::prelude::*,
     program::{Identifier, ProgramID},
@@ -131,7 +131,7 @@ impl<N: Network> Deployment<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{stack::Program, Process};
+    use crate::{program::Program, Process};
     use console::network::Testnet3;
 
     use once_cell::sync::OnceCell;

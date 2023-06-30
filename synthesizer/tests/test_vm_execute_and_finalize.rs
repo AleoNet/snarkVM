@@ -27,7 +27,7 @@ use console::{
 };
 use snarkvm_synthesizer::{
     helpers::memory::ConsensusMemory,
-    stack::FinalizeGlobalState,
+    program::FinalizeGlobalState,
     Block,
     ConfirmedTransaction,
     ConsensusStorage,

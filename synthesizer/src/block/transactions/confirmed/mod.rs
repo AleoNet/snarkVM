@@ -18,7 +18,7 @@ mod string;
 
 use crate::{
     block::{Deployment, Execution, Transaction},
-    stack::FinalizeOperation,
+    program::FinalizeOperation,
 };
 use console::network::prelude::*;
 

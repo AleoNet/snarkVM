@@ -14,8 +14,8 @@
 
 use super::*;
 use crate::{
+    program::{FinalizeGlobalState, FinalizeStoreTrait},
     query::Query,
-    stack::{FinalizeGlobalState, FinalizeStoreTrait},
     store::{
         helpers::memory::{BlockMemory, FinalizeMemory},
         BlockStore,

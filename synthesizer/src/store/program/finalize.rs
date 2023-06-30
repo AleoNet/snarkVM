@@ -16,7 +16,7 @@ use crate::{
     atomic_batch_scope,
     cow_to_cloned,
     cow_to_copied,
-    stack::{FinalizeOperation, FinalizeStoreTrait},
+    program::{FinalizeOperation, FinalizeStoreTrait},
     store::helpers::{Map, MapRead},
 };
 use console::{

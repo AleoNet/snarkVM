@@ -19,7 +19,8 @@ mod store;
 
 use crate::{
     process::{CallStack, RegisterTypes, RegistersCall},
-    stack::{
+    program::{
+        Operand,
         RegistersCaller,
         RegistersCallerCircuit,
         RegistersLoad,
@@ -35,7 +36,6 @@ use console::{
     program::{Entry, Literal, Plaintext, Register, Value},
     types::{Address, Field},
 };
-use snarkvm_synthesizer_program::Operand;
 
 use indexmap::IndexMap;
 

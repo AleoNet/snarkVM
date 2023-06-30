@@ -17,8 +17,8 @@ use crate::{
     block::{Deployment, Fee, Transaction},
     cow_to_cloned,
     cow_to_copied,
+    program::Program,
     snark::{Certificate, VerifyingKey},
-    stack::Program,
     store::{
         helpers::{Map, MapRead},
         FeeStorage,

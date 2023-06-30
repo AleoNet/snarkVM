@@ -3053,7 +3053,6 @@ dependencies = [
  "snarkvm-synthesizer-coinbase",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
- "snarkvm-synthesizer-stack",
  "snarkvm-utilities",
  "tempfile",
  "tracing",
@@ -3088,7 +3087,11 @@ version = "0.12.6"
 dependencies = [
  "bincode",
  "indexmap 2.0.0",
+ "paste",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
  "serde_json",
+ "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-synthesizer",
 ]
@@ -3104,24 +3107,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
-]
-
-[[package]]
-name = "snarkvm-synthesizer-stack"
-version = "0.12.6"
-dependencies = [
- "bincode",
- "colored",
- "indexmap 2.0.0",
- "paste",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "serde_json",
- "snarkvm-circuit",
- "snarkvm-console",
- "snarkvm-synthesizer",
- "snarkvm-synthesizer-program",
- "snarkvm-synthesizer-snark",
 ]
 
 [[package]]

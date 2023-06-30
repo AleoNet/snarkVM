@@ -689,6 +689,7 @@ workflows:
                 console,
                 curves,
                 fields,
+                ledger,
                 parameters,
                 synthesizer,
                 utilities,

@@ -17,14 +17,21 @@ mod store;
 
 use crate::{
     process::FinalizeTypes,
-    stack::{FinalizeGlobalState, FinalizeRegistersState, RegistersLoad, RegistersStore, StackMatches, StackProgram},
+    program::{
+        FinalizeGlobalState,
+        FinalizeRegistersState,
+        Operand,
+        RegistersLoad,
+        RegistersStore,
+        StackMatches,
+        StackProgram,
+    },
 };
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Plaintext, Register, Value},
     types::U32,
 };
-use snarkvm_synthesizer_program::Operand;
 
 use indexmap::IndexMap;
 

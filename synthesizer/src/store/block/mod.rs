@@ -17,7 +17,7 @@ use crate::{
     block::{Block, Header, NumFinalizeSize, Ratify, Transaction, Transactions},
     cow_to_cloned,
     cow_to_copied,
-    stack::Program,
+    program::Program,
     store::{
         helpers::{Map, MapRead},
         TransactionStorage,

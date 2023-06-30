@@ -67,7 +67,6 @@ members = [
   "synthesizer/coinbase",
   "synthesizer/program",
   "synthesizer/snark",
-  "synthesizer/stack",
   "utilities",
   "utilities/derives",
   "wasm"

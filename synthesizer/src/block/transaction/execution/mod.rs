@@ -19,8 +19,8 @@ mod string;
 
 use crate::{
     block::{Transaction, Transition},
+    program::{Command, Finalize, Instruction},
     snark::Proof,
-    stack::{Command, Finalize, Instruction},
     store::ConsensusStorage,
     VM,
 };

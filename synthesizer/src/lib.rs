@@ -30,11 +30,9 @@ pub use snarkvm_synthesizer_coinbase as coinbase;
 pub use snarkvm_synthesizer_program as program;
 #[cfg(feature = "snark")]
 pub use snarkvm_synthesizer_snark as snark;
-#[cfg(feature = "stack")]
-pub use snarkvm_synthesizer_stack as stack;
 
-#[cfg(feature = "stack")]
-pub use crate::stack::{Closure, Command, Finalize, Function, Instruction, Program};
+#[cfg(feature = "program")]
+pub use crate::program::{Closure, Command, Finalize, Function, Instruction, Program};
 
 pub mod block;
 pub use block::*;

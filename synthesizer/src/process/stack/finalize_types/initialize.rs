@@ -14,7 +14,7 @@
 
 use super::*;
 use crate::{
-    stack::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
+    program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
     RegisterTypes,
 };
 
