@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::process::{Opcode, RegistersLoad, Stack};
+use crate::process::{Opcode, RegistersLoad, StackMatches, StackProgram};
 use console::{network::prelude::*, program::Register};
 use snarkvm_synthesizer_program::{FinalizeCommandTrait, Operand};
 
@@ -66,7 +66,11 @@ impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> FinalizeOperation<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &Stack<N>, registers: &mut impl RegistersLoad<N>) -> Result<()> {
+    pub fn evaluate(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersLoad<N>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() > N::MAX_INPUTS {
             bail!("'{}' expects <= {} operands, found {} operands", Self::opcode(), N::MAX_INPUTS, self.operands.len())

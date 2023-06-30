@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    process::{Opcode, RegistersLoad, RegistersStore, Stack, StackProgram},
+    process::{Opcode, RegistersLoad, RegistersStore, StackMatches, StackProgram},
     stack::FinalizeStoreTrait,
 };
 use console::{
@@ -80,7 +80,7 @@ impl<N: Network> GetOrUse<N> {
     #[inline]
     pub fn finalize(
         &self,
-        stack: &Stack<N>,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
