@@ -15,35 +15,6 @@
 use super::*;
 use crate::{ConfirmedTransaction, Rejected, Transactions};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum FinalizeMode {
-    /// Invoke finalize as a real run.
-    RealRun,
-    /// Invoke finalize as a dry run.
-    DryRun,
-}
-
-impl FinalizeMode {
-    /// Returns the u8 value of the finalize mode.
-    #[inline]
-    pub const fn to_u8(self) -> u8 {
-        match self {
-            Self::RealRun => 0,
-            Self::DryRun => 1,
-        }
-    }
-
-    /// Returns a finalize mode from a given u8.
-    #[inline]
-    pub fn from_u8(value: u8) -> Result<Self> {
-        match value {
-            0 => Ok(Self::RealRun),
-            1 => Ok(Self::DryRun),
-            _ => bail!("Invalid finalize mode of '{value}'"),
-        }
-    }
-}
-
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM, returning the confirmed transactions.
     #[inline]

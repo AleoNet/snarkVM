@@ -36,7 +36,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             None => None,
             Some((credits, priority_fee_in_microcredits)) => {
                 // Compute the minimum execution cost.
-                let (minimum_execution_cost, (_, _)) = Execution::cost(self, &execution)?;
+                let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
                 // Determine the fee.
                 let fee_in_microcredits = minimum_execution_cost
                     .checked_add(priority_fee_in_microcredits)

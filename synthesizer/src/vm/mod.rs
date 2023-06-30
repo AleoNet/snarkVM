@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod helpers;
+pub use helpers::*;
 
 mod authorize;
 mod deploy;

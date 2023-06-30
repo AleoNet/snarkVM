@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-ledger-block"
+name = "snarkvm-ledger-store"
 version = "0.13.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "A block for a decentralized virtual machine"
+description = "A data store for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -16,24 +16,19 @@ categories = [ "cryptography", "web-programming" ]
 license = "Apache-2.0"
 edition = "2021"
 
-[[bench]]
-name = "block"
-path = "benches/block.rs"
-harness = false
-
-[[bench]]
-name = "transaction"
-path = "benches/transaction.rs"
-harness = false
-
 [features]
 default = [ "indexmap/rayon", "rayon" ]
-serial = [ "console/serial", "synthesizer-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
-test = [ ]
+rocks = [ "rocksdb" ]
+serial = [ "console/serial", "ledger-block/serial", "synthesizer-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
+version = "=0.13.0"
+
+[dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "../../ledger/block"
 version = "=0.13.0"
 
 [dependencies.synthesizer-coinbase]
@@ -51,20 +46,33 @@ package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
 version = "=0.13.0"
 
+[dependencies.anyhow]
+version = "1.0.70"
+
+[dependencies.bincode]
+version = "1.3"
+
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde" ]
 
-[dependencies.once_cell]
-version = "1.18"
+[dependencies.parking_lot]
+version = "0.12"
 
 [dependencies.rayon]
 version = "1"
 optional = true
 
-[dependencies.serde_json]
-version = "1.0"
-features = [ "preserve_order" ]
+[dependencies.rocksdb]
+version = "0.21"
+default-features = false
+features = [ "lz4" ]
+optional = true
 
-[dev-dependencies.bincode]
-version = "1.3"
+[dependencies.serde]
+version = "1.0"
+
+[dev-dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "../../ledger/block"
+features = [ "test" ]

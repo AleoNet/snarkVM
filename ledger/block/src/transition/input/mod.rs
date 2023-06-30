@@ -175,7 +175,7 @@ impl<N: Network> Input<N> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test"))]
 pub(crate) mod test_helpers {
     use super::*;
     use console::{network::Testnet3, program::Literal};

@@ -27,7 +27,6 @@ edition = "2021"
 default = [ "coinbase", "program", "snark" ]
 aleo-cli = [ ]
 cuda = [ "snarkvm-algorithms/cuda" ]
-rocks = [ "rocksdb" ]
 serial = [
   "console/serial",
   "snarkvm-algorithms/serial",
@@ -142,12 +141,6 @@ version = "0.3"
 
 [dependencies.rayon]
 version = "1"
-
-[dependencies.rocksdb]
-version = "0.21"
-default-features = false
-features = [ "lz4" ]
-optional = true
 
 [dependencies.reqwest]
 version = "0.11.18"

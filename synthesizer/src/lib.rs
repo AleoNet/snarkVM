@@ -40,9 +40,6 @@ pub use process::*;
 pub mod query;
 pub use query::*;
 
-pub mod store;
-pub use store::*;
-
 pub mod vm;
 pub use vm::*;
 

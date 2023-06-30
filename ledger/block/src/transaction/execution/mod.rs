@@ -13,13 +13,11 @@
 // limitations under the License.
 
 mod bytes;
-mod cost;
 mod serialize;
 mod string;
 
 use crate::{Transaction, Transition};
 use console::{account::Field, network::prelude::*, program::LiteralType};
-use synthesizer::{store::ConsensusStorage, VM};
 use synthesizer_program::{Command, Finalize, Instruction};
 use synthesizer_snark::Proof;
 

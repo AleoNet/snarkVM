@@ -13,7 +13,6 @@
 // limitations under the License.
 
 mod bytes;
-mod cost;
 mod serialize;
 mod string;
 
@@ -129,8 +128,8 @@ impl<N: Network> Deployment<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
     use super::*;
     use console::network::Testnet3;
     use synthesizer::Process;

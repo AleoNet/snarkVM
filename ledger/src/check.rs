@@ -62,9 +62,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Retrieve the minimum cost of the transaction.
             let (cost, _) = match transaction {
                 // Compute the deployment cost.
-                Transaction::Deploy(_, _, deployment, _) => Deployment::cost(deployment)?,
+                Transaction::Deploy(_, _, deployment, _) => deployment_cost(deployment)?,
                 // Compute the execution cost.
-                Transaction::Execute(_, execution, _) => Execution::cost(self.vm(), execution)?,
+                Transaction::Execute(_, execution, _) => execution_cost(self.vm(), execution)?,
                 // TODO (howardwu): Plug in the Rejected struct, to compute the cost.
                 Transaction::Fee(_, _) => (0, (0, 0)),
             };

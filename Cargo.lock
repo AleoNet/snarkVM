@@ -2974,6 +2974,8 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-store",
  "snarkvm-synthesizer",
  "time",
  "tracing",
@@ -2981,7 +2983,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ledger-block"
-version = "0.12.6"
+version = "0.13.0"
 dependencies = [
  "bincode",
  "indexmap 2.0.0",
@@ -2989,6 +2991,24 @@ dependencies = [
  "rayon",
  "serde_json",
  "snarkvm-console",
+ "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-program",
+ "snarkvm-synthesizer-snark",
+]
+
+[[package]]
+name = "snarkvm-ledger-store"
+version = "0.13.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "indexmap 2.0.0",
+ "parking_lot",
+ "rayon",
+ "rocksdb",
+ "serde",
+ "snarkvm-console",
+ "snarkvm-ledger-block",
  "snarkvm-synthesizer-coinbase",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
@@ -3045,7 +3065,6 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rayon",
  "reqwest",
- "rocksdb",
  "serde",
  "serde_json",
  "serde_yaml",

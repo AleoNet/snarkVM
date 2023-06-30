@@ -63,6 +63,7 @@ members = [
   "fields",
   "ledger",
   "ledger/block",
+  "ledger/store",
   "parameters",
   "synthesizer",
   "synthesizer/coinbase",
@@ -122,7 +123,7 @@ curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger" ]
 parameters = [ "snarkvm-parameters" ]
-rocks = [ "snarkvm-synthesizer/rocks" ]
+rocks = [ "snarkvm-ledger/rocks" ]
 synthesizer = [ "snarkvm-synthesizer" ]
 timer = [ "snarkvm-ledger/timer" ]
 utilities = [ "snarkvm-utilities" ]

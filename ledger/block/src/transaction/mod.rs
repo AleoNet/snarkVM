@@ -381,8 +381,8 @@ impl<N: Network> Transaction<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, program::ProgramOwner};
 

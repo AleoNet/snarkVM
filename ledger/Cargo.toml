@@ -18,6 +18,7 @@ edition = "2021"
 
 [features]
 default = [ "rayon" ]
+rocks = [ "snarkvm-ledger-store/rocks" ]
 serial = [ "console/serial", "synthesizer/serial" ]
 timer = [ "aleo-std/timer" ]
 
@@ -29,6 +30,14 @@ version = "=0.13.0"
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
 path = "../synthesizer"
+version = "=0.13.0"
+
+[dependencies.snarkvm-ledger-block]
+path = "./block"
+version = "=0.13.0"
+
+[dependencies.snarkvm-ledger-store]
+path = "./store"
 version = "=0.13.0"
 
 [dependencies.aleo-std]
