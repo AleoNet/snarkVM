@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::{ConfirmedTransaction, Reject, Transactions};
+use crate::{ConfirmedTransaction, Rejected, Transactions};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FinalizeMode {
@@ -124,7 +124,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Note: On failure, this will abort the entire atomic batch.
                             let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
                             // Construct the rejected execution.
-                            let rejected = Reject::new_deployment(*program_owner, *deployment.clone());
+                            let rejected = Rejected::new_deployment(*program_owner, *deployment.clone());
                             // Construct the rejected deploy transaction.
                             ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected).map_err(|e| e.to_string())
                         }
@@ -141,7 +141,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 // Note: On failure, this will abort the entire atomic batch.
                                 let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
                                 // Construct the rejected execution.
-                                let rejected = Reject::new_execution(execution.clone());
+                                let rejected = Rejected::new_execution(execution.clone());
                                 // Construct the rejected execute transaction.
                                 ConfirmedTransaction::rejected_execute(index, fee_tx, rejected).map_err(|e| e.to_string())
                             },
@@ -592,7 +592,7 @@ finalize transfer_public:
             Transaction::Execute(_, execution, fee) => ConfirmedTransaction::RejectedExecute(
                 index,
                 Transaction::from_fee(fee.clone().unwrap()).unwrap(),
-                crate::Reject::new_execution(execution.clone()),
+                crate::Rejected::new_execution(execution.clone()),
             ),
             _ => panic!("only reject execution transactions"),
         }
@@ -884,8 +884,11 @@ function ped_hash:
             assert!(transaction.is_execute());
             if let Transaction::Execute(_, execution, fee) = transaction {
                 let fee_transaction = Transaction::from_fee(fee.unwrap()).unwrap();
-                let expected_confirmed_transaction =
-                    ConfirmedTransaction::RejectedExecute(0, fee_transaction, crate::Reject::new_execution(execution));
+                let expected_confirmed_transaction = ConfirmedTransaction::RejectedExecute(
+                    0,
+                    fee_transaction,
+                    crate::Rejected::new_execution(execution),
+                );
 
                 let confirmed_transaction = confirmed_transactions.iter().next().unwrap();
                 assert_eq!(confirmed_transaction, &expected_confirmed_transaction);

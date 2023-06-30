@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Reject<N> {
+impl<N: Network> FromBytes for Rejected<N> {
     /// Reads the rejected transaction from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
@@ -38,7 +38,7 @@ impl<N: Network> FromBytes for Reject<N> {
     }
 }
 
-impl<N: Network> ToBytes for Reject<N> {
+impl<N: Network> ToBytes for Rejected<N> {
     /// Writes the rejected transaction to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
@@ -72,8 +72,8 @@ mod tests {
         for expected in crate::block::transactions::rejected::test_helpers::sample_rejected_transactions() {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
-            assert_eq!(expected, Reject::read_le(&expected_bytes[..]).unwrap());
-            assert!(Reject::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, Rejected::read_le(&expected_bytes[..]).unwrap());
+            assert!(Rejected::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }

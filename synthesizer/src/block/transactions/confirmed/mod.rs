@@ -16,7 +16,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::block::{rejected::Reject, FinalizeOperation, Transaction};
+use crate::block::{rejected::Rejected, FinalizeOperation, Transaction};
 use console::network::prelude::*;
 
 pub type NumFinalizeSize = u16;
@@ -29,9 +29,9 @@ pub enum ConfirmedTransaction<N: Network> {
     /// The accepted execute transaction is composed of `(index, execute_transaction, finalize_operations)`.
     AcceptedExecute(u32, Transaction<N>, Vec<FinalizeOperation<N>>),
     /// The rejected deploy transaction is composed of `(index, fee_transaction, rejected_deployment)`.
-    RejectedDeploy(u32, Transaction<N>, Reject<N>),
+    RejectedDeploy(u32, Transaction<N>, Rejected<N>),
     /// The rejected execute transaction is composed of `(index, fee_transaction, rejected_execution)`.
-    RejectedExecute(u32, Transaction<N>, Reject<N>),
+    RejectedExecute(u32, Transaction<N>, Rejected<N>),
 }
 
 impl<N: Network> ConfirmedTransaction<N> {
@@ -93,7 +93,7 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns a new instance of a rejected deploy transaction.
-    pub fn rejected_deploy(index: u32, transaction: Transaction<N>, rejected: Reject<N>) -> Result<Self> {
+    pub fn rejected_deploy(index: u32, transaction: Transaction<N>, rejected: Rejected<N>) -> Result<Self> {
         ensure!(rejected.is_deployment(), "Rejected deployment is not a deployment");
 
         // Ensure the transaction is a fee transaction.
@@ -104,7 +104,7 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns a new instance of a rejected execute transaction.
-    pub fn rejected_execute(index: u32, transaction: Transaction<N>, rejected: Reject<N>) -> Result<Self> {
+    pub fn rejected_execute(index: u32, transaction: Transaction<N>, rejected: Rejected<N>) -> Result<Self> {
         ensure!(rejected.is_execution(), "Rejected execution is not an execution");
 
         // Ensure the transaction is a fee transaction.

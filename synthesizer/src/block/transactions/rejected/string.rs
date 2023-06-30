@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<N: Network> FromStr for Reject<N> {
+impl<N: Network> FromStr for Rejected<N> {
     type Err = Error;
 
     /// Initializes the rejected transaction from a JSON-string.
@@ -23,14 +23,14 @@ impl<N: Network> FromStr for Reject<N> {
     }
 }
 
-impl<N: Network> Debug for Reject<N> {
+impl<N: Network> Debug for Rejected<N> {
     /// Prints the rejected transaction as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Reject<N> {
+impl<N: Network> Display for Rejected<N> {
     /// Displays the rejected transaction as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)

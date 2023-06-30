@@ -22,12 +22,12 @@ use crate::block::{Deployment, Execution};
 
 /// A wrapper around the rejected deployment or execution.
 #[derive(Clone, PartialEq, Eq)]
-pub enum Reject<N: Network> {
+pub enum Rejected<N: Network> {
     Deployment(ProgramOwner<N>, Box<Deployment<N>>),
     Execution(Execution<N>),
 }
 
-impl<N: Network> Reject<N> {
+impl<N: Network> Rejected<N> {
     /// Initializes a rejected deployment.
     pub fn new_deployment(program_owner: ProgramOwner<N>, deployment: Deployment<N>) -> Self {
         Self::Deployment(program_owner, Box::new(deployment))
@@ -81,7 +81,7 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Samples a rejected deployment.
-    pub(crate) fn sample_rejected_deployment(rng: &mut TestRng) -> Reject<CurrentNetwork> {
+    pub(crate) fn sample_rejected_deployment(rng: &mut TestRng) -> Rejected<CurrentNetwork> {
         // Sample a deploy transaction.
         let deployment = match crate::vm::test_helpers::sample_deployment_transaction(rng) {
             Transaction::Deploy(_, _, deployment, _) => (*deployment).clone(),
@@ -94,11 +94,11 @@ pub(crate) mod test_helpers {
         let program_owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
 
         // Return the rejected deployment.
-        Reject::new_deployment(program_owner, deployment)
+        Rejected::new_deployment(program_owner, deployment)
     }
 
     /// Samples a rejected execution.
-    pub(crate) fn sample_rejected_execution(rng: &mut TestRng) -> Reject<CurrentNetwork> {
+    pub(crate) fn sample_rejected_execution(rng: &mut TestRng) -> Rejected<CurrentNetwork> {
         // Sample an execute transaction.
         let execution = match crate::vm::test_helpers::sample_execution_transaction_with_fee(rng) {
             Transaction::Execute(_, execution, _) => execution,
@@ -106,11 +106,11 @@ pub(crate) mod test_helpers {
         };
 
         // Return the rejected execution.
-        Reject::new_execution(execution)
+        Rejected::new_execution(execution)
     }
 
     /// Sample a list of randomly rejected transactions.
-    pub(crate) fn sample_rejected_transactions() -> Vec<Reject<CurrentNetwork>> {
+    pub(crate) fn sample_rejected_transactions() -> Vec<Rejected<CurrentNetwork>> {
         let rng = &mut TestRng::default();
 
         vec![sample_rejected_deployment(rng), sample_rejected_execution(rng)]

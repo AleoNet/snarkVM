@@ -96,13 +96,13 @@ impl<'de, N: Network> Deserialize<'de> for ConfirmedTransaction<N> {
                     }
                     (Some("rejected"), Some("deploy")) => {
                         // Parse the rejected deployment.
-                        let rejected: Reject<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
+                        let rejected: Rejected<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
                         // Return the rejected deploy transaction.
                         Self::rejected_deploy(index, transaction, rejected).map_err(de::Error::custom)
                     }
                     (Some("rejected"), Some("execute")) => {
                         // Parse the rejected execution.
-                        let rejected: Reject<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
+                        let rejected: Rejected<N> = DeserializeExt::take_from_value::<D>(&mut object, "rejected")?;
                         // Return the rejected execute transaction.
                         Self::rejected_execute(index, transaction, rejected).map_err(de::Error::custom)
                     }

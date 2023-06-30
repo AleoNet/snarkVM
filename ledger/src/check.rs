@@ -420,7 +420,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
-        // Extract the unconfirmed deployment and execution transactions.
+        // Reproduce the unconfirmed deployment and execution transactions.
         let unconfirmed_transactions = block
             .transactions()
             .iter()
