@@ -324,20 +324,19 @@ impl<N: Network> Process<N> {
                 // Retrieve the function from the stack.
                 let function = stack.get_function(&top.fname)?;
                 // Collect the children of the current transition.
-                let children = function
-                    .instructions()
-                    .iter()
-                    .filter_map(|instruction| match instruction {
-                        Instruction::Call(call) => {
-                            let (pid, fname) = match call.operator() {
-                                crate::CallOperator::Locator(locator) => (locator.program_id(), locator.resource()),
-                                crate::CallOperator::Resource(fname) => (&top.pid, fname),
-                            };
-                            Some(TransitionMetadata::new(&mut counter, *pid, *fname, None))
+                let mut children = Vec::new();
+                for instruction in function.instructions() {
+                    if let Instruction::Call(call) = instruction {
+                        let (pid, fname) = match call.operator() {
+                            crate::CallOperator::Locator(locator) => (locator.program_id(), locator.resource()),
+                            crate::CallOperator::Resource(fname) => (&top.pid, fname),
+                        };
+                        // Add the child to the traversal stack, only if it is a call to a transition.
+                        if self.get_stack(pid)?.get_function(fname).is_ok() {
+                            children.push(TransitionMetadata::new(&mut counter, *pid, *fname, None));
                         }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
+                    }
+                }
 
                 // Add the children UIDs to the metadata.
                 // Note this unwrap is safe, for the same reason as above.
