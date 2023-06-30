@@ -1,0 +1,69 @@
+[package]
+name = "snarkvm-ledger-block"
+version = "0.12.6"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "A block for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [ "cryptography", "web-programming" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[[bench]]
+name = "block"
+path = "benches/block.rs"
+harness = false
+
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
+
+[features]
+default = [ "indexmap/rayon", "rayon" ]
+serial = [ "console/serial", "synthesizer-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.12.6"
+
+[dependencies.synthesizer-coinbase]
+package = "snarkvm-synthesizer-coinbase"
+path = "../../synthesizer/coinbase"
+version = "=0.12.6"
+
+[dependencies.synthesizer-program]
+package = "snarkvm-synthesizer-program"
+path = "../../synthesizer/program"
+version = "=0.12.6"
+
+[dependencies.synthesizer-snark]
+package = "snarkvm-synthesizer-snark"
+path = "../../synthesizer/snark"
+version = "=0.12.6"
+
+[dependencies.indexmap]
+version = "2.0"
+features = [ "serde" ]
+
+[dependencies.once_cell]
+version = "1.18"
+
+[dependencies.rayon]
+version = "1"
+optional = true
+
+[dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
+[dev-dependencies.bincode]
+version = "1.3"

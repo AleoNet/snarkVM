@@ -62,6 +62,7 @@ members = [
   "curves",
   "fields",
   "ledger",
+  "ledger/block",
   "parameters",
   "synthesizer",
   "synthesizer/coinbase",

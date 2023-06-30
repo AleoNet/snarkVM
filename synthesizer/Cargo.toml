@@ -23,16 +23,6 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
 
-[[bench]]
-name = "block"
-path = "benches/block.rs"
-harness = false
-
-[[bench]]
-name = "transaction"
-path = "benches/transaction.rs"
-harness = false
-
 [features]
 default = [ "coinbase", "program", "snark" ]
 aleo-cli = [ ]

@@ -2990,6 +2990,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-ledger-block"
+version = "0.12.6"
+dependencies = [
+ "bincode",
+ "indexmap 2.0.0",
+ "once_cell",
+ "rayon",
+ "serde_json",
+ "snarkvm-console",
+ "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-program",
+ "snarkvm-synthesizer-snark",
+]
+
+[[package]]
 name = "snarkvm-parameters"
 version = "0.12.6"
 dependencies = [

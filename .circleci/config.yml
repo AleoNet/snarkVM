@@ -470,6 +470,15 @@ jobs:
           workspace_member: ledger
           cache_key: snarkvm-ledger-cache
 
+  ledger-block:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger-block
+          cache_key: snarkvm-ledger-block-cache
+
   parameters:
     docker:
       - image: cimg/rust:1.69
@@ -665,6 +674,7 @@ workflows:
       - curves
       - fields
       - ledger
+      - ledger-block
       - parameters
       - synthesizer
       - synthesizer-integration

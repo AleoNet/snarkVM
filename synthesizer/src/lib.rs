@@ -34,9 +34,6 @@ pub use snarkvm_synthesizer_snark as snark;
 #[cfg(feature = "program")]
 pub use crate::program::{Closure, Command, Finalize, Function, Instruction, Program};
 
-pub mod block;
-pub use block::*;
-
 pub mod process;
 pub use process::*;
 
