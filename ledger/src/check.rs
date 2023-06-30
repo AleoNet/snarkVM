@@ -401,8 +401,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Construct the rejected ID.
             let rejected_id = match transaction {
                 ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
-                ConfirmedTransaction::RejectedDeploy(_, _, deployment) => Some(deployment.to_deployment_id()?),
-                ConfirmedTransaction::RejectedExecute(_, _, execution) => Some(execution.to_execution_id()?),
+                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => Some(rejected.to_id()?),
+                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
             };
 
             self.check_transaction_basic(transaction, rejected_id)
@@ -417,8 +417,32 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.cumulative_proof_target(),
             block.previous_hash(),
         )?;
+
+        // Reconstruct the unconfirmed transactions to verify the speculation.
+        let unconfirmed_transactions = block
+            .transactions()
+            .iter()
+            .map(|tx| match tx {
+                // Pass through the accepted deployment and execution transactions.
+                ConfirmedTransaction::AcceptedDeploy(_, tx, _) | ConfirmedTransaction::AcceptedExecute(_, tx, _) => {
+                    Ok(tx.clone())
+                }
+                // Reconstruct the unconfirmed deployment transaction.
+                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
+                    rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
+                    rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
+                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee"))?,
+                ),
+                // Reconstruct the unconfirmed execution transaction.
+                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
+                    rejected.execution().cloned().ok_or(anyhow!("Missing the execution"))?,
+                    fee_transaction.fee_transition(),
+                ),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         // Ensure the transactions after speculation match.
-        if block.transactions() != &self.vm.speculate(state, block.transactions().iter().map(|tx| tx.deref()))? {
+        if block.transactions() != &self.vm.speculate(state, unconfirmed_transactions.iter())? {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 
