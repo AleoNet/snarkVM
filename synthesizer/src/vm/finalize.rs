@@ -276,7 +276,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             return Err("Mismatch in rejected deploy transaction index".to_string());
                         }
                         // Extract the rejected deployment.
-                        let Ok(deployment) = rejected.deployment() else {
+                        let Some(deployment) = rejected.deployment() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected deployment".to_string());
                         };
@@ -295,7 +295,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             return Err("Mismatch in rejected execute transaction index".to_string());
                         }
                         // Extract the rejected execution.
-                        let Ok(execution) = rejected.execution() else {
+                        let Some(execution) = rejected.execution() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected execution".to_string());
                         };

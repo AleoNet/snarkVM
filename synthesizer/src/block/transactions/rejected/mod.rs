@@ -49,26 +49,26 @@ impl<N: Network> Rejected<N> {
     }
 
     /// Returns the program owner of the rejected deployment.
-    pub fn program_owner(&self) -> Result<&ProgramOwner<N>> {
+    pub fn program_owner(&self) -> Option<&ProgramOwner<N>> {
         match self {
-            Self::Deployment(program_owner, _) => Ok(program_owner),
-            _ => bail!("Rejected transaction is not a deployment"),
+            Self::Deployment(program_owner, _) => Some(program_owner),
+            Self::Execution(_) => None,
         }
     }
 
     /// Returns the rejected deployment.
-    pub fn deployment(&self) -> Result<&Deployment<N>> {
+    pub fn deployment(&self) -> Option<&Deployment<N>> {
         match self {
-            Self::Deployment(_, deployment) => Ok(deployment),
-            _ => bail!("Rejected transaction is not a deployment"),
+            Self::Deployment(_, deployment) => Some(deployment),
+            Self::Execution(_) => None,
         }
     }
 
     /// Returns the rejected execution.
-    pub fn execution(&self) -> Result<&Execution<N>> {
+    pub fn execution(&self) -> Option<&Execution<N>> {
         match self {
-            Self::Execution(execution) => Ok(execution),
-            _ => bail!("Rejected transaction is not an execution"),
+            Self::Deployment(_, _) => None,
+            Self::Execution(execution) => Some(execution),
         }
     }
 

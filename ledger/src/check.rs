@@ -418,20 +418,26 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.previous_hash(),
         )?;
 
-        // Reproduce the unconfirmed deployment and execution transactions.
+        // Reconstruct the unconfirmed transactions to verify the speculation.
         let unconfirmed_transactions = block
             .transactions()
             .iter()
             .map(|tx| match tx {
-                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
-                    *rejected.program_owner()?,
-                    rejected.deployment()?.clone(),
-                    fee_transaction.fee_transition().ok_or(anyhow!("Missing fee"))?,
-                ),
-                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => {
-                    Transaction::from_execution(rejected.execution()?.clone(), fee_transaction.fee_transition())
+                // Pass through the accepted deployment and execution transactions.
+                ConfirmedTransaction::AcceptedDeploy(_, tx, _) | ConfirmedTransaction::AcceptedExecute(_, tx, _) => {
+                    Ok(tx.clone())
                 }
-                _ => Ok(tx.deref().clone()),
+                // Reconstruct the unconfirmed deployment transaction.
+                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
+                    rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
+                    rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
+                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee"))?,
+                ),
+                // Reconstruct the unconfirmed execution transaction.
+                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
+                    rejected.execution().cloned().ok_or(anyhow!("Missing the execution"))?,
+                    fee_transaction.fee_transition(),
+                ),
             })
             .collect::<Result<Vec<_>>>()?;
 
