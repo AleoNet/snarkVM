@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod header;
+pub mod header;
 pub use header::*;
 
-mod ratify;
+pub mod ratify;
 pub use ratify::*;
 
-mod transaction;
+pub mod transaction;
 pub use transaction::*;
 
-mod transactions;
+pub mod transactions;
 pub use transactions::*;
 
-mod transition;
+pub mod transition;
 pub use transition::*;
 
 mod bytes;
@@ -445,9 +445,6 @@ impl<N: Network> Block<N> {
 #[cfg(any(test, feature = "test"))]
 pub mod test_helpers {
     use super::*;
-    use console::account::{Address, ViewKey};
-
-    use once_cell::sync::OnceCell;
 
     type CurrentNetwork = console::network::Testnet3;
 
@@ -456,77 +453,14 @@ pub mod test_helpers {
         Block::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap()
     }
 
-    /// Samples a random execution.
-    pub(crate) fn sample_execution(rng: &mut TestRng) -> Execution<CurrentNetwork> {
-        if let Transaction::Execute(_, execution, _) =
-            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng)
-        {
-            execution
-        } else {
-            unreachable!()
-        }
-    }
-
-    /// Samples a random fee.
-    pub(crate) fn sample_fee(rng: &mut TestRng) -> Fee<CurrentNetwork> {
-        if let Transaction::Execute(_, _, fee) =
-            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng)
-        {
-            fee.unwrap()
-        } else {
-            unreachable!()
-        }
-    }
-
-    /// Samples a random transition.
-    pub(crate) fn sample_transition(rng: &mut TestRng) -> Transition<CurrentNetwork> {
-        if let Transaction::Execute(_, execution, _) =
-            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng)
-        {
-            execution.into_transitions().next().unwrap()
-        } else {
-            unreachable!()
-        }
-    }
-
     /// Samples a random block.
-    pub(crate) fn sample_block_and_transaction(
-        rng: &mut TestRng,
-    ) -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>) {
-        static INSTANCE: OnceCell<(Block<CurrentNetwork>, Transaction<CurrentNetwork>)> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Initialize a new caller.
-                let private_key = PrivateKey::new(rng).unwrap();
-                let _view_key = ViewKey::try_from(&private_key).unwrap();
-                let address = Address::try_from(&private_key).unwrap();
-
-                // Initialize the VM.
-                let vm = crate::vm::test_helpers::sample_vm();
-                // Prepare the function inputs.
-                let inputs = [address.to_string(), "1_u64".to_string()].into_iter();
-
-                // Construct the transaction.
-                let transaction = vm.execute(&private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
-                // Construct the transactions.
-                let transactions =
-                    Transactions::from(&[
-                        ConfirmedTransaction::accepted_execute(0, transaction.clone(), vec![]).unwrap()
-                    ]);
-                // Construct the block.
-                let block = Block::new(
-                    &private_key,
-                    Default::default(),
-                    Header::genesis(&transactions).unwrap(),
-                    transactions.clone(),
-                    vec![],
-                    None,
-                    rng,
-                )
-                .unwrap();
-                (block, transaction)
-            })
-            .clone()
+    pub(crate) fn sample_block_and_transaction() -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>) {
+        // Sample the genesis block.
+        let block = sample_genesis_block();
+        // Retrieve a transaction.
+        let transaction = block.transactions().iter().next().unwrap();
+        // Return the block and transaction.
+        (block, transaction.deref().clone())
     }
 }
 
@@ -540,7 +474,7 @@ mod tests {
     fn test_find_transaction_for_transition_id() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction(rng);
+        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
         let transactions = block.transactions();
 
         // Retrieve the transitions.
@@ -565,7 +499,7 @@ mod tests {
     fn test_find_transaction_for_commitment() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction(rng);
+        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
         let transactions = block.transactions();
 
         // Retrieve the commitments.
@@ -590,7 +524,7 @@ mod tests {
     fn test_find_transition() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction(rng);
+        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
         let transactions = block.transactions();
 
         // Retrieve the transitions.
@@ -617,7 +551,7 @@ mod tests {
     fn test_find_transition_for_commitment() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction(rng);
+        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
         let transactions = block.transactions();
 
         // Retrieve the transitions.
@@ -650,7 +584,7 @@ mod tests {
     fn test_find_record() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction(rng);
+        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
         let transactions = block.transactions();
 
         // Retrieve the records.

@@ -73,7 +73,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Construct a new fee.
-        let expected = crate::test_helpers::sample_fee(rng);
+        let expected = crate::transaction::fee::test_helpers::sample_fee(rng);
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

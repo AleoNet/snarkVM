@@ -162,7 +162,10 @@ function compute:
                 // Construct the process.
                 let process = Process::load().unwrap();
                 // Compute the deployment.
-                process.deploy::<CurrentAleo, _>(&program, rng).unwrap()
+                // Note: This is a hack to work around Rust's dependency cycle rules.
+                let deployment_string = process.deploy::<CurrentAleo, _>(&program, rng).unwrap().to_string();
+                // Return the deployment.
+                Deployment::from_str(&deployment_string).unwrap()
             })
             .clone()
     }

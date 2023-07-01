@@ -3140,7 +3140,6 @@ dependencies = [
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-synthesizer-process",
- "snarkvm-synthesizer-snark",
 ]
 
 [[package]]

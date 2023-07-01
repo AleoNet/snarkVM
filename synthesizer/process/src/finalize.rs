@@ -212,28 +212,62 @@ fn branch_to<N: Network, const VARIANT: u8>(
 mod tests {
     use super::*;
     use console::prelude::TestRng;
+    use ledger_store::helpers::memory::FinalizeMemory;
 
+    type CurrentNetwork = console::network::Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
     #[test]
     fn test_finalize_deployment() {
         let rng = &mut TestRng::default();
 
-        // Fetch the program from the deployment.
-        let program = crate::vm::test_helpers::sample_program();
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"
+program testing.aleo;
+
+struct message:
+    amount as u128;
+
+mapping account:
+    key owner as address.public;
+    value amount as u64.public;
+
+record token:
+    owner as address.private;
+    amount as u64.private;
+
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 r1 into r2 as token.record;
+    output r2 as token.record;
+
+function compute:
+    input r0 as message.private;
+    input r1 as message.public;
+    input r2 as message.private;
+    input r3 as token.record;
+    add r0.amount r1.amount into r4;
+    cast r3.owner r3.amount into r5 as token.record;
+    output r4 as u128.public;
+    output r5 as token.record;",
+        )
+        .unwrap();
+
         // Initialize a new process.
         let mut process = Process::load().unwrap();
         // Deploy the program.
         let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
 
-        // Initialize a new VM.
-        let vm = crate::vm::test_helpers::sample_vm();
+        // Initialize a new finalize store.
+        let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
 
         // Ensure the program does not exist.
         assert!(!process.contains_program(program.id()));
 
         // Finalize the deployment.
-        let (stack, _) = process.finalize_deployment(vm.finalize_store(), &deployment).unwrap();
+        let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
         // Add the stack *manually* to the process.
         process.add_stack(stack);
 

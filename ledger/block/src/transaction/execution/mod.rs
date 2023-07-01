@@ -137,3 +137,21 @@ impl<N: Network> Execution<N> {
         self.transitions.values().flat_map(Transition::commitments)
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
+    use super::*;
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    /// Samples a random execution.
+    pub(crate) fn sample_execution(rng: &mut TestRng) -> Execution<CurrentNetwork> {
+        if let Transaction::Execute(_, execution, _) =
+            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng)
+        {
+            execution
+        } else {
+            unreachable!()
+        }
+    }
+}

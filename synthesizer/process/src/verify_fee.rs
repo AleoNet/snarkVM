@@ -123,7 +123,7 @@ mod tests {
     fn test_verify_fee() {
         let rng = &mut TestRng::default();
         // Fetch a deployment transaction.
-        let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+        let deployment_transaction = ledger_block::transaction::test_helpers::sample_deployment_transaction(rng);
 
         // Construct a new process.
         let process = Process::load().unwrap();

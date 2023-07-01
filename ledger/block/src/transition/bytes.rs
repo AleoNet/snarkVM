@@ -142,7 +142,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the transition.
-        let expected = crate::test_helpers::sample_transition(rng);
+        let expected = crate::transition::test_helpers::sample_transition(rng);
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

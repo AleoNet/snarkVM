@@ -89,7 +89,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the transition.
-        let expected = crate::test_helpers::sample_transition(rng);
+        let expected = crate::transition::test_helpers::sample_transition(rng);
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -108,7 +108,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the transition.
-        let expected = crate::test_helpers::sample_transition(rng);
+        let expected = crate::transition::test_helpers::sample_transition(rng);
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

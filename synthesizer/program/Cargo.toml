@@ -63,7 +63,3 @@ features = [ "preserve_order" ]
 [dev-dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"
 path = "../process"
-
-[dev-dependencies.synthesizer-snark]
-package = "snarkvm-synthesizer-snark"
-path = "../snark"

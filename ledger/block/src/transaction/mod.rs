@@ -389,9 +389,7 @@ pub mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Samples a random deployment transaction.
-    pub(crate) fn sample_deployment_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
-        let rng = &mut TestRng::default();
-
+    pub fn sample_deployment_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample a deployment.
@@ -407,14 +405,14 @@ pub mod test_helpers {
     }
 
     /// Samples a random execution transaction with fee.
-    pub(crate) fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
-        crate::test_helpers::sample_block_and_transaction(rng).1
+    pub fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        crate::test_helpers::sample_block_and_transaction().1
     }
 
     /// Samples a random fee transaction.
-    pub(crate) fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    pub fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         // Sample a fee.
-        let fee = crate::test_helpers::sample_fee(rng);
+        let fee = crate::transaction::fee::test_helpers::sample_fee(rng);
         // Construct a fee transaction.
         Transaction::from_fee(fee).unwrap()
     }

@@ -25,7 +25,6 @@ use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
     BlockStore,
 };
-use snarkvm_curves::bls12_377::Fr;
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait};
 
 type CurrentNetwork = Testnet3;
@@ -60,7 +59,7 @@ function foo:
     ];
 
     // Construct the process.
-    let process = crate::process::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Compute the authorization.
     let authorization = {
@@ -125,7 +124,7 @@ output r1 as field.private;",
     let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
     // Construct the process.
-    let process = crate::process::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Compute the authorization.
     let authorization = {
@@ -200,7 +199,7 @@ output r1 as u64.private;",
     let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
     // Construct the process.
-    let process = crate::process::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Authorize the function call.
     let authorization = process
@@ -268,13 +267,13 @@ output r4 as field.private;",
 
     {
         // Construct the process.
-        let process = crate::process::test_helpers::sample_process(&program);
+        let process = crate::test_helpers::sample_process(&program);
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
     }
 
     // Construct the process.
-    let process = crate::process::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Compute the authorization.
     let authorization = {
@@ -384,7 +383,7 @@ output r1 as token.record;",
     let input = Value::<CurrentNetwork>::Record(input_record);
 
     // Construct the process.
-    let process = crate::process::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Authorize the function call.
     let authorization = process
@@ -2320,9 +2319,9 @@ function compute:
     assert_eq!(r4, candidate[2]);
 
     // Initialize a new block store.
-    let block_store = BlockStore::<_, BlockMemory<_>>::open(None).unwrap();
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     // Prepare the trace.
-    trace.prepare(block_store).unwrap();
+    trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap();
 
@@ -2336,7 +2335,7 @@ fn get_assignment(
     function_name: Identifier<CurrentNetwork>,
     inputs: &[Value<CurrentNetwork>],
     rng: &mut TestRng,
-) -> Assignment<Fr> {
+) -> Assignment<<CurrentNetwork as console::network::Environment>::Field> {
     // Retrieve the program.
     let program = stack.program();
     // Retrieve the input types.

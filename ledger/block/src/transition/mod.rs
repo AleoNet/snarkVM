@@ -461,3 +461,22 @@ impl<N: Network> Transition<N> {
         self.finalize.into_iter().flatten()
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
+    use super::*;
+    use crate::Transaction;
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    /// Samples a random transition.
+    pub(crate) fn sample_transition(rng: &mut TestRng) -> Transition<CurrentNetwork> {
+        if let Transaction::Execute(_, execution, _) =
+            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng)
+        {
+            execution.into_transitions().next().unwrap()
+        } else {
+            unreachable!()
+        }
+    }
+}

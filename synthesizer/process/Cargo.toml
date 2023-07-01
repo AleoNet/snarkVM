@@ -85,22 +85,7 @@ version = "0.12"
 [dependencies.rand]
 version = "0.8"
 
-#[dev-dependencies.bincode]
-#version = "1"
-#
-#[dependencies.paste]
-#version = "1.0.12"
-#
-#[dependencies.rand]
-#version = "0.8"
-#
-#[dependencies.rand_chacha]
-#version = "0.3"
-#
-#[dependencies.serde_json]
-#version = "1.0"
-#features = [ "preserve_order" ]
-#
-#[dev-dependencies.synthesizer]
-#package = "snarkvm-synthesizer"
-#path = "../"
+[dev-dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "../../ledger/block"
+features = [ "test" ]

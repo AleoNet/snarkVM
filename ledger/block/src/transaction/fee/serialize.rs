@@ -62,7 +62,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the fee.
-        let expected = crate::test_helpers::sample_fee(rng);
+        let expected = crate::transaction::fee::test_helpers::sample_fee(rng);
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -81,7 +81,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the fee.
-        let expected = crate::test_helpers::sample_fee(rng);
+        let expected = crate::transaction::fee::test_helpers::sample_fee(rng);
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
