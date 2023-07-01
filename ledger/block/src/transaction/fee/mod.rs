@@ -97,15 +97,22 @@ pub mod test_helpers {
     use ledger_store::{helpers::memory::BlockMemory, BlockStore};
     use synthesizer_process::Process;
 
+    use once_cell::sync::OnceCell;
+
     type CurrentNetwork = console::network::Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
     /// Samples a random hardcoded fee.
     pub fn sample_fee_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
-        // Sample a deployment or execution ID.
-        let deployment_or_execution_id = Field::rand(rng);
-        // Sample a fee.
-        sample_fee(deployment_or_execution_id, rng)
+        static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Sample a deployment or execution ID.
+                let deployment_or_execution_id = Field::rand(rng);
+                // Sample a fee.
+                sample_fee(deployment_or_execution_id, rng)
+            })
+            .clone()
     }
 
     /// Samples a random fee.
@@ -128,7 +135,7 @@ pub mod test_helpers {
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
         // Insert the block into the block store.
-        // Note: This is a hack to work around Rust's dependency cycle rules.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
         block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
 
         // Prepare the assignments.
@@ -137,7 +144,7 @@ pub mod test_helpers {
         let fee = trace.prove_fee::<CurrentAleo, _>(rng).unwrap();
 
         // Convert the fee.
-        // Note: This is a hack to work around Rust's dependency cycle rules.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
         let fee = Fee::from_str(&fee.to_string()).unwrap();
         // Return the fee.
         fee

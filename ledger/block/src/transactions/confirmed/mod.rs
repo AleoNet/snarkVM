@@ -52,7 +52,7 @@ impl<N: Network> ConfirmedTransaction<N> {
         // Ensure the number of program mappings matches the number of finalize operations.
         if program.mappings().len() != finalize_operations.len() {
             bail!(
-                "The number of program mappings ({}) does not match the nubmer of finalize operations ({})",
+                "The number of program mappings ({}) does not match the number of finalize operations ({})",
                 program.mappings().len(),
                 finalize_operations.len()
             )

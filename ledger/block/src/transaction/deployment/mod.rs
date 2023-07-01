@@ -148,6 +148,10 @@ pub mod test_helpers {
                     r"
 program testing.aleo;
 
+mapping store:
+    key item as u32.public;
+    value object as u32.public;
+
 function compute:
     input r0 as u32.private;
     add r0 r0 into r1;
@@ -159,10 +163,10 @@ function compute:
                 // Construct the process.
                 let process = Process::load().unwrap();
                 // Compute the deployment.
-                // Note: This is a hack to work around Rust's dependency cycle rules.
-                let deployment_string = process.deploy::<CurrentAleo, _>(&program, rng).unwrap().to_string();
+                let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
                 // Return the deployment.
-                Deployment::from_str(&deployment_string).unwrap()
+                // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+                Deployment::from_str(&deployment.to_string()).unwrap()
             })
             .clone()
     }

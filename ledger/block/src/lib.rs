@@ -448,9 +448,15 @@ impl<N: Network> Block<N> {
 #[cfg(any(test, feature = "test"))]
 pub mod test_helpers {
     use super::*;
-    use console::account::PrivateKey;
+    use console::account::{Address, PrivateKey};
+    use ledger_query::Query;
+    use ledger_store::{helpers::memory::BlockMemory, BlockStore};
+    use synthesizer_process::Process;
+
+    use once_cell::sync::OnceCell;
 
     type CurrentNetwork = console::network::Testnet3;
+    type CurrentAleo = circuit::network::AleoV0;
 
     /// Samples a random genesis block.
     pub(crate) fn sample_genesis_block(rng: &mut TestRng) -> Block<CurrentNetwork> {
@@ -474,12 +480,60 @@ pub mod test_helpers {
     pub(crate) fn sample_genesis_block_and_components(
         rng: &mut TestRng,
     ) -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>, PrivateKey<CurrentNetwork>) {
+        static INSTANCE: OnceCell<(Block<CurrentNetwork>, Transaction<CurrentNetwork>, PrivateKey<CurrentNetwork>)> =
+            OnceCell::new();
+        INSTANCE.get_or_init(|| sample_genesis_block_and_components_raw(rng)).clone()
+    }
+
+    /// Samples a random genesis block, the transaction from the genesis block, and the genesis private key.
+    fn sample_genesis_block_and_components_raw(
+        rng: &mut TestRng,
+    ) -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>, PrivateKey<CurrentNetwork>) {
         // Sample the genesis private key.
         let private_key = PrivateKey::new(rng).unwrap();
-        // Sample the genesis block.
-        let block = sample_genesis_block(rng);
-        // Retrieve a transaction.
-        let transaction = block.transactions().iter().next().unwrap().deref().clone();
+        let address = Address::<CurrentNetwork>::try_from(private_key).unwrap();
+
+        // Prepare the locator.
+        let locator = ("credits.aleo", "mint");
+        // Prepare the amount for each call to the mint function.
+        let amount = 100_000_000u64;
+        // Prepare the function inputs.
+        let inputs = [address.to_string(), format!("{amount}_u64")];
+
+        // Initialize the process.
+        let process = Process::load().unwrap();
+        // Authorize the mint function.
+        let authorization =
+            process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
+        // Execute the mint function.
+        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+
+        // Prepare the assignments.
+        trace.prepare(Query::from(block_store)).unwrap();
+        // Compute the proof and construct the execution.
+        let execution = trace.prove_execution::<CurrentAleo, _>(locator.0, rng).unwrap();
+        // Convert the execution.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+        let execution = Execution::from_str(&execution.to_string()).unwrap();
+
+        // Construct the transaction.
+        let transaction = Transaction::from_execution(execution, None).unwrap();
+        // Prepare the confirmed transaction.
+        let confirmed = ConfirmedTransaction::accepted_execute(0, transaction.clone(), vec![]).unwrap();
+        // Prepare the transactions.
+        let transactions = Transactions::from_iter([confirmed].into_iter());
+
+        // Prepare the block header.
+        let header = Header::genesis(&transactions).unwrap();
+        // Prepare the previous block hash.
+        let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
+
+        // Construct the block.
+        let block = Block::new(&private_key, previous_hash, header, transactions, vec![], None, rng).unwrap();
+        assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
         // Return the block, transaction, and private key.
         (block, transaction, private_key)
     }
