@@ -15,7 +15,6 @@
 mod execute;
 mod fee;
 
-use crate::QueryTrait;
 #[cfg(debug_assertions)]
 use crate::Stack;
 use console::{
@@ -24,6 +23,7 @@ use console::{
     types::{Field, Group},
 };
 use ledger_block::{Input, Output, Transaction, Transition};
+use ledger_query::QueryTrait;
 
 use std::collections::HashMap;
 

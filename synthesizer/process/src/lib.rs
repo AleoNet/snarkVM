@@ -19,9 +19,6 @@
 // TODO (howardwu): Update the return type on `execute` after stabilizing the interface.
 #![allow(clippy::type_complexity)]
 
-#[macro_use]
-extern crate async_trait;
-
 mod stack;
 pub use stack::*;
 
@@ -298,9 +295,9 @@ impl<N: Network> Process<N> {
 #[cfg(any(test, feature = "test"))]
 pub mod test_helpers {
     use super::*;
-    use crate::query::Query;
     use console::{account::PrivateKey, network::Testnet3, program::Identifier};
     use ledger_block::Transition;
+    use ledger_query::Query;
     use ledger_store::{helpers::memory::BlockMemory, BlockStore};
     use synthesizer_program::Program;
 

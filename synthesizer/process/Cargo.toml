@@ -26,8 +26,8 @@ edition = "2021"
 [features]
 default = [ "indexmap/rayon" ]
 aleo-cli = [ ]
-serial = [ "console/serial", "ledger-block/serial", "ledger-store/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
-wasm = [ "console/wasm", "ledger-block/wasm", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
+serial = [ "console/serial", "ledger-block/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
+wasm = [ "console/wasm", "ledger-block/wasm", "ledger-query/serial", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
@@ -46,6 +46,12 @@ version = "=0.13.0"
 package = "snarkvm-ledger-block"
 path = "../../ledger/block"
 version = "=0.13.0"
+
+[dependencies.ledger-query]
+package = "snarkvm-ledger-query"
+path = "../../ledger/query"
+version = "=0.13.0"
+default-features = false
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
@@ -66,9 +72,6 @@ version = "=0.13.0"
 version = "0.1.18"
 default-features = false
 
-[dependencies.async-trait]
-version = "0.1"
-
 [dependencies.colored]
 version = "2"
 
@@ -85,7 +88,8 @@ version = "0.12"
 [dependencies.rand]
 version = "0.8"
 
-[dev-dependencies.ledger-block]
-package = "snarkvm-ledger-block"
-path = "../../ledger/block"
-features = [ "test" ]
+[dev-dependencies.ledger-query]
+package = "snarkvm-ledger-query"
+path = "../../ledger/query"
+version = "=0.13.0"
+features = [ "query" ]

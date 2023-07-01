@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod query;
-pub use query::*;
-
 use crate::{CallStack, Closure, FinalizeTypes, RegisterTypes};
 use console::{
     account::Address,

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use crate::query::Query;
 use circuit::{network::AleoV0, Assignment};
 use console::{
     account::{Address, PrivateKey, ViewKey},
@@ -21,6 +20,7 @@ use console::{
     program::{Identifier, Literal, Value},
     types::Field,
 };
+use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
     BlockStore,

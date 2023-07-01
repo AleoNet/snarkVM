@@ -17,18 +17,17 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ ]
+default = [ "query" ]
 serial = [
   "console/serial",
   "ledger-store/serial",
-  "synthesizer-process/serial",
   "synthesizer-program/serial",
 ]
 wasm = [
   "console/wasm",
-  "synthesizer-process/wasm",
   "synthesizer-program/wasm",
 ]
+query = [ "ledger-store", "synthesizer-program", "reqwest", "ureq" ]
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -39,16 +38,13 @@ version = "=0.13.0"
 package = "snarkvm-ledger-store"
 path = "../store"
 version = "=0.13.0"
-
-[dependencies.synthesizer-process]
-package = "snarkvm-synthesizer-process"
-path = "../../synthesizer/process"
-version = "=0.13.0"
+optional = true
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
 version = "=0.13.0"
+optional = true
 
 [dependencies.async-trait]
 version = "0.1"
@@ -56,7 +52,9 @@ version = "0.1"
 [dependencies.reqwest]
 version = "0.11.18"
 features = [ "json" ]
+optional = true
 
 [dependencies.ureq]
 version = "2.7.1"
 features = [ "json" ]
+optional = true

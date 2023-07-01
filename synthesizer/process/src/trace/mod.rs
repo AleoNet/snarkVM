@@ -18,13 +18,13 @@ pub use call_metrics::*;
 mod inclusion;
 pub use inclusion::*;
 
-use crate::QueryTrait;
 use circuit::Assignment;
 use console::{
     network::prelude::*,
     program::{InputID, Locator},
 };
 use ledger_block::{Execution, Fee, Input, Transition};
+use ledger_query::QueryTrait;
 use synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
 use once_cell::sync::OnceCell;

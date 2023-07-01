@@ -3008,7 +3008,6 @@ dependencies = [
  "reqwest",
  "snarkvm-console",
  "snarkvm-ledger-store",
- "snarkvm-synthesizer-process",
  "snarkvm-synthesizer-program",
  "ureq",
 ]
@@ -3126,7 +3125,6 @@ name = "snarkvm-synthesizer-process"
 version = "0.13.0"
 dependencies = [
  "aleo-std",
- "async-trait",
  "colored",
  "indexmap 2.0.0",
  "once_cell",
@@ -3135,6 +3133,7 @@ dependencies = [
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
  "snarkvm-ledger-store",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
