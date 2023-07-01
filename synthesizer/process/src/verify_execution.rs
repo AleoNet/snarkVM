@@ -328,10 +328,10 @@ impl<N: Network> Process<N> {
                 for instruction in function.instructions() {
                     if let Instruction::Call(call) = instruction {
                         let (pid, fname) = match call.operator() {
-                            crate::program::CallOperator::Locator(locator) => {
+                            synthesizer_program::CallOperator::Locator(locator) => {
                                 (locator.program_id(), locator.resource())
                             }
-                            crate::program::CallOperator::Resource(fname) => (&top.pid, fname),
+                            synthesizer_program::CallOperator::Resource(fname) => (&top.pid, fname),
                         };
                         // Add the child to the traversal stack, only if it is a call to a transition.
                         if self.get_stack(pid)?.get_function(fname).is_ok() {

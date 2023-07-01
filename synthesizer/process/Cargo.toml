@@ -82,6 +82,9 @@ version = "1.18"
 [dependencies.parking_lot]
 version = "0.12"
 
+[dependencies.rand]
+version = "0.8"
+
 #[dev-dependencies.bincode]
 #version = "1"
 #

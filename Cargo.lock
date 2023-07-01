@@ -2990,8 +2990,10 @@ dependencies = [
  "once_cell",
  "rayon",
  "serde_json",
+ "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-process",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
 ]
@@ -3116,6 +3118,7 @@ dependencies = [
  "indexmap 2.0.0",
  "once_cell",
  "parking_lot",
+ "rand 0.8.5",
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-ledger-block",
@@ -3136,7 +3139,8 @@ dependencies = [
  "serde_json",
  "snarkvm-circuit",
  "snarkvm-console",
- "snarkvm-synthesizer",
+ "snarkvm-synthesizer-process",
+ "snarkvm-synthesizer-snark",
 ]
 
 [[package]]

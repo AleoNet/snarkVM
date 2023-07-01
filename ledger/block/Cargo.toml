@@ -69,3 +69,11 @@ features = [ "preserve_order" ]
 
 [dev-dependencies.bincode]
 version = "1.3"
+
+[dev-dependencies.circuit]
+package = "snarkvm-circuit"
+path = "../../circuit"
+
+[dev-dependencies.synthesizer-process]
+package = "snarkvm-synthesizer-process"
+path = "../../synthesizer/process"

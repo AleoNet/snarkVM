@@ -14,7 +14,6 @@
 
 use crate::{FinalizeGlobalState, Function, Operand, Program};
 use console::{
-    account::Address,
     network::Network,
     prelude::{bail, Result},
     program::{
@@ -31,7 +30,7 @@ use console::{
         Value,
         ValueType,
     },
-    types::Field,
+    types::{Address, Field},
 };
 
 pub trait StackMatches<N: Network> {

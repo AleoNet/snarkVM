@@ -132,7 +132,7 @@ impl<N: Network> Deployment<N> {
 pub mod test_helpers {
     use super::*;
     use console::network::Testnet3;
-    use synthesizer::Process;
+    use synthesizer_process::Process;
 
     use once_cell::sync::OnceCell;
 
@@ -150,9 +150,8 @@ program testing.aleo;
 
 function compute:
     input r0 as u32.private;
-    input r1 as u32.public;
-    add r0 r1 into r2;
-    output r2 as u32.public;",
+    add r0 r0 into r1;
+    output r1 as u32.public;",
                 )
                 .unwrap();
                 assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");

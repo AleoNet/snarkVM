@@ -60,6 +60,10 @@ version = "0.3"
 version = "1.0"
 features = [ "preserve_order" ]
 
-[dev-dependencies.synthesizer]
-package = "snarkvm-synthesizer"
-path = "../"
+[dev-dependencies.synthesizer-process]
+package = "snarkvm-synthesizer-process"
+path = "../process"
+
+[dev-dependencies.synthesizer-snark]
+package = "snarkvm-synthesizer-snark"
+path = "../snark"

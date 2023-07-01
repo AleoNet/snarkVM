@@ -19,7 +19,7 @@
 //
 // use console::{
 //     network::Testnet3,
-//     prelude::{Uniform, Zero},
+//     prelude::{TestRng, Uniform, Zero},
 //     program::{
 //         Boolean,
 //         Field,
@@ -50,7 +50,6 @@
 //     RegistersStore,
 //     Stack,
 // };
-// use snarkvm_utilities::TestRng;
 //
 // use criterion::{BatchSize, Criterion};
 // use std::{fmt::Display, iter, str::FromStr};

@@ -479,6 +479,15 @@ jobs:
           workspace_member: ledger-block
           cache_key: snarkvm-ledger-block-cache
 
+  ledger-store:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger-store
+          cache_key: snarkvm-ledger-store-cache
+
   parameters:
     docker:
       - image: cimg/rust:1.69
@@ -516,6 +525,15 @@ jobs:
       - run_serial:
           workspace_member: synthesizer/coinbase
           cache_key: snarkvm-synthesizer-coinbase-cache
+
+  synthesizer-process:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: synthesizer/process
+          cache_key: snarkvm-synthesizer-process-cache
 
   synthesizer-program:
     docker:
@@ -675,10 +693,12 @@ workflows:
       - fields
       - ledger
       - ledger-block
+      - ledger-store
       - parameters
       - synthesizer
       - synthesizer-integration
       - synthesizer-coinbase
+      - synthesizer-process
       - synthesizer-program
       - synthesizer-snark
       - utilities

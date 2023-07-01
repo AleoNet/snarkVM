@@ -17,12 +17,10 @@ mod serialize;
 mod string;
 
 use crate::{Transaction, Transition};
-use console::{account::Field, network::prelude::*, program::LiteralType};
-use synthesizer_program::{Command, Finalize, Instruction};
+use console::{account::Field, network::prelude::*};
 use synthesizer_snark::Proof;
 
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Execution<N: Network> {

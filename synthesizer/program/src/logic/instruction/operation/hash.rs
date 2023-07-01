@@ -100,6 +100,19 @@ pub struct HashInstruction<N: Network, const VARIANT: u8> {
 }
 
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
+    /// Initializes a new `hash` instruction.
+    #[inline]
+    pub fn new(operands: Vec<Operand<N>>, destination: Register<N>, destination_type: LiteralType) -> Result<Self> {
+        // Sanity check the number of operands.
+        check_number_of_operands(VARIANT, Self::opcode(), operands.len())?;
+        // Sanity check the destination type.
+        if !is_valid_destination_type(destination_type) {
+            bail!("Invalid destination type for 'hash' instruction")
+        }
+        // Return the instruction.
+        Ok(Self { operands, destination, destination_type })
+    }
+
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -397,148 +410,11 @@ impl<N: Network, const VARIANT: u8> ToBytes for HashInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::test_helpers::{sample_finalize_registers, sample_registers};
-    use circuit::{AleoV0, Eject};
-    use console::{network::Testnet3, program::Identifier};
-    use synthesizer::{
-        process::Stack,
-        snark::{ProvingKey, VerifyingKey},
-    };
-
-    use std::collections::HashMap;
+    use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
-    const ITERATIONS: usize = 100;
-
-    /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
-    #[allow(clippy::type_complexity)]
-    fn sample_stack(
-        opcode: Opcode,
-        type_: LiteralType,
-        mode: circuit::Mode,
-        destination_type: LiteralType,
-        cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
-    ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
-        use crate::Program;
-        use synthesizer::Process;
-
-        // Initialize the opcode.
-        let opcode = opcode.to_string();
-
-        // Initialize the function name.
-        let function_name = Identifier::<CurrentNetwork>::from_str("run")?;
-
-        // Initialize the registers.
-        let r0 = Register::Locator(0);
-        let r1 = Register::Locator(1);
-
-        // Initialize the program.
-        let program = Program::from_str(&format!(
-            "program testing.aleo;
-            function {function_name}:
-                input {r0} as {type_}.{mode};
-                {opcode} {r0} into {r1} as {destination_type};
-                finalize {r0};
-            finalize {function_name}:
-                input {r0} as {type_}.public;
-                {opcode} {r0} into {r1} as {destination_type};
-        "
-        ))?;
-
-        // Initialize the operands.
-        let operands = vec![Operand::Register(r0)];
-
-        // Initialize the stack.
-        let stack = Stack::new(&Process::load_with_cache(cache)?, &program)?;
-
-        Ok((stack, operands, r1))
-    }
-
-    fn check_hash<const VARIANT: u8>(
-        operation: impl FnOnce(
-            Vec<Operand<CurrentNetwork>>,
-            Register<CurrentNetwork>,
-            LiteralType,
-        ) -> HashInstruction<CurrentNetwork, VARIANT>,
-        opcode: Opcode,
-        literal: &Literal<CurrentNetwork>,
-        mode: &circuit::Mode,
-        destination_type: LiteralType,
-        cache: &mut HashMap<String, (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)>,
-    ) {
-        println!("Checking '{opcode}' for '{literal}.{mode}'");
-
-        // Initialize the types.
-        let type_ = literal.to_type();
-
-        // Initialize the stack.
-        let (stack, operands, destination) = sample_stack(opcode, type_, *mode, destination_type, cache).unwrap();
-
-        // Initialize the operation.
-        let operation = operation(operands, destination.clone(), destination_type);
-        // Initialize the function name.
-        let function_name = Identifier::from_str("run").unwrap();
-        // Initialize a destination operand.
-        let destination_operand = Operand::Register(destination);
-
-        // Attempt to evaluate the valid operand case.
-        let mut evaluate_registers = sample_registers(&stack, &function_name, &[(literal, None)]).unwrap();
-        let result_a = operation.evaluate(&stack, &mut evaluate_registers);
-
-        // Attempt to execute the valid operand case.
-        let mut execute_registers = sample_registers(&stack, &function_name, &[(literal, Some(*mode))]).unwrap();
-        let result_b = operation.execute::<CurrentAleo>(&stack, &mut execute_registers);
-
-        // Attempt to finalize the valid operand case.
-        let mut finalize_registers = sample_finalize_registers(&stack, &function_name, &[literal]).unwrap();
-        let result_c = operation.finalize(&stack, &mut finalize_registers);
-
-        // Check that either all operations failed, or all operations succeeded.
-        let all_failed = result_a.is_err() && result_b.is_err() && result_c.is_err();
-        let all_succeeded = result_a.is_ok() && result_b.is_ok() && result_c.is_ok();
-        assert!(
-            all_failed || all_succeeded,
-            "The results of the evaluation, execution, and finalization should either all succeed or all fail"
-        );
-
-        // If all operations succeeded, check that the outputs are consistent.
-        if all_succeeded {
-            // Retrieve the output of evaluation.
-            let output_a = evaluate_registers.load(&stack, &destination_operand).unwrap();
-
-            // Retrieve the output of execution.
-            let output_b = execute_registers.load_circuit(&stack, &destination_operand).unwrap();
-
-            // Retrieve the output of finalization.
-            let output_c = finalize_registers.load(&stack, &destination_operand).unwrap();
-
-            // Check that the outputs are consistent.
-            assert_eq!(
-                output_a,
-                output_b.eject_value(),
-                "The results of the evaluation and execution are inconsistent"
-            );
-            assert_eq!(output_a, output_c, "The results of the evaluation and finalization are inconsistent");
-
-            // Check that the output type is consistent with the declared type.
-            match output_a {
-                Value::Plaintext(Plaintext::Literal(literal, _)) => {
-                    assert_eq!(
-                        literal.to_type(),
-                        destination_type,
-                        "The output type is inconsistent with the declared type"
-                    );
-                }
-                _ => unreachable!("The output type is inconsistent with the declared type"),
-            }
-        }
-
-        // Reset the circuit.
-        <CurrentAleo as circuit::Environment>::reset();
-    }
-
+    /// **Attention**: When changing this, also update in `tests/instruction/hash.rs`.
     fn valid_destination_types() -> &'static [LiteralType] {
         &[
             LiteralType::Address,
@@ -556,154 +432,6 @@ mod tests {
             LiteralType::U128,
             LiteralType::Scalar,
         ]
-    }
-
-    macro_rules! test_hash {
-        ($name: tt, $hash:ident) => {
-            paste::paste! {
-                #[test]
-                fn [<test _ $name _ is _ consistent>]() {
-                    // Initialize the operation.
-                    let operation = |operands, destination, destination_type| $hash::<CurrentNetwork> { operands, destination, destination_type };
-                    // Initialize the opcode.
-                    let opcode = $hash::<CurrentNetwork>::opcode();
-
-                    // Prepare the rng.
-                    let mut rng = TestRng::default();
-
-                    // Prepare the test.
-                    let modes = [circuit::Mode::Public, circuit::Mode::Private];
-
-                    // Prepare the key cache.
-                    let mut cache = Default::default();
-
-                    for _ in 0..ITERATIONS {
-                        let literals = crate::sample_literals!(CurrentNetwork, &mut rng);
-                        for literal in literals.iter() {
-                            for mode in modes.iter() {
-                                for destination_type in valid_destination_types() {
-                                    check_hash(
-                                        operation,
-                                        opcode,
-                                        literal,
-                                        mode,
-                                        *destination_type,
-                                        &mut cache,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    test_hash!(hash_bhp256, HashBHP256);
-    test_hash!(hash_bhp512, HashBHP512);
-    test_hash!(hash_bhp768, HashBHP768);
-    test_hash!(hash_bhp1024, HashBHP1024);
-
-    test_hash!(hash_psd2, HashPSD2);
-    test_hash!(hash_psd4, HashPSD4);
-    test_hash!(hash_psd8, HashPSD8);
-
-    // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
-    #[test]
-    fn test_hash_ped64_is_consistent() {
-        // Prepare the rng.
-        let mut rng = TestRng::default();
-
-        // Prepare the test.
-        let modes = [circuit::Mode::Public, circuit::Mode::Private];
-
-        macro_rules! check_hash {
-            ($operation:tt) => {
-                // Prepare the key cache.
-                let mut cache = Default::default();
-
-                for _ in 0..ITERATIONS {
-                    let literals = [
-                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                        Literal::I8(console::types::I8::rand(&mut rng)),
-                        Literal::I16(console::types::I16::rand(&mut rng)),
-                        Literal::I32(console::types::I32::rand(&mut rng)),
-                        Literal::U8(console::types::U8::rand(&mut rng)),
-                        Literal::U16(console::types::U16::rand(&mut rng)),
-                        Literal::U32(console::types::U32::rand(&mut rng)),
-                    ];
-                    for literal in literals.iter() {
-                        for mode in modes.iter() {
-                            for destination_type in valid_destination_types() {
-                                check_hash(
-                                    |operands, destination, destination_type| $operation::<CurrentNetwork> {
-                                        operands,
-                                        destination,
-                                        destination_type,
-                                    },
-                                    $operation::<CurrentNetwork>::opcode(),
-                                    literal,
-                                    mode,
-                                    *destination_type,
-                                    &mut cache,
-                                );
-                            }
-                        }
-                    }
-                }
-            };
-        }
-        check_hash!(HashPED64);
-    }
-
-    // Note this test must be explicitly written, instead of using the macro, because HashPED128 fails on certain input types.
-    #[test]
-    fn test_hash_ped128_is_consistent() {
-        // Prepare the rng.
-        let mut rng = TestRng::default();
-
-        // Prepare the test.
-        let modes = [circuit::Mode::Public, circuit::Mode::Private];
-
-        macro_rules! check_hash {
-            ($operation:tt) => {
-                // Prepare the key cache.
-                let mut cache = Default::default();
-
-                for _ in 0..ITERATIONS {
-                    let literals = [
-                        Literal::Boolean(console::types::Boolean::rand(&mut rng)),
-                        Literal::I8(console::types::I8::rand(&mut rng)),
-                        Literal::I16(console::types::I16::rand(&mut rng)),
-                        Literal::I32(console::types::I32::rand(&mut rng)),
-                        Literal::I64(console::types::I64::rand(&mut rng)),
-                        Literal::U8(console::types::U8::rand(&mut rng)),
-                        Literal::U16(console::types::U16::rand(&mut rng)),
-                        Literal::U32(console::types::U32::rand(&mut rng)),
-                        Literal::U64(console::types::U64::rand(&mut rng)),
-                    ];
-                    for literal in literals.iter() {
-                        for mode in modes.iter() {
-                            for destination_type in valid_destination_types() {
-                                check_hash(
-                                    |operands, destination, destination_type| $operation::<CurrentNetwork> {
-                                        operands,
-                                        destination,
-                                        destination_type,
-                                    },
-                                    $operation::<CurrentNetwork>::opcode(),
-                                    literal,
-                                    mode,
-                                    *destination_type,
-                                    &mut cache,
-                                );
-                            }
-                        }
-                    }
-                }
-            };
-        }
-        check_hash!(HashPED128);
     }
 
     #[test]
