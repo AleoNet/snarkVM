@@ -12,6 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments)]
+// #![warn(clippy::cast_possible_truncation)]
+#![allow(clippy::single_element_loop)]
+// TODO (howardwu): Update the return type on `execute` after stabilizing the interface.
+#![allow(clippy::type_complexity)]
+
+#[macro_use]
+extern crate async_trait;
+
 mod stack;
 pub use stack::*;
 
@@ -34,32 +44,29 @@ mod verify_fee;
 #[cfg(test)]
 mod tests;
 
-use crate::{
-    atomic_batch_scope,
-    block::{Deployment, Execution, Fee, Input, Transition},
-    program::{
-        Branch,
-        Closure,
-        Command,
-        Finalize,
-        FinalizeGlobalState,
-        FinalizeOperation,
-        Function,
-        Instruction,
-        Program,
-        RegistersLoad,
-        RegistersStore,
-        StackProgram,
-    },
-    store::{FinalizeStorage, FinalizeStore},
-};
 use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, Record, Request, Response, Value},
     types::{Field, U16, U64},
 };
-use snarkvm_synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
+use ledger_block::{Deployment, Execution, Fee, Input, Transition};
+use ledger_store::{atomic_batch_scope, FinalizeStorage, FinalizeStore};
+use synthesizer_program::{
+    Branch,
+    Closure,
+    Command,
+    Finalize,
+    FinalizeGlobalState,
+    FinalizeOperation,
+    Function,
+    Instruction,
+    Program,
+    RegistersLoad,
+    RegistersStore,
+    StackProgram,
+};
+use synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
@@ -326,14 +333,11 @@ impl<N: Network> Process<N> {
 #[cfg(any(test, feature = "test"))]
 pub mod test_helpers {
     use super::*;
-    use crate::{
-        block::Transition,
-        process::Process,
-        program::Program,
-        query::Query,
-        store::{helpers::memory::BlockMemory, BlockStore},
-    };
+    use crate::query::Query;
     use console::{account::PrivateKey, network::Testnet3, program::Identifier};
+    use ledger_block::Transition;
+    use ledger_store::{helpers::memory::BlockMemory, BlockStore};
+    use synthesizer_program::Program;
 
     use once_cell::sync::OnceCell;
 

@@ -15,22 +15,20 @@
 mod load;
 mod store;
 
-use crate::{
-    process::FinalizeTypes,
-    program::{
-        FinalizeGlobalState,
-        FinalizeRegistersState,
-        Operand,
-        RegistersLoad,
-        RegistersStore,
-        StackMatches,
-        StackProgram,
-    },
-};
+use crate::FinalizeTypes;
 use console::{
     network::prelude::*,
     program::{Identifier, Literal, Plaintext, Register, Value},
     types::U32,
+};
+use synthesizer_program::{
+    FinalizeGlobalState,
+    FinalizeRegistersState,
+    Operand,
+    RegistersLoad,
+    RegistersStore,
+    StackMatches,
+    StackProgram,
 };
 
 use indexmap::IndexMap;

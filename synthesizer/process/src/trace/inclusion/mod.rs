@@ -15,17 +15,15 @@
 mod execute;
 mod fee;
 
+use crate::QueryTrait;
 #[cfg(debug_assertions)]
 use crate::Stack;
-use crate::{
-    block::{Input, Output, Transaction, Transition},
-    process::QueryTrait,
-};
 use console::{
     network::prelude::*,
     program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TransitionPath, TRANSACTION_DEPTH},
     types::{Field, Group},
 };
+use ledger_block::{Input, Output, Transaction, Transition};
 
 use std::collections::HashMap;
 

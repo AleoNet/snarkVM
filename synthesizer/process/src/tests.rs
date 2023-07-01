@@ -13,14 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::{
-    program::{FinalizeGlobalState, FinalizeStoreTrait},
-    query::Query,
-    store::{
-        helpers::memory::{BlockMemory, FinalizeMemory},
-        BlockStore,
-    },
-};
+use crate::query::Query;
 use circuit::{network::AleoV0, Assignment};
 use console::{
     account::{Address, PrivateKey, ViewKey},
@@ -28,7 +21,12 @@ use console::{
     program::{Identifier, Literal, Value},
     types::Field,
 };
+use ledger_store::{
+    helpers::memory::{BlockMemory, FinalizeMemory},
+    BlockStore,
+};
 use snarkvm_curves::bls12_377::Fr;
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait};
 
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;

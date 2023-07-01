@@ -67,6 +67,7 @@ members = [
   "parameters",
   "synthesizer",
   "synthesizer/coinbase",
+  "synthesizer/process",
   "synthesizer/program",
   "synthesizer/snark",
   "utilities",

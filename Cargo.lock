@@ -3075,6 +3075,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-process",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
@@ -3103,6 +3104,24 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-synthesizer-snark",
  "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-synthesizer-process"
+version = "0.13.0"
+dependencies = [
+ "aleo-std",
+ "async-trait",
+ "colored",
+ "indexmap 2.0.0",
+ "once_cell",
+ "parking_lot",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-store",
+ "snarkvm-synthesizer-program",
+ "snarkvm-synthesizer-snark",
 ]
 
 [[package]]

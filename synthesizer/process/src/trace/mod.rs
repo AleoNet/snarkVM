@@ -18,16 +18,14 @@ pub use call_metrics::*;
 mod inclusion;
 pub use inclusion::*;
 
-use crate::{
-    block::{Execution, Fee, Input, Transition},
-    process::QueryTrait,
-    snark::{Proof, ProvingKey, VerifyingKey},
-};
+use crate::QueryTrait;
 use circuit::Assignment;
 use console::{
     network::prelude::*,
     program::{InputID, Locator},
 };
+use ledger_block::{Execution, Fee, Input, Transition};
+use synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;

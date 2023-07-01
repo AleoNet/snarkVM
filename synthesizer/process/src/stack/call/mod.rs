@@ -12,22 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    process::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute},
-    program::{
-        Call,
-        CallOperator,
-        RegistersCaller,
-        RegistersCallerCircuit,
-        RegistersLoad,
-        RegistersLoadCircuit,
-        RegistersStore,
-        RegistersStoreCircuit,
-        StackMatches,
-        StackProgram,
-    },
-};
+use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
 use console::{network::prelude::*, program::Request};
+use synthesizer_program::{
+    Call,
+    CallOperator,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
+};
 
 pub trait CallTrait<N: Network> {
     /// Evaluates the instruction.

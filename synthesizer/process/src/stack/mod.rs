@@ -36,11 +36,7 @@ mod evaluate;
 mod execute;
 mod helpers;
 
-use crate::{
-    block::{Deployment, Transition},
-    process::{traits::*, CallMetrics, Process, Trace},
-    program::{traits::*, CallOperator, Closure, Function, Instruction, Operand, Program},
-};
+use crate::{traits::*, CallMetrics, Process, Trace};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -64,7 +60,9 @@ use console::{
     },
     types::{Field, Group},
 };
-use snarkvm_synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
+use ledger_block::{Deployment, Transition};
+use synthesizer_program::{traits::*, CallOperator, Closure, Function, Instruction, Operand, Program};
+use synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
 
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;

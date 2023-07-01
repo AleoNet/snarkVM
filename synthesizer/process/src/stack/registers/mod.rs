@@ -17,24 +17,22 @@ mod caller;
 mod load;
 mod store;
 
-use crate::{
-    process::{CallStack, RegisterTypes, RegistersCall},
-    program::{
-        Operand,
-        RegistersCaller,
-        RegistersCallerCircuit,
-        RegistersLoad,
-        RegistersLoadCircuit,
-        RegistersStore,
-        RegistersStoreCircuit,
-        StackMatches,
-        StackProgram,
-    },
-};
+use crate::{CallStack, RegisterTypes, RegistersCall};
 use console::{
     network::prelude::*,
     program::{Entry, Literal, Plaintext, Register, Value},
     types::{Address, Field},
+};
+use synthesizer_program::{
+    Operand,
+    RegistersCaller,
+    RegistersCallerCircuit,
+    RegistersLoad,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    StackMatches,
+    StackProgram,
 };
 
 use indexmap::IndexMap;

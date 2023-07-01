@@ -33,6 +33,7 @@ serial = [
   "snarkvm-curves/serial",
   "snarkvm-fields/serial",
   "snarkvm-synthesizer-coinbase/serial",
+  "snarkvm-synthesizer-process/serial",
   "snarkvm-synthesizer-program/serial",
   "snarkvm-synthesizer-snark/serial",
   "snarkvm-utilities/serial"
@@ -47,16 +48,23 @@ wasm = [
   "console/wasm",
   "snarkvm-algorithms/wasm",
   "snarkvm-synthesizer-coinbase/wasm",
+  "snarkvm-synthesizer-process/wasm",
   "snarkvm-synthesizer-program/wasm",
   "snarkvm-synthesizer-snark/wasm",
   "snarkvm-utilities/wasm"
 ]
 coinbase = [ "snarkvm-synthesizer-coinbase" ]
+process = [ "snarkvm-synthesizer-process" ]
 program = [ "snarkvm-synthesizer-program" ]
 snark = [ "snarkvm-synthesizer-snark" ]
 
 [dependencies.snarkvm-synthesizer-coinbase]
 path = "./coinbase"
+version = "=0.13.0"
+optional = true
+
+[dependencies.snarkvm-synthesizer-process]
+path = "./process"
 version = "=0.13.0"
 optional = true
 

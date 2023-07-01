@@ -15,7 +15,7 @@
 mod query;
 pub use query::*;
 
-use crate::process::{CallStack, Closure, FinalizeTypes, RegisterTypes};
+use crate::{CallStack, Closure, FinalizeTypes, RegisterTypes};
 use console::{
     account::Address,
     network::Network,

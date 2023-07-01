@@ -116,8 +116,8 @@ impl<N: Network> Process<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::block::Transaction;
-    use snarkvm_utilities::TestRng;
+    use console::prelude::TestRng;
+    use ledger_block::Transaction;
 
     #[test]
     fn test_verify_fee() {

@@ -13,10 +13,8 @@
 // limitations under the License.
 
 use super::*;
-use crate::{
-    program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS},
-    RegisterTypes,
-};
+use crate::RegisterTypes;
+use synthesizer_program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.

@@ -1,0 +1,103 @@
+[package]
+name = "snarkvm-synthesizer-process"
+version = "0.13.0"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "A process for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[features]
+default = [ "indexmap/rayon" ]
+aleo-cli = [ ]
+serial = [ "console/serial", "ledger-block/serial", "ledger-store/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
+wasm = [ "console/wasm", "ledger-block/wasm", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
+timer = [ "aleo-std/timer" ]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.13.0"
+default-features = false
+features = [ "network", "program", "types" ]
+
+[dependencies.circuit]
+package = "snarkvm-circuit"
+path = "../../circuit"
+version = "=0.13.0"
+
+[dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "../../ledger/block"
+version = "=0.13.0"
+
+[dependencies.ledger-store]
+package = "snarkvm-ledger-store"
+path = "../../ledger/store"
+version = "=0.13.0"
+
+[dependencies.synthesizer-program]
+package = "snarkvm-synthesizer-program"
+path = "../../synthesizer/program"
+version = "=0.13.0"
+
+[dependencies.synthesizer-snark]
+package = "snarkvm-synthesizer-snark"
+path = "../../synthesizer/snark"
+version = "=0.13.0"
+
+[dependencies.aleo-std]
+version = "0.1.18"
+default-features = false
+
+[dependencies.async-trait]
+version = "0.1"
+
+[dependencies.colored]
+version = "2"
+
+[dependencies.indexmap]
+version = "2.0"
+features = [ "serde" ]
+
+[dependencies.once_cell]
+version = "1.18"
+
+[dependencies.parking_lot]
+version = "0.12"
+
+#[dev-dependencies.bincode]
+#version = "1"
+#
+#[dependencies.paste]
+#version = "1.0.12"
+#
+#[dependencies.rand]
+#version = "0.8"
+#
+#[dependencies.rand_chacha]
+#version = "0.3"
+#
+#[dependencies.serde_json]
+#version = "1.0"
+#features = [ "preserve_order" ]
+#
+#[dev-dependencies.synthesizer]
+#package = "snarkvm-synthesizer"
+#path = "../"

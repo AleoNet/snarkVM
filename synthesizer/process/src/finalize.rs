@@ -211,7 +211,7 @@ fn branch_to<N: Network, const VARIANT: u8>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_utilities::TestRng;
+    use console::prelude::TestRng;
 
     type CurrentAleo = circuit::network::AleoV0;
 
