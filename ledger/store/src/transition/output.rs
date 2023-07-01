@@ -536,7 +536,7 @@ mod tests {
     #[test]
     fn test_insert_get_remove() {
         // Sample the transition outputs.
-        for (transition_id, output) in crate::block::transition::output::test_helpers::sample_outputs() {
+        for (transition_id, output) in ledger_test_helpers::sample_outputs() {
             // Initialize a new output store.
             let output_store = OutputMemory::open(None).unwrap();
 
@@ -563,7 +563,7 @@ mod tests {
     #[test]
     fn test_find_transition_id() {
         // Sample the transition outputs.
-        for (transition_id, output) in crate::block::transition::output::test_helpers::sample_outputs() {
+        for (transition_id, output) in ledger_test_helpers::sample_outputs() {
             // Initialize a new output store.
             let output_store = OutputMemory::open(None).unwrap();
 

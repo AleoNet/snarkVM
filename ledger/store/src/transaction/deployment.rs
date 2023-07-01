@@ -672,7 +672,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the deployment transaction.
-        let transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+        let transaction = ledger_test_helpers::sample_deployment_transaction(rng);
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
@@ -706,7 +706,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the deployment transaction.
-        let transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+        let transaction = ledger_test_helpers::sample_deployment_transaction(rng);
         let transaction_id = transaction.id();
         let program_id = match transaction {
             Transaction::Deploy(_, _, ref deployment, _) => *deployment.program_id(),

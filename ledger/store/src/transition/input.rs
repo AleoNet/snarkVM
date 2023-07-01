@@ -494,7 +494,7 @@ mod tests {
     #[test]
     fn test_insert_get_remove() {
         // Sample the transition inputs.
-        for (transition_id, input) in crate::block::transition::input::test_helpers::sample_inputs() {
+        for (transition_id, input) in ledger_test_helpers::sample_inputs() {
             // Initialize a new input store.
             let input_store = InputMemory::open(None).unwrap();
 
@@ -521,7 +521,7 @@ mod tests {
     #[test]
     fn test_find_transition_id() {
         // Sample the transition inputs.
-        for (transition_id, input) in crate::block::transition::input::test_helpers::sample_inputs() {
+        for (transition_id, input) in ledger_test_helpers::sample_inputs() {
             // Initialize a new input store.
             let input_store = InputMemory::open(None).unwrap();
 

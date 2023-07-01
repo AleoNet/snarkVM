@@ -82,16 +82,3 @@ impl FinalizeMode {
         }
     }
 }
-
-#[cfg(test)]
-pub(crate) mod test_helpers {
-    use console::prelude::*;
-    use ledger_block::Block;
-
-    type CurrentNetwork = console::network::Testnet3;
-
-    /// Returns the genesis block.
-    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
-        Block::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap()
-    }
-}

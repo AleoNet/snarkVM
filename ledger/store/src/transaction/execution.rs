@@ -473,7 +473,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
 
         insert_get_remove(transaction).unwrap();
     }
@@ -483,7 +483,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction with a fee.
-        let transaction_with_fee = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let transaction_with_fee = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
 
         insert_get_remove(transaction_with_fee).unwrap();
     }
@@ -493,7 +493,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
 
         find_transaction_id(transaction).unwrap();
     }
@@ -503,7 +503,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction with a fee.
-        let transaction_with_fee = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let transaction_with_fee = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
 
         find_transaction_id(transaction_with_fee).unwrap();
     }

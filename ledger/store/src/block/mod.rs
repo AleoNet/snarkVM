@@ -974,8 +974,10 @@ mod tests {
 
     #[test]
     fn test_insert_get_remove() {
+        let rng = &mut TestRng::default();
+
         // Sample the block.
-        let block = crate::test_helpers::sample_genesis_block();
+        let block = ledger_test_helpers::sample_genesis_block(rng);
         let block_hash = block.hash();
 
         // Initialize a new block store.
@@ -1002,8 +1004,10 @@ mod tests {
 
     #[test]
     fn test_find_block_hash() {
+        let rng = &mut TestRng::default();
+
         // Sample the block.
-        let block = crate::test_helpers::sample_genesis_block();
+        let block = ledger_test_helpers::sample_genesis_block(rng);
         let block_hash = block.hash();
         assert!(block.transactions().num_accepted() > 0, "This test must be run with at least one transaction.");
 

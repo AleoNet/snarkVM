@@ -476,8 +476,17 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
-          workspace_member: ledger-block
+          workspace_member: ledger/block
           cache_key: snarkvm-ledger-block-cache
+
+  ledger-query:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/query
+          cache_key: snarkvm-ledger-query-cache
 
   ledger-store:
     docker:
@@ -485,8 +494,17 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
-          workspace_member: ledger-store
+          workspace_member: ledger/store
           cache_key: snarkvm-ledger-store-cache
+
+  ledger-test-helpers:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/test-helpers
+          cache_key: snarkvm-ledger-test-helpers-cache
 
   parameters:
     docker:
@@ -693,7 +711,9 @@ workflows:
       - fields
       - ledger
       - ledger-block
+      - ledger-query
       - ledger-store
+      - ledger-test-helpers
       - parameters
       - synthesizer
       - synthesizer-integration

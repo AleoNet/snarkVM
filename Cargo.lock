@@ -3025,9 +3025,24 @@ dependencies = [
  "serde",
  "snarkvm-console",
  "snarkvm-ledger-block",
+ "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer-coinbase",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+]
+
+[[package]]
+name = "snarkvm-ledger-test-helpers"
+version = "0.13.0"
+dependencies = [
+ "once_cell",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
+ "snarkvm-synthesizer-process",
+ "snarkvm-synthesizer-program",
 ]
 
 [[package]]

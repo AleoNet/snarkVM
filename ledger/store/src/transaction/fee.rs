@@ -269,7 +269,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the fee transaction.
-        let transaction = crate::vm::test_helpers::sample_fee_transaction(rng);
+        let transaction = ledger_test_helpers::sample_fee_transaction(rng);
         let (transaction_id, fee) = match transaction {
             Transaction::Fee(id, fee) => (id, fee),
             _ => unreachable!("sample_fee_transaction should only return fee transactions"),
@@ -304,7 +304,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the fee transaction.
-        let transaction = crate::vm::test_helpers::sample_fee_transaction(rng);
+        let transaction = ledger_test_helpers::sample_fee_transaction(rng);
         let (transaction_id, fee) = match transaction {
             Transaction::Fee(id, fee) => (id, fee),
             _ => unreachable!("sample_fee_transaction should only return fee transactions"),

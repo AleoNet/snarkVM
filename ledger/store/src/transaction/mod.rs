@@ -487,9 +487,9 @@ mod tests {
 
         // Sample the transactions.
         for transaction in [
-            crate::vm::test_helpers::sample_deployment_transaction(rng),
-            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
-            crate::vm::test_helpers::sample_fee_transaction(rng),
+            ledger_test_helpers::sample_deployment_transaction(rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(rng),
+            ledger_test_helpers::sample_fee_transaction(rng),
         ] {
             let transaction_id = transaction.id();
 
@@ -523,7 +523,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
         let transaction_id = transaction.id();
         let transition_ids = match transaction {
             Transaction::Execute(_, ref execution, _) => {

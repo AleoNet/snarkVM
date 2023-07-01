@@ -65,6 +65,7 @@ members = [
   "ledger/block",
   "ledger/query",
   "ledger/store",
+  "ledger/test-helpers",
   "parameters",
   "synthesizer",
   "synthesizer/coinbase",

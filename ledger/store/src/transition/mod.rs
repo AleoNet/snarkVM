@@ -656,12 +656,8 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the transitions.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
-        let transitions = transaction
-            .transitions()
-            .chain([crate::process::test_helpers::sample_transition()].iter())
-            .cloned()
-            .collect::<Vec<_>>();
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
+        let transitions = transaction.transitions().cloned().collect::<Vec<_>>();
 
         // Ensure there is at least 2 transition.
         println!("\n\nNumber of transitions: {}\n", transitions.len());
