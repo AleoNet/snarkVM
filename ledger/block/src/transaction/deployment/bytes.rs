@@ -82,8 +82,10 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
+        let rng = &mut TestRng::default();
+
         // Construct a new deployment.
-        let expected = test_helpers::sample_deployment();
+        let expected = test_helpers::sample_deployment(rng);
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

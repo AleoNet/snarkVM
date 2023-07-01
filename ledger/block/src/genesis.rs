@@ -46,14 +46,14 @@ mod tests {
 
     #[test]
     fn test_genesis() {
-        let mut rng = TestRng::default();
+        let rng = &mut TestRng::default();
 
         // Load the genesis block.
         let genesis_block = Block::<CurrentNetwork>::read_le(CurrentNetwork::genesis_bytes()).unwrap();
         assert!(genesis_block.is_genesis());
 
         // Sample a new genesis block.
-        let new_genesis_block = crate::test_helpers::sample_genesis_block();
+        let new_genesis_block = crate::test_helpers::sample_genesis_block(rng);
         // println!("{}", serde_json::to_string_pretty(&block).unwrap());
         assert!(new_genesis_block.is_genesis());
     }

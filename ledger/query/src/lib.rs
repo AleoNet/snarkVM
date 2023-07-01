@@ -12,12 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{program::Program, BlockStorage, BlockStore, QueryTrait};
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
+#[macro_use]
+extern crate async_trait;
+
 use console::{
     network::prelude::*,
     program::{ProgramID, StatePath},
     types::Field,
 };
+use ledger_store::{BlockStorage, BlockStore};
+use synthesizer_process::QueryTrait;
+use synthesizer_program::Program;
 
 #[derive(Clone)]
 pub enum Query<N: Network, B: BlockStorage<N>> {

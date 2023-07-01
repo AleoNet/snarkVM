@@ -20,8 +20,6 @@
 #![allow(clippy::type_complexity)]
 
 #[macro_use]
-extern crate async_trait;
-#[macro_use]
 extern crate tracing;
 
 #[cfg(feature = "coinbase")]
@@ -35,9 +33,6 @@ pub use snarkvm_synthesizer_snark as snark;
 
 #[cfg(feature = "program")]
 pub use crate::program::{Closure, Command, Finalize, Function, Instruction, Program};
-
-pub mod query;
-pub use query::*;
 
 pub mod vm;
 pub use vm::*;

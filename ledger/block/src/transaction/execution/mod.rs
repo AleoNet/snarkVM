@@ -146,12 +146,11 @@ pub mod test_helpers {
 
     /// Samples a random execution.
     pub(crate) fn sample_execution(rng: &mut TestRng) -> Execution<CurrentNetwork> {
-        if let Transaction::Execute(_, execution, _) =
-            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng)
-        {
-            execution
-        } else {
-            unreachable!()
-        }
+        // Sample the genesis block.
+        let block = crate::test_helpers::sample_genesis_block(rng);
+        // Retrieve a transaction.
+        let transaction = block.transactions().iter().next().unwrap().deref().clone();
+        // Retrieve the execution.
+        if let Transaction::Execute(_, execution, _) = transaction { execution } else { unreachable!() }
     }
 }

@@ -123,24 +123,24 @@ mod tests {
     fn test_serde_json() {
         let rng = &mut TestRng::default();
 
-        let check_serde_json = |expected: &Transactions<CurrentNetwork>| {
+        let check_serde_json = |expected: Transactions<CurrentNetwork>| {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected).unwrap();
 
             // Deserialize
-            assert_eq!(*expected, Transactions::from_str(expected_string).unwrap());
-            assert_eq!(*expected, serde_json::from_str(&candidate_string).unwrap());
+            assert_eq!(expected, Transactions::from_str(expected_string).unwrap());
+            assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
         };
 
         // Check the serialization.
-        check_serde_json(crate::test_helpers::sample_genesis_block().transactions());
+        check_serde_json(crate::transactions::test_helpers::sample_block_transactions(rng));
 
         for i in 0..ITERATIONS {
             // Construct the transactions.
             let expected: Transactions<CurrentNetwork> = sample_transactions(i, rng);
             // Check the serialization.
-            check_serde_json(&expected);
+            check_serde_json(expected);
         }
     }
 
@@ -148,25 +148,25 @@ mod tests {
     fn test_bincode() {
         let rng = &mut TestRng::default();
 
-        let check_bincode = |expected: &Transactions<CurrentNetwork>| {
+        let check_bincode = |expected: Transactions<CurrentNetwork>| {
             // Serialize
             let expected_bytes = expected.to_bytes_le().unwrap();
             let expected_bytes_with_size_encoding = bincode::serialize(&expected).unwrap();
             assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
             // Deserialize
-            assert_eq!(*expected, Transactions::read_le(&expected_bytes[..]).unwrap());
-            assert_eq!(*expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
+            assert_eq!(expected, Transactions::read_le(&expected_bytes[..]).unwrap());
+            assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
         };
 
         // Check the serialization.
-        check_bincode(crate::test_helpers::sample_genesis_block().transactions());
+        check_bincode(crate::transactions::test_helpers::sample_block_transactions(rng));
 
         for i in 0..ITERATIONS {
             // Construct the transactions.
             let expected: Transactions<CurrentNetwork> = sample_transactions(i, rng);
             // Check the serialization.
-            check_bincode(&expected);
+            check_bincode(expected);
         }
     }
 }

@@ -139,7 +139,7 @@ pub mod test_helpers {
     type CurrentNetwork = Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
-    pub(crate) fn sample_deployment() -> Deployment<CurrentNetwork> {
+    pub(crate) fn sample_deployment(rng: &mut TestRng) -> Deployment<CurrentNetwork> {
         static INSTANCE: OnceCell<Deployment<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
@@ -155,9 +155,6 @@ function compute:
                 )
                 .unwrap();
                 assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-
-                // Initialize the RNG.
-                let rng = &mut TestRng::default();
 
                 // Construct the process.
                 let process = Process::load().unwrap();

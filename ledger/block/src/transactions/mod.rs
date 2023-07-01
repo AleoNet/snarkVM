@@ -319,3 +319,15 @@ impl<N: Network> Transactions<N> {
         self.into_iter().flat_map(|tx| tx.into_transaction().into_nonces())
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
+    use super::*;
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    /// Samples a block transactions.
+    pub(crate) fn sample_block_transactions(rng: &mut TestRng) -> Transactions<CurrentNetwork> {
+        crate::test_helpers::sample_genesis_block(rng).transactions().clone()
+    }
+}

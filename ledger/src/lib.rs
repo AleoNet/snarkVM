@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
 
 #[macro_use]
 extern crate tracing;

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
 pub mod header;
 pub use header::*;
 
@@ -445,22 +448,40 @@ impl<N: Network> Block<N> {
 #[cfg(any(test, feature = "test"))]
 pub mod test_helpers {
     use super::*;
+    use console::account::PrivateKey;
 
     type CurrentNetwork = console::network::Testnet3;
 
-    /// Returns the genesis block.
-    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
-        Block::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap()
+    /// Samples a random genesis block.
+    pub(crate) fn sample_genesis_block(rng: &mut TestRng) -> Block<CurrentNetwork> {
+        // Sample the genesis block and components.
+        let (block, _, _) = sample_genesis_block_and_components(rng);
+        // Return the block.
+        block
     }
 
-    /// Samples a random block.
-    pub(crate) fn sample_block_and_transaction() -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>) {
-        // Sample the genesis block.
-        let block = sample_genesis_block();
-        // Retrieve a transaction.
-        let transaction = block.transactions().iter().next().unwrap();
+    /// Samples a random genesis block and the transaction from the genesis block.
+    pub(crate) fn sample_genesis_block_and_transaction(
+        rng: &mut TestRng,
+    ) -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>) {
+        // Sample the genesis block and components.
+        let (block, transaction, _) = sample_genesis_block_and_components(rng);
         // Return the block and transaction.
-        (block, transaction.deref().clone())
+        (block, transaction)
+    }
+
+    /// Samples a random genesis block, the transaction from the genesis block, and the genesis private key.
+    pub(crate) fn sample_genesis_block_and_components(
+        rng: &mut TestRng,
+    ) -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>, PrivateKey<CurrentNetwork>) {
+        // Sample the genesis private key.
+        let private_key = PrivateKey::new(rng).unwrap();
+        // Sample the genesis block.
+        let block = sample_genesis_block(rng);
+        // Retrieve a transaction.
+        let transaction = block.transactions().iter().next().unwrap().deref().clone();
+        // Return the block, transaction, and private key.
+        (block, transaction, private_key)
     }
 }
 
@@ -474,7 +495,7 @@ mod tests {
     fn test_find_transaction_for_transition_id() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
+        let (block, transaction) = crate::test_helpers::sample_genesis_block_and_transaction(rng);
         let transactions = block.transactions();
 
         // Retrieve the transitions.
@@ -499,7 +520,7 @@ mod tests {
     fn test_find_transaction_for_commitment() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
+        let (block, transaction) = crate::test_helpers::sample_genesis_block_and_transaction(rng);
         let transactions = block.transactions();
 
         // Retrieve the commitments.
@@ -524,7 +545,7 @@ mod tests {
     fn test_find_transition() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
+        let (block, transaction) = crate::test_helpers::sample_genesis_block_and_transaction(rng);
         let transactions = block.transactions();
 
         // Retrieve the transitions.
@@ -551,7 +572,7 @@ mod tests {
     fn test_find_transition_for_commitment() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
+        let (block, transaction) = crate::test_helpers::sample_genesis_block_and_transaction(rng);
         let transactions = block.transactions();
 
         // Retrieve the transitions.
@@ -584,7 +605,7 @@ mod tests {
     fn test_find_record() {
         let rng = &mut TestRng::default();
 
-        let (block, transaction) = crate::test_helpers::sample_block_and_transaction();
+        let (block, transaction) = crate::test_helpers::sample_genesis_block_and_transaction(rng);
         let transactions = block.transactions();
 
         // Retrieve the records.

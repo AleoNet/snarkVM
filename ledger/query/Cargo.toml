@@ -1,0 +1,62 @@
+[package]
+name = "snarkvm-ledger-query"
+version = "0.13.0"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "A query for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [ "cryptography", "web-programming" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[features]
+default = [ ]
+serial = [
+  "console/serial",
+  "ledger-store/serial",
+  "synthesizer-process/serial",
+  "synthesizer-program/serial",
+]
+wasm = [
+  "console/wasm",
+  "synthesizer-process/wasm",
+  "synthesizer-program/wasm",
+]
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.13.0"
+
+[dependencies.ledger-store]
+package = "snarkvm-ledger-store"
+path = "../store"
+version = "=0.13.0"
+
+[dependencies.synthesizer-process]
+package = "snarkvm-synthesizer-process"
+path = "../../synthesizer/process"
+version = "=0.13.0"
+
+[dependencies.synthesizer-program]
+package = "snarkvm-synthesizer-program"
+path = "../../synthesizer/program"
+version = "=0.13.0"
+
+[dependencies.async-trait]
+version = "0.1"
+
+[dependencies.reqwest]
+version = "0.11.18"
+features = [ "json" ]
+
+[dependencies.ureq]
+version = "2.7.1"
+features = [ "json" ]

@@ -63,6 +63,7 @@ members = [
   "fields",
   "ledger",
   "ledger/block",
+  "ledger/query",
   "ledger/store",
   "parameters",
   "synthesizer",

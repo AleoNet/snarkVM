@@ -175,3 +175,15 @@ impl<N: Network> Metadata<N> {
         self.timestamp
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
+    use super::*;
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    /// Samples a block metadata.
+    pub(crate) fn sample_block_metadata(rng: &mut TestRng) -> Metadata<CurrentNetwork> {
+        *crate::test_helpers::sample_genesis_block(rng).metadata()
+    }
+}
