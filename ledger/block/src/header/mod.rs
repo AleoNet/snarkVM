@@ -176,7 +176,7 @@ impl<N: Network> Header<N> {
     }
 }
 
-#[cfg(any(test, feature = "test"))]
+#[cfg(test)]
 pub mod test_helpers {
     use super::*;
 

@@ -462,7 +462,7 @@ impl<N: Network> Transition<N> {
     }
 }
 
-#[cfg(any(test, feature = "test"))]
+#[cfg(test)]
 pub mod test_helpers {
     use super::*;
     use crate::Transaction;

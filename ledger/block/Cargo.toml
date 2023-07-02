@@ -30,7 +30,6 @@ harness = false
 default = [ "indexmap/rayon", "rayon" ]
 serial = [ "console/serial", "synthesizer-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
 wasm = [ "console/wasm", "synthesizer-coinbase/wasm", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
-test = [ ]
 
 [dependencies.console]
 package = "snarkvm-console"

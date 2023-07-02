@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #![forbid(unsafe_code)]
-#![warn(clippy::cast_possible_truncation)]
+// #![warn(clippy::cast_possible_truncation)]
 
 pub mod header;
 pub use header::*;
@@ -445,7 +445,7 @@ impl<N: Network> Block<N> {
     }
 }
 
-#[cfg(any(test, feature = "test"))]
+#[cfg(test)]
 pub mod test_helpers {
     use super::*;
     use console::account::{Address, PrivateKey};

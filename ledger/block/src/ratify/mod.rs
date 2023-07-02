@@ -28,7 +28,7 @@ pub enum Ratify<N: Network> {
     StakingReward(Address<N>, u64),
 }
 
-#[cfg(any(test, feature = "test"))]
+#[cfg(test)]
 mod test_helpers {
     use super::*;
     use console::network::Testnet3;
