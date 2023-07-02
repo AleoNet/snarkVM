@@ -494,6 +494,7 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
+          flags: --features=rocks
           workspace_member: ledger/store
           cache_key: snarkvm-ledger-store-cache
 
@@ -521,7 +522,7 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --lib --bins --features=rocks
+          flags: --lib --bins
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-cache
 
