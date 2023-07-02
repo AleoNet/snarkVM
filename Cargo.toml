@@ -116,7 +116,7 @@ cli = [
   "thiserror"
 ]
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
-cuda = [ "snarkvm-algorithms/cuda", "snarkvm-synthesizer/cuda" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 noconfig = [ ]
 algorithms = [ "snarkvm-algorithms" ]

@@ -22,26 +22,28 @@ mod execute_fee;
 mod finalize;
 mod verify;
 
-pub use finalize::FinalizeMode;
-
-use crate::{
-    atomic_finalize,
-    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions},
-    cast_mut_ref,
-    cast_ref,
-    process,
-    process::{Authorization, Process, Trace},
-    program::{FinalizeGlobalState, FinalizeStoreTrait, Program},
-    query::Query,
-    store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
-    TransactionStorage,
-};
+use crate::{cast_mut_ref, cast_ref, process};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
     types::Field,
 };
+use ledger_block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions};
+use ledger_query::Query;
+use ledger_store::{
+    atomic_finalize,
+    BlockStore,
+    ConsensusStorage,
+    ConsensusStore,
+    FinalizeMode,
+    FinalizeStore,
+    TransactionStorage,
+    TransactionStore,
+    TransitionStore,
+};
+use synthesizer_process::{Authorization, Process, Trace};
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
 use parking_lot::RwLock;
@@ -241,17 +243,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{
-        block::{Block, Fee, Header, Metadata, Transition},
-        program::Program,
-        store::helpers::memory::ConsensusMemory,
-    };
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Value, RATIFICATIONS_DEPTH},
         types::Field,
     };
+    use ledger_block::{Block, Fee, Header, Metadata, Transition};
+    use ledger_store::helpers::memory::ConsensusMemory;
+    use synthesizer_program::Program;
 
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;

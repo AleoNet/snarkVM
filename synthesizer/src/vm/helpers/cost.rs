@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    block::{Deployment, Execution},
-    program::{Command, Finalize, Instruction},
-    VM,
-};
+use crate::VM;
 use console::{prelude::*, program::LiteralType};
+use ledger_block::{Deployment, Execution};
+use ledger_store::ConsensusStorage;
+use synthesizer_program::{Command, Finalize, Instruction};
 
 use std::collections::HashMap;
 

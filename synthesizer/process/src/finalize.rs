@@ -19,7 +19,7 @@ impl<N: Network> Process<N> {
     /// This method assumes the given deployment **is valid**.
     /// This method should **only** be called by `VM::finalize()`.
     #[inline]
-    pub(crate) fn finalize_deployment<P: FinalizeStorage<N>>(
+    pub fn finalize_deployment<P: FinalizeStorage<N>>(
         &self,
         store: &FinalizeStore<N, P>,
         deployment: &Deployment<N>,
@@ -62,7 +62,7 @@ impl<N: Network> Process<N> {
     /// This method assumes the given execution **is valid**.
     /// This method should **only** be called by `VM::finalize()`.
     #[inline]
-    pub(crate) fn finalize_execution<P: FinalizeStorage<N>>(
+    pub fn finalize_execution<P: FinalizeStorage<N>>(
         &self,
         state: FinalizeGlobalState,
         store: &FinalizeStore<N, P>,

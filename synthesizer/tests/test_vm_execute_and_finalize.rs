@@ -25,20 +25,10 @@ use console::{
     program::{Entry, Identifier, Literal, Plaintext, Record, Value, RATIFICATIONS_DEPTH, U64},
     types::{Boolean, Field},
 };
-use snarkvm_synthesizer::{
-    helpers::memory::ConsensusMemory,
-    program::FinalizeGlobalState,
-    Block,
-    ConfirmedTransaction,
-    ConsensusStorage,
-    ConsensusStore,
-    Header,
-    Metadata,
-    Transaction,
-    Transactions,
-    Transition,
-    VM,
-};
+use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Transaction, Transactions, Transition};
+use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStorage, ConsensusStore};
+use snarkvm_synthesizer::VM;
+use synthesizer_program::FinalizeGlobalState;
 
 #[test]
 fn test_vm_execute_and_finalize() {

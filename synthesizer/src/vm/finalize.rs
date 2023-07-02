@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::{ConfirmedTransaction, Rejected, Transactions};
+use ledger_block::{ConfirmedTransaction, Rejected, Transactions};
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM, returning the confirmed transactions.
@@ -312,17 +312,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        block::{Block, Header, Metadata, Transaction, Transition},
-        program::Program,
-        store::helpers::memory::ConsensusMemory,
-        vm::{test_helpers, test_helpers::sample_finalize_state},
-    };
+    use crate::vm::{test_helpers, test_helpers::sample_finalize_state};
     use console::{
         account::{Address, PrivateKey, ViewKey},
         program::{Ciphertext, Record},
         types::Field,
     };
+    use ledger_block::{Block, Header, Metadata, Transaction, Transition};
+    use ledger_store::helpers::memory::ConsensusMemory;
+    use synthesizer_program::Program;
 
     use rand::distributions::DistString;
 

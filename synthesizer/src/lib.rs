@@ -23,18 +23,20 @@
 extern crate tracing;
 
 #[cfg(feature = "coinbase")]
-pub use snarkvm_synthesizer_coinbase as coinbase;
+pub use synthesizer_coinbase as coinbase;
 #[cfg(feature = "process")]
-pub use snarkvm_synthesizer_program as process;
+pub use synthesizer_program as process;
 #[cfg(feature = "program")]
-pub use snarkvm_synthesizer_program as program;
+pub use synthesizer_program as program;
 #[cfg(feature = "snark")]
-pub use snarkvm_synthesizer_snark as snark;
+pub use synthesizer_snark as snark;
 
 #[cfg(feature = "program")]
 pub use crate::program::{Closure, Command, Finalize, Function, Instruction, Program};
 
+#[cfg(all(feature = "process", feature = "program", feature = "snark"))]
 pub mod vm;
+#[cfg(all(feature = "process", feature = "program", feature = "snark"))]
 pub use vm::*;
 
 pub mod prelude {
@@ -46,8 +48,6 @@ pub mod prelude {
     pub use crate::program::*;
     #[cfg(feature = "snark")]
     pub use crate::snark::*;
-
-    // TODO (howardwu): These will be refactored into their own modules.
-    //  Config flags should be added to these after modularization so that they can be disabled.
-    pub use crate::{block::*, cow_to_cloned, cow_to_copied, process::*, store::*, vm::*};
+    #[cfg(all(feature = "process", feature = "program", feature = "snark"))]
+    pub use crate::vm::*;
 }

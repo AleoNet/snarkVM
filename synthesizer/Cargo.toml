@@ -24,19 +24,14 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "coinbase", "program", "snark" ]
+default = [ "coinbase", "process", "program", "snark" ]
 aleo-cli = [ ]
-cuda = [ "snarkvm-algorithms/cuda" ]
 serial = [
   "console/serial",
-  "snarkvm-algorithms/serial",
-  "snarkvm-curves/serial",
-  "snarkvm-fields/serial",
-  "snarkvm-synthesizer-coinbase/serial",
-  "snarkvm-synthesizer-process/serial",
-  "snarkvm-synthesizer-program/serial",
-  "snarkvm-synthesizer-snark/serial",
-  "snarkvm-utilities/serial"
+  "synthesizer-coinbase/serial",
+  "synthesizer-process/serial",
+  "synthesizer-program/serial",
+  "synthesizer-snark/serial",
 ]
 setup = [ ]
 test = [ ]
@@ -46,37 +41,15 @@ wasm = [
   "program",
   "snark",
   "console/wasm",
-  "snarkvm-algorithms/wasm",
-  "snarkvm-synthesizer-coinbase/wasm",
-  "snarkvm-synthesizer-process/wasm",
-  "snarkvm-synthesizer-program/wasm",
-  "snarkvm-synthesizer-snark/wasm",
-  "snarkvm-utilities/wasm"
+  "synthesizer-coinbase/wasm",
+  "synthesizer-process/wasm",
+  "synthesizer-program/wasm",
+  "synthesizer-snark/wasm",
 ]
-coinbase = [ "snarkvm-synthesizer-coinbase" ]
-process = [ "snarkvm-synthesizer-process" ]
-program = [ "snarkvm-synthesizer-program" ]
-snark = [ "snarkvm-synthesizer-snark" ]
-
-[dependencies.snarkvm-synthesizer-coinbase]
-path = "./coinbase"
-version = "=0.13.0"
-optional = true
-
-[dependencies.snarkvm-synthesizer-process]
-path = "./process"
-version = "=0.13.0"
-optional = true
-
-[dependencies.snarkvm-synthesizer-program]
-path = "./program"
-version = "=0.13.0"
-optional = true
-
-[dependencies.snarkvm-synthesizer-snark]
-path = "./snark"
-version = "=0.13.0"
-optional = true
+coinbase = [ "synthesizer-coinbase" ]
+process = [ "synthesizer-process" ]
+program = [ "synthesizer-program" ]
+snark = [ "synthesizer-snark" ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
@@ -88,100 +61,83 @@ package = "snarkvm-console"
 path = "../console"
 version = "=0.13.0"
 
-[dependencies.snarkvm-algorithms]
-path = "../algorithms"
+[dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "../ledger/block"
 version = "=0.13.0"
 
-[dependencies.snarkvm-curves]
-path = "../curves"
+[dependencies.ledger-query]
+package = "snarkvm-ledger-query"
+path = "../ledger/query"
 version = "=0.13.0"
 
-[dependencies.snarkvm-fields]
-path = "../fields"
+[dependencies.ledger-store]
+package = "snarkvm-ledger-store"
+path = "../ledger/store"
 version = "=0.13.0"
 
-[dependencies.snarkvm-utilities]
-path = "../utilities"
+[dependencies.synthesizer-coinbase]
+package = "snarkvm-synthesizer-coinbase"
+path = "./coinbase"
 version = "=0.13.0"
-default-features = false
+optional = true
+
+[dependencies.synthesizer-process]
+package = "snarkvm-synthesizer-process"
+path = "./process"
+version = "=0.13.0"
+optional = true
+
+[dependencies.synthesizer-program]
+package = "snarkvm-synthesizer-program"
+path = "./program"
+version = "=0.13.0"
+optional = true
+
+[dependencies.synthesizer-snark]
+package = "snarkvm-synthesizer-snark"
+path = "./snark"
+version = "=0.13.0"
+optional = true
 
 [dependencies.aleo-std]
 version = "0.1.18"
 default-features = false
 
-[dependencies.anyhow]
-version = "1.0.71"
-
-[dependencies.async-trait]
-version = "0.1"
-
-[dependencies.bincode]
-version = "1"
-
-[dependencies.blake2]
-version = "0.10"
-default-features = false
-
-[dependencies.colored]
-version = "2"
-
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]
 
-[dependencies.itertools]
-version = "0.11.0"
-
-[dependencies.once_cell]
-version = "1.18"
-
 [dependencies.parking_lot]
 version = "0.12"
-
-[dependencies.paste]
-version = "1.0.12"
 
 [dependencies.rand]
 version = "0.8"
 
-[dependencies.rand_chacha]
-version = "0.3"
-
-[dependencies.rayon]
-version = "1"
-
-[dependencies.serde]
-version = "1.0"
-
-[dependencies.serde_json]
-version = "1.0"
-features = [ "preserve_order" ]
-
 [dependencies.tracing]
 version = "0.1"
 
-[dev-dependencies.console]
-package = "snarkvm-console"
-path = "../console"
-features = [ "test" ]
-
-[dev-dependencies.bincode]
-version = "1.3"
+[dev-dependencies.anyhow]
+version = "1.0.71"
 
 [dev-dependencies.criterion]
 version = "0.5.1"
 
+[dev-dependencies.itertools]
+version = "0.11.0"
+
+[dev-dependencies.once_cell]
+version = "1.18"
+
+[dev-dependencies.rayon]
+version = "1"
+
+[dev-dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
 [dev-dependencies.serde_yaml]
 version = "0.9"
-
-[dev-dependencies.serial_test]
-version = "2"
-
-[dev-dependencies.tempfile]
-version = "3.6"
-
-[dev-dependencies.tracing-test]
-version = "0.2"
 
 [dev-dependencies.walkdir]
 version = "2"

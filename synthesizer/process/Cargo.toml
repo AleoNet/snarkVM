@@ -93,3 +93,8 @@ package = "snarkvm-ledger-query"
 path = "../../ledger/query"
 version = "=0.13.0"
 features = [ "query" ]
+
+[dev-dependencies.ledger-test-helpers]
+package = "snarkvm-ledger-test-helpers"
+path = "../../ledger/test-helpers"
+version = "=0.13.0"

@@ -21,7 +21,7 @@ use console::{
     program::{Identifier, Literal, Value},
     types::Boolean,
 };
-use snarkvm_synthesizer::Process;
+use synthesizer_process::Process;
 
 use rayon::prelude::*;
 

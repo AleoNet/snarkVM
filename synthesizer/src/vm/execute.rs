@@ -128,13 +128,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{block::Transition, store::helpers::memory::ConsensusMemory};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Ciphertext, Value},
         types::Field,
     };
+    use ledger_block::Transition;
+    use ledger_store::helpers::memory::ConsensusMemory;
 
     use indexmap::IndexMap;
 
