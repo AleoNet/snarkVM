@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::type_complexity)]
+
 use crate::helpers::{Map, MapRead};
 use console::network::prelude::*;
 use indexmap::IndexMap;
