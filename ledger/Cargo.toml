@@ -16,11 +16,21 @@ categories = [ "cryptography", "web-programming" ]
 license = "Apache-2.0"
 edition = "2021"
 
+[[bench]]
+name = "block"
+path = "benches/block.rs"
+harness = false
+
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
+
 [features]
-default = [ "async", "rayon" ]
+default = [ "async", "indexmap/rayon", "rayon" ]
 async = [ "ledger-query/async" ]
 rocks = [ "ledger-store/rocks" ]
-serial = [ "console/serial", "synthesizer/serial" ]
+serial = [ "console/serial", "ledger-block/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer/serial" ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
@@ -58,7 +68,7 @@ version = "1.0.70"
 
 [dependencies.indexmap]
 version = "2.0"
-features = [ "rayon" ]
+features = [ "serde" ]
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -75,3 +85,6 @@ version = "0.3"
 
 [dependencies.tracing]
 version = "0.1"
+
+[dev-dependencies.criterion]
+version = "0.5"

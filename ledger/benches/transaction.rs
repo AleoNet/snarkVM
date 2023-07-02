@@ -19,21 +19,23 @@ extern crate criterion;
 
 use console::{
     account::*,
+    prelude::*,
     network::Testnet3,
     program::{Plaintext, Record, Value},
 };
-use snarkvm_synthesizer::{
-    store::helpers::memory::ConsensusMemory,
-    Authorization,
-    ConsensusStore,
-    Program,
-    Transition,
+use synthesizer::{
     VM,
+};
+use ledger_block::Transition;
+use synthesizer::program::Program;
+use synthesizer::process::Authorization;
+use ledger_store::{
+    helpers::memory::ConsensusMemory,
+    ConsensusStore,
 };
 
 use criterion::Criterion;
 use indexmap::IndexMap;
-use rand::{CryptoRng, Rng};
 
 fn initialize_vm<R: Rng + CryptoRng>(
     private_key: &PrivateKey<Testnet3>,

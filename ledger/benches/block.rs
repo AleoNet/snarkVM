@@ -16,10 +16,9 @@
 extern crate criterion;
 
 use console::{network::Testnet3, prelude::*};
-use snarkvm_synthesizer::Block;
+use ledger_block::Block;
 
 use criterion::Criterion;
-use serde::{de::DeserializeOwned, Serialize};
 
 type CurrentNetwork = Testnet3;
 
