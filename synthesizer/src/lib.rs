@@ -25,12 +25,14 @@ extern crate tracing;
 #[cfg(feature = "coinbase")]
 pub use synthesizer_coinbase as coinbase;
 #[cfg(feature = "process")]
-pub use synthesizer_program as process;
+pub use synthesizer_process as process;
 #[cfg(feature = "program")]
 pub use synthesizer_program as program;
 #[cfg(feature = "snark")]
 pub use synthesizer_snark as snark;
 
+#[cfg(feature = "process")]
+pub use crate::process::{Authorization, CallMetrics, Process, Stack, Trace};
 #[cfg(feature = "program")]
 pub use crate::program::{Closure, Command, Finalize, Function, Instruction, Program};
 
