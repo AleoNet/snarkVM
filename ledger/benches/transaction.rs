@@ -20,7 +20,6 @@ extern crate criterion;
 use console::{
     account::*,
     network::Testnet3,
-    prelude::*,
     program::{Plaintext, Record, Value},
 };
 use ledger_block::Transition;

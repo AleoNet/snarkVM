@@ -2969,11 +2969,13 @@ version = "0.13.0"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "bincode",
  "criterion",
  "indexmap 2.0.0",
  "parking_lot",
  "rand 0.8.5",
  "rayon",
+ "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-block",
  "snarkvm-ledger-query",
