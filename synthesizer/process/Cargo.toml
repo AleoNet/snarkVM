@@ -93,6 +93,7 @@ version = "0.8"
 package = "snarkvm-ledger-query"
 path = "../../ledger/query"
 version = "=0.13.0"
+default-features = false
 features = [ "query" ]
 
 [dev-dependencies.ledger-test-helpers]

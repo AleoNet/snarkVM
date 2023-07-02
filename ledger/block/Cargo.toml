@@ -63,6 +63,7 @@ path = "../../circuit"
 [dev-dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../query"
+default-features = false
 
 [dev-dependencies.ledger-store]
 package = "snarkvm-ledger-store"
