@@ -14,6 +14,7 @@
 
 #![forbid(unsafe_code)]
 // #![warn(clippy::cast_possible_truncation)]
+#![cfg_attr(test, allow(clippy::single_element_loop))]
 
 pub mod header;
 pub use header::*;

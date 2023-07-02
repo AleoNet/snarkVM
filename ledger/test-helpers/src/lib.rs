@@ -212,9 +212,7 @@ pub fn sample_fee(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut T
 
     // Convert the fee.
     // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
-    let fee = Fee::from_str(&fee.to_string()).unwrap();
-    // Return the fee.
-    fee
+    Fee::from_str(&fee.to_string()).unwrap()
 }
 
 /****************************************** Transaction *******************************************/
