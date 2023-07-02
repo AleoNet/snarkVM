@@ -45,9 +45,9 @@ optional = true
 [dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
 version = "=0.13.0"
+default-features = false
 features = [ "wasm" ]
 optional = true
-default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"

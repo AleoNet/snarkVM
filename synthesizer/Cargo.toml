@@ -75,6 +75,8 @@ version = "=0.13.0"
 package = "snarkvm-ledger-query"
 path = "../ledger/query"
 version = "=0.13.0"
+default-features = false
+features = [ "query" ]
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
