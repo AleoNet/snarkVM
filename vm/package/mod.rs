@@ -39,7 +39,7 @@ use crate::{
     },
     synthesizer::{
         snark::{ProvingKey, VerifyingKey},
-        CallOperator,
+        program::CallOperator,
         Instruction,
         Process,
         Program,

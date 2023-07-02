@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::synthesizer::Deployment;
-use snarkvm_console::types::Address;
-use snarkvm_utilities::DeserializeExt;
+use crate::ledger::block::Deployment;
+use snarkvm_console::{types::Address, prelude::DeserializeExt};
 
 use super::*;
 

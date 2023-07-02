@@ -23,6 +23,8 @@ pub use ledger_block as block;
 pub use ledger_query as query;
 pub use ledger_store as store;
 
+pub use crate::block::*;
+
 mod helpers;
 pub use helpers::*;
 
