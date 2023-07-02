@@ -73,6 +73,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
     }
 
     /// Returns the current state root.
+    #[cfg(feature = "async")]
     async fn current_state_root_async(&self) -> Result<N::StateRoot> {
         match self {
             Self::VM(block_store) => Ok(block_store.current_state_root()),
@@ -95,6 +96,7 @@ impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
     }
 
     /// Returns a state path for the given `commitment`.
+    #[cfg(feature = "async")]
     async fn get_state_path_for_commitment_async(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         match self {
             Self::VM(block_store) => block_store.get_state_path_for_commitment(commitment),
@@ -123,6 +125,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     }
 
     /// Returns the program for the given program ID.
+    #[cfg(feature = "async")]
     pub async fn get_program_async(&self, program_id: &ProgramID<N>) -> Result<Program<N>> {
         match self {
             Self::VM(block_store) => {
@@ -142,6 +145,7 @@ impl<N: Network, B: BlockStorage<N>> Query<N, B> {
     }
 
     /// Performs a GET request to the given URL.
+    #[cfg(feature = "async")]
     async fn get_request_async(url: &str) -> Result<reqwest::Response> {
         let response = reqwest::get(url).await?;
         if response.status() == 200 { Ok(response) } else { bail!("Failed to fetch from {url}") }

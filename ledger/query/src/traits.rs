@@ -20,11 +20,13 @@ pub trait QueryTrait<N: Network> {
     fn current_state_root(&self) -> Result<N::StateRoot>;
 
     /// Returns the current state root.
+    #[cfg(feature = "async")]
     async fn current_state_root_async(&self) -> Result<N::StateRoot>;
 
     /// Returns a state path for the given `commitment`.
     fn get_state_path_for_commitment(&self, commitment: &Field<N>) -> Result<StatePath<N>>;
 
     /// Returns a state path for the given `commitment`.
+    #[cfg(feature = "async")]
     async fn get_state_path_for_commitment_async(&self, commitment: &Field<N>) -> Result<StatePath<N>>;
 }

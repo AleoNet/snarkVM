@@ -18,6 +18,7 @@ edition = "2021"
 
 [features]
 default = [ "query" ]
+async = [ ]
 serial = [
   "console/serial",
   "ledger-store/serial",
