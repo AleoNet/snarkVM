@@ -211,9 +211,7 @@ impl<N: Network> Trace<N> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
         // Retrieve the proof.
-        let Some(proof) = execution.proof() else {
-            bail!("Expected the execution to contain a proof")
-        };
+        let Some(proof) = execution.proof() else { bail!("Expected the execution to contain a proof") };
         // Verify the execution proof.
         match Self::verify_batch(locator, verifier_inputs, global_state_root, execution.transitions(), proof) {
             Ok(()) => Ok(()),
@@ -231,9 +229,7 @@ impl<N: Network> Trace<N> {
             bail!("Inclusion expected the global state root in the fee to *not* be zero")
         }
         // Retrieve the proof.
-        let Some(proof) = fee.proof() else {
-            bail!("Expected the fee to contain a proof")
-        };
+        let Some(proof) = fee.proof() else { bail!("Expected the fee to contain a proof") };
         // Ensure the transition contains an input record.
         if fee.transition().inputs().iter().filter(|i| matches!(i, Input::Record(..))).count() != 1 {
             bail!("Inclusion expected the fee to contain an input record")
