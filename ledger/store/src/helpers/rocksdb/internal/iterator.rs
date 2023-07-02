@@ -14,8 +14,8 @@
 
 use super::*;
 
-use tracing::error;
 use std::borrow::Cow;
+use tracing::error;
 
 /// An iterator over all key-value pairs in a data map.
 pub struct Iter<

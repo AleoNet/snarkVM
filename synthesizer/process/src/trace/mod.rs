@@ -130,6 +130,7 @@ impl<N: Network> Trace<N> {
     }
 
     /// Returns the inclusion assignments and global state root for the current transition(s).
+    #[cfg(feature = "async")]
     pub async fn prepare_async(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
         let (inclusion_assignments, global_state_root) = match self.is_fee() {

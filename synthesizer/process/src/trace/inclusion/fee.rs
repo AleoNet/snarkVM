@@ -87,6 +87,7 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns the inclusion assignments for the given fee transition.
+    #[cfg(feature = "async")]
     pub async fn prepare_fee_async(
         &self,
         fee_transition: &Transition<N>,

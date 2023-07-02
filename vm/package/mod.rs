@@ -38,8 +38,8 @@ use crate::{
         Value,
     },
     synthesizer::{
-        snark::{ProvingKey, VerifyingKey},
         program::CallOperator,
+        snark::{ProvingKey, VerifyingKey},
         Instruction,
         Process,
         Program,

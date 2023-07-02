@@ -24,8 +24,9 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "indexmap/rayon" ]
+default = [ "async", "indexmap/rayon" ]
 aleo-cli = [ ]
+async = [ "ledger-query/async" ]
 serial = [ "console/serial", "ledger-block/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
 wasm = [ "console/wasm", "ledger-block/wasm", "ledger-query/serial", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
 timer = [ "aleo-std/timer" ]

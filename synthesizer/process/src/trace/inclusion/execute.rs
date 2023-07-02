@@ -109,6 +109,7 @@ impl<N: Network> Inclusion<N> {
     }
 
     /// Returns the inclusion assignments for the given transitions.
+    #[cfg(feature = "async")]
     pub async fn prepare_execution_async(
         &self,
         transitions: &[Transition<N>],

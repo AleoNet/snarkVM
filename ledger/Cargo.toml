@@ -17,7 +17,8 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "rayon" ]
+default = [ "async", "rayon" ]
+async = [ "ledger-query/async" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [ "console/serial", "synthesizer/serial" ]
 timer = [ "aleo-std/timer" ]
@@ -41,6 +42,7 @@ version = "=0.13.0"
 package = "snarkvm-ledger-query"
 path = "./query"
 version = "=0.13.0"
+features = [ "query" ]
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"

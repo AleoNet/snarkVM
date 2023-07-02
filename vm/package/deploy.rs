@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::ledger::block::Deployment;
-use snarkvm_console::{types::Address, prelude::DeserializeExt};
+use snarkvm_console::{prelude::DeserializeExt, types::Address};
 
 use super::*;
 
