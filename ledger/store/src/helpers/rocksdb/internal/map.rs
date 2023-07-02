@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::store::helpers::{Map, MapRead};
+use crate::helpers::{Map, MapRead};
 
 use core::{fmt, fmt::Debug, hash::Hash};
 use indexmap::IndexMap;
@@ -346,7 +346,7 @@ mod tests {
     use crate::{
         atomic_batch_scope,
         atomic_finalize,
-        store::helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap},
+        helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap},
         FinalizeMode,
     };
     use console::{account::Address, network::Testnet3, prelude::*};

@@ -18,7 +18,7 @@ edition = "2021"
 
 [features]
 default = [ "indexmap/rayon", "rayon" ]
-rocks = [ "rocksdb" ]
+rocks = [ "aleo-std", "once_cell", "rocksdb", "tracing" ]
 serial = [ "console/serial", "ledger-block/serial", "synthesizer-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
 
 [dependencies.console]
@@ -46,6 +46,11 @@ package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
 version = "=0.13.0"
 
+[dependencies.aleo-std]
+version = "0.1.18"
+default-features = false
+optional = true
+
 [dependencies.anyhow]
 version = "1.0.70"
 
@@ -55,6 +60,10 @@ version = "1.3"
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde" ]
+
+[dependencies.once_cell]
+version = "1.18"
+optional = true
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -72,6 +81,19 @@ optional = true
 [dependencies.serde]
 version = "1.0"
 
+[dependencies.tracing]
+version = "0.1"
+optional = true
+
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
 path = "../../ledger/test-helpers"
+
+[dev-dependencies.serial_test]
+version = "2"
+
+[dev-dependencies.tempfile]
+version = "3.6"
+
+[dev-dependencies.tracing-test]
+version = "0.2"

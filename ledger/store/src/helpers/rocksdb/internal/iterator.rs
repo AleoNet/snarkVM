@@ -14,6 +14,7 @@
 
 use super::*;
 
+use tracing::error;
 use std::borrow::Cow;
 
 /// An iterator over all key-value pairs in a data map.
