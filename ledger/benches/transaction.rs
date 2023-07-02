@@ -19,20 +19,13 @@ extern crate criterion;
 
 use console::{
     account::*,
-    prelude::*,
     network::Testnet3,
+    prelude::*,
     program::{Plaintext, Record, Value},
 };
-use synthesizer::{
-    VM,
-};
 use ledger_block::Transition;
-use synthesizer::program::Program;
-use synthesizer::process::Authorization;
-use ledger_store::{
-    helpers::memory::ConsensusMemory,
-    ConsensusStore,
-};
+use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+use synthesizer::{process::Authorization, program::Program, VM};
 
 use criterion::Criterion;
 use indexmap::IndexMap;

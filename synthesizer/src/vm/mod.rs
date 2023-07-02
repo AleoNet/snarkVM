@@ -100,9 +100,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Add the imports to the process if does not exist yet.
                 if !process.contains_program(import_program_id) {
                     // Fetch the deployment transaction id.
-                    let Some(transaction_id) = transaction_store
-                        .deployment_store()
-                        .find_transaction_id_from_program_id(import_program_id)?
+                    let Some(transaction_id) =
+                        transaction_store.deployment_store().find_transaction_id_from_program_id(import_program_id)?
                     else {
                         bail!("Transaction id for '{program_id}' is not found in storage.");
                     };
