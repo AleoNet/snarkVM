@@ -532,7 +532,7 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --test '*' --features=rocks
+          flags: --test '*'
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-integration-cache
 
