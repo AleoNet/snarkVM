@@ -18,6 +18,11 @@
 #[macro_use]
 extern crate tracing;
 
+pub use ledger_block as block;
+// pub use ledger_coinbase as coinbase;
+pub use ledger_query as query;
+pub use ledger_store as store;
+
 mod helpers;
 pub use helpers::*;
 
@@ -48,12 +53,12 @@ use console::{
     },
     types::{Field, Group},
 };
+use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
+use ledger_query::Query;
+use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
-    block::{Block, ConfirmedTransaction, Deployment, Execution, Header, Metadata, Ratify, Transaction, Transactions},
     coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
     program::{FinalizeGlobalState, Program},
-    query::Query,
-    store::{ConsensusStorage, ConsensusStore},
     vm::VM,
 };
 
@@ -381,11 +386,9 @@ pub(crate) mod test_helpers {
         network::Testnet3,
         prelude::*,
     };
-    use synthesizer::{
-        block::Block,
-        store::{helpers::memory::ConsensusMemory, ConsensusStore},
-        vm::VM,
-    };
+    use ledger_block::Block;
+    use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+    use synthesizer::vm::VM;
 
     pub(crate) type CurrentNetwork = Testnet3;
     pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>;

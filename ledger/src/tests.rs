@@ -21,14 +21,9 @@ use console::{
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Value},
 };
-use synthesizer::{
-    store::{helpers::memory::ConsensusMemory, ConsensusStore},
-    vm::VM,
-    ConfirmedTransaction,
-    Program,
-    Rejected,
-    Transaction,
-};
+use ledger_block::{ConfirmedTransaction, Rejected, Transaction};
+use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+use synthesizer::{program::Program, vm::VM};
 
 #[test]
 fn test_load() {

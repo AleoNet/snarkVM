@@ -2926,6 +2926,7 @@ dependencies = [
  "rayon",
  "snarkvm-console",
  "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
  "snarkvm-ledger-store",
  "snarkvm-synthesizer",
  "time",

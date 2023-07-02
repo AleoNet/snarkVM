@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use console::network::prelude::*;
-use synthesizer::{block::Ratify, coinbase::ProverSolution};
+use ledger_block::Ratify;
+use synthesizer::coinbase::ProverSolution;
 
 use anyhow::Result;
 
