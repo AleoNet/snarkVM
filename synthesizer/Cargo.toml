@@ -28,6 +28,9 @@ default = [ "coinbase", "process", "program", "snark" ]
 aleo-cli = [ ]
 serial = [
   "console/serial",
+  "ledger-block/serial",
+  "ledger-query/serial",
+  "ledger-store/serial",
   "synthesizer-coinbase/serial",
   "synthesizer-process/serial",
   "synthesizer-program/serial",
@@ -41,6 +44,8 @@ wasm = [
   "program",
   "snark",
   "console/wasm",
+  "ledger-block/wasm",
+  "ledger-query/wasm",
   "synthesizer-coinbase/wasm",
   "synthesizer-process/wasm",
   "synthesizer-program/wasm",
