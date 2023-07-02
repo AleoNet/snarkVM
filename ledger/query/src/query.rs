@@ -59,7 +59,7 @@ impl<N: Network, B: BlockStorage<N>> From<&str> for Query<N, B> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(feature = "async", async_trait)]
 impl<N: Network, B: BlockStorage<N>> QueryTrait<N> for Query<N, B> {
     /// Returns the current state root.
     fn current_state_root(&self) -> Result<N::StateRoot> {

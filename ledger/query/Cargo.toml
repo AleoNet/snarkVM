@@ -17,8 +17,8 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "async", "query" ]
-async = [ ]
+default = [ "query" ]
+async = [ "reqwest" ]
 serial = [
   "console/serial",
   "ledger-store/serial",
@@ -28,7 +28,7 @@ wasm = [
   "console/wasm",
   "synthesizer-program/wasm",
 ]
-query = [ "ledger-store", "synthesizer-program", "reqwest", "ureq" ]
+query = [ "ledger-store", "synthesizer-program", "ureq" ]
 
 [dependencies.console]
 package = "snarkvm-console"

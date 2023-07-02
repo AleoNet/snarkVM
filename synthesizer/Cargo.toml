@@ -26,6 +26,7 @@ edition = "2021"
 [features]
 default = [ "coinbase", "process", "program", "snark" ]
 aleo-cli = [ ]
+async = [ "ledger-query/async", "synthesizer-process/async" ]
 serial = [
   "console/serial",
   "ledger-block/serial",

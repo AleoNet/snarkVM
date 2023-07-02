@@ -14,7 +14,7 @@
 
 use console::{network::Network, prelude::Result, program::StatePath, types::Field};
 
-#[async_trait]
+#[cfg_attr(feature = "async", async_trait)]
 pub trait QueryTrait<N: Network> {
     /// Returns the current state root.
     fn current_state_root(&self) -> Result<N::StateRoot>;

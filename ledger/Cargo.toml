@@ -28,7 +28,7 @@ harness = false
 
 [features]
 default = [ "async", "indexmap/rayon", "rayon" ]
-async = [ "ledger-query/async" ]
+async = [ "ledger-query/async", "synthesizer/async" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [ "console/serial", "ledger-block/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer/serial" ]
 timer = [ "aleo-std/timer" ]

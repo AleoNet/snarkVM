@@ -15,7 +15,7 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::cast_possible_truncation)]
 
-#[macro_use]
+#[cfg_attr(feature = "async", macro_use)]
 extern crate async_trait;
 
 #[cfg(feature = "query")]
