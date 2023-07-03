@@ -27,7 +27,7 @@ use crate::{
 };
 use console::{account::Signature, prelude::*};
 use ledger_block::{Header, Ratify};
-use synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// A RocksDB block storage.
 #[derive(Clone)]

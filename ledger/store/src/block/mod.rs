@@ -29,7 +29,7 @@ use console::{
     types::Field,
 };
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
-use synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use synthesizer_program::Program;
 
 use anyhow::Result;

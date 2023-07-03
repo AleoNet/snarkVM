@@ -24,7 +24,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "coinbase", "process", "program", "snark" ]
+default = [ "process", "program", "snark" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
 serial = [
@@ -32,7 +32,6 @@ serial = [
   "ledger-block/serial",
   "ledger-query/serial",
   "ledger-store/serial",
-  "synthesizer-coinbase/serial",
   "synthesizer-process/serial",
   "synthesizer-program/serial",
   "synthesizer-snark/serial",
@@ -41,18 +40,16 @@ setup = [ ]
 test = [ ]
 timer = [ "aleo-std/timer" ]
 wasm = [
-  "coinbase",
+  "process",
   "program",
   "snark",
   "console/wasm",
   "ledger-block/wasm",
   "ledger-query/wasm",
-  "synthesizer-coinbase/wasm",
   "synthesizer-process/wasm",
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm",
 ]
-coinbase = [ "synthesizer-coinbase" ]
 process = [ "synthesizer-process" ]
 program = [ "synthesizer-program" ]
 snark = [ "synthesizer-snark" ]
@@ -83,12 +80,6 @@ features = [ "query" ]
 package = "snarkvm-ledger-store"
 path = "../ledger/store"
 version = "=0.13.0"
-
-[dependencies.synthesizer-coinbase]
-package = "snarkvm-synthesizer-coinbase"
-path = "./coinbase"
-version = "=0.13.0"
-optional = true
 
 [dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"

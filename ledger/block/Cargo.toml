@@ -18,17 +18,17 @@ edition = "2021"
 
 [features]
 default = [ "indexmap/rayon", "rayon" ]
-serial = [ "console/serial", "synthesizer-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
-wasm = [ "console/wasm", "synthesizer-coinbase/wasm", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
+serial = [ "console/serial", "ledger-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
+wasm = [ "console/wasm", "ledger-coinbase/wasm", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
 version = "=0.13.0"
 
-[dependencies.synthesizer-coinbase]
-package = "snarkvm-synthesizer-coinbase"
-path = "../../synthesizer/coinbase"
+[dependencies.ledger-coinbase]
+package = "snarkvm-ledger-coinbase"
+path = "../../ledger/coinbase"
 version = "=0.13.0"
 
 [dependencies.synthesizer-program]

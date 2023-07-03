@@ -19,7 +19,7 @@ edition = "2021"
 [features]
 default = [ "indexmap/rayon", "rayon" ]
 rocks = [ "aleo-std", "once_cell", "rocksdb", "tracing" ]
-serial = [ "console/serial", "ledger-block/serial", "synthesizer-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
+serial = [ "console/serial", "ledger-block/serial", "ledger-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -31,9 +31,9 @@ package = "snarkvm-ledger-block"
 path = "../../ledger/block"
 version = "=0.13.0"
 
-[dependencies.synthesizer-coinbase]
-package = "snarkvm-synthesizer-coinbase"
-path = "../../synthesizer/coinbase"
+[dependencies.ledger-coinbase]
+package = "snarkvm-ledger-coinbase"
+path = "../../ledger/coinbase"
 version = "=0.13.0"
 
 [dependencies.synthesizer-program]

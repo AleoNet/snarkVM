@@ -479,6 +479,15 @@ jobs:
           workspace_member: ledger/block
           cache_key: snarkvm-ledger-block-cache
 
+  ledger-coinbase:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/coinbase
+          cache_key: snarkvm-ledger-coinbase-cache
+
   ledger-query:
     docker:
       - image: cimg/rust:1.69
@@ -535,15 +544,6 @@ jobs:
           flags: --test '*'
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-integration-cache
-
-  synthesizer-coinbase:
-    docker:
-      - image: cimg/rust:1.69
-    resource_class: 2xlarge
-    steps:
-      - run_serial:
-          workspace_member: synthesizer/coinbase
-          cache_key: snarkvm-synthesizer-coinbase-cache
 
   synthesizer-process:
     docker:
@@ -712,13 +712,13 @@ workflows:
       - fields
       - ledger
       - ledger-block
+      - ledger-coinbase
       - ledger-query
       - ledger-store
       - ledger-test-helpers
       - parameters
       - synthesizer
       - synthesizer-integration
-      - synthesizer-coinbase
       - synthesizer-process
       - synthesizer-program
       - synthesizer-snark

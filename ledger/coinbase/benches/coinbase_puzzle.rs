@@ -21,7 +21,7 @@ use console::{
     account::*,
     network::{Network, Testnet3},
 };
-use snarkvm_synthesizer_coinbase::{CoinbasePuzzle, EpochChallenge, PuzzleConfig};
+use snarkvm_ledger_coinbase::{CoinbasePuzzle, EpochChallenge, PuzzleConfig};
 
 use criterion::Criterion;
 use rand::{self, thread_rng, CryptoRng, RngCore};

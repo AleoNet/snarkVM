@@ -20,8 +20,6 @@
 #[macro_use]
 extern crate tracing;
 
-#[cfg(feature = "coinbase")]
-pub use synthesizer_coinbase as coinbase;
 #[cfg(feature = "process")]
 pub use synthesizer_process as process;
 #[cfg(feature = "program")]
@@ -40,8 +38,6 @@ pub mod vm;
 pub use vm::*;
 
 pub mod prelude {
-    #[cfg(feature = "coinbase")]
-    pub use crate::coinbase::*;
     #[cfg(feature = "process")]
     pub use crate::process::*;
     #[cfg(feature = "program")]
