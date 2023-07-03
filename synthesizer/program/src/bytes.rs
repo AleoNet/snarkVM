@@ -75,14 +75,14 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ToB
         self.id.write_le(&mut writer)?;
 
         // Write the number of program imports.
-        (self.imports.len() as u8).write_le(&mut writer)?;
+        u8::try_from(self.imports.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the program imports.
         for import in self.imports.values() {
             import.write_le(&mut writer)?;
         }
 
         // Write the number of components.
-        (self.identifiers.len() as u16).write_le(&mut writer)?;
+        u16::try_from(self.identifiers.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the components.
         for (identifier, definition) in self.identifiers.iter() {
             match definition {
@@ -141,8 +141,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ToB
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Program;
     use console::network::Testnet3;
-    use synthesizer::process::Program;
 
     type CurrentNetwork = Testnet3;
 

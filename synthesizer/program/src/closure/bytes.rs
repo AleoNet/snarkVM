@@ -30,7 +30,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> FromBytes for ClosureCore<N, 
 
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
-        if num_instructions > N::MAX_INSTRUCTIONS as u32 {
+        if num_instructions > u32::try_from(N::MAX_INSTRUCTIONS).map_err(|e| error(e.to_string()))? {
             return Err(error(format!("Failed to deserialize a closure: too many instructions ({num_instructions})")));
         }
         let mut instructions = Vec::with_capacity(num_instructions as usize);
@@ -68,7 +68,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
         // Write the number of inputs for the closure.
         let num_inputs = self.inputs.len();
         match num_inputs <= N::MAX_INPUTS {
-            true => (num_inputs as u16).write_le(&mut writer)?,
+            true => u16::try_from(num_inputs).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
         }
 
@@ -80,7 +80,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
         // Write the number of instructions for the closure.
         let num_instructions = self.instructions.len();
         match num_instructions <= N::MAX_INSTRUCTIONS {
-            true => (num_instructions as u32).write_le(&mut writer)?,
+            true => u32::try_from(num_instructions).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }
 
@@ -92,7 +92,7 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
         // Write the number of outputs for the closure.
         let num_outputs = self.outputs.len();
         match num_outputs <= N::MAX_OUTPUTS {
-            true => (num_outputs as u16).write_le(&mut writer)?,
+            true => u16::try_from(num_outputs).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
         }
 
@@ -108,8 +108,8 @@ impl<N: Network, Instruction: InstructionTrait<N>> ToBytes for ClosureCore<N, In
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Closure;
     use console::network::Testnet3;
-    use synthesizer::process::Closure;
 
     type CurrentNetwork = Testnet3;
 

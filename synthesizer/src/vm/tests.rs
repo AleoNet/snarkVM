@@ -14,22 +14,15 @@
 
 use super::*;
 
-use crate::{
-    helpers::memory::ConsensusMemory,
-    vm::test_helpers::sample_next_block,
-    Block,
-    Input,
-    Transaction,
-    Transition,
-    VM,
-};
+use crate::{vm::test_helpers::sample_next_block, VM};
 use console::{
     account::{Address, PrivateKey, ViewKey},
     network::Testnet3,
     program::{Entry, Literal, Plaintext, ProgramID, Record, Value},
     types::U64,
 };
-use snarkvm_utilities::TestRng;
+use ledger_block::{Block, Input, Transaction, Transition};
+use ledger_store::helpers::memory::ConsensusMemory;
 
 type CurrentNetwork = Testnet3;
 

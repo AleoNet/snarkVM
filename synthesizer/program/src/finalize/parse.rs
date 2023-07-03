@@ -89,8 +89,8 @@ impl<N: Network, Command: CommandTrait<N>> Display for FinalizeCore<N, Command> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Finalize;
     use console::network::Testnet3;
-    use synthesizer::process::Finalize;
 
     type CurrentNetwork = Testnet3;
 
