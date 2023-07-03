@@ -29,9 +29,9 @@ async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 
-batch = [ "batch-certificate", "batch-header", "indexmap", "transmission", "transmission-id" ]
+batch = [ "batch-certificate", "batch-header", "indexmap", "time", "transmission", "transmission-id" ]
 batch-certificate = [ "batch-header", "console", "indexmap", "serde_json" ]
-batch-header = [ "console", "indexmap", "transmission-id" ]
+batch-header = [ "console", "indexmap", "time", "transmission-id" ]
 transmission = [ "bytes", "ledger-block", "ledger-coinbase" ]
 transmission-id = [ "console", "ledger-coinbase" ]
 
@@ -69,6 +69,7 @@ features = [ "preserve_order" ]
 
 [dependencies.time]
 version = "0.3"
+optional = true
 
 [dependencies.tokio]
 version = "1.28"
