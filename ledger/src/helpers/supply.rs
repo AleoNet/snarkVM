@@ -17,7 +17,7 @@ use console::{
     program::{Literal, Plaintext},
     types::Address,
 };
-use synthesizer::block::{Input, Transactions, Transition};
+use ledger_block::{Input, Transactions, Transition};
 
 use anyhow::{anyhow, bail, ensure, Result};
 
