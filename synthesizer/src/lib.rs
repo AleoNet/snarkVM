@@ -13,43 +13,37 @@
 // limitations under the License.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
-// #![warn(clippy::cast_possible_truncation)]
-#![allow(clippy::single_element_loop)]
+#![warn(clippy::cast_possible_truncation)]
 // TODO (howardwu): Update the return type on `execute` after stabilizing the interface.
 #![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate tracing;
 
-#[cfg(feature = "coinbase")]
-pub use snarkvm_synthesizer_coinbase as coinbase;
+#[cfg(feature = "process")]
+pub use synthesizer_process as process;
 #[cfg(feature = "program")]
-pub use snarkvm_synthesizer_program as program;
+pub use synthesizer_program as program;
 #[cfg(feature = "snark")]
-pub use snarkvm_synthesizer_snark as snark;
+pub use synthesizer_snark as snark;
 
-pub mod block;
-pub use block::*;
+#[cfg(feature = "process")]
+pub use crate::process::{Authorization, CallMetrics, Process, Stack, Trace};
+#[cfg(feature = "program")]
+pub use crate::program::{Closure, Command, Finalize, Function, Instruction, Program};
 
-pub mod process;
-pub use process::*;
-
-pub mod store;
-pub use store::*;
-
+#[cfg(all(feature = "process", feature = "program", feature = "snark"))]
 pub mod vm;
+#[cfg(all(feature = "process", feature = "program", feature = "snark"))]
 pub use vm::*;
 
 pub mod prelude {
-    #[cfg(feature = "coinbase")]
-    pub use crate::coinbase::*;
+    #[cfg(feature = "process")]
+    pub use crate::process::*;
     #[cfg(feature = "program")]
     pub use crate::program::*;
     #[cfg(feature = "snark")]
     pub use crate::snark::*;
-
-    // TODO (howardwu): These will be refactored into their own modules.
-    //  Config flags should be added to these after modularization so that they can be disabled.
-    pub use crate::{block::*, cow_to_cloned, cow_to_copied, process::*, store::*, vm::*};
+    #[cfg(all(feature = "process", feature = "program", feature = "snark"))]
+    pub use crate::vm::*;
 }

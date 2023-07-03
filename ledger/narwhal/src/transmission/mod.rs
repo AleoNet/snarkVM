@@ -17,8 +17,8 @@ mod serialize;
 
 use crate::helpers::Data;
 use console::prelude::*;
-use synthesizer::Transaction;
-use synthesizer_coinbase::ProverSolution;
+use ledger_block::Transaction;
+use ledger_coinbase::ProverSolution;
 
 use ::bytes::Bytes;
 

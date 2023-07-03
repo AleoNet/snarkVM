@@ -16,6 +16,11 @@
 #![allow(clippy::too_many_arguments)]
 #![warn(clippy::cast_possible_truncation)]
 
+pub type Program<N> = crate::ProgramCore<N, Instruction<N>, Command<N>>;
+pub type Function<N> = crate::FunctionCore<N, Instruction<N>, Command<N>>;
+pub type Finalize<N> = crate::FinalizeCore<N, Command<N>>;
+pub type Closure<N> = crate::ClosureCore<N, Instruction<N>>;
+
 mod closure;
 pub use closure::*;
 
@@ -28,11 +33,14 @@ pub use function::*;
 mod import;
 pub use import::*;
 
+mod logic;
+pub use logic::*;
+
 mod mapping;
 pub use mapping::*;
 
-mod operand;
-pub use operand::*;
+pub mod traits;
+pub use traits::*;
 
 mod bytes;
 mod parse;
@@ -634,7 +642,6 @@ mod tests {
         network::Testnet3,
         program::{Locator, ValueType},
     };
-    use synthesizer::process::{Function, Opcode, Program};
 
     type CurrentNetwork = Testnet3;
 

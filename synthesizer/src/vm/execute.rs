@@ -36,7 +36,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             None => None,
             Some((credits, priority_fee_in_microcredits)) => {
                 // Compute the minimum execution cost.
-                let (minimum_execution_cost, (_, _)) = Execution::cost(self, &execution)?;
+                let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
                 // Determine the fee.
                 let fee_in_microcredits = minimum_execution_cost
                     .checked_add(priority_fee_in_microcredits)
@@ -128,13 +128,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{block::Transition, store::helpers::memory::ConsensusMemory};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Ciphertext, Value},
         types::Field,
     };
+    use ledger_block::Transition;
+    use ledger_store::helpers::memory::ConsensusMemory;
 
     use indexmap::IndexMap;
 

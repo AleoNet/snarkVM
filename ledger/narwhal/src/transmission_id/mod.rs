@@ -17,7 +17,7 @@ mod serialize;
 mod string;
 
 use console::{network::TRANSACTION_PREFIX, prelude::*};
-use synthesizer_coinbase::{PuzzleCommitment, PUZZLE_COMMITMENT_PREFIX};
+use ledger_coinbase::{PuzzleCommitment, PUZZLE_COMMITMENT_PREFIX};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TransmissionID<N: Network> {
