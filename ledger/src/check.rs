@@ -396,8 +396,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
+        // FIXME: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
+        let transactions = block.transactions().iter().collect::<Vec<_>>();
+
         // Ensure each transaction is well-formed and unique.
-        cfg_iter!(block.transactions()).try_for_each(|transaction| {
+        cfg_iter!(transactions).try_for_each(|transaction| {
             // Construct the rejected ID.
             let rejected_id = match transaction {
                 ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
