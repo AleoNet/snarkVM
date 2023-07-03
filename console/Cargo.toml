@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console"
-version = "0.13.0"
+version = "0.14.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Console environment for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -8,32 +8,32 @@ edition = "2021"
 
 [dependencies.snarkvm-console-account]
 path = "./account"
-version = "=0.13.0"
+version = "=0.14.0"
 optional = true
 
 [dependencies.snarkvm-console-algorithms]
 path = "./algorithms"
-version = "=0.13.0"
+version = "=0.14.0"
 optional = true
 
 [dependencies.snarkvm-console-collections]
 path = "./collections"
-version = "=0.13.0"
+version = "=0.14.0"
 optional = true
 
 [dependencies.snarkvm-console-network]
 path = "./network"
-version = "=0.13.0"
+version = "=0.14.0"
 optional = true
 
 [dependencies.snarkvm-console-program]
 path = "./program"
-version = "=0.13.0"
+version = "=0.14.0"
 optional = true
 
 [dependencies.snarkvm-console-types]
 path = "./types"
-version = "=0.13.0"
+version = "=0.14.0"
 optional = true
 
 [features]

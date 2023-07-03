@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-block"
-version = "0.13.0"
+version = "0.14.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A block for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -18,28 +18,38 @@ edition = "2021"
 
 [features]
 default = [ "indexmap/rayon", "rayon" ]
-serial = [ "console/serial", "ledger-coinbase/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
-wasm = [ "console/wasm", "ledger-coinbase/wasm", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
+serial = [
+  "console/serial",
+  "ledger-coinbase/serial",
+  "synthesizer-program/serial",
+  "synthesizer-snark/serial"
+]
+wasm = [
+  "console/wasm",
+  "ledger-coinbase/wasm",
+  "synthesizer-program/wasm",
+  "synthesizer-snark/wasm"
+]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "../../ledger/coinbase"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.synthesizer-snark]
 package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.indexmap]
 version = "2.0"

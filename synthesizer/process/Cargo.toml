@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer-process"
-version = "0.13.0"
+version = "0.14.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A process for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -27,47 +27,60 @@ edition = "2021"
 default = [ "indexmap/rayon" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async" ]
-serial = [ "console/serial", "ledger-block/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer-program/serial", "synthesizer-snark/serial" ]
-wasm = [ "console/wasm", "ledger-block/wasm", "ledger-query/serial", "synthesizer-program/wasm", "synthesizer-snark/wasm" ]
+serial = [
+  "console/serial",
+  "ledger-block/serial",
+  "ledger-query/serial",
+  "ledger-store/serial",
+  "synthesizer-program/serial",
+  "synthesizer-snark/serial"
+]
+wasm = [
+  "console/wasm",
+  "ledger-block/wasm",
+  "ledger-query/serial",
+  "synthesizer-program/wasm",
+  "synthesizer-snark/wasm"
+]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.13.0"
+version = "=0.14.0"
 default-features = false
 features = [ "network", "program", "types" ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../../ledger/block"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../../ledger/query"
-version = "=0.13.0"
+version = "=0.14.0"
 default-features = false
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
 path = "../../ledger/store"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.synthesizer-snark]
 package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.aleo-std]
 version = "0.1.18"
@@ -92,11 +105,9 @@ version = "0.8"
 [dev-dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../../ledger/query"
-version = "=0.13.0"
 default-features = false
 features = [ "query" ]
 
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
 path = "../../ledger/test-helpers"
-version = "=0.13.0"

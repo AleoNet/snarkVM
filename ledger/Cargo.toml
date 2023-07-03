@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger"
-version = "0.13.0"
+version = "0.14.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A node ledger for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -30,39 +30,46 @@ harness = false
 default = [ "async", "indexmap/rayon", "rayon" ]
 async = [ "ledger-query/async", "synthesizer/async" ]
 rocks = [ "ledger-store/rocks" ]
-serial = [ "console/serial", "ledger-block/serial", "ledger-coinbase/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer/serial" ]
+serial = [
+  "console/serial",
+  "ledger-block/serial",
+  "ledger-coinbase/serial",
+  "ledger-query/serial",
+  "ledger-store/serial",
+  "synthesizer/serial"
+]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../console"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.synthesizer]
 package = "snarkvm-synthesizer"
 path = "../synthesizer"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "./block"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "./coinbase"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "./query"
-version = "=0.13.0"
+version = "=0.14.0"
 features = [ "query" ]
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
 path = "./store"
-version = "=0.13.0"
+version = "=0.14.0"
 
 [dependencies.aleo-std]
 version = "0.1.18"
