@@ -610,8 +610,7 @@ mod i128 {
     }
 
     // for ops see circuit/types/integers/{div_checked,div_wrapped}.rs
-    // However, unsigned div (checked) and unsigned div.w (wrapped) are identical.
-    // So we don't bother getting samples of div_wrapped.
+    // TODO: get samples of signed div_wrapped.
 
     // var / var
     #[test]
@@ -784,8 +783,7 @@ mod i128 {
     }
 
     // for ops see circuit/types/integers/{rem_checked,rem_wrapped}.rs
-    // However, unsigned rem (checked) and unsigned rem.w (wrapped) are identical.
-    // So we don't bother getting samples of rem_wrapped.
+    // TODO: get samples of signed rem_wrapped.
 
     // var % var
     #[test]
