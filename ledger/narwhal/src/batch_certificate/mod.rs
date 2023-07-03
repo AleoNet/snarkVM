@@ -54,7 +54,9 @@ impl<N: Network> BatchCertificate<N> {
         // Return the batch certificate.
         Ok(Self { batch_header, signatures })
     }
+}
 
+impl<N: Network> BatchCertificate<N> {
     /// Returns the batch header.
     pub const fn batch_header(&self) -> &BatchHeader<N> {
         &self.batch_header
