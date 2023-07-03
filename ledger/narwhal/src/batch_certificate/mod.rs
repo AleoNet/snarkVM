@@ -60,6 +60,11 @@ impl<N: Network> BatchCertificate<N> {
         &self.batch_header
     }
 
+    /// Returns the batch ID.
+    pub const fn batch_id(&self) -> Field<N> {
+        self.batch_header.batch_id()
+    }
+
     /// Returns the timestamps of the batch ID from the committee.
     pub fn timestamps(&self) -> impl '_ + Iterator<Item = i64> {
         self.signatures.values().copied().chain([self.batch_header.timestamp()].into_iter())
