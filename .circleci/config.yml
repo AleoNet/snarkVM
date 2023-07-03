@@ -470,6 +470,43 @@ jobs:
           workspace_member: ledger
           cache_key: snarkvm-ledger-cache
 
+  ledger-block:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/block
+          cache_key: snarkvm-ledger-block-cache
+
+  ledger-query:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/query
+          cache_key: snarkvm-ledger-query-cache
+
+  ledger-store:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --features=rocks
+          workspace_member: ledger/store
+          cache_key: snarkvm-ledger-store-cache
+
+  ledger-test-helpers:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/test-helpers
+          cache_key: snarkvm-ledger-test-helpers-cache
+
   parameters:
     docker:
       - image: cimg/rust:1.69
@@ -485,7 +522,7 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --lib --bins --features=rocks
+          flags: --lib --bins
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-cache
 
@@ -495,7 +532,7 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --test '*' --features=rocks
+          flags: --test '*'
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-integration-cache
 
@@ -507,6 +544,15 @@ jobs:
       - run_serial:
           workspace_member: synthesizer/coinbase
           cache_key: snarkvm-synthesizer-coinbase-cache
+
+  synthesizer-process:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: synthesizer/process
+          cache_key: snarkvm-synthesizer-process-cache
 
   synthesizer-program:
     docker:
@@ -665,10 +711,15 @@ workflows:
       - curves
       - fields
       - ledger
+      - ledger-block
+      - ledger-query
+      - ledger-store
+      - ledger-test-helpers
       - parameters
       - synthesizer
       - synthesizer-integration
       - synthesizer-coinbase
+      - synthesizer-process
       - synthesizer-program
       - synthesizer-snark
       - utilities
@@ -689,6 +740,7 @@ workflows:
                 console,
                 curves,
                 fields,
+                ledger,
                 parameters,
                 synthesizer,
                 utilities,

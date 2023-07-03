@@ -62,9 +62,14 @@ members = [
   "curves",
   "fields",
   "ledger",
+  "ledger/block",
+  "ledger/query",
+  "ledger/store",
+  "ledger/test-helpers",
   "parameters",
   "synthesizer",
   "synthesizer/coinbase",
+  "synthesizer/process",
   "synthesizer/program",
   "synthesizer/snark",
   "utilities",
@@ -111,9 +116,12 @@ cli = [
   "thiserror"
 ]
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
-cuda = [ "snarkvm-algorithms/cuda", "snarkvm-synthesizer/cuda" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 noconfig = [ ]
+rocks = [ "snarkvm-ledger/rocks" ]
+timer = [ "snarkvm-ledger/timer" ]
+ed25519 = [ "snarkvm-console/ed25519" ]
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
@@ -121,12 +129,9 @@ curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger" ]
 parameters = [ "snarkvm-parameters" ]
-rocks = [ "snarkvm-synthesizer/rocks" ]
 synthesizer = [ "snarkvm-synthesizer" ]
-timer = [ "snarkvm-ledger/timer" ]
 utilities = [ "snarkvm-utilities" ]
 wasm = [ "snarkvm-wasm" ]
-ed25519 = [ "snarkvm-console/ed25519" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"

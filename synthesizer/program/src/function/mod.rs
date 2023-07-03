@@ -21,20 +21,16 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::finalize::{CommandTrait, FinalizeCommandTrait, FinalizeCore};
+use crate::{
+    finalize::FinalizeCore,
+    traits::{CommandTrait, FinalizeCommandTrait, InstructionTrait},
+};
 use console::{
     network::prelude::*,
     program::{Identifier, Register, ValueType},
 };
 
 use indexmap::IndexSet;
-
-pub trait InstructionTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
-    /// Returns the destination registers of the instruction.
-    fn destinations(&self) -> Vec<Register<N>>;
-    /// Returns `true` if the given name is a reserved opcode.
-    fn is_reserved_opcode(name: &str) -> bool;
-}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct FunctionCore<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> {

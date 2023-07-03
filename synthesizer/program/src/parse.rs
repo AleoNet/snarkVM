@@ -183,8 +183,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Dis
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Program;
     use console::network::Testnet3;
-    use synthesizer::process::Program;
 
     type CurrentNetwork = Testnet3;
 

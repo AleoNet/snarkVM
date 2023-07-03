@@ -177,6 +177,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
+name = "async-trait"
+version = "0.1.68"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
+dependencies = [
+ "proc-macro2",
+ "quote 1.0.28",
+ "syn 2.0.22",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2958,14 +2969,90 @@ version = "0.13.0"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "bincode",
+ "criterion",
  "indexmap 2.0.0",
  "parking_lot",
  "rand 0.8.5",
  "rayon",
+ "serde_json",
  "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
  "snarkvm-synthesizer",
  "time",
  "tracing",
+]
+
+[[package]]
+name = "snarkvm-ledger-block"
+version = "0.13.0"
+dependencies = [
+ "bincode",
+ "indexmap 2.0.0",
+ "once_cell",
+ "rayon",
+ "serde_json",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
+ "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-process",
+ "snarkvm-synthesizer-program",
+ "snarkvm-synthesizer-snark",
+]
+
+[[package]]
+name = "snarkvm-ledger-query"
+version = "0.13.0"
+dependencies = [
+ "async-trait",
+ "reqwest",
+ "snarkvm-console",
+ "snarkvm-ledger-store",
+ "snarkvm-synthesizer-program",
+ "ureq",
+]
+
+[[package]]
+name = "snarkvm-ledger-store"
+version = "0.13.0"
+dependencies = [
+ "aleo-std",
+ "anyhow",
+ "bincode",
+ "indexmap 2.0.0",
+ "once_cell",
+ "parking_lot",
+ "rayon",
+ "rocksdb",
+ "serde",
+ "serial_test",
+ "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-test-helpers",
+ "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-program",
+ "snarkvm-synthesizer-snark",
+ "tempfile",
+ "tracing",
+ "tracing-test",
+]
+
+[[package]]
+name = "snarkvm-ledger-test-helpers"
+version = "0.13.0"
+dependencies = [
+ "once_cell",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
+ "snarkvm-synthesizer-process",
+ "snarkvm-synthesizer-program",
 ]
 
 [[package]]
@@ -2992,6 +3079,7 @@ dependencies = [
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-curves",
+ "snarkvm-ledger-store",
  "snarkvm-synthesizer",
  "snarkvm-utilities",
  "thiserror",
@@ -3005,37 +3093,24 @@ version = "0.13.0"
 dependencies = [
  "aleo-std",
  "anyhow",
- "bincode",
- "blake2",
- "colored",
- "criterion",
  "indexmap 2.0.0",
  "itertools 0.11.0",
  "once_cell",
  "parking_lot",
- "paste",
  "rand 0.8.5",
- "rand_chacha 0.3.1",
  "rayon",
- "reqwest",
- "rocksdb",
- "serde",
  "serde_json",
  "serde_yaml",
- "serial_test",
- "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
- "snarkvm-curves",
- "snarkvm-fields",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
  "snarkvm-synthesizer-coinbase",
+ "snarkvm-synthesizer-process",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
- "snarkvm-utilities",
- "tempfile",
  "tracing",
- "tracing-test",
- "ureq",
  "walkdir",
 ]
 
@@ -3060,14 +3135,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-synthesizer-process"
+version = "0.13.0"
+dependencies = [
+ "aleo-std",
+ "colored",
+ "indexmap 2.0.0",
+ "once_cell",
+ "parking_lot",
+ "rand 0.8.5",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-ledger-block",
+ "snarkvm-ledger-query",
+ "snarkvm-ledger-store",
+ "snarkvm-ledger-test-helpers",
+ "snarkvm-synthesizer-program",
+ "snarkvm-synthesizer-snark",
+]
+
+[[package]]
 name = "snarkvm-synthesizer-program"
 version = "0.13.0"
 dependencies = [
  "bincode",
  "indexmap 2.0.0",
+ "paste",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
  "serde_json",
+ "snarkvm-circuit",
  "snarkvm-console",
- "snarkvm-synthesizer",
+ "snarkvm-synthesizer-process",
 ]
 
 [[package]]

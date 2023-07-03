@@ -62,9 +62,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Retrieve the minimum cost of the transaction.
             let (cost, _) = match transaction {
                 // Compute the deployment cost.
-                Transaction::Deploy(_, _, deployment, _) => Deployment::cost(deployment)?,
+                Transaction::Deploy(_, _, deployment, _) => synthesizer::deployment_cost(deployment)?,
                 // Compute the execution cost.
-                Transaction::Execute(_, execution, _) => Execution::cost(self.vm(), execution)?,
+                Transaction::Execute(_, execution, _) => synthesizer::execution_cost(self.vm(), execution)?,
                 // TODO (howardwu): Plug in the Rejected struct, to compute the cost.
                 Transaction::Fee(_, _) => (0, (0, 0)),
             };
@@ -396,8 +396,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
+        // FIXME: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
+        let transactions = block.transactions().iter().collect::<Vec<_>>();
+
         // Ensure each transaction is well-formed and unique.
-        cfg_iter!(block.transactions()).try_for_each(|transaction| {
+        cfg_iter!(transactions).try_for_each(|transaction| {
             // Construct the rejected ID.
             let rejected_id = match transaction {
                 ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
@@ -405,7 +408,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
             };
 
-            self.check_transaction_basic(transaction, rejected_id)
+            self.check_transaction_basic(transaction.deref(), rejected_id)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 

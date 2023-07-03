@@ -17,23 +17,16 @@ use snarkvm_circuit::{Aleo, Assignment};
 use snarkvm_console::{
     account::PrivateKey,
     network::{Network, Testnet3},
-    prelude::{One, Zero},
-    program::StatePath,
+    prelude::{One, ToBytes, Zero},
+    program::{Plaintext, Record, StatePath},
     types::Field,
 };
-use snarkvm_synthesizer::{
-    snark::UniversalSRS,
-    store::helpers::memory::ConsensusMemory,
-    ConsensusStore,
-    InclusionAssignment,
-    VM,
-};
+use snarkvm_ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+use snarkvm_synthesizer::{process::InclusionAssignment, snark::UniversalSRS, VM};
 
 use anyhow::{anyhow, Result};
 use rand::thread_rng;
 use serde_json::{json, Value};
-use snarkvm_console::program::{Plaintext, Record};
-use snarkvm_utilities::ToBytes;
 use std::{
     fs::File,
     io::{BufWriter, Write},

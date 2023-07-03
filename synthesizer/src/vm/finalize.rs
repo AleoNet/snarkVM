@@ -13,36 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::{ConfirmedTransaction, Rejected, Transactions};
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum FinalizeMode {
-    /// Invoke finalize as a real run.
-    RealRun,
-    /// Invoke finalize as a dry run.
-    DryRun,
-}
-
-impl FinalizeMode {
-    /// Returns the u8 value of the finalize mode.
-    #[inline]
-    pub const fn to_u8(self) -> u8 {
-        match self {
-            Self::RealRun => 0,
-            Self::DryRun => 1,
-        }
-    }
-
-    /// Returns a finalize mode from a given u8.
-    #[inline]
-    pub fn from_u8(value: u8) -> Result<Self> {
-        match value {
-            0 => Ok(Self::RealRun),
-            1 => Ok(Self::DryRun),
-            _ => bail!("Invalid finalize mode of '{value}'"),
-        }
-    }
-}
+use ledger_block::{ConfirmedTransaction, Rejected, Transactions};
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM, returning the confirmed transactions.
@@ -276,6 +247,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             return Err("Mismatch in rejected deploy transaction index".to_string());
                         }
                         // Extract the rejected deployment.
+                        #[allow(unused_variables)]
                         let Some(deployment) = rejected.deployment() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected deployment".to_string());
@@ -296,6 +268,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             return Err("Mismatch in rejected execute transaction index".to_string());
                         }
                         // Extract the rejected execution.
+                        #[allow(unused_variables)]
                         let Some(execution) = rejected.execution() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected execution".to_string());
@@ -341,21 +314,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        store::helpers::memory::ConsensusMemory,
-        vm::{test_helpers, test_helpers::sample_finalize_state},
-        Block,
-        Header,
-        Metadata,
-        Program,
-        Transaction,
-        Transition,
-    };
+    use crate::vm::{test_helpers, test_helpers::sample_finalize_state};
     use console::{
         account::{Address, PrivateKey, ViewKey},
         program::{Ciphertext, Record},
         types::Field,
     };
+    use ledger_block::{Block, Header, Metadata, Transaction, Transition};
+    use ledger_store::helpers::memory::ConsensusMemory;
+    use synthesizer_program::Program;
 
     use rand::distributions::DistString;
 
