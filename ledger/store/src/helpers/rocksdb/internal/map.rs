@@ -17,9 +17,8 @@
 use super::*;
 use crate::helpers::{Map, MapRead};
 
-use core::{fmt, fmt::Debug, hash::Hash};
+use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
-use rocksdb::WriteBatch;
 use std::{borrow::Cow, sync::atomic::Ordering};
 
 #[derive(Clone)]
@@ -90,6 +89,9 @@ impl<
     fn start_atomic(&self) {
         // Set the atomic batch flag to `true`.
         self.batch_in_progress.store(true, Ordering::SeqCst);
+        // Increment the database-wide atomic batch index.
+        self.database.atomic_batch_index.fetch_add(1, Ordering::SeqCst);
+
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
     }
@@ -145,6 +147,10 @@ impl<
         *self.checkpoint.lock() = Default::default();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
+        // Set the database-wise atomic batch index to `0`.
+        self.database.atomic_batch_index.store(0, Ordering::SeqCst);
+        // Clear the database-wise atomic batch.
+        self.database.atomic_batch.lock().clear();
     }
 
     ///
@@ -153,6 +159,9 @@ impl<
     fn finish_atomic(&self) -> Result<()> {
         // Retrieve the atomic batch.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
+
+        // Decrement the database-wide atomic batch index.
+        let atomic_batch_index = self.database.atomic_batch_index.fetch_sub(1, Ordering::SeqCst);
 
         // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
         let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
@@ -173,18 +182,22 @@ impl<
                 })
                 .collect::<Result<Vec<_>>>()?;
 
-            // Prepare operations batch for underlying database.
-            let mut batch = WriteBatch::default();
+            // Lock the operations batch for the underlying database.
+            let mut batch = self.database.atomic_batch.lock();
 
-            // Perform all the queued operations.
+            // Enqueue all the queued operations.
             for (raw_key, raw_value) in prepared_operations {
                 match raw_value {
                     Some(raw_value) => batch.put(raw_key, raw_value),
                     None => batch.delete(raw_key),
                 };
             }
+        }
 
-            // Execute all the operations atomically.
+        // If this is the final (outermost) call to `finish_atomic`, execute the low-level batch.
+        if atomic_batch_index == 1 {
+            // Execute all the operations atomically, clearing the low-level batch.
+            let batch = mem::take(&mut *self.database.atomic_batch.lock());
             self.database.rocksdb.write(batch)?;
         }
 

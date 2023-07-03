@@ -33,7 +33,10 @@ use std::{
     borrow::Borrow,
     marker::PhantomData,
     ops::Deref,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize},
+        Arc,
+    },
 };
 
 pub const PREFIX_LEN: usize = 4; // N::ID (u16) + DataID (u16)
@@ -61,6 +64,10 @@ pub struct RocksDB {
     network_id: u16,
     /// The optional development ID.
     dev: Option<u16>,
+    /// A database-wide atomic batch index.
+    pub(super) atomic_batch_index: Arc<AtomicUsize>,
+    /// The low-level database transaction.
+    pub(super) atomic_batch: Arc<Mutex<rocksdb::WriteBatch>>,
 }
 
 impl Deref for RocksDB {
@@ -98,7 +105,13 @@ impl Database for RocksDB {
                     Arc::new(rocksdb::DB::open(&options, primary)?)
                 };
 
-                Ok::<_, anyhow::Error>(RocksDB { rocksdb, network_id, dev })
+                Ok::<_, anyhow::Error>(RocksDB {
+                    rocksdb,
+                    network_id,
+                    dev,
+                    atomic_batch_index: Default::default(),
+                    atomic_batch: Default::default(),
+                })
             })?
             .clone();
 
@@ -158,7 +171,13 @@ impl RocksDB {
                 Arc::new(rocksdb::DB::open(&options, primary)?)
             };
 
-            Ok::<_, anyhow::Error>(RocksDB { rocksdb, network_id: u16::MAX, dev })
+            Ok::<_, anyhow::Error>(RocksDB {
+                rocksdb,
+                network_id: u16::MAX,
+                dev,
+                atomic_batch_index: Default::default(),
+                atomic_batch: Default::default(),
+            })
         }?;
 
         // Ensure the database development ID match.
