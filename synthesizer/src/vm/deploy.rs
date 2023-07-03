@@ -32,7 +32,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
 
         // Compute the minimum deployment cost.
-        let (minimum_deployment_cost, (_, _)) = Deployment::cost(&deployment)?;
+        let (minimum_deployment_cost, (_, _)) = deployment_cost(&deployment)?;
         // Determine the fee.
         let fee_in_microcredits = minimum_deployment_cost
             .checked_add(priority_fee_in_microcredits)
