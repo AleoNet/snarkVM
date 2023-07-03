@@ -19,7 +19,7 @@
 extern crate tracing;
 
 pub use ledger_block as block;
-// pub use ledger_coinbase as coinbase;
+pub use ledger_coinbase as coinbase;
 pub use ledger_query as query;
 pub use ledger_store as store;
 
@@ -56,10 +56,10 @@ use console::{
     types::{Field, Group},
 };
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
+use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
-    coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
     program::{FinalizeGlobalState, Program},
     vm::VM,
 };

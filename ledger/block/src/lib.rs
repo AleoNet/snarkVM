@@ -42,7 +42,7 @@ use console::{
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
 };
-use synthesizer_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {

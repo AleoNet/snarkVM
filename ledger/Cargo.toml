@@ -30,7 +30,7 @@ harness = false
 default = [ "async", "indexmap/rayon", "rayon" ]
 async = [ "ledger-query/async", "synthesizer/async" ]
 rocks = [ "ledger-store/rocks" ]
-serial = [ "console/serial", "ledger-block/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer/serial" ]
+serial = [ "console/serial", "ledger-block/serial", "ledger-coinbase/serial", "ledger-query/serial", "ledger-store/serial", "synthesizer/serial" ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
@@ -46,6 +46,11 @@ version = "=0.13.0"
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "./block"
+version = "=0.13.0"
+
+[dependencies.ledger-coinbase]
+package = "snarkvm-ledger-coinbase"
+path = "./coinbase"
 version = "=0.13.0"
 
 [dependencies.ledger-query]

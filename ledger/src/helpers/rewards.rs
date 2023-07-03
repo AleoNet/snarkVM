@@ -14,7 +14,7 @@
 
 use console::network::prelude::*;
 use ledger_block::Ratify;
-use synthesizer::coinbase::ProverSolution;
+use ledger_coinbase::ProverSolution;
 
 use anyhow::Result;
 

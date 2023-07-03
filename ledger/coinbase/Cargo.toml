@@ -1,5 +1,5 @@
 [package]
-name = "snarkvm-synthesizer-coinbase"
+name = "snarkvm-ledger-coinbase"
 version = "0.13.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Coinbase puzzle for a decentralized virtual machine"
@@ -64,7 +64,7 @@ path = "../../fields"
 version = "=0.13.0"
 
 [dependencies.snarkvm-synthesizer-snark]
-path = "../snark"
+path = "../../synthesizer/snark"
 version = "=0.13.0"
 
 [dependencies.snarkvm-utilities]
