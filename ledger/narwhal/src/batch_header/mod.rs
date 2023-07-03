@@ -80,7 +80,7 @@ impl<N: Network> BatchHeader<N> {
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
-        if !signature.verify(&signature.to_address(), &[batch_id]) {
+        if !signature.verify(&signature.to_address(), &[batch_id, Field::from_u64(timestamp as u64)]) {
             bail!("Invalid signature for the batch header");
         }
         // Return the batch header.
