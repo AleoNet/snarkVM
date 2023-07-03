@@ -179,12 +179,12 @@ fn retarget(
     // Shift the target to multiply by 2^(integer) / RADIX.
     let shifts = integral - RBITS as i128;
     let mut candidate_target = if shifts < 0 {
-        match candidate_target.checked_shr((-shifts) as u32) {
+        match candidate_target.checked_shr(u32::try_from(-shifts)?) {
             Some(target) => core::cmp::max(target, 1),
             None => 1,
         }
     } else {
-        match candidate_target.checked_shl(shifts as u32) {
+        match candidate_target.checked_shl(u32::try_from(shifts)?) {
             Some(target) => core::cmp::max(target, 1),
             None => u64::MAX as u128,
         }
@@ -196,7 +196,7 @@ fn retarget(
     // Ensure that the leading 64 bits are zeros.
     ensure!(candidate_target.checked_shr(64) == Some(0), "The target has overflowed");
     // Cast the new target down from a u128 to a u64.
-    Ok(candidate_target as u64)
+    Ok(u64::try_from(candidate_target)?)
 }
 
 #[cfg(test)]

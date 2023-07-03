@@ -1,0 +1,12 @@
+0: at line 262, in MapRes:
+    position two_hundred_fifty_six;
+                                   ^
+
+1: at line 1, in Alt:
+program too_many_positions.aleo;
+                                ^
+
+2: at line 1, in Many1:
+program too_many_positions.aleo;
+                                ^
+

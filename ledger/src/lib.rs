@@ -13,9 +13,17 @@
 // limitations under the License.
 
 #![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
 
 #[macro_use]
 extern crate tracing;
+
+pub use ledger_block as block;
+pub use ledger_coinbase as coinbase;
+pub use ledger_query as query;
+pub use ledger_store as store;
+
+pub use crate::block::*;
 
 mod helpers;
 pub use helpers::*;
@@ -47,12 +55,12 @@ use console::{
     },
     types::{Field, Group},
 };
+use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
+use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
+use ledger_query::Query;
+use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
-    block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions},
-    coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment},
-    process::{FinalizeGlobalState, Query},
-    program::Program,
-    store::{ConsensusStorage, ConsensusStore},
+    program::{FinalizeGlobalState, Program},
     vm::VM,
 };
 
@@ -184,6 +192,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         finish!(timer);
         Ok(ledger)
+    }
+
+    /// TODO: Delete this after testing for snarkOS team.
+    pub fn insert_committee_member(&self, address: Address<N>) {
+        self.current_committee.write().insert(address);
     }
 
     /// Returns the VM.
@@ -364,5 +377,60 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Create a new execute transaction.
         self.vm.execute(private_key, ("credits.aleo", "transfer_private"), inputs.iter(), fee, query, rng)
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use crate::Ledger;
+    use console::{
+        account::{Address, PrivateKey, ViewKey},
+        network::Testnet3,
+        prelude::*,
+    };
+    use ledger_block::Block;
+    use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+    use synthesizer::vm::VM;
+
+    pub(crate) type CurrentNetwork = Testnet3;
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>;
+
+    #[allow(dead_code)]
+    pub(crate) struct TestEnv {
+        pub ledger: CurrentLedger,
+        pub private_key: PrivateKey<CurrentNetwork>,
+        pub view_key: ViewKey<CurrentNetwork>,
+        pub address: Address<CurrentNetwork>,
+    }
+
+    pub(crate) fn sample_test_env(rng: &mut (impl Rng + CryptoRng)) -> TestEnv {
+        // Sample the genesis private key.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let view_key = ViewKey::try_from(&private_key).unwrap();
+        let address = Address::try_from(&private_key).unwrap();
+        // Sample the ledger.
+        let ledger = sample_ledger(private_key, rng);
+        // Return the test environment.
+        TestEnv { ledger, private_key, view_key, address }
+    }
+
+    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
+        Block::<CurrentNetwork>::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap()
+    }
+
+    pub(crate) fn sample_ledger(
+        private_key: PrivateKey<CurrentNetwork>,
+        rng: &mut (impl Rng + CryptoRng),
+    ) -> CurrentLedger {
+        // Initialize the store.
+        let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+        // Create a genesis block.
+        let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
+        // Initialize the ledger with the genesis block.
+        let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
+        // Ensure the genesis block is correct.
+        assert_eq!(genesis, ledger.get_block(0).unwrap());
+        // Return the ledger.
+        ledger
     }
 }

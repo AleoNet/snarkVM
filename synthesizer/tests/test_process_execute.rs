@@ -18,9 +18,10 @@ use utilities::*;
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Value},
+    program::{Identifier, Literal, Value},
+    types::Boolean,
 };
-use snarkvm_synthesizer::Process;
+use synthesizer_process::Process;
 
 use rayon::prelude::*;
 
@@ -64,9 +65,12 @@ fn test_process_execute() {
                     .as_sequence()
                     .expect("expected sequence for inputs")
                     .iter()
-                    .map(|input| {
-                        Value::<CurrentNetwork>::from_str(input.as_str().expect("expected string for input"))
-                            .expect("unable to parse input")
+                    .map(|input| match &input {
+                        serde_yaml::Value::Bool(bool) => {
+                            Value::<CurrentNetwork>::from(Literal::Boolean(Boolean::new(*bool)))
+                        }
+                        _ => Value::<CurrentNetwork>::from_str(input.as_str().expect("expected string for input"))
+                            .expect("unable to parse input"),
                     })
                     .collect_vec();
                 let private_key = match value.get("private_key") {

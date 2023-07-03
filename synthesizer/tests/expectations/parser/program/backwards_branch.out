@@ -3,10 +3,10 @@
                                ^
 
 1: at line 1, in Alt:
-program duplicate_position.aleo;
-                                ^
+program backwards_branch.aleo;
+                              ^
 
 2: at line 1, in Many1:
-program duplicate_position.aleo;
-                                ^
+program backwards_branch.aleo;
+                              ^
 
