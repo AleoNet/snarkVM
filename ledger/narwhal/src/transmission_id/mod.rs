@@ -43,6 +43,24 @@ impl<N: Network> From<&N::TransactionID> for TransmissionID<N> {
     }
 }
 
+impl<N: Network> TransmissionID<N> {
+    /// Returns the puzzle commitment if the transmission is a solution.
+    pub fn solution(&self) -> Option<PuzzleCommitment<N>> {
+        match self {
+            Self::Solution(puzzle_commitment) => Some(*puzzle_commitment),
+            _ => None,
+        }
+    }
+
+    /// Returns the transaction ID if the transmission is a transaction.
+    pub fn transaction(&self) -> Option<N::TransactionID> {
+        match self {
+            Self::Transaction(transaction_id) => Some(*transaction_id),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
