@@ -15,10 +15,15 @@
 mod bytes;
 mod serialize;
 mod string;
+mod to_address;
 mod to_id;
 
 use crate::BatchHeader;
-use console::{account::Signature, prelude::*, types::Field};
+use console::{
+    account::{Address, Signature},
+    prelude::*,
+    types::Field,
+};
 
 use core::hash::{Hash, Hasher};
 use indexmap::IndexMap;

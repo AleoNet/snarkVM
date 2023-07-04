@@ -14,11 +14,12 @@
 
 mod bytes;
 mod serialize;
+mod to_address;
 mod to_id;
 
 use crate::TransmissionID;
 use console::{
-    account::{PrivateKey, Signature},
+    account::{Address, PrivateKey, Signature},
     prelude::*,
     types::Field,
 };
