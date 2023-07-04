@@ -29,8 +29,8 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
     pub(super) batch_in_progress: Arc<AtomicBool>,
     /// The database transaction.
     pub(super) atomic_batch: Arc<Mutex<Vec<(K, Option<V>)>>>,
-    /// The checkpoint for the atomic batch.
-    pub(super) checkpoint: Arc<Mutex<Vec<usize>>>,
+    /// The checkpoint stack for the batched operations within the map.
+    pub(super) checkpoints: Arc<Mutex<Vec<usize>>>,
 }
 
 impl<
@@ -43,17 +43,19 @@ impl<
     /// Inserts the given key-value pair into the map.
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
+        // Prepare the prefixed key and serialized value.
+        let raw_key = self.create_prefixed_key(&key)?;
+        let raw_value = bincode::serialize(&value)?;
+
         // Determine if an atomic batch is in progress.
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key-value pair to the batch.
             true => {
                 self.atomic_batch.lock().push((key, Some(value)));
+                self.database.atomic_batch.lock().push((raw_key.into(), Some(raw_value.into())));
             }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
-                // Prepare the prefixed key and serialized value.
-                let raw_key = self.create_prefixed_key(&key)?;
-                let raw_value = bincode::serialize(&value)?;
                 self.database.put(raw_key, raw_value)?;
             }
         }
@@ -65,16 +67,18 @@ impl<
     /// Removes the key-value pair for the given key from the map.
     ///
     fn remove(&self, key: &K) -> Result<()> {
+        // Prepare the prefixed key.
+        let raw_key = self.create_prefixed_key(key)?;
+
         // Determine if an atomic batch is in progress.
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key to the batch.
             true => {
                 self.atomic_batch.lock().push((*key, None));
+                self.database.atomic_batch.lock().push((raw_key.into(), None));
             }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
-                // Prepare the prefixed key.
-                let raw_key = self.create_prefixed_key(key)?;
                 self.database.delete(raw_key)?;
             }
         }
@@ -89,11 +93,10 @@ impl<
     fn start_atomic(&self) {
         // Set the atomic batch flag to `true`.
         self.batch_in_progress.store(true, Ordering::SeqCst);
-        // Increment the database-wide atomic batch index.
-        self.database.atomic_batch_index.fetch_add(1, Ordering::SeqCst);
 
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
+        assert!(self.database.atomic_batch.lock().is_empty());
     }
 
     ///
@@ -110,16 +113,43 @@ impl<
     /// we roll back all future operations, and return to the start of this checkpoint.
     ///
     fn atomic_checkpoint(&self) {
-        // Push the current length of the atomic batch to the checkpoint stack.
-        self.checkpoint.lock().push(self.atomic_batch.lock().len());
+        // Push the current length of the atomic batch to the map checkpoint stack.
+        self.checkpoints.lock().push(self.atomic_batch.lock().len());
+        // Increase the checkpoint index if it hadn't been done yet (which is likely due to
+        // `atomic_checkpoint` being called for all the maps contained in the one the
+        // caller is currently using).
+        let checkpoint_index = self.database.checkpoint_index.load(Ordering::SeqCst);
+        let mut checkpoints = self.database.checkpoints.lock();
+        if let Some(ref mut checkpoints_at_index) = checkpoints.get_mut(checkpoint_index) {
+            // If a checkpoint stack at the current checkpoint index already exists, append the
+            // current number of pending operations to it.
+            checkpoints_at_index.push(self.database.atomic_batch.lock().len());
+        } else {
+            // If there is no stack at the current checkpoint index, increase it and append
+            // the current number of pending operations to it.
+            self.database.checkpoint_index.fetch_add(1, Ordering::SeqCst);
+            checkpoints.push(vec![self.database.atomic_batch.lock().len()]);
+        }
     }
 
     ///
     /// Removes the latest atomic checkpoint.
     ///
     fn clear_latest_checkpoint(&self) {
-        // Removes the latest checkpoint.
-        let _ = self.checkpoint.lock().pop();
+        // Removes the latest map checkpoint.
+        let _ = self.checkpoints.lock().pop();
+        // Pop the stack belonging to the latest checkpoint index and, if it's the end of it,
+        // remove the stack itself and decrement the checkpoint index.
+        let mut checkpoints = self.database.checkpoints.lock();
+        if let Some(last_checkpoint_stack) = checkpoints.last_mut() {
+            last_checkpoint_stack.pop();
+            if last_checkpoint_stack.is_empty() {
+                // Drop the last checkpoint.
+                checkpoints.pop();
+                // Decrement the checkpoint index.
+                self.database.checkpoint_index.fetch_sub(1, Ordering::SeqCst);
+            }
+        }
     }
 
     ///
@@ -127,21 +157,24 @@ impl<
     /// (or to `start_atomic` if no checkpoints have been created).
     ///
     fn atomic_rewind(&self) {
-        // Acquire the write lock on the atomic batch.
-        let mut atomic_batch = self.atomic_batch.lock();
-
-        // Retrieve the last checkpoint.
-        let checkpoint = self.checkpoint.lock().pop().unwrap_or(0);
-
+        // Retrieve the last map checkpoint.
+        let checkpoint = self.checkpoints.lock().pop().unwrap_or(0);
         // Remove all operations after the checkpoint.
-        atomic_batch.truncate(checkpoint);
+        self.atomic_batch.lock().truncate(checkpoint);
 
-        // Subtract the database-wide atomic batch index.
-        let idx = self.database.atomic_batch_index.fetch_sub(1, Ordering::SeqCst);
-        // If the rewind cascades to all the other maps via `?`, this operation can
-        // overflow once (wrapping around to `usize::MAX`).
-        if idx == usize::MAX {
-            self.database.atomic_batch_index.store(0, Ordering::SeqCst);
+        // Pop the latest stack until the first checkpoint it contains, bringing us to the state at the last
+        // call to `atomic_checkpoint`.
+        let mut checkpoints = self.database.checkpoints.lock();
+        if let Some(first_checkpoint_at_index) = checkpoints.last_mut().and_then(|checkpoints_at_index| {
+            let potential_first_checkpoint_at_index = checkpoints_at_index.pop();
+            if checkpoints_at_index.is_empty() { potential_first_checkpoint_at_index } else { None }
+        }) {
+            // Truncate the list of pending operations according to the last checkpoint.
+            self.database.atomic_batch.lock().truncate(first_checkpoint_at_index);
+            // Drop the last checkpoint.
+            checkpoints.pop();
+            // Decrement the checkpoint index.
+            self.database.checkpoint_index.fetch_sub(1, Ordering::SeqCst);
         }
     }
 
@@ -150,13 +183,15 @@ impl<
     ///
     fn abort_atomic(&self) {
         // Clear the atomic batch.
-        *self.atomic_batch.lock() = Default::default();
+        self.atomic_batch.lock().clear();
         // Clear the checkpoint stack.
-        *self.checkpoint.lock() = Default::default();
+        self.checkpoints.lock().clear();
+        // Clear the checkpoint index.
+        self.database.checkpoint_index.store(0, Ordering::SeqCst);
+        // Clear the database-wide checkpoint stack.
+        self.database.checkpoints.lock().clear();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
-        // Set the database-wise atomic batch index to `0`.
-        self.database.atomic_batch_index.store(0, Ordering::SeqCst);
         // Clear the database-wise atomic batch.
         self.database.atomic_batch.lock().clear();
     }
@@ -165,52 +200,31 @@ impl<
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
-        // Retrieve the atomic batch.
-        let operations = core::mem::take(&mut *self.atomic_batch.lock());
+        // Empty the atomic batch belonging to the map.
+        let _operations = core::mem::take(&mut *self.atomic_batch.lock());
 
-        // Decrement the database-wide atomic batch index.
-        let atomic_batch_index = self.database.atomic_batch_index.fetch_sub(1, Ordering::SeqCst);
-
-        // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
-        let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
-
+        // Execute all the operations atomically, clearing the low-level batch.
+        // This only needs to happen once (and `finish_atomic` can be called
+        // multiple times at once), so make sure we haven't done so already.
+        let operations = mem::take(&mut *self.database.atomic_batch.lock());
         if !operations.is_empty() {
-            // Prepare the key and value for each queued operation.
-            //
-            // Note: This step is taken to ensure (with 100% certainty) that there will be
-            // no chance to fail partway through committing the queued operations.
-            //
-            // The expected behavior is that either all the operations will be committed
-            // or none of them will be.
-            let prepared_operations = operations
-                .into_iter()
-                .map(|(key, value)| match value {
-                    Some(value) => Ok((self.create_prefixed_key(&key)?, Some(bincode::serialize(&value)?))),
-                    None => Ok((self.create_prefixed_key(&key)?, None)),
-                })
-                .collect::<Result<Vec<_>>>()?;
-
-            // Lock the operations batch for the underlying database.
-            let mut batch = self.database.atomic_batch.lock();
-
-            // Enqueue all the queued operations.
-            for (raw_key, raw_value) in prepared_operations {
-                match raw_value {
-                    Some(raw_value) => batch.put(raw_key, raw_value),
-                    None => batch.delete(raw_key),
-                };
+            let deduped_operations = operations.into_iter().collect::<IndexMap<_, _>>();
+            let mut batch = rocksdb::WriteBatch::default();
+            for (key, value) in deduped_operations {
+                match value {
+                    Some(value) => batch.put(key, value),
+                    None => batch.delete(key),
+                }
             }
-        }
-
-        // If this is the final (outermost) call to `finish_atomic`, execute the low-level batch.
-        if atomic_batch_index == 1 {
-            // Execute all the operations atomically, clearing the low-level batch.
-            let batch = mem::take(&mut *self.database.atomic_batch.lock());
             self.database.rocksdb.write(batch)?;
         }
 
         // Clear the checkpoint stack.
-        *self.checkpoint.lock() = Default::default();
+        self.checkpoints.lock().clear();
+        // Clear the database-wide checkpoint stack.
+        self.database.checkpoints.lock().clear();
+        // Clear the checkpoint index.
+        self.database.checkpoint_index.store(0, Ordering::SeqCst);
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
 
@@ -400,7 +414,7 @@ mod tests {
             context,
             atomic_batch: Default::default(),
             batch_in_progress: Default::default(),
-            checkpoint: Default::default(),
+            checkpoints: Default::default(),
         }
     }
 
@@ -790,7 +804,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Start an atomic write batch.
         map.start_atomic();
@@ -805,7 +819,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
         }
 
         // Run the same sequence of checks 3 times.
@@ -813,7 +827,7 @@ mod tests {
             // Perform a checkpoint.
             map.atomic_checkpoint();
             // Make sure the checkpoint index is NUM_ITEMS / 2.
-            assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
+            assert_eq!(map.checkpoints.lock().last(), Some(&(NUM_ITEMS / 2)));
 
             {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
@@ -825,13 +839,13 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoints.lock().last(), Some(&(NUM_ITEMS / 2)));
             }
 
             // Abort the current atomic write batch.
             map.atomic_rewind();
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             {
                 // The map should still contain no items.
@@ -839,7 +853,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is None.
-                assert_eq!(map.checkpoint.lock().last(), None);
+                assert_eq!(map.checkpoints.lock().last(), None);
             }
         }
 
@@ -850,7 +864,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
     }
 
     #[test]
@@ -864,7 +878,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Start a nested atomic batch scope that completes successfully.
         atomic_batch_scope!(map, {
@@ -877,7 +891,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             // Start a nested atomic batch scope that completes successfully.
             atomic_batch_scope!(map, {
@@ -890,7 +904,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoints.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
             })?;
@@ -900,7 +914,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             Ok(())
         })?;
@@ -910,7 +924,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         Ok(())
     }
@@ -926,7 +940,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Start an atomic write batch.
         let run_nested_atomic_batch_scope = || -> Result<()> {
@@ -941,7 +955,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is None.
-                assert_eq!(map.checkpoint.lock().last(), None);
+                assert_eq!(map.checkpoints.lock().last(), None);
 
                 // Start a nested atomic write batch that completes correctly.
                 atomic_batch_scope!(map, {
@@ -954,7 +968,7 @@ mod tests {
                     // The pending batch should contain NUM_ITEMS items.
                     assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                     // Make sure the checkpoint index is NUM_ITEMS / 2.
-                    assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
+                    assert_eq!(map.checkpoints.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                     bail!("This batch should fail.");
                 })?;
@@ -980,7 +994,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
@@ -995,7 +1009,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is 0.
-                assert_eq!(map.checkpoint.lock().last(), Some(&0));
+                assert_eq!(map.checkpoints.lock().last(), Some(&0));
 
                 Ok(())
             })
@@ -1006,7 +1020,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             // Start a nested atomic write batch that completes correctly.
             atomic_batch_scope!(map, {
@@ -1019,7 +1033,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoints.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                 Ok(())
             })
@@ -1030,7 +1044,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             Ok(())
         });
@@ -1043,7 +1057,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         Ok(())
     }
@@ -1059,7 +1073,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
@@ -1074,7 +1088,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS / 2 items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
                 // Make sure the checkpoint index is 0.
-                assert_eq!(map.checkpoint.lock().last(), Some(&0));
+                assert_eq!(map.checkpoints.lock().last(), Some(&0));
 
                 Ok(())
             })
@@ -1085,7 +1099,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             // Start a nested atomic write batch that fails.
             let result: Result<()> = atomic_batch_scope!(map, {
@@ -1098,7 +1112,7 @@ mod tests {
                 // The pending batch should contain NUM_ITEMS items.
                 assert_eq!(map.iter_pending().count(), NUM_ITEMS);
                 // Make sure the checkpoint index is NUM_ITEMS / 2.
-                assert_eq!(map.checkpoint.lock().last(), Some(&(NUM_ITEMS / 2)));
+                assert_eq!(map.checkpoints.lock().last(), Some(&(NUM_ITEMS / 2)));
 
                 bail!("This batch scope should fail.");
             });
@@ -1111,7 +1125,7 @@ mod tests {
             // The pending batch should contain NUM_ITEMS / 2 items.
             assert_eq!(map.iter_pending().count(), NUM_ITEMS / 2);
             // Make sure the checkpoint index is None.
-            assert_eq!(map.checkpoint.lock().last(), None);
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             Ok(())
         });
@@ -1124,7 +1138,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         Ok(())
     }
@@ -1137,7 +1151,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Construct an atomic batch scope.
         let outcome: Result<()> = atomic_batch_scope!(map, {
@@ -1170,7 +1184,7 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Insert the key.
         map.insert(0, "0".to_string()).unwrap();
@@ -1180,10 +1194,12 @@ mod tests {
             // Insert the key.
             map.insert(0, "1".to_string()).unwrap();
 
+            assert_eq!(map.checkpoints.lock().last(), None);
+
             // Create a failing atomic batch scope that will reset the checkpoint.
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 1.
-                assert_eq!(map.checkpoint.lock().last(), Some(&1));
+                assert_eq!(map.checkpoints.lock().last(), Some(&1));
 
                 // Update the key.
                 map.insert(0, "2".to_string()).unwrap();
@@ -1201,6 +1217,7 @@ mod tests {
             assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
             // Ensure the confirmed value has not changed.
             assert_eq!(*map.iter_confirmed().next().unwrap().1, "0");
+            assert_eq!(map.checkpoints.lock().last(), None);
 
             Ok(())
         });
@@ -1211,7 +1228,7 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
 
         // Ensure that the map value is correct.
         assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
@@ -1225,7 +1242,9 @@ mod tests {
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
+        assert_eq!(map.database.checkpoints.lock().last(), None);
+        assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
         // Insert the key.
         map.insert(0, "0".to_string()).unwrap();
@@ -1236,13 +1255,20 @@ mod tests {
             // Simulates an accepted transaction.
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 0.
-                assert_eq!(map.checkpoint.lock().last(), Some(&0));
+                assert_eq!(map.checkpoints.lock().last(), Some(&0));
+                assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&0));
+                assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 1);
 
                 // Insert the key.
                 map.insert(0, "1".to_string()).unwrap();
 
                 Ok(())
             });
+
+            // Make sure the checkpoint index is None.
+            assert_eq!(map.checkpoints.lock().last(), None);
+            assert_eq!(map.database.checkpoints.lock().last(), None);
+            assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
             // The atomic finalize should have succeeded.
             assert!(result.is_ok());
@@ -1257,10 +1283,17 @@ mod tests {
             // Simulates a rejected transaction.
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 1.
-                assert_eq!(map.checkpoint.lock().last(), Some(&1));
+                assert_eq!(map.checkpoints.lock().last(), Some(&1));
+                assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&1));
+                assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 1);
 
                 // Simulate an instruction
                 let result: Result<()> = atomic_batch_scope!(map, {
+                    // Make sure the checkpoint index is 1.
+                    assert_eq!(map.checkpoints.lock().last(), Some(&1));
+                    assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&1));
+                    assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 2);
+
                     // Update the key.
                     map.insert(0, "2".to_string()).unwrap();
 
@@ -1268,10 +1301,17 @@ mod tests {
                 });
                 assert!(result.is_ok());
 
+                // Make sure the checkpoint index is 1.
+                assert_eq!(map.checkpoints.lock().last(), Some(&1));
+                assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&1));
+                assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 1);
+
                 // Simulates an instruction that fails.
                 let result: Result<()> = atomic_batch_scope!(map, {
                     // Make sure the checkpoint index is 2.
-                    assert_eq!(map.checkpoint.lock().last(), Some(&2));
+                    assert_eq!(map.checkpoints.lock().last(), Some(&2));
+                    assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&2));
+                    assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 2);
 
                     // Update the key.
                     map.insert(0, "3".to_string()).unwrap();
@@ -1291,6 +1331,9 @@ mod tests {
             assert_eq!(map.iter_pending().count(), 1);
             // Make sure the pending operations still has the initial insertion.
             assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+            assert_eq!(map.checkpoints.lock().last(), None);
+            assert_eq!(map.database.checkpoints.lock().last(), None);
+            assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
             Ok(())
         });
@@ -1301,7 +1344,9 @@ mod tests {
         // The pending batch should contain no items.
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
-        assert_eq!(map.checkpoint.lock().last(), None);
+        assert_eq!(map.checkpoints.lock().last(), None);
+        assert_eq!(map.database.checkpoints.lock().last(), None);
+        assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
         // Ensure that the map value is correct.
         assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
@@ -1322,26 +1367,28 @@ mod tests {
         assert!(test_storage.extra_maps.own_map2.iter_confirmed().next().is_none());
         assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
 
+        assert_eq!(test_storage.own_map.checkpoints.lock().last(), None);
+        assert_eq!(test_storage.own_map.database.checkpoints.lock().last(), None);
+        assert_eq!(test_storage.own_map.database.checkpoint_index.load(Ordering::SeqCst), 0);
+
         // Note: all the checks going through .database can be performed on any one
         // of the objects, as all of them share the same instance of the database.
 
-        // Ensure the batch depth is 0, meaning the atomic operation has not started yet.
-        assert_eq!(0, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
         assert!(!test_storage.is_atomic_in_progress_everywhere());
 
         // Start an atomic write batch.
-        crate::atomic_batch_scope!(test_storage, {
-            // Ensure the batch depth is 4, as all of the underlying maps have called start_atomic.
-            assert_eq!(4, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
+        atomic_batch_scope!(test_storage, {
             assert!(test_storage.is_atomic_in_progress_everywhere());
+
+            assert_eq!(test_storage.own_map.checkpoints.lock().last(), None);
+            assert_eq!(test_storage.own_map.database.checkpoints.lock().last(), None);
+            assert_eq!(test_storage.own_map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
             // Write an item into the first map.
             test_storage.own_map.insert(0, 0.to_string()).unwrap();
 
             // Start another atomic write batch.
-            crate::atomic_batch_scope!(test_storage.extra_maps.own_map1, {
-                // Ensure the batch depth is still 4, as only the first, outermost call triggers this increase.
-                assert_eq!(4, test_storage.extra_maps.own_map1.database.atomic_batch_index.load(Ordering::SeqCst));
+            atomic_batch_scope!(test_storage.extra_maps.own_map1, {
                 assert!(test_storage.is_atomic_in_progress_everywhere());
 
                 // Write an item into the second map.
@@ -1351,12 +1398,7 @@ mod tests {
                 test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
 
                 // Start another atomic write batch.
-                crate::atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
-                    // Ensure the batch depth is still 4.
-                    assert_eq!(
-                        4,
-                        test_storage.extra_maps.extra_maps.own_map.database.atomic_batch_index.load(Ordering::SeqCst)
-                    );
+                atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
                     assert!(test_storage.extra_maps.extra_maps.own_map.is_atomic_in_progress());
 
                     // Write an item into the fourth map.
@@ -1365,22 +1407,16 @@ mod tests {
                     Ok(())
                 })?;
 
-                // Ensure the batch depth is still 4, as only the last, outermost call triggers the decrease.
-                assert_eq!(4, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
                 assert!(test_storage.is_atomic_in_progress_everywhere());
 
                 Ok(())
             })?;
 
-            // Ensure the batch depth is still 4.
-            assert_eq!(4, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
             assert!(test_storage.is_atomic_in_progress_everywhere());
 
             Ok(())
         })?;
 
-        // Ensure the batch depth is 0 now, meaning the atomic operation has concluded.
-        assert_eq!(0, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
         assert!(!test_storage.is_atomic_in_progress_everywhere());
 
         // Ensure that all the items are present.
@@ -1401,60 +1437,39 @@ mod tests {
         // inspect the aftermatch after an error, as opposed to returning from the whole test.
         fn execute_atomic_write_batch(test_storage: &TestStorage) -> Result<()> {
             // Start an atomic write batch.
-            crate::atomic_batch_scope!(test_storage, {
-                // Ensure the batch depth is 4, as all of the underlying maps have called start_atomic.
-                assert_eq!(4, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
+            atomic_batch_scope!(test_storage, {
                 assert!(test_storage.is_atomic_in_progress_everywhere());
 
                 // Write an item into the first map.
                 test_storage.own_map.insert(0, 0.to_string()).unwrap();
 
                 // Start another atomic write batch.
-                crate::atomic_batch_scope!(test_storage.extra_maps.own_map1, {
-                    // Ensure the batch depth is still 4, as only the first, outermost call triggers this increase.
-                    assert_eq!(4, test_storage.extra_maps.own_map1.database.atomic_batch_index.load(Ordering::SeqCst));
+                atomic_batch_scope!(test_storage.extra_maps.own_map1, {
                     assert!(test_storage.is_atomic_in_progress_everywhere());
 
                     // Write an item into the second map.
                     test_storage.extra_maps.own_map1.insert(1, 1.to_string()).unwrap();
 
-                    // Perform an atomic checkpoint.
-                    test_storage.extra_maps.own_map1.atomic_checkpoint();
-
                     // Write an item into the third map.
                     test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
 
                     // Start another atomic write batch.
-                    crate::atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
-                        // Ensure the batch depth is still 4.
-                        assert_eq!(
-                            4,
-                            test_storage
-                                .extra_maps
-                                .extra_maps
-                                .own_map
-                                .database
-                                .atomic_batch_index
-                                .load(Ordering::SeqCst)
-                        );
+                    let result: Result<()> = atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
                         assert!(test_storage.is_atomic_in_progress_everywhere());
 
                         // Write an item into the fourth map.
                         test_storage.extra_maps.extra_maps.own_map.insert(3, 3.to_string()).unwrap();
 
                         // Rewind the atomic batch via a simulated error.
-                        bail!("An error that will trigger a cascade rewind.");
-                    })?;
+                        bail!("An error that will trigger a single rewind.");
+                    });
+                    assert!(result.is_err());
 
-                    // Ensure the batch depth is still 4, as only the last, outermost call triggers the decrease.
-                    assert_eq!(4, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
                     assert!(test_storage.is_atomic_in_progress_everywhere());
 
                     Ok(())
                 })?;
 
-                // Ensure the batch depth is still 4.
-                assert_eq!(4, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
                 assert!(test_storage.is_atomic_in_progress_everywhere());
 
                 Ok(())
@@ -1475,23 +1490,17 @@ mod tests {
         // Note: all the checks going through .database can be performed on any one
         // of the objects, as all of them share the same instance of the database.
 
-        // Ensure the batch depth is 0.
-        assert_eq!(0, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
         assert!(!test_storage.is_atomic_in_progress_everywhere());
 
         // Perform the atomic operations defined in the free function at the beginning of the test.
-        assert!(execute_atomic_write_batch(&test_storage).is_err());
+        assert!(execute_atomic_write_batch(&test_storage).is_ok());
 
-        // Ensure the batch depth is 0 now.
-        assert_eq!(0, test_storage.own_map.database.atomic_batch_index.load(Ordering::SeqCst));
         assert!(!test_storage.is_atomic_in_progress_everywhere());
 
-        // Ensure that all the items up until the checkpoint are present.
+        // Ensure that all the items up until the last scope are present.
         assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
-
-        // Ensure that all the items after the checkpoint are not present.
-        assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 0);
+        assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
         assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 0);
     }
 }
