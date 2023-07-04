@@ -193,7 +193,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                                 // Print the last member without a comma.
                                 true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
                                 // Print the member with a comma.
-                                false => write!(f, "\n{:indent$}}},", "", indent = depth * INDENT),
+                                false => write!(f, ","),
                             }
                         }
                     }
