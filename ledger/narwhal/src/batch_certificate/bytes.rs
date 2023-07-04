@@ -24,6 +24,8 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             return Err(error("Invalid batch version"));
         }
 
+        // Read the certificate ID.
+        let certificate_id = Field::read_le(&mut reader)?;
         // Read the batch header.
         let batch_header = BatchHeader::read_le(&mut reader)?;
         // Read the number of signatures.
@@ -39,7 +41,7 @@ impl<N: Network> FromBytes for BatchCertificate<N> {
             signatures.insert(signature, timestamp);
         }
         // Return the batch certificate.
-        Self::from(batch_header, signatures).map_err(|e| error(e.to_string()))
+        Self::from(certificate_id, batch_header, signatures).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -48,6 +50,8 @@ impl<N: Network> ToBytes for BatchCertificate<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u8.write_le(&mut writer)?;
+        // Write the certificate ID.
+        self.certificate_id.write_le(&mut writer)?;
         // Write the batch header.
         self.batch_header.write_le(&mut writer)?;
         // Write the number of signatures.

@@ -64,8 +64,7 @@ impl<N: Network> Batch<N> {
         // Construct the transmission IDs.
         let transmission_ids = transmissions.keys().copied().collect();
         // Compute the previous certificate IDs.
-        let previous_certificate_ids =
-            previous_certificates.iter().map(|c| c.to_id()).collect::<Result<IndexSet<_>, _>>()?;
+        let previous_certificate_ids = previous_certificates.iter().map(|c| c.certificate_id()).collect();
         // Compute the batch ID.
         let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Sign the preimage.
@@ -93,8 +92,7 @@ impl<N: Network> Batch<N> {
         // Construct the transmission IDs.
         let transmission_ids = transmissions.keys().copied().collect();
         // Compute the previous certificate IDs.
-        let previous_certificate_ids =
-            previous_certificates.iter().map(|c| c.to_id()).collect::<Result<IndexSet<_>, _>>()?;
+        let previous_certificate_ids = previous_certificates.iter().map(|c| c.certificate_id()).collect();
         // Compute the batch ID.
         let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.

@@ -16,7 +16,6 @@ mod bytes;
 mod serialize;
 mod string;
 mod to_address;
-mod to_id;
 
 use crate::{BatchHeader, TransmissionID};
 use console::{
@@ -30,6 +29,8 @@ use indexmap::{IndexMap, IndexSet};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchCertificate<N: Network> {
+    /// The certificate ID.
+    certificate_id: Field<N>,
     /// The batch header.
     batch_header: BatchHeader<N>,
     /// The `(signature, timestamp)` pairs for the batch ID from the committee.
@@ -38,9 +39,23 @@ pub struct BatchCertificate<N: Network> {
 
 impl<N: Network> BatchCertificate<N> {
     /// Initializes a new batch certificate.
-    pub fn from(batch_header: BatchHeader<N>, signatures: IndexMap<Signature<N>, i64>) -> Result<Self> {
-        // Ensure the signatures are not empty.
-        ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
+    pub fn new(batch_header: BatchHeader<N>, signatures: IndexMap<Signature<N>, i64>) -> Result<Self> {
+        // Compute the certificate ID.
+        let certificate_id = Self::compute_certificate_id(batch_header.batch_id(), &signatures)?;
+        // Return the batch certificate.
+        Self::from(certificate_id, batch_header, signatures)
+    }
+
+    /// Initializes a new batch certificate.
+    pub fn from(
+        certificate_id: Field<N>,
+        batch_header: BatchHeader<N>,
+        signatures: IndexMap<Signature<N>, i64>,
+    ) -> Result<Self> {
+        // Compute the certificate ID.
+        if certificate_id != Self::compute_certificate_id(batch_header.batch_id(), &signatures)? {
+            bail!("Invalid batch certificate ID")
+        }
         // Verify the signatures are valid.
         for (signature, timestamp) in &signatures {
             let preimage = [batch_header.batch_id(), Field::from_u64(*timestamp as u64)];
@@ -49,19 +64,28 @@ impl<N: Network> BatchCertificate<N> {
             }
         }
         // Return the batch certificate.
-        Ok(Self { batch_header, signatures })
+        Self::from_unchecked(certificate_id, batch_header, signatures)
     }
 
     /// Initializes a new batch certificate.
-    pub fn from_unchecked(batch_header: BatchHeader<N>, signatures: IndexMap<Signature<N>, i64>) -> Result<Self> {
+    pub fn from_unchecked(
+        certificate_id: Field<N>,
+        batch_header: BatchHeader<N>,
+        signatures: IndexMap<Signature<N>, i64>,
+    ) -> Result<Self> {
         // Ensure the signatures are not empty.
         ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
         // Return the batch certificate.
-        Ok(Self { batch_header, signatures })
+        Ok(Self { certificate_id, batch_header, signatures })
     }
 }
 
 impl<N: Network> BatchCertificate<N> {
+    /// Returns the certificate ID.
+    pub const fn certificate_id(&self) -> Field<N> {
+        self.certificate_id
+    }
+
     /// Returns the batch header.
     pub const fn batch_header(&self) -> &BatchHeader<N> {
         &self.batch_header
@@ -108,6 +132,24 @@ impl<N: Network> Hash for BatchCertificate<N> {
     }
 }
 
+impl<N: Network> BatchCertificate<N> {
+    /// Returns the certificate ID.
+    pub fn compute_certificate_id(batch_id: Field<N>, signatures: &IndexMap<Signature<N>, i64>) -> Result<Field<N>> {
+        let mut preimage = Vec::new();
+        // Insert the batch ID.
+        preimage.extend_from_slice(&batch_id.to_bytes_le()?);
+        // Insert the signatures.
+        for (signature, timestamp) in signatures {
+            // Insert the signature.
+            preimage.extend_from_slice(&signature.to_bytes_le()?);
+            // Insert the timestamp.
+            preimage.extend_from_slice(&timestamp.to_bytes_le()?);
+        }
+        // Hash the preimage.
+        N::hash_bhp1024(&preimage.to_bits_le())
+    }
+}
+
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod test_helpers {
     use super::*;
@@ -130,7 +172,7 @@ pub mod test_helpers {
             signatures.insert(private_key.sign(&[batch_header.batch_id(), timestamp_field], rng).unwrap(), timestamp);
         }
         // Return the batch certificate.
-        BatchCertificate::from(batch_header, signatures).unwrap()
+        BatchCertificate::new(batch_header, signatures).unwrap()
     }
 
     /// Returns a list of sample batch certificates, sampled at random.

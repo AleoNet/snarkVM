@@ -19,7 +19,8 @@ impl<N: Network> Serialize for BatchCertificate<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("BatchCertificate", 2)?;
+                let mut header = serializer.serialize_struct("BatchCertificate", 3)?;
+                header.serialize_field("certificate_id", &self.certificate_id)?;
                 header.serialize_field("batch_header", &self.batch_header)?;
                 header.serialize_field("signatures", &self.signatures)?;
                 header.end()
@@ -36,6 +37,7 @@ impl<'de, N: Network> Deserialize<'de> for BatchCertificate<N> {
             true => {
                 let mut value = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::from(
+                    DeserializeExt::take_from_value::<D>(&mut value, "certificate_id")?,
                     DeserializeExt::take_from_value::<D>(&mut value, "batch_header")?,
                     DeserializeExt::take_from_value::<D>(&mut value, "signatures")?,
                 )
