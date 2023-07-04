@@ -18,7 +18,7 @@ mod string;
 mod to_address;
 mod to_id;
 
-use crate::BatchHeader;
+use crate::{BatchHeader, TransmissionID};
 use console::{
     account::{Address, Signature},
     prelude::*,
@@ -26,7 +26,7 @@ use console::{
 };
 
 use core::hash::{Hash, Hasher};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BatchCertificate<N: Network> {
@@ -75,6 +75,16 @@ impl<N: Network> BatchCertificate<N> {
     /// Returns the round.
     pub const fn round(&self) -> u64 {
         self.batch_header.round()
+    }
+
+    /// Returns the transmission IDs.
+    pub const fn transmission_ids(&self) -> &IndexSet<TransmissionID<N>> {
+        self.batch_header.transmission_ids()
+    }
+
+    /// Returns the batch certificate IDs for the previous round.
+    pub const fn previous_certificate_ids(&self) -> &IndexSet<Field<N>> {
+        self.batch_header.previous_certificate_ids()
     }
 
     /// Returns the timestamps of the batch ID from the committee.
