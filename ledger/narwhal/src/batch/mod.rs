@@ -165,15 +165,15 @@ impl<N: Network> Batch<N> {
     }
 }
 
-#[cfg(test)]
-mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, prelude::TestRng};
 
     type CurrentNetwork = Testnet3;
 
     /// Returns a list of sample batches, sampled at random.
-    pub(crate) fn sample_batches(rng: &mut TestRng) -> Vec<Batch<CurrentNetwork>> {
+    pub fn sample_batches(rng: &mut TestRng) -> Vec<Batch<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = Vec::with_capacity(10);
         // Append sample batches.

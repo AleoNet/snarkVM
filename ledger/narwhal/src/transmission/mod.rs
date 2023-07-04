@@ -62,18 +62,20 @@ impl<N: Network> From<Data<Transaction<N>>> for Transmission<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
-    use console::{network::Testnet3, prelude::TestRng};
+    use console::{
+        network::Testnet3,
+        prelude::{Rng, TestRng},
+    };
 
     use ::bytes::Bytes;
-    use rand::Rng;
 
     type CurrentNetwork = Testnet3;
 
     /// Returns a list of sample transmissions, sampled at random.
-    pub(crate) fn sample_transmissions(rng: &mut TestRng) -> Vec<Transmission<CurrentNetwork>> {
+    pub fn sample_transmissions(rng: &mut TestRng) -> Vec<Transmission<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = Vec::with_capacity(10);
         // Append sample solutions.

@@ -142,15 +142,15 @@ impl<N: Network> BatchHeader<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, prelude::TestRng};
 
     type CurrentNetwork = Testnet3;
 
     /// Returns a list of sample batch header, sampled at random.
-    pub(crate) fn sample_batch_header(rng: &mut TestRng) -> BatchHeader<CurrentNetwork> {
+    pub fn sample_batch_header(rng: &mut TestRng) -> BatchHeader<CurrentNetwork> {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample transmission IDs.
@@ -163,7 +163,7 @@ pub(crate) mod test_helpers {
     }
 
     /// Returns a list of sample batch headers, sampled at random.
-    pub(crate) fn sample_batch_headers(rng: &mut TestRng) -> Vec<BatchHeader<CurrentNetwork>> {
+    pub fn sample_batch_headers(rng: &mut TestRng) -> Vec<BatchHeader<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = Vec::with_capacity(10);
         // Append sample batches.

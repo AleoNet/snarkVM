@@ -98,8 +98,8 @@ impl<N: Network> Hash for BatchCertificate<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, prelude::TestRng, types::Field};
 
@@ -108,7 +108,7 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Returns a sample batch certificate, sampled at random.
-    pub(crate) fn sample_batch_certificate(rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
+    pub fn sample_batch_certificate(rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
         // Sample a batch header.
         let batch_header = crate::batch_header::test_helpers::sample_batch_header(rng);
         // Sample a list of signatures.
@@ -124,7 +124,7 @@ pub(crate) mod test_helpers {
     }
 
     /// Returns a list of sample batch certificates, sampled at random.
-    pub(crate) fn sample_batch_certificates(rng: &mut TestRng) -> IndexSet<BatchCertificate<CurrentNetwork>> {
+    pub fn sample_batch_certificates(rng: &mut TestRng) -> IndexSet<BatchCertificate<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = IndexSet::with_capacity(10);
         // Append sample batch certificates.

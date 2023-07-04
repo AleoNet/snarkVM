@@ -28,6 +28,7 @@ default = [ "batch", "batch-certificate", "batch-header", "transmission", "trans
 async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
+test-helpers = [ "bytes" ]
 
 batch = [ "batch-certificate", "batch-header", "indexmap", "time", "transmission", "transmission-id" ]
 batch-certificate = [ "batch-header", "console", "indexmap", "serde_json" ]

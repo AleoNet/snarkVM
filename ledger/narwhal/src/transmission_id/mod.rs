@@ -61,21 +61,19 @@ impl<N: Network> TransmissionID<N> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
     use console::{
         network::Testnet3,
-        prelude::{TestRng, Uniform},
+        prelude::{Rng, TestRng, Uniform},
         types::Field,
     };
-
-    use rand::Rng;
 
     type CurrentNetwork = Testnet3;
 
     /// Returns a list of sample transmission IDs, sampled at random.
-    pub(crate) fn sample_transmission_ids(rng: &mut TestRng) -> Vec<TransmissionID<CurrentNetwork>> {
+    pub fn sample_transmission_ids(rng: &mut TestRng) -> Vec<TransmissionID<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = Vec::with_capacity(10);
         // Append sample puzzle commitments.
