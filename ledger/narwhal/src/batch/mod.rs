@@ -51,10 +51,12 @@ impl<N: Network> Batch<N> {
         previous_certificates: IndexSet<BatchCertificate<N>>,
         rng: &mut R,
     ) -> Result<Self> {
-        // If the round is zero or one, then there should be no previous certificates.
-        ensure!((round != 0 && round != 1) || previous_certificates.is_empty(), "Invalid round number");
-        // If the round is not zero and not one, then there should be at least one previous certificate.
-        ensure!((round == 0 || round == 1) || !previous_certificates.is_empty(), "Invalid round number");
+        match round {
+            // If the round is zero or one, then there should be no previous certificates.
+            0 | 1 => ensure!(previous_certificates.is_empty(), "Invalid round number, must not have certificates"),
+            // If the round is not zero and not one, then there should be at least one previous certificate.
+            _ => ensure!(!previous_certificates.is_empty(), "Invalid round number, must have certificates"),
+        }
         // Ensure there are transmissions in the batch.
         ensure!(!transmissions.is_empty(), "Batch must contain at least one transmission");
         // Checkpoint the timestamp for the batch.
@@ -80,10 +82,12 @@ impl<N: Network> Batch<N> {
         previous_certificates: IndexSet<BatchCertificate<N>>,
         signature: Signature<N>,
     ) -> Result<Self> {
-        // If the round is zero or one, then there should be no previous certificates.
-        ensure!((round != 0 && round != 1) || previous_certificates.is_empty(), "Invalid round number");
-        // If the round is not zero and not one, then there should be at least one previous certificate.
-        ensure!((round == 0 || round == 1) || !previous_certificates.is_empty(), "Invalid round number");
+        match round {
+            // If the round is zero or one, then there should be no previous certificates.
+            0 | 1 => ensure!(previous_certificates.is_empty(), "Invalid round number, must not have certificates"),
+            // If the round is not zero and not one, then there should be at least one previous certificate.
+            _ => ensure!(!previous_certificates.is_empty(), "Invalid round number, must have certificates"),
+        }
         // Ensure there are transmissions in the batch.
         ensure!(!transmissions.is_empty(), "Batch must contain at least one transmission");
         // Construct the transmission IDs.
