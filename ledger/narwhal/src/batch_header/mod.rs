@@ -52,10 +52,10 @@ impl<N: Network> BatchHeader<N> {
         previous_certificate_ids: IndexSet<Field<N>>,
         rng: &mut R,
     ) -> Result<Self> {
-        // If the round is zero, then there should be no previous certificate IDs.
-        ensure!(round != 0 || previous_certificate_ids.is_empty(), "Invalid round number");
-        // If the round is not zero, then there should be at least one previous certificate ID.
-        ensure!(round == 0 || !previous_certificate_ids.is_empty(), "Invalid round number");
+        // If the round is zero or one, then there should be no previous certificate IDs.
+        ensure!((round != 0 && round != 1) || previous_certificate_ids.is_empty(), "Invalid round number");
+        // If the round is not zero and not one, then there should be at least one previous certificate ID.
+        ensure!((round == 0 || round == 1) || !previous_certificate_ids.is_empty(), "Invalid round number");
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Compute the batch ID.
@@ -74,10 +74,10 @@ impl<N: Network> BatchHeader<N> {
         previous_certificate_ids: IndexSet<Field<N>>,
         signature: Signature<N>,
     ) -> Result<Self> {
-        // If the round is zero, then there should be no previous certificate IDs.
-        ensure!(round != 0 || previous_certificate_ids.is_empty(), "Invalid round number");
-        // If the round is not zero, then there should be at least one previous certificate ID.
-        ensure!(round == 0 || !previous_certificate_ids.is_empty(), "Invalid round number");
+        // If the round is zero or one, then there should be no previous certificate IDs.
+        ensure!((round != 0 && round != 1) || previous_certificate_ids.is_empty(), "Invalid round number");
+        // If the round is not zero and not one, then there should be at least one previous certificate ID.
+        ensure!((round == 0 || round == 1) || !previous_certificate_ids.is_empty(), "Invalid round number");
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
