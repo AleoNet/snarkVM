@@ -21,26 +21,26 @@ mod helpers;
 pub use helpers::*;
 
 #[cfg(feature = "batch")]
-mod batch;
+pub mod batch;
 #[cfg(feature = "batch")]
 pub use batch::*;
 
 #[cfg(feature = "batch-certificate")]
-mod batch_certificate;
+pub mod batch_certificate;
 #[cfg(feature = "batch-certificate")]
 pub use batch_certificate::*;
 
 #[cfg(feature = "batch-header")]
-mod batch_header;
+pub mod batch_header;
 #[cfg(feature = "batch-header")]
 pub use batch_header::*;
 
 #[cfg(feature = "transmission")]
-mod transmission;
+pub mod transmission;
 #[cfg(feature = "transmission")]
 pub use transmission::*;
 
 #[cfg(feature = "transmission-id")]
-mod transmission_id;
+pub mod transmission_id;
 #[cfg(feature = "transmission-id")]
 pub use transmission_id::*;
