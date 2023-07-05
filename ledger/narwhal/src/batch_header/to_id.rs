@@ -17,19 +17,28 @@ use super::*;
 impl<N: Network> BatchHeader<N> {
     /// Returns the batch ID.
     pub fn to_id(&self) -> Result<Field<N>> {
-        Self::compute_batch_id(self.round, self.timestamp, &self.transmission_ids, &self.previous_certificate_ids)
+        Self::compute_batch_id(
+            self.author,
+            self.round,
+            self.timestamp,
+            &self.transmission_ids,
+            &self.previous_certificate_ids,
+        )
     }
 }
 
 impl<N: Network> BatchHeader<N> {
     /// Returns the batch ID.
     pub fn compute_batch_id(
+        author: Address<N>,
         round: u64,
         timestamp: i64,
         transmission_ids: &IndexSet<TransmissionID<N>>,
         previous_certificate_ids: &IndexSet<Field<N>>,
     ) -> Result<Field<N>> {
         let mut preimage = Vec::new();
+        // Insert the author.
+        preimage.extend_from_slice(&author.to_bytes_le()?);
         // Insert the round number.
         preimage.extend_from_slice(&round.to_bytes_le()?);
         // Insert the timestamp.

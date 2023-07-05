@@ -15,7 +15,6 @@
 mod bytes;
 mod serialize;
 mod string;
-mod to_address;
 
 use crate::{BatchHeader, TransmissionID};
 use console::{
@@ -94,6 +93,11 @@ impl<N: Network> BatchCertificate<N> {
     /// Returns the batch ID.
     pub const fn batch_id(&self) -> Field<N> {
         self.batch_header.batch_id()
+    }
+
+    /// Returns the author.
+    pub const fn author(&self) -> &Address<N> {
+        self.batch_header.author()
     }
 
     /// Returns the round.

@@ -18,7 +18,7 @@ mod to_header;
 
 use crate::{BatchCertificate, BatchHeader, Transmission, TransmissionID};
 use console::{
-    account::{PrivateKey, Signature},
+    account::{Address, PrivateKey, Signature},
     prelude::*,
     types::Field,
 };
@@ -30,6 +30,8 @@ use time::OffsetDateTime;
 pub struct Batch<N: Network> {
     /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificates.
     batch_id: Field<N>,
+    /// The author of the batch.
+    author: Address<N>,
     /// The round number.
     round: u64,
     /// The timestamp.
@@ -59,6 +61,8 @@ impl<N: Network> Batch<N> {
         }
         // Ensure there are transmissions in the batch.
         ensure!(!transmissions.is_empty(), "Batch must contain at least one transmission");
+        // Construct the author.
+        let author = Address::try_from(private_key)?;
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Construct the transmission IDs.
@@ -66,15 +70,17 @@ impl<N: Network> Batch<N> {
         // Compute the previous certificate IDs.
         let previous_certificate_ids = previous_certificates.iter().map(|c| c.certificate_id()).collect();
         // Compute the batch ID.
-        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
+        let batch_id =
+            BatchHeader::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Sign the preimage.
         let signature = private_key.sign(&[batch_id, Field::from_u64(timestamp as u64)], rng)?;
         // Return the batch.
-        Ok(Self { batch_id, round, timestamp, transmissions, previous_certificates, signature })
+        Ok(Self { author, batch_id, round, timestamp, transmissions, previous_certificates, signature })
     }
 
     /// Initializes a new batch.
     pub fn from(
+        author: Address<N>,
         round: u64,
         timestamp: i64,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
@@ -94,13 +100,14 @@ impl<N: Network> Batch<N> {
         // Compute the previous certificate IDs.
         let previous_certificate_ids = previous_certificates.iter().map(|c| c.certificate_id()).collect();
         // Compute the batch ID.
-        let batch_id = BatchHeader::compute_batch_id(round, timestamp, &transmission_ids, &previous_certificate_ids)?;
+        let batch_id =
+            BatchHeader::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Verify the signature.
-        if !signature.verify(&signature.to_address(), &[batch_id, Field::from_u64(timestamp as u64)]) {
+        if !signature.verify(&author, &[batch_id, Field::from_u64(timestamp as u64)]) {
             bail!("Invalid signature for the batch");
         }
         // Return the batch.
-        Ok(Self { batch_id, round, timestamp, transmissions, previous_certificates, signature })
+        Ok(Self { author, batch_id, round, timestamp, transmissions, previous_certificates, signature })
     }
 }
 
@@ -108,6 +115,11 @@ impl<N: Network> Batch<N> {
     /// Returns the batch ID.
     pub const fn batch_id(&self) -> Field<N> {
         self.batch_id
+    }
+
+    /// Returns the author.
+    pub const fn author(&self) -> &Address<N> {
+        &self.author
     }
 
     /// Returns the round number.

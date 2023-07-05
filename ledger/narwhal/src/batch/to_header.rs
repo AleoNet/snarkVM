@@ -18,6 +18,7 @@ impl<N: Network> Batch<N> {
     /// Returns the batch header.
     pub fn to_header(&self) -> Result<BatchHeader<N>> {
         BatchHeader::from(
+            self.author,
             self.round,
             self.timestamp,
             self.transmission_ids(),

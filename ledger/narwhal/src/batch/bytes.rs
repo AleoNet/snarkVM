@@ -26,6 +26,8 @@ impl<N: Network> FromBytes for Batch<N> {
 
         // Read the batch ID.
         let batch_id = Field::read_le(&mut reader)?;
+        // Read the author.
+        let author = Address::read_le(&mut reader)?;
         // Read the round number.
         let round = u64::read_le(&mut reader)?;
         // Read the timestamp.
@@ -57,7 +59,7 @@ impl<N: Network> FromBytes for Batch<N> {
         let signature = Signature::read_le(&mut reader)?;
 
         // Construct the batch.
-        let batch = Self::from(round, timestamp, transmissions, previous_certificates, signature)
+        let batch = Self::from(author, round, timestamp, transmissions, previous_certificates, signature)
             .map_err(|e| error(e.to_string()))?;
 
         // Return the batch.
@@ -75,6 +77,8 @@ impl<N: Network> ToBytes for Batch<N> {
         0u8.write_le(&mut writer)?;
         // Write the batch ID.
         self.batch_id.write_le(&mut writer)?;
+        // Write the author.
+        self.author.write_le(&mut writer)?;
         // Write the round number.
         self.round.write_le(&mut writer)?;
         // Write the timestamp.
