@@ -57,6 +57,7 @@ pub trait Database {
 
 type RocksKey = Box<[u8]>;
 type RocksValue = Box<[u8]>;
+type RocksValueOrDelete = Option<RocksValue>;
 
 /// An instance of a RocksDB database.
 #[derive(Clone)]
@@ -70,7 +71,7 @@ pub struct RocksDB {
     /// The low-level database transaction that gets executed atomically at the end
     /// of a real-run `atomic_finalize` or the outermost `atomic_batch_scope`. A `None`
     /// value represents a deletion.
-    pub(super) atomic_batch: Arc<Mutex<Vec<(RocksKey, Option<RocksValue>)>>>,
+    pub(super) atomic_batch: Arc<Mutex<Vec<(RocksKey, RocksValueOrDelete)>>>,
     /// The current checkpoint depth; opening nested checkpoints increases its value,
     /// and closing checkpoint scopes decreases it.
     pub(super) checkpoint_index: Arc<AtomicUsize>,
