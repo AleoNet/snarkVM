@@ -96,7 +96,7 @@ impl<N: Network> BatchCertificate<N> {
     }
 
     /// Returns the author.
-    pub const fn author(&self) -> &Address<N> {
+    pub const fn author(&self) -> Address<N> {
         self.batch_header.author()
     }
 

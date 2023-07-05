@@ -118,8 +118,8 @@ impl<N: Network> Batch<N> {
     }
 
     /// Returns the author.
-    pub const fn author(&self) -> &Address<N> {
-        &self.author
+    pub const fn author(&self) -> Address<N> {
+        self.author
     }
 
     /// Returns the round number.
