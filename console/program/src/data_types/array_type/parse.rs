@@ -15,13 +15,26 @@
 use super::*;
 
 impl<N: Network> Parser for ArrayType<N> {
-    /// Parses a string into a literal type.
+    /// Parses a string into an array type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the opening bracket.
-        let (string, _) = tag("[")(string)?;
+        // Parse the opening brackets and count the number of brackets.
+        let (string, num_dimensions) = map_res(
+            many1_count(pair(tag("["), Sanitizer::parse_whitespaces)),
+            |num_dimensions| match num_dimensions {
+                num_dimensions if (0 < num_dimensions) && (num_dimensions <= N::MAX_DATA_DEPTH) => Ok(num_dimensions),
+                _ => Err(error("Number of dimensions exceeds the maximum")),
+            },
+        )(string)?;
+
         // Parse the whitespaces from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
+
+        // Parse the innermost element type, note that this must either be `LiteralType` or `Identifier`.
+        let (string, element_type) = alt((
+            map(LiteralType::parse, |literal_type| PlaintextType::Literal(literal_type)),
+            map(Identifier::parse, |identifier| PlaintextType::Struct(identifier)),
+        ))(string)?;
 
         // A helper function to parse the semicolon, length, and closing bracket.
         fn parse_length(string: &str) -> ParserResult<u32> {
@@ -41,15 +54,22 @@ impl<N: Network> Parser for ArrayType<N> {
             Ok((string, length))
         }
 
-        // Parse the element type, followed by the length.
-        alt((
-            map_res(pair(LiteralType::parse, parse_length), |(element_type, length)| {
-                ArrayType::new_literal_array(element_type, U32::new(length))
-            }),
-            map_res(pair(Identifier::parse, parse_length), |(element_type, length)| {
-                ArrayType::new_struct_array(element_type, U32::new(length))
-            }),
-        ))(string)
+        // Parse the lengths, `num_dimensions` times.
+        let (string, lengths) = count(parse_length, num_dimensions)(string)?;
+
+        // Construct the element type from the lengths.
+        map_res(take(0usize), move |_| -> Result<_, Error> {
+            // Construct an iterator over the lengths.
+            let mut lengths = lengths.iter().rev();
+            // Get the last length and construct the array type.
+            // Note that this unwrap is safe since we have already checked that `num_dimensions` is greater than zero.
+            let mut array_type = ArrayType::new(element_type.clone(), U32::new(*lengths.next().unwrap()))?;
+            // Construct the array type from the remaining lengths.
+            for length in lengths {
+                array_type = ArrayType::new(PlaintextType::Array(array_type), U32::new(*length))?;
+            }
+            Ok(array_type)
+        })(string)
     }
 }
 
@@ -80,9 +100,33 @@ impl<N: Network> Debug for ArrayType<N> {
 impl<N: Network> Display for ArrayType<N> {
     /// Prints the array type as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Literal(literal_type, length) => write!(f, "[{}; {}]", literal_type, **length),
-            Self::Struct(identifier, length) => write!(f, "[{}; {}]", identifier, **length),
+        // Get the lengths and the innermost element type.
+        let mut lengths = Vec::with_capacity(N::MAX_DATA_DEPTH);
+        lengths.push(self.length());
+        let mut element_type = self.element_type();
+        for _ in 1..N::MAX_DATA_DEPTH {
+            match element_type {
+                PlaintextType::Array(array_type) => {
+                    lengths.push(array_type.length());
+                    element_type = array_type.element_type();
+                }
+                _ => break,
+            }
         }
+        // If the innermost element type is an array, then return an error.
+        if let PlaintextType::Array(_) = element_type {
+            panic!("Array type exceeds the maximum depth")
+        }
+        // Print the opening brackets.
+        for _ in 0..lengths.len() {
+            write!(f, "[")?;
+        }
+        // Print the innermost element type.
+        Display::fmt(&element_type, f)?;
+        // Print the lengths.
+        for length in lengths.iter().rev() {
+            write!(f, "; {}]", length)?;
+        }
+        Ok(())
     }
 }

@@ -22,50 +22,31 @@ use snarkvm_console_network::prelude::*;
 use core::fmt::{Debug, Display};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub enum ArrayType<N: Network> {
-    /// An array of literals.
-    Literal(LiteralType, U32<N>),
-    /// An array of structs.
-    Struct(Identifier<N>, U32<N>),
+pub struct ArrayType<N: Network> {
+    element_type: Box<PlaintextType<N>>,
+    length: U32<N>,
 }
 
 impl<N: Network> ArrayType<N> {
     /// Constructs a new type defining an array of literals.
-    pub fn new_literal_array(literal_type: LiteralType, length: U32<N>) -> Result<Self> {
+    pub fn new(element_type: PlaintextType<N>, length: U32<N>) -> Result<Self> {
         ensure!(*length != 0, "The array must have at least one element");
         ensure!(
             *length as usize <= N::MAX_ARRAY_ENTRIES,
             "The array must have at most {} elements",
             N::MAX_ARRAY_ENTRIES
         );
-        Ok(Self::Literal(literal_type, length))
-    }
-
-    /// Constructs a new type defining an array of structs.
-    pub fn new_struct_array(struct_: Identifier<N>, length: U32<N>) -> Result<Self> {
-        ensure!(*length != 0, "The array must have at least one element");
-        ensure!(
-            *length as usize <= N::MAX_ARRAY_ENTRIES,
-            "The array must have at most {} elements",
-            N::MAX_ARRAY_ENTRIES
-        );
-        Ok(Self::Struct(struct_, length))
+        Ok(Self { element_type: Box::new(element_type), length })
     }
 
     /// Returns the element type.
-    pub fn element_type(&self) -> PlaintextType<N> {
-        match &self {
-            ArrayType::Literal(literal_type, ..) => PlaintextType::Literal(*literal_type),
-            ArrayType::Struct(identifier, ..) => PlaintextType::Struct(*identifier),
-        }
+    pub fn element_type(&self) -> &PlaintextType<N> {
+        &self.element_type
     }
 
     /// Returns the length of the array.
     pub fn length(&self) -> &U32<N> {
-        match &self {
-            ArrayType::Literal(_, length) => length,
-            ArrayType::Struct(_, length) => length,
-        }
+        &self.length
     }
 }
 
@@ -82,33 +63,49 @@ mod tests {
     fn test_array_type() -> Result<()> {
         // Test literal array types.
         let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 4]")?;
-        assert_eq!(type_, ArrayType::<CurrentNetwork>::Literal(LiteralType::Field, U32::new(4)));
+        assert_eq!(type_, ArrayType::<CurrentNetwork>::new(PlaintextType::Literal(LiteralType::Field), U32::new(4))?);
         assert_eq!(
             type_.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(type_.element_type(), PlaintextType::Literal(LiteralType::Field));
+        assert_eq!(type_.element_type(), &PlaintextType::Literal(LiteralType::Field));
         assert_eq!(type_.length(), &U32::new(4));
 
         // Test struct array types.
         let type_ = ArrayType::<CurrentNetwork>::from_str("[foo; 1]")?;
-        assert_eq!(type_, ArrayType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?, U32::new(1)));
+        assert_eq!(
+            type_,
+            ArrayType::<CurrentNetwork>::new(PlaintextType::Struct(Identifier::from_str("foo")?), U32::new(1))?
+        );
         assert_eq!(
             type_.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(type_.element_type(), PlaintextType::Struct(Identifier::from_str("foo")?));
+        assert_eq!(type_.element_type(), &PlaintextType::Struct(Identifier::from_str("foo")?));
         assert_eq!(type_.length(), &U32::new(1));
 
         // Test array type with maximum length.
         let type_ = ArrayType::<CurrentNetwork>::from_str("[scalar; 4294967295]")?;
-        assert_eq!(type_, ArrayType::<CurrentNetwork>::Literal(LiteralType::Scalar, U32::new(4294967295)));
+        assert_eq!(
+            type_,
+            ArrayType::<CurrentNetwork>::new(PlaintextType::Literal(LiteralType::Scalar), U32::new(4294967295))?
+        );
         assert_eq!(
             type_.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(type_.element_type(), PlaintextType::Literal(LiteralType::Scalar));
+        assert_eq!(type_.element_type(), &PlaintextType::Literal(LiteralType::Scalar));
         assert_eq!(type_.length(), &U32::new(4294967295));
+
+        // Test multi-dimensional array type.
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[[field; 2]; 3]")?;
+        assert_eq!(
+            type_,
+            ArrayType::<CurrentNetwork>::new(
+                PlaintextType::Array(ArrayType::new(PlaintextType::Literal(LiteralType::Field), U32::new(2))?),
+                U32::new(3)
+            )?
+        );
 
         Ok(())
     }

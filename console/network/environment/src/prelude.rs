@@ -79,7 +79,7 @@ pub use nom::{
     bytes::{complete::tag, streaming::take},
     character::complete::{alpha1, alphanumeric1, char, one_of},
     combinator::{complete, fail, map, map_res, opt, recognize},
-    multi::{many0, many1, separated_list0, separated_list1},
+    multi::{count, many0, many1, many1_count, separated_list0, separated_list1},
     sequence::{pair, terminated},
 };
 pub use num_traits::{One, Pow, Zero};

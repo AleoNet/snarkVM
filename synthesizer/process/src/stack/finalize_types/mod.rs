@@ -90,13 +90,13 @@ impl<N: Network> FinalizeTypes<N> {
         // Initialize a tracker for the type of the register.
         let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+            self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?.clone()
         } else {
             // Retrieve the destination register type.
-            *self
+            self
                 .destinations
                 .get(&register.locator())
-                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?.clone()
         };
 
         // Retrieve the path if the register is an access. Otherwise, return the type.
@@ -122,12 +122,14 @@ impl<N: Network> FinalizeTypes<N> {
                 PlaintextType::Struct(struct_name) => {
                     let Access::Member(path_name) = path_name;
                     // Retrieve the member type from the struct.
-                    match stack.program().get_struct(struct_name)?.members().get(path_name) {
+                    match stack.program().get_struct(&struct_name)?.members().get(path_name) {
                         // Update the member type.
-                        Some(plaintext_type) => *plaintext_type,
+                        Some(plaintext_type) => plaintext_type.clone(),
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
                 }
+                // Access the index on the path to output the register type.
+                PlaintextType::Array(_) => todo!("Access the index on the path to output the register type."),
             }
         }
         // Output the plaintext type.

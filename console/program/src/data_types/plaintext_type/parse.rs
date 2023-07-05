@@ -22,6 +22,7 @@ impl<N: Network> Parser for PlaintextType<N> {
         alt((
             map(LiteralType::parse, |type_| Self::Literal(type_)),
             map(Identifier::parse, |identifier| Self::Struct(identifier)),
+            map(ArrayType::parse, |array| Self::Array(array)),
         ))(string)
     }
 }
@@ -58,6 +59,8 @@ impl<N: Network> Display for PlaintextType<N> {
             Self::Literal(literal) => Display::fmt(literal, f),
             // Prints the struct, i.e. signature
             Self::Struct(struct_) => Display::fmt(struct_, f),
+            // Prints the array, i.e. [field; 2]
+            Self::Array(array) => Display::fmt(array, f),
         }
     }
 }

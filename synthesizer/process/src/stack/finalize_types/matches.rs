@@ -66,10 +66,10 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the program ID type (address) matches the member type.
                 Operand::ProgramID(..) => {
                     // Retrieve the program ID type.
-                    let program_ref_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    let program_ref_type = &PlaintextType::Literal(LiteralType::Address);
                     // Ensure the program ID type matches the member type.
                     ensure!(
-                        program_ref_type == RegisterType::Plaintext(*member_type),
+                        program_ref_type == member_type,
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
                     )
                 }
@@ -80,10 +80,10 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the block height type (u32) matches the member type.
                 Operand::BlockHeight => {
                     // Retrieve the block height type.
-                    let block_height_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U32));
+                    let block_height_type = &PlaintextType::Literal(LiteralType::U32);
                     // Ensure the block height type matches the member type.
                     ensure!(
-                        block_height_type == RegisterType::Plaintext(*member_type),
+                        block_height_type == member_type,
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{block_height_type}' in the operand '{operand}'.",
                     )
                 }

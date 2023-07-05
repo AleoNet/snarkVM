@@ -114,7 +114,7 @@ impl<N: Network> FinalizeTypes<N> {
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), *plaintext_type)?;
+        self.add_input(register.clone(), plaintext_type.clone())?;
 
         // Ensure the register type and the input type match.
         if *plaintext_type != self.get_type(stack, register)? {
@@ -241,7 +241,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, *mapping_value_type)?;
+        self.add_destination(destination, mapping_value_type.clone())?;
         Ok(())
     }
 
@@ -285,7 +285,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, *mapping_value_type)?;
+        self.add_destination(destination, mapping_value_type.clone())?;
         Ok(())
     }
 

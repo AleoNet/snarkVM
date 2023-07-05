@@ -251,7 +251,7 @@ impl<N: Network> Cast<N> {
                     inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
                 {
                     // Compute the register type.
-                    let register_type = RegisterType::from(ValueType::from(*entry_type));
+                    let register_type = RegisterType::from(ValueType::from(entry_type.clone()));
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match entry {
                         Value::Plaintext(plaintext) => {
@@ -368,7 +368,7 @@ impl<N: Network> Cast<N> {
                 let mut members = IndexMap::new();
                 for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
                     // Compute the register type.
-                    let register_type = RegisterType::Plaintext(*member_type);
+                    let register_type = RegisterType::Plaintext(member_type.clone());
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match member {
                         circuit::Value::Plaintext(plaintext) => {
@@ -434,7 +434,7 @@ impl<N: Network> Cast<N> {
                     inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
                 {
                     // Compute the register type.
-                    let register_type = RegisterType::from(ValueType::from(*entry_type));
+                    let register_type = RegisterType::from(ValueType::from(entry_type.clone()));
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match entry {
                         circuit::Value::Plaintext(plaintext) => {
@@ -515,6 +515,7 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
             }
+            CastType::RegisterType(RegisterType::Plain)
             CastType::RegisterType(RegisterType::Record(_record_name)) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
             }
@@ -647,11 +648,11 @@ impl<N: Network> Cast<N> {
             }
         }
 
-        Ok(vec![match self.cast_type {
+        Ok(vec![match &self.cast_type {
             CastType::GroupXCoordinate | CastType::GroupYCoordinate => {
                 RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))
             }
-            CastType::RegisterType(register_type) => register_type,
+            CastType::RegisterType(register_type) => register_type.clone(),
         }])
     }
 }
@@ -746,6 +747,7 @@ impl<N: Network> Parser for Cast<N> {
             | CastType::GroupYCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -794,6 +796,7 @@ impl<N: Network> Display for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -839,6 +842,7 @@ impl<N: Network> FromBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -860,6 +864,7 @@ impl<N: Network> ToBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };

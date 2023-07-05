@@ -253,7 +253,7 @@ impl<N: Network> Call<N> {
                         &format!("{}/{}", program.id(), record_name),
                     )?)),
                     // Else, return the register type.
-                    (_, _) => Ok(RegisterType::from(output_type)),
+                    (_, _) => Ok(RegisterType::from(output_type.clone())),
                 })
                 .collect::<Result<Vec<_>>>()
         }
