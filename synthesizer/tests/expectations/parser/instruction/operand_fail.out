@@ -117,11 +117,20 @@
 
 - |+
   0: at line 1, in Tag:
-  assert.eq group:: group::GEN;
+  assert.eq group::generator group::GEN;
   ^
 
   1: at line 1, in Alt:
-  assert.eq group:: group::GEN;
+  assert.eq group::generator group::GEN;
+  ^
+
+- |+
+  0: at line 1, in Tag:
+  assert.eq GROUP::gen group::GEN;
+  ^
+
+  1: at line 1, in Alt:
+  assert.eq GROUP::gen group::GEN;
   ^
 
 - |+
