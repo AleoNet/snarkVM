@@ -30,7 +30,10 @@ fn test_instruction_parse() {
         let outputs = test
             .test_strings()
             .iter()
-            .map(|test_string| convert_result(Instruction::<CurrentNetwork>::parse(test_string), test_string))
+            .map(|test_string| match Instruction::<CurrentNetwork>::from_str(test_string) {
+                Ok(_) => "Parsing was successful.".to_string(),
+                Err(e) => format!("{e}"),
+            })
             .collect::<Vec<_>>();
         // Check against the expected output.
         test.check(&outputs).unwrap();
