@@ -1,12 +1,1 @@
-0: at line 8, in MapRes:
-    position foo;
-                 ^
-
-1: at line 1, in Alt:
-program duplicate_position.aleo;
-                                ^
-
-2: at line 1, in Many1:
-program duplicate_position.aleo;
-                                ^
-
+Failed to parse string. Parsing Error: VerboseError { errors: [("\n", Nom(MapRes)), ("\n\nfunction compute:\n    finalize;\n\nfinalize compute:\n    position foo;\n    position foo;\n", Nom(Alt)), ("\n\nfunction compute:\n    finalize;\n\nfinalize compute:\n    position foo;\n    position foo;\n", Nom(Many1))] }
