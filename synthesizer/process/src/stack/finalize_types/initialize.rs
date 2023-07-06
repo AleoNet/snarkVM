@@ -75,14 +75,17 @@ impl<N: Network> FinalizeTypes<N> {
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
-                // Ensure the registers are monotonically increasing.
-                let expected_locator = (self.inputs.len() as u64) + self.destinations.len() as u64;
-                ensure!(expected_locator == locator, "Register '{register}' is out of order");
-
                 // Insert the destination register and type.
                 match self.destinations.insert(locator, plaintext_type) {
-                    // If the register already exists, throw an error.
-                    Some(..) => bail!("Destination '{register}' already exists"),
+                    // If the register already exists, then check that the existing type matches the inserted type.
+                    Some(type_) => match type_ == plaintext_type {
+                        // If the types do not match, throw an error.
+                        false => bail!(
+                            "Attempted to re-assign a register '{register}' of type '{type_}' to type '{plaintext_type}'"
+                        ),
+                        // If the types match, return success.
+                        true => Ok(()),
+                    },
                     // If the register does not exist, return success.
                     None => Ok(()),
                 }

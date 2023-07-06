@@ -20,7 +20,8 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
     /// # Errors
     /// This method will halt if the given register is a register member.
     /// This method will halt if the given register is an input register.
-    /// This method will halt if the register is already used.
+    /// This method will halt if the register is already in use and a differently-typed value is assigned.
+    /// This method will **not** halt if the register is already in use and a same-typed value is assigned.
     #[inline]
     fn store(
         &mut self,
@@ -36,12 +37,6 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
         // Store the value to the register.
         match register {
             Register::Locator(locator) => {
-                // Ensure the register assignments are monotonically increasing.
-                let expected_locator = self.registers.len() as u64;
-                ensure!(expected_locator == *locator, "Out-of-order write operation at '{register}'");
-                // Ensure the register does not already exist.
-                ensure!(!self.registers.contains_key(locator), "Cannot write to occupied register '{register}'");
-
                 // Ensure the type of the register is valid.
                 match self.finalize_types.get_type(stack, register) {
                     // Ensure the plaintext value matches the plaintext type.
@@ -50,13 +45,10 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
                     Err(error) => bail!("Register '{register}' is missing a type definition: {error}"),
                 };
 
-                // Store the plaintext value.
-                match self.registers.insert(*locator, plaintext_value) {
-                    // Ensure the register has not been previously stored.
-                    Some(..) => bail!("Attempted to write to register '{register}' again"),
-                    // Return on success.
-                    None => Ok(()),
-                }
+                // Store the plaintext value, replacing the previous value if it exists.
+                self.registers.insert(*locator, plaintext_value);
+
+                Ok(())
             }
             // Ensure the register is not a register member.
             Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
