@@ -1,0 +1,12 @@
+- execute:
+    reassign_to_function_registers.aleo/hello:
+      outputs: []
+      finalize:
+      - 0u32
+      - 1u32
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"3129319171494334229860790764197824008033182084309678173246001460638174252886field","checksum":"1835122829337459661803983700399468044835580095819611252336780401402956095751field","value":"record1qyqsp8xtuswtdv0mn8nmsj7shh5h2emxa69h7n6t09f7vs4nluj6qes3qyxx66trwfhkxun9v35hguerqqpqzqqedkkg09syz5qgp7xnf0yqzkk2un4ren73wjd3arpjsrwt9mljpy9st0m0afqafjv6ethat2qnk7uk69zskwerv8305jtuahw83cpsvnrp5y0"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
