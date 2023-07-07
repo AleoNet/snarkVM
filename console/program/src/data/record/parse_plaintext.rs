@@ -244,16 +244,16 @@ mod tests {
     privately_minted: {
       positive: 0u64.private,
       negative: 0u64.private
+    },
+    royalty_fees: 500u16.private,
+    publicizable: true.private,
+    updatable: true.private,
+    metadata_uri: {
+      part0: 140152554740597502496525853903429913932u128.private,
+      part1: 134617583084312214720973570367896241221u128.private,
+      part2: 104133346941662617879306115050903128141u128.private,
+      part3: 153398181356134783820482129834790617088u128.private
     }
-  },
-  royalty_fees: 500u16.private,
-  publicizable: true.private,
-  updatable: true.private,
-  metadata_uri: {
-    part0: 140152554740597502496525853903429913932u128.private,
-    part1: 134617583084312214720973570367896241221u128.private,
-    part2: 104133346941662617879306115050903128141u128.private,
-    part3: 153398181356134783820482129834790617088u128.private
   },
   _nonce: 4657518007057346011967333542044959903015797864849889452602278140358226817257group.public
 }";
