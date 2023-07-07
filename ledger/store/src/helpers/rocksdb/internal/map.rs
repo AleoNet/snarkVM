@@ -43,19 +43,17 @@ impl<
     /// Inserts the given key-value pair into the map.
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
-        // Prepare the prefixed key and serialized value.
-        let raw_key = self.create_prefixed_key(&key)?;
-        let raw_value = bincode::serialize(&value)?;
-
         // Determine if an atomic batch is in progress.
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key-value pair to the batch.
             true => {
                 self.atomic_batch.lock().push((key, Some(value)));
-                self.database.atomic_batch.lock().push((raw_key.into(), Some(raw_value.into())));
             }
             // Otherwise, insert the key-value pair directly into the map.
             false => {
+                // Prepare the prefixed key and serialized value.
+                let raw_key = self.create_prefixed_key(&key)?;
+                let raw_value = bincode::serialize(&value)?;
                 self.database.put(raw_key, raw_value)?;
             }
         }
@@ -67,18 +65,16 @@ impl<
     /// Removes the key-value pair for the given key from the map.
     ///
     fn remove(&self, key: &K) -> Result<()> {
-        // Prepare the prefixed key.
-        let raw_key = self.create_prefixed_key(key)?;
-
         // Determine if an atomic batch is in progress.
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key to the batch.
             true => {
                 self.atomic_batch.lock().push((*key, None));
-                self.database.atomic_batch.lock().push((raw_key.into(), None));
             }
             // Otherwise, remove the key-value pair directly from the map.
             false => {
+                // Prepare the prefixed key.
+                let raw_key = self.create_prefixed_key(key)?;
                 self.database.delete(raw_key)?;
             }
         }
@@ -93,10 +89,11 @@ impl<
     fn start_atomic(&self) {
         // Set the atomic batch flag to `true`.
         self.batch_in_progress.store(true, Ordering::SeqCst);
+        // Increment the atomic depth index.
+        self.database.atomic_depth.fetch_add(1, Ordering::SeqCst);
 
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
-        assert!(self.database.atomic_batch.lock().is_empty());
     }
 
     ///
@@ -113,43 +110,16 @@ impl<
     /// we roll back all future operations, and return to the start of this checkpoint.
     ///
     fn atomic_checkpoint(&self) {
-        // Push the current length of the atomic batch to the map checkpoint stack.
+        // Push the current length of the atomic batch to the checkpoint stack.
         self.checkpoints.lock().push(self.atomic_batch.lock().len());
-        // Increase the checkpoint index if it hadn't been done yet (which is likely due to
-        // `atomic_checkpoint` being called for all the maps contained in the one the
-        // caller is currently using).
-        let checkpoint_index = self.database.checkpoint_index.load(Ordering::SeqCst);
-        let mut checkpoints = self.database.checkpoints.lock();
-        if let Some(ref mut checkpoints_at_index) = checkpoints.get_mut(checkpoint_index) {
-            // If a checkpoint stack at the current checkpoint index already exists, append the
-            // current number of pending operations to it.
-            checkpoints_at_index.push(self.database.atomic_batch.lock().len());
-        } else {
-            // If there is no stack at the current checkpoint index, increase it and append
-            // the current number of pending operations to it.
-            self.database.checkpoint_index.fetch_add(1, Ordering::SeqCst);
-            checkpoints.push(vec![self.database.atomic_batch.lock().len()]);
-        }
     }
 
     ///
     /// Removes the latest atomic checkpoint.
     ///
     fn clear_latest_checkpoint(&self) {
-        // Removes the latest map checkpoint.
+        // Removes the latest checkpoint.
         let _ = self.checkpoints.lock().pop();
-        // Pop the stack belonging to the latest checkpoint index and, if it's the end of it,
-        // remove the stack itself and decrement the checkpoint index.
-        let mut checkpoints = self.database.checkpoints.lock();
-        if let Some(last_checkpoint_stack) = checkpoints.last_mut() {
-            last_checkpoint_stack.pop();
-            if last_checkpoint_stack.is_empty() {
-                // Drop the last checkpoint.
-                checkpoints.pop();
-                // Decrement the checkpoint index.
-                self.database.checkpoint_index.fetch_sub(1, Ordering::SeqCst);
-            }
-        }
     }
 
     ///
@@ -157,25 +127,10 @@ impl<
     /// (or to `start_atomic` if no checkpoints have been created).
     ///
     fn atomic_rewind(&self) {
-        // Retrieve the last map checkpoint.
+        // Retrieve the last checkpoint.
         let checkpoint = self.checkpoints.lock().pop().unwrap_or(0);
         // Remove all operations after the checkpoint.
         self.atomic_batch.lock().truncate(checkpoint);
-
-        // Pop the latest stack until the first checkpoint it contains, bringing us to the state at the last
-        // call to `atomic_checkpoint`.
-        let mut checkpoints = self.database.checkpoints.lock();
-        if let Some(first_checkpoint_at_index) = checkpoints.last_mut().and_then(|checkpoints_at_index| {
-            let potential_first_checkpoint_at_index = checkpoints_at_index.pop();
-            if checkpoints_at_index.is_empty() { potential_first_checkpoint_at_index } else { None }
-        }) {
-            // Truncate the list of pending operations according to the last checkpoint.
-            self.database.atomic_batch.lock().truncate(first_checkpoint_at_index);
-            // Drop the last checkpoint.
-            checkpoints.pop();
-            // Decrement the checkpoint index.
-            self.database.checkpoint_index.fetch_sub(1, Ordering::SeqCst);
-        }
     }
 
     ///
@@ -186,47 +141,66 @@ impl<
         self.atomic_batch.lock().clear();
         // Clear the checkpoint stack.
         self.checkpoints.lock().clear();
-        // Clear the checkpoint index.
-        self.database.checkpoint_index.store(0, Ordering::SeqCst);
-        // Clear the database-wide checkpoint stack.
-        self.database.checkpoints.lock().clear();
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
-        // Clear the database-wise atomic batch.
+        // Clear the database-wide atomic batch.
         self.database.atomic_batch.lock().clear();
+        // Reset the atomic batch depth.
+        self.database.atomic_depth.store(0, Ordering::SeqCst);
     }
 
     ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
-        // Empty the atomic batch belonging to the map.
-        let _operations = core::mem::take(&mut *self.atomic_batch.lock());
+        // Retrieve the atomic batch belonging to the map.
+        let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
-        // Execute all the operations atomically, clearing the low-level batch.
-        // This only needs to happen once (and `finish_atomic` can be called
-        // multiple times at once), so make sure we haven't done so already.
-        let operations = mem::take(&mut *self.database.atomic_batch.lock());
         if !operations.is_empty() {
-            let deduped_operations = operations.into_iter().collect::<IndexMap<_, _>>();
-            let mut batch = rocksdb::WriteBatch::default();
-            for (key, value) in deduped_operations {
-                match value {
-                    Some(value) => batch.put(key, value),
-                    None => batch.delete(key),
-                }
+            // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
+            let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
+
+            // Prepare the key and value for each queued operation.
+            //
+            // Note: This step is taken to ensure (with 100% certainty) that there will be
+            // no chance to fail partway through committing the queued operations.
+            //
+            // The expected behavior is that either all the operations will be committed
+            // or none of them will be.
+            let prepared_operations = operations
+                .into_iter()
+                .map(|(key, value)| match value {
+                    Some(value) => Ok((self.create_prefixed_key(&key)?, Some(bincode::serialize(&value)?))),
+                    None => Ok((self.create_prefixed_key(&key)?, None)),
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            // Enqueue all the operations from the map in the database-wide batch.
+            let mut atomic_batch = self.database.atomic_batch.lock();
+            for (raw_key, raw_value) in prepared_operations {
+                match raw_value {
+                    Some(raw_value) => atomic_batch.put(raw_key, raw_value),
+                    None => atomic_batch.delete(raw_key),
+                };
             }
-            self.database.rocksdb.write(batch)?;
         }
 
         // Clear the checkpoint stack.
         self.checkpoints.lock().clear();
-        // Clear the database-wide checkpoint stack.
-        self.database.checkpoints.lock().clear();
-        // Clear the checkpoint index.
-        self.database.checkpoint_index.store(0, Ordering::SeqCst);
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
+
+        // Subtract the atomic depth index.
+        let previous_atomic_depth = self.database.atomic_depth.fetch_sub(1, Ordering::SeqCst);
+
+        // If we're at depth 0, it is the final call to `finish_atomic` and the
+        // atomic write batch can be physically executed.
+        if previous_atomic_depth == 1 {
+            // Empty the collection of pending operations.
+            let batch = mem::take(&mut *self.database.atomic_batch.lock());
+            // Execute all the operations atomically.
+            self.database.rocksdb.write(batch)?;
+        }
 
         Ok(())
     }
@@ -1243,8 +1217,6 @@ mod tests {
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoints.lock().last(), None);
-        assert_eq!(map.database.checkpoints.lock().last(), None);
-        assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
         // Insert the key.
         map.insert(0, "0".to_string()).unwrap();
@@ -1256,8 +1228,6 @@ mod tests {
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 0.
                 assert_eq!(map.checkpoints.lock().last(), Some(&0));
-                assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&0));
-                assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 1);
 
                 // Insert the key.
                 map.insert(0, "1".to_string()).unwrap();
@@ -1267,8 +1237,6 @@ mod tests {
 
             // Make sure the checkpoint index is None.
             assert_eq!(map.checkpoints.lock().last(), None);
-            assert_eq!(map.database.checkpoints.lock().last(), None);
-            assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
             // The atomic finalize should have succeeded.
             assert!(result.is_ok());
@@ -1284,15 +1252,11 @@ mod tests {
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Make sure the checkpoint index is 1.
                 assert_eq!(map.checkpoints.lock().last(), Some(&1));
-                assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&1));
-                assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 1);
 
                 // Simulate an instruction
                 let result: Result<()> = atomic_batch_scope!(map, {
                     // Make sure the checkpoint index is 1.
                     assert_eq!(map.checkpoints.lock().last(), Some(&1));
-                    assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&1));
-                    assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 2);
 
                     // Update the key.
                     map.insert(0, "2".to_string()).unwrap();
@@ -1303,15 +1267,11 @@ mod tests {
 
                 // Make sure the checkpoint index is 1.
                 assert_eq!(map.checkpoints.lock().last(), Some(&1));
-                assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&1));
-                assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 1);
 
                 // Simulates an instruction that fails.
                 let result: Result<()> = atomic_batch_scope!(map, {
                     // Make sure the checkpoint index is 2.
                     assert_eq!(map.checkpoints.lock().last(), Some(&2));
-                    assert_eq!(map.database.checkpoints.lock().last().and_then(|stack| stack.last()), Some(&2));
-                    assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 2);
 
                     // Update the key.
                     map.insert(0, "3".to_string()).unwrap();
@@ -1332,8 +1292,6 @@ mod tests {
             // Make sure the pending operations still has the initial insertion.
             assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
             assert_eq!(map.checkpoints.lock().last(), None);
-            assert_eq!(map.database.checkpoints.lock().last(), None);
-            assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
             Ok(())
         });
@@ -1345,8 +1303,6 @@ mod tests {
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoints.lock().last(), None);
-        assert_eq!(map.database.checkpoints.lock().last(), None);
-        assert_eq!(map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
         // Ensure that the map value is correct.
         assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
@@ -1368,8 +1324,6 @@ mod tests {
         assert!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().next().is_none());
 
         assert_eq!(test_storage.own_map.checkpoints.lock().last(), None);
-        assert_eq!(test_storage.own_map.database.checkpoints.lock().last(), None);
-        assert_eq!(test_storage.own_map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
         // Note: all the checks going through .database can be performed on any one
         // of the objects, as all of them share the same instance of the database.
@@ -1381,8 +1335,6 @@ mod tests {
             assert!(test_storage.is_atomic_in_progress_everywhere());
 
             assert_eq!(test_storage.own_map.checkpoints.lock().last(), None);
-            assert_eq!(test_storage.own_map.database.checkpoints.lock().last(), None);
-            assert_eq!(test_storage.own_map.database.checkpoint_index.load(Ordering::SeqCst), 0);
 
             // Write an item into the first map.
             test_storage.own_map.insert(0, 0.to_string()).unwrap();

@@ -55,10 +55,6 @@ pub trait Database {
     ) -> Result<DataMap<K, V>>;
 }
 
-type RocksKey = Box<[u8]>;
-type RocksValue = Box<[u8]>;
-type RocksValueOrDelete = Option<RocksValue>;
-
 /// An instance of a RocksDB database.
 #[derive(Clone)]
 pub struct RocksDB {
@@ -69,17 +65,11 @@ pub struct RocksDB {
     /// The optional development ID.
     dev: Option<u16>,
     /// The low-level database transaction that gets executed atomically at the end
-    /// of a real-run `atomic_finalize` or the outermost `atomic_batch_scope`. A `None`
-    /// value represents a deletion.
-    pub(super) atomic_batch: Arc<Mutex<Vec<(RocksKey, RocksValueOrDelete)>>>,
-    /// The current checkpoint depth; opening nested checkpoints increases its value,
-    /// and closing checkpoint scopes decreases it.
-    pub(super) checkpoint_index: Arc<AtomicUsize>,
-    /// The checkpoint "stack of stacks" for the database-wide atomic batch of operations.
-    /// Every checkpoint index has its own associated stack of numbers corresponding to
-    /// the number of pending operations enqueued in the `atomic_batch`, in order to be
-    /// able to roll back in case `atomic_rewind` is called at any point in time.
-    pub(super) checkpoints: Arc<Mutex<Vec<Vec<usize>>>>,
+    /// of a real-run `atomic_finalize` or the outermost `atomic_batch_scope`.
+    pub(super) atomic_batch: Arc<Mutex<rocksdb::WriteBatch>>,
+    /// The depth of the current atomic write batch; it gets incremented with every call
+    /// to `start_atomic` and decremented with each call to `finish_atomic`.
+    pub(super) atomic_depth: Arc<AtomicUsize>,
 }
 
 impl Deref for RocksDB {
@@ -122,8 +112,7 @@ impl Database for RocksDB {
                     network_id,
                     dev,
                     atomic_batch: Default::default(),
-                    checkpoint_index: Default::default(),
-                    checkpoints: Default::default(),
+                    atomic_depth: Default::default(),
                 })
             })?
             .clone();
@@ -189,8 +178,7 @@ impl RocksDB {
                 network_id: u16::MAX,
                 dev,
                 atomic_batch: Default::default(),
-                checkpoint_index: Default::default(),
-                checkpoints: Default::default(),
+                atomic_depth: Default::default(),
             })
         }?;
 
