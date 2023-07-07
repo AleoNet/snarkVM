@@ -94,6 +94,8 @@ impl<
 
         // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
+        // Ensure that the database atomic batch is empty.
+        assert!(self.database.atomic_batch.lock().is_empty());
     }
 
     ///
@@ -192,6 +194,10 @@ impl<
 
         // Subtract the atomic depth index.
         let previous_atomic_depth = self.database.atomic_depth.fetch_sub(1, Ordering::SeqCst);
+
+        // Ensure that the value of `atomic_depth` doesn't overflow, meaning that all the
+        // calls to `start_atomic` have corresponding calls to `finish_atomic`.
+        assert!(previous_atomic_depth != 0);
 
         // If we're at depth 0, it is the final call to `finish_atomic` and the
         // atomic write batch can be physically executed.
@@ -360,12 +366,12 @@ mod tests {
         helpers::rocksdb::{internal::tests::temp_dir, MapID, TestMap},
         FinalizeMode,
     };
-    use anyhow::anyhow;
     use console::{
         account::{Address, FromStr},
         network::Testnet3,
     };
 
+    use anyhow::anyhow;
     use serial_test::serial;
     use tracing_test::traced_test;
 
