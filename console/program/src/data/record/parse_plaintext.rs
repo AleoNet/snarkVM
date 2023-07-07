@@ -262,6 +262,35 @@ mod tests {
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
 
+        let expected = r"{
+  owner: aleo18ttcegpydcs95yw4je0u400j3u7r26yqr9h8evqps3qa9slrvyrsqjwt9l.private,
+  c: {
+    c: {
+      a: 0u8.private,
+      b: 1u8.private
+    },
+    d: {
+      a: 0u8.private,
+      b: 1u8.private
+    }
+  },
+  d: {
+    c: {
+      a: 0u8.private,
+      b: 1u8.private
+    },
+    d: {
+      a: 0u8.private,
+      b: 1u8.private
+    }
+  },
+  _nonce: 8102307625287186026775464343238779600702564007094834161216556016558567413871group.public
+}";
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
         Ok(())
     }
 
