@@ -25,15 +25,15 @@ use crate::{
         account::{PrivateKey, ViewKey},
         program::{Ciphertext, Field, Identifier, Network, Plaintext, ProgramID, Record, Value},
     },
-    synthesizer::{
-        store::helpers::memory::{BlockMemory, ConsensusMemory},
-        Block,
-        ConsensusStore,
-        Program,
-        Query,
-        Transaction,
-        VM,
+    ledger::{
+        block::{Block, Transaction},
+        query::Query,
+        store::{
+            helpers::memory::{BlockMemory, ConsensusMemory},
+            ConsensusStore,
+        },
     },
+    synthesizer::{Program, VM},
 };
 
 #[derive(Clone)]
