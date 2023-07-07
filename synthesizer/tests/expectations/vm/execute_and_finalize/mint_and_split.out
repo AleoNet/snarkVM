@@ -1,0 +1,13 @@
+- execute:
+    mint_and_split.aleo/mint:
+      outputs:
+      - '{"type":"record","id":"6319835380122212139338070275943219433166385008207575595745176473507638231879field","checksum":"2943138275276500993136312337668916434314894832807326973157884193981790804600field","value":"record1qyqspuygk66mcu9763ju73t2r2sg86jx4tg5cr0jy6gemywl5l2z92gtqyxx66trwfhkxun9v35hguerqqpqzqrw5pfr9s6750h7htrq3zjgwrk4dgjtrwyl6q244nxd9prwk7qhz9569qv2zh25a2c2ar30q6343gzf75g3ea7kkp8ygx276tuj6w8sq39euj5"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"7226845439864006007279342536343818903106165186588162657242380539246091113559field","checksum":"2166707521134000103345421614163050886603937697791649127583091194543728621712field","value":"record1qyqsptnnfmatwsc42yyv2am7hdvajmcq7k5js7yg4qx5hlhy4l94d9gjqyxx66trwfhkxun9v35hguerqqpqzqxuqhu08syhz95mnpalykjvjhz5lracw3vaj7s6lg40ra00srpgqmazxvwsgr4kqjd8kgn54mu9h7c7el0wh8hwkwrulesdjq5tuthsztkpg0f"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute: Commitment '1266307482263846358970326041806201638141701138269282465033372005968041137990field' does not exist
+- execute: Input record for 'mint_and_split.aleo' must belong to the signer

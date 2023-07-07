@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -28,7 +26,10 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
         } else {
             // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
-            // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
+            // We follow the naming convention given in the `Basic Step` section of the cited page.
+            // Note that currently here we perform Babbage multiplication, not Karatsuba multiplication;
+            // however, since we do not need to calculate z2 here,
+            // Babbage involves three multiplication, same as Karatsuba.
             // For integers with size less than 128, this algorithm saves approximately 0.5 * I::BITS
             // constraints compared to a field multiplication.
             let x_1 = Field::from_bits_le(&self.bits_le[(I::BITS as usize / 2)..]);

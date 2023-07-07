@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.11.0"
+version = "0.14.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,7 +20,7 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
@@ -37,6 +37,7 @@ harness = false
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
+bench = false
 
 [[bench]]
 name = "marlin"
@@ -45,36 +46,31 @@ harness = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
-
-[dependencies.snarkvm-r1cs]
-path = "../r1cs"
-version = "0.11.0"
-default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-algorithms-cuda]
 path = "./cuda"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.aleo-std]
-version = "0.1.15"
+version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
@@ -84,18 +80,30 @@ version = "1.0"
 version = "0.10"
 default-features = true
 
+[dependencies.cfg-if]
+version = "1.0.0"
+optional = true
+
 [dependencies.crossbeam-channel]
 version = "0.5"
 optional = true
 
+[dependencies.fxhash]
+version = "0.2.1"
+optional = true
+
 [dependencies.hashbrown]
-version = "0.13.2"
+version = "0.14.0"
 
 [dependencies.hex]
 version = "0.4"
 
+[dependencies.indexmap]
+version = "2.0.0"
+optional = true
+
 [dependencies.itertools]
-version = "0.10.3"
+version = "0.11.0"
 
 [dependencies.lazy_static]
 version = "1.4"
@@ -133,7 +141,7 @@ version = "0.10"
 default-features = false
 
 [dependencies.smallvec]
-version = "1.10"
+version = "1.11"
 default-features = false
 features = [ "const_generics", "const_new" ]
 
@@ -151,7 +159,7 @@ version = "1.4.1"
 version = "1"
 
 [dev-dependencies.criterion]
-version = "0.4.0"
+version = "0.5.1"
 
 [dev-dependencies.serde_json]
 version = "1"
@@ -167,12 +175,20 @@ default = [
   "snarkvm-fields/default",
   "snarkvm-utilities/default"
 ]
-full = [ "crypto_hash", "fft", "msm", "polycommit_full", "snark" ]
+full = [
+  "crypto_hash",
+  "fft",
+  "msm",
+  "polycommit_full",
+  "r1cs",
+  "snark"
+]
 wasm = [
   "crypto_hash",
   "fft",
   "msm",
   "polycommit_wasm",
+  "r1cs",
   "snark",
   "wasm-bindgen-futures"
 ]
@@ -184,9 +200,10 @@ msm = [ ]
 polycommit = [ "crypto_hash", "fft", "msm", "rand_core" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
 polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
+r1cs = [ "cfg-if", "fxhash", "indexmap" ]
 serial = [
   "snarkvm-curves/serial",
   "snarkvm-fields/serial",
   "snarkvm-utilities/serial"
 ]
-snark = [ "crypto_hash", "fft", "msm", "polycommit" ]
+snark = [ "crypto_hash", "fft", "msm", "polycommit", "r1cs" ]

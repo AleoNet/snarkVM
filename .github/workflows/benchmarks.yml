@@ -1,0 +1,106 @@
+name: Run snarkVM Benchmarks
+
+on:
+  push:
+    branches:
+      - 'testnet3'
+
+jobs:
+  # Run benchmarks and stores the output to a file
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Benchmark algorithms
+        run: |
+          cd algorithms
+          cargo bench --bench variable_base -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench marlin -- --output-format bencher | tee -a ../output.txt
+          cd ..
+
+      - name: Benchmark circuit/environment
+        run: |
+          cd circuit/environment
+          cargo bench --bench linear_combination -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
+      - name: Benchmark console/account
+        run: |
+          cd console/account
+          cargo bench --bench account -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
+      - name: Benchmark console/algorithms
+        run: |
+          cd console/algorithms
+          cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
+      - name: Benchmark console/collections
+        run: |
+          cd console/collections
+          cargo bench --bench merkle_tree -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
+          
+      - name: Benchmark curves
+        run: |
+          cd curves
+          cargo bench --bench curves -- --output-format bencher | tee -a ../output.txt
+          cd ..
+
+      - name: Benchmark synthesizer
+        run: |
+          cd synthesizer
+          cargo bench --bench block -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench transaction -- --output-format bencher | tee -a ../output.txt
+          cd ..
+
+      - name: Benchmark synthesizer/coinbase
+        run: |
+          cd synthesizer/coinbase
+          cargo bench --bench coinbase_puzzle --features "setup" -- --output-format bencher | tee -a ../../output.txt
+          cd ../..
+
+      # Clean benchmark output to remove unnecessary lines
+      - name: Clean benchmark output
+        run: |
+          sed -n -i '/bench:/p' output.txt
+
+      # Download previous benchmark result from cache (if exists)
+      - name: Download previous benchmark data
+        uses: actions/cache@v1
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
+
+      - name: Store benchmark result
+        uses: rhysd/github-action-benchmark@v1
+        with:
+          name: snarkVM Benchmarks
+          tool: 'cargo'
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: true
+          alert-comment-cc-users: '@raychu86'

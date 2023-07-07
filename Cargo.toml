@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.11.0"
+version = "0.14.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,8 +20,9 @@ categories = [
   "web-programming"
 ]
 include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
+rust-version = "1.66"
 
 [workspace]
 members = [
@@ -61,9 +62,16 @@ members = [
   "curves",
   "fields",
   "ledger",
+  "ledger/block",
+  "ledger/coinbase",
+  "ledger/query",
+  "ledger/store",
+  "ledger/test-helpers",
   "parameters",
-  "r1cs",
   "synthesizer",
+  "synthesizer/process",
+  "synthesizer/program",
+  "synthesizer/snark",
   "utilities",
   "utilities/derives",
   "wasm"
@@ -81,12 +89,12 @@ required-features = [ "cli" ]
 default = [
   "circuit",
   "console",
-  "synthesizer",
-  "cli",
-  "client",
   "ledger",
   "parameters",
-  "utilities"
+  "synthesizer",
+  "utilities",
+  "cli",
+  "client"
 ]
 full = [
   "algorithms",
@@ -96,7 +104,6 @@ full = [
   "fields",
   "ledger",
   "parameters",
-  "r1cs",
   "synthesizer",
   "utilities"
 ]
@@ -111,9 +118,13 @@ cli = [
 ]
 client = [ "anyhow", "bincode", "rand", "reqwest", "serde_json", "synthesizer" ]
 aleo-cli = [ "snarkvm-synthesizer/aleo-cli" ]
-cuda = [ "snarkvm-algorithms/cuda", "snarkvm-synthesizer/cuda" ]
+async = [ "snarkvm-ledger/async", "snarkvm-synthesizer/async" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 noconfig = [ ]
+rocks = [ "snarkvm-ledger/rocks" ]
+timer = [ "snarkvm-ledger/timer" ]
+ed25519 = [ "snarkvm-console/ed25519" ]
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
@@ -121,68 +132,63 @@ curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
 ledger = [ "snarkvm-ledger" ]
 parameters = [ "snarkvm-parameters" ]
-r1cs = [ "snarkvm-r1cs" ]
-rocks = [ "snarkvm-synthesizer/rocks" ]
 synthesizer = [ "snarkvm-synthesizer" ]
-timer = [ "snarkvm-ledger/timer" ]
 utilities = [ "snarkvm-utilities" ]
 wasm = [ "snarkvm-wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.11.0"
-optional = true
-
-[dependencies.snarkvm-r1cs]
-path = "./r1cs"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "0.11.0"
+version = "=0.14.1"
 optional = true
+
+[dependencies.anstyle]
+version = "1"
 
 [dependencies.anyhow]
 version = "1.0.71"
@@ -193,8 +199,8 @@ version = "1"
 optional = true
 
 [dependencies.clap]
-version = "3.2"
-features = [ "derive" ]
+version = "4.3"
+features = [ "derive", "color", "unstable-styles" ]
 optional = true
 
 [dependencies.colored]
@@ -202,14 +208,14 @@ version = "2"
 optional = true
 
 [dependencies.indexmap]
-version = "1.9"
+version = "2.0"
 features = [ "rayon" ]
 
 [dependencies.num-format]
 version = "0.4.4"
 
 [dependencies.once_cell]
-version = "1.17"
+version = "1.18"
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -226,7 +232,7 @@ version = "0.11"
 optional = true
 
 [dependencies.self_update]
-version = "0.36"
+version = "0.37"
 optional = true
 
 [dependencies.serde_json]
@@ -239,7 +245,7 @@ version = "1.0"
 optional = true
 
 [dependencies.ureq]
-version = "2.6"
+version = "2.7"
 features = [ "json" ]
 
 [dev-dependencies.bincode]
@@ -249,7 +255,7 @@ version = "1.3"
 version = "0.11.2"
 
 [dev-dependencies.tempfile]
-version = "3.5"
+version = "3.6"
 
 [build-dependencies.walkdir]
 version = "2"

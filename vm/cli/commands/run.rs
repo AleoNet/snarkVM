@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -22,10 +20,8 @@ pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
 #[derive(Debug, Parser)]
 pub struct Run {
     /// The function name.
-    #[clap(parse(try_from_str))]
     function: Identifier<CurrentNetwork>,
     /// The function inputs.
-    #[clap(parse(try_from_str))]
     inputs: Vec<Value<CurrentNetwork>>,
     /// Uses the specified endpoint.
     #[clap(long)]
@@ -49,7 +45,7 @@ impl Run {
         let rng = &mut rand::thread_rng();
 
         // Execute the request.
-        let (response, _transition, _inclusion, metrics) = package.run::<Aleo, _>(
+        let (response, trace) = package.run::<Aleo, _>(
             self.endpoint,
             package.manifest_file().development_private_key(),
             self.function,
@@ -59,7 +55,7 @@ impl Run {
 
         // Count the number of times a function is called.
         let mut program_frequency = HashMap::<String, usize>::new();
-        for metric in metrics.iter() {
+        for metric in trace.call_metrics().iter() {
             // Prepare the function name string.
             let function_name_string = format!("'{}/{}'", metric.program_id, metric.function_name).bold();
 
@@ -109,5 +105,25 @@ impl Run {
         let path_string = format!("(in \"{}\")", path.display());
 
         Ok(format!("✅ Executed '{}' {}", locator.to_string().bold(), path_string.dimmed()))
+    }
+
+    #[cfg(test)]
+    pub fn function(&self) -> Identifier<CurrentNetwork> {
+        self.function
+    }
+
+    #[cfg(test)]
+    pub fn inputs(&self) -> &[Value<CurrentNetwork>] {
+        &self.inputs
+    }
+
+    #[cfg(test)]
+    pub fn endpoint(&self) -> Option<&str> {
+        self.endpoint.as_deref()
+    }
+
+    #[cfg(test)]
+    pub fn offline(&self) -> bool {
+        self.offline
     }
 }

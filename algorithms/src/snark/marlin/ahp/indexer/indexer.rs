@@ -1,22 +1,21 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
+    r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem},
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
@@ -30,9 +29,9 @@ use crate::{
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::cfg_into_iter;
 
+use anyhow::{anyhow, Result};
 use core::marker::PhantomData;
 use std::collections::BTreeMap;
 
@@ -45,7 +44,7 @@ use super::Matrix;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Generate the index for this constraint system.
-    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>, AHPError> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>> {
         let IndexerState {
             constraint_domain,
 
@@ -62,7 +61,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_evals,
 
             index_info,
-        } = Self::index_helper(c)?;
+        } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
         let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
@@ -82,7 +81,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             non_zero_b_domain.size(),
             non_zero_c_domain.size(),
         )
-        .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        .ok_or(anyhow!("The polynomial degree is too large"))?;
         end_timer!(fft_precomp_time);
 
         Ok(Circuit {
@@ -181,7 +180,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             num_non_zero_a,
             num_non_zero_b,
             num_non_zero_c,
-            f: PhantomData,
         };
 
         let constraint_domain =
@@ -274,5 +272,5 @@ struct IndexerState<F: PrimeField> {
     non_zero_c_domain: EvaluationDomain<F>,
     c_evals: MatrixEvals<F>,
 
-    index_info: CircuitInfo<F>,
+    index_info: CircuitInfo,
 }

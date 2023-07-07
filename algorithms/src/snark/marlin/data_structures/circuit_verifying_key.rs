@@ -1,28 +1,20 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-use crate::{
-    fft::EvaluationDomain,
-    polycommit::sonic_pc,
-    snark::marlin::{ahp::indexer::*, CircuitProvingKey, MarlinMode, PreparedCircuitVerifyingKey},
-    PrepareOrd,
-};
+use crate::{fft::EvaluationDomain, polycommit::sonic_pc, r1cs::SynthesisError, snark::marlin::ahp::indexer::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_r1cs::SynthesisError;
 use snarkvm_utilities::{
     error,
     io::{self, Read, Write},
@@ -36,67 +28,21 @@ use snarkvm_utilities::{
 };
 
 use anyhow::Result;
-use core::{fmt, marker::PhantomData, str::FromStr};
+use core::{fmt, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp::Ordering;
 
 /// Verification key for a specific index (i.e., R1CS matrices).
 #[derive(Debug, Clone, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
+pub struct CircuitVerifyingKey<E: PairingEngine> {
     /// Stores information about the size of the circuit, as well as its defined field.
-    pub circuit_info: CircuitInfo<E::Fr>,
+    pub circuit_info: CircuitInfo,
     /// Commitments to the indexed polynomials.
     pub circuit_commitments: Vec<sonic_pc::Commitment<E>>,
-    /// The verifier key for this index, trimmed from the universal SRS.
-    pub verifier_key: sonic_pc::VerifierKey<E>,
-    #[doc(hidden)]
-    pub mode: PhantomData<MM>,
     pub id: CircuitId,
 }
 
-impl<E: PairingEngine, MM: MarlinMode> PrepareOrd for CircuitVerifyingKey<E, MM> {
-    type Prepared = PreparedCircuitVerifyingKey<E, MM>;
-
-    /// Prepare the circuit verifying key.
-    fn prepare(&self) -> Self::Prepared {
-        let constraint_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_constraints).unwrap() as u64;
-        let non_zero_a_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_a).unwrap() as u64;
-        let non_zero_b_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u64;
-        let non_zero_c_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u64;
-
-        PreparedCircuitVerifyingKey {
-            constraint_domain_size,
-            non_zero_a_domain_size,
-            non_zero_b_domain_size,
-            non_zero_c_domain_size,
-            orig_vk: (*self).clone(),
-        }
-    }
-}
-
-impl<E: PairingEngine, MM: MarlinMode> From<CircuitProvingKey<E, MM>> for CircuitVerifyingKey<E, MM> {
-    fn from(other: CircuitProvingKey<E, MM>) -> Self {
-        other.circuit_verifying_key
-    }
-}
-
-impl<'a, E: PairingEngine, MM: MarlinMode> From<&'a CircuitProvingKey<E, MM>> for CircuitVerifyingKey<E, MM> {
-    fn from(other: &'a CircuitProvingKey<E, MM>) -> Self {
-        other.circuit_verifying_key.clone()
-    }
-}
-
-impl<E: PairingEngine, MM: MarlinMode> From<PreparedCircuitVerifyingKey<E, MM>> for CircuitVerifyingKey<E, MM> {
-    fn from(other: PreparedCircuitVerifyingKey<E, MM>) -> Self {
-        other.orig_vk
-    }
-}
-
-impl<E: PairingEngine, MM: MarlinMode> ToMinimalBits for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> ToMinimalBits for CircuitVerifyingKey<E> {
     fn to_minimal_bits(&self) -> Vec<bool> {
         let constraint_domain = EvaluationDomain::<E::Fr>::new(self.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
@@ -155,26 +101,26 @@ impl<E: PairingEngine, MM: MarlinMode> ToMinimalBits for CircuitVerifyingKey<E, 
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> FromBytes for CircuitVerifyingKey<E> {
     fn read_le<R: Read>(r: R) -> io::Result<Self> {
         Self::deserialize_compressed(r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> ToBytes for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> ToBytes for CircuitVerifyingKey<E> {
     fn write_le<W: Write>(&self, w: W) -> io::Result<()> {
         self.serialize_compressed(w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> CircuitVerifyingKey<E> {
     /// Iterate over the commitments to indexed polynomials in `self`.
     pub fn iter(&self) -> impl Iterator<Item = &sonic_pc::Commitment<E>> {
         self.circuit_commitments.iter()
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> ToConstraintField<E::Fq> for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> ToConstraintField<E::Fq> for CircuitVerifyingKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         let constraint_domain_size =
             EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_constraints).unwrap() as u128;
@@ -200,7 +146,7 @@ impl<E: PairingEngine, MM: MarlinMode> ToConstraintField<E::Fq> for CircuitVerif
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> FromStr for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> FromStr for CircuitVerifyingKey<E> {
     type Err = anyhow::Error;
 
     #[inline]
@@ -209,7 +155,7 @@ impl<E: PairingEngine, MM: MarlinMode> FromStr for CircuitVerifyingKey<E, MM> {
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> fmt::Display for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> fmt::Display for CircuitVerifyingKey<E> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let vk_hex = hex::encode(self.to_bytes_le().expect("Failed to convert verifying key to bytes"));
@@ -217,7 +163,7 @@ impl<E: PairingEngine, MM: MarlinMode> fmt::Display for CircuitVerifyingKey<E, M
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> Serialize for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> Serialize for CircuitVerifyingKey<E> {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
@@ -227,7 +173,7 @@ impl<E: PairingEngine, MM: MarlinMode> Serialize for CircuitVerifyingKey<E, MM> 
     }
 }
 
-impl<'de, E: PairingEngine, MM: MarlinMode> Deserialize<'de> for CircuitVerifyingKey<E, MM> {
+impl<'de, E: PairingEngine> Deserialize<'de> for CircuitVerifyingKey<E> {
     #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
@@ -240,13 +186,13 @@ impl<'de, E: PairingEngine, MM: MarlinMode> Deserialize<'de> for CircuitVerifyin
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> Ord for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> Ord for CircuitVerifyingKey<E> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.id.cmp(&other.id)
     }
 }
 
-impl<E: PairingEngine, MM: MarlinMode> PartialOrd for CircuitVerifyingKey<E, MM> {
+impl<E: PairingEngine> PartialOrd for CircuitVerifyingKey<E> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }

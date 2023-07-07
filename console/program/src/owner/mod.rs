@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod bytes;
 mod serialize;
@@ -32,15 +30,11 @@ pub struct ProgramOwner<N: Network> {
 
 impl<N: Network> ProgramOwner<N> {
     /// Initializes a new program owner.
-    pub fn new<R: Rng + CryptoRng>(
-        private_key: &PrivateKey<N>,
-        transaction_id: N::TransactionID,
-        rng: &mut R,
-    ) -> Result<Self> {
+    pub fn new<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, deployment_id: Field<N>, rng: &mut R) -> Result<Self> {
         // Derive the address.
         let address = Address::try_from(private_key)?;
         // Sign the transaction ID.
-        let signature = private_key.sign(&[*transaction_id], rng)?;
+        let signature = private_key.sign(&[deployment_id], rng)?;
         // Return the program owner.
         Ok(Self { signature, address })
     }
@@ -60,9 +54,9 @@ impl<N: Network> ProgramOwner<N> {
         &self.signature
     }
 
-    /// Verify that the signature is valid for the given transaction ID.
-    pub fn verify(&self, transaction_id: N::TransactionID) -> bool {
-        self.signature.verify(&self.address, &[*transaction_id])
+    /// Verify that the signature is valid for the given deployment ID.
+    pub fn verify(&self, deployment_id: Field<N>) -> bool {
+        self.signature.verify(&self.address, &[deployment_id])
     }
 }
 
@@ -84,12 +78,11 @@ pub(crate) mod test_helpers {
             // Initialize a private key.
             let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
-            // Initialize a transaction ID.
-            let field: Field<CurrentNetwork> = rng.gen();
-            let transaction_id = field.into();
+            // Initialize a deployment ID.
+            let deployment_id: Field<CurrentNetwork> = rng.gen();
 
             // Return the program owner.
-            ProgramOwner::new(&private_key, transaction_id, rng).unwrap()
+            ProgramOwner::new(&private_key, deployment_id, rng).unwrap()
         })
     }
 
@@ -101,18 +94,16 @@ pub(crate) mod test_helpers {
         // Initialize a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
-        // Initialize a transaction ID.
-        let field: Field<CurrentNetwork> = rng.gen();
-        let transaction_id = field.into();
+        // Initialize a deployment ID.
+        let deployment_id: Field<CurrentNetwork> = rng.gen();
 
         // Construct the program owner.
-        let owner = ProgramOwner::new(&private_key, transaction_id, rng).unwrap();
-        // Ensure that the program owner is verified for the given transaction ID.
-        assert!(owner.verify(transaction_id));
+        let owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
+        // Ensure that the program owner is verified for the given deployment ID.
+        assert!(owner.verify(deployment_id));
 
-        // Ensure that the program owner is not verified for a different transaction ID.
-        let field: Field<CurrentNetwork> = rng.gen();
-        let incorrect_transaction_id = field.into();
-        assert!(!owner.verify(incorrect_transaction_id));
+        // Ensure that the program owner is not verified for a different deployment ID.
+        let incorrect_deployment_id: Field<CurrentNetwork> = rng.gen();
+        assert!(!owner.verify(incorrect_deployment_id));
     }
 }

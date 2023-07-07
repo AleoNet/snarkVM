@@ -1,9 +1,9 @@
 [package]
 name = "snarkvm-circuit-environment"
-version = "0.11.0"
+version = "0.14.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Circuit environment for a decentralized virtual machine"
-license = "GPL-3.0"
+license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
@@ -14,38 +14,39 @@ harness = false
 [dependencies.console]
 package = "snarkvm-console-network"
 path = "../../console/network"
-version = "0.11.0"
+version = "=0.14.1"
+
+[dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "=0.14.1"
+default-features = false
+features = [ "r1cs" ]
 
 [dependencies.snarkvm-circuit-environment-witness]
 path = "./witness"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "0.11.0"
-default-features = false
-
-[dependencies.snarkvm-r1cs]
-path = "../../r1cs"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "0.11.0"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.indexmap]
-version = "1.9.3"
+version = "2.0.0"
 
 [dependencies.itertools]
-version = "0.10.1"
+version = "0.11.0"
 
 [dependencies.nom]
 version = "7.1"
@@ -54,7 +55,7 @@ version = "7.1"
 version = "0.2"
 
 [dependencies.once_cell]
-version = "1.17.1"
+version = "1.18.0"
 
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
@@ -67,7 +68,7 @@ path = "../../circuit"
 path = "../../console/types"
 
 [dev-dependencies.criterion]
-version = "0.4"
+version = "0.5"
 
 [features]
 default = [ "snarkvm-curves/default" ]

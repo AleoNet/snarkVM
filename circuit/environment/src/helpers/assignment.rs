@@ -1,26 +1,24 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::Index;
 use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-enum AssignmentVariable<F: PrimeField> {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AssignmentVariable<F: PrimeField> {
     Constant(F),
     Public(Index),
     Private(Index),
@@ -37,8 +35,8 @@ impl<F: PrimeField> From<&crate::Variable<F>> for AssignmentVariable<F> {
     }
 }
 
-#[derive(Clone)]
-struct AssignmentLC<F: PrimeField> {
+#[derive(Clone, Debug)]
+pub struct AssignmentLC<F: PrimeField> {
     constant: F,
     terms: IndexMap<AssignmentVariable<F>, F>,
 }
@@ -55,9 +53,30 @@ impl<F: PrimeField> From<&crate::LinearCombination<F>> for AssignmentLC<F> {
     }
 }
 
+impl<F: PrimeField> AssignmentLC<F> {
+    /// Returns the constant term of the linear combination.
+    pub const fn constant(&self) -> F {
+        self.constant
+    }
+
+    /// Returns the terms of the linear combination.
+    pub const fn terms(&self) -> &IndexMap<AssignmentVariable<F>, F> {
+        &self.terms
+    }
+
+    /// Returns the number of nonzeros in the linear combination.
+    pub(super) fn num_nonzeros(&self) -> u64 {
+        // Increment by one if the constant is nonzero.
+        match self.constant.is_zero() {
+            true => self.terms.len() as u64,
+            false => (self.terms.len() as u64).saturating_add(1),
+        }
+    }
+}
+
 /// A struct that contains public variable assignments, private variable assignments,
 /// and constraint assignments.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Assignment<F: PrimeField> {
     public: IndexMap<Index, F>,
     private: IndexMap<Index, F>,
@@ -84,8 +103,18 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
 
 impl<F: PrimeField> Assignment<F> {
     /// Returns the public inputs of the assignment.
-    pub fn public_inputs(&self) -> Vec<F> {
-        self.public.values().cloned().collect()
+    pub const fn public_inputs(&self) -> &IndexMap<Index, F> {
+        &self.public
+    }
+
+    /// Returns the private inputs of the assignment.
+    pub const fn private_inputs(&self) -> &IndexMap<Index, F> {
+        &self.private
+    }
+
+    /// Returns the constraints of the assignment.
+    pub const fn constraints(&self) -> &Vec<(AssignmentLC<F>, AssignmentLC<F>, AssignmentLC<F>)> {
+        &self.constraints
     }
 
     /// Returns the number of public variables in the assignment.
@@ -102,18 +131,26 @@ impl<F: PrimeField> Assignment<F> {
     pub fn num_constraints(&self) -> u64 {
         self.constraints.len() as u64
     }
+
+    /// Returns the number of nonzeros in the assignment.
+    pub fn num_nonzeros(&self) -> (u64, u64, u64) {
+        self.constraints
+            .iter()
+            .map(|(a, b, c)| (a.num_nonzeros(), b.num_nonzeros(), c.num_nonzeros()))
+            .fold((0, 0, 0), |(a, b, c), (x, y, z)| (a.saturating_add(x), b.saturating_add(y), c.saturating_add(z)))
+    }
 }
 
-impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
-    /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
-    fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
+impl<F: PrimeField> snarkvm_algorithms::r1cs::ConstraintSynthesizer<F> for Assignment<F> {
+    /// Synthesizes the constraints from the environment into a `snarkvm_algorithms::r1cs`-compliant constraint system.
+    fn generate_constraints<CS: snarkvm_algorithms::r1cs::ConstraintSystem<F>>(
         &self,
         cs: &mut CS,
-    ) -> Result<(), snarkvm_r1cs::SynthesisError> {
+    ) -> Result<(), snarkvm_algorithms::r1cs::SynthesisError> {
         /// A struct for tracking the mapping of variables from the virtual machine (first) to the gadget constraint system (second).
         struct Converter {
-            public: IndexMap<u64, snarkvm_r1cs::Variable>,
-            private: IndexMap<u64, snarkvm_r1cs::Variable>,
+            public: IndexMap<u64, snarkvm_algorithms::r1cs::Variable>,
+            private: IndexMap<u64, snarkvm_algorithms::r1cs::Variable>,
         }
 
         let mut converter = Converter { public: Default::default(), private: Default::default() };
@@ -130,7 +167,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
             let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(*value))?;
 
             assert_eq!(
-                snarkvm_r1cs::Index::Public((index + 1) as usize),
+                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
                 gadget.get_unchecked(),
                 "Public variables in the second system must match the first system (with an off-by-1 for the public case)"
             );
@@ -147,7 +184,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
             let gadget = cs.alloc(|| format!("Private {i}"), || Ok(*value))?;
 
             assert_eq!(
-                snarkvm_r1cs::Index::Private(i),
+                snarkvm_algorithms::r1cs::Index::Private(i),
                 gadget.get_unchecked(),
                 "Private variables in the second system must match the first system"
             );
@@ -160,22 +197,22 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
         // Enforce all of the constraints.
         for (i, (a, b, c)) in self.constraints.iter().enumerate() {
             // Converts terms from one linear combination in the first system to the second system.
-            let convert_linear_combination = |lc: &AssignmentLC<F>| -> snarkvm_r1cs::LinearCombination<F> {
+            let convert_linear_combination = |lc: &AssignmentLC<F>| -> snarkvm_algorithms::r1cs::LinearCombination<F> {
                 // Initialize a linear combination for the second system.
-                let mut linear_combination = snarkvm_r1cs::LinearCombination::<F>::zero();
+                let mut linear_combination = snarkvm_algorithms::r1cs::LinearCombination::<F>::zero();
 
-                // Keep an accumulator for constant values in the linear combination.
-                let mut constant_accumulator = lc.constant;
                 // Process every term in the linear combination.
                 for (variable, coefficient) in lc.terms.iter() {
                     match variable {
-                        AssignmentVariable::Constant(value) => {
-                            constant_accumulator += *value;
+                        AssignmentVariable::Constant(_) => {
+                            unreachable!(
+                                "Failed during constraint translation. The first system by definition cannot have constant variables in the terms"
+                            )
                         }
                         AssignmentVariable::Public(index) => {
                             let gadget = converter.public.get(index).unwrap();
                             assert_eq!(
-                                snarkvm_r1cs::Index::Public((index + 1) as usize),
+                                snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
                                 gadget.get_unchecked(),
                                 "Failed during constraint translation. The public variable in the second system must match the first system (with an off-by-1 for the public case)"
                             );
@@ -184,7 +221,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                         AssignmentVariable::Private(index) => {
                             let gadget = converter.private.get(index).unwrap();
                             assert_eq!(
-                                snarkvm_r1cs::Index::Private(*index as usize),
+                                snarkvm_algorithms::r1cs::Index::Private(*index as usize),
                                 gadget.get_unchecked(),
                                 "Failed during constraint translation. The private variable in the second system must match the first system"
                             );
@@ -194,8 +231,12 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
                 }
 
                 // Finally, add the accumulated constant value to the linear combination.
-                linear_combination +=
-                    (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
+                if !lc.constant.is_zero() {
+                    linear_combination += (
+                        lc.constant,
+                        snarkvm_algorithms::r1cs::Variable::new_unchecked(snarkvm_algorithms::r1cs::Index::Public(0)),
+                    );
+                }
 
                 // Return the linear combination of the second system.
                 linear_combination
@@ -220,10 +261,9 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for Assignment<F> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_algorithms::{AlgebraicSponge, SNARK};
+    use snarkvm_algorithms::{r1cs::ConstraintSynthesizer, AlgebraicSponge, SNARK};
     use snarkvm_circuit::prelude::*;
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_r1cs::ConstraintSynthesizer;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
@@ -258,10 +298,10 @@ mod tests {
         assert_eq!(0, Circuit::num_private());
         assert_eq!(0, Circuit::num_constraints());
 
-        let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
+        let mut cs = snarkvm_algorithms::r1cs::TestConstraintSystem::new();
         assignment.generate_constraints(&mut cs).unwrap();
         {
-            use snarkvm_r1cs::ConstraintSystem;
+            use snarkvm_algorithms::r1cs::ConstraintSystem;
             assert_eq!(assignment.num_public() + 1, cs.num_public_variables() as u64);
             assert_eq!(assignment.num_private(), cs.num_private_variables() as u64);
             assert_eq!(assignment.num_constraints(), cs.num_constraints() as u64);
@@ -293,19 +333,21 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(&max_degree).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover().unwrap();
+        let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_pp = FS::sample_parameters();
 
         let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &assignment).unwrap();
         println!("Called circuit setup");
 
-        let proof = MarlinInst::prove(&fs_pp, &index_pk, &assignment, rng).unwrap();
+        let proof = MarlinInst::prove(universal_prover, &fs_pp, &index_pk, &assignment, rng).unwrap();
         println!("Called prover");
 
         let one = <Circuit as Environment>::BaseField::one();
-        assert!(MarlinInst::verify(&fs_pp, &index_vk, [one, one], &proof).unwrap());
+        assert!(MarlinInst::verify(universal_verifier, &fs_pp, &index_vk, [one, one], &proof).unwrap());
         println!("Called verifier");
         println!("\nShould not verify (i.e. verifier messages should print below):");
-        assert!(!MarlinInst::verify(&fs_pp, &index_vk, [one, one + one], &proof).unwrap());
+        assert!(!MarlinInst::verify(universal_verifier, &fs_pp, &index_vk, [one, one + one], &proof).unwrap());
     }
 }

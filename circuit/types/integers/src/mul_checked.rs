@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -136,13 +134,19 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
-    /// Multiply the integer bits of `this` and `that` in the base field.
+    /// Multiply the integer bits of `this` and `that` in the base field,
+    /// returning the carry bits in a separate vector.
+    /// The returned carry bits are not quite the ones whose value is the carry:
+    /// instead, they are the concatenation of the carry bits from two sub-multiplications
+    /// (see the comments in the code for details);
+    /// this is adequate for the current uses of this function,
+    /// where the callers just use the returned carry bits to check that they are all zero.
     #[inline]
     pub(super) fn mul_with_carry(this: &Integer<E, I>, that: &Integer<E, I>) -> (Integer<E, I>, Vec<Boolean<E>>) {
         // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
         if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
             // Instead of multiplying the bits of `self` and `other` directly, the integers are
-            // converted into a field elements, and multiplied, before being converted back to integers.
+            // converted into field elements, multiplied, and the result is converted back to an integer.
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let product = (this.to_field() * that.to_field()).to_lower_bits_le(2 * I::BITS as usize);
 
@@ -156,7 +160,8 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
             // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
-            // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
+            // We follow the naming convention given in the `Basic Step` section of the cited page.
+            // Note that currently here we perform Babbage multiplication, not Karatsuba multiplication.
             let x_1 = Field::from_bits_le(&this.bits_le[(I::BITS as usize / 2)..]);
             let x_0 = Field::from_bits_le(&this.bits_le[..(I::BITS as usize / 2)]);
             let y_1 = Field::from_bits_le(&that.bits_le[(I::BITS as usize / 2)..]);
@@ -173,6 +178,24 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 
             let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
 
+            // Note that the bits of z2 are appended after the bits of z0_plus_z1.
+            // This means that the bits in bits_le[I::BITS..] are not quite the bits of the carry value of the product,
+            // which should be calculated by adding the bits of z2, suitably shifted, to the bits of z0_plus_z1.
+            // Here is a picture of the bits involved, placed according to the power-of-two weights, in little endian order:
+            //   x0: <--I::BITS/2-->
+            //   x1:                <--I::BITS/2-->
+            //   y0: <--I::BITS/2-->
+            //   y1:                <--I::BITS/2-->
+            //   z0: <-----------I::BITS---------->
+            //   z1:                <-----------I::BITS+1--------->
+            //   z2:                               <-----------I::BITS---------->
+            //                                     |   overlap    |
+            // Note the overlap between the high (carry) bits of z1 and the (all carry) bits of z2;
+            // the bits for the total carry value should be calculated by adding at the overlap,
+            // but instead those bits are concatenated, as if they did not overlap, and returned by this function.
+            // This is actually adequate (and saves constraints),
+            // because currently the only purpose of the carry bits returned by this function
+            // is for the callers to check that they are all zero.
             let z_2 = &x_1 * &y_1;
             bits_le.append(&mut z_2.to_lower_bits_le(I::BITS as usize));
 

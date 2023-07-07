@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use core::marker::PhantomData;
 
@@ -60,7 +58,7 @@ impl CircuitId {
 #[derive(Clone, Debug)]
 pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// Information about the indexed circuit.
-    pub index_info: CircuitInfo<F>,
+    pub index_info: CircuitInfo,
 
     /// The A matrix for the R1CS instance
     pub a: Matrix<F>,
@@ -101,7 +99,7 @@ impl<F: PrimeField, MM: MarlinMode> PartialOrd for Circuit<F, MM> {
 
 impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     pub fn hash(
-        index_info: &CircuitInfo<F>,
+        index_info: &CircuitInfo,
         a: &Matrix<F>,
         b: &Matrix<F>,
         c: &Matrix<F>,
@@ -116,7 +114,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
 
     /// The maximum degree required to represent polynomials of this index.
     pub fn max_degree(&self) -> usize {
-        self.index_info.max_degree::<MM>()
+        self.index_info.max_degree::<F, MM>()
     }
 
     /// The number of constraints in this R1CS instance.
@@ -186,13 +184,12 @@ impl<F: PrimeField, MM: MarlinMode> snarkvm_utilities::Valid for Circuit<F, MM> 
 }
 
 impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
-    #[allow(unused_mut, unused_variables)]
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let index_info: CircuitInfo<F> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
             .ok_or(SerializationError::InvalidData)?;
         let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)

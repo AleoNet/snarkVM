@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::Mode;
 
@@ -68,44 +66,21 @@ impl<C: Inject<Primitive = P>, P> Inject for Vec<C> {
 /****** Tuples ******/
 /********************/
 
-impl<C0: Inject, C1: Inject> Inject for (C0, C1) {
-    type Primitive = (C0::Primitive, C1::Primitive);
+/// A helper macro to implement `Inject` for a tuple of `Inject` circuits.
+macro_rules! inject_tuple {
+    (($t0:ident, 0), $(($ty:ident, $idx:tt)),*) => {
+        impl<$t0: Inject, $($ty: Inject),*> Inject for ($t0, $($ty),*) {
+            type Primitive = ($t0::Primitive, $( $ty::Primitive ),*);
 
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (C0::new(mode, value.0), C1::new(mode, value.1))
+            #[inline]
+            fn new(mode: Mode, value: Self::Primitive) -> Self {
+                ($t0::new(mode, value.0), $($ty::new(mode, value.$idx)),*)
+            }
+        }
     }
 }
 
-impl<C0: Inject, C1: Inject, C2: Inject> Inject for (C0, C1, C2) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive);
-
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (C0::new(mode, value.0), C1::new(mode, value.1), C2::new(mode, value.2))
-    }
-}
-
-impl<C0: Inject, C1: Inject, C2: Inject, C3: Inject> Inject for (C0, C1, C2, C3) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive);
-
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (C0::new(mode, value.0), C1::new(mode, value.1), C2::new(mode, value.2), C3::new(mode, value.3))
-    }
-}
-
-impl<C0: Inject, C1: Inject, C2: Inject, C3: Inject, C4: Inject> Inject for (C0, C1, C2, C3, C4) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive, C4::Primitive);
-
-    #[inline]
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (
-            C0::new(mode, value.0),
-            C1::new(mode, value.1),
-            C2::new(mode, value.2),
-            C3::new(mode, value.3),
-            C4::new(mode, value.4),
-        )
-    }
-}
+inject_tuple!((C0, 0), (C1, 1));
+inject_tuple!((C0, 0), (C1, 1), (C2, 2));
+inject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3));
+inject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4));

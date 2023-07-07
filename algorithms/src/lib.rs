@@ -1,19 +1,18 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
+#![warn(unsafe_code)]
 #![allow(clippy::module_inception)]
 #![allow(clippy::type_complexity)]
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
@@ -38,8 +37,12 @@ pub mod fft;
 pub mod msm;
 #[cfg(feature = "polycommit")]
 pub mod polycommit;
+#[cfg(feature = "r1cs")]
+pub mod r1cs;
 #[cfg(feature = "snark")]
 pub mod snark;
+
+pub mod srs;
 
 pub mod errors;
 pub use errors::*;
@@ -49,4 +52,9 @@ pub use traits::*;
 
 pub mod prelude {
     pub use crate::{errors::*, traits::*};
+
+    #[cfg(feature = "polycommit")]
+    pub use crate::polycommit::error::*;
+    #[cfg(feature = "r1cs")]
+    pub use crate::r1cs::errors::*;
 }

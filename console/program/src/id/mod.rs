@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod bytes;
 mod parse;
@@ -24,6 +22,11 @@ mod to_fields;
 use crate::Identifier;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Field};
+
+/// Returns `true` if the string consists of lowercase alphanumeric characters.
+fn is_lowercase_alphanumeric(s: &str) -> bool {
+    s.chars().all(|c| matches!(c, '0'..='9' | 'a'..='z' | '_'))
+}
 
 /// A program ID is of the form `{name}.{network}`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -41,10 +44,19 @@ impl<N: Network> From<&ProgramID<N>> for ProgramID<N> {
     }
 }
 
-impl<N: Network> From<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
+impl<N: Network> TryFrom<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
+    type Error = Error;
+
     /// Initializes a program ID from a name and network-level domain identifier.
-    fn from((name, network): (Identifier<N>, Identifier<N>)) -> Self {
-        Self { name, network }
+    fn try_from((name, network): (Identifier<N>, Identifier<N>)) -> Result<Self> {
+        // Ensure the name is lowercase alphabets and numbers.
+        ensure!(is_lowercase_alphanumeric(&name.to_string()), "Program name is invalid: {name}");
+        // Construct the program ID.
+        let id = Self { name, network };
+        // Ensure the program network-level domain is `aleo`.
+        ensure!(id.is_aleo(), "Program network is invalid: {network}");
+        // Return the program ID.
+        Ok(id)
     }
 }
 
@@ -75,7 +87,10 @@ impl<N: Network> TryFrom<&str> for ProgramID<N> {
         let mut split = program_id.split('.');
         // Parse the name and network.
         if let (Some(name), Some(network), None) = (split.next(), split.next(), split.next()) {
-            Ok(Self { name: Identifier::from_str(name)?, network: Identifier::from_str(network)? })
+            // Ensure the name is lowercase alphabets and numbers.
+            ensure!(is_lowercase_alphanumeric(name), "Program name is invalid: {name}");
+            // Construct the program ID.
+            Self::try_from((Identifier::from_str(name)?, Identifier::from_str(network)?))
         } else {
             bail!("Invalid program ID '{program_id}'")
         }

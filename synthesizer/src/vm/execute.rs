@@ -1,31 +1,86 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Executes a call to the program function for the given inputs.
-    #[inline]
+    /// Returns a new execute transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn execute<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
+        fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Transaction<N>> {
+        // Compute the authorization.
+        let authorization = self.authorize(private_key, program_id, function_name, inputs, rng)?;
+        // Compute the execution.
+        let (_response, execution) = self.execute_authorization_raw(authorization, query.clone(), rng)?;
+        // Compute the fee.
+        let fee = match fee {
+            None => None,
+            Some((credits, priority_fee_in_microcredits)) => {
+                // Compute the minimum execution cost.
+                let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
+                // Determine the fee.
+                let fee_in_microcredits = minimum_execution_cost
+                    .checked_add(priority_fee_in_microcredits)
+                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                // Compute the execution ID.
+                let execution_id = execution.to_execution_id()?;
+                // Compute the fee.
+                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, execution_id, query, rng)?.1)
+            }
+        };
+        // Return the execute transaction.
+        Transaction::from_execution(execution, fee)
+    }
+
+    /// Returns a new execute transaction for the given authorization.
+    pub fn execute_authorization<R: Rng + CryptoRng>(
+        &self,
+        authorization: Authorization<N>,
+        fee: Option<Fee<N>>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Transaction<N>> {
+        // Compute the execution.
+        let (_response, execution) = self.execute_authorization_raw(authorization, query, rng)?;
+        // Return the execute transaction.
+        Transaction::from_execution(execution, fee)
+    }
+
+    /// Executes a call to the program function for the given authorization.
+    /// Returns the response and execution.
+    #[inline]
+    fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>, Vec<CallMetrics<N>>)> {
-        let timer = timer!("VM::execute");
+    ) -> Result<(Response<N>, Execution<N>)> {
+        let timer = timer!("VM::execute_authorization");
+
+        // Construct the locator of the main function.
+        let locator = {
+            let request = authorization.peek_next()?;
+            Locator::new(*request.program_id(), *request.function_name()).to_string()
+        };
 
         // Prepare the query.
         let query = match query {
@@ -42,110 +97,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the authorization");
 
                 // Execute the call.
-                let (response, execution, inclusion, metrics) =
-                    $process.execute::<$aleo, _>(authorization.clone(), rng)?;
+                let (response, mut trace) = $process.execute::<$aleo>(authorization.clone())?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
-                let (assignments, global_state_root) = {
-                    let execution = cast_ref!(execution as Execution<N>);
-                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_execution(execution, query)?
-                };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
-                let global_state_root = *cast_ref!((*global_state_root) as Field<$network>);
-
+                cast_mut_ref!(trace as Trace<N>).prepare(query)?;
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the inclusion proof and update the execution.
-                let execution =
-                    inclusion.prove_execution::<$aleo, _>(execution, assignments, global_state_root.into(), rng)?;
-                lap!(timer, "Compute the inclusion proof");
+                // Compute the proof and construct the execution.
+                let trace = cast_ref!(trace as Trace<$network>);
+                let execution = trace.prove_execution::<$aleo, _>(&locator, rng)?;
+                lap!(timer, "Compute the proof");
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let execution = cast_ref!(execution as Execution<N>).clone();
-                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
                 lap!(timer, "Prepare the response and execution");
 
                 finish!(timer);
 
-                // Return the response, execution, and metrics.
-                Ok((response, execution, metrics))
-            }};
-        }
-        // Process the logic.
-        process!(self, logic)
-    }
-
-    /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
-    #[inline]
-    pub fn execute_fee<R: Rng + CryptoRng>(
-        &self,
-        private_key: &PrivateKey<N>,
-        fee_record: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<(Response<N>, Fee<N>, Vec<CallMetrics<N>>)> {
-        let timer = timer!("VM::execute_fee");
-
-        // Prepare the query.
-        let query = match query {
-            Some(query) => query,
-            None => Query::VM(self.block_store().clone()),
-        };
-        lap!(timer, "Prepare the query");
-
-        // TODO (raychu86): Ensure that the fee record is associated with the `credits.aleo` program
-        // Ensure that the record has enough balance to pay the fee.
-        match fee_record.find(&[Identifier::from_str("microcredits")?]) {
-            Ok(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => {
-                if *amount < fee_in_microcredits {
-                    bail!("Fee record does not have enough balance to pay the fee")
-                }
-            }
-            _ => bail!("Fee record does not have microcredits"),
-        }
-
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                type RecordPlaintext<NetworkMacro> = Record<NetworkMacro, Plaintext<NetworkMacro>>;
-
-                // Prepare the private key and fee record.
-                let private_key = cast_ref!(&private_key as PrivateKey<$network>);
-                let fee_record = cast_ref!(fee_record as RecordPlaintext<$network>);
-                lap!(timer, "Prepare the private key and fee record");
-
-                // Execute the call to fee.
-                let (response, fee_transition, inclusion, metrics) =
-                    $process.execute_fee::<$aleo, _>(private_key, fee_record.clone(), fee_in_microcredits, rng)?;
-                lap!(timer, "Execute the call to fee");
-
-                // Prepare the assignments.
-                let assignments = {
-                    let fee_transition = cast_ref!(fee_transition as Transition<N>);
-                    let inclusion = cast_ref!(inclusion as Inclusion<N>);
-                    inclusion.prepare_fee(fee_transition, query)?
-                };
-                let assignments = cast_ref!(assignments as Vec<InclusionAssignment<$network>>);
-                lap!(timer, "Prepare the assignments");
-
-                // Compute the inclusion proof and construct the fee.
-                let fee = inclusion.prove_fee::<$aleo, _>(fee_transition, assignments, rng)?;
-                lap!(timer, "Compute the inclusion proof and construct the fee");
-
-                // Prepare the return.
-                let response = cast_ref!(response as Response<N>).clone();
-                let fee = cast_ref!(fee as Fee<N>).clone();
-                let metrics = cast_ref!(metrics as Vec<CallMetrics<N>>).clone();
-                lap!(timer, "Prepare the response, fee, and metrics");
-
-                finish!(timer);
-
-                // Return the response, fee, metrics.
-                Ok((response, fee, metrics))
+                // Return the response and execution.
+                Ok((response, execution))
             }};
         }
         // Process the logic.
@@ -156,12 +128,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::helpers::memory::ConsensusMemory;
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Ciphertext, Value},
+        types::Field,
     };
+    use ledger_block::Transition;
+    use ledger_store::helpers::memory::ConsensusMemory;
 
     use indexmap::IndexMap;
 
@@ -209,8 +183,7 @@ mod tests {
         .into_iter();
 
         // Execute.
-        let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
@@ -249,18 +222,17 @@ mod tests {
 
         // Execute.
         let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "transfer"), inputs, None, None, rng)
-                .unwrap();
+            vm.execute(&caller_private_key, ("credits.aleo", "transfer_private"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2595, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2222, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2560, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2187, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -284,18 +256,17 @@ mod tests {
         let inputs = [Value::<CurrentNetwork>::Record(record_1), Value::<CurrentNetwork>::Record(record_2)].into_iter();
 
         // Execute.
-        let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "join"), inputs, None, None, rng).unwrap();
+        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "join"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2480, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2099, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2445, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2064, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -318,40 +289,17 @@ mod tests {
             [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("1u64").unwrap()].into_iter();
 
         // Execute.
-        let transaction =
-            Transaction::execute(&vm, &caller_private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2492, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2111, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2457, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2076, execution_size_in_bytes, "Update me if serialization has changed");
         }
-    }
-
-    #[test]
-    fn test_fee_transition_size() {
-        let rng = &mut TestRng::default();
-
-        // Initialize a new caller.
-        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
-        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-
-        // Prepare the VM and records.
-        let (vm, records) = prepare_vm(rng).unwrap();
-
-        // Fetch the unspent record.
-        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-
-        // Execute.
-        let (_, fee, _) = vm.execute_fee(&caller_private_key, record, 1, None, rng).unwrap();
-
-        // Assert the size of the transition.
-        let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(2247, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }

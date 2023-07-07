@@ -1,0 +1,65 @@
+[package]
+name = "snarkvm-synthesizer-program"
+version = "0.14.1"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Program for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
+]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "Apache-2.0"
+edition = "2021"
+
+[features]
+default = [ ]
+serial = [ "console/serial" ]
+wasm = [ "console/wasm" ]
+
+[dependencies.circuit]
+package = "snarkvm-circuit"
+path = "../../circuit"
+version = "=0.14.1"
+
+[dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+version = "=0.14.1"
+default-features = false
+features = [ "network", "program", "types" ]
+
+[dependencies.indexmap]
+version = "2.0"
+features = [ "serde", "rayon" ]
+
+[dependencies.paste]
+version = "1.0.13"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.rand_chacha]
+version = "0.3"
+
+[dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
+[dev-dependencies.bincode]
+version = "1"
+
+[dev-dependencies.synthesizer-process]
+package = "snarkvm-synthesizer-process"
+path = "../process"
