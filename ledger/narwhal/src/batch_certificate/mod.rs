@@ -123,12 +123,12 @@ impl<N: Network> BatchCertificate<N> {
     }
 
     /// Returns the timestamps of the batch ID from the committee.
-    pub fn timestamps(&self) -> impl '_ + Iterator<Item = i64> {
+    pub fn timestamps(&self) -> impl '_ + ExactSizeIterator<Item = i64> {
         self.signatures.values().copied()
     }
 
     /// Returns the signatures of the batch ID from the committee.
-    pub fn signatures(&self) -> impl Iterator<Item = &Signature<N>> {
+    pub fn signatures(&self) -> impl ExactSizeIterator<Item = &Signature<N>> {
         self.signatures.keys()
     }
 }
