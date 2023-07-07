@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-algorithms"
-version = "0.12.3"
+version = "0.14.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Console algorithms for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -18,24 +18,24 @@ harness = false
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "=0.12.3"
+version = "=0.14.1"
 default-features = false
 features = [ "field", "group", "integers", "scalar" ]
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "=0.12.3"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "=0.12.3"
+version = "=0.14.1"
 
 [dependencies.blake2s_simd]
 version = "1.0"
 
 [dependencies.smallvec]
-version = "1.10"
+version = "1.11"
 default-features = false
 features = [ "const_generics", "const_new" ]
 

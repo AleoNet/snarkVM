@@ -14,8 +14,6 @@
 
 use super::*;
 
-use std::collections::HashMap;
-
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given transaction is well-formed and unique.
     pub fn check_transaction_basic(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
@@ -63,16 +61,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             let fee = *transaction.fee()?;
             // Retrieve the minimum cost of the transaction.
             let (cost, _) = match transaction {
-                Transaction::Deploy(_, _, deployment, _) => deployment_cost(deployment)?,
-                Transaction::Execute(_, execution, _) => {
-                    // Prepare the program lookup.
-                    let lookup = execution
-                        .transitions()
-                        .map(|transition| Ok((*transition.program_id(), self.get_program(*transition.program_id())?)))
-                        .collect::<Result<HashMap<_, _>>>()?;
-                    // Compute the execution cost.
-                    execution_cost(execution, lookup)?
-                }
+                // Compute the deployment cost.
+                Transaction::Deploy(_, _, deployment, _) => synthesizer::deployment_cost(deployment)?,
+                // Compute the execution cost.
+                Transaction::Execute(_, execution, _) => synthesizer::execution_cost(self.vm(), execution)?,
                 // TODO (howardwu): Plug in the Rejected struct, to compute the cost.
                 Transaction::Fee(_, _) => (0, (0, 0)),
             };
@@ -404,16 +396,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
         }
 
+        // FIXME: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
+        let transactions = block.transactions().iter().collect::<Vec<_>>();
+
         // Ensure each transaction is well-formed and unique.
-        cfg_iter!(block.transactions()).try_for_each(|transaction| {
+        cfg_iter!(transactions).try_for_each(|transaction| {
             // Construct the rejected ID.
             let rejected_id = match transaction {
                 ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
-                ConfirmedTransaction::RejectedDeploy(_, _, deployment) => Some(deployment.to_deployment_id()?),
-                ConfirmedTransaction::RejectedExecute(_, _, execution) => Some(execution.to_execution_id()?),
+                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => Some(rejected.to_id()?),
+                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
             };
 
-            self.check_transaction_basic(transaction, rejected_id)
+            self.check_transaction_basic(transaction.deref(), rejected_id)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
@@ -425,8 +420,32 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.cumulative_proof_target(),
             block.previous_hash(),
         )?;
+
+        // Reconstruct the unconfirmed transactions to verify the speculation.
+        let unconfirmed_transactions = block
+            .transactions()
+            .iter()
+            .map(|tx| match tx {
+                // Pass through the accepted deployment and execution transactions.
+                ConfirmedTransaction::AcceptedDeploy(_, tx, _) | ConfirmedTransaction::AcceptedExecute(_, tx, _) => {
+                    Ok(tx.clone())
+                }
+                // Reconstruct the unconfirmed deployment transaction.
+                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
+                    rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
+                    rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
+                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee"))?,
+                ),
+                // Reconstruct the unconfirmed execution transaction.
+                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
+                    rejected.execution().cloned().ok_or(anyhow!("Missing the execution"))?,
+                    fee_transaction.fee_transition(),
+                ),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         // Ensure the transactions after speculation match.
-        if block.transactions() != &self.vm.speculate(state, block.transactions().iter().map(|tx| tx.deref()))? {
+        if block.transactions() != &self.vm.speculate(state, unconfirmed_transactions.iter())? {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 

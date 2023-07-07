@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.12.3"
+version = "0.14.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -23,14 +23,20 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
 
+[features]
+default = [ "colored", "remote" ]
+no_std_out = [ ]
+remote = [ "curl" ]
+wasm = [ "encoding", "js-sys", "web-sys" ]
+
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "=0.12.3"
+version = "=0.14.1"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "=0.12.3"
+version = "=0.14.1"
 
 [dependencies.aleo-std]
 version = "0.1.18"
@@ -58,10 +64,10 @@ optional = true
 version = "0.4.3"
 
 [dependencies.indexmap]
-version = "1.9"
+version = "2.0"
 
 [dependencies.itertools]
-version = "0.10.3"
+version = "0.11.0"
 
 [dependencies.js-sys]
 version = "0.3.64"
@@ -106,6 +112,9 @@ path = "../circuit"
 [dev-dependencies.snarkvm-console]
 path = "../console"
 
+[dev-dependencies.snarkvm-ledger-store]
+path = "../ledger/store"
+
 [dev-dependencies.snarkvm-synthesizer]
 path = "../synthesizer"
 
@@ -117,9 +126,3 @@ version = "0.4.3"
 
 [dev-dependencies.rand]
 version = "0.8"
-
-[features]
-default = [ "colored", "remote" ]
-no_std_out = [ ]
-remote = [ "curl" ]
-wasm = [ "encoding", "js-sys", "web-sys" ]
