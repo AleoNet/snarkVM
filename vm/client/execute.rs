@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use super::*;
 
@@ -24,8 +22,8 @@ impl<N: Network> Client<N> {
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
         inputs: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>>,
-        (credits, fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
-    ) -> Result<(Response<N>, Response<N>, Transaction<N>)> {
+        (credits, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+    ) -> Result<Transaction<N>> {
         let rng = &mut rand::thread_rng();
         // Prepare the program ID.
         let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
@@ -41,16 +39,15 @@ impl<N: Network> Client<N> {
             }
         }
 
-        // Compute the authorization.
-        let authorization = self.vm.authorize(private_key, program_id, function_name, inputs, rng)?;
-        // Compute the execution.
-        let (response, execution, _) = self.vm.execute(authorization, Some(query.clone()), rng)?;
-        // Execute the fee.
-        let (fee_response, fee, _) =
-            self.vm.execute_fee(private_key, credits, fee_in_microcredits, Some(query), rng)?;
-
-        // Return the response and transaction.
-        Ok((response, fee_response, Transaction::from_execution(execution, Some(fee))?))
+        // Return the transaction
+        self.vm.execute(
+            private_key,
+            (program_id, function_name),
+            inputs.into_iter(),
+            Some((credits, priority_fee_in_microcredits)),
+            Some(query),
+            rng,
+        )
     }
 }
 
@@ -93,8 +90,8 @@ mod tests {
         // Prepare the inputs.
         let inputs = [record.to_string(), address.to_string(), (**amount).to_string()];
         // Execute the program.
-        let (_response, _fee_response, transaction) =
-            client.execute(&private_key, "credits.aleo", "transfer", inputs, (fee_record, 10)).unwrap();
+        let transaction =
+            client.execute(&private_key, "credits.aleo", "transfer_private", inputs, (fee_record, 10)).unwrap();
         assert_eq!(transaction.transitions().count(), 2);
 
         // let response = reqwest::blocking::Client::new()
