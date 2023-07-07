@@ -117,19 +117,19 @@ impl<N: Network> BatchCertificate<N> {
 
     /// Returns the median timestamp of the batch ID from the committee.
     pub fn median_timestamp(&self) -> i64 {
-        let mut timestamps = self.timestamps().collect::<Vec<_>>();
+        let mut timestamps = self.timestamps().chain([self.batch_header.timestamp()].into_iter()).collect::<Vec<_>>();
         timestamps.sort_unstable();
         timestamps[timestamps.len() / 2]
     }
 
     /// Returns the timestamps of the batch ID from the committee.
     pub fn timestamps(&self) -> impl '_ + Iterator<Item = i64> {
-        self.signatures.values().copied().chain([self.batch_header.timestamp()].into_iter())
+        self.signatures.values().copied()
     }
 
     /// Returns the signatures of the batch ID from the committee.
     pub fn signatures(&self) -> impl Iterator<Item = &Signature<N>> {
-        self.signatures.keys().chain([self.batch_header.signature()].into_iter())
+        self.signatures.keys()
     }
 }
 
