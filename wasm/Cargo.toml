@@ -52,6 +52,7 @@ optional = true
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "=0.14.1"
+features = [ "wasm" ]
 optional = true
 
 [dependencies.rand]

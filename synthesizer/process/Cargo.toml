@@ -38,7 +38,6 @@ serial = [
 wasm = [
   "console/wasm",
   "ledger-block/wasm",
-  "ledger-query/serial",
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm"
 ]
