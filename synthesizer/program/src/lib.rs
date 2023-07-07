@@ -16,6 +16,11 @@
 #![allow(clippy::too_many_arguments)]
 #![warn(clippy::cast_possible_truncation)]
 
+pub type Program<N> = crate::ProgramCore<N, Instruction<N>, Command<N>>;
+pub type Function<N> = crate::FunctionCore<N, Instruction<N>, Command<N>>;
+pub type Finalize<N> = crate::FinalizeCore<N, Command<N>>;
+pub type Closure<N> = crate::ClosureCore<N, Instruction<N>>;
+
 mod closure;
 pub use closure::*;
 
@@ -28,11 +33,14 @@ pub use function::*;
 mod import;
 pub use import::*;
 
+mod logic;
+pub use logic::*;
+
 mod mapping;
 pub use mapping::*;
 
-mod operand;
-pub use operand::*;
+pub mod traits;
+pub use traits::*;
 
 mod bytes;
 mod parse;
@@ -153,6 +161,16 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     /// Returns the mappings in the program.
     pub const fn mappings(&self) -> &IndexMap<Identifier<N>, Mapping<N>> {
         &self.mappings
+    }
+
+    /// Returns the structs in the program.
+    pub const fn structs(&self) -> &IndexMap<Identifier<N>, Struct<N>> {
+        &self.structs
+    }
+
+    /// Returns the records in the program.
+    pub const fn records(&self) -> &IndexMap<Identifier<N>, RecordType<N>> {
+        &self.records
     }
 
     /// Returns the closures in the program.
@@ -624,7 +642,6 @@ mod tests {
         network::Testnet3,
         program::{Locator, ValueType},
     };
-    use synthesizer::process::{Function, Opcode, Program};
 
     type CurrentNetwork = Testnet3;
 

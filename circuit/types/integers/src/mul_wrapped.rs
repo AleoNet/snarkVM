@@ -26,7 +26,10 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
         } else {
             // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
-            // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
+            // We follow the naming convention given in the `Basic Step` section of the cited page.
+            // Note that currently here we perform Babbage multiplication, not Karatsuba multiplication;
+            // however, since we do not need to calculate z2 here,
+            // Babbage involves three multiplication, same as Karatsuba.
             // For integers with size less than 128, this algorithm saves approximately 0.5 * I::BITS
             // constraints compared to a field multiplication.
             let x_1 = Field::from_bits_le(&self.bits_le[(I::BITS as usize / 2)..]);

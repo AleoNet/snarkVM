@@ -18,6 +18,7 @@ use input::*;
 mod bytes;
 mod parse;
 
+use crate::traits::CommandTrait;
 use console::{
     network::prelude::*,
     program::{Identifier, PlaintextType, Register},
@@ -25,28 +26,6 @@ use console::{
 
 use indexmap::IndexSet;
 use std::collections::HashMap;
-
-pub trait FinalizeCommandTrait: Clone + PartialEq + Eq + Parser + FromBytes + ToBytes {
-    /// Returns the number of operands.
-    fn num_operands(&self) -> usize;
-}
-
-pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
-    type FinalizeCommand: FinalizeCommandTrait;
-
-    /// Returns the destination registers of the command.
-    fn destinations(&self) -> Vec<Register<N>>;
-    /// Returns the branch target, if the command is a branch command.
-    fn branch_to(&self) -> Option<&Identifier<N>>;
-    /// Returns the position name, if the command is a position command.
-    fn position(&self) -> Option<&Identifier<N>>;
-    /// Returns `true` if the command is a call instruction.
-    fn is_call(&self) -> bool;
-    /// Returns `true` if the command is a cast to record instruction.
-    fn is_cast_to_record(&self) -> bool;
-    /// Returns `true` if the command is a write operation.
-    fn is_write(&self) -> bool;
-}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct FinalizeCore<N: Network, Command: CommandTrait<N>> {
@@ -157,6 +136,8 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         if let Some(position) = command.position() {
             // Ensure the position is not yet defined.
             ensure!(!self.positions.contains_key(position), "Cannot redefine position '{position}'");
+            // Ensure that there are less than `u8::MAX` positions.
+            ensure!(self.positions.len() < u8::MAX as usize, "Cannot add more than {} positions", u8::MAX);
             // Insert the position.
             self.positions.insert(*position, self.commands.len());
         }

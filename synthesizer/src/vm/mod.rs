@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod helpers;
+pub use helpers::*;
 
 mod authorize;
 mod deploy;
@@ -21,24 +22,28 @@ mod execute_fee;
 mod finalize;
 mod verify;
 
-pub use finalize::FinalizeMode;
-
-use crate::{
-    atomic_finalize,
-    block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions},
-    cast_mut_ref,
-    cast_ref,
-    process,
-    process::{Authorization, FinalizeGlobalState, Process, Program, Query, Trace},
-    store::{BlockStore, ConsensusStorage, ConsensusStore, FinalizeStore, TransactionStore, TransitionStore},
-    TransactionStorage,
-};
+use crate::{cast_mut_ref, cast_ref, process};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
     types::Field,
 };
+use ledger_block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions};
+use ledger_query::Query;
+use ledger_store::{
+    atomic_finalize,
+    BlockStore,
+    ConsensusStorage,
+    ConsensusStore,
+    FinalizeMode,
+    FinalizeStore,
+    TransactionStorage,
+    TransactionStore,
+    TransitionStore,
+};
+use synthesizer_process::{Authorization, Process, Trace};
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
 use parking_lot::RwLock;
@@ -95,9 +100,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Add the imports to the process if does not exist yet.
                 if !process.contains_program(import_program_id) {
                     // Fetch the deployment transaction id.
-                    let Some(transaction_id) = transaction_store
-                        .deployment_store()
-                        .find_transaction_id_from_program_id(import_program_id)?
+                    let Some(transaction_id) =
+                        transaction_store.deployment_store().find_transaction_id_from_program_id(import_program_id)?
                     else {
                         bail!("Transaction id for '{program_id}' is not found in storage.");
                     };
@@ -238,17 +242,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{
-        block::{Block, Fee, Header, Metadata, Transition},
-        process::Program,
-        store::helpers::memory::ConsensusMemory,
-    };
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Value, RATIFICATIONS_DEPTH},
         types::Field,
     };
+    use ledger_block::{Block, Fee, Header, Metadata, Transition};
+    use ledger_store::helpers::memory::ConsensusMemory;
+    use synthesizer_program::Program;
 
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
@@ -646,7 +648,7 @@ function compute:
 
         // Deploy the programs.
         let first_program = r"
-program test_1.aleo;
+program test_program_1.aleo;
 mapping map_0:
     key left as field.public;
     value right as field.public;
@@ -660,7 +662,7 @@ finalize getter:
     get map_0[0field] into r0;
         ";
         let second_program = r"
-program test_2.aleo;
+program test_program_2.aleo;
 mapping map_0:
     key left as field.public;
     value right as field.public;
@@ -687,7 +689,7 @@ finalize getter:
         let first_execution = vm
             .execute(
                 &caller_private_key,
-                ("test_1.aleo", "init"),
+                ("test_program_1.aleo", "init"),
                 Vec::<Value<Testnet3>>::new().iter(),
                 Some((third_record, 1)),
                 None,
@@ -697,7 +699,7 @@ finalize getter:
         let second_execution = vm
             .execute(
                 &caller_private_key,
-                ("test_2.aleo", "init"),
+                ("test_program_2.aleo", "init"),
                 Vec::<Value<Testnet3>>::new().iter(),
                 Some((fourth_record, 1)),
                 None,
@@ -728,12 +730,13 @@ finalize getter:
         // Fetch the unspent records.
         let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<Vec<(_, _)>>();
         trace!("Unspent Records:\n{:#?}", records);
-        let first_record = records[0].1.decrypt(&caller_view_key).unwrap();
-        let second_record = records[1].1.decrypt(&caller_view_key).unwrap();
-        let third_record = records[2].1.decrypt(&caller_view_key).unwrap();
+        let record_0 = records[0].1.decrypt(&caller_view_key).unwrap();
+        let record_1 = records[1].1.decrypt(&caller_view_key).unwrap();
+        let record_2 = records[2].1.decrypt(&caller_view_key).unwrap();
+        let record_3 = records[3].1.decrypt(&caller_view_key).unwrap();
 
         // Create the deployment for the first program.
-        let first_program = r"
+        let program_1 = r"
 program first_program.aleo;
 
 function c:
@@ -742,16 +745,15 @@ function c:
     add r0 r1 into r2;
     output r2 as u8.private;
         ";
-        let first_deployment = vm
-            .deploy(&caller_private_key, &Program::from_str(first_program).unwrap(), (first_record, 1), None, rng)
-            .unwrap();
+        let deployment_1 =
+            vm.deploy(&caller_private_key, &Program::from_str(program_1).unwrap(), (record_0, 0), None, rng).unwrap();
 
         // Deploy the first program.
-        let deployment_block = sample_next_block(&vm, &caller_private_key, &[first_deployment.clone()], rng).unwrap();
+        let deployment_block = sample_next_block(&vm, &caller_private_key, &[deployment_1.clone()], rng).unwrap();
         vm.add_next_block(&deployment_block).unwrap();
 
         // Create the deployment for the second program.
-        let second_program = r"
+        let program_2 = r"
 import first_program.aleo;
 
 program second_program.aleo;
@@ -762,18 +764,16 @@ function b:
     call first_program.aleo/c r0 r1 into r2;
     output r2 as u8.private;
         ";
-        let second_deployment = vm
-            .deploy(&caller_private_key, &Program::from_str(second_program).unwrap(), (second_record, 1), None, rng)
-            .unwrap();
+        let deployment_2 =
+            vm.deploy(&caller_private_key, &Program::from_str(program_2).unwrap(), (record_1, 0), None, rng).unwrap();
 
         // Deploy the second program.
-        let deployment_block = sample_next_block(&vm, &caller_private_key, &[second_deployment.clone()], rng).unwrap();
+        let deployment_block = sample_next_block(&vm, &caller_private_key, &[deployment_2.clone()], rng).unwrap();
         vm.add_next_block(&deployment_block).unwrap();
 
         // Create the deployment for the third program.
-        let third_program = r"
+        let program_3 = r"
 import second_program.aleo;
-import first_program.aleo;
 
 program third_program.aleo;
 
@@ -783,12 +783,28 @@ function a:
     call second_program.aleo/b r0 r1 into r2;
     output r2 as u8.private;
         ";
-        let third_deployment = vm
-            .deploy(&caller_private_key, &Program::from_str(third_program).unwrap(), (third_record, 1), None, rng)
-            .unwrap();
+        let deployment_3 =
+            vm.deploy(&caller_private_key, &Program::from_str(program_3).unwrap(), (record_2, 0), None, rng).unwrap();
 
-        // Deploy the third program.
-        let deployment_block = sample_next_block(&vm, &caller_private_key, &[third_deployment.clone()], rng).unwrap();
+        // Create the deployment for the fourth program.
+        let program_4 = r"
+import second_program.aleo;
+import first_program.aleo;
+
+program fourth_program.aleo;
+
+function a:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    call second_program.aleo/b r0 r1 into r2;
+    output r2 as u8.private;
+        ";
+        let deployment_4 =
+            vm.deploy(&caller_private_key, &Program::from_str(program_4).unwrap(), (record_3, 0), None, rng).unwrap();
+
+        // Deploy the third and fourth program together.
+        let deployment_block =
+            sample_next_block(&vm, &caller_private_key, &[deployment_3.clone(), deployment_4.clone()], rng).unwrap();
         vm.add_next_block(&deployment_block).unwrap();
 
         // Check that the iterator ordering is not the same as the deployment ordering.
@@ -797,9 +813,10 @@ function a:
         // This `assert_ne` check is here to ensure that we are properly loading imports even though any order will work for `VM::from`.
         // Note: `deployment_transaction_ids` is sorted lexicographically by transaction id, so the order may change if we update internal methods.
         assert_ne!(deployment_transaction_ids, vec![
-            first_deployment.id(),
-            second_deployment.id(),
-            third_deployment.id()
+            deployment_1.id(),
+            deployment_2.id(),
+            deployment_3.id(),
+            deployment_4.id()
         ]);
 
         // Enforce that the VM can load properly with the imports.

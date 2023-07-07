@@ -31,11 +31,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
 
+        // Compute the minimum deployment cost.
+        let (minimum_deployment_cost, (_, _)) = deployment_cost(&deployment)?;
         // Determine the fee.
-        let fee_in_microcredits = deployment
-            .size_in_bytes()?
-            .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
-            .and_then(|deployment_fee| deployment_fee.checked_add(priority_fee_in_microcredits))
+        let fee_in_microcredits = minimum_deployment_cost
+            .checked_add(priority_fee_in_microcredits)
             .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
 
         // Compute the deployment ID.
