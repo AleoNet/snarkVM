@@ -6,7 +6,6 @@
     <a href="https://circleci.com/gh/AleoHQ/snarkVM"><img src="https://dl.circleci.com/status-badge/img/gh/AleoHQ/snarkVM/tree/testnet3.svg?style=svg"></a>
     <a href="https://codecov.io/gh/AleoHQ/snarkVM"><img src="https://codecov.io/gh/AleoHQ/snarkVM/branch/master/graph/badge.svg?token=cck8tS9HpO"/></a>
     <a href="https://aleo.org/discord"><img src="https://img.shields.io/discord/700454073459015690?logo=discord"/></a>
-    <a href="https://allcontributors.org/"><img src="https://img.shields.io/github/all-contributors/AleoHQ/snarkvm?color=ee8449&style=flat-square"/></a>
 </p>
 
 ## Table of Contents
