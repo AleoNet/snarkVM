@@ -85,9 +85,6 @@ snarkvm
 
 ## 4. Contributors
 
-Thank you for helping make SnarkVM better!  
-[🧐 What do the emojis mean?](https://allcontributors.org/docs/en/emoji-key)
-
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
