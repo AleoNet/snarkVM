@@ -142,6 +142,11 @@ impl<N: Network> Batch<N> {
         &self.transmissions
     }
 
+    /// Returns the transmissions.
+    pub fn into_transmissions(self) -> IndexMap<TransmissionID<N>, Transmission<N>> {
+        self.transmissions
+    }
+
     /// Returns the batch certificates for the previous round.
     pub const fn previous_certificates(&self) -> &IndexSet<BatchCertificate<N>> {
         &self.previous_certificates
