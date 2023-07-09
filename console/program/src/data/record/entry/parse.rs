@@ -190,10 +190,10 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                             }
                             // Print the closing brace.
                             match i == struct_.len() - 1 {
-                                // Print the last member without a comma.
+                                // If this inner struct is the last member of the outer struct, print the closing brace of the outer struct.
                                 true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
-                                // Print the member with a comma.
-                                false => write!(f, "\n{:indent$}}},", "", indent = depth * INDENT),
+                                // Otherwise, print a comma after the inner struct, because the outer struct has more members after this one.
+                                false => write!(f, ","),
                             }
                         }
                     }
