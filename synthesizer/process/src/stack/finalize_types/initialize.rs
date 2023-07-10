@@ -111,6 +111,7 @@ impl<N: Network> FinalizeTypes<N> {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
+            PlaintextType::Array(_) => todo!("Array input types are not yet supported."),
         };
 
         // Insert the input register.
@@ -490,6 +491,9 @@ impl<N: Network> FinalizeTypes<N> {
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), &struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                        todo!("Casting to an array is not yet supported.")
                     }
                     RegisterType::Record(..) => {
                         bail!("Illegal operation: Cannot cast to a record.")

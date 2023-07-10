@@ -100,11 +100,12 @@ impl<N: Network> RegisterTypes<N> {
             for operand in command.operands() {
                 // Retrieve the register type from the operand.
                 let register_type = register_types.get_type_from_operand(stack, operand)?;
-                // Ensure the register type is a literal or a struct.
+                // Ensure the register type is a literal, struct, or array.
                 // See `Stack::execute_function()` for the same set of checks.
                 match register_type {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
                     RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => (),
                     RegisterType::Record(..) => {
                         bail!(
                             "'{}/{}' attempts to pass a 'record' into 'finalize'",
@@ -195,6 +196,10 @@ impl<N: Network> RegisterTypes<N> {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
             }
+            RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                // Ensure the innermost element type is defined in the program.
+                todo!("Array input types are not yet supported.")
+            }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -248,6 +253,10 @@ impl<N: Network> RegisterTypes<N> {
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                 }
+            }
+            RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                // Ensure the innermost element type is defined in the program.
+                todo!("Array output types are not yet supported.")
             }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
@@ -427,6 +436,9 @@ impl<N: Network> RegisterTypes<N> {
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), &struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                        todo!("Casting to an array is not yet supported.")
                     }
                     RegisterType::Record(record_name) => {
                         // Ensure the record type is defined in the program.

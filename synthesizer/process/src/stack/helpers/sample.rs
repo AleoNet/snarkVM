@@ -165,6 +165,10 @@ impl<N: Network> Stack<N> {
 
                 Plaintext::Struct(members, Default::default())
             }
+            // Sample an array.
+            PlaintextType::Array(_) => {
+                todo!("Sampling arrays is not yet supported.")
+            }
         };
         // Return the plaintext.
         Ok(plaintext)

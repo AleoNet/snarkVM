@@ -93,10 +93,10 @@ impl<N: Network> FinalizeTypes<N> {
             self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?.clone()
         } else {
             // Retrieve the destination register type.
-            self
-                .destinations
+            self.destinations
                 .get(&register.locator())
-                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?.clone()
+                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+                .clone()
         };
 
         // Retrieve the path if the register is an access. Otherwise, return the type.

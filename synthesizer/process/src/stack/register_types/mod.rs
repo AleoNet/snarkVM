@@ -109,10 +109,10 @@ impl<N: Network> RegisterTypes<N> {
             self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?.clone()
         } else {
             // Retrieve the destination register type.
-            self
-                .destinations
+            self.destinations
                 .get(&register.locator())
-                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?.clone()
+                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+                .clone()
         };
 
         // Retrieve the path if the register is an access. Otherwise, return the register type.
@@ -143,6 +143,10 @@ impl<N: Network> RegisterTypes<N> {
                         Some(plaintext_type) => RegisterType::Plaintext(plaintext_type.clone()),
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
+                }
+                // Traverse the path to output the register type.
+                RegisterType::Plaintext(PlaintextType::Array(_)) => {
+                    todo!("Access the array type to output the element type.")
                 }
                 RegisterType::Record(record_name) => {
                     // Ensure the record type exists.

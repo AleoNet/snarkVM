@@ -227,7 +227,7 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} outputs, found {}", closure.outputs().len(), self.destinations.len())
             }
             // Return the output register types.
-            Ok(closure.outputs().iter().map(|output| *output.register_type()).collect())
+            Ok(closure.outputs().iter().map(|output| output.register_type().clone()).collect())
         }
         // If the operator is a function, retrieve the function and compute the output types.
         else if let Ok(function) = program.get_function(resource) {
@@ -253,7 +253,7 @@ impl<N: Network> Call<N> {
                         &format!("{}/{}", program.id(), record_name),
                     )?)),
                     // Else, return the register type.
-                    (_, _) => Ok(RegisterType::from(output_type.clone())),
+                    (_, output_type) => Ok(RegisterType::from(output_type)),
                 })
                 .collect::<Result<Vec<_>>>()
         }
