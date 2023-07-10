@@ -29,7 +29,7 @@ pub enum Ratify<N: Network> {
 }
 
 #[cfg(test)]
-mod test_helpers {
+pub mod test_helpers {
     use super::*;
     use console::network::Testnet3;
 
