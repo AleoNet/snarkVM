@@ -51,6 +51,7 @@ impl<N: Network> BatchHeader<N> {
         round: u64,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
+        timestamp: i64,
         rng: &mut R,
     ) -> Result<Self> {
         match round {
@@ -61,8 +62,6 @@ impl<N: Network> BatchHeader<N> {
         }
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
-        // Checkpoint the timestamp for the batch.
-        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Sign the preimage.
@@ -167,8 +166,10 @@ pub mod test_helpers {
             crate::transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
         // Sample certificate IDs.
         let certificate_ids = (0..10).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
+        // Checkpoint the timestamp for the batch.
+        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Return the batch header.
-        BatchHeader::new(&private_key, rng.gen(), transmission_ids, certificate_ids, rng).unwrap()
+        BatchHeader::new(&private_key, rng.gen(), transmission_ids, certificate_ids, timestamp, rng).unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.

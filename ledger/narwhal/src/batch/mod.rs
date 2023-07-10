@@ -51,6 +51,7 @@ impl<N: Network> Batch<N> {
         round: u64,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
         previous_certificates: IndexSet<BatchCertificate<N>>,
+        timestamp: i64,
         rng: &mut R,
     ) -> Result<Self> {
         match round {
@@ -63,8 +64,6 @@ impl<N: Network> Batch<N> {
         ensure!(!transmissions.is_empty(), "Batch must contain at least one transmission");
         // Construct the author.
         let author = Address::try_from(private_key)?;
-        // Checkpoint the timestamp for the batch.
-        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Construct the transmission IDs.
         let transmission_ids = transmissions.keys().copied().collect();
         // Compute the previous certificate IDs.
@@ -204,8 +203,10 @@ pub mod test_helpers {
             assert!(!transmissions.is_empty());
             // Sample certificates.
             let certificates = crate::batch_certificate::test_helpers::sample_batch_certificates(rng);
+            // Checkpoint the timestamp for the batch.
+            let timestamp = OffsetDateTime::now_utc().unix_timestamp();
             // Append the batch.
-            sample.push(Batch::new(&private_key, rng.gen(), transmissions, certificates, rng).unwrap());
+            sample.push(Batch::new(&private_key, rng.gen(), transmissions, certificates, timestamp, rng).unwrap());
         }
         // Return the sample vector.
         sample
