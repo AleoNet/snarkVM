@@ -6,6 +6,7 @@
     <a href="https://circleci.com/gh/AleoHQ/snarkVM"><img src="https://dl.circleci.com/status-badge/img/gh/AleoHQ/snarkVM/tree/testnet3.svg?style=svg"></a>
     <a href="https://codecov.io/gh/AleoHQ/snarkVM"><img src="https://codecov.io/gh/AleoHQ/snarkVM/branch/master/graph/badge.svg?token=cck8tS9HpO"/></a>
     <a href="https://aleo.org/discord"><img src="https://img.shields.io/discord/700454073459015690?logo=discord"/></a>
+    <a href="https://GitHub.com/AleoHQ/snarkVM"><img src="https://img.shields.io/badge/contributors-34-ee8449"/></a>
 </p>
 
 ## Table of Contents
@@ -45,8 +46,8 @@ We recommend installing Rust using [rustup](https://www.rustup.rs/). You can ins
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   ```
 
-- Windows (64-bit):  
-  
+- Windows (64-bit):
+
   Download the [Windows 64-bit executable](https://win.rustup.rs/x86_64) or
   [Windows 32-bit executable](https://win.rustup.rs/i686) and follow the on-screen instructions.
 
@@ -62,7 +63,7 @@ Now to use `snarkvm`, in your terminal, run:
 ```bash
 snarkvm
 ```
- 
+
 ### 2.2b Build from Source Code
 
 Alternatively, you can install `snarkvm` by building from the source code as follows:
@@ -83,6 +84,9 @@ snarkvm
 ## 3. Usage Guide
 
 ## 4. Contributors
+
+Thank you for helping make SnarkVM better!  
+[🧐 What do the emojis mean?](https://allcontributors.org/docs/en/emoji-key)
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
@@ -134,12 +138,23 @@ snarkvm
       <td align="center" valign="top" width="14.28%"><a href="https://allcontributors.org/"><img src="https://avatars.githubusercontent.com/u/46410174?v=4?s=100" width="100px;" alt="All Contributors"/><br /><sub><b>All Contributors</b></sub></a><br /><a href="https://github.com/AleoHQ/snarkvm/commits?author=all-contributors" title="Documentation">📖</a></td>
     </tr>
   </tbody>
+  <tfoot>
+    <tr>
+      <td align="center" size="13px" colspan="7">
+        <img src="https://raw.githubusercontent.com/all-contributors/all-contributors-cli/1b8533af435da9854653492b1327a23a4dbd0a10/assets/logo-small.svg">
+          <a href="https://all-contributors.js.org/docs/en/bot/usage">Add your contributions</a>
+        </img>
+      </td>
+    </tr>
+  </tfoot>
 </table>
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
 
 ## 5. License
 
