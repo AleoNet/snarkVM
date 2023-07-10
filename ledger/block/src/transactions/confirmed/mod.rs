@@ -290,7 +290,7 @@ mod test {
         assert!(confirmed.is_err());
 
         let finalize_operations = vec![FinalizeOperation::RemoveMapping(Uniform::rand(rng))];
-        let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations);
+        let confirmed = ConfirmedTransaction::accepted_execute(index, tx, finalize_operations);
         assert!(confirmed.is_err());
     }
 }
