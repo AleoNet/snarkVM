@@ -29,3 +29,5 @@ finalize insert_contains_remove:
     contains data[r0] into r3;
     assert.eq r3 true;
     remove data[r0];
+    contains data[r0] into r4;
+    assert.eq r4 false;
