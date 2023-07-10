@@ -2546,6 +2546,7 @@ dependencies = [
  "snarkvm-circuit-program",
  "snarkvm-circuit-types",
  "snarkvm-console-types-field",
+ "snarkvm-console-types-group",
  "snarkvm-console-types-integers",
 ]
 
