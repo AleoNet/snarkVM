@@ -253,3 +253,44 @@ pub mod test_helpers {
         ]
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_accepted_execute() {
+        let rng = &mut TestRng::default();
+
+        let index = Uniform::rand(rng);
+        let tx = crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng);
+
+        // Create an `AcceptedExecution` with valid `FinalizeOperation`s.
+        let finalize_operations = vec![
+            FinalizeOperation::InsertKeyValue(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng)),
+            FinalizeOperation::UpdateKeyValue(
+                Uniform::rand(rng),
+                Uniform::rand(rng),
+                Uniform::rand(rng),
+                Uniform::rand(rng),
+            ),
+            FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), Uniform::rand(rng)),
+        ];
+        let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations.clone()).unwrap();
+
+        assert_eq!(confirmed.index(), index);
+        assert_eq!(confirmed.transaction(), &tx);
+        assert_eq!(confirmed.num_finalize(), finalize_operations.len());
+        assert_eq!(confirmed.finalize_operations().unwrap(), &finalize_operations);
+
+        // Attempt to create an `AcceptedExecution` with invalid `FinalizeOperation`s.
+        let finalize_operations = vec![FinalizeOperation::InitializeMapping(Uniform::rand(rng))];
+        let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations);
+        assert!(confirmed.is_err());
+
+        let finalize_operations = vec![FinalizeOperation::RemoveMapping(Uniform::rand(rng))];
+        let confirmed = ConfirmedTransaction::accepted_execute(index, tx.clone(), finalize_operations);
+        assert!(confirmed.is_err());
+    }
+}
