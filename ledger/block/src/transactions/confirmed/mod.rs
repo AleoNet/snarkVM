@@ -79,9 +79,9 @@ impl<N: Network> ConfirmedTransaction<N> {
             // Ensure the finalize operation is an insert or update key-value operation.
             match operation {
                 FinalizeOperation::InsertKeyValue(..) | FinalizeOperation::UpdateKeyValue(..) => (),
-                FinalizeOperation::InitializeMapping(..)
-                | FinalizeOperation::RemoveMapping(..)
-                | FinalizeOperation::RemoveKeyValue(..) => {
+                FinalizeOperation::RemoveKeyValue(..)
+                | FinalizeOperation::InitializeMapping(..)
+                | FinalizeOperation::RemoveMapping(..) => {
                     bail!("Transaction '{}' (execute) contains an invalid finalize operation type", transaction.id())
                 }
             }

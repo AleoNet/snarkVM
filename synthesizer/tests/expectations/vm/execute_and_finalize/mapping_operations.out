@@ -1,0 +1,33 @@
+- execute:
+    mapping_operations.aleo/insert_contains_remove:
+      outputs: []
+      finalize:
+      - 0u8
+      - 0u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"3350845566578005929490116533123345705396179769844925475001011087789984160386field","checksum":"666038076510908760190704244061139978489239518403462791950328233983517898701field","value":"record1qyqsq4ggfc93glzy928gmxzxlewmexthpcshycfwyrkxkwtsmtacvngvqyxx66trwfhkxun9v35hguerqqpqzq9sxrfk4crt25pl4trmnrv9tzkmhylah7nhzn073hmtu5vrhjf2qzzp4m2ctshse3h7es864hj7rx4k8k783m2v2en40gc8hx6qcl0sgsw7vkc"}'
+      finalize: []
+  speculate: 'Failed to finalize transactions: Failed to speculate on transaction - Transaction ''at1my3h92rwlvndykm09mxayz24fsx69vxk2thk7m6vl6pncz80yvxsl4cm92'' (execute) contains an invalid finalize operation type'
+- execute:
+    mapping_operations.aleo/insert_contains_remove:
+      outputs: []
+      finalize:
+      - 0u8
+      - 0u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"4210860013803850050915328076829605880484440304854480559761929151593167497765field","checksum":"1015452951559518526733674789495547643638013929992088969845693051964584109716field","value":"record1qyqsqck9aasc5se9cthjspsgfs000g5esxa6yk0ua7rcvug5z9p30rqgqyxx66trwfhkxun9v35hguerqqpqzqpg8km0ufhddc3ktfpewlw75g4g3dezhkvqnlxg9qee6ry4pqc0p7lhhjhcmcnc6l549qsdm9wdzgdqqnhldwr5gers89cwu3gnqjgpqahf6n6"}'
+      finalize: []
+  speculate: 'Failed to finalize transactions: Failed to speculate on transaction - Transaction ''at18fjyxyz8umzvc2vpka9e2r9r57hz69e3jl5g56wmtjf7dahm8q9q47l4u8'' (execute) contains an invalid finalize operation type'
+- execute:
+    mapping_operations.aleo/insert_contains_remove:
+      outputs: []
+      finalize:
+      - 0u8
+      - 1u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"5963925910124249337452091805922928126777022413953728289308183201374960885251field","checksum":"5502255722064102904645354808790875404919753972784104340587402624025480789032field","value":"record1qyqsp5felry0zrcmfkavw3krfkafae9qtqk6mzkhehvaqfmspa6k59cyqyxx66trwfhkxun9v35hguerqqpqzqrcf63pfsmtuz8p0p3nevanv6u7ah9cpk03d5p0zv7cz0ze4gcrq780v5vgrns47s3z8q5afrfmye5p7vnwshe5ul9z4kcyn0md7prsxkuxd80"}'
+      finalize: []
+  speculate: 'Failed to finalize transactions: Failed to speculate on transaction - Transaction ''at1tn600lqznd3qzjq2yx7634p8ux68jl07ayacd82e6zf64dvlyvfq04nmwe'' (execute) contains an invalid finalize operation type'
