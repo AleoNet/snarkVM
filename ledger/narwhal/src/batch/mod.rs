@@ -24,7 +24,6 @@ use console::{
 };
 
 use indexmap::{IndexMap, IndexSet};
-use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Batch<N: Network> {
@@ -183,6 +182,7 @@ impl<N: Network> Batch<N> {
 pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, prelude::TestRng};
+    use time::OffsetDateTime;
 
     type CurrentNetwork = Testnet3;
 

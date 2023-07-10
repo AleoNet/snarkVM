@@ -22,9 +22,7 @@ use console::{
     prelude::*,
     types::Field,
 };
-
 use indexmap::IndexSet;
-use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
@@ -154,6 +152,7 @@ impl<N: Network> BatchHeader<N> {
 pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, prelude::TestRng};
+    use time::OffsetDateTime;
 
     type CurrentNetwork = Testnet3;
 
