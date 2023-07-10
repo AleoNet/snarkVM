@@ -78,10 +78,10 @@ impl<N: Network> ConfirmedTransaction<N> {
         for operation in finalize_operations.iter() {
             // Ensure the finalize operation is an insert or update key-value operation.
             match operation {
-                FinalizeOperation::InsertKeyValue(..) | FinalizeOperation::UpdateKeyValue(..) => (),
-                FinalizeOperation::RemoveKeyValue(..)
-                | FinalizeOperation::InitializeMapping(..)
-                | FinalizeOperation::RemoveMapping(..) => {
+                FinalizeOperation::InsertKeyValue(..)
+                | FinalizeOperation::UpdateKeyValue(..)
+                | FinalizeOperation::RemoveKeyValue(..) => (),
+                FinalizeOperation::InitializeMapping(..) | FinalizeOperation::RemoveMapping(..) => {
                     bail!("Transaction '{}' (execute) contains an invalid finalize operation type", transaction.id())
                 }
             }
