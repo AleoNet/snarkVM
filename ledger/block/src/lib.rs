@@ -16,9 +16,6 @@
 // #![warn(clippy::cast_possible_truncation)]
 #![cfg_attr(test, allow(clippy::single_element_loop))]
 
-pub mod confirmed_transmissions;
-pub use confirmed_transmissions::*;
-
 pub mod header;
 pub use header::*;
 
@@ -33,6 +30,9 @@ pub use transactions::*;
 
 pub mod transition;
 pub use transition::*;
+
+pub mod transmissions;
+pub use transmissions::*;
 
 mod bytes;
 mod genesis;
@@ -55,8 +55,8 @@ pub struct Block<N: Network> {
     previous_hash: N::BlockHash,
     /// The header of this block.
     header: Header<N>,
-    /// The confirmed transmissions in this block.
-    confirmed_transmissions: ConfirmedTransmissions<N>,
+    /// The transmissions in this block.
+    transmissions: Transmissions<N>,
     /// The signature for this block.
     signature: Signature<N>,
 }
@@ -78,21 +78,21 @@ impl<N: Network> Block<N> {
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
         // Sign the block hash.
         let signature = private_key.sign(&[block_hash], rng)?;
-        // Construct the confirmed transmissions.
-        let confirmed_transmissions = ConfirmedTransmissions::from(transactions, ratifications, coinbase);
+        // Construct the transmissions.
+        let transmissions = Transmissions::from(transactions, ratifications, coinbase);
         // Construct the block.
-        Self::from(previous_hash, header, confirmed_transmissions, signature)
+        Self::from(previous_hash, header, transmissions, signature)
     }
 
     /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
-        confirmed_transmissions: ConfirmedTransmissions<N>,
+        transmissions: Transmissions<N>,
         signature: Signature<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
-        ensure!(!confirmed_transmissions.transactions().is_empty(), "Cannot create a block with zero transactions.");
+        ensure!(!transmissions.transactions().is_empty(), "Cannot create a block with zero transactions.");
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
         // Derive the signer address.
@@ -101,7 +101,7 @@ impl<N: Network> Block<N> {
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
 
         // Ensure that coinbase accumulator matches the coinbase solution.
-        let expected_accumulator_point = match confirmed_transmissions.coinbase() {
+        let expected_accumulator_point = match transmissions.coinbase() {
             Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
             None => Field::<N>::zero(),
         };
@@ -111,7 +111,7 @@ impl<N: Network> Block<N> {
         );
 
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, confirmed_transmissions, signature })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transmissions, signature })
     }
 }
 
@@ -128,12 +128,12 @@ impl<N: Network> Block<N> {
 
     /// Returns the ratifications in this block.
     pub const fn ratifications(&self) -> &Vec<Ratify<N>> {
-        self.confirmed_transmissions.ratifications()
+        self.transmissions.ratifications()
     }
 
     /// Returns the coinbase solution.
     pub const fn coinbase(&self) -> Option<&CoinbaseSolution<N>> {
-        self.confirmed_transmissions.coinbase()
+        self.transmissions.coinbase()
     }
 
     /// Returns the signature.
@@ -242,198 +242,198 @@ impl<N: Network> Block<N> {
 impl<N: Network> Block<N> {
     /// Returns `true` if the block contains the given transition ID.
     pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
-        self.confirmed_transmissions.contains_transition(transition_id)
+        self.transmissions.contains_transition(transition_id)
     }
 
     /// Returns `true` if the block contains the given serial number.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
-        self.confirmed_transmissions.contains_serial_number(serial_number)
+        self.transmissions.contains_serial_number(serial_number)
     }
 
     /// Returns `true` if the block contains the given commitment.
     pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
-        self.confirmed_transmissions.contains_commitment(commitment)
+        self.transmissions.contains_commitment(commitment)
     }
 }
 
 impl<N: Network> Block<N> {
     /// Returns the transaction with the given transition ID, if it exists.
     pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
-        self.confirmed_transmissions.find_transaction_for_transition_id(transition_id)
+        self.transmissions.find_transaction_for_transition_id(transition_id)
     }
 
     /// Returns the transaction with the given serial number, if it exists.
     pub fn find_transaction_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transaction<N>> {
-        self.confirmed_transmissions.find_transaction_for_serial_number(serial_number)
+        self.transmissions.find_transaction_for_serial_number(serial_number)
     }
 
     /// Returns the transaction with the given commitment, if it exists.
     pub fn find_transaction_for_commitment(&self, commitment: &Field<N>) -> Option<&Transaction<N>> {
-        self.confirmed_transmissions.find_transaction_for_commitment(commitment)
+        self.transmissions.find_transaction_for_commitment(commitment)
     }
 
     /// Returns the transition with the corresponding transition ID, if it exists.
     pub fn find_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
-        self.confirmed_transmissions.find_transition(transition_id)
+        self.transmissions.find_transition(transition_id)
     }
 
     /// Returns the transition for the given serial number, if it exists.
     pub fn find_transition_for_serial_number(&self, serial_number: &Field<N>) -> Option<&Transition<N>> {
-        self.confirmed_transmissions.find_transition_for_serial_number(serial_number)
+        self.transmissions.find_transition_for_serial_number(serial_number)
     }
 
     /// Returns the transition for the given commitment, if it exists.
     pub fn find_transition_for_commitment(&self, commitment: &Field<N>) -> Option<&Transition<N>> {
-        self.confirmed_transmissions.find_transition_for_commitment(commitment)
+        self.transmissions.find_transition_for_commitment(commitment)
     }
 
     /// Returns the record with the corresponding commitment, if it exists.
     pub fn find_record(&self, commitment: &Field<N>) -> Option<&Record<N, Ciphertext<N>>> {
-        self.confirmed_transmissions.find_record(commitment)
+        self.transmissions.find_record(commitment)
     }
 }
 
 impl<N: Network> Block<N> {
     /// Returns the puzzle commitments in this block.
     pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
-        self.confirmed_transmissions.puzzle_commitments()
+        self.transmissions.puzzle_commitments()
     }
 
     /// Returns the transactions in this block.
     pub const fn transactions(&self) -> &Transactions<N> {
-        self.confirmed_transmissions.transactions()
+        self.transmissions.transactions()
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
-        self.confirmed_transmissions.transaction_ids()
+        self.transmissions.transaction_ids()
     }
 
     /// Returns an iterator over all transactions in `self` that are accepted deploy transactions.
     pub fn deployments(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
-        self.confirmed_transmissions.deployments()
+        self.transmissions.deployments()
     }
 
     /// Returns an iterator over all transactions in `self` that are accepted execute transactions.
     pub fn executions(&self) -> impl '_ + Iterator<Item = &ConfirmedTransaction<N>> {
-        self.confirmed_transmissions.executions()
+        self.transmissions.executions()
     }
 
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
-        self.confirmed_transmissions.transitions()
+        self.transmissions.transitions()
     }
 
     /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        self.confirmed_transmissions.transition_ids()
+        self.transmissions.transition_ids()
     }
 
     /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.confirmed_transmissions.transition_public_keys()
+        self.transmissions.transition_public_keys()
     }
 
     /// Returns an iterator over the transition commitments, for all transactions.
     pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.confirmed_transmissions.transition_commitments()
+        self.transmissions.transition_commitments()
     }
 
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.confirmed_transmissions.tags()
+        self.transmissions.tags()
     }
 
     /// Returns an iterator over the input IDs, for all transition inputs that are records.
     pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.confirmed_transmissions.input_ids()
+        self.transmissions.input_ids()
     }
 
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.confirmed_transmissions.serial_numbers()
+        self.transmissions.serial_numbers()
     }
 
     /// Returns an iterator over the output IDs, for all transition inputs that are records.
     pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.confirmed_transmissions.output_ids()
+        self.transmissions.output_ids()
     }
 
     /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.confirmed_transmissions.commitments()
+        self.transmissions.commitments()
     }
 
     /// Returns an iterator over the records, for all transition outputs that are records.
     pub fn records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
-        self.confirmed_transmissions.records()
+        self.transmissions.records()
     }
 
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.confirmed_transmissions.nonces()
+        self.transmissions.nonces()
     }
 
     /// Returns an iterator over the transaction fees, for all transactions.
     pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
-        self.confirmed_transmissions.transaction_fees()
+        self.transmissions.transaction_fees()
     }
 }
 
 impl<N: Network> Block<N> {
     /// Returns a consuming iterator over the transaction IDs, for all transactions in `self`.
     pub fn into_transaction_ids(self) -> impl Iterator<Item = N::TransactionID> {
-        self.confirmed_transmissions.into_transaction_ids()
+        self.transmissions.into_transaction_ids()
     }
 
     /// Returns a consuming iterator over all transactions in `self` that are accepted deploy transactions.
     pub fn into_deployments(self) -> impl Iterator<Item = ConfirmedTransaction<N>> {
-        self.confirmed_transmissions.into_deployments()
+        self.transmissions.into_deployments()
     }
 
     /// Returns a consuming iterator over all transactions in `self` that are accepted execute transactions.
     pub fn into_executions(self) -> impl Iterator<Item = ConfirmedTransaction<N>> {
-        self.confirmed_transmissions.into_executions()
+        self.transmissions.into_executions()
     }
 
     /// Returns a consuming iterator over all transitions.
     pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
-        self.confirmed_transmissions.into_transitions()
+        self.transmissions.into_transitions()
     }
 
     /// Returns a consuming iterator over the transition IDs, for all transitions.
     pub fn into_transition_ids(self) -> impl Iterator<Item = N::TransitionID> {
-        self.confirmed_transmissions.into_transition_ids()
+        self.transmissions.into_transition_ids()
     }
 
     /// Returns a consuming iterator over the transition public keys, for all transactions.
     pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
-        self.confirmed_transmissions.into_transition_public_keys()
+        self.transmissions.into_transition_public_keys()
     }
 
     /// Returns a consuming iterator over the tags, for all transition inputs that are records.
     pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
-        self.confirmed_transmissions.into_tags()
+        self.transmissions.into_tags()
     }
 
     /// Returns a consuming iterator over the serial numbers, for all transition inputs that are records.
     pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
-        self.confirmed_transmissions.into_serial_numbers()
+        self.transmissions.into_serial_numbers()
     }
 
     /// Returns a consuming iterator over the commitments, for all transition outputs that are records.
     pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
-        self.confirmed_transmissions.into_commitments()
+        self.transmissions.into_commitments()
     }
 
     /// Returns a consuming iterator over the records, for all transition outputs that are records.
     pub fn into_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
-        self.confirmed_transmissions.into_records()
+        self.transmissions.into_records()
     }
 
     /// Returns a consuming iterator over the nonces, for all transition outputs that are records.
     pub fn into_nonces(self) -> impl Iterator<Item = Group<N>> {
-        self.confirmed_transmissions.into_nonces()
+        self.transmissions.into_nonces()
     }
 }
 

@@ -23,7 +23,7 @@ impl<N: Network> Serialize for Block<N> {
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
-                block.serialize_field("confirmed_transmissions", &self.confirmed_transmissions)?;
+                block.serialize_field("transmissions", &self.transmissions)?;
                 block.serialize_field("signature", &self.signature)?;
                 block.end()
             }
@@ -44,7 +44,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                 let block = Self::from(
                     DeserializeExt::take_from_value::<D>(&mut block, "previous_hash")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "header")?,
-                    DeserializeExt::take_from_value::<D>(&mut block, "confirmed_transmissions")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "transmissions")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "signature")?,
                 )
                 .map_err(de::Error::custom)?;

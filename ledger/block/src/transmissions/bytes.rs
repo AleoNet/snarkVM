@@ -14,15 +14,15 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for ConfirmedTransmissions<N> {
-    /// Reads the confirmed transmissions from the buffer.
+impl<N: Network> FromBytes for Transmissions<N> {
+    /// Reads the transmissions from the buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid confirmed transmissions version"));
+            return Err(error("Invalid transmissions version"));
         }
 
         // Read the transactions.
@@ -43,13 +43,13 @@ impl<N: Network> FromBytes for ConfirmedTransmissions<N> {
             _ => return Err(error("Invalid coinbase variant")),
         };
 
-        // Construct the confirmed transmissions.
+        // Construct the transmissions.
         Ok(Self::from(transactions, ratifications, coinbase))
     }
 }
 
-impl<N: Network> ToBytes for ConfirmedTransmissions<N> {
-    /// Writes the confirmed transmissions to the buffer.
+impl<N: Network> ToBytes for Transmissions<N> {
+    /// Writes the transmissions to the buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
@@ -88,12 +88,11 @@ mod tests {
     fn test_bytes() -> Result<()> {
         let rng = &mut TestRng::default();
 
-        for expected in [crate::confirmed_transmissions::test_helpers::sample_confirmed_transmissions(rng)].into_iter()
-        {
+        for expected in [crate::transmissions::test_helpers::sample_transmissions(rng)].into_iter() {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, ConfirmedTransmissions::read_le(&expected_bytes[..])?);
-            assert!(ConfirmedTransmissions::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, Transmissions::read_le(&expected_bytes[..])?);
+            assert!(Transmissions::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

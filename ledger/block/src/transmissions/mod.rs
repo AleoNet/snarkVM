@@ -23,9 +23,9 @@ use console::{
     types::{Field, Group, U64},
 };
 
-/// The confirmed transmissions included in the block.
+/// the transmissions included in the block.
 #[derive(Clone, PartialEq, Eq)]
-pub struct ConfirmedTransmissions<N: Network> {
+pub struct Transmissions<N: Network> {
     /// The transactions in this block.
     transactions: Transactions<N>,
     /// The ratifications in this block.
@@ -34,8 +34,8 @@ pub struct ConfirmedTransmissions<N: Network> {
     coinbase: Option<CoinbaseSolution<N>>,
 }
 
-impl<N: Network> ConfirmedTransmissions<N> {
-    /// Initializes a new instance of  `ConfirmedTransmissions`.
+impl<N: Network> Transmissions<N> {
+    /// Initializes a new instance of `Transmissions`.
     pub fn from(
         transactions: Transactions<N>,
         ratifications: Vec<Ratify<N>>,
@@ -60,24 +60,24 @@ impl<N: Network> ConfirmedTransmissions<N> {
     }
 }
 
-impl<N: Network> ConfirmedTransmissions<N> {
-    /// Returns `true` if the confirmed transmissions contains the given transition ID.
+impl<N: Network> Transmissions<N> {
+    /// Returns `true` if the transmissions contains the given transition ID.
     pub fn contains_transition(&self, transition_id: &N::TransitionID) -> bool {
         self.transactions.contains_transition(transition_id)
     }
 
-    /// Returns `true` if the confirmed transmissions contains the given serial number.
+    /// Returns `true` if the transmissions contains the given serial number.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
         self.transactions.contains_serial_number(serial_number)
     }
 
-    /// Returns `true` if the confirmed transmissions contains the given commitment.
+    /// Returns `true` if the transmissions contains the given commitment.
     pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
         self.transactions.contains_commitment(commitment)
     }
 }
 
-impl<N: Network> ConfirmedTransmissions<N> {
+impl<N: Network> Transmissions<N> {
     /// Returns the transaction with the given transition ID, if it exists.
     pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
         self.transactions.find_transaction_for_transition_id(transition_id)
@@ -114,8 +114,8 @@ impl<N: Network> ConfirmedTransmissions<N> {
     }
 }
 
-impl<N: Network> ConfirmedTransmissions<N> {
-    /// Returns the puzzle commitments in the confirmed transmissions.
+impl<N: Network> Transmissions<N> {
+    /// Returns the puzzle commitments in the transmissions.
     pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
         self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
     }
@@ -196,7 +196,7 @@ impl<N: Network> ConfirmedTransmissions<N> {
     }
 }
 
-impl<N: Network> ConfirmedTransmissions<N> {
+impl<N: Network> Transmissions<N> {
     /// Returns a consuming iterator over the transaction IDs, for all transactions in `self`.
     pub fn into_transaction_ids(self) -> impl Iterator<Item = N::TransactionID> {
         self.transactions.into_transaction_ids()
@@ -259,8 +259,8 @@ pub mod test_helpers {
 
     type CurrentNetwork = console::network::Testnet3;
 
-    /// Samples a block confirmed transmissions.
-    pub(crate) fn sample_confirmed_transmissions(rng: &mut TestRng) -> ConfirmedTransmissions<CurrentNetwork> {
+    /// Samples a block transmissions.
+    pub(crate) fn sample_transmissions(rng: &mut TestRng) -> Transmissions<CurrentNetwork> {
         // Sample the transactions.
         let transactions = crate::transactions::test_helpers::sample_block_transactions(rng);
 
@@ -270,6 +270,6 @@ pub mod test_helpers {
         // Sample the coinbase.
         let coinbase = crate::test_helpers::sample_genesis_block(rng).coinbase().cloned();
 
-        ConfirmedTransmissions::from(transactions, ratify, coinbase)
+        Transmissions::from(transactions, ratify, coinbase)
     }
 }
