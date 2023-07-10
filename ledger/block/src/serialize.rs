@@ -19,17 +19,11 @@ impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut block = serializer.serialize_struct("Block", 6)?;
+                let mut block = serializer.serialize_struct("Block", 5)?;
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
-                block.serialize_field("transactions", &self.transactions)?;
-                block.serialize_field("ratifications", &self.ratifications)?;
-
-                if let Some(coinbase) = &self.coinbase {
-                    block.serialize_field("coinbase", coinbase)?;
-                }
-
+                block.serialize_field("confirmed_transmissions", &self.confirmed_transmissions)?;
                 block.serialize_field("signature", &self.signature)?;
                 block.end()
             }
@@ -50,10 +44,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                 let block = Self::from(
                     DeserializeExt::take_from_value::<D>(&mut block, "previous_hash")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "header")?,
-                    DeserializeExt::take_from_value::<D>(&mut block, "transactions")?,
-                    DeserializeExt::take_from_value::<D>(&mut block, "ratifications")?,
-                    serde_json::from_value(block.get_mut("coinbase").unwrap_or(&mut serde_json::Value::Null).take())
-                        .map_err(de::Error::custom)?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "confirmed_transmissions")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "signature")?,
                 )
                 .map_err(de::Error::custom)?;

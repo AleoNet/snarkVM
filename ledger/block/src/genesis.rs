@@ -25,15 +25,15 @@ impl<N: Network> Block<N> {
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
             // Ensure there is the correct number of accepted transaction in the genesis block.
-            && self.transactions.num_accepted() == Self::NUM_GENESIS_TRANSACTIONS
+            && self.confirmed_transmissions.transactions().num_accepted() == Self::NUM_GENESIS_TRANSACTIONS
             // Ensure there is the correct number of rejected transaction in the genesis block.
-            && self.transactions.num_rejected() == 0
+            && self.confirmed_transmissions.transactions().num_rejected() == 0
             // Ensure there is the correct number of finalize operations in the genesis block.
-            && self.transactions.num_finalize() == 0
+            && self.confirmed_transmissions.transactions().num_finalize() == 0
             // Ensure there is the correct number of ratification operations in the genesis block.
-            && self.ratifications.is_empty()
+            && self.confirmed_transmissions.ratifications().is_empty()
             // Ensure the coinbase solution does not exist.
-            && self.coinbase.is_none()
+            && self.confirmed_transmissions.coinbase().is_none()
     }
 }
 

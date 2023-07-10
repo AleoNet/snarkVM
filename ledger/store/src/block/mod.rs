@@ -28,7 +28,16 @@ use console::{
     program::{BlockTree, HeaderLeaf, ProgramID, StatePath},
     types::Field,
 };
-use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    ConfirmedTransmissions,
+    Header,
+    NumFinalizeSize,
+    Ratify,
+    Transaction,
+    Transactions,
+};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use synthesizer_program::Program;
 
@@ -665,8 +674,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Missing signature for block {height} ('{block_hash}')"),
         };
 
+        // Construct the confirmed transmissions.
+        let confirmed_transmissions = ConfirmedTransmissions::from(transactions, ratifications, coinbase);
+
         // Return the block.
-        Ok(Some(Block::from(previous_hash, header, transactions, ratifications, coinbase, signature)?))
+        Ok(Some(Block::from(previous_hash, header, confirmed_transmissions, signature)?))
     }
 }
 

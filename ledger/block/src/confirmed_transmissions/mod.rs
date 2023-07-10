@@ -268,7 +268,7 @@ pub mod test_helpers {
         let ratify = crate::ratify::test_helpers::sample_ratify_objects(rng);
 
         // Sample the coinbase.
-        let coinbase = crate::test_helpers::sample_genesis_block(rng).coinbase;
+        let coinbase = crate::test_helpers::sample_genesis_block(rng).coinbase().cloned();
 
         ConfirmedTransmissions::from(transactions, ratify, coinbase)
     }
