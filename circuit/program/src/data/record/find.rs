@@ -24,7 +24,10 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
 
         // Ensure the path is not empty.
         if let Some((first, rest)) = path.split_first() {
-            let Access::Member(first) = first;
+            let first = match first {
+                Access::Member(identifier) => identifier,
+                Access::Index(_) => bail!("Attempted to index into a record"),
+            };
             // Retrieve the top-level entry.
             match self.data.get(first) {
                 Some(entry) => match rest.is_empty() {

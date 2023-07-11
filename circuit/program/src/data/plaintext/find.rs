@@ -48,6 +48,20 @@ impl<A: Aleo> Plaintext<A> {
                                     None => bail!("Failed to locate access '{access}'"),
                                 }
                             }
+                            (Self::List(list, ..), Access::Index(index)) => {
+                                let index = match index.eject_mode() {
+                                    Mode::Constant => index.eject_value(),
+                                    _ => bail!("'{index}' must be a constant"),
+                                };
+                                match list.get(*index as usize) {
+                                    // Halts if the element is not a struct or list.
+                                    Some(Self::Literal(..)) => bail!("'{index}' must be a struct or list"),
+                                    // Retrieve the element and update `plaintext` for the next iteration.
+                                    Some(element) => plaintext = element,
+                                    // Halts if the element does not exist.
+                                    None => bail!("Failed to locate access '{access}'"),
+                                }
+                            }
                             _ => bail!("Invalid access `{access}`"),
                         }
                     }
@@ -60,6 +74,18 @@ impl<A: Aleo> Plaintext<A> {
                                     Some(member) => output = Some(member.clone()),
                                     // Halts if the member does not exist.
                                     None => bail!("Failed to locate member '{identifier}'"),
+                                }
+                            }
+                            (Self::List(list, ..), Access::Index(index)) => {
+                                let index = match index.eject_mode() {
+                                    Mode::Constant => index.eject_value(),
+                                    _ => bail!("'{index}' must be a constant"),
+                                };
+                                match list.get(*index as usize) {
+                                    // Retrieve the element and update `plaintext` for the next iteration.
+                                    Some(element) => output = Some(element.clone()),
+                                    // Halts if the element does not exist.
+                                    None => bail!("Failed to locate element '{index}'"),
                                 }
                             }
                             _ => bail!("Invalid access `{access}``"),
