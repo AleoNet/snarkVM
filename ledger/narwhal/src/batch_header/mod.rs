@@ -22,9 +22,7 @@ use console::{
     prelude::*,
     types::Field,
 };
-
 use indexmap::IndexSet;
-use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
@@ -49,6 +47,7 @@ impl<N: Network> BatchHeader<N> {
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         round: u64,
+        timestamp: i64,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
         rng: &mut R,
@@ -61,8 +60,6 @@ impl<N: Network> BatchHeader<N> {
         }
         // Retrieve the address.
         let author = Address::try_from(private_key)?;
-        // Checkpoint the timestamp for the batch.
-        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Compute the batch ID.
         let batch_id = Self::compute_batch_id(author, round, timestamp, &transmission_ids, &previous_certificate_ids)?;
         // Sign the preimage.
@@ -155,6 +152,7 @@ impl<N: Network> BatchHeader<N> {
 pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, prelude::TestRng};
+    use time::OffsetDateTime;
 
     type CurrentNetwork = Testnet3;
 
@@ -167,8 +165,10 @@ pub mod test_helpers {
             crate::transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
         // Sample certificate IDs.
         let certificate_ids = (0..10).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
+        // Checkpoint the timestamp for the batch.
+        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Return the batch header.
-        BatchHeader::new(&private_key, rng.gen(), transmission_ids, certificate_ids, rng).unwrap()
+        BatchHeader::new(&private_key, rng.gen(), timestamp, transmission_ids, certificate_ids, rng).unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.
