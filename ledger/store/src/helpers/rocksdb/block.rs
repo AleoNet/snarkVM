@@ -26,7 +26,7 @@ use crate::{
     TransitionStore,
 };
 use console::{account::Signature, prelude::*};
-use ledger_block::{Header, Ratify};
+use ledger_block::{Header, Ratify, CompactBatchCertificate};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// A RocksDB block storage.
@@ -56,6 +56,8 @@ pub struct BlockDB<N: Network> {
     coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, u32>,
     /// The signature map.
     signature_map: DataMap<N::BlockHash, Signature<N>>,
+    /// The compact batch certificate map.
+    compact_batch_certificate_map: DataMap<N::BlockHash, CompactBatchCertificate<N>>,
 }
 
 #[rustfmt::skip]
@@ -73,6 +75,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type CoinbaseSolutionMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, u32>;
     type SignatureMap = DataMap<N::BlockHash, Signature<N>>;
+    type CompactBatchCertificateMap = DataMap<N::BlockHash, CompactBatchCertificate<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -94,6 +97,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             coinbase_solution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbaseSolution))?,
             coinbase_puzzle_commitment_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,
             signature_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Signature))?,
+            compact_batch_certificate_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CompactBatchCertificate))?,
         })
     }
 
@@ -155,5 +159,10 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     /// Returns the signature map.
     fn signature_map(&self) -> &Self::SignatureMap {
         &self.signature_map
+    }
+
+    /// Returns the compact batch certificate map.
+    fn compact_batch_certificate_map(&self) -> &Self::CompactBatchCertificateMap {
+        &self.compact_batch_certificate_map
     }
 }

@@ -20,7 +20,7 @@ use crate::{
     TransitionStore,
 };
 use console::{account::Signature, prelude::*};
-use ledger_block::{Header, Ratify};
+use ledger_block::{Header, Ratify, CompactBatchCertificate};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// An in-memory block storage.
@@ -50,6 +50,8 @@ pub struct BlockMemory<N: Network> {
     coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
     /// The signature map.
     signature_map: MemoryMap<N::BlockHash, Signature<N>>,
+    /// The compact batch certificate map.
+    compact_batch_certificate_map: MemoryMap<N::BlockHash, CompactBatchCertificate<N>>,
 }
 
 #[rustfmt::skip]
@@ -67,6 +69,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
+    type CompactBatchCertificateMap = MemoryMap<N::BlockHash, CompactBatchCertificate<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -88,6 +91,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),
             signature_map: MemoryMap::default(),
+            compact_batch_certificate_map: MemoryMap::default(),
         })
     }
 
@@ -149,5 +153,10 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the signature map.
     fn signature_map(&self) -> &Self::SignatureMap {
         &self.signature_map
+    }
+
+    /// Returns the compact batch certificate map.
+    fn compact_batch_certificate_map(&self) -> &Self::CompactBatchCertificateMap {
+        &self.compact_batch_certificate_map
     }
 }

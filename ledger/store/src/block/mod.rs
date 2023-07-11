@@ -29,6 +29,7 @@ use console::{
     types::Field,
 };
 use ledger_block::{
+    CompactBatchCertificate,
     Block,
     ConfirmedTransaction,
     Header,
@@ -151,6 +152,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
     /// The mapping of `block hash` to `block signature`.
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
+    /// The mapping of `block hash` to `compact batch certificate`.
+    type CompactBatchCertificateMap: for<'a> Map<'a, N::BlockHash, CompactBatchCertificate<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -179,6 +182,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap;
     /// Returns the signature map.
     fn signature_map(&self) -> &Self::SignatureMap;
+    /// Returns the compact batch certificate map.
+    fn compact_batch_certificate_map(&self) -> &Self::CompactBatchCertificateMap;
 
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
@@ -204,6 +209,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.coinbase_solution_map().start_atomic();
         self.coinbase_puzzle_commitment_map().start_atomic();
         self.signature_map().start_atomic();
+        self.compact_batch_certificate_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -220,6 +226,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.coinbase_solution_map().is_atomic_in_progress()
             || self.coinbase_puzzle_commitment_map().is_atomic_in_progress()
             || self.signature_map().is_atomic_in_progress()
+            || self.compact_batch_certificate_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -236,6 +243,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.coinbase_solution_map().atomic_checkpoint();
         self.coinbase_puzzle_commitment_map().atomic_checkpoint();
         self.signature_map().atomic_checkpoint();
+        self.compact_batch_certificate_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
@@ -252,6 +260,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.coinbase_solution_map().clear_latest_checkpoint();
         self.coinbase_puzzle_commitment_map().clear_latest_checkpoint();
         self.signature_map().clear_latest_checkpoint();
+        self.compact_batch_certificate_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -268,6 +277,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.coinbase_solution_map().atomic_rewind();
         self.coinbase_puzzle_commitment_map().atomic_rewind();
         self.signature_map().atomic_rewind();
+        self.compact_batch_certificate_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -284,6 +294,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.coinbase_solution_map().abort_atomic();
         self.coinbase_puzzle_commitment_map().abort_atomic();
         self.signature_map().abort_atomic();
+        self.compact_batch_certificate_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -299,7 +310,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().finish_atomic()?;
         self.coinbase_solution_map().finish_atomic()?;
         self.coinbase_puzzle_commitment_map().finish_atomic()?;
-        self.signature_map().finish_atomic()
+        self.signature_map().finish_atomic()?;
+        self.compact_batch_certificate_map().finish_atomic()
     }
 
     /// Stores the given `(state root, block)` pair into storage.
@@ -351,6 +363,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Store the block signature.
             self.signature_map().insert(block.hash(), *block.signature())?;
+
+            // Store the compact block certificate.
+            self.compact_batch_certificate_map().insert(block.hash(), block.batch_certificate().clone())?;
 
             Ok(())
         })
@@ -420,6 +435,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Remove the block signature.
             self.signature_map().remove(block_hash)?;
+
+            // Remove the compact block certificate.
+            self.compact_batch_certificate_map().remove(block_hash)?;
 
             Ok(())
         })
@@ -630,6 +648,14 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
+    /// Returns the block certificate for the given `block hash`.
+    fn get_block_certificate(&self, block_hash: &N::BlockHash) -> Result<Option<CompactBatchCertificate<N>>> {
+        match self.compact_batch_certificate_map().get_confirmed(block_hash)? {
+            Some(certificate) => Ok(Some(cow_to_cloned!(certificate))),
+            None => Ok(None),
+        }
+    }
+
     /// Returns the block for the given `block hash`.
     fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
         // Retrieve the block height.
@@ -673,12 +699,17 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(signature) => signature,
             None => bail!("Missing signature for block {height} ('{block_hash}')"),
         };
+        // Retrieve the block certificate.
+        let batch_certificate = match self.get_block_certificate(block_hash)? {
+            Some(certificate) => certificate,
+            None => bail!("Missing certificate for block {height} ('{block_hash}')"),
+        };
 
         // Construct the transmissions.
         let transmissions = Transmissions::from(transactions, ratifications, coinbase);
 
         // Return the block.
-        Ok(Some(Block::from(previous_hash, header, transmissions, signature)?))
+        Ok(Some(Block::from(previous_hash, header, transmissions, signature, batch_certificate)?))
     }
 }
 
@@ -912,6 +943,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block signature for the given `block hash`.
     pub fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
         self.storage.get_block_signature(block_hash)
+    }
+
+    /// Returns the block certificate for the given `block hash`.
+    pub fn get_block_certificate(&self, block_hash: &N::BlockHash) -> Result<Option<CompactBatchCertificate<N>>> {
+        self.storage.get_block_certificate(block_hash)
     }
 
     /// Returns the block for the given `block hash`.
