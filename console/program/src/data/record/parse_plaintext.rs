@@ -155,10 +155,13 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 Entry::Constant(Plaintext::Literal(..))
                 | Entry::Public(Plaintext::Literal(..))
                 | Entry::Private(Plaintext::Literal(..)) => write!(f, "{entry}")?,
-                // If the entry is a struct, print the entry with indentation.
+                // If the entry is a struct or a vector, print the entry with indentation.
                 Entry::Constant(Plaintext::Struct(..))
                 | Entry::Public(Plaintext::Struct(..))
-                | Entry::Private(Plaintext::Struct(..)) => entry.fmt_internal(f, depth + 1)?,
+                | Entry::Private(Plaintext::Struct(..))
+                | Entry::Constant(Plaintext::Vector(..))
+                | Entry::Public(Plaintext::Vector(..))
+                | Entry::Private(Plaintext::Vector(..)) => entry.fmt_internal(f, depth + 1)?,
             }
             // Print the comma.
             write!(f, ",")?;

@@ -42,7 +42,26 @@ impl<N: Network> FromBytes for Plaintext<N> {
                 // Return the struct.
                 Self::Struct(members, Default::default())
             }
-            2.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
+            2 => {
+                // Read the length of the vector.
+                // TODO (d0cd): What is the maximum length of a vector?
+                let length = u32::read_le(&mut reader)?;
+                // Read the elements.
+                let mut elements = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    // Read the plaintext value (in 2 steps to prevent infinite recursion).
+                    let num_bytes = u16::read_le(&mut reader)?;
+                    // Read the plaintext bytes.
+                    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+                    // Recover the plaintext value.
+                    let plaintext = Plaintext::read_le(&mut bytes.as_slice())?;
+                    // Add the element.
+                    elements.push(plaintext);
+                }
+                // Return the vector.
+                Self::Vector(elements, Default::default())
+            }
+            3.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
         };
         Ok(plaintext)
     }
@@ -74,6 +93,27 @@ impl<N: Network> ToBytes for Plaintext<N> {
                     // Write the number of bytes.
                     u16::try_from(bytes.len())
                         .or_halt_with::<N>("Plaintext member exceeds u16::MAX bytes.")
+                        .write_le(&mut writer)?;
+                    // Write the bytes.
+                    bytes.write_le(&mut writer)?;
+                }
+                Ok(())
+            }
+            Self::Vector(vector, ..) => {
+                2u8.write_le(&mut writer)?;
+
+                // Write the length of the vector.
+                u32::try_from(vector.len())
+                    .or_halt_with::<N>("Plaintext vector length exceeds u32::MAX.")
+                    .write_le(&mut writer)?;
+
+                // Write each element.
+                for element in vector {
+                    // Write the element (performed in 2 steps to prevent infinite recursion).
+                    let bytes = element.to_bytes_le().map_err(|e| error(e.to_string()))?;
+                    // Write the number of bytes.
+                    u16::try_from(bytes.len())
+                        .or_halt_with::<N>("Plaintext vector element exceeds u16::MAX bytes.")
                         .write_le(&mut writer)?;
                     // Write the bytes.
                     bytes.write_le(&mut writer)?;
@@ -183,7 +223,7 @@ mod tests {
             ))?;
         }
 
-        // Lastly check the struct manually.
+        // Check the struct manually.
         let expected = Plaintext::<CurrentNetwork>::from_str(
             "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, token_amount: 100u64 }",
         )?;
@@ -192,6 +232,15 @@ mod tests {
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
         assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+
+        // Check the array manually.
+        let expected = Plaintext::<CurrentNetwork>::from_str("[ 1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 9u8, 10u8 ]")?;
+
+        // Check the byte representation.
+        let expected_bytes = expected.to_bytes_le()?;
+        assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
+        assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+
         Ok(())
     }
 }

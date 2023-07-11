@@ -60,6 +60,22 @@ impl<N: Network> Parser for Plaintext<N> {
             Ok((string, Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default())))
         }
 
+        /// Parses a plaintext as a vector: `[plaintext_0, ..., plaintext_n]`.
+        fn parse_vector<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the "[" from the string.
+            let (string, _) = tag("[")(string)?;
+            // Parse the members.
+            let (string, members) = separated_list1(tag(","), Plaintext::parse)(string)?;
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the ']' from the string.
+            let (string, _) = tag("]")(string)?;
+            // Output the plaintext.
+            Ok((string, Plaintext::Vector(members, Default::default())))
+        }
+
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse to determine the plaintext (order matters).
@@ -68,6 +84,8 @@ impl<N: Network> Parser for Plaintext<N> {
             map(Literal::parse, |literal| Self::Literal(literal, Default::default())),
             // Parse a plaintext struct.
             parse_struct,
+            // Parse a plaintext vector.
+            parse_vector,
         ))(string)
     }
 }
@@ -129,7 +147,7 @@ impl<N: Network> Plaintext<N> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal},", "", indent = (depth + 1) * INDENT),
                         },
-                        Self::Struct(..) => {
+                        Self::Struct(..) | Self::Vector(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
@@ -138,6 +156,37 @@ impl<N: Network> Plaintext<N> {
                             match i == struct_.len() - 1 {
                                 // Print the last member without a comma.
                                 true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
+                                // Print the member with a comma.
+                                false => write!(f, ","),
+                            }
+                        }
+                    }
+                })
+            }
+            // Prints the vector, i.e. [ 10u64, 198u64 ]
+            Self::Vector(vector, ..) => {
+                // Print the opening brace.
+                write!(f, "{{")?;
+                // Print the members.
+                vector.iter().enumerate().try_for_each(|(i, plaintext)| {
+                    match plaintext {
+                        Self::Literal(literal, ..) => match i == vector.len() - 1 {
+                            true => {
+                                // Print the last member without a comma.
+                                write!(f, "\n{:indent$}{literal}", "", indent = (depth + 1) * INDENT)?;
+                                // Print the closing bracket.
+                                write!(f, "\n{:indent$}]", "", indent = depth * INDENT)
+                            }
+                            // Print the member with a comma.
+                            false => write!(f, "\n{:indent$}{literal},", "", indent = (depth + 1) * INDENT),
+                        },
+                        Self::Struct(..) | Self::Vector(..) => {
+                            // Print the member.
+                            plaintext.fmt_internal(f, depth + 1)?;
+                            // Print the closing brace.
+                            match i == vector.len() - 1 {
+                                // Print the last member without a comma.
+                                true => write!(f, "\n{:indent$}]", "", indent = depth * INDENT),
                                 // Print the member with a comma.
                                 false => write!(f, ","),
                             }

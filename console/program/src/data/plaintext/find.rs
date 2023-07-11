@@ -24,33 +24,43 @@ impl<N: Network> Plaintext<N> {
             // Halts if the value is not a struct.
             Self::Literal(..) => bail!("'{self}' is not a struct"),
             // Retrieve the value of the member (from the value).
-            Self::Struct(members, ..) => {
-                // Initialize the members starting from the top-level.
-                let mut submembers = members;
+            Self::Struct(..) | Self::Vector(..) => {
+                // Initialize the plaintext starting from the top-level.
+                let mut plaintext = self;
 
                 // Initialize the output.
                 let mut output = None;
 
                 // Iterate through the path to retrieve the value.
-                for (i, Access::Member(identifier)) in path.iter().enumerate() {
-                    // If this is not the last item in the path, ensure the value is a struct.
+                for (i, access) in path.iter().enumerate() {
+                    // If this is not the last item in the path, ensure the value is either a struct or vector.
                     if i != path.len() - 1 {
-                        match submembers.get(identifier) {
-                            // Halts if the member is not a struct.
-                            Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
-                            // Retrieve the member and update `submembers` for the next iteration.
-                            Some(Self::Struct(members, ..)) => submembers = members,
-                            // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in '{self}'"),
+                        match (plaintext, access) {
+                            (Self::Struct(members, ..), Access::Member(identifier)) => {
+                                match members.get(identifier) {
+                                    // Halts if the member is not a struct or array.
+                                    Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct or array"),
+                                    // Retrieve the member and update `plaintext` for the next iteration.
+                                    Some(member) => plaintext = member,
+                                    // Halts if the member does not exist.
+                                    None => bail!("Failed to locate member '{identifier}' in '{self}'"),
+                                }
+                            }
+                            _ => bail!("Invalid access `{access}` for `{plaintext}`"),
                         }
                     }
                     // Otherwise, return the final member.
                     else {
-                        match submembers.get(identifier) {
-                            // Return the plaintext member.
-                            Some(plaintext) => output = Some(plaintext.clone()),
-                            // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in '{self}'"),
+                        match (plaintext, access) {
+                            (Self::Struct(members, ..), Access::Member(identifier)) => {
+                                match members.get(identifier) {
+                                    // Retrieve the member and update `plaintext` for the next iteration.
+                                    Some(member) => output = Some(member.clone()),
+                                    // Halts if the member does not exist.
+                                    None => bail!("Failed to locate member '{identifier}' in '{self}'"),
+                                }
+                            }
+                            _ => bail!("Invalid access `{access}` for `{plaintext}`"),
                         }
                     }
                 }

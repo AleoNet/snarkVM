@@ -38,6 +38,8 @@ pub enum Plaintext<N: Network> {
     Literal(Literal<N>, OnceCell<Vec<bool>>),
     /// A struct.
     Struct(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
+    /// A vector.
+    Vector(Vec<Plaintext<N>>, OnceCell<Vec<bool>>),
 }
 
 impl<N: Network> From<Literal<N>> for Plaintext<N> {
@@ -48,7 +50,7 @@ impl<N: Network> From<Literal<N>> for Plaintext<N> {
 }
 
 impl<N: Network> From<&Literal<N>> for Plaintext<N> {
-    /// Returns a new `Plaintext` from a `Literal`.
+    /// Returns a new `Plaintext` from a `&Literal`.
     fn from(literal: &Literal<N>) -> Self {
         Self::Literal(literal.clone(), OnceCell::new())
     }
@@ -151,6 +153,33 @@ mod tests {
             OnceCell::new(),
         );
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+
+        // Test a vector of literals.
+        let value = Plaintext::<CurrentNetwork>::Vector(
+            vec![
+                Plaintext::<CurrentNetwork>::from_str("0field")?,
+                Plaintext::<CurrentNetwork>::from_str("1field")?,
+                Plaintext::<CurrentNetwork>::from_str("2field")?,
+                Plaintext::<CurrentNetwork>::from_str("3field")?,
+                Plaintext::<CurrentNetwork>::from_str("4field")?,
+            ],
+            OnceCell::new(),
+        );
+        assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+
+        // Test a vector of structs.
+        let value = Plaintext::<CurrentNetwork>::Vector(
+            vec![
+                Plaintext::<CurrentNetwork>::from_str("{ x: 0field, y: 1field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 2field, y: 3field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 4field, y: 5field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 6field, y: 7field }")?,
+                Plaintext::<CurrentNetwork>::from_str("{ x: 8field, y: 9field }")?,
+            ],
+            OnceCell::new(),
+        );
+        assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
+
         Ok(())
     }
 }

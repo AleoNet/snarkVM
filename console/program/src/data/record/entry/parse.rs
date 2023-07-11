@@ -26,15 +26,6 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             Private,
         }
 
-        /// Parses an entry as a literal: `literal.visibility`.
-        fn parse_literal<N: Network>(string: &str) -> ParserResult<(Plaintext<N>, Mode)> {
-            alt((
-                map(pair(Literal::parse, tag(".constant")), |(literal, _)| (Plaintext::from(literal), Mode::Constant)),
-                map(pair(Literal::parse, tag(".public")), |(literal, _)| (Plaintext::from(literal), Mode::Public)),
-                map(pair(Literal::parse, tag(".private")), |(literal, _)| (Plaintext::from(literal), Mode::Private)),
-            ))(string)
-        }
-
         /// Parses a sanitized pair: `identifier: entry`.
         fn parse_pair<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Plaintext<N>, Mode)> {
             // Parse the whitespace and comments from the string.
@@ -53,9 +44,20 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
                 parse_literal,
                 // Parse a struct.
                 parse_struct,
+                // Parse a vector.
+                parse_vector,
             ))(string)?;
             // Return the identifier, plaintext, and visibility.
             Ok((string, (identifier, plaintext, mode)))
+        }
+
+        /// Parses an entry as a literal: `literal.visibility`.
+        fn parse_literal<N: Network>(string: &str) -> ParserResult<(Plaintext<N>, Mode)> {
+            alt((
+                map(pair(Literal::parse, tag(".constant")), |(literal, _)| (Plaintext::from(literal), Mode::Constant)),
+                map(pair(Literal::parse, tag(".public")), |(literal, _)| (Plaintext::from(literal), Mode::Public)),
+                map(pair(Literal::parse, tag(".private")), |(literal, _)| (Plaintext::from(literal), Mode::Private)),
+            ))(string)
         }
 
         /// Parses an entry as a struct: `{ identifier_0: plaintext_0.visibility, ..., identifier_n: plaintext_n.visibility }`.
@@ -94,6 +96,37 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             Ok((string, (Plaintext::Struct(IndexMap::from_iter(members.into_iter()), Default::default()), mode)))
         }
 
+        /// Parses an entry as a vector: `[plaintext_0.visibility, ..., plaintext_n.visibility]`.
+        /// Observe the `visibility` is the same for all members of the plaintext value.
+        fn parse_vector<N: Network>(string: &str) -> ParserResult<(Plaintext<N>, Mode)> {
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the "[" from the string.
+            let (string, _) = tag("[")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the members.
+            let (string, (members, mode)) = map_res(
+                separated_list1(tag(","), alt((parse_literal, parse_struct, parse_vector))),
+                |members: Vec<(Plaintext<N>, Mode)>| {
+                    // Ensure the members all have the same visibility.
+                    let mode = members.iter().map(|(_, mode)| mode).dedup().collect::<Vec<_>>();
+                    let mode = match mode.len() == 1 {
+                        true => *mode[0],
+                        false => return Err(error("Members of vector in entry have different visibilities")),
+                    };
+                    // TODO: Is there a limit to the size of a vector?
+                    Ok((members.into_iter().map(|(p, _)| p).collect::<Vec<_>>(), mode))
+                },
+            )(string)?;
+            // Parse the whitespace and comments from the string.
+            let (string, _) = Sanitizer::parse(string)?;
+            // Parse the ']' from the string.
+            let (string, _) = tag("]")(string)?;
+            // Output the plaintext and visibility.
+            Ok((string, (Plaintext::Vector(members, Default::default()), mode)))
+        }
+
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse to determine the entry (order matters).
@@ -102,6 +135,7 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             parse_literal,
             // Parse a struct.
             parse_struct,
+            // Parse a vector.
         ))(string)?;
 
         // Return the entry.
@@ -179,7 +213,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal}.{visibility},", "", indent = (depth + 1) * INDENT),
                         },
-                        Plaintext::Struct(..) => {
+                        Plaintext::Struct(..) | Plaintext::Vector(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
@@ -195,7 +229,43 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                                 // Otherwise, print a comma after the inner struct, because the outer struct has more members after this one.
                                 false => write!(f, ","),
                             }
-                        }
+                        },
+                    }
+                })
+            }
+            // Prints the vector, i.e. [ 10u64.public, 198u64.private ]
+            Plaintext::Vector(vector, ..) => {
+                // Print the opening bracket.
+                write!(f, "[")?;
+                // Print the members.
+                vector.iter().enumerate().try_for_each(|(i, plaintext)| {
+                    match plaintext {
+                        #[rustfmt::skip]
+                        Plaintext::Literal(literal, ..) => match i == vector.len() - 1 {
+                            true => {
+                                // Print the last member without a comma.
+                                write!(f, "\n{:indent$}{literal}.{visibility}", "", indent = (depth + 1) * INDENT)?;
+                                // Print the closing brace.
+                                write!(f, "\n{:indent$}]", "", indent = depth * INDENT)
+                            }
+                            // Print the member with a comma.
+                            false => write!(f, "\n{:indent$}{literal}.{visibility},", "", indent = (depth + 1) * INDENT),
+                        },
+                        Plaintext::Struct(..) | Plaintext::Vector(..) => {
+                            // Print the member.
+                            match self {
+                                Self::Constant(..) => Self::Constant(plaintext.clone()).fmt_internal(f, depth + 1)?,
+                                Self::Public(..) => Self::Public(plaintext.clone()).fmt_internal(f, depth + 1)?,
+                                Self::Private(..) => Self::Private(plaintext.clone()).fmt_internal(f, depth + 1)?,
+                            }
+                            // Print the closing brace.
+                            match i == vector.len() - 1 {
+                                // If this inner struct is the last member of the outer struct, print the closing bracket of the outer vector.
+                                true => write!(f, "\n{:indent$}]", "", indent = depth * INDENT),
+                                // Otherwise, print a comma after the inner struct, because the outer vector has more members after this one.
+                                false => write!(f, ","),
+                            }
+                        },
                     }
                 })
             }

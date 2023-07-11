@@ -72,6 +72,30 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
+        // Vector
+        else if variant == [true, false] {
+            let num_elements = u32::from_bits_le(&bits_le[counter..counter + 32])?;
+            counter += 32;
+
+            let mut elements = Vec::with_capacity(num_elements as usize);
+            for _ in 0..num_elements {
+                let element_size = u16::from_bits_le(&bits_le[counter..counter + 16])?;
+                counter += 16;
+
+                let element = Plaintext::from_bits_le(&bits_le[counter..counter + element_size as usize])?;
+                counter += element_size as usize;
+
+                elements.push(element);
+            }
+
+            // Store the plaintext bits in the cache.
+            let cache = OnceCell::new();
+            match cache.set(bits_le.to_vec()) {
+                // Return the vector.
+                Ok(_) => Ok(Self::Vector(elements, cache)),
+                Err(_) => bail!("Failed to store the plaintext bits in the cache."),
+            }
+        }
         // Unknown variant.
         else {
             bail!("Unknown plaintext variant.");
@@ -132,6 +156,30 @@ impl<N: Network> FromBits for Plaintext<N> {
             match cache.set(bits_be.to_vec()) {
                 // Return the struct.
                 Ok(_) => Ok(Self::Struct(members, cache)),
+                Err(_) => bail!("Failed to store the plaintext bits in the cache."),
+            }
+        }
+        // Vector
+        else if variant == [true, false] {
+            let num_elements = u32::from_bits_be(&bits_be[counter..counter + 32])?;
+            counter += 32;
+
+            let mut elements = Vec::with_capacity(num_elements as usize);
+            for _ in 0..num_elements {
+                let element_size = u16::from_bits_be(&bits_be[counter..counter + 16])?;
+                counter += 16;
+
+                let element = Plaintext::from_bits_be(&bits_be[counter..counter + element_size as usize])?;
+                counter += element_size as usize;
+
+                elements.push(element);
+            }
+
+            // Store the plaintext bits in the cache.
+            let cache = OnceCell::new();
+            match cache.set(bits_be.to_vec()) {
+                // Return the vector.
+                Ok(_) => Ok(Self::Vector(elements, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
