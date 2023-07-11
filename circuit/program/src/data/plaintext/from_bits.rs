@@ -72,6 +72,30 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
+        // List
+        else if variant == [true, false] {
+            let num_elements = U32::from_bits_le(&bits_le[counter..counter + 32]).eject_value();
+            counter += 32;
+
+            let mut elements = Vec::with_capacity(*num_elements as usize);
+            for _ in 0..*num_elements {
+                let element_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
+                counter += 16;
+
+                let value = Plaintext::from_bits_le(&bits_le[counter..counter + *element_size as usize]);
+                counter += *element_size as usize;
+
+                elements.push(value);
+            }
+
+            // Store the plaintext bits in the cache.
+            let cache = OnceCell::new();
+            match cache.set(bits_le.to_vec()) {
+                // Return the list.
+                Ok(_) => Self::List(elements, cache),
+                Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
+            }
+        }
         // Unknown variant.
         else {
             A::halt("Unknown plaintext variant.")
@@ -130,6 +154,30 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             match cache.set(bits_be.to_vec()) {
                 // Return the member.
                 Ok(_) => Self::Struct(members, cache),
+                Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
+            }
+        }
+        // List
+        else if variant == [true, false] {
+            let num_elements = U32::from_bits_be(&bits_be[counter..counter + 32]).eject_value();
+            counter += 32;
+
+            let mut elements = Vec::with_capacity(*num_elements as usize);
+            for _ in 0..*num_elements {
+                let element_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
+                counter += 16;
+
+                let value = Plaintext::from_bits_be(&bits_be[counter..counter + *element_size as usize]);
+                counter += *element_size as usize;
+
+                elements.push(value);
+            }
+
+            // Store the plaintext bits in the cache.
+            let cache = OnceCell::new();
+            match cache.set(bits_be.to_vec()) {
+                // Return the member.
+                Ok(_) => Self::List(elements, cache),
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }

@@ -25,35 +25,44 @@ impl<A: Aleo> Plaintext<A> {
         match self {
             // Halts if the value is not a struct.
             Self::Literal(..) => A::halt("Literal is not a struct"),
-            // Retrieve the value of the access (from the value).
-            Self::Struct(members, ..) => {
-                // Initialize the members starting from the top-level.
-                let mut submembers = members;
+            // Retrieve the value of the member (from the value).
+            Self::Struct(..) | Self::List(..) => {
+                // Initialize the plaintext starting from the top-level.
+                let mut plaintext = self;
 
                 // Initialize the output.
                 let mut output = None;
 
                 // Iterate through the path to retrieve the value.
                 for (i, access) in path.iter().enumerate() {
-                    let Access::Member(identifier) = access;
-                    // If this is not the last item in the path, ensure the value is a struct.
+                    // If this is not the last item in the path, ensure the value is a struct or a list.
                     if i != path.len() - 1 {
-                        match submembers.get(identifier) {
-                            // Halts if the member is not a struct.
-                            Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
-                            // Retrieve the member and update `submembers` for the next iteration.
-                            Some(Self::Struct(members, ..)) => submembers = members,
-                            // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in struct"),
+                        match (plaintext, access) {
+                            (Self::Struct(members, ..), Access::Member(identifier)) => {
+                                match members.get(identifier) {
+                                    // Halts if the member is not a struct or list.
+                                    Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct or list"),
+                                    // Retrieve the member and update `plaintext` for the next iteration.
+                                    Some(member) => plaintext = member,
+                                    // Halts if the member does not exist.
+                                    None => bail!("Failed to locate access '{access}'"),
+                                }
+                            }
+                            _ => bail!("Invalid access `{access}`"),
                         }
                     }
                     // Otherwise, return the final member.
                     else {
-                        match submembers.get(identifier) {
-                            // Return the plaintext member.
-                            Some(plaintext) => output = Some(plaintext.clone()),
-                            // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in struct"),
+                        match (plaintext, access) {
+                            (Self::Struct(members, ..), Access::Member(identifier)) => {
+                                match members.get(identifier) {
+                                    // Retrieve the member and update `plaintext` for the next iteration.
+                                    Some(member) => output = Some(member.clone()),
+                                    // Halts if the member does not exist.
+                                    None => bail!("Failed to locate member '{identifier}'"),
+                                }
+                            }
+                            _ => bail!("Invalid access `{access}``"),
                         }
                     }
                 }
@@ -61,7 +70,7 @@ impl<A: Aleo> Plaintext<A> {
                 // Return the output.
                 match output {
                     Some(output) => Ok(output),
-                    None => A::halt("Failed to locate member in struct from path"),
+                    None => A::halt("Failed to locate access in plaintext from path"),
                 }
             }
         }
