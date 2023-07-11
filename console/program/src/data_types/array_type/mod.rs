@@ -111,6 +111,9 @@ mod tests {
         let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 4294967296]");
         assert!(type_.is_err());
 
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[field]");
+        assert!(type_.is_err());
+
         let type_ = ArrayType::<CurrentNetwork>::from_str("[foo; -1]");
         assert!(type_.is_err());
 

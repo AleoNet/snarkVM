@@ -67,6 +67,9 @@ mod tests {
         "passport",
         "object",
         "array",
+        // Array
+        "[address; 1]",
+        "[foo, 3]",
     ];
 
     fn check_serde_json<
