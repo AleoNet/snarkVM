@@ -12,29 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod array_type;
-pub use array_type::ArrayType;
+use super::*;
 
-mod element_type;
-pub use element_type::ElementType;
+impl<N: Network> FromBytes for VectorType<N> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the element type.
+        let element_type = ElementType::read_le(&mut reader)?;
+        // Return the vector type.
+        Ok(Self::new(element_type))
+    }
+}
 
-mod literal_type;
-pub use literal_type::LiteralType;
-
-mod plaintext_type;
-pub use plaintext_type::PlaintextType;
-
-mod record_type;
-pub use record_type::{EntryType, RecordType};
-
-mod register_type;
-pub use register_type::RegisterType;
-
-mod struct_;
-pub use struct_::Struct;
-
-mod value_type;
-pub use value_type::ValueType;
-
-mod vector_type;
-pub use vector_type::VectorType;
+impl<N: Network> ToBytes for VectorType<N> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the element type.
+        self.element_type.write_le(&mut writer)
+    }
+}

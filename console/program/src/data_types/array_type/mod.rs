@@ -21,7 +21,7 @@ use snarkvm_console_network::prelude::*;
 
 use core::fmt::{Debug, Display};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayType<N: Network> {
     /// The type of the elements in the array.
     element_type: ElementType<N>,
