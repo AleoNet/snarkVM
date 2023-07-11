@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{Identifier, LiteralType};
+use crate::{ElementType, Identifier, LiteralType};
 use snarkvm_console_network::prelude::*;
 
 /// A `ValueType` defines the type parameter for an entry in an `Struct`.
@@ -41,5 +41,15 @@ impl<N: Network> From<Identifier<N>> for PlaintextType<N> {
     /// Initializes a plaintext type from a struct type.
     fn from(struct_: Identifier<N>) -> Self {
         PlaintextType::Struct(struct_)
+    }
+}
+
+impl<N: Network> From<ElementType<N>> for PlaintextType<N> {
+    /// Initializes a plaintext type from an element type.
+    fn from(element: ElementType<N>) -> Self {
+        match element {
+            ElementType::Literal(literal) => PlaintextType::Literal(literal),
+            ElementType::Struct(struct_) => PlaintextType::Struct(struct_),
+        }
     }
 }

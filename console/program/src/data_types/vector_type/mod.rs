@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{ElementType};
+use crate::ElementType;
 use snarkvm_console_network::prelude::*;
 
 use core::fmt::{Debug, Display};
@@ -62,10 +62,7 @@ mod tests {
 
         // Test struct vector types.
         let type_ = VectorType::<CurrentNetwork>::from_str("[foo]")?;
-        assert_eq!(
-            type_,
-            VectorType::<CurrentNetwork>::new(ElementType::from(Identifier::from_str("foo")?))
-        );
+        assert_eq!(type_, VectorType::<CurrentNetwork>::new(ElementType::from(Identifier::from_str("foo")?)));
         assert_eq!(
             type_.to_bytes_le()?,
             VectorType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
@@ -74,10 +71,7 @@ mod tests {
 
         // Test vector type with maximum length.
         let type_ = VectorType::<CurrentNetwork>::from_str("[scalar]")?;
-        assert_eq!(
-            type_,
-            VectorType::<CurrentNetwork>::new(ElementType::from(LiteralType::Scalar))
-        );
+        assert_eq!(type_, VectorType::<CurrentNetwork>::new(ElementType::from(LiteralType::Scalar)));
         assert_eq!(
             type_.to_bytes_le()?,
             VectorType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
