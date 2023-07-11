@@ -16,14 +16,15 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::Identifier;
+use crate::{Identifier, U32};
 
 use snarkvm_console_network::prelude::*;
 
 /// A register `Access`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Access<N: Network> {
-    // TODO (d0cd): Introduce the `Index` variant.
+    /// The access is an index.
+    Index(U32<N>),
     /// The access is a member.
     Member(Identifier<N>),
 }

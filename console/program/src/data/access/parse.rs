@@ -19,7 +19,10 @@ impl<N: Network> Parser for Access<N> {
     where
         Self: Sized,
     {
-        alt((map(pair(tag("."), Identifier::parse), |(_, identifier)| Self::Member(identifier)),))(string)
+        alt((
+            map(pair(tag("["), pair(U32::parse, tag("]"))), |(_, (index, _))| Self::Index(index)),
+            map(pair(tag("."), Identifier::parse), |(_, identifier)| Self::Member(identifier)),
+        ))(string)
     }
 }
 
@@ -52,6 +55,8 @@ impl<N: Network> Display for Access<N> {
     /// Prints the access as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
+            // Prints the access index, i.e. `[0]`
+            Self::Index(index) => write!(f, "[{}]", index),
             // Prints the access member, i.e. `.foo`
             Self::Member(identifier) => write!(f, ".{}", identifier),
         }
@@ -67,6 +72,7 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
+        assert_eq!(Access::parse("[0]"), Ok(("", Access::<CurrentNetwork>::Index(U32::new(0)))));
         assert_eq!(Access::parse(".data"), Ok(("", Access::<CurrentNetwork>::Member(Identifier::from_str("data")?))));
         Ok(())
     }
@@ -94,6 +100,7 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
+        assert_eq!(Access::<CurrentNetwork>::Index(U32::new(0)).to_string(), "[0]");
         assert_eq!(Access::<CurrentNetwork>::Member(Identifier::from_str("foo")?).to_string(), ".foo");
         Ok(())
     }
