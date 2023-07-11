@@ -48,9 +48,9 @@ impl<N: Network> Batch<N> {
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         round: u64,
+        timestamp: i64,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
         previous_certificates: IndexSet<BatchCertificate<N>>,
-        timestamp: i64,
         rng: &mut R,
     ) -> Result<Self> {
         match round {
@@ -206,7 +206,7 @@ pub mod test_helpers {
             // Checkpoint the timestamp for the batch.
             let timestamp = OffsetDateTime::now_utc().unix_timestamp();
             // Append the batch.
-            sample.push(Batch::new(&private_key, rng.gen(), transmissions, certificates, timestamp, rng).unwrap());
+            sample.push(Batch::new(&private_key, rng.gen(), timestamp, transmissions, certificates, rng).unwrap());
         }
         // Return the sample vector.
         sample

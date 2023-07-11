@@ -47,9 +47,9 @@ impl<N: Network> BatchHeader<N> {
     pub fn new<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         round: u64,
+        timestamp: i64,
         transmission_ids: IndexSet<TransmissionID<N>>,
         previous_certificate_ids: IndexSet<Field<N>>,
-        timestamp: i64,
         rng: &mut R,
     ) -> Result<Self> {
         match round {
@@ -168,7 +168,7 @@ pub mod test_helpers {
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Return the batch header.
-        BatchHeader::new(&private_key, rng.gen(), transmission_ids, certificate_ids, timestamp, rng).unwrap()
+        BatchHeader::new(&private_key, rng.gen(), timestamp, transmission_ids, certificate_ids, rng).unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.
