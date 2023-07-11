@@ -241,6 +241,25 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_with_list_entry() -> Result<()> {
+        let expected = r"{
+  owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public,
+  foo: 5u8.public,
+  bar: [
+    6u8.private,
+    7u8.private,
+    8u8.private
+  ],
+  _nonce: 0group.public
+}";
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+        Ok(())
+    }
+
+    #[test]
     fn test_parse_fails() -> Result<()> {
         // Missing owner.
         let expected = "{ foo: 5u8.private, _nonce: 0group.public }";

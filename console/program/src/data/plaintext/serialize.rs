@@ -64,7 +64,7 @@ mod tests {
         )?);
 
         // Test list.
-        run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field, ]")?);
+        run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field ]")?);
 
         Ok(())
     }
@@ -90,7 +90,7 @@ mod tests {
         )?);
 
         // Test list.
-        run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field, ]")?);
+        run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field ]")?);
 
         Ok(())
     }

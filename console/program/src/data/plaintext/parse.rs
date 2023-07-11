@@ -165,8 +165,8 @@ impl<N: Network> Plaintext<N> {
             }
             // Prints the list, i.e. [ 10u64, 198u64 ]
             Self::List(list, ..) => {
-                // Print the opening brace.
-                write!(f, "{{")?;
+                // Print the opening bracket.
+                write!(f, "[")?;
                 // Print the members.
                 list.iter().enumerate().try_for_each(|(i, plaintext)| {
                     match plaintext {
@@ -181,6 +181,8 @@ impl<N: Network> Plaintext<N> {
                             false => write!(f, "\n{:indent$}{literal},", "", indent = (depth + 1) * INDENT),
                         },
                         Self::Struct(..) | Self::List(..) => {
+                            // Print a newline.
+                            write!(f, "\n{:indent$}", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
                             plaintext.fmt_internal(f, depth + 1)?;
                             // Print the closing brace.
@@ -330,6 +332,60 @@ mod tests {
   }
 }";
 
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_struct_with_lists() {
+        let expected = r"{
+  foo: [
+    1u8,
+    2u8,
+    3u8
+  ],
+  bar: [
+    4u8,
+    5u8,
+    6u8
+  ]
+}";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_list() {
+        // Test a list of literals.
+        let expected = r"[
+  1u8,
+  2u8,
+  3u8
+]";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        // Test a list of structs.
+        let expected = r"[
+  {
+    foo: 1u8,
+    bar: 2u8
+  },
+  {
+    foo: 3u8,
+    bar: 4u8
+  },
+  {
+    foo: 5u8,
+    bar: 6u8
+  }
+]";
         let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());

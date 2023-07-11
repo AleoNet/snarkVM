@@ -107,7 +107,10 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the members.
             let (string, (members, mode)) = map_res(
-                separated_list1(tag(","), alt((parse_literal, parse_struct, parse_vector))),
+                separated_list1(
+                    pair(Sanitizer::parse_whitespaces, pair(tag(","), Sanitizer::parse_whitespaces)),
+                    alt((parse_literal, parse_struct, parse_vector)),
+                ),
                 |members: Vec<(Plaintext<N>, Mode)>| {
                     // Ensure the members all have the same visibility.
                     let mode = members.iter().map(|(_, mode)| mode).dedup().collect::<Vec<_>>();
@@ -136,6 +139,7 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             // Parse a struct.
             parse_struct,
             // Parse a vector.
+            parse_vector,
         ))(string)?;
 
         // Return the entry.
@@ -252,6 +256,8 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                             false => write!(f, "\n{:indent$}{literal}.{visibility},", "", indent = (depth + 1) * INDENT),
                         },
                         Plaintext::Struct(..) | Plaintext::List(..) => {
+                            // Print a new line.
+                            write!(f, "\n{:indent$}", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
                             match self {
                                 Self::Constant(..) => Self::Constant(plaintext.clone()).fmt_internal(f, depth + 1)?,
@@ -319,6 +325,60 @@ mod tests {
             "{ foo: 5u8.public, bar: { baz: 10field.public, qux: {quux:{corge :{grault:  {garply:{waldo:{fred:{plugh:{xyzzy: { thud: true.public}} }}}  }}}}}}",
         )?;
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        // Test a list of literals.
+        let expected = r"[
+  5u8.private,
+  10u8.private,
+  15u8.private
+]";
+        let (remainder, candidate) =
+            Entry::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse("[ 5u8.private, 10u8.private, 15u8.private ]")?;
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        // Test a list of structs.
+        let expected = r"[
+  {
+    foo: 5u8.public
+  },
+  {
+    bar: 10u8.public
+  },
+  {
+    baz: 15u8.public
+  }
+]";
+        let (remainder, candidate) = Entry::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(
+            "[ { foo: 5u8.public }, { bar: 10u8.public }, { baz: 15u8.public } ]",
+        )?;
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        // Test a struct with lists.
+        let expected = r"{
+  foo: [
+    5u8.public,
+    10u8.public,
+    15u8.public
+  ],
+  bar: [
+    {
+      foo: 5u8.public
+    },
+    {
+      bar: 10u8.public
+    },
+    {
+      baz: 15u8.public
+    }
+  ]
+}";
+        let (remainder, candidate) = Entry::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(
+            "{ foo: [ 5u8.public, 10u8.public, 15u8.public ], bar: [ { foo: 5u8.public }, { bar: 10u8.public }, { baz: 15u8.public } ] }",
+        )?;
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
 

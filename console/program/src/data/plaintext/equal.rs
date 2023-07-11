@@ -46,7 +46,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                     // Recursively check each element for equality.
                     let mut equal = Boolean::new(true);
                     for (plaintext_a, plaintext_b) in a.iter().zip_eq(b.iter()) {
-                        equal = equal & plaintext_a.is_equal(plaintext_b);
+                        equal &= plaintext_a.is_equal(plaintext_b);
                     }
                     equal
                 }
@@ -76,7 +76,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                     // Recursively check each element for equality.
                     let mut not_equal = Boolean::new(false);
                     for (plaintext_a, plaintext_b) in a.iter().zip_eq(b.iter()) {
-                        not_equal = not_equal | plaintext_a.is_not_equal(plaintext_b);
+                        not_equal |= plaintext_a.is_not_equal(plaintext_b);
                     }
                     not_equal
                 }
