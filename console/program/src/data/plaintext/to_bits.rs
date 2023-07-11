@@ -49,15 +49,15 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_le
                 })
                 .clone(),
-            Self::Vector(vector, bits_le) => bits_le
+            Self::List(list, bits_le) => bits_le
                 .get_or_init(|| {
                     let mut bits_le = vec![true, false]; // Variant bits.
                     bits_le.extend(
-                        u32::try_from(vector.len())
-                            .or_halt_with::<N>("Plaintext vector length exceeds u32::MAX")
+                        u32::try_from(list.len())
+                            .or_halt_with::<N>("Plaintext list length exceeds u32::MAX")
                             .to_bits_le(),
                     );
-                    for element in vector {
+                    for element in list {
                         let element_bits = element.to_bits_le();
                         bits_le.extend(
                             u16::try_from(element_bits.len())
@@ -106,15 +106,15 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_be
                 })
                 .clone(),
-            Self::Vector(vector, bits_be) => bits_be
+            Self::List(list, bits_be) => bits_be
                 .get_or_init(|| {
                     let mut bits_be = vec![true, false]; // Variant bits.
                     bits_be.extend(
-                        u32::try_from(vector.len())
-                            .or_halt_with::<N>("Plaintext vector length exceeds u32::MAX")
+                        u32::try_from(list.len())
+                            .or_halt_with::<N>("Plaintext list length exceeds u32::MAX")
                             .to_bits_be(),
                     );
-                    for element in vector {
+                    for element in list {
                         let element_bits = element.to_bits_be();
                         bits_be.extend(
                             u16::try_from(element_bits.len())

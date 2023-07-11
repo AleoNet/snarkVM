@@ -24,7 +24,7 @@ impl<N: Network> Plaintext<N> {
             // Halts if the value is not a struct.
             Self::Literal(..) => bail!("'{self}' is not a struct"),
             // Retrieve the value of the member (from the value).
-            Self::Struct(..) | Self::Vector(..) => {
+            Self::Struct(..) | Self::List(..) => {
                 // Initialize the plaintext starting from the top-level.
                 let mut plaintext = self;
 
@@ -33,13 +33,13 @@ impl<N: Network> Plaintext<N> {
 
                 // Iterate through the path to retrieve the value.
                 for (i, access) in path.iter().enumerate() {
-                    // If this is not the last item in the path, ensure the value is either a struct or vector.
+                    // If this is not the last item in the path, ensure the value is either a struct or list.
                     if i != path.len() - 1 {
                         match (plaintext, access) {
                             (Self::Struct(members, ..), Access::Member(identifier)) => {
                                 match members.get(identifier) {
-                                    // Halts if the member is not a struct or array.
-                                    Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct or array"),
+                                    // Halts if the member is not a struct or list.
+                                    Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct or list"),
                                     // Retrieve the member and update `plaintext` for the next iteration.
                                     Some(member) => plaintext = member,
                                     // Halts if the member does not exist.

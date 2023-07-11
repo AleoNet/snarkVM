@@ -124,7 +124,7 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             // Parse the ']' from the string.
             let (string, _) = tag("]")(string)?;
             // Output the plaintext and visibility.
-            Ok((string, (Plaintext::Vector(members, Default::default()), mode)))
+            Ok((string, (Plaintext::List(members, Default::default()), mode)))
         }
 
         // Parse the whitespace from the string.
@@ -213,7 +213,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal}.{visibility},", "", indent = (depth + 1) * INDENT),
                         },
-                        Plaintext::Struct(..) | Plaintext::Vector(..) => {
+                        Plaintext::Struct(..) | Plaintext::List(..) => {
                             // Print the member name.
                             write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
                             // Print the member.
@@ -234,7 +234,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                 })
             }
             // Prints the vector, i.e. [ 10u64.public, 198u64.private ]
-            Plaintext::Vector(vector, ..) => {
+            Plaintext::List(vector, ..) => {
                 // Print the opening bracket.
                 write!(f, "[")?;
                 // Print the members.
@@ -251,7 +251,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{literal}.{visibility},", "", indent = (depth + 1) * INDENT),
                         },
-                        Plaintext::Struct(..) | Plaintext::Vector(..) => {
+                        Plaintext::Struct(..) | Plaintext::List(..) => {
                             // Print the member.
                             match self {
                                 Self::Constant(..) => Self::Constant(plaintext.clone()).fmt_internal(f, depth + 1)?,

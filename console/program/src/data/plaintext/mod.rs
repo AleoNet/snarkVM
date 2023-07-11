@@ -38,8 +38,8 @@ pub enum Plaintext<N: Network> {
     Literal(Literal<N>, OnceCell<Vec<bool>>),
     /// A struct.
     Struct(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
-    /// A vector.
-    Vector(Vec<Plaintext<N>>, OnceCell<Vec<bool>>),
+    /// A list.
+    List(Vec<Plaintext<N>>, OnceCell<Vec<bool>>),
 }
 
 impl<N: Network> From<Literal<N>> for Plaintext<N> {
@@ -154,8 +154,8 @@ mod tests {
         );
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        // Test a vector of literals.
-        let value = Plaintext::<CurrentNetwork>::Vector(
+        // Test a list of literals.
+        let value = Plaintext::<CurrentNetwork>::List(
             vec![
                 Plaintext::<CurrentNetwork>::from_str("0field")?,
                 Plaintext::<CurrentNetwork>::from_str("1field")?,
@@ -167,8 +167,8 @@ mod tests {
         );
         assert_eq!(value.to_bits_le(), Plaintext::<CurrentNetwork>::from_bits_le(&value.to_bits_le())?.to_bits_le());
 
-        // Test a vector of structs.
-        let value = Plaintext::<CurrentNetwork>::Vector(
+        // Test a list of structs.
+        let value = Plaintext::<CurrentNetwork>::List(
             vec![
                 Plaintext::<CurrentNetwork>::from_str("{ x: 0field, y: 1field }")?,
                 Plaintext::<CurrentNetwork>::from_str("{ x: 2field, y: 3field }")?,

@@ -159,9 +159,9 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 Entry::Constant(Plaintext::Struct(..))
                 | Entry::Public(Plaintext::Struct(..))
                 | Entry::Private(Plaintext::Struct(..))
-                | Entry::Constant(Plaintext::Vector(..))
-                | Entry::Public(Plaintext::Vector(..))
-                | Entry::Private(Plaintext::Vector(..)) => entry.fmt_internal(f, depth + 1)?,
+                | Entry::Constant(Plaintext::List(..))
+                | Entry::Public(Plaintext::List(..))
+                | Entry::Private(Plaintext::List(..)) => entry.fmt_internal(f, depth + 1)?,
             }
             // Print the comma.
             write!(f, ",")?;

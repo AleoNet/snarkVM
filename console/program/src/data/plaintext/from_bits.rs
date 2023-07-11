@@ -72,7 +72,7 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Vector
+        // List
         else if variant == [true, false] {
             let num_elements = u32::from_bits_le(&bits_le[counter..counter + 32])?;
             counter += 32;
@@ -91,8 +91,8 @@ impl<N: Network> FromBits for Plaintext<N> {
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_le.to_vec()) {
-                // Return the vector.
-                Ok(_) => Ok(Self::Vector(elements, cache)),
+                // Return the list.
+                Ok(_) => Ok(Self::List(elements, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
@@ -159,7 +159,7 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Vector
+        // List
         else if variant == [true, false] {
             let num_elements = u32::from_bits_be(&bits_be[counter..counter + 32])?;
             counter += 32;
@@ -178,8 +178,8 @@ impl<N: Network> FromBits for Plaintext<N> {
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_be.to_vec()) {
-                // Return the vector.
-                Ok(_) => Ok(Self::Vector(elements, cache)),
+                // Return the list.
+                Ok(_) => Ok(Self::List(elements, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }

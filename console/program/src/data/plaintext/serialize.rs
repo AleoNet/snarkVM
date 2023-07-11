@@ -63,7 +63,7 @@ mod tests {
             "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, token_amount: 100u64 }",
         )?);
 
-        // Test vector.
+        // Test list.
         run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field, ]")?);
 
         Ok(())
@@ -89,7 +89,7 @@ mod tests {
             "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, token_amount: 100u64 }",
         )?);
 
-        // Test vector.
+        // Test list.
         run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field, ]")?);
 
         Ok(())
