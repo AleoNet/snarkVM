@@ -120,7 +120,10 @@ impl<N: Network> FinalizeTypes<N> {
                 PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
                 // Access the member on the path to output the register type.
                 PlaintextType::Struct(struct_name) => {
-                    let Access::Member(path_name) = path_name;
+                    let path_name = match path_name {
+                        Access::Member(path_name) => path_name,
+                        Access::Index(_) => bail!("Attempted to index a struct"),
+                    };
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.

@@ -136,7 +136,10 @@ impl<N: Network> RegisterTypes<N> {
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
                 // Traverse the path to output the register type.
                 RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                    let Access::Member(path_name) = path_name;
+                    let path_name = match path_name {
+                        Access::Member(path_name) => path_name,
+                        Access::Index(_) => bail!("Attempted to index a struct"),
+                    };
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
@@ -152,7 +155,10 @@ impl<N: Network> RegisterTypes<N> {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
                     } else {
-                        let Access::Member(path_name) = path_name;
+                        let path_name = match path_name {
+                            Access::Member(path_name) => path_name,
+                            Access::Index(_) => bail!("Attempted to index into a record"),
+                        };
                         // Retrieve the entry type from the record.
                         match stack.program().get_record(record_name)?.entries().get(path_name) {
                             // Update the entry type.
@@ -173,7 +179,10 @@ impl<N: Network> RegisterTypes<N> {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
                     } else {
-                        let Access::Member(path_name) = path_name;
+                        let path_name = match path_name {
+                            Access::Member(path_name) => path_name,
+                            Access::Index(_) => bail!("Attempted to index into an external record"),
+                        };
                         // Retrieve the entry type from the external record.
                         match stack.get_external_record(locator)?.entries().get(path_name) {
                             // Update the entry type.
