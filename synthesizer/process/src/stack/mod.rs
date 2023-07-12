@@ -69,6 +69,9 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
 
 #[derive(Clone)]
