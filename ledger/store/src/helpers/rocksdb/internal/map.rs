@@ -206,6 +206,8 @@ impl<
             let batch = mem::take(&mut *self.database.atomic_batch.lock());
             // Execute all the operations atomically.
             self.database.rocksdb.write(batch)?;
+            // Ensure that the database atomic batch is empty.
+            assert!(self.database.atomic_batch.lock().is_empty());
         }
 
         Ok(())
