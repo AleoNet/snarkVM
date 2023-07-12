@@ -179,11 +179,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().get_block_coinbase(&block_hash)
     }
 
-    /// Returns the block signature for the given block height.
-    pub fn get_signature(&self, height: u32) -> Result<Signature<N>> {
+    /// Returns the compact batch certificate for the given block height.
+    pub fn get_batch_certificate(&self, height: u32) -> Result<CompactBatchCertificate<N>> {
         // If the height is 0, return the genesis block signature.
         if height == 0 {
-            return Ok(*self.genesis.signature());
+            return Ok(self.genesis.batch_certificate().clone());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
@@ -191,9 +191,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => bail!("Block {height} does not exist in storage"),
         };
         // Retrieve the block signature.
-        match self.vm.block_store().get_block_signature(&block_hash)? {
-            Some(signature) => Ok(signature),
-            None => bail!("Missing signature for block {height}"),
+        match self.vm.block_store().get_block_certificate(&block_hash)? {
+            Some(batch_certificate) => Ok(batch_certificate),
+            None => bail!("Missing compact batch certificate for block {height}"),
         }
     }
 }

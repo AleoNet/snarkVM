@@ -40,7 +40,7 @@ mod iterators;
 mod tests;
 
 use console::{
-    account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
+    account::{Address, GraphKey, PrivateKey, ViewKey},
     network::prelude::*,
     program::{
         Ciphertext,
@@ -170,7 +170,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Add the genesis validator to the committee.
-        ledger.current_committee.write().insert(genesis.signature().to_address());
+        ledger.current_committee.write().insert(genesis.batch_header().signature().to_address());
 
         // If the block store is empty, initialize the genesis block.
         if ledger.vm.block_store().heights().max().is_none() {

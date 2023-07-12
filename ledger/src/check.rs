@@ -355,19 +355,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         };
 
-        /* Signature */
-
-        // Ensure the block is signed by a validator in the committee
-        let signer = block.signature().to_address();
-        if !self.current_committee.read().contains(&signer) {
-            bail!("Block {} ({}) is signed by an unauthorized account ({signer})", block.height(), block.hash());
-        }
-
-        // Check the signature.
-        if !block.signature().verify(&signer, &[*block.hash()]) {
-            bail!("Invalid signature for block {} ({})", block.height(), block.hash());
-        }
-
         /* Batch Certificate */
 
         let batch_certificate = block.batch_certificate();

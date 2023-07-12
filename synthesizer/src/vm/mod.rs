@@ -226,16 +226,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let compact_batch_certificate = CompactBatchCertificate::new(compact_batch_header, signatures)?;
 
         // Construct the block.
-        let block = Block::new(
-            private_key,
-            previous_hash,
-            header,
-            transactions,
-            vec![],
-            coinbase_solution,
-            compact_batch_certificate,
-            rng,
-        )?;
+        let block =
+            Block::new(previous_hash, header, transactions, vec![], coinbase_solution, compact_batch_certificate)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -639,16 +631,7 @@ function compute:
         )?;
 
         // Construct the new block.
-        Block::new(
-            private_key,
-            previous_block.hash(),
-            header,
-            transactions,
-            vec![],
-            None,
-            compact_batch_certificate,
-            rng,
-        )
+        Block::new(previous_block.hash(), header, transactions, vec![], None, compact_batch_certificate)
     }
 
     #[test]

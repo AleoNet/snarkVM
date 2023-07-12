@@ -16,13 +16,11 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns a candidate for the next block in the ledger.
-    pub fn prepare_advance_to_next_block<R: Rng + CryptoRng>(
+    pub fn prepare_advance_to_next_block(
         &self,
-        private_key: &PrivateKey<N>,
         candidate_transactions: Vec<Transaction<N>>,
         candidate_solutions: Option<Vec<ProverSolution<N>>>,
         compact_batch_certificate: CompactBatchCertificate<N>,
-        rng: &mut R,
     ) -> Result<Block<N>> {
         // Retrieve the latest state root.
         let latest_state_root = *self.latest_state_root();
@@ -162,16 +160,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Construct the new block.
-        Block::new(
-            private_key,
-            latest_block.hash(),
-            header,
-            transactions,
-            ratifications,
-            coinbase,
-            compact_batch_certificate,
-            rng,
-        )
+        Block::new(latest_block.hash(), header, transactions, ratifications, coinbase, compact_batch_certificate)
     }
 
     /// Adds the given block as the next block in the ledger.

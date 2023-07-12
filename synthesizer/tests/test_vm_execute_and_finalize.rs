@@ -377,7 +377,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     )?;
 
     // Construct the new block.
-    Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, compact_batch_certificate, rng)
+    Block::new(previous_block.hash(), header, transactions, vec![], None, compact_batch_certificate)
 }
 
 // A helper function to invoke `credits.aleo/split`.
