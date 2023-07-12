@@ -3075,6 +3075,7 @@ dependencies = [
  "snarkvm-synthesizer-process",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+ "time",
 ]
 
 [[package]]
@@ -3154,6 +3155,7 @@ dependencies = [
 name = "snarkvm-ledger-test-helpers"
 version = "0.14.1"
 dependencies = [
+ "indexmap 2.0.0",
  "once_cell",
  "snarkvm-circuit",
  "snarkvm-console",
