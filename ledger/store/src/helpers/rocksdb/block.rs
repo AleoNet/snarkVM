@@ -26,7 +26,7 @@ use crate::{
     TransitionStore,
 };
 use console::{account::Signature, prelude::*};
-use ledger_block::{Header, Ratify, CompactBatchCertificate};
+use ledger_block::{CompactBatchCertificate, Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 /// A RocksDB block storage.

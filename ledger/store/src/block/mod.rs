@@ -29,8 +29,8 @@ use console::{
     types::Field,
 };
 use ledger_block::{
-    CompactBatchCertificate,
     Block,
+    CompactBatchCertificate,
     ConfirmedTransaction,
     Header,
     NumFinalizeSize,
