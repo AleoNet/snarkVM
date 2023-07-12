@@ -45,7 +45,7 @@ impl Run {
         let rng = &mut rand::thread_rng();
 
         // Execute the request.
-        let (response, trace) = package.run::<Aleo, _>(
+        let (response, metrics) = package.run::<Aleo, _>(
             self.endpoint,
             package.manifest_file().development_private_key(),
             self.function,
@@ -55,7 +55,7 @@ impl Run {
 
         // Count the number of times a function is called.
         let mut program_frequency = HashMap::<String, usize>::new();
-        for metric in trace.call_metrics().iter() {
+        for metric in metrics.iter() {
             // Prepare the function name string.
             let function_name_string = format!("'{}/{}'", metric.program_id, metric.function_name).bold();
 

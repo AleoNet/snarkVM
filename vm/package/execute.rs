@@ -24,7 +24,7 @@ impl<N: Network> Package<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<(Response<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<(Response<N>, Trace<N>)> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -33,6 +33,9 @@ impl<N: Network> Package<N> {
         if !program.contains_function(&function_name) {
             bail!("Function '{function_name}' does not exist.")
         }
+
+        // Build the package, if the package requires building.
+        self.build::<A>(endpoint)?;
 
         // Prepare the locator (even if logging is disabled, to sanity check the locator is well-formed).
         let _locator = Locator::<N>::from_str(&format!("{program_id}/{function_name}"))?;
@@ -45,23 +48,55 @@ impl<N: Network> Package<N> {
         // Authorize the function call.
         let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs.iter(), rng)?;
 
-        // TODO (howardwu): Retrieve the value directly from the authorize call.
-        // Pop the first request.
-        let request = authorization.next()?;
-        // Retrieve the stack.
-        let stack = process.get_stack(program_id)?;
-        // Initialize the assignments.
-        let assignments = Assignments::<N>::default();
-        // Initialize the call stack.
-        let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
-        // Synthesize the circuit.
-        let response = stack.execute_function::<A>(call_stack)?;
-        // Construct the call metrics.
-        let mut call_metrics = Vec::new();
-        for (_assignment, metrics) in assignments.read().iter() {
-            call_metrics.push(*metrics);
+        // Retrieve the program.
+        let program = process.get_program(program_id)?;
+        // Retrieve the function from the program.
+        let function = program.get_function(&function_name)?;
+        // Save all the prover and verifier files for any function calls that are made.
+        for instruction in function.instructions() {
+            if let Instruction::Call(call) = instruction {
+                // Retrieve the program and resource.
+                let (program, resource) = match call.operator() {
+                    CallOperator::Locator(locator) => (process.get_program(locator.program_id())?, locator.resource()),
+                    CallOperator::Resource(resource) => (program, resource),
+                };
+                // If this is a function call, save its corresponding prover and verifier files.
+                if program.contains_function(resource) {
+                    // Set the function name to the resource, in this scope.
+                    let function_name = resource;
+                    // Prepare the build directory for the imported program.
+                    let import_build_directory =
+                        self.build_directory().join(format!("{}-{}", program.id().name(), program.id().network()));
+
+                    // Create the prover.
+                    let prover = ProverFile::open(&import_build_directory, function_name)?;
+                    // Adds the proving key to the process.
+                    process.insert_proving_key(program.id(), function_name, prover.proving_key().clone())?;
+
+                    // Create the verifier.
+                    let verifier = VerifierFile::open(&import_build_directory, function_name)?;
+                    // Adds the verifying key to the process.
+                    process.insert_verifying_key(program.id(), function_name, verifier.verifying_key().clone())?;
+                }
+            }
         }
-        Ok((response, call_metrics))
+
+        // Prepare the build directory.
+        let build_directory = self.build_directory();
+        // Load the prover.
+        let prover = ProverFile::open(&build_directory, &function_name)?;
+        // Load the verifier.
+        let verifier = VerifierFile::open(&build_directory, &function_name)?;
+
+        // Adds the proving key to the process.
+        process.insert_proving_key(program_id, &function_name, prover.proving_key().clone())?;
+        // Adds the verifying key to the process.
+        process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
+
+        // Execute the circuit.
+        let (response, trace) = process.execute::<A>(authorization)?;
+
+        Ok((response, trace))
     }
 }
 
@@ -89,7 +124,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _metrics) =
+        let (_response, _trace) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
@@ -114,7 +149,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _metrics) =
+        let (_response, _trace) =
             package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).

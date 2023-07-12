@@ -436,8 +436,17 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
         if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+            // Construct the call metrics.
+            let metrics = CallMetrics {
+                program_id: *self.program_id(),
+                function_name: *function.name(),
+                num_instructions: function.instructions().len(),
+                num_request_constraints,
+                num_function_constraints,
+                num_response_constraints,
+            };
             // Add the assignment to the assignments.
-            assignments.write().push(assignment);
+            assignments.write().push((assignment, metrics));
             lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.

@@ -38,12 +38,9 @@ use crate::{
         Value,
     },
     synthesizer::{
-        program::CallOperator,
+        process::{Assignments, CallMetrics, CallStack, Process, StackExecute},
+        program::{CallOperator, Instruction, Program},
         snark::{ProvingKey, VerifyingKey},
-        Instruction,
-        Process,
-        Program,
-        Trace,
     },
 };
 

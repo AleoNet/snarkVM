@@ -118,7 +118,7 @@ impl<N: Network> Stack<N> {
                 None => {
                     bail!("The assignment for function '{}' is missing in '{program_id}'", function.name())
                 }
-                Some(assignment) => {
+                Some((assignment, _)) => {
                     // Ensure the certificate is valid.
                     if !certificate.verify(&function.name().to_string(), assignment, verifying_key) {
                         bail!("The certificate for function '{}' is invalid in '{program_id}'", function.name())
