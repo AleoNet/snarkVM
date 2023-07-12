@@ -127,18 +127,6 @@ impl<N: Network> FinalizeTypes<N> {
                     }
                 }
             }
-            PlaintextType::Vector(vector_type) => {
-                // Ensure the vector element type is defined in the program.
-                if let ElementType::Struct(struct_name) = vector_type.element_type() {
-                    // Ensure the struct is defined in the program.
-                    if !stack.program().contains_struct(struct_name) {
-                        bail!(
-                            "Struct '{struct_name}' in '{plaintext_type}' is not defined in '{}'.",
-                            stack.program_id()
-                        )
-                    }
-                }
-            }
         };
 
         // Insert the input register.
@@ -530,7 +518,7 @@ impl<N: Network> FinalizeTypes<N> {
                         // Ensure the operand types match the array.
                         self.matches_array(stack, instruction.operands(), array_type)?;
                     }
-                    RegisterType::Plaintext(PlaintextType::Vector(vector_type)) => {
+                    RegisterType::Vector(vector_type) => {
                         // If the element type is a struct, ensure the struct exists.
                         if let ElementType::Struct(struct_name) = vector_type.element_type() {
                             // Ensure the struct name exists in the program.

@@ -218,7 +218,7 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(..))) => {
+            CastType::RegisterType(RegisterType::Vector(_)) => {
                 bail!("Illegal operation: cannot cast to a vector during evaluation")
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
@@ -447,7 +447,7 @@ impl<N: Network> Cast<N> {
                 // Store the array.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(array))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(..))) => {
+            CastType::RegisterType(RegisterType::Vector(_)) => {
                 bail!("Illegal operation: Cannot cast to a vector during execution")
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
@@ -574,7 +574,7 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(vector_type))) => {
+            CastType::RegisterType(RegisterType::Vector(vector_type)) => {
                 // Initialize the elements.
                 let mut elements = Vec::with_capacity(inputs.len());
                 for element in inputs.iter() {
@@ -663,6 +663,10 @@ impl<N: Network> Cast<N> {
                                 "Struct '{struct_name}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
                             )
                         }
+                        // Ensure the input type cannot be a vector (this is unsupported behavior).
+                        RegisterType::Vector(vector_type) => bail!(
+                            "Struct '{struct_name}' member type mismatch: expected '{member_type}', found vector '{vector_type}'"
+                        ),
                         // Ensure the input type cannot be a record (this is unsupported behavior).
                         RegisterType::Record(record_name) => bail!(
                             "Struct '{struct_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
@@ -698,6 +702,10 @@ impl<N: Network> Cast<N> {
                                 "Array element type mismatch: expected '{element_type}', found '{plaintext_type}'",
                             )
                         }
+                        // Ensure the input type cannot be a vector (this is unsupported behavior).
+                        RegisterType::Vector(vector_type) => bail!(
+                            "Array element type mismatch: expected '{element_type}', found vector '{vector_type}'",
+                        ),
                         // Ensure the input type cannot be a record (this is unsupported behavior).
                         RegisterType::Record(record_name) => bail!(
                             "Array element type mismatch: expected '{element_type}', found record '{record_name}'",
@@ -709,7 +717,7 @@ impl<N: Network> Cast<N> {
                     }
                 }
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(vector_type))) => {
+            CastType::RegisterType(RegisterType::Vector(vector_type)) => {
                 // Retrieve the element type and ensure it is defined in the program.
                 let element_type = vector_type.element_type();
                 if let ElementType::Struct(struct_name) = element_type {
@@ -725,6 +733,10 @@ impl<N: Network> Cast<N> {
                                 "Vector element type mismatch: expected '{element_type}', found '{plaintext_type}'",
                             )
                         }
+                        // Ensure the input type cannot be a vector (this is unsupported behavior).
+                        RegisterType::Vector(vector_type) => bail!(
+                            "Vector element type mismatch: expected '{element_type}', found vector '{vector_type}'",
+                        ),
                         // Ensure the input type cannot be a record (this is unsupported behavior).
                         RegisterType::Record(record_name) => bail!(
                             "Vector element type mismatch: expected '{element_type}', found record '{record_name}'",
@@ -776,6 +788,10 @@ impl<N: Network> Cast<N> {
                                 )
                             }
                         },
+                        // Ensure the input type cannot be a vector (this is unsupported behavior).
+                        RegisterType::Vector(vector_type) => bail!(
+                            "Record '{record_name}' entry type mismatch: expected '{entry_type}', found vector '{vector_type}'"
+                        ),
                         // Ensure the input type cannot be a record (this is unsupported behavior).
                         RegisterType::Record(record_name) => bail!(
                             "Record '{record_name}' entry type mismatch: expected '{entry_type}', found record '{record_name}'"
@@ -940,7 +956,7 @@ impl<N: Network> Parser for Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
             // TODO: Should vectors be unbounded?
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_))) => N::MAX_ARRAY_ENTRIES,
+            | CastType::RegisterType(RegisterType::Vector(_)) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -991,7 +1007,7 @@ impl<N: Network> Display for Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
             // TODO: Should vectors be unbounded?
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_))) => N::MAX_ARRAY_ENTRIES,
+            | CastType::RegisterType(RegisterType::Vector(_)) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -1039,7 +1055,7 @@ impl<N: Network> FromBytes for Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
             // TODO: Should vectors be unbounded?
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_)))=> N::MAX_ARRAY_ENTRIES,
+            | CastType::RegisterType(RegisterType::Vector(_))=> N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -1063,7 +1079,7 @@ impl<N: Network> ToBytes for Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
             // TODO: Should vectors be unbounded?
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_))) => N::MAX_ARRAY_ENTRIES,
+            | CastType::RegisterType(RegisterType::Vector(_)) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };

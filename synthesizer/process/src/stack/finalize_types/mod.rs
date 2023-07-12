@@ -82,6 +82,7 @@ impl<N: Network> FinalizeTypes<N> {
     }
 
     /// Returns the type of the given register.
+    // TODO: Finalize Type should also include vectors
     pub fn get_type(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
@@ -139,14 +140,6 @@ impl<N: Network> FinalizeTypes<N> {
                     };
                     // Retrieve the element type from the array.
                     PlaintextType::from(*array_type.index(path_index)?)
-                }
-                // Check that the path is an index and output element type.
-                PlaintextType::Vector(vector_type) => {
-                    if let Access::Member(_) = path_name {
-                        bail!("Attempted to access a vector with '{path_name}'")
-                    }
-                    // Output the element type.
-                    PlaintextType::from(*vector_type.element_type())
                 }
             }
         }

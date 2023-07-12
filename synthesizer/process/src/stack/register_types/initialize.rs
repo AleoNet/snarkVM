@@ -107,7 +107,7 @@ impl<N: Network> RegisterTypes<N> {
                     RegisterType::Plaintext(PlaintextType::Literal(..))
                     | RegisterType::Plaintext(PlaintextType::Struct(..))
                     | RegisterType::Plaintext(PlaintextType::Array(..)) => (),
-                    RegisterType::Plaintext(PlaintextType::Vector(..)) => {
+                    RegisterType::Vector(..) => {
                         bail!(
                             "'{}/{}' attempts to pass a 'vector' into 'finalize'",
                             stack.program_id(),
@@ -212,8 +212,8 @@ impl<N: Network> RegisterTypes<N> {
                     }
                 }
             }
-            RegisterType::Plaintext(PlaintextType::Vector(..)) => {
-                bail!("Cannot use vectors in a non-finalize context.")
+            RegisterType::Vector(_) => {
+                bail!("Cannot use a vector in a non-finalize context")
             }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
@@ -277,8 +277,8 @@ impl<N: Network> RegisterTypes<N> {
                     }
                 }
             }
-            RegisterType::Plaintext(PlaintextType::Vector(_)) => {
-                bail!("Cannot use vectors in a non-finalize context.")
+            RegisterType::Vector(_) => {
+                bail!("Cannot use a vector in a non-finalize context.")
             }
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
@@ -469,7 +469,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the operand types match the array type.
                         self.matches_array(stack, instruction.operands(), array_type)?;
                     }
-                    RegisterType::Plaintext(PlaintextType::Vector(..)) => {
+                    RegisterType::Vector(_) => {
                         bail!("Illegal operation: Cannot cast to a vector in a non-finalize context")
                     }
                     RegisterType::Record(record_name) => {
