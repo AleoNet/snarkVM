@@ -70,9 +70,6 @@ mod tests {
         // Array
         "[address; 1]",
         "[foo, 3]",
-        // Vector
-        "[address]",
-        "[foo]",
     ];
 
     fn check_serde_json<

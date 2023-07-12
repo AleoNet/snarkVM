@@ -22,6 +22,7 @@ impl<N: Network> Parser for RegisterType<N> {
         alt((
             map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
             map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
+            map(VectorType::parse, |vector_type| Self::Vector(vector_type)),
             map(PlaintextType::parse, |plaintext_type| Self::Plaintext(plaintext_type)),
         ))(string)
     }
@@ -61,6 +62,8 @@ impl<N: Network> Display for RegisterType<N> {
             Self::Record(record_name) => write!(f, "{record_name}.record"),
             // Prints the locator, i.e. token.aleo/token.record
             Self::ExternalRecord(locator) => write!(f, "{locator}.record"),
+            // Prints the vector type, i.e. [field]
+            Self::Vector(vector_type) => write!(f, "{vector_type}"),
         }
     }
 }
@@ -96,6 +99,12 @@ mod tests {
         assert_eq!(
             Ok(("", RegisterType::<CurrentNetwork>::ExternalRecord(Locator::from_str("token.aleo/token")?))),
             RegisterType::<CurrentNetwork>::parse("token.aleo/token.record")
+        );
+
+        // Vector type.
+        assert_eq!(
+            Ok(("", RegisterType::<CurrentNetwork>::Vector(VectorType::from_str("[field]")?))),
+            RegisterType::<CurrentNetwork>::parse("[field]")
         );
 
         Ok(())
@@ -144,6 +153,7 @@ mod tests {
             RegisterType::<CurrentNetwork>::from_str("token.aleo/token.record")?.to_string(),
             "token.aleo/token.record"
         );
+        assert_eq!(RegisterType::<CurrentNetwork>::from_str("[field]")?.to_string(), "[field]");
         Ok(())
     }
 }

@@ -22,8 +22,7 @@ impl<N: Network> FromBytes for PlaintextType<N> {
             0 => Ok(Self::Literal(LiteralType::read_le(&mut reader)?)),
             1 => Ok(Self::Struct(Identifier::read_le(&mut reader)?)),
             2 => Ok(Self::Array(ArrayType::read_le(&mut reader)?)),
-            3 => Ok(Self::Vector(VectorType::read_le(&mut reader)?)),
-            4.. => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
+            3.. => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
         }
     }
 }
@@ -43,10 +42,6 @@ impl<N: Network> ToBytes for PlaintextType<N> {
             Self::Array(array_type) => {
                 u8::write_le(&2u8, &mut writer)?;
                 array_type.write_le(&mut writer)
-            }
-            Self::Vector(vector_type) => {
-                u8::write_le(&3u8, &mut writer)?;
-                vector_type.write_le(&mut writer)
             }
         }
     }
