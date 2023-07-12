@@ -129,10 +129,14 @@ impl<
     /// (or to `start_atomic` if no checkpoints have been created).
     ///
     fn atomic_rewind(&self) {
+        // Acquire the write lock on the atomic batch.
+        let mut atomic_batch = self.atomic_batch.lock();
+
         // Retrieve the last checkpoint.
         let checkpoint = self.checkpoints.lock().pop().unwrap_or(0);
+
         // Remove all operations after the checkpoint.
-        self.atomic_batch.lock().truncate(checkpoint);
+        atomic_batch.truncate(checkpoint);
     }
 
     ///
@@ -1276,11 +1280,11 @@ mod tests {
                 // Make sure the checkpoint index is 1.
                 assert_eq!(map.checkpoints.lock().last(), Some(&1));
                 // Ensure that the atomic batch is empty.
-                assert!(self.atomic_batch.lock().is_empty());
+                assert!(map.atomic_batch.lock().is_empty());
                 // Ensure that the database atomic batch size is 1.
-                assert_eq!(self.database.atomic_batch.lock().len(), 1);
+                assert_eq!(map.database.atomic_batch.lock().len(), 1);
                 // Ensure that the database atomic depth is 1.
-                assert_eq!(self.database.atomic_depth.load(Ordering::SeqCst), 1);
+                assert_eq!(map.database.atomic_depth.load(Ordering::SeqCst), 1);
 
                 // Simulates an instruction that fails.
                 let result: Result<()> = atomic_batch_scope!(map, {
