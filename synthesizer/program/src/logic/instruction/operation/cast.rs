@@ -400,7 +400,7 @@ impl<N: Network> Cast<N> {
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 // Ensure the operands length is at least the minimum.
-                if inputs.len() == 0 {
+                if inputs.is_empty() {
                     bail!("Casting to an array requires at least 1 operand")
                 }
 
@@ -647,7 +647,7 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 // Retrieve the element type and ensure it is defined in the program.
                 if let ElementType::Struct(struct_name) = array_type.element_type() {
-                    stack.program().get_struct(&struct_name)?;
+                    stack.program().get_struct(struct_name)?;
                 }
 
                 // Ensure that the number of input types is equal to the length of the array.
@@ -807,7 +807,7 @@ impl<N: Network> Cast<N> {
         inputs: Vec<Value<N>>,
     ) -> Result<()> {
         // Ensure that there is at least one operand.
-        if inputs.len() == 0 {
+        if inputs.is_empty() {
             bail!("Casting to an array requires at least 1 operand")
         }
 
