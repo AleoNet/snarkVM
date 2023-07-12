@@ -3,13 +3,13 @@ randomness: 2937849
 cases:
   - function: frobenius_inner_product
     inputs: [
-        [0field, 0field, 0field, 0field, 0field, 0field, 0field, 0field, 0field],
-        [1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field]
+        "[0field, 0field, 0field, 0field, 0field, 0field, 0field, 0field, 0field]",
+        "[1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field]"
     ]
   - function: frobenius_inner_product
     inputs: [
-        [1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field],
-        [1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field]
+        "[1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field]",
+        "[1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field, 1field]"
     ]
 */
 

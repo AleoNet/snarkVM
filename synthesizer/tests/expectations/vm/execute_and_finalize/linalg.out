@@ -1,0 +1,22 @@
+- execute:
+    linalg.aleo/frobenius_inner_product:
+      outputs:
+      - '{"type":"private","id":"7806078897425429982566693726823612490374760421890961243904218025642476974206field","value":"ciphertext1qgqwfsfaa4tkuw5ea36thp2kvmx9qfnsg08hw7qmnedkzux364hwcp90955m02y8dk0jgkgzr2c5hflqjdvxgvah42e3l7ewuvvq680vpg67hn33"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"979891262903599480596068885687275772210264710658083098833727036852934142600field","checksum":"3083175099825638798757684588978047307516015307129764973816913143532803103367field","value":"record1qyqsqt88gtd4f9wrly00fpgxy7n8v2qdfmu6wt9tzppc0fvma35rs6qjqyxx66trwfhkxun9v35hguerqqpqzq8qg0y35fmnj5ls6v7p3muc4re4pyr47ekqcfcxzwrd2207de09z9t2uzt46vluapjy093xsd65fgalkf7henhjnx3cl7h52080zcesycyrtct"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    linalg.aleo/frobenius_inner_product:
+      outputs:
+      - '{"type":"private","id":"3580100037086521953006304637805207312172135160876365699393571843442104240121field","value":"ciphertext1qgqv7f4pyyzahyp9w3nt7cjs23dz786u5pg2fcn22py92h5tktx3vp263v90c4ayhxeeja5uctf5h2s6az3v4zkqt28k8edtda90xhuvpcy3ejl3"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"4772323396752114238678458095748484933554817744837727964945265462135276754532field","checksum":"3069270940717194385953061931395050147050443575754014344538556303847701325035field","value":"record1qyqsqgtr6uwg8nj6e4phl2226erwlarmhv8rlek5fa5gk65cju6whhc2qyxx66trwfhkxun9v35hguerqqpqzqp8fq6txtujqzavd79ru84krwjxl0285w2uafr7v4zscyx93sqqpj02rwq4lrv7t7cl8s7hnvn6rllyk7jzrwu74zammzyk7fpwu7hpql3cnll"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
