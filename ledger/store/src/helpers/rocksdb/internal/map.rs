@@ -1275,6 +1275,12 @@ mod tests {
 
                 // Make sure the checkpoint index is 1.
                 assert_eq!(map.checkpoints.lock().last(), Some(&1));
+                // Ensure that the atomic batch is empty.
+                assert!(self.atomic_batch.lock().is_empty());
+                // Ensure that the database atomic batch size is 1.
+                assert_eq!(self.database.atomic_batch.lock().len(), 1);
+                // Ensure that the database atomic depth is 1.
+                assert_eq!(self.database.atomic_depth.load(Ordering::SeqCst), 1);
 
                 // Simulates an instruction that fails.
                 let result: Result<()> = atomic_batch_scope!(map, {
