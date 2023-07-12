@@ -87,6 +87,7 @@ use console::{
     program::{EntryType, Identifier, PlaintextType, ProgramID, RecordType, Struct},
 };
 
+use console::program::ElementType;
 use indexmap::IndexMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -378,6 +379,17 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
                         bail!("'{member_identifier}' in struct '{}' is not defined.", struct_name)
                     }
                 }
+                PlaintextType::Array(array_type) => {
+                    match array_type.element_type() {
+                        ElementType::Literal(..) => continue,
+                        ElementType::Struct(identifier) => {
+                            // Ensure the struct in the array exists in the program.
+                            if !self.structs.contains_key(identifier) {
+                                bail!("'{identifier}' in '{array_type}' is not defined.")
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -426,6 +438,17 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
                     PlaintextType::Struct(identifier) => {
                         if !self.structs.contains_key(identifier) {
                             bail!("Struct '{identifier}' in record '{record_name}' is not defined.")
+                        }
+                    }
+                    PlaintextType::Array(array_type) => {
+                        match array_type.element_type() {
+                            ElementType::Literal(..) => continue,
+                            // Ensure the struct in the array exists in the program.
+                            ElementType::Struct(identifier) => {
+                                if !self.structs.contains_key(identifier) {
+                                    bail!("Struct '{identifier}' in '{array_type}' is not defined.")
+                                }
+                            }
                         }
                     }
                 },
