@@ -1279,10 +1279,10 @@ mod tests {
 
                 // Make sure the checkpoint index is 1.
                 assert_eq!(map.checkpoints.lock().last(), Some(&1));
-                // Ensure that the atomic batch is empty.
-                assert!(map.atomic_batch.lock().is_empty());
-                // Ensure that the database atomic batch size is 1.
-                assert_eq!(map.database.atomic_batch.lock().len(), 1);
+                // Ensure that the atomic batch length is 2.
+                assert_eq!(map.atomic_batch.lock().len(), 2);
+                // Ensure that the database atomic batch is empty.
+                assert!(map.database.atomic_batch.lock().is_empty());
                 // Ensure that the database atomic depth is 1.
                 assert_eq!(map.database.atomic_depth.load(Ordering::SeqCst), 1);
 
@@ -1309,7 +1309,14 @@ mod tests {
             assert_eq!(map.iter_pending().count(), 1);
             // Make sure the pending operations still has the initial insertion.
             assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+            // Make sure the checkpoint index is None.
             assert_eq!(map.checkpoints.lock().last(), None);
+            // Ensure that the atomic batch length is 1.
+            assert_eq!(map.atomic_batch.lock().len(), 1);
+            // Ensure that the database atomic batch is empty.
+            assert!(map.database.atomic_batch.lock().is_empty());
+            // Ensure that the database atomic depth is 1.
+            assert_eq!(map.database.atomic_depth.load(Ordering::SeqCst), 1);
 
             Ok(())
         });
@@ -1321,6 +1328,12 @@ mod tests {
         assert!(map.iter_pending().next().is_none());
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoints.lock().last(), None);
+        // Ensure that the atomic batch is empty.
+        assert!(map.atomic_batch.lock().is_empty());
+        // Ensure that the database atomic batch is empty.
+        assert!(map.database.atomic_batch.lock().is_empty());
+        // Ensure that the database atomic depth is 0.
+        assert_eq!(map.database.atomic_depth.load(Ordering::SeqCst), 0);
 
         // Ensure that the map value is correct.
         assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
