@@ -394,7 +394,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         );
 
         // Check that the batch transmission ids match the transmissions.
-        // transmissions.check_ordering(certificate.transmission_ids())?;
+        // block.transmissions().check_ordering(batch_certificate.transmission_ids(), &self.latest_pending_solutions())?;
+
+        // TODO (raychu86): batch - Check that the solutions not included in the block, will be included in the pending solutions.
 
         // Ensure that the round number is correct.
         ensure!(

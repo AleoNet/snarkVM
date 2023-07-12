@@ -16,12 +16,24 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{CoinbaseSolution, ConfirmedTransaction, PuzzleCommitment, Ratify, Transaction, Transactions, Transition};
+use crate::{
+    CoinbaseSolution,
+    ConfirmedTransaction,
+    PuzzleCommitment,
+    Ratify,
+    Transaction,
+    Transactions,
+    Transition,
+    TransmissionID,
+};
 use console::{
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
 };
+use ledger_coinbase::ProverSolution;
+
+use indexmap::IndexSet;
 
 /// the transmissions included in the block.
 #[derive(Clone, PartialEq, Eq)]
@@ -60,12 +72,19 @@ impl<N: Network> Transmissions<N> {
     }
 
     // /// Check that the given ordering matches the construction of `Transmissions`.
-    // pub fn check_ordering(&self, transmission_ids: &IndexSet<TransmissionID<N>>, pending_solutions: Option<IndexSet<ProverSolution<N>>>) -> Result<()> {
+    // pub fn check_ordering(
+    //     &self,
+    //     transmission_ids: &IndexSet<TransmissionID<N>>,
+    //     _pending_solutions: &IndexSet<ProverSolution<N>>,
+    // ) -> Result<()> {
     //     // Fetch the transactions iterator.
     //     let mut transaction_ids = self.transactions().transaction_ids();
     //     // Fetch the partial solutions iterator.
     //     let mut solutions =
     //         self.coinbase().map(|coinbase| coinbase.partial_solutions().iter()).unwrap_or_else(|| [].iter());
+    //
+    //     // let mut included_pending_solutions = IndexSet::new();
+    //     // let mut new_pending_solutions = IndexSet::new();
     //
     //     // Iterate through the provided transmission ids and ensure that the `Transmissions` ordering is correct.
     //     for transmission_id in transmission_ids {
@@ -80,18 +99,18 @@ impl<N: Network> Transmissions<N> {
     //             TransmissionID::Solution(expected_commitment) => {
     //                 // TODO (raychu86): batch - This is not sufficient to check the inclusion of the solution, because it may be in the ledger pending solutions, or this block may contain solutions from previous pending solutions.
     //                 let next_solution_commitment = solutions.next().map(|solution| solution.commitment());
+    //
     //                 ensure!(
     //                     next_solution_commitment == Some(*expected_commitment),
     //                     "Coinbase solution ordering does not match."
     //                 )
     //
     //                 // If we reach the end of our pending solutions, we need to add the remaining ones to the ledger pending
-    //
     //             }
     //         }
     //     }
     //
-    //     return Ok(());
+    //     Ok(())
     // }
 }
 
