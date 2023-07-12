@@ -19,7 +19,7 @@ use crate::{
     TransactionStore,
     TransitionStore,
 };
-use console::{account::Signature, prelude::*};
+use console::prelude::*;
 use ledger_block::{CompactBatchCertificate, Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
@@ -48,8 +48,6 @@ pub struct BlockMemory<N: Network> {
     coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
     coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
-    /// The signature map.
-    signature_map: MemoryMap<N::BlockHash, Signature<N>>,
     /// The compact batch certificate map.
     compact_batch_certificate_map: MemoryMap<N::BlockHash, CompactBatchCertificate<N>>,
 }
@@ -68,7 +66,6 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
-    type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
     type CompactBatchCertificateMap = MemoryMap<N::BlockHash, CompactBatchCertificate<N>>;
 
     /// Initializes the block storage.
@@ -90,7 +87,6 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             ratifications_map: MemoryMap::default(),
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),
-            signature_map: MemoryMap::default(),
             compact_batch_certificate_map: MemoryMap::default(),
         })
     }
@@ -148,11 +144,6 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the coinbase puzzle commitment map.
     fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap {
         &self.coinbase_puzzle_commitment_map
-    }
-
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap {
-        &self.signature_map
     }
 
     /// Returns the compact batch certificate map.

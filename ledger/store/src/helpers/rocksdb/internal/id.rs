@@ -64,7 +64,6 @@ pub enum BlockMap {
     Ratifications = DataID::BlockRatificationsMap as u16,
     CoinbaseSolution = DataID::BlockCoinbaseSolutionMap as u16,
     CoinbasePuzzleCommitment = DataID::BlockCoinbasePuzzleCommitmentMap as u16,
-    Signature = DataID::BlockSignatureMap as u16,
     CompactBatchCertificate = DataID::BlockCompactBatchCertificateMap as u16,
 }
 
@@ -200,7 +199,6 @@ enum DataID {
     BlockRatificationsMap,
     BlockCoinbaseSolutionMap,
     BlockCoinbasePuzzleCommitmentMap,
-    BlockSignatureMap,
     BlockCompactBatchCertificateMap,
     // Deployment
     DeploymentIDMap,
