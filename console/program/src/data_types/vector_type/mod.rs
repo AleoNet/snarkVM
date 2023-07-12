@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::ElementType;
+use crate::PlaintextType;
 use snarkvm_console_network::prelude::*;
 
 use core::fmt::{Debug, Display};
@@ -24,17 +24,17 @@ use core::fmt::{Debug, Display};
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct VectorType<N: Network> {
     /// The type of the elements in the vector.
-    element_type: ElementType<N>,
+    element_type: PlaintextType<N>,
 }
 
 impl<N: Network> VectorType<N> {
     /// Constructs a new vector type.
-    pub fn new(element_type: ElementType<N>) -> Self {
+    pub fn new(element_type: PlaintextType<N>) -> Self {
         Self { element_type }
     }
 
     /// Returns the element type.
-    pub fn element_type(&self) -> &ElementType<N> {
+    pub fn element_type(&self) -> &PlaintextType<N> {
         &self.element_type
     }
 }
@@ -44,7 +44,7 @@ mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
 
-    use crate::{Identifier, LiteralType};
+    use crate::{ArrayType, Identifier, LiteralType};
     use core::str::FromStr;
 
     type CurrentNetwork = Testnet3;
@@ -53,30 +53,30 @@ mod tests {
     fn test_vector_type() -> Result<()> {
         // Test literal vector types.
         let type_ = VectorType::<CurrentNetwork>::from_str("[field]")?;
-        assert_eq!(type_, VectorType::<CurrentNetwork>::new(ElementType::from(LiteralType::Field)));
+        assert_eq!(type_, VectorType::<CurrentNetwork>::new(PlaintextType::from(LiteralType::Field)));
         assert_eq!(
             type_.to_bytes_le()?,
             VectorType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(type_.element_type(), &ElementType::from(LiteralType::Field));
+        assert_eq!(type_.element_type(), &PlaintextType::from(LiteralType::Field));
 
         // Test struct vector types.
         let type_ = VectorType::<CurrentNetwork>::from_str("[foo]")?;
-        assert_eq!(type_, VectorType::<CurrentNetwork>::new(ElementType::from(Identifier::from_str("foo")?)));
+        assert_eq!(type_, VectorType::<CurrentNetwork>::new(PlaintextType::from(Identifier::from_str("foo")?)));
         assert_eq!(
             type_.to_bytes_le()?,
             VectorType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(type_.element_type(), &ElementType::from(Identifier::from_str("foo")?));
+        assert_eq!(type_.element_type(), &PlaintextType::from(Identifier::from_str("foo")?));
 
-        // Test vector type with maximum length.
-        let type_ = VectorType::<CurrentNetwork>::from_str("[scalar]")?;
-        assert_eq!(type_, VectorType::<CurrentNetwork>::new(ElementType::from(LiteralType::Scalar)));
+        // Test vector type with array type.
+        let type_ = VectorType::<CurrentNetwork>::from_str("[[scalar; 8]]")?;
+        assert_eq!(type_, VectorType::<CurrentNetwork>::new(PlaintextType::from(ArrayType::from_str("[scalar; 8]")?)));
         assert_eq!(
             type_.to_bytes_le()?,
             VectorType::<CurrentNetwork>::from_bytes_le(&type_.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(type_.element_type(), &ElementType::from(LiteralType::Scalar));
+        assert_eq!(type_.element_type(), &PlaintextType::from(ArrayType::from_str("[scalar; 8]")?));
 
         Ok(())
     }

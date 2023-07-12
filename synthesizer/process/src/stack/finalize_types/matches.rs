@@ -172,7 +172,7 @@ impl<N: Network> FinalizeTypes<N> {
         operands: &[Operand<N>],
         vector_type: &VectorType<N>,
     ) -> Result<()> {
-        let element_type = PlaintextType::from(*vector_type.element_type());
+        let element_type = *vector_type.element_type();
 
         // Ensure the operand types match the vector.
         for operand in operands.iter() {
@@ -200,7 +200,7 @@ impl<N: Network> FinalizeTypes<N> {
                     let program_ref_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
                     // Ensure the program ID type matches the element type.
                     ensure!(
-                        program_ref_type == RegisterType::Plaintext(PlaintextType::from(*vector_type.element_type())),
+                        program_ref_type == RegisterType::Plaintext(*vector_type.element_type()),
                         "Vector '{vector_type}' expects {element_type}, but found '{program_ref_type}' in the operand '{operand}'.",
                     )
                 }
@@ -212,7 +212,7 @@ impl<N: Network> FinalizeTypes<N> {
                     let block_height_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U32));
                     // Ensure the block height type matches the element type.
                     ensure!(
-                        block_height_type == RegisterType::Plaintext(PlaintextType::from(*vector_type.element_type())),
+                        block_height_type == RegisterType::Plaintext(*vector_type.element_type()),
                         "Vector '{vector_type}' expects {element_type}, but found '{block_height_type}' in the operand '{operand}'.",
                     )
                 }

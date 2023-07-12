@@ -17,7 +17,7 @@ use super::*;
 impl<N: Network> FromBytes for VectorType<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the element type.
-        let element_type = ElementType::read_le(&mut reader)?;
+        let element_type = PlaintextType::read_le(&mut reader)?;
         // Return the vector type.
         Ok(Self::new(element_type))
     }

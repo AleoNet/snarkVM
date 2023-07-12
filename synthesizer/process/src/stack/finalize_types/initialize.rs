@@ -520,7 +520,7 @@ impl<N: Network> FinalizeTypes<N> {
                     }
                     RegisterType::Vector(vector_type) => {
                         // If the element type is a struct, ensure the struct exists.
-                        if let ElementType::Struct(struct_name) = vector_type.element_type() {
+                        if let PlaintextType::Struct(struct_name) = vector_type.element_type() {
                             // Ensure the struct name exists in the program.
                             if !stack.program().contains_struct(struct_name) {
                                 bail!("Struct '{struct_name}' is not defined.")

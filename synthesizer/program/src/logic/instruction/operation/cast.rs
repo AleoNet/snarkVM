@@ -582,7 +582,7 @@ impl<N: Network> Cast<N> {
                     let plaintext = match element {
                         Value::Plaintext(plaintext) => {
                             // Ensure the plaintext matches the element type.
-                            stack.matches_plaintext(plaintext, &PlaintextType::from(*vector_type.element_type()))?;
+                            stack.matches_plaintext(plaintext, vector_type.element_type())?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -720,7 +720,7 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Vector(vector_type)) => {
                 // Retrieve the element type and ensure it is defined in the program.
                 let element_type = vector_type.element_type();
-                if let ElementType::Struct(struct_name) = element_type {
+                if let PlaintextType::Struct(struct_name) = element_type {
                     stack.program().get_struct(struct_name)?;
                 }
                 // Ensure the input types match the element type.
@@ -729,7 +729,7 @@ impl<N: Network> Cast<N> {
                         // Ensure the plaintext type matches the element type.
                         RegisterType::Plaintext(plaintext_type) => {
                             ensure!(
-                                PlaintextType::from(*element_type) == *plaintext_type,
+                                *element_type == *plaintext_type,
                                 "Vector element type mismatch: expected '{element_type}', found '{plaintext_type}'",
                             )
                         }

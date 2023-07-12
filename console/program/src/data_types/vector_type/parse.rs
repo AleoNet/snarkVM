@@ -24,7 +24,7 @@ impl<N: Network> Parser for VectorType<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
         // Parse the element type.
-        let (string, element_type) = ElementType::parse(string)?;
+        let (string, element_type) = PlaintextType::parse(string)?;
         // Parse the whitespaces from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
