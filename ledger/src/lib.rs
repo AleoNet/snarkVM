@@ -106,7 +106,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
     /// The current committee.
     current_committee: Arc<RwLock<IndexSet<Address<N>>>>,
-    // TODO (raychu86): batch - Add pending prover solutions that haven't made it into the block yet.
+    /// The pending prover solutions.
+    pending_solutions: Arc<RwLock<IndexSet<ProverSolution<N>>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -165,6 +166,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             current_block: Arc::new(RwLock::new(genesis.clone())),
             current_epoch_challenge: Default::default(),
             current_committee: Default::default(),
+            pending_solutions: Default::default(),
         };
 
         // Add the genesis validator to the committee.
@@ -301,6 +303,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             Some(challenge) => Ok(challenge.clone()),
             None => self.get_epoch_challenge(self.latest_height()),
         }
+    }
+
+    /// Returns the latest pending solutions.
+    pub fn latest_pending_solutions(&self) -> IndexSet<ProverSolution<N>> {
+        self.pending_solutions.read().clone()
     }
 }
 

@@ -173,6 +173,11 @@ impl<N: Network> Block<N> {
         self.previous_hash
     }
 
+    /// Returns the transmissions in this block.
+    pub const fn transmissions(&self) -> &Transmissions<N> {
+        &self.transmissions
+    }
+
     /// Returns the ratifications in this block.
     pub const fn ratifications(&self) -> &Vec<Ratify<N>> {
         self.transmissions.ratifications()
