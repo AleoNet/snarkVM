@@ -149,13 +149,8 @@ impl<N: Network> Process<N> {
         let stack = Stack::new(&process, &program)?;
         lap!(timer, "Initialize stack");
 
-        // Synthesize the 'credits.aleo' circuit keys.
+        // Synthesize the 'credits.aleo' verifying keys.
         for function_name in program.functions().keys() {
-            // Load the proving key.
-            let proving_key = N::get_credits_proving_key(function_name.to_string())?;
-            stack.insert_proving_key(function_name, ProvingKey::new(proving_key.clone()))?;
-            lap!(timer, "Load proving key for {function_name}");
-
             // Load the verifying key.
             let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
             stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone()))?;
