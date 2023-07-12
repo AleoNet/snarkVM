@@ -165,6 +165,18 @@ impl<N: Network> Stack<N> {
 
                 Plaintext::Struct(members, Default::default())
             }
+            // Sample an array.
+            PlaintextType::Array(array_type) => {
+                // Get the length of the array.
+                let length = **array_type.length();
+                // Sample each element of the array.
+                let elements = (0..length)
+                    .map(|_| {
+                        self.sample_plaintext_internal(&PlaintextType::from(*array_type.element_type()), depth + 1, rng)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                Plaintext::List(elements, Default::default())
+            }
         };
         // Return the plaintext.
         Ok(plaintext)

@@ -122,7 +122,7 @@ impl<N: Network> FinalizeTypes<N> {
                 PlaintextType::Struct(struct_name) => {
                     let path_name = match path_name {
                         Access::Member(path_name) => path_name,
-                        Access::Index(_) => bail!("Attempted to index a struct"),
+                        Access::Index(_) => bail!("Attempted to access a struct with '{path_name}'"),
                     };
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
@@ -130,6 +130,15 @@ impl<N: Network> FinalizeTypes<N> {
                         Some(plaintext_type) => *plaintext_type,
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
+                }
+                // Access the index on the path to output the register type.
+                PlaintextType::Array(array_type) => {
+                    let path_index = match path_name {
+                        Access::Index(path_index) => path_index,
+                        Access::Member(_) => bail!("Attempted to an array with '{path_name}'"),
+                    };
+                    // Retrieve the element type from the array.
+                    PlaintextType::from(*array_type.index(path_index)?)
                 }
             }
         }

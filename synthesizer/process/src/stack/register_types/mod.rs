@@ -138,7 +138,7 @@ impl<N: Network> RegisterTypes<N> {
                 RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                     let path_name = match path_name {
                         Access::Member(path_name) => path_name,
-                        Access::Index(_) => bail!("Attempted to index a struct"),
+                        Access::Index(_) => bail!("Attempted to access a struct with '{path_name}'"),
                     };
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
@@ -146,6 +146,15 @@ impl<N: Network> RegisterTypes<N> {
                         Some(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
+                }
+                // Traverse the path to output the register type.
+                RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
+                    let path_index = match path_name {
+                        Access::Index(index) => index,
+                        Access::Member(_) => bail!("Attempted to access an array with '{path_name}'"),
+                    };
+                    // Retrieve the element type from the array.
+                    RegisterType::Plaintext(PlaintextType::from(*array_type.index(path_index)?))
                 }
                 RegisterType::Record(record_name) => {
                     // Ensure the record type exists.
@@ -157,7 +166,7 @@ impl<N: Network> RegisterTypes<N> {
                     } else {
                         let path_name = match path_name {
                             Access::Member(path_name) => path_name,
-                            Access::Index(_) => bail!("Attempted to index into a record"),
+                            Access::Index(_) => bail!("Attempted to access a record with '{path_name}'"),
                         };
                         // Retrieve the entry type from the record.
                         match stack.program().get_record(record_name)?.entries().get(path_name) {
@@ -181,7 +190,7 @@ impl<N: Network> RegisterTypes<N> {
                     } else {
                         let path_name = match path_name {
                             Access::Member(path_name) => path_name,
-                            Access::Index(_) => bail!("Attempted to index into an external record"),
+                            Access::Index(_) => bail!("Attempted to access an external record with '{path_name}'"),
                         };
                         // Retrieve the entry type from the external record.
                         match stack.get_external_record(locator)?.entries().get(path_name) {

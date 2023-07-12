@@ -250,6 +250,40 @@ impl<N: Network> Stack<N> {
 
                 Ok(())
             }
+            PlaintextType::Array(array_type) => {
+                // Retrieve the elements of the array.
+                let elements = match plaintext {
+                    Plaintext::Literal(..) => bail!("'{plaintext_type}' is invalid: expected array, found literal"),
+                    Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected array, found struct"),
+                    Plaintext::List(elements, ..) => elements,
+                };
+
+                // Ensure that the number of elements does not exceed the maximum.
+                let num_elements = elements.len();
+                ensure!(
+                    num_elements <= N::MAX_ARRAY_ENTRIES,
+                    "'{array_type}' cannot exceed {} elements",
+                    N::MAX_ARRAY_ENTRIES
+                );
+
+                // Ensure the number of elements match.
+                let expected_num_elements = **array_type.length() as usize;
+                if expected_num_elements != num_elements {
+                    bail!("'{array_type}' expected {expected_num_elements} elements, found {num_elements} elements")
+                }
+
+                // Ensure the elements match, in the same order.
+                for element in elements {
+                    // Ensure the element plaintext matches (recursive call).
+                    self.matches_plaintext_internal(
+                        element,
+                        &PlaintextType::from(*array_type.element_type()),
+                        depth + 1,
+                    )?;
+                }
+
+                Ok(())
+            }
         }
     }
 }

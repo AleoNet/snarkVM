@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::ArrayType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.
@@ -92,6 +93,86 @@ impl<N: Network> RegisterTypes<N> {
                 Operand::BlockHeight => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be from a block height in a non-finalize scope"
                 ),
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that the given operands matches the layout of the array. The ordering of the operands matters.
+    pub fn matches_array(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operands: &[Operand<N>],
+        array_type: &ArrayType<N>,
+    ) -> Result<()> {
+        // Ensure that there is at least one operand.
+        if !operands.is_empty() {
+            bail!("Array must have at least 1 operand")
+        }
+        // Ensure the number of elements does not exceed the maximum.
+        if operands.len() > N::MAX_ARRAY_ENTRIES {
+            bail!("Array cannot exceed {} elements", N::MAX_ARRAY_ENTRIES)
+        }
+
+        // Ensure the number of elements match.
+        let num_elements = operands.len();
+        let expected_num_elements = **array_type.length() as usize;
+        if expected_num_elements != num_elements {
+            bail!("'{array_type}' expected {expected_num_elements} elements, found {num_elements} elements")
+        }
+
+        // Retrieve the array element type.
+        let element_type = PlaintextType::from(*array_type.element_type());
+
+        // Ensure the operand types match the array.
+        for operand in operands {
+            match operand {
+                // Ensure the literal type matches the element type.
+                Operand::Literal(literal) => {
+                    ensure!(
+                        PlaintextType::Literal(literal.to_type()) == element_type,
+                        "Array '{array_type}' expects a {element_type}, but found '{operand}' in the operand.",
+                    )
+                }
+                // Ensure the register type matches the element type.
+                Operand::Register(register) => {
+                    // Retrieve the register type.
+                    let register_type = self.get_type(stack, register)?;
+                    // Ensure the register type is not a record.
+                    ensure!(
+                        !matches!(register_type, RegisterType::Record(..)),
+                        "Casting a record into a struct is illegal"
+                    );
+                    // Ensure the register type matches the element type.
+                    ensure!(
+                        register_type == RegisterType::Plaintext(element_type),
+                        "Array '{array_type}' expects {element_type}, but found '{register_type}' in the operand '{operand}'.",
+                    )
+                }
+                // Ensure the program ID type (address) matches the element type.
+                Operand::ProgramID(..) => {
+                    // Retrieve the program ID type.
+                    let program_ref_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    // Ensure the program ID type matches the element type.
+                    ensure!(
+                        program_ref_type == RegisterType::Plaintext(element_type),
+                        "Array '{array_type}' expects {element_type}, but found '{program_ref_type}' in the operand '{operand}'.",
+                    )
+                }
+                // Ensure the caller type (address) matches the element type.
+                Operand::Caller => {
+                    // Retrieve the caller type.
+                    let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    // Ensure the caller type matches the element type.
+                    ensure!(
+                        caller_type == RegisterType::Plaintext(element_type),
+                        "Array '{array_type}' expects {element_type}, but found '{caller_type}' in the operand '{operand}'.",
+                    )
+                }
+                // If the operand is a block height type, throw an error.
+                Operand::BlockHeight => {
+                    bail!("Array '{array_type}' cannot be from a block height in a non-finalize scope")
+                }
             }
         }
         Ok(())

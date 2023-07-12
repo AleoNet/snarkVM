@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::ArrayType;
 
 impl<N: Network> FinalizeTypes<N> {
     /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.
@@ -85,6 +86,78 @@ impl<N: Network> FinalizeTypes<N> {
                     ensure!(
                         block_height_type == RegisterType::Plaintext(*member_type),
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{block_height_type}' in the operand '{operand}'.",
+                    )
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that the given operands matches the layout of the array. The ordering of the operands matters.
+    pub fn matches_array(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operands: &[Operand<N>],
+        array_type: &ArrayType<N>,
+    ) -> Result<()> {
+        // Ensure that there is at least one operand.
+        if !operands.is_empty() {
+            bail!("Array must have at least 1 operand")
+        }
+        // Ensure the number of elements does not exceed the maximum.
+        if operands.len() > N::MAX_ARRAY_ENTRIES {
+            bail!("Array cannot exceed {} elements", N::MAX_ARRAY_ENTRIES)
+        }
+
+        // Ensure the number of elements match.
+        let num_elements = operands.len();
+        let expected_num_elements = **array_type.length() as usize;
+        if expected_num_elements != num_elements {
+            bail!("'{array_type}' expected {expected_num_elements} elements, found {num_elements} elements")
+        }
+
+        let element_type = PlaintextType::from(*array_type.element_type());
+
+        // Ensure the operand types match the array.
+        for operand in operands.iter() {
+            match operand {
+                // Ensure the literal type matches the element type.
+                Operand::Literal(literal) => {
+                    ensure!(
+                        PlaintextType::Literal(literal.to_type()) == element_type,
+                        "Array '{array_type}' expects a {element_type}, but found '{operand}' in the operand.",
+                    )
+                }
+                // Ensure the type of the register matches the element type.
+                Operand::Register(register) => {
+                    // Retrieve the type.
+                    let plaintext_type = self.get_type(stack, register)?;
+                    // Ensure the register type matches the element type.
+                    ensure!(
+                        plaintext_type == element_type,
+                        "Array '{array_type}' expects {element_type}, but found '{plaintext_type}' in the operand '{operand}'.",
+                    )
+                }
+                // Ensure the program ID type (address) matches the element type.
+                Operand::ProgramID(..) => {
+                    // Retrieve the program ID type.
+                    let program_ref_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    // Ensure the program ID type matches the element type.
+                    ensure!(
+                        program_ref_type == RegisterType::Plaintext(PlaintextType::from(*array_type.element_type())),
+                        "Array '{array_type}' expects {element_type}, but found '{program_ref_type}' in the operand '{operand}'.",
+                    )
+                }
+                // If the operand is a caller, throw an error.
+                Operand::Caller => bail!("Array '{array_type}' cannot be cast from a caller in a finalize scope."),
+                // Ensure the block height type (u32) matches the element type.
+                Operand::BlockHeight => {
+                    // Retrieve the block height type.
+                    let block_height_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U32));
+                    // Ensure the block height type matches the element type.
+                    ensure!(
+                        block_height_type == RegisterType::Plaintext(PlaintextType::from(*array_type.element_type())),
+                        "Array '{array_type}' expects {element_type}, but found '{block_height_type}' in the operand '{operand}'.",
                     )
                 }
             }

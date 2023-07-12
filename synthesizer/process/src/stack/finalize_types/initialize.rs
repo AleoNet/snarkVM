@@ -13,8 +13,12 @@
 // limitations under the License.
 
 use super::*;
+
 use crate::RegisterTypes;
+
 use synthesizer_program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
+
+use console::program::ElementType;
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -109,6 +113,14 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                }
+            }
+            PlaintextType::Array(array_type) => {
+                if let ElementType::Struct(struct_name) = *array_type.element_type() {
+                    // Ensure the struct is defined in the program.
+                    if !stack.program().contains_struct(&struct_name) {
+                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                    }
                 }
             }
         };
@@ -490,6 +502,17 @@ impl<N: Network> FinalizeTypes<N> {
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), &struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
+                        // If the element type is a struct, ensure the struct exists.
+                        if let ElementType::Struct(struct_name) = array_type.element_type() {
+                            // Ensure the struct name exists in the program.
+                            if !stack.program().contains_struct(struct_name) {
+                                bail!("Struct '{struct_name}' is not defined.")
+                            }
+                        }
+                        // Ensure the operand types match the array.
+                        self.matches_array(stack, instruction.operands(), array_type)?;
                     }
                     RegisterType::Record(..) => {
                         bail!("Illegal operation: Cannot cast to a record.")
