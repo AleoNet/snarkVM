@@ -125,8 +125,19 @@ finalize foo:
     // Verify.
     assert!(ledger.vm().verify_transaction(&transaction, None));
 
+    // Construct the compact batch certificate.
+    let batch_certificate = crate::test_helpers::sample_compact_batch_certificate(
+        &private_key,
+        &[transaction.clone()],
+        [].into(),
+        ledger.latest_round().saturating_add(1),
+        rng,
+    );
+
     // Construct the next block.
-    let block = ledger.prepare_advance_to_next_block(&private_key, vec![transaction], None, rng).unwrap();
+    let block = ledger
+        .prepare_advance_to_next_block(&private_key, vec![transaction], None, batch_certificate.clone(), rng)
+        .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 1);
@@ -135,9 +146,19 @@ finalize foo:
     // Create a transfer transaction to produce a record with insufficient balance to pay for fees.
     let transfer_transaction = ledger.create_transfer(&private_key, address, 100, 0, None).unwrap();
 
+    // Construct the compact batch certificate.
+    let batch_certificate = crate::test_helpers::sample_compact_batch_certificate(
+        &private_key,
+        &[transfer_transaction.clone()],
+        [batch_certificate.certificate_id()].into(),
+        ledger.latest_round().saturating_add(1),
+        rng,
+    );
+
     // Construct the next block.
-    let block =
-        ledger.prepare_advance_to_next_block(&private_key, vec![transfer_transaction.clone()], None, rng).unwrap();
+    let block = ledger
+        .prepare_advance_to_next_block(&private_key, vec![transfer_transaction.clone()], None, batch_certificate, rng)
+        .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 2);
@@ -224,9 +245,19 @@ finalize failed_assert:
     // Deploy the program.
     let deployment_transaction = ledger.vm().deploy(&private_key, &program, (record_1, 0), None, rng).unwrap();
 
+    // Construct the compact batch certificate.
+    let batch_certificate = crate::test_helpers::sample_compact_batch_certificate(
+        &private_key,
+        &[deployment_transaction.clone()],
+        [].into(),
+        ledger.latest_round().saturating_add(1),
+        rng,
+    );
+
     // Construct the deployment block.
-    let deployment_block =
-        ledger.prepare_advance_to_next_block(&private_key, vec![deployment_transaction], None, rng).unwrap();
+    let deployment_block = ledger
+        .prepare_advance_to_next_block(&private_key, vec![deployment_transaction], None, batch_certificate.clone(), rng)
+        .unwrap();
 
     // Check that the next block is valid.
     ledger.check_next_block(&deployment_block).unwrap();
@@ -247,9 +278,25 @@ finalize failed_assert:
         )
         .unwrap();
 
+    // Construct the compact batch certificate.
+    let batch_certificate = crate::test_helpers::sample_compact_batch_certificate(
+        &private_key,
+        &[failed_assert_transaction.clone()],
+        [batch_certificate.certificate_id()].into(),
+        ledger.latest_round().saturating_add(1),
+        rng,
+    );
+
     // Construct the next block containing the new transaction.
-    let next_block =
-        ledger.prepare_advance_to_next_block(&private_key, vec![failed_assert_transaction.clone()], None, rng).unwrap();
+    let next_block = ledger
+        .prepare_advance_to_next_block(
+            &private_key,
+            vec![failed_assert_transaction.clone()],
+            None,
+            batch_certificate,
+            rng,
+        )
+        .unwrap();
 
     // Check that the block contains 1 rejected execution.
     assert_eq!(next_block.transactions().len(), 1);

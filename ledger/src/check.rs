@@ -368,6 +368,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Invalid signature for block {} ({})", block.height(), block.hash());
         }
 
+        /* Batch Certificate */
+        // TODO (raychu86): batch - Implement the checks on the batch certificate.
+
         /* Transactions */
 
         // Compute the transactions root.

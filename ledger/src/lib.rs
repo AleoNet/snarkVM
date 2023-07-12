@@ -72,7 +72,6 @@ use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
 use std::{borrow::Cow, sync::Arc};
-use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -107,6 +106,7 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
     /// The current committee.
     current_committee: Arc<RwLock<IndexSet<Address<N>>>>,
+    // TODO (raychu86): batch - Add pending prover solutions that haven't made it into the block yet.
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -388,10 +388,13 @@ pub(crate) mod test_helpers {
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
         prelude::*,
+        types::Field,
     };
-    use ledger_block::Block;
+    use ledger_block::{Block, CompactBatchCertificate, CompactBatchHeader, Transaction, TransmissionID};
     use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
     use synthesizer::vm::VM;
+
+    use indexmap::IndexSet;
 
     pub(crate) type CurrentNetwork = Testnet3;
     pub(crate) type CurrentLedger = Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>;
@@ -433,5 +436,33 @@ pub(crate) mod test_helpers {
         assert_eq!(genesis, ledger.get_block(0).unwrap());
         // Return the ledger.
         ledger
+    }
+
+    pub(crate) fn sample_compact_batch_certificate(
+        private_key: &PrivateKey<CurrentNetwork>,
+        transactions: &[Transaction<CurrentNetwork>],
+        previous_certificate_ids: IndexSet<Field<CurrentNetwork>>,
+        round: u64,
+        rng: &mut TestRng,
+    ) -> CompactBatchCertificate<CurrentNetwork> {
+        // Prepare the transmission ids.
+        let transmission_ids =
+            transactions.iter().map(|transaction| TransmissionID::from(&transaction.id())).collect::<IndexSet<_>>();
+
+        // Construct the previous certificate ids.
+        let previous_certificate_ids = match round {
+            0 | 1 => IndexSet::new(),
+            _ => previous_certificate_ids,
+        };
+        // Prepare the compact batch header.
+        let compact_batch_header =
+            CompactBatchHeader::new(private_key, round, transmission_ids, previous_certificate_ids, rng).unwrap();
+
+        // TODO (raychu86): batch - Currently using the same signature as the header. Considering skipping the requirement for the genesis certificate.
+        // Prepare the signatures.
+        let signatures = [(*compact_batch_header.signature(), compact_batch_header.timestamp())].into();
+
+        // Return the compact batch certificate.
+        CompactBatchCertificate::new(compact_batch_header, signatures).unwrap()
     }
 }
