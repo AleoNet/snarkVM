@@ -156,6 +156,10 @@ impl<N: Network> RegisterTypes<N> {
                     // Retrieve the element type from the array.
                     RegisterType::Plaintext(PlaintextType::from(*array_type.index(path_index)?))
                 }
+                // Check that the plaintext type is not a vector.
+                RegisterType::Plaintext(PlaintextType::Vector(_)) => {
+                    bail!("Cannot use vectors in a non-finalize context.")
+                }
                 RegisterType::Record(record_name) => {
                     // Ensure the record type exists.
                     ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");

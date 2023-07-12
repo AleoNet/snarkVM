@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use console::program::ArrayType;
+use console::program::{ArrayType, VectorType};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.
@@ -93,7 +93,7 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Checks that the given operands matches the layout of the array. The ordering of the operands matters.
+    /// Checks that the given operands matches the layout of the array.
     pub fn matches_array(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
@@ -158,6 +158,62 @@ impl<N: Network> FinalizeTypes<N> {
                     ensure!(
                         block_height_type == RegisterType::Plaintext(PlaintextType::from(*array_type.element_type())),
                         "Array '{array_type}' expects {element_type}, but found '{block_height_type}' in the operand '{operand}'.",
+                    )
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that the given operands matches the layout of the vector.
+    pub fn matches_vector(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operands: &[Operand<N>],
+        vector_type: &VectorType<N>,
+    ) -> Result<()> {
+        let element_type = PlaintextType::from(*vector_type.element_type());
+
+        // Ensure the operand types match the vector.
+        for operand in operands.iter() {
+            match operand {
+                // Ensure the literal type matches the element type.
+                Operand::Literal(literal) => {
+                    ensure!(
+                        PlaintextType::Literal(literal.to_type()) == element_type,
+                        "Vector '{vector_type}' expects a {element_type}, but found '{operand}' in the operand.",
+                    )
+                }
+                // Ensure the type of the register matches the element type.
+                Operand::Register(register) => {
+                    // Retrieve the type.
+                    let plaintext_type = self.get_type(stack, register)?;
+                    // Ensure the register type matches the element type.
+                    ensure!(
+                        plaintext_type == element_type,
+                        "Vector '{vector_type}' expects {element_type}, but found '{plaintext_type}' in the operand '{operand}'.",
+                    )
+                }
+                // Ensure the program ID type (address) matches the element type.
+                Operand::ProgramID(..) => {
+                    // Retrieve the program ID type.
+                    let program_ref_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    // Ensure the program ID type matches the element type.
+                    ensure!(
+                        program_ref_type == RegisterType::Plaintext(PlaintextType::from(*vector_type.element_type())),
+                        "Vector '{vector_type}' expects {element_type}, but found '{program_ref_type}' in the operand '{operand}'.",
+                    )
+                }
+                // If the operand is a caller, throw an error.
+                Operand::Caller => bail!("Vector '{vector_type}' cannot be cast from a caller in a finalize scope."),
+                // Ensure the block height type (u32) matches the element type.
+                Operand::BlockHeight => {
+                    // Retrieve the block height type.
+                    let block_height_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U32));
+                    // Ensure the block height type matches the element type.
+                    ensure!(
+                        block_height_type == RegisterType::Plaintext(PlaintextType::from(*vector_type.element_type())),
+                        "Vector '{vector_type}' expects {element_type}, but found '{block_height_type}' in the operand '{operand}'.",
                     )
                 }
             }

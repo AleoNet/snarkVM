@@ -112,14 +112,30 @@ impl<N: Network> FinalizeTypes<N> {
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
-                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                    bail!("Struct '{struct_name}' in '{plaintext_type}' is not defined in '{}'.", stack.program_id())
                 }
             }
             PlaintextType::Array(array_type) => {
-                if let ElementType::Struct(struct_name) = *array_type.element_type() {
+                // Ensure the array element type is defined in the program.
+                if let ElementType::Struct(struct_name) = array_type.element_type() {
                     // Ensure the struct is defined in the program.
-                    if !stack.program().contains_struct(&struct_name) {
-                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                    if !stack.program().contains_struct(struct_name) {
+                        bail!(
+                            "Struct '{struct_name}' in '{plaintext_type}' is not defined in '{}'.",
+                            stack.program_id()
+                        )
+                    }
+                }
+            }
+            PlaintextType::Vector(vector_type) => {
+                // Ensure the vector element type is defined in the program.
+                if let ElementType::Struct(struct_name) = vector_type.element_type() {
+                    // Ensure the struct is defined in the program.
+                    if !stack.program().contains_struct(struct_name) {
+                        bail!(
+                            "Struct '{struct_name}' in '{plaintext_type}' is not defined in '{}'.",
+                            stack.program_id()
+                        )
                     }
                 }
             }
@@ -513,6 +529,17 @@ impl<N: Network> FinalizeTypes<N> {
                         }
                         // Ensure the operand types match the array.
                         self.matches_array(stack, instruction.operands(), array_type)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Vector(vector_type)) => {
+                        // If the element type is a struct, ensure the struct exists.
+                        if let ElementType::Struct(struct_name) = vector_type.element_type() {
+                            // Ensure the struct name exists in the program.
+                            if !stack.program().contains_struct(struct_name) {
+                                bail!("Struct '{struct_name}' is not defined.")
+                            }
+                        }
+                        // Ensure the operand types match the array.
+                        self.matches_vector(stack, instruction.operands(), vector_type)?;
                     }
                     RegisterType::Record(..) => {
                         bail!("Illegal operation: Cannot cast to a record.")

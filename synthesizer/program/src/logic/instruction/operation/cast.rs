@@ -218,6 +218,9 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(..))) => {
+                bail!("Illegal operation: cannot cast to a vector during evaluation")
+            }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
@@ -444,6 +447,9 @@ impl<N: Network> Cast<N> {
                 // Store the array.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(array))
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(..))) => {
+                bail!("Illegal operation: Cannot cast to a vector during execution")
+            }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
@@ -568,6 +574,30 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(vector_type))) => {
+                // Initialize the elements.
+                let mut elements = Vec::with_capacity(inputs.len());
+                for element in inputs.iter() {
+                    // Retrieve the plaintext value from the element.
+                    let plaintext = match element {
+                        Value::Plaintext(plaintext) => {
+                            // Ensure the plaintext matches the element type.
+                            stack.matches_plaintext(plaintext, &PlaintextType::from(*vector_type.element_type()))?;
+                            // Output the plaintext.
+                            plaintext.clone()
+                        }
+                        // Ensure the element is not a record.
+                        Value::Record(..) => bail!("Casting a record into a vector element is illegal"),
+                    };
+                    // Store the element.
+                    elements.push(plaintext);
+                }
+
+                // Construct the vector.
+                let array = Plaintext::List(elements, Default::default());
+                // Store the vector.
+                registers.store(stack, &self.destination, Value::Plaintext(array))
+            }
             CastType::RegisterType(RegisterType::Record(_record_name)) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
             }
@@ -646,10 +676,10 @@ impl<N: Network> Cast<N> {
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 // Retrieve the element type and ensure it is defined in the program.
-                if let ElementType::Struct(struct_name) = array_type.element_type() {
+                let element_type = array_type.element_type();
+                if let ElementType::Struct(struct_name) = element_type {
                     stack.program().get_struct(struct_name)?;
                 }
-
                 // Ensure that the number of input types is equal to the length of the array.
                 ensure!(
                     input_types.len() == **array_type.length() as usize,
@@ -658,26 +688,50 @@ impl<N: Network> Cast<N> {
                     array_type.length(),
                     input_types.len()
                 );
-                // Ensure the input types match the struct.
+                // Ensure the input types match the element type.
                 for input_type in input_types {
                     match input_type {
-                        // Ensure the plaintext type matches the member type.
+                        // Ensure the plaintext type matches the element type.
                         RegisterType::Plaintext(plaintext_type) => {
                             ensure!(
-                                PlaintextType::from(*array_type.element_type()) == *plaintext_type,
-                                "Array element type mismatch: expected '{}', found '{plaintext_type}'",
-                                array_type.element_type(),
+                                PlaintextType::from(*element_type) == *plaintext_type,
+                                "Array element type mismatch: expected '{element_type}', found '{plaintext_type}'",
                             )
                         }
                         // Ensure the input type cannot be a record (this is unsupported behavior).
                         RegisterType::Record(record_name) => bail!(
-                            "Array element type mismatch: expected '{}', found record '{record_name}'",
-                            array_type.element_type(),
+                            "Array element type mismatch: expected '{element_type}', found record '{record_name}'",
                         ),
                         // Ensure the input type cannot be an external record (this is unsupported behavior).
                         RegisterType::ExternalRecord(locator) => bail!(
-                            "Array element type mismatch: expected '{}', found external record '{locator}'",
-                            array_type.element_type(),
+                            "Array element type mismatch: expected '{element_type}', found external record '{locator}'",
+                        ),
+                    }
+                }
+            }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(vector_type))) => {
+                // Retrieve the element type and ensure it is defined in the program.
+                let element_type = vector_type.element_type();
+                if let ElementType::Struct(struct_name) = element_type {
+                    stack.program().get_struct(struct_name)?;
+                }
+                // Ensure the input types match the element type.
+                for input_type in input_types {
+                    match input_type {
+                        // Ensure the plaintext type matches the element type.
+                        RegisterType::Plaintext(plaintext_type) => {
+                            ensure!(
+                                PlaintextType::from(*element_type) == *plaintext_type,
+                                "Vector element type mismatch: expected '{element_type}', found '{plaintext_type}'",
+                            )
+                        }
+                        // Ensure the input type cannot be a record (this is unsupported behavior).
+                        RegisterType::Record(record_name) => bail!(
+                            "Vector element type mismatch: expected '{element_type}', found record '{record_name}'",
+                        ),
+                        // Ensure the input type cannot be an external record (this is unsupported behavior).
+                        RegisterType::ExternalRecord(locator) => bail!(
+                            "Vector element type mismatch: expected '{element_type}', found external record '{locator}'",
                         ),
                     }
                 }
@@ -821,21 +875,21 @@ impl<N: Network> Cast<N> {
             )
         }
 
-        // Initialize the array element.
+        // Initialize the elements.
         let mut elements = Vec::with_capacity(inputs.len());
         for element in inputs.iter() {
-            // Retrieve the plaintext value from the elements.
+            // Retrieve the plaintext value from the element.
             let plaintext = match element {
                 Value::Plaintext(plaintext) => {
-                    // Ensure the plaintext matches the element jtype.
+                    // Ensure the plaintext matches the element type.
                     stack.matches_plaintext(plaintext, &PlaintextType::from(*array_type.element_type()))?;
                     // Output the plaintext.
                     plaintext.clone()
                 }
-                // Ensure the array element is not a record.
-                Value::Record(..) => bail!("Casting a record into an array entry is illegal"),
+                // Ensure the element is not a record.
+                Value::Record(..) => bail!("Casting a record into an array element is illegal"),
             };
-            // Append the element to the array.
+            // Store the element.
             elements.push(plaintext);
         }
 
@@ -884,7 +938,9 @@ impl<N: Network> Parser for Cast<N> {
             | CastType::GroupYCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
+            // TODO: Should vectors be unbounded?
+            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_))) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -933,7 +989,9 @@ impl<N: Network> Display for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
+            // TODO: Should vectors be unbounded?
+            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_))) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -979,7 +1037,9 @@ impl<N: Network> FromBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
+            // TODO: Should vectors be unbounded?
+            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_)))=> N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -1001,7 +1061,9 @@ impl<N: Network> ToBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_)))
+            // TODO: Should vectors be unbounded?
+            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Vector(_))) => N::MAX_ARRAY_ENTRIES,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };

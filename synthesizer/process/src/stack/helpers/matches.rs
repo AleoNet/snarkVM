@@ -284,6 +284,26 @@ impl<N: Network> Stack<N> {
 
                 Ok(())
             }
+            PlaintextType::Vector(vector_type) => {
+                // Retrieve the elements of the vector.
+                let elements = match plaintext {
+                    Plaintext::Literal(..) => bail!("'{plaintext_type}' is invalid: expected vector, found literal"),
+                    Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected vector, found struct"),
+                    Plaintext::List(elements, ..) => elements,
+                };
+
+                // Ensure the elements match, in the same order.
+                for element in elements {
+                    // Ensure the element plaintext matches (recursive call).
+                    self.matches_plaintext_internal(
+                        element,
+                        &PlaintextType::from(*vector_type.element_type()),
+                        depth + 1,
+                    )?;
+                }
+
+                Ok(())
+            }
         }
     }
 }

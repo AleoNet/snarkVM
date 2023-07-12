@@ -380,13 +380,18 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
                     }
                 }
                 PlaintextType::Array(array_type) => {
-                    match array_type.element_type() {
-                        ElementType::Literal(..) => continue,
-                        ElementType::Struct(identifier) => {
-                            // Ensure the struct in the array exists in the program.
-                            if !self.structs.contains_key(identifier) {
-                                bail!("'{identifier}' in '{array_type}' is not defined.")
-                            }
+                    if let ElementType::Struct(identifier) = array_type.element_type() {
+                        // Ensure the struct in the array exists in the program.
+                        if !self.structs.contains_key(identifier) {
+                            bail!("'{identifier}' in '{plaintext_type}' is not defined.")
+                        }
+                    }
+                }
+                PlaintextType::Vector(vector_type) => {
+                    if let ElementType::Struct(identifier) = vector_type.element_type() {
+                        // Ensure the struct in the array exists in the program.
+                        if !self.structs.contains_key(identifier) {
+                            bail!("'{identifier}' in '{plaintext_type}' is not defined.")
                         }
                     }
                 }
@@ -441,13 +446,16 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
                         }
                     }
                     PlaintextType::Array(array_type) => {
-                        match array_type.element_type() {
-                            ElementType::Literal(..) => continue,
-                            // Ensure the struct in the array exists in the program.
-                            ElementType::Struct(identifier) => {
-                                if !self.structs.contains_key(identifier) {
-                                    bail!("Struct '{identifier}' in '{array_type}' is not defined.")
-                                }
+                        if let ElementType::Struct(identifier) = array_type.element_type() {
+                            if !self.structs.contains_key(identifier) {
+                                bail!("Struct '{identifier}' in '{plaintext_type}' is not defined.")
+                            }
+                        }
+                    }
+                    PlaintextType::Vector(vector_type) => {
+                        if let ElementType::Struct(identifier) = vector_type.element_type() {
+                            if !self.structs.contains_key(identifier) {
+                                bail!("Struct '{identifier}' in '{plaintext_type}' is not defined.")
                             }
                         }
                     }

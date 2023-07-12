@@ -176,6 +176,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
                 RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(literal_type),
                 RegisterType::Plaintext(PlaintextType::Struct(..))
                 | RegisterType::Plaintext(PlaintextType::Array(..))
+                | RegisterType::Plaintext(PlaintextType::Vector(..))
                 | RegisterType::Record(..)
                 | RegisterType::ExternalRecord(..) => bail!("Expected literal type, found '{input_type}'"),
             })

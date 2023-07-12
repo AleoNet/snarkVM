@@ -177,6 +177,8 @@ impl<N: Network> Stack<N> {
                     .collect::<Result<Vec<_>>>()?;
                 Plaintext::List(elements, Default::default())
             }
+            // Vectors are not allowed in non-finalize contexts.
+            PlaintextType::Vector(..) => bail!("Vectors are not allowed in non-finalize contexts"),
         };
         // Return the plaintext.
         Ok(plaintext)
