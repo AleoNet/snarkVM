@@ -26,7 +26,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
         if let Some((first, rest)) = path.split_first() {
             let first = match first {
                 Access::Member(identifier) => *identifier,
-                Access::Index(_) => bail!("Attempted to index into a record"),
+                Access::Index(_) => bail!("Attempted to access a record with '{first}'"),
             };
             // Retrieve the top-level entry.
             match self.data.get(&first) {

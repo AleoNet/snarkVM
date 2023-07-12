@@ -32,6 +32,7 @@ pub struct ArrayType<N: Network> {
 impl<N: Network> ArrayType<N> {
     /// Constructs a new array type.
     pub fn new(element_type: ElementType<N>, length: U32<N>) -> Result<Self> {
+        // TODO: Should empty arrays be allowed?
         ensure!(*length != 0, "The array must have at least one element");
         ensure!(
             *length as usize <= N::MAX_ARRAY_ENTRIES,
@@ -49,6 +50,12 @@ impl<N: Network> ArrayType<N> {
     /// Returns the length of the array.
     pub fn length(&self) -> &U32<N> {
         &self.length
+    }
+
+    /// Indexes an array type, returning the element type if the index is within bounds.
+    pub fn index(&self, index: &U32<N>) -> Result<&ElementType<N>> {
+        ensure!(index < &self.length, "Index out of bounds");
+        Ok(&self.element_type)
     }
 }
 
