@@ -56,7 +56,9 @@ impl<N: Network> PartialOrd for Register<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Identifier;
+
+    use crate::{Identifier, U32};
+
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -77,7 +79,7 @@ mod tests {
             Register::<CurrentNetwork>::Locator(1).partial_cmp(&Register::<CurrentNetwork>::Locator(0))
         );
 
-        // Register::Member
+        // Register::Access with Access::Member
         assert_eq!(
             Some(Ordering::Equal),
             Register::<CurrentNetwork>::Access(0, vec![Access::Member(Identifier::from_str("owner")?)]).partial_cmp(
@@ -96,6 +98,71 @@ mod tests {
                 &Register::<CurrentNetwork>::Access(0, vec![Access::Member(Identifier::from_str("owner")?)])
             )
         );
+
+        // Register::Access with Access::Index
+        assert_eq!(
+            Some(Ordering::Equal),
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))]).partial_cmp(&Register::<
+                CurrentNetwork,
+            >::Access(
+                0,
+                vec![Access::Index(U32::new(0))]
+            ))
+        );
+        assert_eq!(
+            Some(Ordering::Less),
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))]).partial_cmp(&Register::<
+                CurrentNetwork,
+            >::Access(
+                1,
+                vec![Access::Index(U32::new(0))]
+            ))
+        );
+        assert_eq!(
+            Some(Ordering::Greater),
+            Register::<CurrentNetwork>::Access(1, vec![Access::Index(U32::new(0))]).partial_cmp(&Register::<
+                CurrentNetwork,
+            >::Access(
+                0,
+                vec![Access::Index(U32::new(0))]
+            ))
+        );
+
+        // Register::Access with a combination of Access::Member and Access::Index
+        assert_eq!(
+            Some(Ordering::Equal),
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+            .partial_cmp(&Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]))
+        );
+        assert_eq!(
+            Some(Ordering::Less),
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+            .partial_cmp(&Register::<CurrentNetwork>::Access(1, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]))
+        );
+        assert_eq!(
+            Some(Ordering::Greater),
+            Register::<CurrentNetwork>::Access(1, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+            .partial_cmp(&Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]))
+        );
+
         Ok(())
     }
 
@@ -108,7 +175,7 @@ mod tests {
         assert_ne!(Register::<CurrentNetwork>::Locator(0), Register::<CurrentNetwork>::Locator(3));
         assert_ne!(Register::<CurrentNetwork>::Locator(0), Register::<CurrentNetwork>::Locator(4));
 
-        // Register::Member
+        // Register::Access with Access::Member
         assert_eq!(
             Register::<CurrentNetwork>::Access(0, vec![Access::Member(Identifier::from_str("owner")?)]),
             Register::<CurrentNetwork>::Access(0, vec![Access::Member(Identifier::from_str("owner")?)])
@@ -129,6 +196,81 @@ mod tests {
             Register::<CurrentNetwork>::Access(0, vec![Access::Member(Identifier::from_str("owner")?)]),
             Register::<CurrentNetwork>::Access(4, vec![Access::Member(Identifier::from_str("owner")?)])
         );
+
+        // Register::Access with Access::Index
+        assert_eq!(
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))]),
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))]),
+            Register::<CurrentNetwork>::Access(1, vec![Access::Index(U32::new(0))])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))]),
+            Register::<CurrentNetwork>::Access(2, vec![Access::Index(U32::new(0))])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))]),
+            Register::<CurrentNetwork>::Access(3, vec![Access::Index(U32::new(0))])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![Access::Index(U32::new(0))]),
+            Register::<CurrentNetwork>::Access(4, vec![Access::Index(U32::new(0))])
+        );
+
+        // Register::Access with a combination of Access::Member and Access::Index
+        assert_eq!(
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]),
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]),
+            Register::<CurrentNetwork>::Access(1, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]),
+            Register::<CurrentNetwork>::Access(2, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]),
+            Register::<CurrentNetwork>::Access(3, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+        );
+        assert_ne!(
+            Register::<CurrentNetwork>::Access(0, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ]),
+            Register::<CurrentNetwork>::Access(4, vec![
+                Access::Member(Identifier::from_str("owner")?),
+                Access::Index(U32::new(0))
+            ])
+        );
+
         Ok(())
     }
 }

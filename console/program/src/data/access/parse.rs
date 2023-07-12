@@ -19,8 +19,18 @@ impl<N: Network> Parser for Access<N> {
     where
         Self: Sized,
     {
+        // A helper function to parse an index access.
+        fn parse_index(string: &str) -> ParserResult<u32> {
+            // Parse the opening bracket '['.
+            let (string, _) = tag("[")(string)?;
+            // Parse the digits from the string.
+            let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
+            // Parse the closing bracket ']' and return the value as a U32.
+            map_res(tag("]"), |_| primitive.replace('_', "").parse())(string)
+        }
+
         alt((
-            map(pair(tag("["), pair(U32::parse, tag("]"))), |(_, (index, _))| Self::Index(index)),
+            map(parse_index, |index| Self::Index(U32::new(index))),
             map(pair(tag("."), Identifier::parse), |(_, identifier)| Self::Member(identifier)),
         ))(string)
     }
@@ -56,7 +66,7 @@ impl<N: Network> Display for Access<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             // Prints the access index, i.e. `[0]`
-            Self::Index(index) => write!(f, "[{}]", index),
+            Self::Index(index) => write!(f, "[{}]", **index),
             // Prints the access member, i.e. `.foo`
             Self::Member(identifier) => write!(f, ".{}", identifier),
         }
