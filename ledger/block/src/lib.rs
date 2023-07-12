@@ -50,7 +50,6 @@ mod serialize;
 mod string;
 
 use console::{
-    account::{PrivateKey, Signature},
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
@@ -67,9 +66,6 @@ pub struct Block<N: Network> {
     header: Header<N>,
     /// The transmissions in this block.
     transmissions: Transmissions<N>,
-    // TODO (raychu86): batch - Remove this in favor of the batch certificate.
-    /// The signature for this block.
-    signature: Signature<N>,
     /// The batch certificate for this block.
     batch_certificate: CompactBatchCertificate<N>,
 }
@@ -77,26 +73,20 @@ pub struct Block<N: Network> {
 impl<N: Network> Block<N> {
     /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
     #[allow(clippy::too_many_arguments)]
-    pub fn new<R: Rng + CryptoRng>(
-        private_key: &PrivateKey<N>,
+    pub fn new(
         previous_hash: N::BlockHash,
         header: Header<N>,
         transactions: Transactions<N>,
         ratifications: Vec<Ratify<N>>,
         coinbase: Option<CoinbaseSolution<N>>,
         batch_certificate: CompactBatchCertificate<N>,
-        rng: &mut R,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
-        // Compute the block hash.
-        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
-        // Sign the block hash.
-        let signature = private_key.sign(&[block_hash], rng)?;
         // Construct the transmissions.
         let transmissions = Transmissions::from(transactions, ratifications, coinbase);
         // Construct the block.
-        Self::from(previous_hash, header, transmissions, signature, batch_certificate)
+        Self::from(previous_hash, header, transmissions, batch_certificate)
     }
 
     /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
@@ -104,17 +94,12 @@ impl<N: Network> Block<N> {
         previous_hash: N::BlockHash,
         header: Header<N>,
         transmissions: Transmissions<N>,
-        signature: Signature<N>,
         batch_certificate: CompactBatchCertificate<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transmissions.transactions().is_empty(), "Cannot create a block with zero transactions.");
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
-        // Derive the signer address.
-        let address = signature.to_address();
-        // Ensure the signature is valid.
-        ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
 
         // Ensure that coinbase accumulator matches the coinbase solution.
         let expected_accumulator_point = match transmissions.coinbase() {
@@ -158,7 +143,7 @@ impl<N: Network> Block<N> {
         );
 
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transmissions, signature, batch_certificate })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transmissions, batch_certificate })
     }
 }
 
@@ -188,9 +173,9 @@ impl<N: Network> Block<N> {
         self.transmissions.coinbase()
     }
 
-    /// Returns the signature.
-    pub const fn signature(&self) -> &Signature<N> {
-        &self.signature
+    /// Returns the batch header.
+    pub const fn batch_header(&self) -> &CompactBatchHeader<N> {
+        self.batch_certificate.compact_batch_header()
     }
 
     /// Returns the batch certificate.
@@ -591,8 +576,7 @@ pub mod test_helpers {
         );
 
         // Construct the block.
-        let block = Block::new(&private_key, previous_hash, header, transactions, vec![], None, batch_certificate, rng)
-            .unwrap();
+        let block = Block::new(previous_hash, header, transactions, vec![], None, batch_certificate).unwrap();
         assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
         // Return the block, transaction, and private key.
         (block, transaction, private_key)

@@ -33,14 +33,11 @@ impl<N: Network> FromBytes for Block<N> {
         let header = FromBytes::read_le(&mut reader)?;
         // Read the transmissions.
         let transmissions = FromBytes::read_le(&mut reader)?;
-        // Write the signature.
-        let signature = FromBytes::read_le(&mut reader)?;
         // Write the batch certificate.
         let certificate = FromBytes::read_le(&mut reader)?;
 
         // Construct the block.
-        let block = Self::from(previous_hash, header, transmissions, signature, certificate)
-            .map_err(|e| error(e.to_string()))?;
+        let block = Self::from(previous_hash, header, transmissions, certificate).map_err(|e| error(e.to_string()))?;
 
         // Ensure the block hash matches.
         match block_hash == block.hash() {
@@ -65,8 +62,6 @@ impl<N: Network> ToBytes for Block<N> {
         self.header.write_le(&mut writer)?;
         // Write the transmissions.
         self.transmissions.write_le(&mut writer)?;
-        // Write the signature.
-        self.signature.write_le(&mut writer)?;
         // Write the certificate.
         self.batch_certificate.write_le(&mut writer)
     }

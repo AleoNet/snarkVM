@@ -19,12 +19,11 @@ impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut block = serializer.serialize_struct("Block", 6)?;
+                let mut block = serializer.serialize_struct("Block", 5)?;
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("transmissions", &self.transmissions)?;
-                block.serialize_field("signature", &self.signature)?;
                 block.serialize_field("certificate", &self.batch_certificate)?;
                 block.end()
             }
@@ -46,7 +45,6 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     DeserializeExt::take_from_value::<D>(&mut block, "previous_hash")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "header")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "transmissions")?,
-                    DeserializeExt::take_from_value::<D>(&mut block, "signature")?,
                     DeserializeExt::take_from_value::<D>(&mut block, "certificate")?,
                 )
                 .map_err(de::Error::custom)?;
