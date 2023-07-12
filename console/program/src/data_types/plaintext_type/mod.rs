@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{ArrayType, ElementType, Identifier, LiteralType};
+use crate::{ArrayType, ElementType, Identifier, LiteralType, VectorType};
 use snarkvm_console_network::prelude::*;
 
 /// A `PlaintextType` defines the type parameter for an entry in an `Record` or standalone value.
@@ -31,6 +31,10 @@ pub enum PlaintextType<N: Network> {
     /// An array type contains its element type and length.
     /// The format of the type is `[<element_type>; <length>]`.
     Array(ArrayType<N>),
+    /// A vector type contains its element type.
+    /// The format of the type is `[<element_type>]`.
+    /// Note that vectors can only be used in a finalize context.
+    Vector(VectorType<N>),
 }
 
 impl<N: Network> From<LiteralType> for PlaintextType<N> {
@@ -51,6 +55,13 @@ impl<N: Network> From<ArrayType<N>> for PlaintextType<N> {
     /// Initializes a plaintext type from an array type.
     fn from(array: ArrayType<N>) -> Self {
         PlaintextType::Array(array)
+    }
+}
+
+impl<N: Network> From<VectorType<N>> for PlaintextType<N> {
+    /// Initializes a plaintext type from a vector type.
+    fn from(vector: VectorType<N>) -> Self {
+        PlaintextType::Vector(vector)
     }
 }
 

@@ -23,6 +23,7 @@ impl<N: Network> Parser for PlaintextType<N> {
             map(LiteralType::parse, |type_| Self::Literal(type_)),
             map(Identifier::parse, |identifier| Self::Struct(identifier)),
             map(ArrayType::parse, |array| Self::Array(array)),
+            map(VectorType::parse, |vector| Self::Vector(vector)),
         ))(string)
     }
 }
@@ -61,6 +62,8 @@ impl<N: Network> Display for PlaintextType<N> {
             Self::Struct(struct_) => Display::fmt(struct_, f),
             // Prints the array, i.e. [field; 2]
             Self::Array(array) => Display::fmt(array, f),
+            // Prints the vector, i.e. [field]
+            Self::Vector(vector) => Display::fmt(vector, f),
         }
     }
 }
@@ -85,6 +88,10 @@ mod tests {
         assert_eq!(
             PlaintextType::parse("[field; 2]"),
             Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 2]")?)))
+        );
+        assert_eq!(
+            PlaintextType::parse("[field]"),
+            Ok(("", PlaintextType::<CurrentNetwork>::Vector(VectorType::from_str("[field]")?)))
         );
         Ok(())
     }
@@ -162,6 +169,7 @@ mod tests {
             PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 2]")?).to_string(),
             "[field; 2]"
         );
+        assert_eq!(PlaintextType::<CurrentNetwork>::Vector(VectorType::from_str("[field]")?).to_string(), "[field]");
         Ok(())
     }
 }
