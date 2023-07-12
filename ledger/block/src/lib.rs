@@ -126,7 +126,6 @@ impl<N: Network> Block<N> {
             "The coinbase accumulator point in the block header does not correspond to the given coinbase solution"
         );
 
-        // TODO (raychu86): batch - Should we check these later in `check_next_block` instead?
         // Check that the batch certificate signatures from the committee are valid.
         let batch_id = batch_certificate.batch_id();
         for (signature, timestamp) in batch_certificate.signatures().zip_eq(batch_certificate.timestamps()) {
@@ -146,9 +145,6 @@ impl<N: Network> Block<N> {
             certificate_signature.verify(&batch_certificate.author(), &[batch_id, timestamp_field]),
             "Invalid signature for batch header"
         );
-
-        // Check that the batch transmission ids match the transmissions.
-        // transmissions.check_ordering(certificate.transmission_ids())?;
 
         // Ensure that the round number is correct.
         ensure!(

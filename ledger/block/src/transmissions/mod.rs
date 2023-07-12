@@ -58,6 +58,41 @@ impl<N: Network> Transmissions<N> {
     pub const fn coinbase(&self) -> Option<&CoinbaseSolution<N>> {
         self.coinbase.as_ref()
     }
+
+    // /// Check that the given ordering matches the construction of `Transmissions`.
+    // pub fn check_ordering(&self, transmission_ids: &IndexSet<TransmissionID<N>>, pending_solutions: Option<IndexSet<ProverSolution<N>>>) -> Result<()> {
+    //     // Fetch the transactions iterator.
+    //     let mut transaction_ids = self.transactions().transaction_ids();
+    //     // Fetch the partial solutions iterator.
+    //     let mut solutions =
+    //         self.coinbase().map(|coinbase| coinbase.partial_solutions().iter()).unwrap_or_else(|| [].iter());
+    //
+    //     // Iterate through the provided transmission ids and ensure that the `Transmissions` ordering is correct.
+    //     for transmission_id in transmission_ids {
+    //         match transmission_id {
+    //             // Check the next transaction ID matches the expected ID.
+    //             TransmissionID::Transaction(expected_id) => {
+    //                 ensure!(transaction_ids.next() == Some(expected_id), "Transaction ordering does not match.")
+    //             }
+    //             // Check the next ratification ID matches the expected ID.
+    //             TransmissionID::Ratification => {}
+    //             // Check the next solution matches the expected commitment.
+    //             TransmissionID::Solution(expected_commitment) => {
+    //                 // TODO (raychu86): batch - This is not sufficient to check the inclusion of the solution, because it may be in the ledger pending solutions, or this block may contain solutions from previous pending solutions.
+    //                 let next_solution_commitment = solutions.next().map(|solution| solution.commitment());
+    //                 ensure!(
+    //                     next_solution_commitment == Some(*expected_commitment),
+    //                     "Coinbase solution ordering does not match."
+    //                 )
+    //
+    //                 // If we reach the end of our pending solutions, we need to add the remaining ones to the ledger pending
+    //
+    //             }
+    //         }
+    //     }
+    //
+    //     return Ok(());
+    // }
 }
 
 impl<N: Network> Transmissions<N> {

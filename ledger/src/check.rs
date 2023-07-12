@@ -369,7 +369,45 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         /* Batch Certificate */
-        // TODO (raychu86): batch - Implement the checks on the batch certificate.
+
+        let batch_certificate = block.batch_certificate();
+        let batch_id = batch_certificate.batch_id();
+        let header = block.header();
+
+        // Check that the batch certificate signatures from the committee are valid.
+        for (signature, timestamp) in batch_certificate.signatures().zip_eq(batch_certificate.timestamps()) {
+            let address = signature.to_address();
+            let timestamp_field = Field::from_u64(u64::try_from(timestamp)?);
+            ensure!(
+                signature.verify(&address, &[batch_id, timestamp_field]),
+                "Invalid signature for batch certificate at timestamp {}",
+                timestamp
+            );
+        }
+
+        // Check that the batch header signature is valid.
+        let certificate_signature = batch_certificate.compact_batch_header().signature();
+        let timestamp_field = Field::from_u64(u64::try_from(batch_certificate.compact_batch_header().timestamp())?);
+        ensure!(
+            certificate_signature.verify(&batch_certificate.author(), &[batch_id, timestamp_field]),
+            "Invalid signature for batch header"
+        );
+
+        // Check that the batch transmission ids match the transmissions.
+        // transmissions.check_ordering(certificate.transmission_ids())?;
+
+        // Ensure that the round number is correct.
+        ensure!(
+            header.round() == batch_certificate.round(),
+            "The round number in the block header does not match the batch certificate"
+        );
+        // Ensure that the header timestamp matches the median timestamp in the batch certificate for non genesis blocks.
+        ensure!(
+            header.is_genesis() || header.timestamp() == batch_certificate.median_timestamp(),
+            "The timestamp in the block header does not match the batch certificate median"
+        );
+
+        // TODO (raychu86): batch - Implement additional checks for the batch certificate - previous certificates, consumed blocks, etc.
 
         /* Transactions */
 
