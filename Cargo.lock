@@ -3193,6 +3193,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand 0.8.5",
+ "rayon",
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-ledger-block",

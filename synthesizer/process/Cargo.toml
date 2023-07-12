@@ -102,6 +102,9 @@ version = "0.12"
 [dependencies.rand]
 version = "0.8"
 
+[dependencies.rayon]
+version = "1"
+
 [dev-dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../../ledger/query"
