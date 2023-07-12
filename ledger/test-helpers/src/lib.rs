@@ -20,6 +20,8 @@ use console::{
 };
 use ledger_block::{
     Block,
+    CompactBatchCertificate,
+    CompactBatchHeader,
     ConfirmedTransaction,
     Deployment,
     Execution,
@@ -30,12 +32,14 @@ use ledger_block::{
     Transaction,
     Transactions,
     Transition,
+    TransmissionID,
 };
 use ledger_query::Query;
 use ledger_store::{helpers::memory::BlockMemory, BlockStore};
 use synthesizer_process::Process;
 use synthesizer_program::Program;
 
+use indexmap::IndexSet;
 use once_cell::sync::OnceCell;
 
 type CurrentNetwork = console::network::Testnet3;
@@ -338,8 +342,22 @@ fn sample_genesis_block_and_components_raw(
     // Prepare the previous block hash.
     let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
+    // Prepare the genesis transmission ids.
+    let transmission_ids =
+        transactions.iter().map(|transaction| TransmissionID::from(&transaction.id())).collect::<IndexSet<_>>();
+    // Prepare the initial compact batch header.
+    let compact_batch_header =
+        CompactBatchHeader::new(&private_key, header.round(), transmission_ids, Default::default(), rng).unwrap();
+    // TODO (raychu86): batch - Currently using the same signature as the header. Considering skipping the requirement for the genesis certificate.
+    // Prepare the signatures.
+    let signatures = [(*compact_batch_header.signature(), compact_batch_header.timestamp())].into();
+    // Prepare the initial compact batch certificate.
+    let compact_batch_certificate = CompactBatchCertificate::new(compact_batch_header, signatures).unwrap();
+
     // Construct the block.
-    let block = Block::new(&private_key, previous_hash, header, transactions, vec![], None, rng).unwrap();
+    let block =
+        Block::new(&private_key, previous_hash, header, transactions, vec![], None, compact_batch_certificate, rng)
+            .unwrap();
     assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
     // Return the block, transaction, and private key.
     (block, transaction, private_key)

@@ -25,10 +25,23 @@ use console::{
     program::{Entry, Identifier, Literal, Plaintext, Record, Value, RATIFICATIONS_DEPTH, U64},
     types::{Boolean, Field},
 };
-use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Transaction, Transactions, Transition};
+use ledger_block::{
+    Block,
+    CompactBatchCertificate,
+    CompactBatchHeader,
+    ConfirmedTransaction,
+    Header,
+    Metadata,
+    Transaction,
+    Transactions,
+    Transition,
+    TransmissionID,
+};
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStorage, ConsensusStore};
 use snarkvm_synthesizer::VM;
 use synthesizer_program::FinalizeGlobalState;
+
+use indexmap::IndexSet;
 
 #[test]
 fn test_vm_execute_and_finalize() {
@@ -290,6 +303,34 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
     fee_records
 }
 
+fn sample_compact_batch_certificate<R: Rng + CryptoRng>(
+    private_key: &PrivateKey<CurrentNetwork>,
+    transactions: &[Transaction<CurrentNetwork>],
+    previous_certificate_ids: IndexSet<Field<CurrentNetwork>>,
+    round: u64,
+    rng: &mut R,
+) -> CompactBatchCertificate<CurrentNetwork> {
+    // Prepare the transmission ids.
+    let transmission_ids =
+        transactions.iter().map(|transaction| TransmissionID::from(&transaction.id())).collect::<IndexSet<_>>();
+
+    // Construct the previous certificate ids.
+    let previous_certificate_ids = match round {
+        0 | 1 => IndexSet::new(),
+        _ => previous_certificate_ids,
+    };
+    // Prepare the compact batch header.
+    let compact_batch_header =
+        CompactBatchHeader::new(private_key, round, transmission_ids, previous_certificate_ids, rng).unwrap();
+
+    // TODO (raychu86): batch - Currently using the same signature as the header. Considering skipping the requirement for the genesis certificate.
+    // Prepare the signatures.
+    let signatures = [(*compact_batch_header.signature(), compact_batch_header.timestamp())].into();
+
+    // Return the compact batch certificate.
+    CompactBatchCertificate::new(compact_batch_header, signatures).unwrap()
+}
+
 // A helper function to construct the next block.
 fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     vm: &VM<CurrentNetwork, C>,
@@ -302,10 +343,19 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         vm.block_store().get_block_hash(*vm.block_store().heights().max().unwrap().borrow()).unwrap().unwrap();
     let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
+    // Construct the compact batch certificate.
+    let compact_batch_certificate = sample_compact_batch_certificate(
+        private_key,
+        &transactions.iter().map(|confirmed| confirmed.transaction().clone()).collect::<Vec<_>>(),
+        previous_block.batch_certificate().previous_certificate_ids().clone(),
+        previous_block.round() + 1,
+        rng,
+    );
+
     // Construct the metadata associated with the block.
     let metadata = Metadata::new(
         CurrentNetwork::ID,
-        previous_block.round() + 1,
+        compact_batch_certificate.round(),
         previous_block.height() + 1,
         CurrentNetwork::STARTING_SUPPLY,
         0,
@@ -314,7 +364,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         CurrentNetwork::GENESIS_PROOF_TARGET,
         previous_block.last_coinbase_target(),
         previous_block.last_coinbase_timestamp(),
-        CurrentNetwork::GENESIS_TIMESTAMP + 1,
+        compact_batch_certificate.median_timestamp(),
     )?;
     // Construct the block header.
     let header = Header::from(
@@ -327,7 +377,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     )?;
 
     // Construct the new block.
-    Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)
+    Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, compact_batch_certificate, rng)
 }
 
 // A helper function to invoke `credits.aleo/split`.

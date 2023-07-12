@@ -29,7 +29,19 @@ use console::{
     program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
     types::Field,
 };
-use ledger_block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions};
+use ledger_block::{
+    Block,
+    CompactBatchCertificate,
+    CompactBatchHeader,
+    ConfirmedTransaction,
+    Deployment,
+    Execution,
+    Fee,
+    Header,
+    Transaction,
+    Transactions,
+    TransmissionID,
+};
 use ledger_query::Query;
 use ledger_store::{
     atomic_finalize,
@@ -46,6 +58,7 @@ use synthesizer_process::{Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
+use indexmap::IndexSet;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -200,8 +213,29 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the coinbase solution.
         let coinbase_solution = None; // The genesis block does not require a coinbase solution.
 
+        // Prepare the genesis transmission ids.
+        let transmission_ids =
+            transactions.iter().map(|transaction| TransmissionID::from(&transaction.id())).collect::<IndexSet<_>>();
+        // Prepare the initial compact batch header.
+        let compact_batch_header =
+            CompactBatchHeader::new(private_key, header.round(), transmission_ids, Default::default(), rng)?;
+        // TODO (raychu86): batch - Currently using the same signature as the header. Considering skipping the requirement for the genesis certificate.
+        // Prepare the signatures.
+        let signatures = [(*compact_batch_header.signature(), compact_batch_header.timestamp())].into();
+        // Prepare the initial compact batch certificate.
+        let compact_batch_certificate = CompactBatchCertificate::new(compact_batch_header, signatures)?;
+
         // Construct the block.
-        let block = Block::new(private_key, previous_hash, header, transactions, vec![], coinbase_solution, rng)?;
+        let block = Block::new(
+            private_key,
+            previous_hash,
+            header,
+            transactions,
+            vec![],
+            coinbase_solution,
+            compact_batch_certificate,
+            rng,
+        )?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -530,6 +564,34 @@ function compute:
             .clone()
     }
 
+    pub(crate) fn sample_compact_batch_certificate<R: Rng + CryptoRng>(
+        private_key: &PrivateKey<CurrentNetwork>,
+        transactions: &[Transaction<CurrentNetwork>],
+        previous_certificate_ids: IndexSet<Field<CurrentNetwork>>,
+        round: u64,
+        rng: &mut R,
+    ) -> CompactBatchCertificate<CurrentNetwork> {
+        // Prepare the transmission ids.
+        let transmission_ids =
+            transactions.iter().map(|transaction| TransmissionID::from(&transaction.id())).collect::<IndexSet<_>>();
+
+        // Construct the previous certificate ids.
+        let previous_certificate_ids = match round {
+            0 | 1 => IndexSet::new(),
+            _ => previous_certificate_ids,
+        };
+        // Prepare the compact batch header.
+        let compact_batch_header =
+            CompactBatchHeader::new(private_key, round, transmission_ids, previous_certificate_ids, rng).unwrap();
+
+        // TODO (raychu86): batch - Currently using the same signature as the header. Considering skipping the requirement for the genesis certificate.
+        // Prepare the signatures.
+        let signatures = [(*compact_batch_header.signature(), compact_batch_header.timestamp())].into();
+
+        // Return the compact batch certificate.
+        CompactBatchCertificate::new(compact_batch_header, signatures).unwrap()
+    }
+
     pub fn sample_next_block<R: Rng + CryptoRng>(
         vm: &VM<Testnet3, ConsensusMemory<Testnet3>>,
         private_key: &PrivateKey<Testnet3>,
@@ -541,12 +603,21 @@ function compute:
             vm.block_store().get_block_hash(*vm.block_store().heights().max().unwrap().borrow()).unwrap().unwrap();
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
+        // Construct the compact batch certificate.
+        let compact_batch_certificate = sample_compact_batch_certificate(
+            private_key,
+            transactions,
+            previous_block.batch_certificate().previous_certificate_ids().clone(),
+            previous_block.round() + 1,
+            rng,
+        );
+
         // Construct the new block header.
         let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
-            previous_block.round() + 1,
+            compact_batch_certificate.round(),
             previous_block.height() + 1,
             Testnet3::STARTING_SUPPLY,
             0,
@@ -555,7 +626,7 @@ function compute:
             Testnet3::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
             previous_block.last_coinbase_timestamp(),
-            Testnet3::GENESIS_TIMESTAMP + 1,
+            compact_batch_certificate.median_timestamp(),
         )?;
 
         let header = Header::from(
@@ -568,7 +639,16 @@ function compute:
         )?;
 
         // Construct the new block.
-        Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)
+        Block::new(
+            private_key,
+            previous_block.hash(),
+            header,
+            transactions,
+            vec![],
+            None,
+            compact_batch_certificate,
+            rng,
+        )
     }
 
     #[test]

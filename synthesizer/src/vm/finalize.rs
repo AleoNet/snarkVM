@@ -405,12 +405,21 @@ finalize transfer_public:
         unspent_records: &mut Vec<Record<CurrentNetwork, Ciphertext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
+        // Construct the compact batch certificate.
+        let compact_batch_certificate = crate::test_helpers::sample_compact_batch_certificate(
+            private_key,
+            transactions,
+            previous_block.batch_certificate().previous_certificate_ids().clone(),
+            previous_block.round() + 1,
+            rng,
+        );
+
         // Construct the new block header.
         let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             CurrentNetwork::ID,
-            previous_block.round() + 1,
+            compact_batch_certificate.round(),
             previous_block.height() + 1,
             CurrentNetwork::STARTING_SUPPLY,
             0,
@@ -419,7 +428,7 @@ finalize transfer_public:
             CurrentNetwork::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
             previous_block.last_coinbase_timestamp(),
-            CurrentNetwork::GENESIS_TIMESTAMP + 1,
+            compact_batch_certificate.median_timestamp(),
         )?;
 
         let header = Header::from(
@@ -431,7 +440,16 @@ finalize transfer_public:
             metadata,
         )?;
 
-        let block = Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)?;
+        let block = Block::new(
+            private_key,
+            previous_block.hash(),
+            header,
+            transactions,
+            vec![],
+            None,
+            compact_batch_certificate,
+            rng,
+        )?;
 
         // Track the new records.
         let new_records = block

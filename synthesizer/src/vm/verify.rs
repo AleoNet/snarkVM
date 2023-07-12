@@ -423,12 +423,21 @@ mod tests {
         let deployment_transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(sample_finalize_state(1), [deployment_transaction].iter()).unwrap();
+        let transactions = vm.speculate(sample_finalize_state(1), [deployment_transaction.clone()].iter()).unwrap();
+
+        // Construct the compact batch certificate.
+        let batch_certificate = crate::test_helpers::sample_compact_batch_certificate(
+            &caller_private_key,
+            &[deployment_transaction],
+            [genesis.batch_certificate().certificate_id()].into(),
+            genesis.round() + 1,
+            rng,
+        );
 
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
             CurrentNetwork::ID,
-            1,
+            batch_certificate.round(),
             1,
             CurrentNetwork::STARTING_SUPPLY,
             0,
@@ -437,7 +446,7 @@ mod tests {
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
             genesis.last_coinbase_timestamp(),
-            CurrentNetwork::GENESIS_TIMESTAMP + 1,
+            batch_certificate.median_timestamp(),
         )
         .unwrap();
 
@@ -452,9 +461,17 @@ mod tests {
         .unwrap();
 
         // Construct a new block for the deploy transaction.
-        let deployment_block =
-            Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, vec![], None, rng)
-                .unwrap();
+        let deployment_block = Block::new(
+            &caller_private_key,
+            genesis.hash(),
+            deployment_header,
+            transactions,
+            vec![],
+            None,
+            batch_certificate,
+            rng,
+        )
+        .unwrap();
 
         // Add the deployment block.
         vm.add_next_block(&deployment_block).unwrap();

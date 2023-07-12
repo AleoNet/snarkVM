@@ -53,5 +53,8 @@ package = "snarkvm-synthesizer-process"
 path = "../../synthesizer/process"
 version = "=0.14.1"
 
+[dependencies.indexmap]
+version = "2.0"
+
 [dependencies.once_cell]
 version = "1.18"
