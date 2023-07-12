@@ -112,12 +112,13 @@ impl<N: Network> Stack<N> {
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
 
-            call_stacks.push((call_stack, assignments, function.name()));
+            // Append the function name, callstack, and assignments.
+            call_stacks.push((function.name(), call_stack, assignments));
         }
 
         // Verify the certificates.
         cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).try_for_each(
-            |((call_stack, assignments, function_name), (_, (verifying_key, certificate)))| {
+            |((function_name, call_stack, assignments), (_, (verifying_key, certificate)))| {
                 // Synthesize the circuit.
                 let _response = self.execute_function::<A>(call_stack.clone()).unwrap();
                 lap!(timer, "Synthesize the circuit");
