@@ -106,7 +106,7 @@ impl<N: Network> RegisterTypes<N> {
         array_type: &ArrayType<N>,
     ) -> Result<()> {
         // Ensure that there is at least one operand.
-        if !operands.is_empty() {
+        if operands.is_empty() {
             bail!("Array must have at least 1 operand")
         }
         // Ensure the number of elements does not exceed the maximum.
