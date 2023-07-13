@@ -7,7 +7,7 @@
       outputs:
       - '{"type":"record","id":"3469929382687995735563548932522636164565339362193790961168225742603306642381field","checksum":"4851912648674817151416486906308762270127342924004841542182383685122007704094field","value":"record1qyqsqxx4wfp4dp52s6wydyjhav0ef8q5e3nflq5aqqmp3q40l9ju5kc9qyxx66trwfhkxun9v35hguerqqpqzqph69u3w4dfvu4ddhsftmudakengx98k2ydrga0qe0zp2m309c8pvcew40qwxqg338ajpnyawe8z7884rym27regrlfyy8c0m3lcckq2wxexgh"}'
       finalize: []
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
     mapping_operations.aleo/insert_contains_remove:
