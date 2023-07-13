@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::{FinalizeType, VectorType};
 
 impl<N: Network> StackMatches<N> for Stack<N> {
     /// Checks that the given value matches the layout of the value type.
@@ -90,6 +91,14 @@ impl<N: Network> StackMatches<N> for Stack<N> {
     /// Checks that the given plaintext matches the layout of the plaintext type.
     fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
         self.matches_plaintext_internal(plaintext, plaintext_type, 0)
+    }
+
+    /// Checks that the given plaintext matches the layout of a finalize type.
+    fn matches_finalize(&self, plaintext: &Plaintext<N>, finalize_type: &FinalizeType<N>) -> Result<()> {
+        match finalize_type {
+            FinalizeType::Plaintext(plaintext_type) => self.matches_plaintext_internal(plaintext, plaintext_type, 0),
+            FinalizeType::Vector(vector_type) => self.matches_vector_internal(plaintext, vector_type, 0),
+        }
     }
 }
 
@@ -285,5 +294,31 @@ impl<N: Network> Stack<N> {
                 Ok(())
             }
         }
+    }
+
+    /// Checks that the given plaintext matches the layout of a vector type.
+    fn matches_vector_internal(
+        &self,
+        plaintext: &Plaintext<N>,
+        vector_type: &VectorType<N>,
+        depth: usize,
+    ) -> Result<()> {
+        // If the depth exceeds the maximum depth, then the plaintext type is invalid.
+        ensure!(depth <= N::MAX_DATA_DEPTH, "Plaintext exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
+
+        // Retrieve the elements of the vector.
+        let elements = match plaintext {
+            Plaintext::Literal(..) => bail!("'{vector_type}' is invalid: expected vector, found literal"),
+            Plaintext::Struct(..) => bail!("'{vector_type}' is invalid: expected vector, found struct"),
+            Plaintext::List(elements, ..) => elements,
+        };
+
+        // Ensure the elements match, in the same order.
+        for element in elements {
+            // Ensure the element plaintext matches (recursive call).
+            self.matches_plaintext_internal(element, vector_type.element_type(), depth + 1)?;
+        }
+
+        Ok(())
     }
 }

@@ -17,7 +17,7 @@ mod parse;
 
 use console::{
     network::prelude::*,
-    program::{Identifier, PlaintextType},
+    program::{FinalizeType, Identifier},
 };
 
 /// An value statement is of the form `value {name} as {plaintext_type}.public;`.
@@ -25,8 +25,8 @@ use console::{
 pub struct MapValue<N: Network> {
     /// The value name.
     name: Identifier<N>,
-    /// The value plaintext type.
-    plaintext_type: PlaintextType<N>,
+    /// The value type.
+    finalize_type: FinalizeType<N>,
 }
 
 impl<N: Network> MapValue<N> {
@@ -36,10 +36,10 @@ impl<N: Network> MapValue<N> {
         &self.name
     }
 
-    /// Returns the value plaintext type.
+    /// Returns the value type.
     #[inline]
-    pub const fn plaintext_type(&self) -> &PlaintextType<N> {
-        &self.plaintext_type
+    pub const fn finalize_type(&self) -> &FinalizeType<N> {
+        &self.finalize_type
     }
 }
 

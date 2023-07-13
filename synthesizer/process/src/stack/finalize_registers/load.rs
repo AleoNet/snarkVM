@@ -54,8 +54,8 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
 
         // Retrieve the type of the register.
         match self.finalize_types.get_type(stack, register) {
-            // Ensure the plaintext value matches the register type.
-            Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
+            // Ensure the value matches the finalize type.
+            Ok(finalize_type) => stack.matches_finalize(&plaintext_value, &finalize_type)?,
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
         };

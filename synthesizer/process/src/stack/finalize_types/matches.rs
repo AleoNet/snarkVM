@@ -57,11 +57,11 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the type of the register matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the type.
-                    let plaintext_type = self.get_type(stack, register)?;
+                    let finalize_type = self.get_type(stack, register)?;
                     // Ensure the register type matches the member type.
                     ensure!(
-                        plaintext_type == *member_type,
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{plaintext_type}' in the operand '{operand}'.",
+                        finalize_type == FinalizeType::Plaintext(*member_type),
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{finalize_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the program ID type (address) matches the member type.
@@ -131,11 +131,11 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the type of the register matches the element type.
                 Operand::Register(register) => {
                     // Retrieve the type.
-                    let plaintext_type = self.get_type(stack, register)?;
+                    let finalize_type = self.get_type(stack, register)?;
                     // Ensure the register type matches the element type.
                     ensure!(
-                        plaintext_type == element_type,
-                        "Array '{array_type}' expects {element_type}, but found '{plaintext_type}' in the operand '{operand}'.",
+                        finalize_type == FinalizeType::Plaintext(element_type),
+                        "Array '{array_type}' expects {element_type}, but found '{finalize_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the program ID type (address) matches the element type.
@@ -187,11 +187,11 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the type of the register matches the element type.
                 Operand::Register(register) => {
                     // Retrieve the type.
-                    let plaintext_type = self.get_type(stack, register)?;
+                    let finalize_type = self.get_type(stack, register)?;
                     // Ensure the register type matches the element type.
                     ensure!(
-                        plaintext_type == element_type,
-                        "Vector '{vector_type}' expects {element_type}, but found '{plaintext_type}' in the operand '{operand}'.",
+                        finalize_type == FinalizeType::Plaintext(element_type),
+                        "Vector '{vector_type}' expects {element_type}, but found '{finalize_type}' in the operand '{operand}'.",
                     )
                 }
                 // Ensure the program ID type (address) matches the element type.

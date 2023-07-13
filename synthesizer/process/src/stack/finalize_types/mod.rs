@@ -31,17 +31,18 @@ use synthesizer_program::{
     StackProgram,
 };
 
-use console::program::Access;
+use console::program::{Access, FinalizeType};
 use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct FinalizeTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
-    /// Note that in a finalize context, all registers are plaintext types.
+    /// Note that in a finalize context, all input registers are plaintext types,
+    /// since they come from a transition.
     inputs: IndexMap<u64, PlaintextType<N>>,
     /// The mapping of all destination registers to their defined types.
-    /// Note that in a finalize context, all registers are plaintext types.
-    destinations: IndexMap<u64, PlaintextType<N>>,
+    /// Note that in a finalize context, all registers are finalize types.
+    destinations: IndexMap<u64, FinalizeType<N>>,
 }
 
 impl<N: Network> FinalizeTypes<N> {
@@ -71,27 +72,28 @@ impl<N: Network> FinalizeTypes<N> {
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         operand: &Operand<N>,
-    ) -> Result<PlaintextType<N>> {
+    ) -> Result<FinalizeType<N>> {
         Ok(match operand {
-            Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
+            Operand::Literal(literal) => FinalizeType::Plaintext(PlaintextType::from(literal.to_type())),
             Operand::Register(register) => self.get_type(stack, register)?,
-            Operand::ProgramID(_) => PlaintextType::Literal(LiteralType::Address),
+            Operand::ProgramID(_) => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
             Operand::Caller => bail!("'self.caller' is not a valid operand in a finalize context."),
-            Operand::BlockHeight => PlaintextType::Literal(LiteralType::U32),
+            Operand::BlockHeight => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U32)),
         })
     }
 
     /// Returns the type of the given register.
-    // TODO: Finalize Type should also include vectors
     pub fn get_type(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         register: &Register<N>,
-    ) -> Result<PlaintextType<N>> {
+    ) -> Result<FinalizeType<N>> {
         // Initialize a tracker for the type of the register.
-        let mut plaintext_type = if self.is_input(register) {
+        let mut finalize_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+            FinalizeType::Plaintext(
+                *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?,
+            )
         } else {
             // Retrieve the destination register type.
             *self
@@ -103,7 +105,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the path if the register is an access. Otherwise, return the type.
         let path = match &register {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => return Ok(plaintext_type),
+            Register::Locator(..) => return Ok(finalize_type),
             // If the register is an access, then traverse the path to output the register type.
             Register::Access(_, path) => {
                 // Ensure the path is valid.
@@ -116,11 +118,11 @@ impl<N: Network> FinalizeTypes<N> {
         // Traverse the path to find the register type.
         for path_name in path.iter() {
             // Update the register type at each step.
-            plaintext_type = match &plaintext_type {
+            finalize_type = match &finalize_type {
                 // Ensure the plaintext type is not a literal, as the register references an access.
-                PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
+                FinalizeType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
                 // Access the member on the path to output the register type.
-                PlaintextType::Struct(struct_name) => {
+                FinalizeType::Plaintext(PlaintextType::Struct(struct_name)) => {
                     let path_name = match path_name {
                         Access::Member(path_name) => path_name,
                         Access::Index(_) => bail!("Attempted to access a struct with '{path_name}'"),
@@ -128,22 +130,31 @@ impl<N: Network> FinalizeTypes<N> {
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
-                        Some(plaintext_type) => *plaintext_type,
+                        Some(plaintext_type) => FinalizeType::Plaintext(*plaintext_type),
                         None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
                     }
                 }
                 // Access the index on the path to output the register type.
-                PlaintextType::Array(array_type) => {
+                FinalizeType::Plaintext(PlaintextType::Array(array_type)) => {
                     let path_index = match path_name {
                         Access::Index(path_index) => path_index,
                         Access::Member(_) => bail!("Attempted to an array with '{path_name}'"),
                     };
                     // Retrieve the element type from the array.
-                    PlaintextType::from(*array_type.index(path_index)?)
+                    FinalizeType::Plaintext(PlaintextType::from(*array_type.index(path_index)?))
+                }
+                // Access the index on the path to output the register type.
+                FinalizeType::Vector(vector_type) => {
+                    // Check that the access is an index.
+                    if let Access::Member(_) = path_name {
+                        bail!("Attempted to access a vector with '{path_name}'")
+                    }
+                    // Retrieve the element type from the vector.
+                    FinalizeType::Plaintext(*vector_type.element_type())
                 }
             }
         }
         // Output the plaintext type.
-        Ok(plaintext_type)
+        Ok(finalize_type)
     }
 }

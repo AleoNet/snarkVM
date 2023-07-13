@@ -96,7 +96,7 @@ mapping foo:
         assert_eq!("a", mapping.key.name().to_string());
         assert_eq!("field", mapping.key.plaintext_type().to_string());
         assert_eq!("b", mapping.value.name().to_string());
-        assert_eq!("field", mapping.value.plaintext_type().to_string());
+        assert_eq!("field", mapping.value.finalize_type().to_string());
     }
 
     #[test]

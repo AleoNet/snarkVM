@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{Identifier, Locator, PlaintextType, ValueType, VectorType};
+use crate::{PlaintextType, VectorType};
 use snarkvm_console_network::prelude::*;
 
 use enum_index::EnumIndex;

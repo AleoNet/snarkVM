@@ -75,7 +75,7 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Inserts the given destination register and type into the registers.
     /// Note: The given destination register must be a `Register::Locator`.
-    fn add_destination(&mut self, register: Register<N>, plaintext_type: PlaintextType<N>) -> Result<()> {
+    fn add_destination(&mut self, register: Register<N>, finalize_type: FinalizeType<N>) -> Result<()> {
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
@@ -84,7 +84,7 @@ impl<N: Network> FinalizeTypes<N> {
                 ensure!(expected_locator == locator, "Register '{register}' is out of order");
 
                 // Insert the destination register and type.
-                match self.destinations.insert(locator, plaintext_type) {
+                match self.destinations.insert(locator, finalize_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Destination '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -133,7 +133,7 @@ impl<N: Network> FinalizeTypes<N> {
         self.add_input(register.clone(), *plaintext_type)?;
 
         // Ensure the register type and the input type match.
-        if *plaintext_type != self.get_type(stack, register)? {
+        if FinalizeType::Plaintext(*plaintext_type) != self.get_type(stack, register)? {
             bail!("Input '{register}' does not match the expected input register type.")
         }
         Ok(())
@@ -213,7 +213,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the key.
         let key_type = self.get_type_from_operand(stack, contains.key())?;
         // Check that the key type in the mapping matches the key type in the instruction.
-        if *mapping_key_type != key_type {
+        if FinalizeType::Plaintext(*mapping_key_type) != key_type {
             bail!(
                 "Key type in `contains` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'."
             )
@@ -223,7 +223,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, PlaintextType::Literal(LiteralType::Boolean))?;
+        self.add_destination(destination, FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Boolean)))?;
         Ok(())
     }
 
@@ -245,11 +245,11 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
-        let mapping_value_type = mapping.value().plaintext_type();
+        let mapping_value_type = mapping.value().finalize_type();
         // Retrieve the register type of the key.
         let key_type = self.get_type_from_operand(stack, get.key())?;
         // Check that the key type in the mapping matches the key type in the instruction.
-        if *mapping_key_type != key_type {
+        if FinalizeType::Plaintext(*mapping_key_type) != key_type {
             bail!("Key type in `get` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Get the destination register.
@@ -279,9 +279,12 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
-        let mapping_value_type = mapping.value().plaintext_type();
+        let mapping_value_type = mapping.value().finalize_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, get_or_use.key())?;
+        let key_type = match self.get_type_from_operand(stack, get_or_use.key())? {
+            FinalizeType::Plaintext(key_type) => key_type,
+            _ => bail!("Key type in `get.or_use` must be a plaintext type."),
+        };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
             bail!(
@@ -332,7 +335,7 @@ impl<N: Network> FinalizeTypes<N> {
         );
 
         // Insert the destination register.
-        self.add_destination(destination, PlaintextType::from(destination_type))?;
+        self.add_destination(destination, FinalizeType::Plaintext(PlaintextType::from(destination_type)))?;
         Ok(())
     }
 
@@ -354,9 +357,12 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Get the mapping value type.
-        let mapping_value_type = mapping.value().plaintext_type();
+        let mapping_value_type = mapping.value().finalize_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, set.key())?;
+        let key_type = match self.get_type_from_operand(stack, set.key())? {
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            FinalizeType::Vector(_) => bail!("Key type in `set` must be a plaintext type."),
+        };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
             bail!("Key type in `set` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
@@ -390,7 +396,10 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, remove.key())?;
+        let key_type = match self.get_type_from_operand(stack, remove.key())? {
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            FinalizeType::Vector(_) => bail!("Key type in `remove` must be a plaintext type."),
+        };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
             bail!("Key type in `remove` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
@@ -414,7 +423,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Iterate over the operands, and retrieve the register type of each operand.
         for operand in instruction.operands() {
             // Retrieve and append the register type.
-            operand_types.push(RegisterType::Plaintext(self.get_type_from_operand(stack, operand)?));
+            operand_types.push(RegisterType::from(self.get_type_from_operand(stack, operand)?));
         }
 
         // Compute the destination register types.
@@ -426,10 +435,11 @@ impl<N: Network> FinalizeTypes<N> {
         {
             // Ensure the destination register is a locator (and does not reference an access).
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
-            // Ensure that the destination type is a plaintext type.
+            // Ensure that the destination type is a finalize type.
             let destination_type = match destination_type {
-                RegisterType::Plaintext(destination_type) => destination_type,
-                _ => bail!("Destination type '{destination_type}' must be a plaintext type."),
+                RegisterType::Plaintext(destination_type) => FinalizeType::Plaintext(destination_type),
+                RegisterType::Vector(destination_type) => FinalizeType::Vector(destination_type),
+                _ => bail!("Destination type '{destination_type}' must be a finalize type."),
             };
             // Insert the destination register.
             self.add_destination(destination, destination_type)?;

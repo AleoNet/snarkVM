@@ -33,13 +33,13 @@ impl<N: Network> Parser for MapValue<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the plaintext type from the string.
-        let (string, (plaintext_type, _)) = pair(PlaintextType::parse, tag(".public"))(string)?;
+        let (string, (plaintext_type, _)) = pair(FinalizeType::parse, tag(".public"))(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the value statement.
-        Ok((string, Self { name, plaintext_type }))
+        Ok((string, Self { name, finalize_type: plaintext_type }))
     }
 }
 
@@ -76,7 +76,7 @@ impl<N: Network> Display for MapValue<N> {
             "{type_} {name} as {plaintext_type}.public;",
             type_ = Self::type_name(),
             name = self.name,
-            plaintext_type = self.plaintext_type
+            plaintext_type = self.finalize_type
         )
     }
 }
@@ -93,7 +93,7 @@ mod tests {
         // Literal
         let value = MapValue::<CurrentNetwork>::parse("value abcd as field.public;").unwrap().1;
         assert_eq!(value.name(), &Identifier::<CurrentNetwork>::from_str("abcd")?);
-        assert_eq!(value.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
+        assert_eq!(value.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("field")?);
 
         Ok(())
     }

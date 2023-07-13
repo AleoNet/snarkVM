@@ -17,6 +17,7 @@ use console::{
     network::Network,
     prelude::{bail, Result},
     program::{
+        FinalizeType,
         Identifier,
         Literal,
         Locator,
@@ -48,6 +49,9 @@ pub trait StackMatches<N: Network> {
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
     fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()>;
+
+    /// Checks that the given plaintext matches the layout of the finalize type.
+    fn matches_finalize(&self, plaintext: &Plaintext<N>, finalize_type: &FinalizeType<N>) -> Result<()>;
 }
 
 pub trait StackProgram<N: Network> {

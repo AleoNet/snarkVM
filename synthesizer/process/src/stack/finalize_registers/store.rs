@@ -44,8 +44,8 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
 
                 // Ensure the type of the register is valid.
                 match self.finalize_types.get_type(stack, register) {
-                    // Ensure the plaintext value matches the plaintext type.
-                    Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
+                    // Ensure the plaintext value matches the finalize type.
+                    Ok(plaintext_type) => stack.matches_finalize(&plaintext_value, &plaintext_type)?,
                     // Ensure the register is defined.
                     Err(error) => bail!("Register '{register}' is missing a type definition: {error}"),
                 };
