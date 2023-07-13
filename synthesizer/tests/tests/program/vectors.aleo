@@ -27,3 +27,11 @@ finalize compare_vectors:
     assert.neq r3 r4;
     assert.neq r3 r5;
     assert.eq r4 r5;
+    length r3 into r6;
+    assert.eq r6 0u32;
+    length r4 into r7;
+    assert.eq r7 3u32;
+    length r5 into r8;
+    assert.eq r8 3u32;
+
+
