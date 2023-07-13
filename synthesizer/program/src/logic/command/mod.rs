@@ -130,7 +130,7 @@ impl<N: Network> CommandTrait<N> for Command<N> {
 
     /// Returns `true` if the command is a cast to record instruction.
     fn is_cast_to_record(&self) -> bool {
-        matches!(self, Command::Instruction(Instruction::Cast(cast)) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)))
+        matches!(self, Command::Instruction(Instruction::Cast(cast)) if !matches!(cast.register_type(), &RegisterType::Plaintext(_) | &RegisterType::Vector(_)))
     }
 
     /// Returns `true` if the command is a write operation.

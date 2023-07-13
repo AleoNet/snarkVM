@@ -931,7 +931,7 @@ impl<N: Network> Parser for Cast<N> {
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
         // Parse the operands from the string.
-        let (string, operands) = many1(parse_operand)(string)?;
+        let (string, operands) = many0(parse_operand)(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "into" from the string.
@@ -960,7 +960,7 @@ impl<N: Network> Parser for Cast<N> {
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
-        match !operands.is_empty() && (operands.len() <= max_operands) {
+        match operands.len() <= max_operands {
             true => Ok((string, Self { operands, destination, cast_type })),
             false => {
                 map_res(fail, |_: ParserResult<Self>| Err(error("Failed to parse 'cast' opcode: too many operands")))(
@@ -1011,7 +1011,7 @@ impl<N: Network> Display for Cast<N> {
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
-        if self.operands.is_empty() || self.operands.len() > max_operands {
+        if self.operands.len() > max_operands {
             return Err(fmt::Error);
         }
         // Print the operation.
@@ -1030,8 +1030,8 @@ impl<N: Network> FromBytes for Cast<N> {
         // Ensure that the number of operands does not exceed the upper bound.
         // Note: Although a similar check is performed later, this check is performed to ensure that an exceedingly large number of operands is not allocated.
         // Note: This check is purely a sanity check, as it is not type-aware.
-        if num_operands.is_zero() || num_operands > N::MAX_RECORD_ENTRIES {
-            return Err(error(format!("The number of operands must be nonzero and <= {}", N::MAX_RECORD_ENTRIES)));
+        if num_operands > N::MAX_RECORD_ENTRIES {
+            return Err(error(format!("The number of operands must be <= {}", N::MAX_RECORD_ENTRIES)));
         }
 
         // Initialize the vector for the operands.
@@ -1059,8 +1059,8 @@ impl<N: Network> FromBytes for Cast<N> {
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
-        if num_operands.is_zero() || num_operands > max_operands {
-            return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
+        if num_operands > max_operands {
+            return Err(error(format!("The number of operands must be <= {max_operands}")));
         }
 
         // Return the operation.
@@ -1083,8 +1083,8 @@ impl<N: Network> ToBytes for Cast<N> {
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
-        if self.operands.is_empty() || self.operands.len() > max_operands {
-            return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
+        if self.operands.len() > max_operands {
+            return Err(error(format!("The number of operands must be <= {max_operands}")));
         }
 
         // Write the number of operands.
@@ -1103,7 +1103,7 @@ mod tests {
     use super::*;
     use console::{
         network::Testnet3,
-        program::{Access, Identifier},
+        program::{Access, Identifier, VectorType},
     };
 
     type CurrentNetwork = Testnet3;
@@ -1128,6 +1128,16 @@ mod tests {
         assert_eq!(
             cast.cast_type,
             CastType::RegisterType(RegisterType::Record(Identifier::from_str("token").unwrap())),
+            "The value type is incorrect"
+        );
+
+        let (string, cast) = Cast::<CurrentNetwork>::parse("cast into r0 as [u8]").unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert!(cast.operands.is_empty(), "The operands are incorrect");
+        assert_eq!(cast.destination, Register::Locator(0), "The destination register is incorrect");
+        assert_eq!(
+            cast.cast_type,
+            CastType::RegisterType(RegisterType::Vector(VectorType::from_str("[u8]").unwrap())),
             "The value type is incorrect"
         );
     }
