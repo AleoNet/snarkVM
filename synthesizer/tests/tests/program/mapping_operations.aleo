@@ -1,6 +1,8 @@
 /*
 randomness: 904820
 cases:
+  - function: empty_remove
+    inputs: [10u8]
   - function: insert_contains_remove
     inputs: [0u8, 0u8]
   - function: insert_contains_remove
@@ -31,3 +33,13 @@ finalize insert_contains_remove:
     remove data[r0];
     contains data[r0] into r4;
     assert.eq r4 false;
+
+function empty_remove:
+    input r0 as u8.public;
+    finalize r0;
+
+finalize empty_remove:
+    input r0 as u8.public;
+    remove data[r0];
+
+
