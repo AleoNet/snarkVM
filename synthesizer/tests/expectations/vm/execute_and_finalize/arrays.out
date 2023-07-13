@@ -1,0 +1,13 @@
+- execute:
+    vectors.aleo/test_arrays:
+      outputs:
+      - '{"type":"private","id":"3585616819066739322162387165658752369201683547503751052011550735960206416862field","value":"ciphertext1qyqyvjj9t3q9ef5xxalx7tuujtl0vnyj63282cmr7f3n3fh3emh3jzqwfc88a"}'
+      - '{"type":"private","id":"4945577489443469318023299457729905226717618435463809243224100583082578435996field","value":"ciphertext1qyqxpp4c34hqypfy4fvdqlxfpvt9wa7vy4s5n3clxqmvzugwzvvtvqqdyl3ys"}'
+      - '{"type":"private","id":"671877662709333578438904221668504281760953559532079520874828594573339930394field","value":"ciphertext1qyqfn28ytw09qa0xaahdm6jlgz8lts90q455w8eszfkr29z9u7t97psp6s48p"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"3612952341952069989512754771004184729034732823225215602530092436275604136338field","checksum":"2243380366207847464369397762838777144343557302790937468049565689847056216052field","value":"record1qyqsp9g6kmdd00ysy65rnwgy54626mggn97hz4cvpsd2ffg7srdlvcsvqyxx66trwfhkxun9v35hguerqqpqzq9j4w5aef9f735y2263v076samjghrclk3rsmv2ay0rldqakmw4qgttzfrhryjrggu3hhc7auxcz40wphrrrgwe4v0w24hlw7pyrnqqgd3qr4d"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
