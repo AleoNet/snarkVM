@@ -20,7 +20,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         &self,
         candidate_transactions: Vec<Transaction<N>>,
         candidate_solutions: Option<Vec<ProverSolution<N>>>,
-        compact_batch_certificate: CompactBatchCertificate<N>,
+        batch_certificate: CompactBatchCertificate<N>,
+        previous_certificates: IndexMap<u64, Vec<CompactBatchCertificate<N>>>,
     ) -> Result<Block<N>> {
         // Retrieve the latest state root.
         let latest_state_root = *self.latest_state_root();
@@ -73,7 +74,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, &transactions)?;
 
         // Checkpoint the timestamp for the next block.
-        let next_timestamp = compact_batch_certificate.median_timestamp();
+        let next_timestamp = batch_certificate.median_timestamp();
 
         // TODO (raychu86): Pay the provers.
         let (proving_rewards, staking_rewards) = match candidate_solutions {
@@ -160,7 +161,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Construct the new block.
-        Block::new(latest_block.hash(), header, transactions, ratifications, coinbase, compact_batch_certificate)
+        Block::new(
+            latest_block.hash(),
+            header,
+            transactions,
+            ratifications,
+            coinbase,
+            batch_certificate,
+            previous_certificates,
+        )
     }
 
     /// Adds the given block as the next block in the ledger.

@@ -223,11 +223,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the signatures.
         let signatures = [(*compact_batch_header.signature(), compact_batch_header.timestamp())].into();
         // Prepare the initial compact batch certificate.
-        let compact_batch_certificate = CompactBatchCertificate::new(compact_batch_header, signatures)?;
+        let batch_certificate = CompactBatchCertificate::new(compact_batch_header, signatures)?;
+        // Prepare the previous certificates.
+        let previous_certificates = Default::default();
 
         // Construct the block.
-        let block =
-            Block::new(previous_hash, header, transactions, vec![], coinbase_solution, compact_batch_certificate)?;
+        let block = Block::new(
+            previous_hash,
+            header,
+            transactions,
+            vec![],
+            coinbase_solution,
+            batch_certificate,
+            previous_certificates,
+        )?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -631,7 +640,15 @@ function compute:
         )?;
 
         // Construct the new block.
-        Block::new(previous_block.hash(), header, transactions, vec![], None, compact_batch_certificate)
+        Block::new(
+            previous_block.hash(),
+            header,
+            transactions,
+            vec![],
+            None,
+            compact_batch_certificate,
+            Default::default(),
+        )
     }
 
     #[test]

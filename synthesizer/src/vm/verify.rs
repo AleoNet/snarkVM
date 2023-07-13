@@ -461,8 +461,16 @@ mod tests {
         .unwrap();
 
         // Construct a new block for the deploy transaction.
-        let deployment_block =
-            Block::new(genesis.hash(), deployment_header, transactions, vec![], None, batch_certificate).unwrap();
+        let deployment_block = Block::new(
+            genesis.hash(),
+            deployment_header,
+            transactions,
+            vec![],
+            None,
+            batch_certificate,
+            Default::default(),
+        )
+        .unwrap();
 
         // Add the deployment block.
         vm.add_next_block(&deployment_block).unwrap();

@@ -440,7 +440,15 @@ finalize transfer_public:
             metadata,
         )?;
 
-        let block = Block::new(previous_block.hash(), header, transactions, vec![], None, compact_batch_certificate)?;
+        let block = Block::new(
+            previous_block.hash(),
+            header,
+            transactions,
+            vec![],
+            None,
+            compact_batch_certificate,
+            Default::default(),
+        )?;
 
         // Track the new records.
         let new_records = block

@@ -135,7 +135,9 @@ finalize foo:
     );
 
     // Construct the next block.
-    let block = ledger.prepare_advance_to_next_block(vec![transaction], None, batch_certificate.clone()).unwrap();
+    let block = ledger
+        .prepare_advance_to_next_block(vec![transaction], None, batch_certificate.clone(), Default::default())
+        .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 1);
@@ -154,8 +156,9 @@ finalize foo:
     );
 
     // Construct the next block.
-    let block =
-        ledger.prepare_advance_to_next_block(vec![transfer_transaction.clone()], None, batch_certificate).unwrap();
+    let block = ledger
+        .prepare_advance_to_next_block(vec![transfer_transaction.clone()], None, batch_certificate, Default::default())
+        .unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 2);
@@ -252,8 +255,14 @@ finalize failed_assert:
     );
 
     // Construct the deployment block.
-    let deployment_block =
-        ledger.prepare_advance_to_next_block(vec![deployment_transaction], None, batch_certificate.clone()).unwrap();
+    let deployment_block = ledger
+        .prepare_advance_to_next_block(
+            vec![deployment_transaction],
+            None,
+            batch_certificate.clone(),
+            Default::default(),
+        )
+        .unwrap();
 
     // Check that the next block is valid.
     ledger.check_next_block(&deployment_block).unwrap();
@@ -284,8 +293,14 @@ finalize failed_assert:
     );
 
     // Construct the next block containing the new transaction.
-    let next_block =
-        ledger.prepare_advance_to_next_block(vec![failed_assert_transaction.clone()], None, batch_certificate).unwrap();
+    let next_block = ledger
+        .prepare_advance_to_next_block(
+            vec![failed_assert_transaction.clone()],
+            None,
+            batch_certificate,
+            Default::default(),
+        )
+        .unwrap();
 
     // Check that the block contains 1 rejected execution.
     assert_eq!(next_block.transactions().len(), 1);

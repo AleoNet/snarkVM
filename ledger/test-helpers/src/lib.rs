@@ -355,7 +355,9 @@ fn sample_genesis_block_and_components_raw(
     let compact_batch_certificate = CompactBatchCertificate::new(compact_batch_header, signatures).unwrap();
 
     // Construct the block.
-    let block = Block::new(previous_hash, header, transactions, vec![], None, compact_batch_certificate).unwrap();
+    let block =
+        Block::new(previous_hash, header, transactions, vec![], None, compact_batch_certificate, Default::default())
+            .unwrap();
     assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
     // Return the block, transaction, and private key.
     (block, transaction, private_key)
