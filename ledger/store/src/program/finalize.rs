@@ -294,12 +294,13 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
+    /// If the `key` does not exist, `None` is returned.
     fn remove_key_value(
         &self,
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<Option<FinalizeOperation<N>>> {
         // Retrieve the mapping ID.
         let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
             Some(mapping_id) => mapping_id,
@@ -312,9 +313,9 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
             None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove key-value."),
         };
-        // Ensure the key ID exists.
+        // If the key ID does not exist, return `None`.
         if !key_value_ids.contains_key(&key_id) {
-            bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot remove key-value.");
+            return Ok(None);
         }
 
         // Retrieve the index of the key ID in the key-value ID map.
@@ -338,7 +339,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::RemoveKeyValue(mapping_id, index))
+        Ok(Some(FinalizeOperation::RemoveKeyValue(mapping_id, index)))
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
@@ -740,7 +741,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<FinalizeOperation<N>> {
+    ) -> Result<Option<FinalizeOperation<N>>> {
         self.storage.remove_key_value(program_id, mapping_name, key)
     }
 }
@@ -1264,8 +1265,8 @@ mod tests {
             assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
-            // Ensure removing an un-initialized key fails.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
+            // Ensure removing an un-initialized key returns None.
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_none());
             // Ensure removing an un-initialized mapping fails.
             assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
         }
@@ -1283,8 +1284,8 @@ mod tests {
             assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
-            // Ensure removing an un-initialized key fails.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
+            // Ensure removing an un-initialized returns None.
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_none());
             // Ensure removing an un-initialized mapping fails.
             assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
         }
