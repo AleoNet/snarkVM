@@ -42,6 +42,7 @@ use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use synthesizer_program::Program;
 
 use anyhow::Result;
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::{borrow::Cow, io::Cursor, sync::Arc};
 
@@ -150,7 +151,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `puzzle commitment` to `block height`.
     type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
     /// The mapping of `block hash` to `compact batch certificate`.
-    type CompactBatchCertificateMap: for<'a> Map<'a, N::BlockHash, CompactBatchCertificate<N>>;
+    type BatchCertificateMap: for<'a> Map<'a, N::BlockHash, CompactBatchCertificate<N>>;
+    /// The mapping of `block hash` to `previous batch certificates`.
+    type PreviousCertificatesMap: for<'a> Map<'a, N::BlockHash, IndexMap<u64, Vec<CompactBatchCertificate<N>>>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -177,8 +180,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap;
     /// Returns the coinbase puzzle commitment map.
     fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap;
-    /// Returns the compact batch certificate map.
-    fn compact_batch_certificate_map(&self) -> &Self::CompactBatchCertificateMap;
+    /// Returns the batch certificate map.
+    fn batch_certificate_map(&self) -> &Self::BatchCertificateMap;
+    /// Returns the previous certificates map.
+    fn previous_certificates_map(&self) -> &Self::PreviousCertificatesMap;
 
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
@@ -203,7 +208,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().start_atomic();
         self.coinbase_solution_map().start_atomic();
         self.coinbase_puzzle_commitment_map().start_atomic();
-        self.compact_batch_certificate_map().start_atomic();
+        self.batch_certificate_map().start_atomic();
+        self.previous_certificates_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -219,7 +225,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.ratifications_map().is_atomic_in_progress()
             || self.coinbase_solution_map().is_atomic_in_progress()
             || self.coinbase_puzzle_commitment_map().is_atomic_in_progress()
-            || self.compact_batch_certificate_map().is_atomic_in_progress()
+            || self.batch_certificate_map().is_atomic_in_progress()
+            || self.previous_certificates_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -235,7 +242,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().atomic_checkpoint();
         self.coinbase_solution_map().atomic_checkpoint();
         self.coinbase_puzzle_commitment_map().atomic_checkpoint();
-        self.compact_batch_certificate_map().atomic_checkpoint();
+        self.batch_certificate_map().atomic_checkpoint();
+        self.previous_certificates_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
@@ -251,7 +259,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().clear_latest_checkpoint();
         self.coinbase_solution_map().clear_latest_checkpoint();
         self.coinbase_puzzle_commitment_map().clear_latest_checkpoint();
-        self.compact_batch_certificate_map().clear_latest_checkpoint();
+        self.batch_certificate_map().clear_latest_checkpoint();
+        self.previous_certificates_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -267,7 +276,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().atomic_rewind();
         self.coinbase_solution_map().atomic_rewind();
         self.coinbase_puzzle_commitment_map().atomic_rewind();
-        self.compact_batch_certificate_map().atomic_rewind();
+        self.batch_certificate_map().atomic_rewind();
+        self.previous_certificates_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -283,7 +293,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().abort_atomic();
         self.coinbase_solution_map().abort_atomic();
         self.coinbase_puzzle_commitment_map().abort_atomic();
-        self.compact_batch_certificate_map().abort_atomic();
+        self.batch_certificate_map().abort_atomic();
+        self.previous_certificates_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -299,7 +310,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().finish_atomic()?;
         self.coinbase_solution_map().finish_atomic()?;
         self.coinbase_puzzle_commitment_map().finish_atomic()?;
-        self.compact_batch_certificate_map().finish_atomic()
+        self.batch_certificate_map().finish_atomic()?;
+        self.previous_certificates_map().finish_atomic()
     }
 
     /// Stores the given `(state root, block)` pair into storage.
@@ -349,8 +361,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 }
             }
 
-            // Store the compact block certificate.
-            self.compact_batch_certificate_map().insert(block.hash(), block.batch_certificate().clone())?;
+            // Store the compact batch certificate.
+            self.batch_certificate_map().insert(block.hash(), block.batch_certificate().clone())?;
+
+            // Store the previous certificates.
+            self.previous_certificates_map().insert(block.hash(), block.previous_certificates().clone())?;
 
             Ok(())
         })
@@ -419,7 +434,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             }
 
             // Remove the compact block certificate.
-            self.compact_batch_certificate_map().remove(block_hash)?;
+            self.batch_certificate_map().remove(block_hash)?;
+
+            // Remove the previous certificates.
+            self.previous_certificates_map().remove(block_hash)?;
 
             Ok(())
         })
@@ -623,9 +641,20 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Returns the block certificate for the given `block hash`.
-    fn get_block_certificate(&self, block_hash: &N::BlockHash) -> Result<Option<CompactBatchCertificate<N>>> {
-        match self.compact_batch_certificate_map().get_confirmed(block_hash)? {
+    fn get_block_batch_certificate(&self, block_hash: &N::BlockHash) -> Result<Option<CompactBatchCertificate<N>>> {
+        match self.batch_certificate_map().get_confirmed(block_hash)? {
             Some(certificate) => Ok(Some(cow_to_cloned!(certificate))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the block previous certificates for the given `block hash`.
+    fn get_block_previous_certificates(
+        &self,
+        block_hash: &N::BlockHash,
+    ) -> Result<Option<IndexMap<u64, Vec<CompactBatchCertificate<N>>>>> {
+        match self.previous_certificates_map().get_confirmed(block_hash)? {
+            Some(previous_certificates) => Ok(Some(cow_to_cloned!(previous_certificates))),
             None => Ok(None),
         }
     }
@@ -669,16 +698,21 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Err(_) => bail!("Missing coinbase solution for block {height} ('{block_hash}')"),
         };
         // Retrieve the block certificate.
-        let batch_certificate = match self.get_block_certificate(block_hash)? {
+        let batch_certificate = match self.get_block_batch_certificate(block_hash)? {
             Some(certificate) => certificate,
             None => bail!("Missing certificate for block {height} ('{block_hash}')"),
+        };
+        // Retrieve the block previous certificates.
+        let previous_certificates = match self.get_block_previous_certificates(block_hash)? {
+            Some(previous_certificates) => previous_certificates,
+            None => bail!("Missing previous certificates for block {height} ('{block_hash}')"),
         };
 
         // Construct the transmissions.
         let transmissions = Transmissions::from(transactions, ratifications, coinbase);
 
         // Return the block.
-        Ok(Some(Block::from(previous_hash, header, transmissions, batch_certificate)?))
+        Ok(Some(Block::from(previous_hash, header, transmissions, batch_certificate, previous_certificates)?))
     }
 }
 
@@ -911,7 +945,15 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
     /// Returns the block certificate for the given `block hash`.
     pub fn get_block_certificate(&self, block_hash: &N::BlockHash) -> Result<Option<CompactBatchCertificate<N>>> {
-        self.storage.get_block_certificate(block_hash)
+        self.storage.get_block_batch_certificate(block_hash)
+    }
+
+    /// Returns the block previous certificates for the given `block hash`.
+    pub fn get_block_previous_certificates(
+        &self,
+        block_hash: &N::BlockHash,
+    ) -> Result<Option<IndexMap<u64, Vec<CompactBatchCertificate<N>>>>> {
+        self.storage.get_block_previous_certificates(block_hash)
     }
 
     /// Returns the block for the given `block hash`.

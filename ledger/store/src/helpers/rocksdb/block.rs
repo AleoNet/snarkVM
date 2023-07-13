@@ -29,6 +29,8 @@ use console::prelude::*;
 use ledger_block::{CompactBatchCertificate, Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
+use indexmap::IndexMap;
+
 /// A RocksDB block storage.
 #[derive(Clone)]
 pub struct BlockDB<N: Network> {
@@ -54,8 +56,10 @@ pub struct BlockDB<N: Network> {
     coinbase_solution_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
     coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, u32>,
-    /// The compact batch certificate map.
-    compact_batch_certificate_map: DataMap<N::BlockHash, CompactBatchCertificate<N>>,
+    /// The batch certificate map.
+    batch_certificate_map: DataMap<N::BlockHash, CompactBatchCertificate<N>>,
+    /// The previous certificate map.
+    previous_certificates_map: DataMap<N::BlockHash, IndexMap<u64, Vec<CompactBatchCertificate<N>>>>,
 }
 
 #[rustfmt::skip]
@@ -72,7 +76,8 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type RatificationsMap = DataMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, u32>;
-    type CompactBatchCertificateMap = DataMap<N::BlockHash, CompactBatchCertificate<N>>;
+    type BatchCertificateMap = DataMap<N::BlockHash, CompactBatchCertificate<N>>;
+    type PreviousCertificatesMap = DataMap<N::BlockHash, IndexMap<u64, Vec<CompactBatchCertificate<N>>>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -93,7 +98,8 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             ratifications_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Ratifications))?,
             coinbase_solution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbaseSolution))?,
             coinbase_puzzle_commitment_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,
-            compact_batch_certificate_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CompactBatchCertificate))?,
+            batch_certificate_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::BatchCertificate))?,
+            previous_certificates_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::PreviousCertificates))?,
         })
     }
 
@@ -153,7 +159,12 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     }
 
     /// Returns the compact batch certificate map.
-    fn compact_batch_certificate_map(&self) -> &Self::CompactBatchCertificateMap {
-        &self.compact_batch_certificate_map
+    fn batch_certificate_map(&self) -> &Self::BatchCertificateMap {
+        &self.batch_certificate_map
+    }
+
+    /// Returns the previous certificates map.
+    fn previous_certificates_map(&self) -> &Self::PreviousCertificatesMap {
+        &self.previous_certificates_map
     }
 }

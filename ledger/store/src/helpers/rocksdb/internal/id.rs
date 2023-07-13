@@ -64,7 +64,8 @@ pub enum BlockMap {
     Ratifications = DataID::BlockRatificationsMap as u16,
     CoinbaseSolution = DataID::BlockCoinbaseSolutionMap as u16,
     CoinbasePuzzleCommitment = DataID::BlockCoinbasePuzzleCommitmentMap as u16,
-    CompactBatchCertificate = DataID::BlockCompactBatchCertificateMap as u16,
+    BatchCertificate = DataID::BlockBatchCertificateMap as u16,
+    PreviousCertificates = DataID::BlockPreviousCertificatesMap as u16,
 }
 
 /// The RocksDB map prefix for deployment-related entries.
@@ -199,7 +200,8 @@ enum DataID {
     BlockRatificationsMap,
     BlockCoinbaseSolutionMap,
     BlockCoinbasePuzzleCommitmentMap,
-    BlockCompactBatchCertificateMap,
+    BlockBatchCertificateMap,
+    BlockPreviousCertificatesMap,
     // Deployment
     DeploymentIDMap,
     DeploymentEditionMap,

@@ -23,6 +23,8 @@ use console::prelude::*;
 use ledger_block::{CompactBatchCertificate, Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
+use indexmap::IndexMap;
+
 /// An in-memory block storage.
 #[derive(Clone)]
 pub struct BlockMemory<N: Network> {
@@ -48,8 +50,10 @@ pub struct BlockMemory<N: Network> {
     coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
     coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
-    /// The compact batch certificate map.
-    compact_batch_certificate_map: MemoryMap<N::BlockHash, CompactBatchCertificate<N>>,
+    /// The batch certificate map.
+    batch_certificate_map: MemoryMap<N::BlockHash, CompactBatchCertificate<N>>,
+    /// The previous certificates map.
+    previous_certificates_map: MemoryMap<N::BlockHash, IndexMap<u64, Vec<CompactBatchCertificate<N>>>>,
 }
 
 #[rustfmt::skip]
@@ -66,7 +70,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
-    type CompactBatchCertificateMap = MemoryMap<N::BlockHash, CompactBatchCertificate<N>>;
+    type BatchCertificateMap = MemoryMap<N::BlockHash, CompactBatchCertificate<N>>;
+    type PreviousCertificatesMap = MemoryMap<N::BlockHash, IndexMap<u64, Vec<CompactBatchCertificate<N>>>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -87,7 +92,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             ratifications_map: MemoryMap::default(),
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),
-            compact_batch_certificate_map: MemoryMap::default(),
+            batch_certificate_map: MemoryMap::default(),
+            previous_certificates_map: MemoryMap::default(),
         })
     }
 
@@ -146,8 +152,13 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.coinbase_puzzle_commitment_map
     }
 
-    /// Returns the compact batch certificate map.
-    fn compact_batch_certificate_map(&self) -> &Self::CompactBatchCertificateMap {
-        &self.compact_batch_certificate_map
+    /// Returns the batch certificate map.
+    fn batch_certificate_map(&self) -> &Self::BatchCertificateMap {
+        &self.batch_certificate_map
+    }
+
+    /// Returns the previous certificates map.
+    fn previous_certificates_map(&self) -> &Self::PreviousCertificatesMap {
+        &self.previous_certificates_map
     }
 }
