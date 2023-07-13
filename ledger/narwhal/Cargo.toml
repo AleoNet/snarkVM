@@ -28,10 +28,10 @@ default = [ "batch-certificate", "batch-header", "transmission", "transmission-i
 async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
-test-helpers = [ "bytes" ]
+test-helpers = [ "bytes", "time" ]
 
 batch-certificate = [ "batch-header", "console", "indexmap", "serde_json", "transmission-id" ]
-batch-header = [ "console", "indexmap", "time", "transmission-id" ]
+batch-header = [ "console", "indexmap", "transmission-id" ]
 transmission = [ "bytes", "ledger-block", "ledger-coinbase" ]
 transmission-id = [ "console", "ledger-coinbase" ]
 
