@@ -56,6 +56,8 @@ use console::{
 };
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
+use indexmap::IndexMap;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
     /// The hash of this block.
@@ -68,11 +70,12 @@ pub struct Block<N: Network> {
     transmissions: Transmissions<N>,
     /// The batch certificate for this block.
     batch_certificate: CompactBatchCertificate<N>,
+    /// The previous certificates for this block.
+    previous_certificates: IndexMap<u64, Vec<CompactBatchCertificate<N>>>,
 }
 
 impl<N: Network> Block<N> {
-    /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
-    #[allow(clippy::too_many_arguments)]
+    /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, batch certificate, and previous certificates.
     pub fn new(
         previous_hash: N::BlockHash,
         header: Header<N>,
@@ -80,13 +83,14 @@ impl<N: Network> Block<N> {
         ratifications: Vec<Ratify<N>>,
         coinbase: Option<CoinbaseSolution<N>>,
         batch_certificate: CompactBatchCertificate<N>,
+        previous_certificates: IndexMap<u64, Vec<CompactBatchCertificate<N>>>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
         // Construct the transmissions.
         let transmissions = Transmissions::from(transactions, ratifications, coinbase);
         // Construct the block.
-        Self::from(previous_hash, header, transmissions, batch_certificate)
+        Self::from(previous_hash, header, transmissions, batch_certificate, previous_certificates)
     }
 
     /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
@@ -95,6 +99,7 @@ impl<N: Network> Block<N> {
         header: Header<N>,
         transmissions: Transmissions<N>,
         batch_certificate: CompactBatchCertificate<N>,
+        previous_certificates: IndexMap<u64, Vec<CompactBatchCertificate<N>>>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transmissions.transactions().is_empty(), "Cannot create a block with zero transactions.");
@@ -111,26 +116,6 @@ impl<N: Network> Block<N> {
             "The coinbase accumulator point in the block header does not correspond to the given coinbase solution"
         );
 
-        // Check that the batch certificate signatures from the committee are valid.
-        let batch_id = batch_certificate.batch_id();
-        for (signature, timestamp) in batch_certificate.signatures().zip_eq(batch_certificate.timestamps()) {
-            let address = signature.to_address();
-            let timestamp_field = Field::from_u64(u64::try_from(timestamp)?);
-            ensure!(
-                signature.verify(&address, &[batch_id, timestamp_field]),
-                "Invalid signature for batch certificate at timestamp {}",
-                timestamp
-            );
-        }
-
-        // Check that the batch header signature is valid.
-        let certificate_signature = batch_certificate.compact_batch_header().signature();
-        let timestamp_field = Field::from_u64(u64::try_from(batch_certificate.compact_batch_header().timestamp())?);
-        ensure!(
-            certificate_signature.verify(&batch_certificate.author(), &[batch_id, timestamp_field]),
-            "Invalid signature for batch header"
-        );
-
         // Ensure that the round number is correct.
         ensure!(
             header.round() == batch_certificate.round(),
@@ -142,8 +127,20 @@ impl<N: Network> Block<N> {
             "The timestamp in the block header does not match the batch certificate median"
         );
 
+        // TODO (raychu86): batch - Ensure that the previous certificates at each level exist.
+
+        // TODO (raychu86): batch - check the transmissions here.
+        //  Note: There is a case that transmissions were already included in previous subdags, so we need to account for that.
+
         // Construct the block.
-        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transmissions, batch_certificate })
+        Ok(Self {
+            block_hash: block_hash.into(),
+            previous_hash,
+            header,
+            transmissions,
+            batch_certificate,
+            previous_certificates,
+        })
     }
 }
 
@@ -181,6 +178,11 @@ impl<N: Network> Block<N> {
     /// Returns the batch certificate.
     pub const fn batch_certificate(&self) -> &CompactBatchCertificate<N> {
         &self.batch_certificate
+    }
+
+    /// Returns the previous batch certificate.
+    pub const fn previous_certificates(&self) -> &IndexMap<u64, Vec<CompactBatchCertificate<N>>> {
+        &self.previous_certificates
     }
 }
 
@@ -576,7 +578,9 @@ pub mod test_helpers {
         );
 
         // Construct the block.
-        let block = Block::new(previous_hash, header, transactions, vec![], None, batch_certificate).unwrap();
+        let block =
+            Block::new(previous_hash, header, transactions, vec![], None, batch_certificate, Default::default())
+                .unwrap();
         assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
         // Return the block, transaction, and private key.
         (block, transaction, private_key)

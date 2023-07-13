@@ -34,6 +34,7 @@ impl<N: Network> Block<N> {
             && self.transmissions.ratifications().is_empty()
             // Ensure the coinbase solution does not exist.
             && self.transmissions.coinbase().is_none()
+        // TODO (raychu86): batch - check the batch certificate and previous certificates.
     }
 }
 

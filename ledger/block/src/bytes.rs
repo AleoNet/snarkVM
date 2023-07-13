@@ -33,11 +33,31 @@ impl<N: Network> FromBytes for Block<N> {
         let header = FromBytes::read_le(&mut reader)?;
         // Read the transmissions.
         let transmissions = FromBytes::read_le(&mut reader)?;
-        // Write the batch certificate.
-        let certificate = FromBytes::read_le(&mut reader)?;
+        // Read the batch certificate.
+        let batch_certificate = FromBytes::read_le(&mut reader)?;
+        // Read the number of previous certificate rounds.
+        let num_previous_certificate_rounds = u32::read_le(&mut reader)?;
+        // Read the previous certificates.
+        let mut previous_certificates = IndexMap::with_capacity(num_previous_certificate_rounds as usize);
+        for _ in 0..num_previous_certificate_rounds {
+            // Read the round number.
+            let round = FromBytes::read_le(&mut reader)?;
+            // Read the number of previous certificates in the round.
+            let num_previous_certificates_in_round = u32::read_le(&mut reader)?;
+            // Read the previous certificates in the round.
+            let mut previous_certificates_in_round = Vec::with_capacity(num_previous_certificates_in_round as usize);
+            for _ in 0..num_previous_certificates_in_round {
+                // Read the previous certificate.
+                previous_certificates_in_round.push(FromBytes::read_le(&mut reader)?);
+            }
+
+            // Insert the round adn previous certificates.
+            previous_certificates.insert(round, previous_certificates_in_round);
+        }
 
         // Construct the block.
-        let block = Self::from(previous_hash, header, transmissions, certificate).map_err(|e| error(e.to_string()))?;
+        let block = Self::from(previous_hash, header, transmissions, batch_certificate, previous_certificates)
+            .map_err(|e| error(e.to_string()))?;
 
         // Ensure the block hash matches.
         match block_hash == block.hash() {
@@ -63,7 +83,23 @@ impl<N: Network> ToBytes for Block<N> {
         // Write the transmissions.
         self.transmissions.write_le(&mut writer)?;
         // Write the certificate.
-        self.batch_certificate.write_le(&mut writer)
+        self.batch_certificate.write_le(&mut writer)?;
+        // Write the number of previous certificate rounds.
+        u32::try_from(self.previous_certificates.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        // Write the previous certificates.
+        for (round, previous_certificates) in &self.previous_certificates {
+            // Write the round number.
+            round.write_le(&mut writer)?;
+            // Write the number of previous certificates in the round.
+            u32::try_from(previous_certificates.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+            // Write the previous certificates in the round.
+            for previous_certificate in previous_certificates {
+                // Write the previous certificate.
+                previous_certificate.write_le(&mut writer)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
