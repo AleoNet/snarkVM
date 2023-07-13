@@ -135,6 +135,8 @@ pub enum Instruction<N: Network> {
     IsEq(IsEq<N>),
     /// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
     IsNeq(IsNeq<N>),
+    /// Computes the length of `first`, storing the outcome in `destination`.
+    Length(Length<N>),
     /// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
     LessThan(LessThan<N>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
@@ -273,6 +275,7 @@ macro_rules! instruction {
             SubWrapped,
             Ternary,
             Xor,
+            Length,
         }}
     };
     // A variant **without** curly braces:
@@ -442,7 +445,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            59,
+            60,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

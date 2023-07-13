@@ -33,6 +33,9 @@ pub use hash::*;
 mod is;
 pub use is::*;
 
+mod length;
+pub use length::*;
+
 mod literals;
 pub use literals::*;
 

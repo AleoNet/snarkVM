@@ -33,6 +33,8 @@ pub enum Opcode {
     Hash(&'static str),
     /// The opcode for an 'is' operation (i.e. `is.eq`).
     Is(&'static str),
+    /// The opcode a `length` operation (i.e. `length`).
+    Length,
     /// The opcode is for a literal operation (i.e. `add`).
     Literal(&'static str),
 }
@@ -51,6 +53,7 @@ impl Deref for Opcode {
             Opcode::Finalize(opcode) => opcode,
             Opcode::Hash(opcode) => opcode,
             Opcode::Is(opcode) => opcode,
+            Opcode::Length => &"length",
             Opcode::Literal(opcode) => opcode,
         }
     }
@@ -75,6 +78,7 @@ impl Display for Opcode {
             Self::Finalize(opcode) => write!(f, "{opcode}"),
             Self::Hash(opcode) => write!(f, "{opcode}"),
             Self::Is(opcode) => write!(f, "{opcode}"),
+            Self::Length => write!(f, "{}", self.deref()),
             Self::Literal(opcode) => write!(f, "{opcode}"),
         }
     }

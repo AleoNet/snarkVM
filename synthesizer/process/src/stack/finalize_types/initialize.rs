@@ -573,6 +573,17 @@ impl<N: Network> FinalizeTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
+            Opcode::Length => {
+                // Retrieve the length operation.
+                let operation = match instruction {
+                    Instruction::Length(operation) => operation,
+                    _ => bail!("Instruction '{instruction}' is not a length operation."),
+                };
+                // Ensure the instruction has one operand.
+                ensure!(operation.operands().len() == 1, "Instruction '{instruction}' has multiple operands.");
+                // Ensure the instruction has one destination register.
+                ensure!(operation.destinations().len() == 1, "Instruction '{instruction}' has multiple destinations.");
+            }
         }
         Ok(())
     }

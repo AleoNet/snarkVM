@@ -148,6 +148,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Inv(_)) => Ok(10_000),
         Command::Instruction(Instruction::IsEq(_)) => Ok(2_000),
         Command::Instruction(Instruction::IsNeq(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Length(_)) => Ok(2_000),
         Command::Instruction(Instruction::LessThan(_)) => Ok(2_000),
         Command::Instruction(Instruction::LessThanOrEqual(_)) => Ok(2_000),
         Command::Instruction(Instruction::Modulo(_)) => Ok(2_000),
