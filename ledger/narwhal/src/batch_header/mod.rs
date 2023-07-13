@@ -157,7 +157,7 @@ pub mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Returns a list of sample batch header, sampled at random.
-    pub fn sample_batch_header(rng: &mut TestRng) -> BatchHeader<CurrentNetwork> {
+    pub fn sample_batch_header(rng: &mut TestRng, round: Option<u64>) -> BatchHeader<CurrentNetwork> {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample transmission IDs.
@@ -168,7 +168,8 @@ pub mod test_helpers {
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Return the batch header.
-        BatchHeader::new(&private_key, rng.gen(), timestamp, transmission_ids, certificate_ids, rng).unwrap()
+        BatchHeader::new(&private_key, round.unwrap_or(rng.gen()), timestamp, transmission_ids, certificate_ids, rng)
+            .unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.
@@ -178,7 +179,7 @@ pub mod test_helpers {
         // Append sample batches.
         for _ in 0..10 {
             // Append the batch header.
-            sample.push(sample_batch_header(rng));
+            sample.push(sample_batch_header(rng, None));
         }
         // Return the sample vector.
         sample

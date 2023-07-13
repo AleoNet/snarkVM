@@ -171,9 +171,9 @@ pub mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Returns a sample batch certificate, sampled at random.
-    pub fn sample_batch_certificate(rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
+    pub fn sample_batch_certificate(rng: &mut TestRng, round: Option<u64>) -> BatchCertificate<CurrentNetwork> {
         // Sample a batch header.
-        let batch_header = crate::batch_header::test_helpers::sample_batch_header(rng);
+        let batch_header = crate::batch_header::test_helpers::sample_batch_header(rng, round);
         // Sample a list of signatures.
         let mut signatures = IndexMap::with_capacity(5);
         for _ in 0..5 {
@@ -192,7 +192,7 @@ pub mod test_helpers {
         let mut sample = IndexSet::with_capacity(10);
         // Append sample batch certificates.
         for _ in 0..10 {
-            sample.insert(sample_batch_certificate(rng));
+            sample.insert(sample_batch_certificate(rng, None));
         }
         // Return the sample vector.
         sample
