@@ -24,13 +24,12 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "batch", "batch-certificate", "batch-header", "transmission", "transmission-id" ]
+default = [ "batch-certificate", "batch-header", "transmission", "transmission-id" ]
 async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 test-helpers = [ "bytes" ]
 
-batch = [ "batch-certificate", "batch-header", "indexmap", "time", "transmission", "transmission-id" ]
 batch-certificate = [ "batch-header", "console", "indexmap", "serde_json", "transmission-id" ]
 batch-header = [ "console", "indexmap", "time", "transmission-id" ]
 transmission = [ "bytes", "ledger-block", "ledger-coinbase" ]
