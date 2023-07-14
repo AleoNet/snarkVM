@@ -292,6 +292,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.cumulative_proof_target() != cumulative_proof_target {
                         bail!("The blocks cumulative proof target does not match the coinbase cumulative proof target")
                     }
+                    // TODO (raychu86): Check that each individual proof is greater than the required proof target.
                 }
                 None => {
                     // Ensure the last coinbase target matches the previous block coinbase target.
@@ -510,6 +511,551 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 bail!("Coinbase accumulator point should be zero as there is no coinbase solution in the block.");
             }
         }
+
+        Ok(())
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
+    // Returns `true` if the transmission exists in the ledger.
+    fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
+        match transmission_id {
+            TransmissionID::Ratification => Ok(false),
+            TransmissionID::Solution(puzzle_commitment) => self.contains_puzzle_commitment(puzzle_commitment),
+            TransmissionID::Transaction(transaction_id) => self.contains_transaction_id(transaction_id),
+        }
+    }
+
+    // TODO (raychu86): Integrate subdag/certificates into block.
+    /// Checks the given block is valid next block.
+    pub fn check_next_block_bft(
+        &self,
+        block: &Block<N>,
+        committed_subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>,
+    ) -> Result<()> {
+        // Ensure the previous block hash is correct.
+        if self.latest_hash() != block.previous_hash() {
+            bail!("The next block has an incorrect previous block hash")
+        }
+
+        // Ensure the block hash does not already exist.
+        if self.contains_block_hash(&block.hash())? {
+            bail!("Block hash '{}' already exists in the ledger", block.hash())
+        }
+
+        // Ensure the next block height is correct.
+        if self.latest_height() > 0 && self.latest_height() + 1 != block.height() {
+            bail!("The next block has an incorrect block height")
+        }
+
+        // Ensure the block height does not already exist.
+        if self.contains_block_height(block.height())? {
+            bail!("Block height '{}' already exists in the ledger", block.height())
+        }
+
+        // TODO (raychu86): Ensure the next round number includes timeouts.
+        // Ensure the next round is correct.
+        if self.latest_round() > 0 && self.latest_round() + 1 /*+ block.number_of_timeouts()*/ != block.round() {
+            bail!("The next block has an incorrect round number")
+        }
+
+        // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
+        // Ensure the next block timestamp is after the current block timestamp.
+        if block.height() > 0 {
+            let next_timestamp = block.header().timestamp();
+            let latest_timestamp = self.latest_block().header().timestamp();
+            if next_timestamp <= latest_timestamp {
+                bail!("The next block timestamp {next_timestamp} is before the current timestamp {latest_timestamp}")
+            }
+        }
+
+        // Ensure there are no duplicate transition IDs.
+        if has_duplicates(block.transition_ids()) {
+            bail!("Found duplicate transition in the block");
+        }
+
+        /* Input */
+
+        // Ensure there are no duplicate input IDs.
+        if has_duplicates(block.input_ids()) {
+            bail!("Found duplicate input IDs in the block");
+        }
+
+        // Ensure there are no duplicate serial numbers.
+        if has_duplicates(block.serial_numbers()) {
+            bail!("Found duplicate serial numbers in the block");
+        }
+
+        // Ensure there are no duplicate tags.
+        if has_duplicates(block.tags()) {
+            bail!("Found duplicate tags in the block");
+        }
+
+        /* Output */
+
+        // Ensure there are no duplicate output IDs.
+        if has_duplicates(block.output_ids()) {
+            bail!("Found duplicate output IDs in the block");
+        }
+
+        // Ensure there are no duplicate commitments.
+        if has_duplicates(block.commitments()) {
+            bail!("Found duplicate commitments in the block");
+        }
+
+        // Ensure there are no duplicate nonces.
+        if has_duplicates(block.nonces()) {
+            bail!("Found duplicate nonces in the block");
+        }
+
+        /* Metadata */
+
+        // Ensure there are no duplicate transition public keys.
+        if has_duplicates(block.transition_public_keys()) {
+            bail!("Found duplicate transition public keys in the block");
+        }
+
+        // Ensure there are no duplicate transition commitments.
+        if has_duplicates(block.transition_commitments()) {
+            bail!("Found duplicate transition commitments in the block");
+        }
+
+        /* Block Header */
+
+        // If the block is the genesis block, check that it is valid.
+        if block.height() == 0 && !block.is_genesis() {
+            bail!("Invalid genesis block");
+        }
+
+        // Ensure the block header is valid.
+        if !block.header().is_valid() {
+            bail!("Invalid block header: {:?}", block.header());
+        }
+
+        // Retrieve the latest total supply.
+        let latest_total_supply = self.latest_total_supply_in_microcredits();
+        // Compute the next total supply in microcredits.
+        let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, block.transactions())?;
+        // Ensure the total supply in microcredits is correct.
+        if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
+            bail!("Invalid total supply in microcredits")
+        }
+
+        // Check the last coinbase members in the block.
+        if block.height() > 0 {
+            match block.coinbase() {
+                Some(coinbase) => {
+                    // Ensure the last coinbase target matches the coinbase target.
+                    if block.last_coinbase_target() != block.coinbase_target() {
+                        bail!("The last coinbase target does not match the coinbase target")
+                    }
+                    // Ensure the last coinbase timestamp matches the block timestamp.
+                    if block.last_coinbase_timestamp() != block.timestamp() {
+                        bail!("The last coinbase timestamp does not match the block timestamp")
+                    }
+                    // Compute the cumulative proof target.
+                    let cumulative_proof_target = coinbase.to_cumulative_proof_target()?;
+                    // Ensure that the cumulative weight includes the next block's cumulative proof target.
+                    if block.cumulative_weight()
+                        != self.latest_cumulative_weight().saturating_add(cumulative_proof_target)
+                    {
+                        bail!("The cumulative weight does not include the block cumulative proof target")
+                    }
+                    // Ensure that the block cumulative proof target matches the coinbase cumulative proof target.
+                    if block.cumulative_proof_target() != cumulative_proof_target {
+                        bail!("The blocks cumulative proof target does not match the coinbase cumulative proof target")
+                    }
+
+                    // TODO (raychu86): Check that each individual proof is greater than the required proof target.
+                }
+                None => {
+                    // Ensure the last coinbase target matches the previous block coinbase target.
+                    if block.last_coinbase_target() != self.last_coinbase_target() {
+                        bail!("The last coinbase target does not match the previous block coinbase target")
+                    }
+                    // Ensure the last coinbase timestamp matches the previous block's last coinbase timestamp.
+                    if block.last_coinbase_timestamp() != self.last_coinbase_timestamp() {
+                        bail!("The last coinbase timestamp does not match the previous block's last coinbase timestamp")
+                    }
+                    // Ensure that the cumulative weight is the same as the previous block.
+                    if block.cumulative_weight() != self.latest_cumulative_weight() {
+                        bail!("The cumulative weight does not match the previous block's cumulative weight")
+                    }
+                    // Ensure that the block cumulative proof target is zero.
+                    if block.cumulative_proof_target() != 0 {
+                        bail!("The cumulative proof target is not zero")
+                    }
+                }
+            }
+        }
+
+        // Construct the next coinbase target.
+        let expected_coinbase_target = coinbase_target(
+            self.last_coinbase_target(),
+            self.last_coinbase_timestamp(),
+            block.timestamp(),
+            N::ANCHOR_TIME,
+            N::NUM_BLOCKS_PER_EPOCH,
+            N::GENESIS_COINBASE_TARGET,
+        )?;
+
+        if block.coinbase_target() != expected_coinbase_target {
+            bail!("Invalid coinbase target: expected {}, got {}", expected_coinbase_target, block.coinbase_target())
+        }
+
+        // Ensure the proof target is correct.
+        let expected_proof_target = proof_target(expected_coinbase_target, N::GENESIS_PROOF_TARGET);
+        if block.proof_target() != expected_proof_target {
+            bail!("Invalid proof target: expected {}, got {}", expected_proof_target, block.proof_target())
+        }
+
+        /* Block Hash */
+
+        // Compute the Merkle root of the block header.
+        let header_root = match block.header().to_root() {
+            Ok(root) => root,
+            Err(error) => bail!("Failed to compute the Merkle root of the block header: {error}"),
+        };
+
+        // Check the block hash.
+        match N::hash_bhp1024(&[block.previous_hash().to_bits_le(), header_root.to_bits_le()].concat()) {
+            Ok(candidate_hash) => {
+                // Ensure the block hash matches the one in the block.
+                if candidate_hash != *block.hash() {
+                    bail!("Block {} ({}) has an incorrect block hash.", block.height(), block.hash());
+                }
+            }
+            Err(error) => {
+                bail!("Unable to compute block hash for block {} ({}): {error}", block.height(), block.hash())
+            }
+        };
+
+        /* Signature */
+
+        // Ensure the block is signed by a validator in the committee
+        let signer = block.signature().to_address();
+        if !self.current_committee.read().contains(&signer) {
+            bail!("Block {} ({}) is signed by an unauthorized account ({signer})", block.height(), block.hash());
+        }
+
+        // Check the signature.
+        if !block.signature().verify(&signer, &[*block.hash()]) {
+            bail!("Invalid signature for block {} ({})", block.height(), block.hash());
+        }
+
+        /* Transactions */
+
+        // Compute the transactions root.
+        match block.transactions().to_transactions_root() {
+            // Ensure the transactions root matches the one in the block header.
+            Ok(root) => {
+                if root != block.header().transactions_root() {
+                    bail!(
+                        "Block {} ({}) has an incorrect transactions root: expected {}",
+                        block.height(),
+                        block.hash(),
+                        block.header().transactions_root()
+                    );
+                }
+            }
+            Err(error) => bail!("Failed to compute the Merkle root of the block transactions: {error}"),
+        };
+
+        // Ensure the transactions list is not empty.
+        if block.transactions().is_empty() {
+            bail!("Cannot validate an empty transactions list");
+        }
+
+        // Ensure the number of transactions is within the allowed range.
+        if block.transactions().len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+        }
+
+        // FIXME: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
+        let transactions = block.transactions().iter().collect::<Vec<_>>();
+
+        // Ensure each transaction is well-formed and unique.
+        cfg_iter!(transactions).try_for_each(|transaction| {
+            // Construct the rejected ID.
+            let rejected_id = match transaction {
+                ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
+                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => Some(rejected.to_id()?),
+                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
+            };
+
+            self.check_transaction_basic(transaction.deref(), rejected_id)
+                .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
+        })?;
+
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new::<N>(
+            block.round(),
+            block.height(),
+            block.cumulative_weight(),
+            block.cumulative_proof_target(),
+            block.previous_hash(),
+        )?;
+
+        // Reconstruct the unconfirmed transactions to verify the speculation.
+        let unconfirmed_transactions = block
+            .transactions()
+            .iter()
+            .map(|tx| match tx {
+                // Pass through the accepted deployment and execution transactions.
+                ConfirmedTransaction::AcceptedDeploy(_, tx, _) | ConfirmedTransaction::AcceptedExecute(_, tx, _) => {
+                    Ok(tx.clone())
+                }
+                // Reconstruct the unconfirmed deployment transaction.
+                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
+                    rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
+                    rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
+                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee"))?,
+                ),
+                // Reconstruct the unconfirmed execution transaction.
+                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
+                    rejected.execution().cloned().ok_or(anyhow!("Missing the execution"))?,
+                    fee_transaction.fee_transition(),
+                ),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Ensure the transactions after speculation match.
+        if block.transactions() != &self.vm.speculate(state, unconfirmed_transactions.iter())? {
+            bail!("The transactions after speculation do not match the transactions in the block");
+        }
+
+        /* Finalize Root */
+
+        // Ensure that the block's finalize root matches the transactions.
+        let expected_finalize_root = block.transactions().to_finalize_root()?;
+        if block.finalize_root() != expected_finalize_root {
+            bail!("Invalid finalize root: expected '{expected_finalize_root}', got '{}'", block.finalize_root())
+        }
+
+        /* Ratifications Root */
+
+        // Compute the ratifications root of the block.
+        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
+            &block
+                .ratifications()
+                .iter()
+                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
+                .collect::<Result<Vec<_>, _>>()?,
+        )?
+        .root();
+        // Ensure that the block's ratifications root matches the declared ratifications.
+        if block.ratifications_root() != ratifications_root {
+            bail!("Invalid ratifications root: expected '{ratifications_root}', got '{}'", block.ratifications_root())
+        }
+
+        /* Coinbase Proof */
+
+        // Ensure the coinbase solution is valid, if it exists.
+        if let Some(coinbase) = block.coinbase() {
+            // Ensure coinbase solutions are not accepted after the anchor block height at year 10.
+            if block.height() > anchor_block_height(N::ANCHOR_TIME, 10) {
+                bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
+            }
+            // Ensure the coinbase accumulator point matches in the block header.
+            if block.header().coinbase_accumulator_point() != coinbase.to_accumulator_point()? {
+                bail!("Coinbase accumulator point does not match the coinbase solution.");
+            }
+            // Ensure the number of prover solutions is within the allowed range.
+            if coinbase.len() > N::MAX_PROVER_SOLUTIONS {
+                bail!("Cannot validate a coinbase proof with more than {} prover solutions", N::MAX_PROVER_SOLUTIONS);
+            }
+            // Ensure the puzzle commitments are new.
+            for puzzle_commitment in coinbase.puzzle_commitments() {
+                if self.contains_puzzle_commitment(&puzzle_commitment)? {
+                    bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
+                }
+            }
+            // Ensure the coinbase solution is valid.
+            if !self.coinbase_puzzle.verify(
+                coinbase,
+                &self.latest_epoch_challenge()?,
+                self.latest_coinbase_target(),
+                self.latest_proof_target(),
+            )? {
+                bail!("Invalid coinbase solution: {:?}", coinbase);
+            }
+        } else {
+            // Ensure that the block header does not contain a coinbase accumulator point.
+            if block.header().coinbase_accumulator_point() != Field::<N>::zero() {
+                bail!("Coinbase accumulator point should be zero as there is no coinbase solution in the block.");
+            }
+        }
+
+        // NOTE: -------- The following are the only changes so far to the original `check_next_block` ----------
+
+        // Retrieve the leader certificate in the round.
+        let leader_certificate = match committed_subdag.iter().next_back() {
+            Some((_, value)) => {
+                ensure!(value.len() == 1, "There should only be one leader certificate per round");
+                value[0].clone()
+            }
+            None => bail!("Missing leader certificate"),
+        };
+
+        // Check that the subdag is valid.
+        // All `previous_certificate_ids` in the parent should be in the subdag. Except the bottom layer, whose `previous_certificate_ids` should exist in the ledger.
+        let mut certificates_to_check = leader_certificate.previous_certificate_ids().clone();
+        let mut round_to_check = leader_certificate.round().saturating_sub(1);
+
+        while !certificates_to_check.is_empty() {
+            match committed_subdag.get(&round_to_check) {
+                Some(certificates) => {
+                    // Construct the new certificates to check.
+                    let mut new_certificates_to_check = IndexSet::new();
+
+                    // Check that the certificates correspond to the `previous_certificates` in the parent.
+                    for (certificate, expected_certificate_id) in
+                        certificates.iter().zip_eq(certificates_to_check.iter())
+                    {
+                        ensure!(
+                            certificate.certificate_id() == *expected_certificate_id,
+                            "Certificate does not match the expected certificate id"
+                        );
+                        new_certificates_to_check.extend(certificate.previous_certificate_ids().clone());
+                    }
+
+                    // Update the certificates to check.
+                    certificates_to_check = new_certificates_to_check;
+                    round_to_check = round_to_check.saturating_sub(1);
+                }
+                None => {
+                    // Missing the previous round in the committed subdag.
+                    // Check that each certificate already exists in the ledger.
+                    for certificate_id in certificates_to_check.iter() {
+                        // TODO (raychu86): The functionality currently only exists in `LedgerService` in snarkOS.
+                        // ensure!(self.contains_certificate(certificate_id)?, "Missing certificate in the ledger");
+                    }
+                }
+            }
+        }
+
+        // Add checks that the subdag construction corresponds to the block transactions properly.
+        // Fetch the transactions iterator.
+        let mut transaction_ids = block.transactions().transaction_ids();
+
+        // Fetch the ratifications iterator.
+        let mut ratifications_ids = block.ratifications();
+
+        // Flatten the transmission ids from the subdag into a single vector.
+        let transmission_ids: IndexSet<TransmissionID<N>> = {
+            // TODO (raychu86): Add helper methods for the following logic. Currently copied from `narwhal` branch in snarkOS.
+            // Initialize a map for the deduped transmissions.
+            let mut transmission_ids = IndexSet::new();
+            // Start from the oldest leader certificate.
+            for certificate in committed_subdag.values().flatten() {
+                // Retrieve the transmissions.
+                for transmission_id in certificate.transmission_ids() {
+                    // If the transmission already exists in the map, skip it.
+                    if transmission_ids.contains(transmission_id) {
+                        continue;
+                    }
+                    // If the transmission already exists in the ledger, skip it.
+                    // Note: On failure to read from the ledger, we skip including this transmission, out of safety.
+                    if self.contains_transmission(transmission_id).unwrap_or(true) {
+                        continue;
+                    }
+                    // Add the transmission to the set.
+                    transmission_ids.insert(*transmission_id);
+                }
+            }
+
+            transmission_ids
+        };
+
+        let mut solutions_to_add_to_pending = Vec::new();
+
+        // Iterate through the provided transmission ids and ensure that the `Transmissions` ordering is correct.
+        for transmission_id in transmission_ids {
+            match transmission_id {
+                // Check the next transaction ID matches the expected ID.
+                TransmissionID::Transaction(expected_id) => {
+                    ensure!(transaction_ids.next() == Some(&expected_id), "Transaction ordering does not match.")
+                }
+                // Check the next ratification ID matches the expected ID.
+                TransmissionID::Ratification => {
+                    // ensure!(ratifications.next() == Some(expected_id), "Transaction ordering does not match.")
+                }
+                // Check the next solution matches the expected commitment.
+                TransmissionID::Solution(commitment) => {
+                    solutions_to_add_to_pending.push(commitment);
+                }
+            }
+        }
+
+        // Check the coinbase solutions are selected correctly.
+        // 1. Get the committed solutions from the subdag.
+        // 2. Get the latest pending solutions of the ledger.
+        // 3. Concatenate (1) to (2) and convert them to `candidate_solutions` determinisitically using `candidate_solutions`.
+        // 4. Check that the `coinbase` included in the block matches (3).
+
+        // Convert the pending solutions into pending partial solutions.
+        let mut pending_solutions = self.latest_pending_solutions();
+        // TODO (raychu86): Add the solution to the `pending_solutions`. Currently we do not have a way to fetch the solution from anywhere.
+        //  The subsequent methods `candidate_solution` and `prover_reward` also need to support `PartialSolution` (currently only `ProverSolution`s)
+        // pending_solutions.extend(solutions_to_add_to_pending);
+
+        // Construct the candidate solutions.
+        let candidate_solutions = self.candidate_solutions(
+            pending_solutions,
+            self.latest_height(),
+            self.latest_proof_target(),
+            self.latest_coinbase_target(),
+        )?;
+
+        // Ensure that the candidate solutions are equivalent to what's in the block coinbase.
+        match (block.coinbase(), &candidate_solutions) {
+            (Some(coinbase), Some(candidate_commitments)) => {
+                let block_commitments = coinbase.puzzle_commitments().collect::<Vec<_>>();
+                let expected_commitments =
+                    candidate_commitments.iter().map(|solution| solution.commitment()).collect::<Vec<_>>();
+                ensure!(
+                    block_commitments == expected_commitments,
+                    "Block coinbase solutions do not match the expected candidate solutions."
+                );
+            }
+            _ => bail!("Coinbase solutions do not match the candidate solutions."),
+        }
+
+        // Compute the cumulative proof target of the prover solutions as a u128.
+        let cumulative_proof_target =
+            block.coinbase().map(|coinbase| coinbase.to_cumulative_proof_target()).unwrap_or(Ok(0))?;
+
+        // Check that the remaining ratification ids correspond to the prover/validator rewards.
+        let (proving_rewards, staking_rewards) = match candidate_solutions {
+            Some(prover_solutions) => {
+                // Calculate the coinbase reward.
+                let coinbase_reward = coinbase_reward(
+                    self.last_coinbase_timestamp(),
+                    block.timestamp(),
+                    block.height(),
+                    N::STARTING_SUPPLY,
+                    N::ANCHOR_TIME,
+                )?;
+
+                // Calculate the proving rewards.
+                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
+                // Calculate the staking rewards.
+                let staking_rewards = Vec::<Ratify<N>>::new();
+                // Output the proving and staking rewards.
+                (proving_rewards, staking_rewards)
+            }
+            None => {
+                // Output the proving and staking rewards.
+                (vec![], vec![])
+            }
+        };
+
+        // Ensure that the remaining ratifications is equivalent to [proving_rewards, staking_rewards].
+        let expected_remaining_ratifications = [proving_rewards, staking_rewards].concat();
+        ensure!(
+            ratifications_ids == &expected_remaining_ratifications,
+            "Block ratifications do not match the expected rewards."
+        );
 
         Ok(())
     }
