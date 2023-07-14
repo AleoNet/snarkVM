@@ -31,10 +31,10 @@ pub enum Opcode {
     Delete,
     /// The opcode is for a finalize operation (i.e. `finalize`).
     Finalize(&'static str),
-    /// The opcode is for a get operation (i.e. `get`).
-    Get,
     /// The opcode is for a hash operation (i.e. `hash.psd4`).
     Hash(&'static str),
+    /// The opcode is for an index operation (i.e. `index`).
+    Index,
     /// The opcode for an 'is' operation (i.e. `is.eq`).
     Is(&'static str),
     /// The opcode is for a `length` operation (i.e. `length`).
@@ -58,8 +58,8 @@ impl Deref for Opcode {
             Opcode::Commit(opcode) => opcode,
             Opcode::Delete => &"delete",
             Opcode::Finalize(opcode) => opcode,
-            Opcode::Get => &"get",
             Opcode::Hash(opcode) => opcode,
+            Opcode::Index => &"index",
             Opcode::Is(opcode) => opcode,
             Opcode::Length => &"length",
             Opcode::Literal(opcode) => opcode,
@@ -86,8 +86,8 @@ impl Display for Opcode {
             Self::Commit(opcode) => write!(f, "{opcode}"),
             Self::Delete => write!(f, "{}", self.deref()),
             Self::Finalize(opcode) => write!(f, "{opcode}"),
-            Self::Get => write!(f, "{}", self.deref()),
             Self::Hash(opcode) => write!(f, "{opcode}"),
+            Self::Index => write!(f, "{}", self.deref()),
             Self::Is(opcode) => write!(f, "{opcode}"),
             Self::Length => write!(f, "{}", self.deref()),
             Self::Literal(opcode) => write!(f, "{opcode}"),

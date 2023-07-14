@@ -101,11 +101,11 @@ finalize test_get:
     input r1 as u8.public;
     input r2 as u8.public;
     cast r0 r1 r2 into r3 as [u8];
-    get r3 0u32 into r4;
+    index r3 0u32 into r4;
     assert.eq r4 r0;
-    get r3 1u32 into r5;
+    index r3 1u32 into r5;
     assert.eq r5 r1;
-    get r3 2u32 into r6;
+    index r3 2u32 into r6;
     assert.eq r6 r2;
 
 

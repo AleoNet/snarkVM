@@ -117,7 +117,6 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Div(_)) => Ok(10_000),
         Command::Instruction(Instruction::DivWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Double(_)) => Ok(2_000),
-        Command::Instruction(Instruction::Get(_)) => Ok(10_000),
         Command::Instruction(Instruction::GreaterThan(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThanOrEqual(_)) => Ok(2_000),
         Command::Instruction(Instruction::HashBHP256(_)) => Ok(200_000),
@@ -147,6 +146,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::HashManyPSD8(_)) => {
             bail!("`hash_many.psd8` is not supported in finalize.")
         }
+        Command::Instruction(Instruction::Index(_)) => Ok(10_000),
         Command::Instruction(Instruction::Inv(_)) => Ok(10_000),
         Command::Instruction(Instruction::IsEq(_)) => Ok(2_000),
         Command::Instruction(Instruction::IsNeq(_)) => Ok(2_000),

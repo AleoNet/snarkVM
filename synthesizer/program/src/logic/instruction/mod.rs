@@ -103,8 +103,7 @@ pub enum Instruction<N: Network> {
     DivWrapped(DivWrapped<N>),
     /// Doubles `first`, storing the outcome in `destination`.
     Double(Double<N>),
-    /// Gets the element at `second` from `first`, storing the outcome in `destination`.
-    Get(Get<N>),
+
     /// Computes whether `first` is greater than `second` as a boolean, storing the outcome in `destination`.
     GreaterThan(GreaterThan<N>),
     /// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
@@ -135,6 +134,8 @@ pub enum Instruction<N: Network> {
     HashManyPSD8(HashManyPSD8<N>),
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
     Inv(Inv<N>),
+    /// Indexes `first` at `second`, storing the outcome in `destination`.
+    Index(Index<N>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
     IsEq(IsEq<N>),
     /// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
@@ -284,7 +285,7 @@ macro_rules! instruction {
             Length,
             Push,
             Delete,
-            Get,
+            Index,
         }}
     };
     // A variant **without** curly braces:

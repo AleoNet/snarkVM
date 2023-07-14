@@ -30,8 +30,8 @@ pub use delete::*;
 mod finalize;
 pub use finalize::*;
 
-mod get;
-pub use get::*;
+mod index;
+pub use index::*;
 
 mod hash;
 pub use hash::*;
