@@ -516,15 +516,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
-    // Returns `true` if the transmission exists in the ledger.
-    fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
-        match transmission_id {
-            TransmissionID::Ratification => Ok(false),
-            TransmissionID::Solution(puzzle_commitment) => self.contains_puzzle_commitment(puzzle_commitment),
-            TransmissionID::Transaction(transaction_id) => self.contains_transaction_id(transaction_id),
-        }
-    }
-
     // TODO (raychu86): Integrate subdag/certificates into block.
     /// Checks the given block is valid next block.
     pub fn check_next_block_bft(
