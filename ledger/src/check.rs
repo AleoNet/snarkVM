@@ -609,13 +609,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // TODO (raychu86): Check ledger last committed certificate round == round_to_check
 
-        // Add checks that the subdag construction corresponds to the block transactions properly.
-        // Fetch the transactions iterator.
-        let mut transaction_ids = block.transactions().transaction_ids();
-
-        // Fetch the ratifications iterator.
-        let mut ratifications_ids = block.ratifications();
-
         // Flatten the transmission ids from the subdag into a single vector.
         let transmission_ids: IndexSet<TransmissionID<N>> = {
             // TODO (raychu86): Add helper methods for the following logic. Currently copied from `narwhal` branch in snarkOS.
@@ -641,6 +634,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
             transmission_ids
         };
+
+        // Add checks that the subdag construction corresponds to the block transactions properly.
+        // Fetch the transactions iterator.
+        let mut transaction_ids = block.transactions().transaction_ids();
+        // Fetch the ratifications iterator.
+        let mut ratifications_ids = block.ratifications();
 
         let mut solutions_to_add_to_pending = Vec::new();
 

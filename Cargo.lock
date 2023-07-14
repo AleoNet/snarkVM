@@ -3111,7 +3111,6 @@ dependencies = [
  "snarkvm-ledger-coinbase",
  "snarkvm-ledger-narwhal",
  "time",
- "tokio",
 ]
 
 [[package]]
