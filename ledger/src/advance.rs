@@ -178,22 +178,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Drop the write lock on the current block.
         drop(current_block);
 
-        // Clears the memory pool of pending solutions that are now invalid.
-        if block.coinbase().is_some() {
-            self.pending_solutions.write().retain(|puzzle_commitment, _solution| {
-                // Ensure the prover solution is still valid.
-                match self.contains_puzzle_commitment(puzzle_commitment) {
-                    Ok(true) | Err(_) => {
-                        trace!("Removed prover solution '{puzzle_commitment}' from the memory pool");
-                        false
-                    }
-                    Ok(false) => true,
-                }
-            });
-        }
-        // If this starts a new epoch, clear all unconfirmed solutions from the memory pool.
+        // If this starts a new epoch, clear all pending solutions.
         if block.epoch_number() > current_epoch_number {
-            self.pending_solutions.write().clear();
+            self.pending_solutions.clear_all_pending_solutions();
+        }
+        // Otherwise, if a new coinbase was produced, clear the pending solutions that are now invalid.
+        else if block.coinbase().is_some() {
+            self.pending_solutions.clear_invalid_solutions(self);
         }
 
         // If the block is the start of a new epoch, or the epoch challenge has not been set, update the current epoch challenge.
@@ -226,52 +217,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
-    /// Returns a candidate set of unconfirmed solutions for inclusion in a block.
-    pub fn candidate_solutions(
-        &self,
-        pending_solutions: IndexMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>,
-        latest_height: u32,
-        latest_proof_target: u64,
-        latest_coinbase_target: u64,
-    ) -> Result<Option<Vec<ProverSolution<N>>>> {
-        // If the latest height is greater than or equal to the anchor height at year 10, then return 'None'.
-        if latest_height >= anchor_block_height(N::ANCHOR_TIME, 10) {
-            return Ok(None);
-        }
-
-        // Filter the solutions by the latest proof target, ensure they are unique, and rank in descending order of proof target.
-        let candidate_solutions: Vec<_> = pending_solutions
-            .iter()
-            .filter(|(_, (_, proof_target))| *proof_target >= latest_proof_target)
-            .filter(|(_, (solution, _))| {
-                // Ensure the prover solution is not already in the ledger.
-                match self.contains_puzzle_commitment(&solution.commitment()) {
-                    Ok(true) => false,
-                    Ok(false) => true,
-                    Err(error) => {
-                        error!("Failed to check if prover solution {error} is in the ledger");
-                        false
-                    }
-                }
-            })
-            .sorted_by(|a, b| b.1.1.cmp(&a.1.1))
-            .map(|(_, v)| v.0)
-            .unique_by(|s| s.commitment())
-            .take(256)
-            .collect();
-
-        // Compute the cumulative proof target of the prover solutions as a u128.
-        let cumulative_proof_target: u128 = candidate_solutions.iter().try_fold(0u128, |cumulative, solution| {
-            cumulative
-                .checked_add(solution.to_target()? as u128)
-                .ok_or_else(|| anyhow!("Cumulative proof target overflowed"))
-        })?;
-
-        // Return the prover solutions if the cumulative target is greater than or equal to the coinbase target.
-        match cumulative_proof_target >= latest_coinbase_target as u128 {
-            true => Ok(Some(candidate_solutions)),
-            false => Ok(None),
-        }
+    /// Returns `true` if the coinbase target is met.
+    pub fn is_coinbase_target_met(&self) -> Result<bool> {
+        // Retrieve the latest proof target.
+        let latest_proof_target = self.latest_proof_target();
+        // Compute the candidate coinbase target.
+        let cumulative_proof_target = self.pending_solutions.candidate_coinbase_target(latest_proof_target)?;
+        // Retrieve the latest coinbase target.
+        let latest_coinbase_target = self.latest_coinbase_target();
+        // Check if the coinbase target is met.
+        Ok(cumulative_proof_target >= latest_coinbase_target as u128)
     }
 
     // TODO (raychu86): Remove PrivateKey and rng inputs.
@@ -311,39 +266,33 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Extract transactions.
         let mut transactions: Vec<Transaction<N>> = Vec::new();
-
-        // Extract prover solutions.
-        let mut solutions = IndexMap::new();
-
         // Extract ratifications.
         let mut ratifications = Vec::new();
 
-        // Extract the transactions, prover solutions, and ratifications.
-        for (_, transmission) in transmissions.into_iter() {
+        // Extract the ratifications, solutions, and transactions.
+        for transmission in transmissions.into_values() {
             match transmission {
-                Transmission::Transaction(transaction) => {
-                    transactions.push(transaction.deserialize_blocking()?);
+                Transmission::Ratification => {
+                    // ratifications.push(ratification.into());
                 }
                 Transmission::Solution(solution) => {
                     let solution = solution.deserialize_blocking()?;
-                    let proof_target = solution.to_target()?;
                     // TODO (raychu86): Do we check if the target is sufficient? Or if the solution is valid for the epoch?
-                    solutions.insert(solution.commitment(), (solution, proof_target));
+                    self.pending_solutions.add_pending_solution(solution)?;
                 }
-                Transmission::Ratification => {
-                    // ratifications.push(ratification.into());
+                Transmission::Transaction(transaction) => {
+                    transactions.push(transaction.deserialize_blocking()?);
                 }
             }
         }
 
-        // Fetch the pending solutions.
-        let mut pending_solutions = self.latest_pending_solutions();
-        // Add the new solutions to the pending solutions (in memory).
-        pending_solutions.extend(solutions);
-
         // Construct the candidate solutions from new set of pending solutions.
-        let candidate_solutions =
-            self.candidate_solutions(pending_solutions, latest_height, latest_proof_target, latest_coinbase_target)?;
+        let candidate_solutions = self.pending_solutions.candidate_solutions(
+            self,
+            latest_height,
+            latest_proof_target,
+            latest_coinbase_target,
+        )?;
 
         // Construct the coinbase solution.
         let (coinbase, coinbase_accumulator_point, cumulative_proof_target) = match &candidate_solutions {

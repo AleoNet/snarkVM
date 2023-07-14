@@ -108,8 +108,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
     /// The current committee.
     current_committee: Arc<RwLock<IndexSet<Address<N>>>>,
-    /// The pending prover solutions and their proof targets.
-    pending_solutions: Arc<RwLock<IndexMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>>>,
+    /// The pool of pending solutions and their proof targets.
+    pending_solutions: PendingSolutions<N>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -305,10 +305,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             Some(challenge) => Ok(challenge.clone()),
             None => self.get_epoch_challenge(self.latest_height()),
         }
-    }
-
-    pub fn latest_pending_solutions(&self) -> IndexMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)> {
-        self.pending_solutions.read().clone()
     }
 }
 

@@ -641,22 +641,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Fetch the ratifications iterator.
         let mut ratifications_ids = block.ratifications();
 
-        let mut solutions_to_add_to_pending = Vec::new();
-
         // Iterate through the provided transmission ids and ensure that the `Transmissions` ordering is correct.
         for transmission_id in transmission_ids {
             match transmission_id {
-                // Check the next transaction ID matches the expected ID.
-                TransmissionID::Transaction(expected_id) => {
-                    ensure!(transaction_ids.next() == Some(&expected_id), "Transaction ordering does not match.")
-                }
                 // Check the next ratification ID matches the expected ID.
                 TransmissionID::Ratification => {
                     // ensure!(ratifications.next() == Some(expected_id), "Transaction ordering does not match.")
                 }
                 // Check the next solution matches the expected commitment.
-                TransmissionID::Solution(commitment) => {
-                    solutions_to_add_to_pending.push(commitment);
+                TransmissionID::Solution(_commitment) => {
+                    // TODO (raychu86): Add the solution to the `pending_solutions`. Currently we do not have a way to fetch the solution from anywhere.
+                    //  The subsequent methods `candidate_solution` and `prover_reward` also need to support `PartialSolution` (currently only `ProverSolution`s)
+                    // self.pending_solutions.add_pending_solution(commitment);
+                }
+                // Check the next transaction ID matches the expected ID.
+                TransmissionID::Transaction(expected_id) => {
+                    ensure!(transaction_ids.next() == Some(&expected_id), "Transaction ordering does not match.")
                 }
             }
         }
@@ -667,15 +667,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // 3. Concatenate (1) to (2) and convert them to `candidate_solutions` determinisitically using `candidate_solutions`.
         // 4. Check that the `coinbase` included in the block matches (3).
 
-        // Convert the pending solutions into pending partial solutions.
-        let mut pending_solutions = self.latest_pending_solutions();
-        // TODO (raychu86): Add the solution to the `pending_solutions`. Currently we do not have a way to fetch the solution from anywhere.
-        //  The subsequent methods `candidate_solution` and `prover_reward` also need to support `PartialSolution` (currently only `ProverSolution`s)
-        // pending_solutions.extend(solutions_to_add_to_pending);
-
         // Construct the candidate solutions.
-        let candidate_solutions = self.candidate_solutions(
-            pending_solutions,
+        let candidate_solutions = self.pending_solutions.candidate_solutions(
+            self,
             self.latest_height(),
             self.latest_proof_target(),
             self.latest_coinbase_target(),
