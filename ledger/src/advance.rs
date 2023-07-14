@@ -166,6 +166,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
     /// Adds the given block as the next block in the ledger.
     pub fn advance_to_next_block(&self, block: &Block<N>) -> Result<()> {
+        // Cache the current epoch number.
+        let current_epoch_number = self.latest_epoch_number();
+
         // Acquire the write lock on the current block.
         let mut current_block = self.current_block.write();
         // Update the VM.
@@ -185,12 +188,34 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 pending_solutions.remove(&solution.commitment());
             }
         }
+        // If this starts a new epoch, clear all unconfirmed solutions from the memory pool.
+        if block.epoch_number() > current_epoch_number {
+            self.pending_solutions.write().clear();
+        }
 
         // If the block is the start of a new epoch, or the epoch challenge has not been set, update the current epoch challenge.
         if block.height() % N::NUM_BLOCKS_PER_EPOCH == 0 || self.current_epoch_challenge.read().is_none() {
             // Update the current epoch challenge.
             self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
         }
+
+        // // If there are block solutions, add them to the pending solutions.
+        // if !block.solutions().is_empty() {
+        //     // Acquire the write lock for the pending solutions.
+        //     let mut pending_solutions = self.pending_solutions.write();
+        //     // Iterate through the solutions.
+        //     block.solutions().iter().for_each(|solution| {
+        //         // Determine if the solution was committed, safely.
+        //         let is_committed = self.contains_puzzle_commitment(&solution.commitment()).unwrap_or(true);
+        //         // If the solution has not been committed, add it to the pending solutions.
+        //         if !is_committed {
+        //             // Compute the proof target.
+        //             if let Some(proof_target) = solution.to_target() {
+        //                 pending_solutions.insert(solution.commitment(), (solution, proof_target));
+        //             }
+        //         }
+        //     });
+        // }
 
         Ok(())
     }
