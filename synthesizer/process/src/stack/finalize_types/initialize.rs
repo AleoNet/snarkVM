@@ -82,10 +82,10 @@ impl<N: Network> FinalizeTypes<N> {
                 // Insert the destination register and type.
                 match self.destinations.insert(locator, finalize_type) {
                     // If the register already exists, then check that the existing type matches the inserted type.
-                    Some(type_) => match type_ == plaintext_type {
+                    Some(type_) => match type_ == finalize_type {
                         // If the types do not match, throw an error.
                         false => bail!(
-                            "Attempted to re-assign a register '{register}' of type '{type_}' to type '{plaintext_type}'"
+                            "Attempted to re-assign a register '{register}' of type '{type_}' to type '{finalize_type}'"
                         ),
                         // If the types match, return success.
                         true => Ok(()),

@@ -22,5 +22,5 @@
       outputs:
       - '{"type":"record","id":"6711535898732076254991149555111951408486553861864086427456889022564214356115field","checksum":"7167869217419831201729211163362271994149220539793753726350835782603587867419field","value":"record1qyqsqga0mxpuv3627sl5s89exxdg85gzlpvlqnhqfvzx6809gf6knwgtqyxx66trwfhkxun9v35hguerqqpqzqzh3dlya02fgq6m6rslwr6afdt3ls5gup7prg9948qktlq2zc6nqefwr27ucy9mwa00zzaen4t2yrykchn8gq9pqakj6nw85fusc06qvept7qy"}'
       finalize: []
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
