@@ -180,9 +180,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Block height '{}' already exists in the ledger", block.height())
         }
 
-        // TODO (raychu86): Ensure the next round number includes timeouts.
         // Ensure the next round is correct.
-        if self.latest_round() > 0 && self.latest_round() + 1 /*+ block.number_of_timeouts()*/ != block.round() {
+        if self.latest_round() > 0 {
             bail!("The next block has an incorrect round number")
         }
 
@@ -543,8 +542,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Check that the round number is correct.
         ensure!(
-            block.round() == leader_certificate.round().saturating_add(1),
-            "The block round number is incorrect ({} != {} + 1)",
+            block.round() == leader_certificate.round(),
+            "The block round number is incorrect ({} != {})",
             block.round(),
             leader_certificate.round()
         );

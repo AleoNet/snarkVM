@@ -362,7 +362,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Compute the next round number.
-        let next_round = leader_certificate.round().saturating_add(1);
+        let next_round = leader_certificate.round();
         // Compute the next height.
         let next_height = latest_height.saturating_add(1);
         // Compute the next cumulative weight.
