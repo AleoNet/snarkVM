@@ -267,8 +267,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_state_root = *self.latest_state_root();
         // Retrieve the latest block.
         let latest_block = self.latest_block();
-        // Retrieve the latest round.
-        let latest_round = leader_certificate.round().saturating_add(1);
         // Retrieve the latest height.
         let latest_height = latest_block.height();
         // Retrieve the latest total supply in microcredits.
@@ -334,7 +332,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Compute the next round number.
-        let next_round = latest_round.saturating_add(1);
+        let next_round = leader_certificate.round().saturating_add(1);
         // Compute the next height.
         let next_height = latest_height.saturating_add(1);
         // Compute the next cumulative weight.
