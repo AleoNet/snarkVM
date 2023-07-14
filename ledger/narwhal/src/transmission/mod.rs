@@ -14,15 +14,14 @@
 
 mod bytes;
 mod serialize;
+mod string;
 
 use crate::helpers::Data;
 use console::prelude::*;
 use ledger_block::Transaction;
 use ledger_coinbase::ProverSolution;
 
-use ::bytes::Bytes;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Transmission<N: Network> {
     /// A ratification.
     Ratification,

@@ -29,8 +29,8 @@ impl<N: Network> FromBytes for Transmission<N> {
         // Match the variant.
         match variant {
             0 => Ok(Self::Ratification),
-            1 => Ok(Self::Solution(transmission_from_bytes_le(&mut reader)?)),
-            2 => Ok(Self::Transaction(transmission_from_bytes_le(&mut reader)?)),
+            1 => Ok(Self::Solution(Data::read_le(&mut reader)?)),
+            2 => Ok(Self::Transaction(Data::read_le(&mut reader)?)),
             3.. => Err(error("Invalid transmission variant")),
         }
     }
@@ -46,45 +46,12 @@ impl<N: Network> ToBytes for Transmission<N> {
             Self::Ratification => 0u8.write_le(&mut writer),
             Self::Solution(solution) => {
                 1u8.write_le(&mut writer)?;
-                transmission_to_bytes_le(solution, &mut writer)
+                solution.write_le(&mut writer)
             }
             Self::Transaction(transaction) => {
                 2u8.write_le(&mut writer)?;
-                transmission_to_bytes_le(transaction, &mut writer)
+                transaction.write_le(&mut writer)
             }
-        }
-    }
-}
-
-/// Reads the transmission from the buffer.
-fn transmission_from_bytes_le<T: FromBytes + ToBytes + Send + 'static, R: Read>(mut reader: R) -> IoResult<Data<T>> {
-    // Read the number of bytes.
-    let num_bytes = u32::read_le(&mut reader)?;
-    // Read the bytes.
-    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<IoResult<Vec<u8>>>()?;
-    // Return the data.
-    Ok(Data::Buffer(Bytes::from(bytes)))
-}
-
-/// Writes the transmission to the buffer.
-fn transmission_to_bytes_le<T: FromBytes + ToBytes + Send + 'static, W: Write>(
-    transmission: &Data<T>,
-    mut writer: W,
-) -> IoResult<()> {
-    // Write the transmission.
-    match transmission {
-        Data::Object(x) => {
-            let bytes = x.to_bytes_le().map_err(|e| error(e.to_string()))?;
-            // Write the number of bytes.
-            u32::try_from(bytes.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
-            // Write the bytes.
-            writer.write_all(&bytes)
-        }
-        Data::Buffer(bytes) => {
-            // Write the number of bytes.
-            u32::try_from(bytes.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
-            // Write the bytes.
-            writer.write_all(bytes)
         }
     }
 }

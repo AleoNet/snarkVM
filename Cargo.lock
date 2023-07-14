@@ -3109,6 +3109,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-block",
  "snarkvm-ledger-coinbase",
+ "snarkvm-ledger-narwhal",
  "time",
  "tokio",
 ]
