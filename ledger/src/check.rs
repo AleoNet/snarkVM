@@ -292,7 +292,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.cumulative_proof_target() != cumulative_proof_target {
                         bail!("The blocks cumulative proof target does not match the coinbase cumulative proof target")
                     }
-                    // TODO (raychu86): Check that each individual proof is greater than the required proof target.
                 }
                 None => {
                     // Ensure the last coinbase target matches the previous block coinbase target.
@@ -897,36 +896,65 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => bail!("Missing leader certificate"),
         };
 
+        // Check that the block timestamp is the median timestamp of the leader certificate.
+        ensure!(
+            block.timestamp() == leader_certificate.median_timestamp(),
+            "Block timestamp does not match the median timestamp of the leader certificate"
+        );
+
+        // Check that the round number is correct.
+        ensure!(
+            block.round() == leader_certificate.round().saturating_add(1),
+            "The block round number is incorrect ({} != {} + 1)",
+            block.round(),
+            leader_certificate.round()
+        );
+
         // Check that the subdag is valid.
-        // All `previous_certificate_ids` in the parent should be in the subdag. Except the bottom layer, whose `previous_certificate_ids` should exist in the ledger.
-        let mut certificates_to_check = leader_certificate.previous_certificate_ids().clone();
+        // All `previous_certificate_ids` in the parent should be in the subdag. Except the bottom layer, whose `previous_certificate_ids` should already exist in the ledger.
+        let mut previous_certificates_to_check = leader_certificate.previous_certificate_ids().clone();
         let mut round_to_check = leader_certificate.round().saturating_sub(1);
 
-        while !certificates_to_check.is_empty() {
+        while !previous_certificates_to_check.is_empty() {
             match committed_subdag.get(&round_to_check) {
-                Some(certificates) => {
+                Some(subdag_certificates) => {
                     // Construct the new certificates to check.
-                    let mut new_certificates_to_check = IndexSet::new();
+                    let mut new_previous_certificates_to_check = IndexSet::new();
 
+                    // Track the certificates to check.
+                    let mut certificates_index = 0;
+
+                    // TODO (raychu86): Is this ordering correct?
                     // Check that the certificates correspond to the `previous_certificates` in the parent.
-                    for (certificate, expected_certificate_id) in
-                        certificates.iter().zip_eq(certificates_to_check.iter())
-                    {
+                    for expected_certificate_id in previous_certificates_to_check.iter() {
+                        // Check if the certificate already exists in the ledger.
+                        // TODO (raychu86): The functionality currently only exists in `LedgerService` in snarkOS.
+                        // if self.contains_certificate(&expected_certificate_id) {
+                        //     continue;
+                        // }
+
+                        // Get the certificate at the given index.
+                        let certificate =
+                            subdag_certificates.get(certificates_index).ok_or(anyhow!("Missing certificate"))?;
                         ensure!(
                             certificate.certificate_id() == *expected_certificate_id,
                             "Certificate does not match the expected certificate id"
                         );
-                        new_certificates_to_check.extend(certificate.previous_certificate_ids().clone());
+
+                        // Increment the certificates.
+                        certificates_index += 1;
+                        // Add the new previous certificates to check.
+                        new_previous_certificates_to_check.extend(certificate.previous_certificate_ids().clone());
                     }
 
                     // Update the certificates to check.
-                    certificates_to_check = new_certificates_to_check;
+                    previous_certificates_to_check = new_previous_certificates_to_check;
                     round_to_check = round_to_check.saturating_sub(1);
                 }
                 None => {
                     // Missing the previous round in the committed subdag.
                     // Check that each certificate already exists in the ledger.
-                    for certificate_id in certificates_to_check.iter() {
+                    for certificate_id in previous_certificates_to_check.iter() {
                         // TODO (raychu86): The functionality currently only exists in `LedgerService` in snarkOS.
                         // ensure!(self.contains_certificate(certificate_id)?, "Missing certificate in the ledger");
                     }
