@@ -103,7 +103,6 @@ pub enum Instruction<N: Network> {
     DivWrapped(DivWrapped<N>),
     /// Doubles `first`, storing the outcome in `destination`.
     Double(Double<N>),
-
     /// Computes whether `first` is greater than `second` as a boolean, storing the outcome in `destination`.
     GreaterThan(GreaterThan<N>),
     /// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
