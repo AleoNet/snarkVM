@@ -117,6 +117,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Div(_)) => Ok(10_000),
         Command::Instruction(Instruction::DivWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Double(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Get(_)) => Ok(10_000),
         Command::Instruction(Instruction::GreaterThan(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThanOrEqual(_)) => Ok(2_000),
         Command::Instruction(Instruction::HashBHP256(_)) => Ok(200_000),
