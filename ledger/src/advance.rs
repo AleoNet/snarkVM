@@ -184,8 +184,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 // Remove the pending solution.
                 pending_solutions.remove(&solution.commitment());
             }
-            // Drop the write lock on the pending solutions.
-            drop(pending_solutions);
         }
 
         // If the block is the start of a new epoch, or the epoch challenge has not been set, update the current epoch challenge.
