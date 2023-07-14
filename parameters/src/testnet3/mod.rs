@@ -22,7 +22,7 @@ use crate::macros::get_dir;
 const REMOTE_URL: &str = "https://testnet3.parameters.aleo.org";
 
 // Degrees
-impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
+impl_mobile_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
 impl_mobile_local!(Degree16, "resources/", "powers-of-beta-16", "usrs");
 impl_mobile_local!(Degree17, "resources/", "powers-of-beta-17", "usrs");
 impl_mobile_local!(Degree18, "resources/", "powers-of-beta-18", "usrs");
@@ -38,7 +38,7 @@ impl_mobile_local!(Degree27, "resources/", "powers-of-beta-27", "usrs");
 impl_mobile_local!(Degree28, "resources/", "powers-of-beta-28", "usrs");
 
 // Shifted Degrees
-impl_local!(ShiftedDegree15, "resources/", "shifted-powers-of-beta-15", "usrs");
+impl_mobile_local!(ShiftedDegree15, "resources/", "shifted-powers-of-beta-15", "usrs");
 impl_mobile_local!(ShiftedDegree16, "resources/", "shifted-powers-of-beta-16", "usrs");
 impl_mobile_local!(ShiftedDegree17, "resources/", "shifted-powers-of-beta-17", "usrs");
 impl_mobile_local!(ShiftedDegree18, "resources/", "shifted-powers-of-beta-18", "usrs");
