@@ -278,7 +278,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Retrieve the latest coinbase target.
         let latest_coinbase_target = latest_block.coinbase_target();
 
-        // TODO (raychu86): Check that the batches translates properly into the set of transitions. For now we can assume this is correct.
+        // TODO (raychu86): Check that the `committed_subdag` translates properly into the set of transmissions. For now we can assume this is correct.
 
         // Extract transactions.
         let mut transactions: Vec<Transaction<N>> = Vec::new();
@@ -307,11 +307,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
-        // Add the prover solutions to the pending solutions.
+        // Fetch the pending solutions.
         let mut pending_solutions = self.latest_pending_solutions();
+        // Add the new solutions to the pending solutions (in memory).
         pending_solutions.extend(solutions);
 
-        // Construct the candidate solutions.
+        // Construct the candidate solutions from new set of pending solutions.
         let candidate_solutions =
             self.candidate_solutions(pending_solutions, latest_height, latest_proof_target, latest_coinbase_target)?;
 
