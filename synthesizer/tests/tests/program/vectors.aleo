@@ -5,6 +5,9 @@ cases:
     inputs: [0u8, 1u8, 2u8]
   - function: test_push
     inputs: [3u8, 4u8, 5u8]
+  - function: test_remove
+    inputs: [6u8, 7u8, 8u8]
+
 */
 
 program vectors.aleo;
@@ -58,6 +61,32 @@ finalize test_push:
     push r3 r2;
     length r3 into r7;
     assert.eq r7 3u32;
+
+function test_remove:
+    input r0 as u8.public;
+    input r1 as u8.public;
+    input r2 as u8.public;
+    finalize r0 r1 r2;
+
+finalize test_remove:
+    input r0 as u8.public;
+    input r1 as u8.public;
+    input r2 as u8.public;
+    cast r0 r1 r2 into r3 as [u8];
+    length r3 into r4;
+    assert.eq r4 3u32;
+    remove r3 1u32 into r5;
+    assert.eq r5 r1;
+    length r3 into r6;
+    assert.eq r6 2u32;
+    remove r3 0u32 into r7;
+    assert.eq r7 r0;
+    length r3 into r8;
+    assert.eq r8 1u32;
+    remove r3 0u32 into r9;
+    assert.eq r9 r2;
+    length r3 into r10;
+    assert.eq r10 0u32;
 
 
 
