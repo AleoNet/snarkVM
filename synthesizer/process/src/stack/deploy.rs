@@ -121,7 +121,6 @@ impl<N: Network> Stack<N> {
             |((function_name, call_stack, assignments), (_, (verifying_key, certificate)))| {
                 // Synthesize the circuit.
                 let _response = self.execute_function::<A>(call_stack.clone()).unwrap();
-                lap!(timer, "Synthesize the circuit");
 
                 // Check the certificate.
                 match assignments.read().last() {
@@ -133,7 +132,6 @@ impl<N: Network> Stack<N> {
                         if !certificate.verify(&function_name.to_string(), assignment, verifying_key) {
                             bail!("The certificate for function '{}' is invalid in '{program_id}'", function_name)
                         }
-                        lap!(timer, "Ensure the certificate is valid");
                     }
                 };
 
