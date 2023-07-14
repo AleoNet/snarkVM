@@ -161,6 +161,8 @@ pub enum Instruction<N: Network> {
     Pow(Pow<N>),
     /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
     PowWrapped(PowWrapped<N>),
+    /// Pushes `second` onto the end of `first`.
+    Push(Push<N>),
     /// Divides `first` by `second`, storing the remainder in `destination`.
     Rem(Rem<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the remainder in `destination`.
@@ -276,6 +278,7 @@ macro_rules! instruction {
             Ternary,
             Xor,
             Length,
+            Push,
         }}
     };
     // A variant **without** curly braces:

@@ -39,6 +39,9 @@ pub use length::*;
 mod literals;
 pub use literals::*;
 
+mod push;
+pub use push::*;
+
 mod macros;
 
 use crate::Opcode;

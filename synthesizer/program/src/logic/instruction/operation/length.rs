@@ -36,9 +36,9 @@ pub struct Length<N: Network> {
 impl<N: Network> Length<N> {
     /// Initializes a new `length` instruction.
     #[inline]
-    pub fn new(operand: Operand<N>, destination: Register<N>) -> Result<Self> {
+    pub fn new(operand: Operand<N>, destination: Register<N>) -> Self {
         // Return the instruction.
-        Ok(Self { operands: vec![operand], destination })
+        Self { operands: vec![operand], destination }
     }
 
     /// Returns the opcode.
@@ -68,6 +68,11 @@ impl<N: Network> Length<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 1 {
+            bail!("Instruction '{}' expects 1 operand, found {} operands", Self::opcode(), self.operands.len())
+        }
+
         // Retrieve the input.
         let input = registers.load(stack, &self.operands[0])?;
 
@@ -91,6 +96,11 @@ impl<N: Network> Length<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 1 {
+            bail!("Instruction '{}' expects 1 operand, found {} operands", Self::opcode(), self.operands.len())
+        }
+
         // Retrieve the input.
         let input = registers.load_circuit(stack, &self.operands[0])?;
 
@@ -115,6 +125,11 @@ impl<N: Network> Length<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if self.operands.len() != 1 {
+            bail!("Instruction '{}' expects 1 operand, found {} operands", Self::opcode(), self.operands.len())
+        }
+
         // Retrieve the input.
         let input = registers.load(stack, &self.operands[0])?;
 
@@ -138,6 +153,11 @@ impl<N: Network> Length<N> {
         _stack: &impl StackProgram<N>,
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
+        // Ensure the number of input types is correct.
+        if input_types.len() != 1 {
+            bail!("Instruction '{}' expects 1 input, found {} inputs", Self::opcode(), input_types.len())
+        }
+
         // Ensure that the input type is either an array or a vector.
         match input_types[0] {
             RegisterType::Plaintext(PlaintextType::Array(_)) | RegisterType::Vector(_) => {}
@@ -167,7 +187,8 @@ impl<N: Network> Parser for Length<N> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
 
-        Ok((string, Self { operands: vec![operand], destination }))
+        // Return the operation.
+        Ok((string, Self::new(operand, destination)))
     }
 }
 
@@ -199,6 +220,10 @@ impl<N: Network> Debug for Length<N> {
 impl<N: Network> Display for Length<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // Ensure the number of operands is 1.
+        if self.operands.len() != 1 {
+            return Err(fmt::Error);
+        }
         // Print the operation.
         write!(f, "{} {} into {}", Self::opcode(), self.operands[0], self.destination)
     }
@@ -213,13 +238,17 @@ impl<N: Network> FromBytes for Length<N> {
         let destination = Register::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands: vec![operand], destination })
+        Ok(Self::new(operand, destination))
     }
 }
 
 impl<N: Network> ToBytes for Length<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Ensure the number of operands is 1.
+        if self.operands.len() != 1 {
+            return Err(error(format!("The number of operands must be 1, found {}", self.operands.len())));
+        }
         // Write the operands.
         self.operands[0].write_le(&mut writer)?;
         // Write the destination register.
