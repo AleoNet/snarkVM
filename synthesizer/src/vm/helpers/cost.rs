@@ -161,6 +161,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Or(_)) => Ok(2_000),
         Command::Instruction(Instruction::Pow(_)) => Ok(20_000),
         Command::Instruction(Instruction::PowWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Push(_)) => Ok(10_000),
         Command::Instruction(Instruction::Rem(_)) => Ok(2_000),
         Command::Instruction(Instruction::RemWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Shl(_)) => Ok(2_000),
