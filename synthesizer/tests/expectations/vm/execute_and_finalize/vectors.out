@@ -7,7 +7,20 @@
       - 2u8
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"4968909291835658524230369524920856182034686952601222075557034218234612092938field","checksum":"1764714006163259182488280837887948352106187275498806281386909638288557602826field","value":"record1qyqsqjfjtyqcmmeqm0us4fa2nwp6xvsqceryw0wcvfld2k26d6hwwwgjqyxx66trwfhkxun9v35hguerqqpqzq8lp6407uupfulwg936zg2768ymhqma7elevu8px4f08hu65prpp3fqg4yq6zwkpaw32js4yf47eexj579fydv3x9jsyqwqs50g5xvqcxlkk9m"}'
+      - '{"type":"record","id":"6980702103335573565747957169745439529845982648860947379350311510611933497285field","checksum":"5706752244052081633000369433573873471438278244371957012206646719892645468317field","value":"record1qyqsqv3qepz7havu03gxka2vqj4838p5dwsjgjjwv4jk3epwdyqqa7stqyxx66trwfhkxun9v35hguerqqpqzq8sp8jqxqa5frha0kr6dkep9xe2g3zj397ffedc2dhp30cpxs0mqqeeqe5lx4yh4xzn0u07d7yqcwwrx7jryw40uxsqx6uv33espceqqg82ewd"}'
       finalize: []
   speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    vectors.aleo/test_push:
+      outputs: []
+      finalize:
+      - 3u8
+      - 4u8
+      - 5u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"6711535898732076254991149555111951408486553861864086427456889022564214356115field","checksum":"7167869217419831201729211163362271994149220539793753726350835782603587867419field","value":"record1qyqsqga0mxpuv3627sl5s89exxdg85gzlpvlqnhqfvzx6809gf6knwgtqyxx66trwfhkxun9v35hguerqqpqzqzh3dlya02fgq6m6rslwr6afdt3ls5gup7prg9948qktlq2zc6nqefwr27ucy9mwa00zzaen4t2yrykchn8gq9pqakj6nw85fusc06qvept7qy"}'
+      finalize: []
+  speculate: the execution was rejected
   add_next_block: succeeded.

@@ -3,6 +3,8 @@ randomness: 2544139
 cases:
   - function: compare_vectors
     inputs: [0u8, 1u8, 2u8]
+  - function: test_push
+    inputs: [3u8, 4u8, 5u8]
 */
 
 program vectors.aleo;
@@ -33,5 +35,29 @@ finalize compare_vectors:
     assert.eq r7 3u32;
     length r5 into r8;
     assert.eq r8 3u32;
+
+function test_push:
+    input r0 as u8.public;
+    input r1 as u8.public;
+    input r2 as u8.public;
+    finalize r0 r1 r2;
+
+finalize test_push:
+    input r0 as u8.public;
+    input r1 as u8.public;
+    input r2 as u8.public;
+    cast into r3 as [u8];
+    length r3 into r4;
+    assert.eq r4 0u32;
+    push r3 r0;
+    length r3 into r5;
+    assert.eq r5 1u32;
+    push r3 r1;
+    length r3 into r6;
+    assert.eq r6 2u32;
+    push r3 r2;
+    length r3 into r7;
+    assert.eq r7 3u32;
+
 
 
