@@ -520,6 +520,7 @@ impl<N: Network> RegisterTypes<N> {
             Opcode::Length => {}
             Opcode::Push => bail!("Forbidden operation: `push` is currently only supported in `finalize`."),
             Opcode::Delete => bail!("Forbidden operation: `delete` is currently only supported in `finalize`."),
+            Opcode::Get => bail!("Forbidden operation: `get` is currently only supported in `finalize`."),
         }
         Ok(())
     }

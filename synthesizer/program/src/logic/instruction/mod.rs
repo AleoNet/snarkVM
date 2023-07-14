@@ -103,6 +103,8 @@ pub enum Instruction<N: Network> {
     DivWrapped(DivWrapped<N>),
     /// Doubles `first`, storing the outcome in `destination`.
     Double(Double<N>),
+    /// Gets the element at `second` from `first`, storing the outcome in `destination`.
+    Get(Get<N>),
     /// Computes whether `first` is greater than `second` as a boolean, storing the outcome in `destination`.
     GreaterThan(GreaterThan<N>),
     /// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
@@ -282,6 +284,7 @@ macro_rules! instruction {
             Length,
             Push,
             Delete,
+            Get,
         }}
     };
     // A variant **without** curly braces:
@@ -451,7 +454,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            60,
+            63,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

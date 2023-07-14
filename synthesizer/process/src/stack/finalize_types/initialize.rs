@@ -579,6 +579,7 @@ impl<N: Network> FinalizeTypes<N> {
             Opcode::Length => {}
             Opcode::Push => {}
             Opcode::Delete => {}
+            Opcode::Get => {}
         }
         Ok(())
     }
