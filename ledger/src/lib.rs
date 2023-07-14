@@ -58,6 +58,7 @@ use console::{
 };
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
+use ledger_narwhal::{BatchCertificate, Transmission, TransmissionID};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
@@ -71,7 +72,7 @@ use core::ops::Range;
 use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
 use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]
@@ -107,6 +108,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
     /// The current committee.
     current_committee: Arc<RwLock<IndexSet<Address<N>>>>,
+    /// The pending prover solutions and their proof targets.
+    pending_solutions: Arc<RwLock<IndexMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -165,6 +168,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             current_block: Arc::new(RwLock::new(genesis.clone())),
             current_epoch_challenge: Default::default(),
             current_committee: Default::default(),
+            pending_solutions: Default::default(),
         };
 
         // Add the genesis validator to the committee.
@@ -301,6 +305,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             Some(challenge) => Ok(challenge.clone()),
             None => self.get_epoch_challenge(self.latest_height()),
         }
+    }
+
+    pub fn latest_pending_solutions(&self) -> IndexMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)> {
+        self.pending_solutions.read().clone()
     }
 }
 
