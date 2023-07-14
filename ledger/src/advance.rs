@@ -178,15 +178,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Drop the write lock on the current block.
         drop(current_block);
 
-        // Remove the pending solutions included in the block.
-        if let Some(coinbase) = block.coinbase() {
-            // Acquire the write lock on the pending solutions.
-            let mut pending_solutions = self.pending_solutions.write();
-            // Remove the pending solutions.
-            for solution in coinbase.partial_solutions() {
-                // Remove the pending solution.
-                pending_solutions.remove(&solution.commitment());
-            }
+        // Clears the memory pool of pending solutions that are now invalid.
+        if block.coinbase().is_some() {
+            self.pending_solutions.write().retain(|puzzle_commitment, _solution| {
+                // Ensure the prover solution is still valid.
+                match self.contains_puzzle_commitment(puzzle_commitment) {
+                    Ok(true) | Err(_) => {
+                        trace!("Removed prover solution '{puzzle_commitment}' from the memory pool");
+                        false
+                    }
+                    Ok(false) => true,
+                }
+            });
         }
         // If this starts a new epoch, clear all unconfirmed solutions from the memory pool.
         if block.epoch_number() > current_epoch_number {
@@ -217,6 +220,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         //     });
         // }
 
+        info!("Advanced to block {}", block.height());
         Ok(())
     }
 }
