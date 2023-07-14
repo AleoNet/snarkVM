@@ -1062,6 +1062,27 @@ mod tests {
         // Ensure the mapping name got initialized.
         assert!(finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
 
+        // Attempt to remove a key-value pairs that do not exist.
+        for item in 0..1000 {
+            // Prepare the key.
+            let key = Plaintext::from_str(&format!("{item}field")).unwrap();
+            // Ensure the key did not get initialized.
+            assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
+            // Ensure the value returns None.
+            assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
+
+            // Remove the key-value pair.
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            // Ensure the program ID is still initialized.
+            assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
+            // Ensure the mapping name is still initialized.
+            assert!(finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
+            // Ensure the key did not get initialized.
+            assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
+            // Ensure the value returns None.
+            assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
+        }
+
         // Insert the list of keys and values.
         for item in 0..1000 {
             // Prepare the key and value.
@@ -1095,7 +1116,7 @@ mod tests {
             assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
             // Remove the key-value pair.
-            finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_some());
             // Ensure the program ID is still initialized.
             assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
@@ -1265,8 +1286,8 @@ mod tests {
             assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
-            // Ensure removing an un-initialized key returns None.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            // Ensure removing an un-initialized key fails.
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
             // Ensure removing an un-initialized mapping fails.
             assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
         }
@@ -1284,8 +1305,8 @@ mod tests {
             assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns None.
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
-            // Ensure removing an un-initialized returns None.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            // Ensure removing an un-initialized key fails.
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
             // Ensure removing an un-initialized mapping fails.
             assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
         }
