@@ -3,8 +3,7 @@
 // The author disclaims liability for damages of any kind arising from the use of this program.
 program stake.aleo;
 
-// The `bond` struct tracks the amount of microcredits
-// that are currently bonded to the specified validator.
+// The `bond` struct tracks the amount of microcredits that are currently bonded to the specified validator.
 struct bond:
     validator as address;
     microcredits as u64;
@@ -14,16 +13,15 @@ struct stake:
     principal as u64;
     delegated as u64;
 
-/// The `lock` struct track the amount of microcredits
-/// that are currently locked for the specified owner
-/// until the specified unlock height.
+// The `lock` struct track the amount of microcredits that are currently locked for the specified owner until the
+// specified unlock height.
 struct lock:
     owner as address;
     bond as bond;
     unlock_height as u32;
 
-// NOTE: This stake amount is the sum of all the microcredits bonded to the validator. To get the validator's initial balance, we would need to
-// subtract all the delegated stake currently in the `bonded` mapping.
+// NOTE: This stake amount is the sum of all the microcredits bonded to the validator. To get the validator's initial
+// balance, we would need to subtract all the delegated stake currently in the `bonded` mapping.
 mapping validators:
     key left as address.public;
     value right as stake.public;
@@ -33,14 +31,12 @@ mapping delegators:
     key left as address.public;
     value right as [address].public;
 
-// The `bonded` mapping represents the amount of microcredits
-// that are currently bonded.
+// The `bonded` mapping represents the amount of microcredits that are currently bonded.
 mapping bonded:
     key left as address.public;
     value right as bond.public;
 
-// The `locked` mapping represents the amount of microcredits
-// that are currently locked for the owner.
+// The `locked` mapping represents the amount of microcredits that are currently locked for the owner.
 mapping locked:
     key left as address.public;
     value right as [lock].public;
@@ -66,7 +62,7 @@ function bond_validator:
 
 finalize bond_validator:
     // Input the validator address.
-    input r0 as addres.public;
+    input r0 as address.public;
     // Input the amount of microcredits to bond.
     input r1 as u64.public;
 
