@@ -42,6 +42,9 @@ pub use literals::*;
 mod push;
 pub use push::*;
 
+mod remove;
+pub use remove::*;
+
 mod macros;
 
 use crate::Opcode;

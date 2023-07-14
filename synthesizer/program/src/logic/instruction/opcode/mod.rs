@@ -39,6 +39,8 @@ pub enum Opcode {
     Literal(&'static str),
     /// The opcode is for a push operation (i.e. `push`).
     Push,
+    /// The opcode is for a remove operation (i.e. `remove`).
+    Remove,
 }
 
 impl Deref for Opcode {
@@ -58,6 +60,7 @@ impl Deref for Opcode {
             Opcode::Length => &"length",
             Opcode::Literal(opcode) => opcode,
             Opcode::Push => &"push",
+            Opcode::Remove => &"remove",
         }
     }
 }
@@ -84,6 +87,7 @@ impl Display for Opcode {
             Self::Length => write!(f, "{}", self.deref()),
             Self::Literal(opcode) => write!(f, "{opcode}"),
             Self::Push => write!(f, "{}", self.deref()),
+            Self::Remove => write!(f, "{}", self.deref()),
         }
     }
 }

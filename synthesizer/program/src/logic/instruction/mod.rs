@@ -167,6 +167,8 @@ pub enum Instruction<N: Network> {
     Rem(Rem<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the remainder in `destination`.
     RemWrapped(RemWrapped<N>),
+    /// Removes the element at `second` from `first`, storing the outcome in `destination`.
+    Remove(Remove<N>),
     /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
     Shl(Shl<N>),
     /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
@@ -279,6 +281,7 @@ macro_rules! instruction {
             Xor,
             Length,
             Push,
+            Remove,
         }}
     };
     // A variant **without** curly braces:

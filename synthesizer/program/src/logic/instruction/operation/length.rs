@@ -267,6 +267,7 @@ mod tests {
     fn test_parse() {
         let (string, length) = Length::<CurrentNetwork>::parse("length r0 into r1").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(length.operands.len(), 1);
         assert_eq!(length.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(length.destination, Register::Locator(1), "The destination register is incorrect");
     }
