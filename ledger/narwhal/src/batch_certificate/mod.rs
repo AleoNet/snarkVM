@@ -172,8 +172,13 @@ pub mod test_helpers {
 
     /// Returns a sample batch certificate, sampled at random.
     pub fn sample_batch_certificate(rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
+        sample_batch_certificate_for_round(rng.gen(), rng)
+    }
+
+    /// Returns a sample batch certificate with a given round; the rest is sampled at random.
+    pub fn sample_batch_certificate_for_round(round: u64, rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
         // Sample a batch header.
-        let batch_header = crate::batch_header::test_helpers::sample_batch_header(rng);
+        let batch_header = crate::batch_header::test_helpers::sample_batch_header_for_round(round, rng);
         // Sample a list of signatures.
         let mut signatures = IndexMap::with_capacity(5);
         for _ in 0..5 {
