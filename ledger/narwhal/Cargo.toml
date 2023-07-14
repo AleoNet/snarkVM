@@ -25,7 +25,6 @@ edition = "2021"
 
 [features]
 default = [ "batch-certificate", "batch-header", "transmission", "transmission-id" ]
-async = [ "tokio" ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 test-helpers = [ "bytes", "time" ]
@@ -70,12 +69,6 @@ features = [ "preserve_order" ]
 [dependencies.time]
 version = "0.3"
 optional = true
-
-[dependencies.tokio]
-version = "1.28"
-optional = true
-default-features = false
-features = [ "rt" ]
 
 [dev-dependencies.bincode]
 version = "1.3"

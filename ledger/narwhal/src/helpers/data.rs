@@ -34,34 +34,12 @@ impl<T: FromBytes + ToBytes + Send + 'static> Data<T> {
         }
     }
 
-    // #[cfg(feature = "async")]
-    // pub async fn deserialize(self) -> Result<T> {
-    //     match self {
-    //         Self::Object(x) => Ok(x),
-    //         Self::Buffer(bytes) => match tokio::task::spawn_blocking(move || T::from_bytes_le(&bytes)).await {
-    //             Ok(x) => x,
-    //             Err(err) => Err(err.into()),
-    //         },
-    //     }
-    // }
-
     pub fn deserialize_blocking(self) -> Result<T> {
         match self {
             Self::Object(x) => Ok(x),
             Self::Buffer(bytes) => T::from_bytes_le(&bytes),
         }
     }
-
-    // #[cfg(feature = "async")]
-    // pub async fn serialize(self) -> Result<Bytes> {
-    //     match self {
-    //         Self::Object(x) => match tokio::task::spawn_blocking(move || x.to_bytes_le()).await {
-    //             Ok(bytes) => bytes.map(|vec| vec.into()),
-    //             Err(err) => Err(err.into()),
-    //         },
-    //         Self::Buffer(bytes) => Ok(bytes),
-    //     }
-    // }
 
     pub fn serialize_blocking_into<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
