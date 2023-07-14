@@ -7,6 +7,8 @@ cases:
     inputs: [3u8, 4u8, 5u8]
   - function: test_delete
     inputs: [6u8, 7u8, 8u8]
+  - function: test_get
+    inputs: [9u8, 10u8, 11u8]
 
 */
 
@@ -87,6 +89,26 @@ finalize test_delete:
     assert.eq r9 r2;
     length r3 into r10;
     assert.eq r10 0u32;
+
+function test_get:
+    input r0 as u8.public;
+    input r1 as u8.public;
+    input r2 as u8.public;
+    finalize r0 r1 r2;
+
+finalize test_get:
+    input r0 as u8.public;
+    input r1 as u8.public;
+    input r2 as u8.public;
+    cast r0 r1 r2 into r3 as [u8];
+    get r3 0u32 into r4;
+    assert.eq r4 r0;
+    get r3 1u32 into r5;
+    assert.eq r5 r1;
+    get r3 2u32 into r6;
+    assert.eq r6 r2;
+
+
 
 
 
