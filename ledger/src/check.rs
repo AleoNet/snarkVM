@@ -606,7 +606,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
-        // TODO (raychu86): Check ledger last committed certificate round == round_to_check
+        // Ensure that the last committed certificate round of the subdag is equivalent to the final `round_to_check`.
+        if !block.is_genesis() {
+            // Get the smallest round in the committed subdag.
+            match committed_subdag.keys().next() {
+                Some(round) => ensure!(
+                    *round == round_to_check,
+                    "The last committed certificate round of the ledger is not the bottom level of the committed subdag"
+                ),
+                None => bail!("Missing last committed certificate round of the ledger"),
+            }
+        }
 
         // Flatten the transmission ids from the subdag into a single vector.
         let transmission_ids: IndexSet<TransmissionID<N>> = {
@@ -639,6 +649,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let mut transaction_ids = block.transactions().transaction_ids();
         // Fetch the ratifications iterator.
         let mut ratifications_ids = block.ratifications();
+        // Fetch the additional solutions from the transmission ids.
+        let mut solutions = HashMap::new();
 
         // Iterate through the provided transmission ids and ensure that the `Transmissions` ordering is correct.
         for transmission_id in transmission_ids {
@@ -651,7 +663,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 TransmissionID::Solution(_commitment) => {
                     // TODO (raychu86): Add the solution to the `pending_solutions`. Currently we do not have a way to fetch the solution from anywhere.
                     //  The subsequent methods `candidate_solution` and `prover_reward` also need to support `PartialSolution` (currently only `ProverSolution`s)
-                    // self.pending_solutions.add_pending_solution(commitment);
+                    // let solution = self.get_solution(commitment);
+                    // solutions.insert(solution.commitment(), (solution, proof_target));
                 }
                 // Check the next transaction ID matches the expected ID.
                 TransmissionID::Transaction(expected_id) => {
@@ -672,6 +685,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.latest_height(),
             self.latest_proof_target(),
             self.latest_coinbase_target(),
+            Some(solutions),
         )?;
 
         // Ensure that the candidate solutions are equivalent to what's in the block coinbase.

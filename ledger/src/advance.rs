@@ -268,6 +268,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let mut transactions: Vec<Transaction<N>> = Vec::new();
         // Extract ratifications.
         let mut ratifications = Vec::new();
+        // Extract the solutions.
+        let mut solutions = HashMap::new();
 
         // Extract the ratifications, solutions, and transactions.
         for transmission in transmissions.into_values() {
@@ -277,8 +279,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 }
                 Transmission::Solution(solution) => {
                     let solution = solution.deserialize_blocking()?;
+                    let proof_target = solution.to_target()?;
                     // TODO (raychu86): Do we check if the target is sufficient? Or if the solution is valid for the epoch?
-                    self.pending_solutions.add_pending_solution(solution)?;
+                    solutions.insert(solution.commitment(), (solution, proof_target));
                 }
                 Transmission::Transaction(transaction) => {
                     transactions.push(transaction.deserialize_blocking()?);
@@ -292,6 +295,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             latest_height,
             latest_proof_target,
             latest_coinbase_target,
+            Some(solutions),
         )?;
 
         // Construct the coinbase solution.

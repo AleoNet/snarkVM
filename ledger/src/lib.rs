@@ -72,7 +72,11 @@ use core::ops::Range;
 use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
-use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]

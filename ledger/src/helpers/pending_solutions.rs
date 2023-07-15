@@ -86,6 +86,7 @@ impl<N: Network> PendingSolutions<N> {
         latest_height: u32,
         latest_proof_target: u64,
         latest_coinbase_target: u64,
+        additional_solutions: Option<HashMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>>,
     ) -> Result<Option<Vec<ProverSolution<N>>>> {
         // If the latest height is greater than or equal to the anchor height at year 10, then return 'None'.
         if latest_height >= anchor_block_height(N::ANCHOR_TIME, 10) {
@@ -97,6 +98,7 @@ impl<N: Network> PendingSolutions<N> {
             .pending_solutions
             .read()
             .iter()
+            .chain(additional_solutions.unwrap_or_default().iter())
             .filter(|(_, (_, proof_target))| *proof_target >= latest_proof_target)
             .filter(|(_, (solution, _))| {
                 // Ensure the prover solution is not already in the ledger.
