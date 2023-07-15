@@ -424,6 +424,8 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
         let mut output = self;
         output.constant *= coefficient;
         output.terms.iter_mut().for_each(|(_, current_coefficient)| *current_coefficient *= coefficient);
+        // If the coefficient of terms are now zero, remove the entries.
+        output.terms = output.terms.into_iter().filter(|(_, v)| *v != F::zero()).collect();
         output.value *= coefficient;
         output
     }

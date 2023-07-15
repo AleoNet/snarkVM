@@ -43,17 +43,17 @@ impl<F: Field> ConstraintSystem<F> {
     }
 
     #[inline]
-    pub(crate) fn a_matrix(&self) -> Vec<Vec<(F, usize)>> {
+    pub(crate) fn a_matrix(&self) -> Result<Vec<Vec<(F, usize)>>, anyhow::Error> {
         to_matrix_helper(&self.a, self.num_public_variables)
     }
 
     #[inline]
-    pub(crate) fn b_matrix(&self) -> Vec<Vec<(F, usize)>> {
+    pub(crate) fn b_matrix(&self) -> Result<Vec<Vec<(F, usize)>>, anyhow::Error> {
         to_matrix_helper(&self.b, self.num_public_variables)
     }
 
     #[inline]
-    pub(crate) fn c_matrix(&self) -> Vec<Vec<(F, usize)>> {
+    pub(crate) fn c_matrix(&self) -> Result<Vec<Vec<(F, usize)>>, anyhow::Error> {
         to_matrix_helper(&self.c, self.num_public_variables)
     }
 
