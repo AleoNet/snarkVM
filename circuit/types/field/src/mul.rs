@@ -92,21 +92,33 @@ impl<E: Environment> OutputMode<dyn Mul<Field<E>, Output = Field<E>>> for Field<
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Constant, Mode::Public) => match &case.0 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
-                    // TODO: Should this be a constant?
-                    //value if value.is_zero() => Mode::Constant,
+                    value if value.is_zero() => Mode::Constant,
+                    value if value.is_one() => Mode::Public,
+                    _ => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Constant * Public"),
+            },
+            (Mode::Public, Mode::Constant) => match &case.1 {
+                CircuitType::Constant(constant) => match constant.eject_value() {
+                    value if value.is_zero() => Mode::Constant,
                     value if value.is_one() => Mode::Public,
                     _ => Mode::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
             },
-            (Mode::Public, Mode::Constant) => match &case.1 {
+            (Mode::Private, Mode::Constant) => match &case.1 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
-                    // TODO: Should this be a constant?
-                    //value if value.is_zero() => Mode::Constant,
-                    value if value.is_one() => Mode::Public,
+                    value if value.is_zero() => Mode::Constant,
                     _ => Mode::Private,
                 },
-                _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
+                _ => E::halt("The constant is required to determine the output mode of Private * Constant"),
+            },
+            (Mode::Constant, Mode::Private) => match &case.0 {
+                CircuitType::Constant(constant) => match constant.eject_value() {
+                    value if value.is_zero() => Mode::Constant,
+                    _ => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Constant * Private"),
             },
             (_, _) => Mode::Private,
         }
