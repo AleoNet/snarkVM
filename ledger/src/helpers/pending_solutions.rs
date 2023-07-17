@@ -87,10 +87,10 @@ impl<N: Network> PendingSolutions<N> {
         latest_proof_target: u64,
         latest_coinbase_target: u64,
         additional_solutions: Option<HashMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>>,
-    ) -> Result<Option<Vec<ProverSolution<N>>>> {
+    ) -> Option<Vec<ProverSolution<N>>> {
         // If the latest height is greater than or equal to the anchor height at year 10, then return 'None'.
         if latest_height >= anchor_block_height(N::ANCHOR_TIME, 10) {
-            return Ok(None);
+            return None;
         }
 
         // Filter the solutions by the latest proof target, ensure they are unique, and rank in descending order of proof target.
@@ -117,17 +117,10 @@ impl<N: Network> PendingSolutions<N> {
             .take(256)
             .collect();
 
-        // Compute the combined proof target of the prover solutions as a u128.
-        let combined_proof_target: u128 = candidate_solutions.iter().try_fold(0u128, |cumulative, solution| {
-            cumulative
-                .checked_add(solution.to_target()? as u128)
-                .ok_or_else(|| anyhow!("Combined proof target overflowed"))
-        })?;
-
-        // Return the prover solutions if the cumulative target is greater than or equal to the coinbase target.
-        match combined_proof_target >= latest_coinbase_target as u128 {
-            true => Ok(Some(candidate_solutions)),
-            false => Ok(None),
+        // Return the prover solutions.
+        match !candidate_solutions.is_empty() {
+            true => Some(candidate_solutions),
+            false => None,
         }
     }
 

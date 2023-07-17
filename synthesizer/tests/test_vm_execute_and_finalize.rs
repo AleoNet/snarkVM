@@ -310,6 +310,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         CurrentNetwork::STARTING_SUPPLY,
         0,
         0,
+        0,
         CurrentNetwork::GENESIS_COINBASE_TARGET,
         CurrentNetwork::GENESIS_PROOF_TARGET,
         previous_block.last_coinbase_target(),

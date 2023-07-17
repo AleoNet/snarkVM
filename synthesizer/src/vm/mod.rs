@@ -551,6 +551,7 @@ function compute:
             Testnet3::STARTING_SUPPLY,
             0,
             0,
+            0,
             Testnet3::GENESIS_COINBASE_TARGET,
             Testnet3::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),

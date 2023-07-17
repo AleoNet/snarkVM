@@ -520,7 +520,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn check_next_block_bft(
         &self,
         block: &Block<N>,
-        new_pending_solutions: HashMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>,
         committed_subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>,
     ) -> Result<()> {
         // Perform the non-bft checks.
@@ -689,8 +688,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.latest_height(),
             self.latest_proof_target(),
             self.latest_coinbase_target(),
-            Some(new_pending_solutions),
-        )?;
+            Some(solutions),
+        );
 
         // Ensure that the candidate solutions are equivalent to what's in the block coinbase.
         match (block.coinbase(), &candidate_solutions) {

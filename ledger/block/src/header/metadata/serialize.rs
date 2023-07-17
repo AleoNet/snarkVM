@@ -19,13 +19,14 @@ impl<N: Network> Serialize for Metadata<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut metadata = serializer.serialize_struct("Metadata", 11)?;
+                let mut metadata = serializer.serialize_struct("Metadata", 12)?;
                 metadata.serialize_field("network", &self.network)?;
                 metadata.serialize_field("round", &self.round)?;
                 metadata.serialize_field("height", &self.height)?;
                 metadata.serialize_field("total_supply_in_microcredits", &self.total_supply_in_microcredits)?;
                 metadata.serialize_field("cumulative_weight", &self.cumulative_weight)?;
                 metadata.serialize_field("combined_proof_target", &self.combined_proof_target)?;
+                metadata.serialize_field("accumulated_proof_target", &self.accumulated_proof_target)?;
                 metadata.serialize_field("coinbase_target", &self.coinbase_target)?;
                 metadata.serialize_field("proof_target", &self.proof_target)?;
                 metadata.serialize_field("last_coinbase_target", &self.last_coinbase_target)?;
@@ -51,6 +52,7 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
                     DeserializeExt::take_from_value::<D>(&mut metadata, "total_supply_in_microcredits")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "cumulative_weight")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "combined_proof_target")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "accumulated_proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "coinbase_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_target")?,

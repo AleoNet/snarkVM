@@ -143,6 +143,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             next_total_supply_in_microcredits,
             next_cumulative_weight,
             combined_proof_target,
+            0,
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,
@@ -296,7 +297,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             latest_proof_target,
             latest_coinbase_target,
             Some(solutions.clone()),
-        )?;
+        );
 
         // Construct the coinbase solution.
         let (coinbase, coinbase_accumulator_point, combined_proof_target) = match &candidate_solutions {
@@ -405,6 +406,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             next_total_supply_in_microcredits,
             next_cumulative_weight,
             combined_proof_target,
+            0,
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,
