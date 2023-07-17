@@ -264,7 +264,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the latest accumulated proof target.
-    pub fn latest_accumulated_proof_target(&self) -> u128 {
+    pub fn latest_accumulated_proof_target(&self) -> u64 {
         self.current_block.read().accumulated_proof_target()
     }
 

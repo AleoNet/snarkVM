@@ -28,14 +28,14 @@ pub fn proving_rewards<N: Network>(
     partial_solutions: &[PartialSolution<N>],
     coinbase_reward: u64,
     combined_proof_target: u128,
-    accumulated_proof_target: u128,
+    accumulated_proof_target: u64,
     coinbase_target: u64,
 ) -> Result<Vec<Ratify<N>>> {
     // Initialize a vector to store the proving rewards.
     let mut proving_rewards = Vec::with_capacity(partial_solutions.len());
 
     // Compute the remaining coinbase target.
-    let remaining_coinbase_target = (coinbase_target as u128)
+    let remaining_coinbase_target = coinbase_target
         .checked_sub(accumulated_proof_target)
         .ok_or_else(|| anyhow!("Coinbase target is less than the accumulated proof target"))?;
 
@@ -48,7 +48,7 @@ pub fn proving_rewards<N: Network>(
         let numerator = (coinbase_reward as u128)
             .checked_mul(partial_solution.to_target()? as u128)
             .ok_or_else(|| anyhow!("Proving reward numerator overflowed"))?
-            .checked_mul(remaining_coinbase_target)
+            .checked_mul(remaining_coinbase_target as u128)
             .ok_or_else(|| anyhow!("Proving reward numerator overflowed"))?;
         // Compute the denominator.
         let denominator = combined_proof_target

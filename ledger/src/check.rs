@@ -293,11 +293,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     }
                     // Compute the expected accumulated proof target.
                     let accumulated_proof_target =
-                        self.latest_accumulated_proof_target().saturating_add(combined_proof_target);
+                        u128::try_from(self.latest_accumulated_proof_target())?.saturating_add(combined_proof_target);
                     let expected_accumulated_proof_target =
                         match accumulated_proof_target >= u128::try_from(self.latest_coinbase_target())? {
-                            true => 0u128,
-                            false => accumulated_proof_target.saturating_sub(combined_proof_target),
+                            true => 0u64,
+                            false => u64::try_from(accumulated_proof_target.saturating_sub(combined_proof_target))?,
                         };
                     // Ensure that the accumulated proof target is correct.
                     if block.accumulated_proof_target() != expected_accumulated_proof_target {

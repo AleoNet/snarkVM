@@ -32,7 +32,7 @@ impl<N: Network> FromBytes for Metadata<N> {
         let total_supply_in_microcredits = u64::read_le(&mut reader)?;
         let cumulative_weight = u128::read_le(&mut reader)?;
         let combined_proof_target = u128::read_le(&mut reader)?;
-        let accumulated_proof_target = u128::read_le(&mut reader)?;
+        let accumulated_proof_target = u64::read_le(&mut reader)?;
         let coinbase_target = u64::read_le(&mut reader)?;
         let proof_target = u64::read_le(&mut reader)?;
         let last_coinbase_target = u64::read_le(&mut reader)?;

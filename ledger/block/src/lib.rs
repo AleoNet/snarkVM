@@ -223,7 +223,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the accumulated proof target for this block.
-    pub const fn accumulated_proof_target(&self) -> u128 {
+    pub const fn accumulated_proof_target(&self) -> u64 {
         self.header.accumulated_proof_target()
     }
 

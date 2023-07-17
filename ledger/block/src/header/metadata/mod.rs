@@ -37,8 +37,8 @@ pub struct Metadata<N: Network> {
     cumulative_weight: u128,
     /// The combined proof target for this block - 16 bytes.
     combined_proof_target: u128,
-    /// The accumulated proof target for this block since the last coinbase target was reached - 16 bytes.
-    accumulated_proof_target: u128,
+    /// The accumulated proof target for this block since the last coinbase target was reached - 8 bytes.
+    accumulated_proof_target: u64,
     /// The coinbase target for this block - 8 bytes.
     coinbase_target: u64,
     /// The proof target for this block - 8 bytes.
@@ -63,7 +63,7 @@ impl<N: Network> Metadata<N> {
         total_supply_in_microcredits: u64,
         cumulative_weight: u128,
         combined_proof_target: u128,
-        accumulated_proof_target: u128,
+        accumulated_proof_target: u64,
         coinbase_target: u64,
         proof_target: u64,
         last_coinbase_target: u64,
@@ -155,7 +155,7 @@ impl<N: Network> Metadata<N> {
     }
 
     /// Returns the accumulated proof target for this block.
-    pub const fn accumulated_proof_target(&self) -> u128 {
+    pub const fn accumulated_proof_target(&self) -> u64 {
         self.accumulated_proof_target
     }
 

@@ -151,7 +151,7 @@ impl<N: Network> Header<N> {
     }
 
     /// Returns the accumulated proof target for this block.
-    pub const fn accumulated_proof_target(&self) -> u128 {
+    pub const fn accumulated_proof_target(&self) -> u64 {
         self.metadata.accumulated_proof_target()
     }
 

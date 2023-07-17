@@ -329,16 +329,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => (None, Field::<N>::zero(), 0u128),
         };
 
-        // Compute the accumulated proof target.
-        let accumulated_proof_target = latest_accumulated_proof_target.saturating_add(combined_proof_target);
-
-        // TODO (raychu86): Consider the case where we may need to "roll over" the accumulated proof target if there is extra. Currently we just reset.
         // Compute the next accumulated proof target.
         // If the accumulated proof target is greater than or equal to the latest coinbase target, then we reset the accumulated proof target.
+        let accumulated_proof_target =
+            u128::try_from(latest_accumulated_proof_target)?.saturating_add(combined_proof_target);
         let (next_accumulated_proof_target, reached_coinbase_target) =
             match accumulated_proof_target >= latest_coinbase_target as u128 {
-                true => (0u128, true),
-                false => (accumulated_proof_target, false),
+                true => (0u64, true),
+                false => (u64::try_from(accumulated_proof_target)?, false),
             };
 
         // Compute the next round number.

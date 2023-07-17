@@ -63,7 +63,7 @@ impl<N: Network> Metadata<N> {
             // Ensure the combined proof target in the genesis block is 0.
             && self.combined_proof_target == 0u128
             // Ensure the accumulated proof target in the genesis block is 0.
-            && self.accumulated_proof_target == 0u128
+            && self.accumulated_proof_target == 0u64
             // Ensure the coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
             && self.coinbase_target == N::GENESIS_COINBASE_TARGET
             // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
@@ -88,7 +88,7 @@ mod tests {
     /// Update this method if the contents of the metadata have changed.
     fn get_expected_size() -> usize {
         // Metadata size.
-        1 + 8 + 4 + 8 + 16 + 16 + 16 + 8 + 8 + 8 + 8 + 8
+        1 + 8 + 4 + 8 + 16 + 16 + 8 + 8 + 8 + 8 + 8 + 8
             // Add an additional 2 bytes for versioning.
             + 2
     }
