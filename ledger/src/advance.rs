@@ -35,6 +35,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_total_supply = latest_block.total_supply_in_microcredits();
         // Retrieve the latest cumulative weight.
         let latest_cumulative_weight = latest_block.cumulative_weight();
+        // Retrieve the latest coinbase target.
+        let latest_coinbase_target = latest_block.coinbase_target();
+        // Retrieve the latest accumulated proof target.
+        let latest_accumulated_proof_target = latest_block.accumulated_proof_target();
 
         // Construct the coinbase solution.
         let (coinbase, coinbase_accumulator_point, combined_proof_target) = match &candidate_solutions {
@@ -91,7 +95,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 // Construct the partial prover solutions.
                 let partial_solutions = prover_solutions.iter().map(|s| *s.partial_solution()).collect::<Vec<_>>();
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(&partial_solutions, coinbase_reward, combined_proof_target)?;
+                let proving_rewards = proving_rewards(
+                    &partial_solutions,
+                    coinbase_reward,
+                    combined_proof_target,
+                    latest_accumulated_proof_target,
+                    latest_coinbase_target,
+                )?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
@@ -371,7 +381,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 // Construct the partial prover solutions.
                 let partial_solutions = prover_solutions.iter().map(|s| *s.partial_solution()).collect::<Vec<_>>();
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(&partial_solutions, coinbase_reward, combined_proof_target)?;
+                let proving_rewards = proving_rewards(
+                    &partial_solutions,
+                    coinbase_reward,
+                    combined_proof_target,
+                    latest_accumulated_proof_target,
+                    latest_coinbase_target,
+                )?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.

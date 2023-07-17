@@ -714,7 +714,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(partial_solutions, coinbase_reward, combined_proof_target)?;
+                let proving_rewards = proving_rewards(
+                    partial_solutions,
+                    coinbase_reward,
+                    combined_proof_target,
+                    self.latest_accumulated_proof_target(),
+                    self.latest_coinbase_target(),
+                )?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
