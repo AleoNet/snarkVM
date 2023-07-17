@@ -89,8 +89,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Construct the partial prover solutions.
-                let partial_solutions =
-                    prover_solutions.iter().map(|s| s.partial_solution().clone()).collect::<Vec<_>>();
+                let partial_solutions = prover_solutions.iter().map(|s| *s.partial_solution()).collect::<Vec<_>>();
                 // Calculate the proving rewards.
                 let proving_rewards = proving_rewards(&partial_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
@@ -370,8 +369,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Construct the partial prover solutions.
-                let partial_solutions =
-                    prover_solutions.iter().map(|s| s.partial_solution().clone()).collect::<Vec<_>>();
+                let partial_solutions = prover_solutions.iter().map(|s| *s.partial_solution()).collect::<Vec<_>>();
                 // Calculate the proving rewards.
                 let proving_rewards = proving_rewards(&partial_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
