@@ -25,16 +25,25 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod u64 {
-    use snarkvm_circuit::{FromStr, U64, U8};
+    use snarkvm_circuit::{Boolean, FromStr, U64, U8};
     use snarkvm_circuit_environment::{Environment, FormalCircuit, FromBits, Inject, Mode, ToBits, Transcribe};
     use snarkvm_circuit_types::Modulo;
     use snarkvm_console_types_integers::{
         AddWrapped,
+        Compare,
+        DivWrapped,
+        Equal,
         MulWrapped,
         One,
         PowChecked,
         PowWrapped,
+        RemWrapped,
+        // ShlChecked, // we are using `<<`
+        ShlWrapped,
+        // ShrChecked, // we are using `>>`
+        ShrWrapped,
         SubWrapped,
+        Ternary,
         Zero,
         U64 as ConsoleU64,
         U8 as ConsoleU8,
@@ -166,6 +175,32 @@ mod u64 {
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
         println!("// and u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn compare() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = a.is_less_than(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// compare");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn equal() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = a.is_equal(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// equal");
         println!("{}", output);
     }
 
@@ -501,7 +536,20 @@ mod u64 {
 
     // for ops see circuit/types/integers/{div_checked,div_wrapped}.rs
     // However, unsigned div (checked) and unsigned div.w (wrapped) are identical.
-    // So we don't bother getting samples of div_wrapped.
+    // We will get one sample of div_wrapped for the var_var case to make sure.
+
+    #[test]
+    fn div_wrapped_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = &a.div_wrapped(&b); // '/' on integers turns into a.div_checked(b)
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// div (wrapped) u64 private var with u64 private var");
+        println!("{}", output);
+    }
 
     // var / var
     #[test]
@@ -635,8 +683,8 @@ mod u64 {
     }
 
     // for ops see circuit/types/integers/{rem_checked,rem_wrapped}.rs
-    // However, unsigned rem (checked) and unsigned rem.w (wrapped) are identical.
-    // So we don't bother getting samples of rem_wrapped.
+    // However, unsigned rem (checked) and unsigned rem.w (wrapped) should be identical.
+    // We go ahead and get a sample of rem_wrapped to check that it is identical to rem_checked.
 
     // var % var
     #[test]
@@ -649,6 +697,85 @@ mod u64 {
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
         println!("// rem (checked) u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn rem_wrapped_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = &a.rem_wrapped(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// rem (wrapped) u64 private var with u64 private var");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn shl_checked_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a << &b; // '<<' on integers turns into a.shl_checked(b)
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string(&transcript).unwrap();
+        println!("// shl (checked) u64 private var with u8 private var");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn shl_wrapped_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a.shl_wrapped(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string(&transcript).unwrap();
+        println!("// shl (wrapped) u64 private var with u8 private var");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn shr_checked_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a >> &b; // '>>' on integers turns into a.shr_checked(b)
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string(&transcript).unwrap();
+        println!("// shr (checked) u64 private var with u8 private var");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn shr_wrapped_var_var() {
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let b = U8::<FormalCircuit>::new(Mode::Private, ConsoleU8::new(1u8));
+        let _candidate = &a.shr_wrapped(&b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string(&transcript).unwrap();
+        println!("// shr (wrapped) u64 private var with u8 private var");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn ternary() {
+        let condition = Boolean::<FormalCircuit>::new(Mode::Private, true);
+        let a = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(0u64));
+        let b = U64::<FormalCircuit>::new(Mode::Private, ConsoleU64::new(1u64));
+        let _candidate = U64::ternary(&condition, &a, &b);
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// ternary boolean private var with u64 private var and u64 private var");
         println!("{}", output);
     }
 

@@ -41,9 +41,9 @@ mod i64 {
         PowChecked,
         PowWrapped,
         RemWrapped,
-        ShlChecked,
+        // ShlChecked, // we are using `<<`
         ShlWrapped,
-        ShrChecked,
+        // ShrChecked, // we are using `>>`
         ShrWrapped,
         SubWrapped,
         Ternary,
