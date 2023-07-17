@@ -271,14 +271,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         if block.height() > 0 {
             match block.coinbase() {
                 Some(coinbase) => {
-                    // Ensure the last coinbase target matches the coinbase target.
-                    if block.last_coinbase_target() != block.coinbase_target() {
-                        bail!("The last coinbase target does not match the coinbase target")
-                    }
-                    // Ensure the last coinbase timestamp matches the block timestamp.
-                    if block.last_coinbase_timestamp() != block.timestamp() {
-                        bail!("The last coinbase timestamp does not match the block timestamp")
-                    }
                     // Compute the combined proof target.
                     let combined_proof_target = coinbase.to_combined_proof_target()?;
                     // Ensure that the cumulative weight includes the next block's combined proof target.
@@ -300,14 +292,37 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     // Compute the expected accumulated proof target.
                     let accumulated_proof_target =
                         u128::try_from(self.latest_accumulated_proof_target())?.saturating_add(combined_proof_target);
-                    let expected_accumulated_proof_target =
+                    let (expected_accumulated_proof_target, reached_coinbase_target) =
                         match accumulated_proof_target >= u128::try_from(self.latest_coinbase_target())? {
-                            true => 0u64,
-                            false => u64::try_from(accumulated_proof_target.saturating_sub(combined_proof_target))?,
+                            true => (0u64, true),
+                            false => {
+                                (u64::try_from(accumulated_proof_target.saturating_sub(combined_proof_target))?, false)
+                            }
                         };
                     // Ensure that the accumulated proof target is correct.
                     if block.accumulated_proof_target() != expected_accumulated_proof_target {
                         bail!("The accumulated proof target does not match the expected accumulated proof target")
+                    }
+
+                    // Ensure the last coinbase target and timestamp are correct.
+                    if reached_coinbase_target {
+                        // Ensure the last coinbase target matches the coinbase target.
+                        if block.last_coinbase_target() != block.coinbase_target() {
+                            bail!("The last coinbase target does not match the coinbase target")
+                        }
+                        // Ensure the last coinbase timestamp matches the block timestamp.
+                        if block.last_coinbase_timestamp() != block.timestamp() {
+                            bail!("The last coinbase timestamp does not match the block timestamp")
+                        }
+                    } else {
+                        // Ensure the block last coinbase target matches the last coinbase target.
+                        if block.last_coinbase_target() != self.last_coinbase_target() {
+                            bail!("The last coinbase target does not match the coinbase target")
+                        }
+                        // Ensure the block last coinbase timestamp matches the last coinbase timestamp.
+                        if block.last_coinbase_timestamp() != self.last_coinbase_timestamp() {
+                            bail!("The last coinbase timestamp does not match the block timestamp")
+                        }
                     }
                 }
                 None => {
