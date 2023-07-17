@@ -29,7 +29,7 @@ impl FinalizeGlobalState {
         block_round: u64,
         block_height: u32,
         block_cumulative_weight: u128,
-        block_cumulative_proof_target: u128,
+        block_combined_proof_target: u128,
         previous_block_hash: N::BlockHash,
     ) -> Result<Self> {
         // Initialize the preimage.
@@ -37,7 +37,7 @@ impl FinalizeGlobalState {
         preimage.extend_from_slice(&block_round.to_bits_le());
         preimage.extend_from_slice(&block_height.to_bits_le());
         preimage.extend_from_slice(&block_cumulative_weight.to_bits_le());
-        preimage.extend_from_slice(&block_cumulative_proof_target.to_bits_le());
+        preimage.extend_from_slice(&block_combined_proof_target.to_bits_le());
         preimage.extend_from_slice(&(*previous_block_hash).to_bits_le());
 
         // Hash the preimage to get the random seed.

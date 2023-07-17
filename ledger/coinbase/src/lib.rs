@@ -284,7 +284,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         }
 
         // Ensure the coinbase proof meets the required coinbase target.
-        if coinbase_solution.to_cumulative_proof_target()? < coinbase_target as u128 {
+        if coinbase_solution.to_combined_proof_target()? < coinbase_target as u128 {
             bail!("The coinbase proof does not meet the coinbase target");
         }
 

@@ -58,11 +58,11 @@ impl<N: Network> CoinbaseSolution<N> {
         self.partial_solutions.is_empty()
     }
 
-    /// Returns the cumulative sum of the prover solutions.
-    pub fn to_cumulative_proof_target(&self) -> Result<u128> {
+    /// Returns the combined sum of the prover solutions.
+    pub fn to_combined_proof_target(&self) -> Result<u128> {
         // Compute the cumulative target as a u128.
-        self.partial_solutions.iter().try_fold(0u128, |cumulative, solution| {
-            cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
+        self.partial_solutions.iter().try_fold(0u128, |combined, solution| {
+            combined.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Combined target overflowed"))
         })
     }
 

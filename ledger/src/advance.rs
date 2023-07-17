@@ -37,17 +37,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_cumulative_weight = latest_block.cumulative_weight();
 
         // Construct the coinbase solution.
-        let (coinbase, coinbase_accumulator_point, cumulative_proof_target) = match &candidate_solutions {
+        let (coinbase, coinbase_accumulator_point, combined_proof_target) = match &candidate_solutions {
             Some(solutions) => {
                 // Accumulate the prover solutions into a coinbase solution.
                 let coinbase = self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, solutions)?;
                 // Compute the accumulator point of the coinbase solution.
                 let coinbase_accumulator_point = coinbase.to_accumulator_point()?;
-                // Compute the cumulative proof target. Using '.sum' here is safe because we sum u64s into a u128.
-                let cumulative_proof_target =
+                // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
+                let combined_proof_target =
                     solutions.iter().map(|s| Ok(s.to_target()? as u128)).sum::<Result<u128>>()?;
-                // Output the coinbase solution, coinbase accumulator point, and cumulative proof target.
-                (Some(coinbase), coinbase_accumulator_point, cumulative_proof_target)
+                // Output the coinbase solution, coinbase accumulator point, and combined proof target.
+                (Some(coinbase), coinbase_accumulator_point, combined_proof_target)
             }
             None => (None, Field::<N>::zero(), 0u128),
         };
@@ -57,14 +57,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Compute the next height.
         let next_height = latest_height.saturating_add(1);
         // Compute the next cumulative weight.
-        let next_cumulative_weight = latest_cumulative_weight.saturating_add(cumulative_proof_target);
+        let next_cumulative_weight = latest_cumulative_weight.saturating_add(combined_proof_target);
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
             next_round,
             next_height,
             next_cumulative_weight,
-            cumulative_proof_target,
+            combined_proof_target,
             latest_block.hash(),
         )?;
         // Select the transactions from the memory pool.
@@ -89,7 +89,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
+                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
@@ -142,7 +142,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             next_height,
             next_total_supply_in_microcredits,
             next_cumulative_weight,
-            cumulative_proof_target,
+            combined_proof_target,
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,
@@ -222,11 +222,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Retrieve the latest proof target.
         let latest_proof_target = self.latest_proof_target();
         // Compute the candidate coinbase target.
-        let cumulative_proof_target = self.pending_solutions.candidate_coinbase_target(latest_proof_target)?;
+        let combined_proof_target = self.pending_solutions.candidate_coinbase_target(latest_proof_target)?;
         // Retrieve the latest coinbase target.
         let latest_coinbase_target = self.latest_coinbase_target();
         // Check if the coinbase target is met.
-        Ok(cumulative_proof_target >= latest_coinbase_target as u128)
+        Ok(combined_proof_target >= latest_coinbase_target as u128)
     }
 
     // TODO (raychu86): Remove PrivateKey and rng inputs.
@@ -295,21 +295,21 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             latest_height,
             latest_proof_target,
             latest_coinbase_target,
-            Some(solutions),
+            Some(solutions.clone()),
         )?;
 
         // Construct the coinbase solution.
-        let (coinbase, coinbase_accumulator_point, cumulative_proof_target) = match &candidate_solutions {
+        let (coinbase, coinbase_accumulator_point, combined_proof_target) = match &candidate_solutions {
             Some(solutions) => {
                 // Accumulate the prover solutions into a coinbase solution.
                 let coinbase = self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, solutions)?;
                 // Compute the accumulator point of the coinbase solution.
                 let coinbase_accumulator_point = coinbase.to_accumulator_point()?;
-                // Compute the cumulative proof target. Using '.sum' here is safe because we sum u64s into a u128.
-                let cumulative_proof_target =
+                // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
+                let combined_proof_target =
                     solutions.iter().map(|s| Ok(s.to_target()? as u128)).sum::<Result<u128>>()?;
-                // Output the coinbase solution, coinbase accumulator point, and cumulative proof target.
-                (Some(coinbase), coinbase_accumulator_point, cumulative_proof_target)
+                // Output the coinbase solution, coinbase accumulator point, and combined proof target.
+                (Some(coinbase), coinbase_accumulator_point, combined_proof_target)
             }
             None => (None, Field::<N>::zero(), 0u128),
         };
@@ -319,14 +319,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Compute the next height.
         let next_height = latest_height.saturating_add(1);
         // Compute the next cumulative weight.
-        let next_cumulative_weight = latest_cumulative_weight.saturating_add(cumulative_proof_target);
+        let next_cumulative_weight = latest_cumulative_weight.saturating_add(combined_proof_target);
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
             next_round,
             next_height,
             next_cumulative_weight,
-            cumulative_proof_target,
+            combined_proof_target,
             latest_block.hash(),
         )?;
 
@@ -352,7 +352,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
+                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
@@ -404,7 +404,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             next_height,
             next_total_supply_in_microcredits,
             next_cumulative_weight,
-            cumulative_proof_target,
+            combined_proof_target,
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,

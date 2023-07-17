@@ -279,17 +279,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.last_coinbase_timestamp() != block.timestamp() {
                         bail!("The last coinbase timestamp does not match the block timestamp")
                     }
-                    // Compute the cumulative proof target.
-                    let cumulative_proof_target = coinbase.to_cumulative_proof_target()?;
-                    // Ensure that the cumulative weight includes the next block's cumulative proof target.
+                    // Compute the combined proof target.
+                    let combined_proof_target = coinbase.to_combined_proof_target()?;
+                    // Ensure that the cumulative weight includes the next block's combined proof target.
                     if block.cumulative_weight()
-                        != self.latest_cumulative_weight().saturating_add(cumulative_proof_target)
+                        != self.latest_cumulative_weight().saturating_add(combined_proof_target)
                     {
-                        bail!("The cumulative weight does not include the block cumulative proof target")
+                        bail!("The cumulative weight does not include the block combined proof target")
                     }
-                    // Ensure that the block cumulative proof target matches the coinbase cumulative proof target.
-                    if block.cumulative_proof_target() != cumulative_proof_target {
-                        bail!("The blocks cumulative proof target does not match the coinbase cumulative proof target")
+                    // Ensure that the block combined proof target matches the coinbase combined proof target.
+                    if block.combined_proof_target() != combined_proof_target {
+                        bail!("The blocks combined proof target does not match the coinbase combined proof target")
                     }
                 }
                 None => {
@@ -305,9 +305,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.cumulative_weight() != self.latest_cumulative_weight() {
                         bail!("The cumulative weight does not match the previous block's cumulative weight")
                     }
-                    // Ensure that the block cumulative proof target is zero.
-                    if block.cumulative_proof_target() != 0 {
-                        bail!("The cumulative proof target is not zero")
+                    // Ensure that the block combined proof target is zero.
+                    if block.combined_proof_target() != 0 {
+                        bail!("The combined proof target is not zero")
                     }
                 }
             }
@@ -416,7 +416,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             block.round(),
             block.height(),
             block.cumulative_weight(),
-            block.cumulative_proof_target(),
+            block.combined_proof_target(),
             block.previous_hash(),
         )?;
 
@@ -520,6 +520,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn check_next_block_bft(
         &self,
         block: &Block<N>,
+        new_pending_solutions: HashMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>,
         committed_subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>,
     ) -> Result<()> {
         // Perform the non-bft checks.
@@ -688,7 +689,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.latest_height(),
             self.latest_proof_target(),
             self.latest_coinbase_target(),
-            Some(solutions),
+            Some(new_pending_solutions),
         )?;
 
         // Ensure that the candidate solutions are equivalent to what's in the block coinbase.
@@ -705,9 +706,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             _ => bail!("Coinbase solutions do not match the candidate solutions."),
         }
 
-        // Compute the cumulative proof target of the prover solutions as a u128.
-        let cumulative_proof_target =
-            block.coinbase().map(|coinbase| coinbase.to_cumulative_proof_target()).unwrap_or(Ok(0))?;
+        // Compute the combined proof target of the prover solutions as a u128.
+        let combined_proof_target =
+            block.coinbase().map(|coinbase| coinbase.to_combined_proof_target()).unwrap_or(Ok(0))?;
 
         // Check that the remaining ratification ids correspond to the prover/validator rewards.
         let (proving_rewards, staking_rewards) = match candidate_solutions {
@@ -722,7 +723,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
+                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.

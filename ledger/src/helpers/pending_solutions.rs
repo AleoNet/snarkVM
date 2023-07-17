@@ -73,7 +73,7 @@ impl<N: Network> PendingSolutions<N> {
             .sorted_by(|a, b| b.cmp(a))
             .take(256);
 
-        // Compute the cumulative proof target of the prover solutions as a u128.
+        // Compute the combined proof target of the prover solutions as a u128.
         candidate_proof_targets.try_fold(0u128, |cumulative, proof_target| {
             cumulative.checked_add(proof_target as u128).ok_or_else(|| anyhow!("Candidate coinbase target overflowed"))
         })
@@ -117,15 +117,15 @@ impl<N: Network> PendingSolutions<N> {
             .take(256)
             .collect();
 
-        // Compute the cumulative proof target of the prover solutions as a u128.
-        let cumulative_proof_target: u128 = candidate_solutions.iter().try_fold(0u128, |cumulative, solution| {
+        // Compute the combined proof target of the prover solutions as a u128.
+        let combined_proof_target: u128 = candidate_solutions.iter().try_fold(0u128, |cumulative, solution| {
             cumulative
                 .checked_add(solution.to_target()? as u128)
-                .ok_or_else(|| anyhow!("Cumulative proof target overflowed"))
+                .ok_or_else(|| anyhow!("Combined proof target overflowed"))
         })?;
 
         // Return the prover solutions if the cumulative target is greater than or equal to the coinbase target.
-        match cumulative_proof_target >= latest_coinbase_target as u128 {
+        match combined_proof_target >= latest_coinbase_target as u128 {
             true => Ok(Some(candidate_solutions)),
             false => Ok(None),
         }

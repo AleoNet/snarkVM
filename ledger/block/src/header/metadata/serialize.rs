@@ -25,7 +25,7 @@ impl<N: Network> Serialize for Metadata<N> {
                 metadata.serialize_field("height", &self.height)?;
                 metadata.serialize_field("total_supply_in_microcredits", &self.total_supply_in_microcredits)?;
                 metadata.serialize_field("cumulative_weight", &self.cumulative_weight)?;
-                metadata.serialize_field("cumulative_proof_target", &self.cumulative_proof_target)?;
+                metadata.serialize_field("combined_proof_target", &self.combined_proof_target)?;
                 metadata.serialize_field("coinbase_target", &self.coinbase_target)?;
                 metadata.serialize_field("proof_target", &self.proof_target)?;
                 metadata.serialize_field("last_coinbase_target", &self.last_coinbase_target)?;
@@ -50,7 +50,7 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
                     DeserializeExt::take_from_value::<D>(&mut metadata, "height")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "total_supply_in_microcredits")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "cumulative_weight")?,
-                    DeserializeExt::take_from_value::<D>(&mut metadata, "cumulative_proof_target")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "combined_proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "coinbase_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_target")?,

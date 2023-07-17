@@ -217,7 +217,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.round(),
             block.height(),
             block.cumulative_weight(),
-            block.cumulative_proof_target(),
+            block.combined_proof_target(),
             block.previous_hash(),
         )?;
 

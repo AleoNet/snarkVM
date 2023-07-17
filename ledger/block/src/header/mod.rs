@@ -145,9 +145,9 @@ impl<N: Network> Header<N> {
         self.metadata.cumulative_weight()
     }
 
-    /// Returns the cumulative proof target for this block.
-    pub const fn cumulative_proof_target(&self) -> u128 {
-        self.metadata.cumulative_proof_target()
+    /// Returns the combined proof target for this block.
+    pub const fn combined_proof_target(&self) -> u128 {
+        self.metadata.combined_proof_target()
     }
 
     /// Returns the coinbase target for this block.

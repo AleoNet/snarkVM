@@ -23,7 +23,7 @@ impl<N: Network> Metadata<N> {
         let height = 0;
         let total_supply_in_microcredits = N::STARTING_SUPPLY;
         let cumulative_weight = 0;
-        let cumulative_proof_target = 0;
+        let combined_proof_target = 0;
         let coinbase_target = N::GENESIS_COINBASE_TARGET;
         let proof_target = N::GENESIS_PROOF_TARGET;
         let last_coinbase_target = N::GENESIS_COINBASE_TARGET;
@@ -37,7 +37,7 @@ impl<N: Network> Metadata<N> {
             height,
             total_supply_in_microcredits,
             cumulative_weight,
-            cumulative_proof_target,
+            combined_proof_target,
             coinbase_target,
             proof_target,
             last_coinbase_target,
@@ -58,8 +58,8 @@ impl<N: Network> Metadata<N> {
             && self.total_supply_in_microcredits == N::STARTING_SUPPLY
             // Ensure the cumulative weight in the genesis block is 0.
             && self.cumulative_weight == 0u128
-            // Ensure the cumulative proof target in the genesis block is 0.
-            && self.cumulative_proof_target == 0u128
+            // Ensure the combined proof target in the genesis block is 0.
+            && self.combined_proof_target == 0u128
             // Ensure the coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
             && self.coinbase_target == N::GENESIS_COINBASE_TARGET
             // Ensure the proof target in the genesis block is `GENESIS_PROOF_TARGET`.
@@ -116,7 +116,7 @@ mod tests {
         assert_eq!(metadata.height(), 0);
         assert_eq!(metadata.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
         assert_eq!(metadata.cumulative_weight(), 0);
-        assert_eq!(metadata.cumulative_proof_target(), 0);
+        assert_eq!(metadata.combined_proof_target(), 0);
         assert_eq!(metadata.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
