@@ -291,6 +291,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.combined_proof_target() != combined_proof_target {
                         bail!("The blocks combined proof target does not match the coinbase combined proof target")
                     }
+                    // Ensure that the block accumulated proof target is less than the latest coinbase target.
+                    if block.accumulated_proof_target() >= self.latest_coinbase_target() {
+                        bail!(
+                            "The block accumulated proof target is greater than or equal to the latest coinbase target"
+                        )
+                    }
                     // Compute the expected accumulated proof target.
                     let accumulated_proof_target =
                         u128::try_from(self.latest_accumulated_proof_target())?.saturating_add(combined_proof_target);
