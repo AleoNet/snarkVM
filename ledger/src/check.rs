@@ -673,6 +673,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
+        // Ensure that there are no more transactions in the block.
+        ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
+
         // Check the coinbase solutions are selected correctly.
         // 1. Get the committed solutions from the subdag.
         // 2. Get the latest pending solutions of the ledger.
