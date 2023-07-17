@@ -150,6 +150,11 @@ impl<N: Network> Header<N> {
         self.metadata.combined_proof_target()
     }
 
+    /// Returns the accumulated proof target for this block.
+    pub const fn accumulated_proof_target(&self) -> u128 {
+        self.metadata.accumulated_proof_target()
+    }
+
     /// Returns the coinbase target for this block.
     pub const fn coinbase_target(&self) -> u64 {
         self.metadata.coinbase_target()

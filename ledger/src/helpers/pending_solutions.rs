@@ -85,7 +85,6 @@ impl<N: Network> PendingSolutions<N> {
         ledger: &Ledger<N, C>,
         latest_height: u32,
         latest_proof_target: u64,
-        latest_coinbase_target: u64,
         additional_solutions: Option<HashMap<PuzzleCommitment<N>, (ProverSolution<N>, u64)>>,
     ) -> Option<Vec<ProverSolution<N>>> {
         // If the latest height is greater than or equal to the anchor height at year 10, then return 'None'.

@@ -263,6 +263,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().cumulative_weight()
     }
 
+    /// Returns the latest accumulated proof target.
+    pub fn latest_accumulated_proof_target(&self) -> u128 {
+        self.current_block.read().accumulated_proof_target()
+    }
+
     /// Returns the latest block coinbase accumulator point.
     pub fn latest_coinbase_accumulator_point(&self) -> Field<N> {
         self.current_block.read().header().coinbase_accumulator_point()

@@ -67,6 +67,11 @@ impl<N: Network> ProverSolution<N> {
         Ok(KZG10::check(verifying_key, &self.commitment(), challenge_point, claimed_value, self.proof())?)
     }
 
+    /// Returns the partial solution for the solution.
+    pub const fn partial_solution(&self) -> &PartialSolution<N> {
+        &self.partial_solution
+    }
+
     /// Returns the address of the prover.
     pub const fn address(&self) -> Address<N> {
         self.partial_solution.address()

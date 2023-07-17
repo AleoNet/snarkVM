@@ -88,8 +88,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     N::ANCHOR_TIME,
                 )?;
 
+                // Construct the partial prover solutions.
+                let partial_solutions =
+                    prover_solutions.iter().map(|s| s.partial_solution().clone()).collect::<Vec<_>>();
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, combined_proof_target)?;
+                let proving_rewards = proving_rewards(&partial_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
@@ -262,6 +265,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_proof_target = latest_block.proof_target();
         // Retrieve the latest coinbase target.
         let latest_coinbase_target = latest_block.coinbase_target();
+        // Retrieve the latest accumulated proof target.
+        let latest_accumulated_proof_target = latest_block.accumulated_proof_target();
 
         // TODO (raychu86): Check that the `committed_subdag` translates properly into the set of transmissions. For now we can assume this is correct.
 
@@ -290,12 +295,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
-        // Construct the candidate solutions from new set of pending solutions.
-        let candidate_solutions = self.pending_solutions.candidate_solutions(
+        // TODO (raychu86): Remove pending solutions and work directly with the given solutions.
+        // Construct the candidate solutions.
+        let candidate_solutions = PendingSolutions::new().candidate_solutions(
             self,
             latest_height,
             latest_proof_target,
-            latest_coinbase_target,
             Some(solutions.clone()),
         );
 
@@ -314,6 +319,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
             None => (None, Field::<N>::zero(), 0u128),
         };
+
+        // Compute the accumulated proof target.
+        let accumulated_proof_target = latest_accumulated_proof_target.saturating_add(combined_proof_target);
+
+        // TODO (raychu86): Consider the case where we may need to "roll over" the accumulated proof target if there is extra. Currently we just reset.
+        // Compute the next accumulated proof target.
+        // If the accumulated proof target is greater than or equal to the latest coinbase target, then we reset the accumulated proof target.
+        let (next_accumulated_proof_target, reached_coinbase_target) =
+            match accumulated_proof_target >= latest_coinbase_target as u128 {
+                true => (0u128, true),
+                false => (accumulated_proof_target, false),
+            };
 
         // Compute the next round number.
         let next_round = leader_certificate.round();
@@ -340,7 +357,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Checkpoint the timestamp for the next block as the median timestamp of the certificates.
         let next_timestamp = leader_certificate.median_timestamp();
 
-        // TODO (raychu86): Pay the provers.
+        // TODO (raychu86): Update the `coinbase_reward` and `prover_reward` to match the new model.
         let (proving_rewards, staking_rewards) = match candidate_solutions {
             Some(prover_solutions) => {
                 // Calculate the coinbase reward.
@@ -352,8 +369,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     N::ANCHOR_TIME,
                 )?;
 
+                // Construct the partial prover solutions.
+                let partial_solutions =
+                    prover_solutions.iter().map(|s| s.partial_solution().clone()).collect::<Vec<_>>();
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, combined_proof_target)?;
+                let proving_rewards = proving_rewards(&partial_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
@@ -393,9 +413,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_proof_target = proof_target(next_coinbase_target, N::GENESIS_PROOF_TARGET);
 
         // Construct the next last coinbase target and next last coinbase timestamp.
-        let (next_last_coinbase_target, next_last_coinbase_timestamp) = match coinbase {
-            Some(_) => (next_coinbase_target, next_timestamp),
-            None => (latest_block.last_coinbase_target(), latest_block.last_coinbase_timestamp()),
+        let (next_last_coinbase_target, next_last_coinbase_timestamp) = match reached_coinbase_target {
+            true => (next_coinbase_target, next_timestamp),
+            false => (latest_block.last_coinbase_target(), latest_block.last_coinbase_timestamp()),
         };
 
         // Construct the metadata.
@@ -406,7 +426,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             next_total_supply_in_microcredits,
             next_cumulative_weight,
             combined_proof_target,
-            0,
+            next_accumulated_proof_target,
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,

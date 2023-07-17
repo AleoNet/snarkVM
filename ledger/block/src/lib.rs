@@ -222,6 +222,11 @@ impl<N: Network> Block<N> {
         self.header.combined_proof_target()
     }
 
+    /// Returns the accumulated proof target for this block.
+    pub const fn accumulated_proof_target(&self) -> u128 {
+        self.header.accumulated_proof_target()
+    }
+
     /// Returns the coinbase target for this block.
     pub const fn coinbase_target(&self) -> u64 {
         self.header.coinbase_target()

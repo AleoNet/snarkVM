@@ -291,6 +291,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.combined_proof_target() != combined_proof_target {
                         bail!("The blocks combined proof target does not match the coinbase combined proof target")
                     }
+                    // Compute the expected accumulated proof target.
+                    let accumulated_proof_target =
+                        self.latest_accumulated_proof_target().saturating_add(combined_proof_target);
+                    let expected_accumulated_proof_target =
+                        match accumulated_proof_target >= u128::try_from(self.latest_coinbase_target())? {
+                            true => 0u128,
+                            false => accumulated_proof_target.saturating_sub(combined_proof_target),
+                        };
+                    // Ensure that the accumulated proof target is correct.
+                    if block.accumulated_proof_target() != expected_accumulated_proof_target {
+                        bail!("The accumulated proof target does not match the expected accumulated proof target")
+                    }
                 }
                 None => {
                     // Ensure the last coinbase target matches the previous block coinbase target.
@@ -308,6 +320,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     // Ensure that the block combined proof target is zero.
                     if block.combined_proof_target() != 0 {
                         bail!("The combined proof target is not zero")
+                    }
+                    // Ensure that the accumulated proof target is the same as the previous block.
+                    if block.accumulated_proof_target() != self.latest_accumulated_proof_target() {
+                        bail!(
+                            "The accumulated proof target does not match the previous block's accumulated proof target"
+                        )
                     }
                 }
             }
@@ -650,7 +668,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Fetch the ratifications iterator.
         let mut ratifications_ids = block.ratifications();
         // Fetch the additional solutions from the transmission ids.
-        let mut solutions = HashMap::new();
+        let mut solutions =
+            block.coinbase().map(|coinbase| coinbase.partial_solutions().iter()).unwrap_or_else(|| [].iter());
 
         // Iterate through the provided transmission ids and ensure that the `Transmissions` ordering is correct.
         for transmission_id in transmission_ids {
@@ -660,11 +679,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     // ensure!(ratifications.next() == Some(expected_id), "Transaction ordering does not match.")
                 }
                 // Check the next solution matches the expected commitment.
-                TransmissionID::Solution(_commitment) => {
-                    // TODO (raychu86): Add the solution to the `pending_solutions`. Currently we do not have a way to fetch the solution from anywhere.
-                    //  The subsequent methods `candidate_solution` and `prover_reward` also need to support `PartialSolution` (currently only `ProverSolution`s)
-                    // let solution = self.get_solution(commitment);
-                    // solutions.insert(solution.commitment(), (solution, proof_target));
+                TransmissionID::Solution(commitment) => {
+                    ensure!(
+                        solutions.next().map(|solution| solution.commitment()) == Some(commitment),
+                        "Solution ordering does not match."
+                    )
                 }
                 // Check the next transaction ID matches the expected ID.
                 TransmissionID::Transaction(expected_id) => {
@@ -675,43 +694,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Ensure that there are no more transactions in the block.
         ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
-
-        // Check the coinbase solutions are selected correctly.
-        // 1. Get the committed solutions from the subdag.
-        // 2. Get the latest pending solutions of the ledger.
-        // 3. Concatenate (1) to (2) and convert them to `candidate_solutions` determinisitically using `candidate_solutions`.
-        // 4. Check that the `coinbase` included in the block matches (3).
-
-        // Construct the candidate solutions.
-        let candidate_solutions = self.pending_solutions.candidate_solutions(
-            self,
-            self.latest_height(),
-            self.latest_proof_target(),
-            self.latest_coinbase_target(),
-            Some(solutions),
-        );
-
-        // Ensure that the candidate solutions are equivalent to what's in the block coinbase.
-        match (block.coinbase(), &candidate_solutions) {
-            (Some(coinbase), Some(candidate_commitments)) => {
-                let block_commitments = coinbase.puzzle_commitments().collect::<Vec<_>>();
-                let expected_commitments =
-                    candidate_commitments.iter().map(|solution| solution.commitment()).collect::<Vec<_>>();
-                ensure!(
-                    block_commitments == expected_commitments,
-                    "Block coinbase solutions do not match the expected candidate solutions."
-                );
-            }
-            _ => bail!("Coinbase solutions do not match the candidate solutions."),
-        }
+        // Ensure that there are no more solutions in the block.
+        ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
 
         // Compute the combined proof target of the prover solutions as a u128.
         let combined_proof_target =
             block.coinbase().map(|coinbase| coinbase.to_combined_proof_target()).unwrap_or(Ok(0))?;
 
         // Check that the remaining ratification ids correspond to the prover/validator rewards.
-        let (proving_rewards, staking_rewards) = match candidate_solutions {
-            Some(prover_solutions) => {
+        let (proving_rewards, staking_rewards) = match block.coinbase().map(|coinbase| coinbase.partial_solutions()) {
+            Some(partial_solutions) => {
                 // Calculate the coinbase reward.
                 let coinbase_reward = coinbase_reward(
                     self.last_coinbase_timestamp(),
@@ -722,7 +714,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, combined_proof_target)?;
+                let proving_rewards = proving_rewards(partial_solutions, coinbase_reward, combined_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.

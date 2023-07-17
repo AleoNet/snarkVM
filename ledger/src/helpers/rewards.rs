@@ -14,28 +14,28 @@
 
 use console::network::prelude::*;
 use ledger_block::Ratify;
-use ledger_coinbase::ProverSolution;
+use ledger_coinbase::PartialSolution;
 
 use anyhow::Result;
 
-/// Returns the proving rewards for a given coinbase reward and list of prover solutions.
+/// Returns the proving rewards for a given coinbase reward and list of partial prover solutions.
 ///
 /// The prover reward is defined as:
 ///   1/2 * coinbase_reward * (prover_target / combined_proof_target)
 ///   = (coinbase_reward * prover_target) / (2 * combined_proof_target)
 pub fn proving_rewards<N: Network>(
-    prover_solutions: Vec<ProverSolution<N>>,
+    partial_solutions: &[PartialSolution<N>],
     coinbase_reward: u64,
     combined_proof_target: u128,
 ) -> Result<Vec<Ratify<N>>> {
     // Initialize a vector to store the proving rewards.
-    let mut proving_rewards = Vec::with_capacity(prover_solutions.len());
+    let mut proving_rewards = Vec::with_capacity(partial_solutions.len());
 
     // Calculate the rewards for the individual provers.
-    for prover_solution in prover_solutions {
+    for partial_solution in partial_solutions {
         // Compute the numerator.
         let numerator = (coinbase_reward as u128)
-            .checked_mul(prover_solution.to_target()? as u128)
+            .checked_mul(partial_solution.to_target()? as u128)
             .ok_or_else(|| anyhow!("Proving reward numerator overflowed"))?;
         // Compute the denominator.
         let denominator =
@@ -49,7 +49,7 @@ pub fn proving_rewards<N: Network>(
         // Ensure the proving reward is within a safe bound.
         ensure!(prover_reward <= 1_000_000_000, "Prover reward is too large");
         // Append the proving reward to the vector.
-        proving_rewards.push(Ratify::ProvingReward(prover_solution.address(), prover_reward));
+        proving_rewards.push(Ratify::ProvingReward(partial_solution.address(), prover_reward));
     }
 
     // Return the proving rewards.
