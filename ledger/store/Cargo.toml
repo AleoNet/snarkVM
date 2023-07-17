@@ -58,7 +58,7 @@ default-features = false
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.70"
+version = "1.0.72"
 
 [dependencies.bincode]
 version = "1.3"
