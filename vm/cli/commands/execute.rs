@@ -80,7 +80,7 @@ impl Execute {
         // Log the metrics.
         use num_format::ToFormattedString;
 
-        println!("\n⛓  Constraints\n");
+        println!("⛓  Constraints\n");
         for (function_constraints, counter) in program_frequency {
             // Log the constraints
             let counter_string = match counter {
