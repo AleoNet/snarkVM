@@ -16,11 +16,25 @@ use crate::{cli::CurrentNetwork, console::account::PrivateKey};
 
 use anyhow::{anyhow, Result};
 
+fn env_template() -> String {
+    format!(
+        r#"
+NETWORK=testnet3
+PRIVATE_KEY={{PASTE_YOUR_PRIVATE_KEY_HERE}}
+"#
+    )
+}
+
 /// Loads the environment variables from the .env file.
 fn dotenv_load() -> Result<()> {
     // Load environment variables from .env file.
     // Fails if .env file not found, not readable or invalid.
-    dotenvy::dotenv().map_err(|e| anyhow!("Missing a .env file - {e}"))?;
+    dotenvy::dotenv().map_err(|e| {
+        anyhow!(
+            "Missing a '.env' file. Create the '.env' file in your package's root directory with the following:\n\n{}\n",
+            env_template()
+        )
+    })?;
     Ok(())
 }
 
@@ -33,8 +47,7 @@ pub fn dotenv_private_key() -> Result<PrivateKey<CurrentNetwork>> {
         use std::str::FromStr;
         dotenv_load()?;
         // Load the private key from the environment.
-        let private_key =
-            std::env::var("PRIVATE_KEY").map_err(|e| anyhow!("Missing PRIVATE_KEY environment variable - {e}"))?;
+        let private_key = dotenvy::var("PRIVATE_KEY").map_err(|e| anyhow!("Missing PRIVATE_KEY - {e}"))?;
         // Parse the private key.
         PrivateKey::<CurrentNetwork>::from_str(&private_key)
     }
