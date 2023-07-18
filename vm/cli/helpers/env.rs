@@ -17,19 +17,18 @@ use crate::{cli::CurrentNetwork, console::account::PrivateKey};
 use anyhow::{anyhow, Result};
 
 fn env_template() -> String {
-    format!(
-        r#"
+    r#"
 NETWORK=testnet3
 PRIVATE_KEY={{PASTE_YOUR_PRIVATE_KEY_HERE}}
 "#
-    )
+    .to_string()
 }
 
 /// Loads the environment variables from the .env file.
 fn dotenv_load() -> Result<()> {
     // Load environment variables from .env file.
     // Fails if .env file not found, not readable or invalid.
-    dotenvy::dotenv().map_err(|e| {
+    dotenvy::dotenv().map_err(|_| {
         anyhow!(
             "Missing a '.env' file. Create the '.env' file in your package's root directory with the following:\n\n{}\n",
             env_template()

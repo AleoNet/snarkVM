@@ -35,7 +35,9 @@ impl<N: Network> Package<N> {
         }
 
         // Build the package, if the package requires building.
-        self.build::<A>(Some(endpoint.clone()))?;
+        // TODO (howardwu): We currently choose only to support local synthesis of keys due to performance.
+        // self.build::<A>(Some(endpoint.clone()))?;
+        self.build::<A>(None)?;
 
         // Prepare the locator (even if logging is disabled, to sanity check the locator is well-formed).
         let locator = Locator::<N>::from_str(&format!("{program_id}/{function_name}"))?;
