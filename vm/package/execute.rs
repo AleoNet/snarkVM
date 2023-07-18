@@ -15,16 +15,16 @@
 use super::*;
 
 impl<N: Network> Package<N> {
-    /// Runs a program function with the given inputs.
+    /// Executes a program function with the given inputs.
     #[allow(clippy::type_complexity)]
-    pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
+    pub fn execute<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
-        endpoint: Option<String>,
+        endpoint: String,
         private_key: &PrivateKey<N>,
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<(Response<N>, Trace<N>)> {
+    ) -> Result<(Response<N>, Execution<N>, Vec<CallMetrics<N>>)> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -35,13 +35,13 @@ impl<N: Network> Package<N> {
         }
 
         // Build the package, if the package requires building.
-        self.build::<A>(endpoint)?;
+        self.build::<A>(Some(endpoint.clone()))?;
 
         // Prepare the locator (even if logging is disabled, to sanity check the locator is well-formed).
-        let _locator = Locator::<N>::from_str(&format!("{program_id}/{function_name}"))?;
+        let locator = Locator::<N>::from_str(&format!("{program_id}/{function_name}"))?;
 
         #[cfg(feature = "aleo-cli")]
-        println!("🚀 Executing '{}'...\n", _locator.to_string().bold());
+        println!("🚀 Executing '{}'...\n", locator.to_string().bold());
 
         // Construct the process.
         let process = self.get_process()?;
@@ -94,9 +94,17 @@ impl<N: Network> Package<N> {
         process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
-        let (response, trace) = process.execute::<A>(authorization)?;
+        let (response, mut trace) = process.execute::<A>(authorization)?;
 
-        Ok((response, trace))
+        // Retrieve the call metrics.
+        let call_metrics = trace.call_metrics().to_vec();
+
+        // Prepare the trace.
+        trace.prepare(Query::<_, BlockMemory<_>>::from(endpoint))?;
+        // Prove the execution.
+        let execution = trace.prove_execution::<A, R>(&locator.to_string(), rng)?;
+        // Return the response, execution, and call metrics.
+        Ok((response, execution, call_metrics))
     }
 }
 
@@ -107,7 +115,7 @@ mod tests {
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
 
     #[test]
-    fn test_run() {
+    fn test_execute() {
         // Samples a new package at a temporary directory.
         let (directory, package) = crate::package::test_helpers::sample_package();
 
@@ -123,16 +131,20 @@ mod tests {
         // Sample the function inputs.
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
+        // Construct the endpoint.
+        let endpoint = "https://api.explorer.aleo.org/v1".to_string();
         // Run the program function.
-        let (_response, _trace) =
-            package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _execution, _metrics) =
+            package.execute::<CurrentAleo, _>(endpoint, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
     }
 
+    // TODO: Re-enable this test using a mock API endpoint for the `Query` struct.
     #[test]
-    fn test_run_with_import() {
+    #[ignore]
+    fn test_execute_with_import() {
         // Samples a new package at a temporary directory.
         let (directory, package) = crate::package::test_helpers::sample_package_with_import();
 
@@ -148,9 +160,11 @@ mod tests {
         // Sample the function inputs.
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
+        // Construct the endpoint.
+        let endpoint = "https://api.explorer.aleo.org/v1".to_string();
         // Run the program function.
-        let (_response, _trace) =
-            package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _execution, _metrics) =
+            package.execute::<CurrentAleo, _>(endpoint, &private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();

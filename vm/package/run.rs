@@ -16,10 +16,8 @@ use super::*;
 
 impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
-    #[allow(clippy::type_complexity)]
     pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
-        endpoint: Option<String>,
         private_key: &PrivateKey<N>,
         function_name: Identifier<N>,
         inputs: &[Value<N>],
@@ -38,7 +36,7 @@ impl<N: Network> Package<N> {
         let _locator = Locator::<N>::from_str(&format!("{program_id}/{function_name}"))?;
 
         #[cfg(feature = "aleo-cli")]
-        println!("🚀 Executing '{}'...\n", _locator.to_string().bold());
+        println!("🚀 Running '{}'...\n", _locator.to_string().bold());
 
         // Construct the process.
         let process = self.get_process()?;
@@ -56,11 +54,9 @@ impl<N: Network> Package<N> {
         let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
         // Synthesize the circuit.
         let response = stack.execute_function::<A>(call_stack)?;
-        // Construct the call metrics.
-        let mut call_metrics = Vec::new();
-        for (_assignment, metrics) in assignments.read().iter() {
-            call_metrics.push(*metrics);
-        }
+        // Retrieve the call metrics.
+        let call_metrics = assignments.read().iter().map(|(_, metrics)| *metrics).collect::<Vec<_>>();
+        // Return the response and call metrics.
         Ok((response, call_metrics))
     }
 }
@@ -89,8 +85,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _metrics) =
-            package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _metrics) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
@@ -114,8 +109,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _metrics) =
-            package.run::<CurrentAleo, _>(None, &private_key, function_name, &inputs, rng).unwrap();
+        let (_response, _metrics) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();

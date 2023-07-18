@@ -15,6 +15,7 @@
 mod build;
 mod clean;
 mod deploy;
+mod execute;
 mod is_build_required;
 mod run;
 
@@ -22,21 +23,14 @@ pub use build::{BuildRequest, BuildResponse};
 pub use deploy::{DeployRequest, DeployResponse};
 
 use crate::{
-    file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
-    prelude::{
-        Deserialize,
-        Deserializer,
-        Identifier,
-        Locator,
-        Network,
-        PrivateKey,
-        ProgramID,
-        Response,
-        Serialize,
-        SerializeStruct,
-        Serializer,
-        Value,
+    console::{
+        account::PrivateKey,
+        network::Network,
+        program::{Identifier, Locator, ProgramID, Response, Value},
     },
+    file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
+    ledger::{block::Execution, query::Query, store::helpers::memory::BlockMemory},
+    prelude::{Deserialize, Deserializer, Serialize, SerializeStruct, Serializer},
     synthesizer::{
         process::{Assignments, CallMetrics, CallStack, Process, StackExecute},
         program::{CallOperator, Instruction, Program},
@@ -328,7 +322,7 @@ function transfer:
         match program_id.to_string().as_str() {
             "token.aleo" => {
                 // Sample a random private key.
-                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let private_key = crate::cli::helpers::dotenv_private_key().unwrap();
                 let caller = Address::try_from(&private_key).unwrap();
 
                 // Initialize the function name.
@@ -342,7 +336,7 @@ function transfer:
             }
             "wallet.aleo" => {
                 // Initialize caller 0.
-                let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller0_private_key = crate::cli::helpers::dotenv_private_key().unwrap();
                 let caller0 = Address::try_from(&caller0_private_key).unwrap();
 
                 // Initialize caller 1.

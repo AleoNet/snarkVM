@@ -16,16 +16,22 @@ use super::*;
 
 pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
 
-/// Runs an Aleo program function
+/// Executes an Aleo program function locally
 #[derive(Debug, Parser)]
-pub struct Run {
+pub struct Execute {
     /// The function name.
     function: Identifier<CurrentNetwork>,
     /// The function inputs.
     inputs: Vec<Value<CurrentNetwork>>,
+    /// Uses the specified endpoint.
+    #[clap(long)]
+    endpoint: String,
+    /// Toggles offline mode.
+    #[clap(long)]
+    offline: bool,
 }
 
-impl Run {
+impl Execute {
     /// Compiles an Aleo program function with the specified name.
     #[allow(clippy::format_in_format_args)]
     pub fn parse(self) -> Result<String> {
@@ -41,7 +47,14 @@ impl Run {
         let rng = &mut rand::thread_rng();
 
         // Execute the request.
-        let (response, metrics) = package.run::<Aleo, _>(&private_key, self.function, &self.inputs, rng)?;
+        let (response, execution, metrics) =
+            package.execute::<Aleo, _>(self.endpoint, &private_key, self.function, &self.inputs, rng)?;
+
+        // TODO (howardwu): Include the option to execute a fee.
+        let fee = None;
+
+        // Construct the transaction.
+        let transaction = Transaction::from_execution(execution, fee)?;
 
         // Count the number of times a function is called.
         let mut program_frequency = HashMap::<String, usize>::new();
@@ -89,33 +102,14 @@ impl Run {
         }
         println!();
 
+        // Print the transaction.
+        println!("{transaction}\n");
+
         // Prepare the locator.
         let locator = Locator::<CurrentNetwork>::from_str(&format!("{}/{}", package.program_id(), self.function))?;
         // Prepare the path string.
         let path_string = format!("(in \"{}\")", path.display());
 
-        Ok(format!("✅ Finished '{}' {}", locator.to_string().bold(), path_string.dimmed()))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        cli::{Command, CLI},
-        prelude::{Identifier, Value},
-    };
-
-    #[test]
-    fn clap_snarkvm_run() {
-        let arg_vec = vec!["snarkvm", "run", "hello", "1u32", "2u32"];
-        let cli = CLI::parse_from(&arg_vec);
-
-        if let Command::Run(run) = cli.command {
-            assert_eq!(run.function, Identifier::try_from(arg_vec[2]).unwrap());
-            assert_eq!(run.inputs, vec![Value::try_from(arg_vec[3]).unwrap(), Value::try_from(arg_vec[4]).unwrap()]);
-        } else {
-            panic!("Unexpected result of clap parsing!");
-        }
+        Ok(format!("✅ Executed '{}' {}", locator.to_string().bold(), path_string.dimmed()))
     }
 }
