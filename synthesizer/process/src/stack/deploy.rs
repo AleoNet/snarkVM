@@ -71,10 +71,11 @@ impl<N: Network> Stack<N> {
 
         let program_id = self.program.id();
 
-        // Iterate through the program functions.
-        for (function, (_, (verifying_key, certificate))) in
-            deployment.program().functions().values().zip_eq(deployment.verifying_keys())
-        {
+        // Construct the call stacks and assignments used to verify the certificates.
+        let mut call_stacks = Vec::with_capacity(deployment.verifying_keys().len());
+
+        // Iterate through the program functions and construct the callstacks and corresponding assignments.
+        for function in deployment.program().functions().values() {
             // Initialize a burner private key.
             let burner_private_key = PrivateKey::new(rng)?;
             // Compute the burner address.
@@ -110,23 +111,32 @@ impl<N: Network> Stack<N> {
             let assignments = Assignments::<N>::default();
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
-            // Synthesize the circuit.
-            let _response = self.execute_function::<A>(call_stack)?;
-            lap!(timer, "Synthesize the circuit");
-            // Check the certificate.
-            match assignments.read().last() {
-                None => {
-                    bail!("The assignment for function '{}' is missing in '{program_id}'", function.name())
-                }
-                Some((assignment, _)) => {
-                    // Ensure the certificate is valid.
-                    if !certificate.verify(&function.name().to_string(), assignment, verifying_key) {
-                        bail!("The certificate for function '{}' is invalid in '{program_id}'", function.name())
-                    }
-                    lap!(timer, "Ensure the certificate is valid");
-                }
-            };
+            // Append the function name, callstack, and assignments.
+            call_stacks.push((function.name(), call_stack, assignments));
         }
+
+        // Verify the certificates.
+        cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).try_for_each(
+            |((function_name, call_stack, assignments), (_, (verifying_key, certificate)))| {
+                // Synthesize the circuit.
+                let _response = self.execute_function::<A>(call_stack.clone()).unwrap();
+
+                // Check the certificate.
+                match assignments.read().last() {
+                    None => {
+                        bail!("The assignment for function '{}' is missing in '{program_id}'", function_name)
+                    }
+                    Some((assignment, _metrics)) => {
+                        // Ensure the certificate is valid.
+                        if !certificate.verify(&function_name.to_string(), assignment, verifying_key) {
+                            bail!("The certificate for function '{}' is invalid in '{program_id}'", function_name)
+                        }
+                    }
+                };
+
+                Ok(())
+            },
+        )?;
 
         finish!(timer);
 

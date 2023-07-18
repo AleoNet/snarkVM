@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-block"
-version = "0.14.2"
+version = "0.14.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A block for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -34,22 +34,22 @@ wasm = [
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.14.2"
+version = "=0.14.4"
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "../../ledger/coinbase"
-version = "=0.14.2"
+version = "=0.14.4"
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
-version = "=0.14.2"
+version = "=0.14.4"
 
 [dependencies.synthesizer-snark]
 package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
-version = "=0.14.2"
+version = "=0.14.4"
 
 [dependencies.indexmap]
 version = "2.0"
