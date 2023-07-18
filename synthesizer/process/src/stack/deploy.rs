@@ -111,7 +111,6 @@ impl<N: Network> Stack<N> {
             let assignments = Assignments::<N>::default();
             // Initialize the call stack.
             let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
-
             // Append the function name, callstack, and assignments.
             call_stacks.push((function.name(), call_stack, assignments));
         }
@@ -127,7 +126,7 @@ impl<N: Network> Stack<N> {
                     None => {
                         bail!("The assignment for function '{}' is missing in '{program_id}'", function_name)
                     }
-                    Some(assignment) => {
+                    Some((assignment, _metrics)) => {
                         // Ensure the certificate is valid.
                         if !certificate.verify(&function_name.to_string(), assignment, verifying_key) {
                             bail!("The certificate for function '{}' is invalid in '{program_id}'", function_name)

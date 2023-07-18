@@ -72,7 +72,7 @@ use std::sync::Arc;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
+pub type Assignments<N> = Arc<RwLock<Vec<(circuit::Assignment<<N as Environment>::Field>, CallMetrics<N>)>>>;
 
 #[derive(Clone)]
 pub enum CallStack<N: Network> {

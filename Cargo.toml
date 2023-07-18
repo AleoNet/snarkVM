@@ -110,6 +110,7 @@ cli = [
   "anyhow",
   "clap",
   "colored",
+  "dotenvy",
   "rand",
   "self_update",
   "serde_json",
@@ -199,6 +200,10 @@ optional = true
 
 [dependencies.colored]
 version = "2"
+optional = true
+
+[dependencies.dotenvy]
+version = "0.15"
 optional = true
 
 [dependencies.indexmap]
