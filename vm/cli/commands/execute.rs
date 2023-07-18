@@ -24,7 +24,7 @@ pub struct Execute {
     /// The function inputs.
     inputs: Vec<Value<CurrentNetwork>>,
     /// Uses the specified endpoint.
-    #[clap(long)]
+    #[clap(default_value = "https://api.explorer.aleo.org/v1", long)]
     endpoint: String,
     /// Toggles offline mode.
     #[clap(long)]
