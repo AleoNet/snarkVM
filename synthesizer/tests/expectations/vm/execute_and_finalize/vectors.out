@@ -25,7 +25,7 @@
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
-    vectors.aleo/test_remove:
+    vectors.aleo/test_delete:
       outputs: []
       finalize:
       - 6u8

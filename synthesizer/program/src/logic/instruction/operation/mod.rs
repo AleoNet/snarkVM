@@ -24,6 +24,9 @@ pub use cast::*;
 mod commit;
 pub use commit::*;
 
+mod delete;
+pub use delete::*;
+
 mod finalize;
 pub use finalize::*;
 
@@ -41,9 +44,6 @@ pub use literals::*;
 
 mod push;
 pub use push::*;
-
-mod remove;
-pub use remove::*;
 
 mod macros;
 

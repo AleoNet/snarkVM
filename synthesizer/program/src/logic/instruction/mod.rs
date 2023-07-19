@@ -95,6 +95,8 @@ pub enum Instruction<N: Network> {
     CommitPED64(CommitPED64<N>),
     /// Performs a Pedersen commitment on up to a 128-bit input.
     CommitPED128(CommitPED128<N>),
+    /// Deletes the element at `second` from `first`, storing the outcome in `destination`.
+    Delete(Delete<N>),
     /// Divides `first` by `second`, storing the outcome in `destination`.
     Div(Div<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -167,8 +169,6 @@ pub enum Instruction<N: Network> {
     Rem(Rem<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the remainder in `destination`.
     RemWrapped(RemWrapped<N>),
-    /// Removes the element at `second` from `first`, storing the outcome in `destination`.
-    Remove(Remove<N>),
     /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
     Shl(Shl<N>),
     /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
@@ -281,7 +281,7 @@ macro_rules! instruction {
             Xor,
             Length,
             Push,
-            Remove,
+            Delete,
         }}
     };
     // A variant **without** curly braces:

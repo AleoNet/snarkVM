@@ -27,6 +27,8 @@ pub enum Opcode {
     Command(&'static str),
     /// The opcode is for a commit operation (i.e. `commit.psd4`).
     Commit(&'static str),
+    /// The opcode is for a remove operation (i.e. `delete`).
+    Delete,
     /// The opcode is for a finalize operation (i.e. `finalize`).
     Finalize(&'static str),
     /// The opcode is for a hash operation (i.e. `hash.psd4`).
@@ -39,8 +41,6 @@ pub enum Opcode {
     Literal(&'static str),
     /// The opcode is for a push operation (i.e. `push`).
     Push,
-    /// The opcode is for a remove operation (i.e. `remove`).
-    Remove,
 }
 
 impl Deref for Opcode {
@@ -54,13 +54,13 @@ impl Deref for Opcode {
             Opcode::Cast => &"cast",
             Opcode::Command(opcode) => opcode,
             Opcode::Commit(opcode) => opcode,
+            Opcode::Delete => &"delete",
             Opcode::Finalize(opcode) => opcode,
             Opcode::Hash(opcode) => opcode,
             Opcode::Is(opcode) => opcode,
             Opcode::Length => &"length",
             Opcode::Literal(opcode) => opcode,
             Opcode::Push => &"push",
-            Opcode::Remove => &"remove",
         }
     }
 }
@@ -81,13 +81,13 @@ impl Display for Opcode {
             Self::Cast => write!(f, "{}", self.deref()),
             Self::Command(opcode) => write!(f, "{opcode}"),
             Self::Commit(opcode) => write!(f, "{opcode}"),
+            Self::Delete => write!(f, "{}", self.deref()),
             Self::Finalize(opcode) => write!(f, "{opcode}"),
             Self::Hash(opcode) => write!(f, "{opcode}"),
             Self::Is(opcode) => write!(f, "{opcode}"),
             Self::Length => write!(f, "{}", self.deref()),
             Self::Literal(opcode) => write!(f, "{opcode}"),
             Self::Push => write!(f, "{}", self.deref()),
-            Self::Remove => write!(f, "{}", self.deref()),
         }
     }
 }
