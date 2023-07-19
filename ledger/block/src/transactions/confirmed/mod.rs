@@ -142,6 +142,7 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
     }
 
+    /// Returns the human-readable variant of the confirmed transaction. 
     pub const fn variant(&self) -> &str {
         match self {
             Self::AcceptedDeploy(..) => "accepted deploy",
