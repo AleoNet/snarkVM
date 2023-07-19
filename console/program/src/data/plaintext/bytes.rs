@@ -239,6 +239,7 @@ mod tests {
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
+        // TODO: Need a maximum length for lists?
         assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[2..]).is_err());
 
         Ok(())
