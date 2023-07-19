@@ -142,6 +142,15 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
     }
 
+    pub fn variant(&self) -> String {
+        match self {
+            Self::AcceptedDeploy(..) => "accepted deploy".to_string(),
+            Self::AcceptedExecute(..) => "accepted execute".to_string(),
+            Self::RejectedDeploy(..) => "rejected deploy".to_string(),
+            Self::RejectedExecute(..) => "rejected execute".to_string(),
+        }
+    }
+
     /// Returns the transaction.
     pub fn transaction(&self) -> &Transaction<N> {
         match self {
