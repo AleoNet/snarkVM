@@ -38,7 +38,7 @@
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
-    vectors.aleo/test_get:
+    vectors.aleo/test_index:
       outputs: []
       finalize:
       - 9u8
@@ -46,7 +46,7 @@
       - 11u8
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"4616287348728275959633614262115305782404328281898056527992528001673356166693field","checksum":"3995473696336312555591109202001672292933696344482194428586001051250539351968field","value":"record1qyqspn2l0rlnwa88zsetk7s23qtkfqhn8zkhfj2em5ysagjtrswkt9gwqyxx66trwfhkxun9v35hguerqqpqzq8w4dm5w5eqqrw282q4ccdp44uftuddk3ys0qwduhkvfgywh3lzzxht9uv5uhj0s4jdrppflz6jsem58q5kww9pdatqwh44ep2uq8hswgedm0a"}'
+      - '{"type":"record","id":"2690097162240713771091415436336403981645568676780224629863910639142711533880field","checksum":"2116536255072656561794714559569210478912861075244420854649592447431263914000field","value":"record1qyqspn2l0rlnwa88zsetk7s23qtkfqhn8zkhfj2em5ysagjtrswkt9gwqyxx66trwfhkxun9v35hguerqqpqzq8w4dmn75eqqrw282q4ccdp44uftuddk3ys0qwduhkvfgywh3lzzxht9uv5uhj0s4jdrppflz6jsem58q5kww9pdatqwh44ep2uq8hswe3pdyq"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.

@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, index) = Index::<CurrentNetwork>::parse("get r0 r1 into r2").unwrap();
+        let (string, index) = Index::<CurrentNetwork>::parse("index r0 r1 into r2").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(index.operands.len(), 2);
         assert_eq!(index.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
