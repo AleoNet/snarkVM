@@ -15,8 +15,19 @@
 use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
-    /// Decrypts `self` into plaintext using the given view key.
+    /// Decrypts `self` into plaintext using the given view key and checks that the owner matches the view key.
     pub fn decrypt(&self, view_key: &ViewKey<N>) -> Result<Record<N, Plaintext<N>>> {
+        // Decrypt the record
+        let record = self.decrypt_unchecked(view_key)?;
+
+        // Ensure the record owner matches the view key.
+        ensure!(view_key.to_address() == **record.owner(), "Record owner does not match view key");
+
+        Ok(record)
+    }
+
+    /// Decrypts `self` into plaintext using the given view key without checking the owner.
+    pub fn decrypt_unchecked(&self, view_key: &ViewKey<N>) -> Result<Record<N, Plaintext<N>>> {
         // Compute the record view key.
         let record_view_key = (self.nonce * **view_key).to_x_coordinate();
         // Decrypt the record.
@@ -94,7 +105,7 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: u64 = 1000;
 
     fn check_encrypt_and_decrypt<N: Network>(
         view_key: ViewKey<N>,
@@ -118,6 +129,19 @@ mod tests {
         let ciphertext = record.encrypt(randomizer)?;
         // Decrypt the record.
         assert_eq!(record, ciphertext.decrypt(&view_key)?);
+
+        // Generate a new random private key.
+        let incorrect_private_key = PrivateKey::<N>::new(rng)?;
+        // Generate a new view key.
+        let incorrect_view_key = ViewKey::try_from(&incorrect_private_key)?;
+
+        // Ensure that decrypting with the incorrect view key returns a different record.
+        if let Ok(incorrect_record) = ciphertext.decrypt_unchecked(&incorrect_view_key) {
+            assert_ne!(record, incorrect_record);
+        }
+        // Ensure that decrypting with the incorrect view key fails.
+        assert!(ciphertext.decrypt(&incorrect_view_key).is_err());
+
         Ok(())
     }
 
