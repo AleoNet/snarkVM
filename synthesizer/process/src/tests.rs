@@ -2349,6 +2349,6 @@ fn get_assignment(
     // Synthesize the circuit.
     let _response = stack.execute_function::<CurrentAleo>(call_stack).unwrap();
     // Retrieve the assignment.
-    let assignment = assignments.read().last().unwrap().clone();
+    let assignment = assignments.read().last().unwrap().0.clone();
     assignment
 }

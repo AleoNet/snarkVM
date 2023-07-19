@@ -21,5 +21,5 @@ pub use commands::*;
 mod errors;
 pub use errors::*;
 
-mod helpers;
+pub mod helpers;
 pub use helpers::*;
