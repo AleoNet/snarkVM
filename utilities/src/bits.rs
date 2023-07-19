@@ -20,6 +20,15 @@ pub trait ToBits: Sized {
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool>;
 
+    /// A method intended to be used in implementations of `to_bits_le`
+    /// which involve a significant number of allocations, for example
+    /// the `impl ToBits for Vec<T>`.
+    fn to_bits_le_into(&self, _vec: &mut Vec<bool>) {
+        // A default placeholder impl is provided in order to not force
+        // all the ToBits implementors to adapt.
+        unimplemented!();
+    }
+
     /// Returns `self` as a boolean array in big-endian order.
     fn to_bits_be(&self) -> Vec<bool>;
 }
@@ -118,12 +127,18 @@ macro_rules! impl_bits_for_integer {
             #[inline]
             fn to_bits_le(&self) -> Vec<bool> {
                 let mut bits_le = Vec::with_capacity(<$int>::BITS as usize);
+                self.to_bits_le_into(&mut bits_le);
+                bits_le
+            }
+
+            #[inline]
+            #[doc(hidden)]
+            fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
                 let mut value = *self;
                 for _ in 0..<$int>::BITS {
-                    bits_le.push(value & 1 == 1);
+                    vec.push(value & 1 == 1);
                     value = value.wrapping_shr(1u32);
                 }
-                bits_le
             }
 
             /// Returns `self` as a boolean array in big-endian order.
@@ -228,7 +243,11 @@ impl<C: ToBits> ToBits for &[C] {
     #[inline]
     fn to_bits_le(&self) -> Vec<bool> {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
-        self.iter().flat_map(|c| c.to_bits_le()).collect()
+        let mut result = Vec::new();
+        for elem in self.iter() {
+            elem.to_bits_le_into(&mut result);
+        }
+        result
     }
 
     /// A helper method to return a concatenated list of big-endian bits.
