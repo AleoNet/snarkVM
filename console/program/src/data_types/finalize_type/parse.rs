@@ -85,8 +85,8 @@ mod tests {
 
         // Array type.
         assert_eq!(
-            Ok(("", FinalizeType::<CurrentNetwork>::Vector(VectorType::from_str("[field; 8]")?))),
-            FinalizeType::<CurrentNetwork>::parse("[field]")
+            Ok(("", FinalizeType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("[field; 8]")?))),
+            FinalizeType::<CurrentNetwork>::parse("[field; 8]")
         );
 
         // Vector type.

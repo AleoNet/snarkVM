@@ -67,6 +67,9 @@ mod tests {
         "passport",
         "object",
         "array",
+        // Array
+        "[u8; 12]",
+        "[bar; 4]",
         // Vector
         "[field]",
         "[foo]",
