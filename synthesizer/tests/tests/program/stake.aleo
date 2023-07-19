@@ -1,6 +1,8 @@
 // Disclosure: This program is experimental and not intended for production use.
 // This program is provided "as is" without warranties of any kind.
 // The author disclaims liability for damages of any kind arising from the use of this program.
+import credits.aleo;
+
 program stake.aleo;
 
 // The `bond` struct tracks the amount of microcredits that are currently bonded to the specified validator.
@@ -41,6 +43,7 @@ mapping locked:
     key left as address.public;
     value right as [lock].public;
 
+
 //
 // The `bond_validator` function bonds a given number of microcredits as a validator.
 //
@@ -56,7 +59,7 @@ function bond_validator:
     assert.eq r1 true;
 
     // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
-    // call credits.aleo/transfer_public stake.aleo r1;
+    call credits.aleo/transfer_public stake.aleo r1;
 
     finalize self.caller r0;
 
@@ -84,6 +87,94 @@ finalize bond_validator:
 
     // Update the stake for the specified validator.
     set validators[r0] r6;
+
+    // Initialize an entry in the delegators mapping for the specified validator.
+    cast into r7 as [address];
+    set delegators[r0] r7;
+
+
+//
+// The `bond_staker` function bonds a given number of microcredits to the specified validator.
+//
+// The following must be true for the `bond_staker` function to succeed:
+// - Bonding a minimum of 1 credit
+// - The caller is not a validator
+// - The validator exists
+// - If the staker is already bonded, the validator must match
+function bond_staker:
+    // Input the validator address.
+    input r0 as address.public;
+    // Input the amount of microcredits to bond.
+    input r1 as u64.public;
+
+    // Enforce the caller is not *the* validator.
+    // Callers who wish to be a validator must use the `bond_validator` function.
+    assert.neq self.caller r0;
+
+    // Determine if the amount is at least one credit.
+    gte r1 1_000_000u64 into r2;
+    // Enforce the amount is at least one credit.
+    assert.eq r2 true;
+
+    // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
+    call credits.aleo/transfer_public stake.aleo r1;
+
+    // Bond the specified amount of microcredits to the specified validator.
+    finalize self.caller r0 r1;
+
+finalize bond_staker:
+    // Input the staker's address.
+    input r0 as address.public;
+    // Input the validator address.
+    input r1 as address.public;
+    // Input the amount of microcredits to bond.
+    input r2 as u64.public;
+
+    // Check if the caller is a validator.
+    contains validators[r0] into r3;
+    // Enforce the caller is not *a* validator.
+    assert.eq r3 false;
+
+    // Get the stake for the specified validator.
+    // If the validator does not exist, this command will fail.
+    get validators[r1] into r4;
+    // Enforce that the validator stake is at least 1 million credits.
+    // TODO: Is this needed?
+    gte r4.principal 1_000_000_000_000u64 into r5;
+    // Enforce the stake is at least 1 million credits.
+    assert.eq r5 true;
+    // Increment the delegated stake for the specified validator.
+    add r4.delegated r2 into r6;
+    // Construct the updated stake struct.
+    cast r4.principal r6 into stake as r7;
+    // Update the stake for the specified validator.
+    set validators[r1] r7;
+
+    // Check if the staker is already bonded.
+    contains bonded[r0] into r8;
+    // If the staker is not already bonded, then add their address to the `delegators` mapping.
+    branch.eq r8 true to end_update_delegators;
+    // Get the delegators for the specified validator.
+    get delegators[r1] into r9;
+    // Add the staker's address to the delegators for the specified validator.
+    push r9 r0;
+    // Update the delegators for the specified validator.
+    set delegators[r1] r9;
+
+    // Construct the initial bond struct.
+    cast r1 0u64 into r10 as bond;
+    // Get the bond struct for the caller, or default to the initial bond struct.
+    get.or_use bonded[r0] r10 into r11;
+    // Enforce the validator matches in the bond struct.
+    assert.eq r11.validator r1;
+
+    // Increment the microcredits in the bond struct.
+    add r11.microcredits r2 into r12;
+    // Construct the updated bond struct.
+    cast r1 r12 into r13 as bond;
+    // Update the bond struct for the caller.
+    set bonded[r0] r13;
+
 
 //
 // The `unbond_validator` function unbonds a given number of microcredits as a validator.
@@ -175,75 +266,6 @@ finalize unbond_validator:
     // The position we jump to if the validator still has some stake.
     position skip_remove_validator;
 
-//
-// The `bond_staker` function bonds a given number of microcredits to the specified validator.
-//
-// The following must be true for the `bond_staker` function to succeed:
-// - Bonding a minimum of 1 credit
-// - The caller is not a validator
-// - The validator exists
-// - If the staker is already bonded, the validator must match
-function bond_staker:
-    // Input the validator address.
-    input r0 as address.public;
-    // Input the amount of microcredits to bond.
-    input r1 as u64.public;
-
-    // Enforce the caller is not *the* validator.
-    // Callers who wish to be a validator must use the `bond_validator` function.
-    assert.neq self.caller r0;
-
-    // Determine if the amount is at least one credit.
-    gte r1 1_000_000u64 into r2;
-    // Enforce the amount is at least one credit.
-    assert.eq r2 true;
-
-    // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
-    // call credits.aleo/transfer_public stake.aleo r1;
-
-    // Bond the specified amount of microcredits to the specified validator.
-    finalize self.caller r0 r1;
-
-finalize bond_staker:
-    // Input the staker's address.
-    input r0 as address.public;
-    // Input the validator address.
-    input r1 as address.public;
-    // Input the amount of microcredits to bond.
-    input r2 as u64.public;
-
-    // Check if the caller is a validator.
-    contains validators[r0] into r3;
-    // Enforce the caller is not *a* validator.
-    assert.eq r3 false;
-
-    // Get the stake for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get validators[r1] into r4;
-    // Check if the validator has is at least 1 million credits.
-    gte r4.principal 1_000_000_000_000u64 into r5;
-    // Enforce the stake is at least 1 million credits.
-    assert.eq r5 true;
-    // Increment the delegated stake for the specified validator.
-    add r4.delegated r2 into r6;
-    // Construct the updated stake struct.
-    cast r4.principal r6 into stake as r7;
-    // Update the stake for the specified validator.
-    set validators[r1] r7;
-
-    // Construct the initial bond struct.
-    cast r1 0u64 into r8 as bond;
-    // Get the bond struct for the caller, or default to the initial bond struct.
-    get.or_use bonded[r0] r8 into r9;
-    // Enforce the validator matches in the bond struct.
-    assert.eq r9.validator r1;
-
-    // Increment the microcredits in the bond struct.
-    add r9.microcredits r2 into r10;
-    // Construct the updated bond struct.
-    cast r1 r10 into r11 as bond;
-    // Update the bond struct for the caller.
-    set bonded[r0] r11;
 
 //
 // The `unbond_staker` function unbonds a given number of microcredits. The unbonded amount
@@ -276,7 +298,7 @@ finalize unbond_staker:
     input r2 as u64.public;
 
     // Check if the caller is a validator.
-    get validators[r0] into r3;
+    contains validators[r0] into r3;
     // Enforce the caller is not *a* validator.
     assert.eq r3 false;
 
@@ -292,10 +314,13 @@ finalize unbond_staker:
     // If the microcredits in the bond struct is now zero, then do not update the bond struct.
     branch.eq r5 0u64 to remove_only;
 
+    // Enforce that there is at least one microcredit remaining.
+    gte r5 1_000_000u64 into r6;
+    assert.eq r6 true;
     // Construct the updated bond struct.
-    cast r1 r5 into r6 as bond;
+    cast r1 r5 into r7 as bond;
     // Update the bond struct for the caller.
-    set bonded[r0] r6;
+    set bonded[r0] r7;
 
     // The position we jump to if the remaining bond is zero.
     position remove_only;
@@ -310,6 +335,17 @@ finalize unbond_staker:
     // Update the stake for the specified validator.
     set validators[r1] r8;
 
+    // If the remaining stake is zero, then remove the staker from the list of delegators.
+    branch.neq r7 0u64 to skip_remove_delegator;
+    // Get the delegators for the specified validator.
+    get delegators[r1] into r8;
+    // Remove the delegator from the list of delegators.
+    remove r8[r0];
+    // Set the updated list of delegators.
+    set r8 into delegators[r1];
+
+    position skip_remove_delegator
+
     // Construct the bond struct for the lock.
     cast r1 r2 into r9 as bond;
     // Construct the unlock height.
@@ -317,18 +353,18 @@ finalize unbond_staker:
     // Construct the lock struct.
     cast r0 r9 r10 into r11 as lock;
 
+    // Initialize an empty vector.
+    cast into r12 as [lock];
     // Add the lock to the list of locks associated with the staker.
-    get.or_use locked[r0] [] into r12;
+    get.or_use locked[r0] r12 into r13;
     // Insert the new lock.
-    array.append r12 r11 as r13; // TODO: Establish array syntax.
+    push r13 r11;
     // Update the locks.
     set locked[r0] r13;
 
-// The `unlock_stake` function attempts to unlock the oldest lock for the staker. Anyone can unlock tokens for a staker.
-// // TODO: Iterate over the locks and unlock all that qualify.
-//
-// The following must be true for the `unlock_stake` function to succeed:
-// - The staker has at least one lock
+
+// The `unlock_stake` function attempts to unlock all valid locks for the staker.
+// Anyone can unlock tokens for a staker.
 function unlock_stake:
     // Input the staker's address.
     input r0 as address.public;
@@ -339,38 +375,43 @@ finalize unlock_stake:
     // Input the staker's address.
     input r0 as address.public;
 
-    // Get the lock struct for the staker.
-    // If the lock does not exist, this finalize scope will fail.
+    // Get the locks for the staker.
+    // If an entry in the mapping does not exist, this command will fail.
     get locked[r0] into r1;
 
     // Get the length of the locks.
-    len r1 into r2; // TODO: Establish array syntax.
-    // Determine if the staker has at least one lock.
-    gte r2 1u64 into r3;
-    // Enforce the length of the locks is at least one.
-    assert.eq r3 true;
+    length r1 into r2;
 
-    // Get the first lock.
-    array.get r1[0u32] into r4; // TODO: Establish array syntax.
-    // Remove the first lock from the list.
-    array.remove r1 0u32 into r5; // TODO: Establish array syntax.
+    // Initialize a counter.
+    add 0u64 0u64 into r3;
+    // Iterate through the locks, unlocking any that are valid.
+    position start_loop;
+    // If the counter is equal to the length, then we have reached the end of the loop.
+    branch.eq r3 r2 to end_loop;
 
-    // Remove the bond struct.
-    remove locked[r0];
-    // Determine the new number of locks.
-    len r5 into r6; // TODO: Establish array syntax.
-    // If there are no more locks associated with the staker, then do not update the list of locks.
-    branch.eq r6 0u32 to remove_only;
-
-    // Update the list of locks staker.
-    set locked[r0] r5;
-
-    // The position we jump to if there are no more locks associated with the staker.
-    position remove_only;
-
+    // Get the lock from the list.
+    get r1[r3] into r4;
+    // If the unlock height is greater than the current block height, then the lock is not yet valid.
+    // Nor will any subsequent locks be valid, so we can exit the loop.
+    gt r4.unlock_height block.height into r5;
+    branch.eq r5 true to end_loop;
+    // Otherwise, the lock is valid, so we can unlock the microcredits.
+    // Remove the lock.
+    remove r1[r0];
     // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
     // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-    call credits.aleo/transfer_public r0 r4.microcredits;
+    call.finalize credits.aleo/transfer_public r0 r4.microcredits;
+    // Increment the counter.
+    add r3 1u64 into r6;
+    // Jump back to the start of the loop.
+    branch.eq true true to start_loop;
+
+    // The position we jump to if there are no more locks associated with the staker.
+    position end_loop;
+
+    // Update the list of locks for the staker.
+    set locked[r0] r1;
+
 
 // TODO: Implement slashing.
 //// The `slash_stake` function slashes a percentage of stake for a validator and it's delegators.
