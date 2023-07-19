@@ -2329,6 +2329,53 @@ function compute:
     process.verify_execution(&execution).unwrap();
 }
 
+#[test]
+fn test_process_deploy_credits_program() {
+    let rng = &mut TestRng::default();
+
+    // Initialize an empty process without the `credits` program.
+    let empty_process =
+        Process { universal_srs: Arc::new(UniversalSRS::<CurrentNetwork>::load().unwrap()), stacks: IndexMap::new() };
+
+    // Construct the process.
+    let process = Process::load().unwrap();
+
+    // Fetch the credits program
+    let program = Program::credits().unwrap();
+
+    // Create a deployment for the credits.aleo program.
+    let deployment = empty_process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+
+    // Ensure the deployment is valid on the empty process.
+    assert!(empty_process.verify_deployment::<CurrentAleo, _>(&deployment, rng).is_ok());
+    // Ensure the deployment is not valid on the standard process.
+    assert!(process.verify_deployment::<CurrentAleo, _>(&deployment, rng).is_err());
+
+    // Create a new `credits.aleo` program.
+    let program = Program::from_str(
+        r"
+program credits.aleo;
+
+record token:
+    owner as address.private;
+    amount as u64.private;
+
+function compute:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+    )
+    .unwrap();
+
+    // Create a deployment for the credits.aleo program.
+    let deployment = empty_process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+
+    // Ensure the deployment is valid on the empty process.
+    assert!(empty_process.verify_deployment::<CurrentAleo, _>(&deployment, rng).is_ok());
+    // Ensure the deployment is not valid on the standard process.
+    assert!(process.verify_deployment::<CurrentAleo, _>(&deployment, rng).is_err());
+}
+
 fn get_assignment(
     stack: &Stack<CurrentNetwork>,
     private_key: &PrivateKey<CurrentNetwork>,
