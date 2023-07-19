@@ -178,7 +178,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Ensure the index matches the expected index.
                 if index != transaction.index() {
                     // Note: This will abort the entire atomic batch.
-                    return Err(format!("Mismatch in {} transaction index", transaction.variant()))
+                    return Err(format!("Mismatch in {} transaction index", transaction.variant()));
                 }
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
