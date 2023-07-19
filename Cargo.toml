@@ -64,6 +64,7 @@ members = [
   "ledger",
   "ledger/block",
   "ledger/coinbase",
+  "ledger/narwhal",
   "ledger/query",
   "ledger/store",
   "ledger/test-helpers",
@@ -122,6 +123,7 @@ cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 noconfig = [ ]
 rocks = [ "snarkvm-ledger/rocks" ]
+test-helpers = [ "snarkvm-ledger/test-helpers" ]
 timer = [ "snarkvm-ledger/timer" ]
 ed25519 = [ "snarkvm-console/ed25519" ]
 algorithms = [ "snarkvm-algorithms" ]

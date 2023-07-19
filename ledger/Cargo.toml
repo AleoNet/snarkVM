@@ -34,10 +34,12 @@ serial = [
   "console/serial",
   "ledger-block/serial",
   "ledger-coinbase/serial",
+  "ledger-narwhal/serial",
   "ledger-query/serial",
   "ledger-store/serial",
   "synthesizer/serial"
 ]
+test-helpers = [ "ledger-narwhal/test-helpers" ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
@@ -58,6 +60,11 @@ version = "=0.14.5"
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "./coinbase"
+version = "=0.14.5"
+
+[dependencies.ledger-narwhal]
+package = "snarkvm-ledger-narwhal"
+path = "./narwhal"
 version = "=0.14.5"
 
 [dependencies.ledger-query]

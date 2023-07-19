@@ -20,6 +20,7 @@ extern crate tracing;
 
 pub use ledger_block as block;
 pub use ledger_coinbase as coinbase;
+pub use ledger_narwhal as narwhal;
 pub use ledger_query as query;
 pub use ledger_store as store;
 

@@ -488,6 +488,15 @@ jobs:
           workspace_member: ledger/coinbase
           cache_key: snarkvm-ledger-coinbase-cache
 
+  ledger-narwhal:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal
+          cache_key: snarkvm-ledger-narwhal-cache
+
   ledger-query:
     docker:
       - image: cimg/rust:1.69
@@ -713,6 +722,7 @@ workflows:
       - ledger
       - ledger-block
       - ledger-coinbase
+      - ledger-narwhal
       - ledger-query
       - ledger-store
       - ledger-test-helpers
