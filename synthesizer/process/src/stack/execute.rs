@@ -167,19 +167,20 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Ensure the request is well-formed.
         ensure!(console_request.verify(&input_types), "Request is invalid");
-        lap!(timer, "Verify the request");
-
-        // Initialize the registers.
-        let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
-
-        use circuit::{Eject, Inject};
 
         // Inject the transition public key `tpk` as `Mode::Public`.
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
+
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
+        lap!(timer, "Verify the request");
+
+        use circuit::{Eject, Inject};
+
+        // Initialize the registers.
+        let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
 
         // Set the transition caller.
         registers.set_caller(*console_request.caller());
