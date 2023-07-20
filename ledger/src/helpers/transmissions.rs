@@ -18,7 +18,6 @@ use ledger_coinbase::ProverSolution;
 use ledger_narwhal::{Transmission, TransmissionID};
 
 use anyhow::{bail, ensure, Result};
-use indexmap::IndexSet;
 use std::collections::HashSet;
 
 /// Takes in an iterator of transmissions and returns a tuple of ratifications, solutions, and transactions.
