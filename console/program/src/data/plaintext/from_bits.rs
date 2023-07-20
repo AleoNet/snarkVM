@@ -28,7 +28,7 @@ impl<N: Network> FromBits for Plaintext<N> {
             Ok(bits)
         };
 
-        let variant = [next_bits(1)?[0], next_bits(1)?[0]];
+        let variant = &next_bits(2)?[..];
 
         // Literal
         if variant == [false, false] {
