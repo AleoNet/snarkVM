@@ -22,14 +22,16 @@ impl<N: Network> Record<N, Plaintext<N>> {
             // Compute the record view key.
             let record_view_key = (**self.owner * randomizer).to_x_coordinate();
             // Encrypt the record.
-            self.encrypt_symmetric(&record_view_key)
+            self.encrypt_symmetric_unchecked(&record_view_key)
         } else {
             bail!("Illegal operation: Record::encrypt() randomizer does not correspond to the record nonce.")
         }
     }
 
     /// Encrypts `self` under the given record view key.
-    pub fn encrypt_symmetric(&self, record_view_key: &Field<N>) -> Result<Record<N, Ciphertext<N>>> {
+    /// Note: This method does not check that the record view key corresponds to the record owner.
+    /// Use `Self::encrypt` for the checked variant.
+    pub fn encrypt_symmetric_unchecked(&self, record_view_key: &Field<N>) -> Result<Record<N, Ciphertext<N>>> {
         // Determine the number of randomizers needed to encrypt the record.
         let num_randomizers = self.num_randomizers()?;
         // Prepare a randomizer for each field element.
