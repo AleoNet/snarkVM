@@ -17,39 +17,49 @@ use super::*;
 impl<N: Network> FromBits for Plaintext<N> {
     /// Initializes a new plaintext from a list of little-endian bits *without* trailing zeros.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
-        let mut bits = bits_le.iter().cloned();
+        let bits = bits_le;
+
+        // The starting index used to create subsequent subslices of the `bits` slice.
+        let mut index = 0;
 
         // Helper function to get the next n bits as a slice.
-        let mut next_bits = |n: usize| -> Result<Vec<bool>> {
-            let bits: Vec<_> = bits.by_ref().take(n).collect();
-            if bits.len() < n {
+        let mut next_bits = |n: usize| -> Result<&[bool]> {
+            // Safely procure a subslice with the length `n` starting at `index`.
+            let subslice = bits.get(index..index + n);
+            // Check if the range is within bounds.
+            if let Some(next_bits) = subslice {
+                // Move the starting index.
+                index += n;
+                // Return the subslice.
+                Ok(next_bits)
+            } else {
                 bail!("Insufficient bits");
             }
-            Ok(bits)
         };
 
         let variant = next_bits(2)?;
+        let variant = [variant[0], variant[1]];
 
         // Literal
         if variant == [false, false] {
-            let literal_variant = u8::from_bits_le(&next_bits(8)?)?;
-            let literal_size = u16::from_bits_le(&next_bits(16)?)?;
-            let literal = Literal::from_bits_le(literal_variant, &next_bits(literal_size as usize)?)?;
+            let literal_variant = u8::from_bits_le(next_bits(8)?)?;
+            let literal_size = u16::from_bits_le(next_bits(16)?)?;
+            let literal = Literal::from_bits_le(literal_variant, next_bits(literal_size as usize)?)?;
 
             // Cache the plaintext bits, and return the literal.
             Ok(Self::Literal(literal, OnceCell::with_value(bits_le.to_vec())))
         }
         // Struct
         else if variant == [false, true] {
-            let num_members = u8::from_bits_le(&next_bits(8)?)?;
+            let num_members = u8::from_bits_le(next_bits(8)?)?;
 
             let mut members = IndexMap::with_capacity(num_members as usize);
             for _ in 0..num_members {
-                let identifier_size = u8::from_bits_le(&next_bits(8)?)?;
-                let identifier = Identifier::from_bits_le(&next_bits(identifier_size as usize)?)?;
+                let identifier_size = u8::from_bits_le(next_bits(8)?)?;
+                let identifier = Identifier::from_bits_le(next_bits(identifier_size as usize)?)?;
 
-                let member_size = u16::from_bits_le(&next_bits(16)?)?;
-                let value = Plaintext::from_bits_le(&next_bits(member_size as usize)?)?;
+                let member_size = u16::from_bits_le(next_bits(16)?)?;
+                let value = Plaintext::from_bits_le(next_bits(member_size as usize)?)?;
 
                 if members.insert(identifier, value).is_some() {
                     bail!("Duplicate identifier in struct.");
@@ -67,39 +77,49 @@ impl<N: Network> FromBits for Plaintext<N> {
 
     /// Initializes a new plaintext from a list of big-endian bits *without* trailing zeros.
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
-        let mut bits = bits_be.iter().cloned();
+        let bits = bits_be;
+
+        // The starting index used to create subsequent subslices of the `bits` slice.
+        let mut index = 0;
 
         // Helper function to get the next n bits as a slice.
-        let mut next_bits = |n: usize| -> Result<Vec<bool>> {
-            let bits: Vec<_> = bits.by_ref().take(n).collect();
-            if bits.len() < n {
+        let mut next_bits = |n: usize| -> Result<&[bool]> {
+            // Safely procure a subslice with the length `n` starting at `index`.
+            let subslice = bits.get(index..index + n);
+            // Check if the range is within bounds.
+            if let Some(next_bits) = subslice {
+                // Move the starting index.
+                index += n;
+                // Return the subslice.
+                Ok(next_bits)
+            } else {
                 bail!("Insufficient bits");
             }
-            Ok(bits)
         };
 
         let variant = next_bits(2)?;
+        let variant = [variant[0], variant[1]];
 
         // Literal
         if variant == [false, false] {
-            let literal_variant = u8::from_bits_be(&next_bits(8)?)?;
-            let literal_size = u16::from_bits_be(&next_bits(16)?)?;
-            let literal = Literal::from_bits_be(literal_variant, &next_bits(literal_size as usize)?)?;
+            let literal_variant = u8::from_bits_be(next_bits(8)?)?;
+            let literal_size = u16::from_bits_be(next_bits(16)?)?;
+            let literal = Literal::from_bits_be(literal_variant, next_bits(literal_size as usize)?)?;
 
             // Cache the plaintext bits, and return the literal.
             Ok(Self::Literal(literal, OnceCell::with_value(bits_be.to_vec())))
         }
         // Struct
         else if variant == [false, true] {
-            let num_members = u8::from_bits_be(&next_bits(8)?)?;
+            let num_members = u8::from_bits_be(next_bits(8)?)?;
 
             let mut members = IndexMap::with_capacity(num_members as usize);
             for _ in 0..num_members {
-                let identifier_size = u8::from_bits_be(&next_bits(8)?)?;
-                let identifier = Identifier::from_bits_be(&next_bits(identifier_size as usize)?)?;
+                let identifier_size = u8::from_bits_be(next_bits(8)?)?;
+                let identifier = Identifier::from_bits_be(next_bits(identifier_size as usize)?)?;
 
-                let member_size = u16::from_bits_be(&next_bits(16)?)?;
-                let value = Plaintext::from_bits_be(&next_bits(member_size as usize)?)?;
+                let member_size = u16::from_bits_be(next_bits(16)?)?;
+                let value = Plaintext::from_bits_be(next_bits(member_size as usize)?)?;
 
                 if members.insert(identifier, value).is_some() {
                     bail!("Duplicate identifier in struct.");
