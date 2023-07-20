@@ -118,7 +118,7 @@ impl<N: Network> ConfirmedTransaction<N> {
 
 impl<N: Network> ConfirmedTransaction<N> {
     /// Returns 'true' if the confirmed transaction is accepted.
-    pub fn is_accepted(&self) -> bool {
+    pub const fn is_accepted(&self) -> bool {
         match self {
             Self::AcceptedDeploy(..) | Self::AcceptedExecute(..) => true,
             Self::RejectedDeploy(..) | Self::RejectedExecute(..) => false,
@@ -126,14 +126,14 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns 'true' if the confirmed transaction is rejected.
-    pub fn is_rejected(&self) -> bool {
+    pub const fn is_rejected(&self) -> bool {
         !self.is_accepted()
     }
 }
 
 impl<N: Network> ConfirmedTransaction<N> {
     /// Returns the confirmed transaction index.
-    pub fn index(&self) -> u32 {
+    pub const fn index(&self) -> u32 {
         match self {
             Self::AcceptedDeploy(index, ..) => *index,
             Self::AcceptedExecute(index, ..) => *index,
@@ -142,8 +142,18 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
     }
 
+    /// Returns the human-readable variant of the confirmed transaction. 
+    pub const fn variant(&self) -> &str {
+        match self {
+            Self::AcceptedDeploy(..) => "accepted deploy",
+            Self::AcceptedExecute(..) => "accepted execute",
+            Self::RejectedDeploy(..) => "rejected deploy",
+            Self::RejectedExecute(..) => "rejected execute",
+        }
+    }
+
     /// Returns the transaction.
-    pub fn transaction(&self) -> &Transaction<N> {
+    pub const fn transaction(&self) -> &Transaction<N> {
         match self {
             Self::AcceptedDeploy(_, transaction, _) => transaction,
             Self::AcceptedExecute(_, transaction, _) => transaction,
@@ -171,7 +181,7 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns the finalize operations for the confirmed transaction.
-    pub fn finalize_operations(&self) -> Option<&Vec<FinalizeOperation<N>>> {
+    pub const fn finalize_operations(&self) -> Option<&Vec<FinalizeOperation<N>>> {
         match self {
             Self::AcceptedDeploy(_, _, finalize) => Some(finalize),
             Self::AcceptedExecute(_, _, finalize) => Some(finalize),

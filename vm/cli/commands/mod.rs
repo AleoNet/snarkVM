@@ -18,6 +18,9 @@ pub use build::*;
 pub mod clean;
 pub use clean::*;
 
+pub mod execute;
+pub use execute::*;
+
 pub mod new;
 pub use new::*;
 
@@ -28,8 +31,9 @@ pub mod update;
 pub use update::*;
 
 use crate::{
+    console::program::{Identifier, Locator, ProgramID, Value},
+    ledger::block::Transaction,
     package::Package,
-    prelude::{Identifier, Locator, ProgramID, Value},
 };
 
 use anyhow::Result;

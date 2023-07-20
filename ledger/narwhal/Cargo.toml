@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-narwhal"
-version = "0.14.1"
+version = "0.14.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Data structures for a Narwhal-style memory pool in a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -37,19 +37,19 @@ transmission-id = [ "console", "ledger-coinbase" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.14.1"
+version = "=0.14.5"
 optional = true
 
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../../ledger/block"
-version = "=0.14.1"
+version = "=0.14.5"
 optional = true
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "../../ledger/coinbase"
-version = "=0.14.1"
+version = "=0.14.5"
 optional = true
 
 [dependencies.bytes]
