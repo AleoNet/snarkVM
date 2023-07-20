@@ -38,13 +38,8 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let literal_size = U16::from_bits_le(&next_bits(16)).eject_value();
             let literal = Literal::from_bits_le(&literal_variant, &next_bits(*literal_size as usize));
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_le.to_vec()) {
-                // Return the literal.
-                Ok(_) => Self::Literal(literal, cache),
-                Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the literal.
+            Self::Literal(literal, OnceCell::with_value(bits_le.to_vec()))
         }
         // Struct
         else if variant == [false, true] {
@@ -61,13 +56,8 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 members.insert(identifier, value);
             }
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_le.to_vec()) {
-                // Return the member.
-                Ok(_) => Self::Struct(members, cache),
-                Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the struct.
+            Self::Struct(members, OnceCell::with_value(bits_le.to_vec()))
         }
         // Unknown variant.
         else {
@@ -96,13 +86,8 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let literal_size = U16::from_bits_be(&next_bits(16)).eject_value();
             let literal = Literal::from_bits_be(&literal_variant, &next_bits(*literal_size as usize));
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_be.to_vec()) {
-                // Return the literal.
-                Ok(_) => Self::Literal(literal, cache),
-                Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the literal.
+            Self::Literal(literal, OnceCell::with_value(bits_be.to_vec()))
         }
         // Struct
         else if variant == [false, true] {
@@ -119,13 +104,8 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 members.insert(identifier, value);
             }
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_be.to_vec()) {
-                // Return the member.
-                Ok(_) => Self::Struct(members, cache),
-                Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the struct.
+            Self::Struct(members, OnceCell::with_value(bits_be.to_vec()))
         }
         // Unknown variant.
         else {
