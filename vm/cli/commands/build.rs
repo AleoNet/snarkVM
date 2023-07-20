@@ -34,6 +34,8 @@ impl Build {
         // Load the package.
         let package = Package::open(&path)?;
 
+        println!("⚠️  Attention - This command is deprecated. Use the {} command.\n", "'run'".to_string().bold());
+
         // Build the package, if the package requires building.
         package.build::<Aleo>(self.endpoint)?;
 

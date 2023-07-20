@@ -20,7 +20,7 @@ impl<A: Aleo> ViewKey<A> {
         // Derive the compute key.
         let compute_key = private_key.to_compute_key();
         // Compute view_key := sk_sig + r_sig + sk_prf.
-        Self(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf())
+        Self(private_key.sk_sig() + private_key.r_sig() + compute_key.sk_prf(), Default::default())
     }
 }
 

@@ -38,23 +38,23 @@ impl<N: Network> BatchHeader<N> {
     ) -> Result<Field<N>> {
         let mut preimage = Vec::new();
         // Insert the author.
-        preimage.extend_from_slice(&author.to_bytes_le()?);
+        author.write_le(&mut preimage)?;
         // Insert the round number.
-        preimage.extend_from_slice(&round.to_bytes_le()?);
+        round.write_le(&mut preimage)?;
         // Insert the timestamp.
-        preimage.extend_from_slice(&timestamp.to_bytes_le()?);
+        timestamp.write_le(&mut preimage)?;
         // Insert the number of transmissions.
-        preimage.extend_from_slice(&u64::try_from(transmission_ids.len())?.to_bytes_le()?);
+        u64::try_from(transmission_ids.len())?.write_le(&mut preimage)?;
         // Insert the transmission IDs.
         for transmission_id in transmission_ids {
-            preimage.extend_from_slice(&transmission_id.to_bytes_le()?);
+            transmission_id.write_le(&mut preimage)?;
         }
         // Insert the number of previous certificate IDs.
-        preimage.extend_from_slice(&u64::try_from(previous_certificate_ids.len())?.to_bytes_le()?);
+        u64::try_from(previous_certificate_ids.len())?.write_le(&mut preimage)?;
         // Insert the previous certificate IDs.
         for certificate_id in previous_certificate_ids {
             // Insert the certificate ID.
-            preimage.extend_from_slice(&certificate_id.to_bytes_le()?);
+            certificate_id.write_le(&mut preimage)?;
         }
         // Hash the preimage.
         N::hash_bhp1024(&preimage.to_bits_le())

@@ -481,4 +481,35 @@ mod tests {
         assert!(vm.check_transaction(&transaction, None).is_ok());
         assert!(vm.verify_transaction(&transaction, None));
     }
+
+    #[test]
+    fn test_failed_credits_deployment() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Fetch the credits program
+        let program = Program::credits().unwrap();
+
+        // Ensure that the program can't be deployed.
+        assert!(vm.deploy_raw(&program, rng).is_err());
+
+        // Create a new `credits.aleo` program.
+        let program = Program::from_str(
+            r"
+program credits.aleo;
+
+record token:
+    owner as address.private;
+    amount as u64.private;
+
+function compute:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+        )
+        .unwrap();
+
+        // Ensure that the program can't be deployed.
+        assert!(vm.deploy_raw(&program, rng).is_err());
+    }
 }
