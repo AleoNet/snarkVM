@@ -36,13 +36,8 @@ impl<N: Network> FromBits for Plaintext<N> {
             let literal_size = u16::from_bits_le(&next_bits(16)?)?;
             let literal = Literal::from_bits_le(literal_variant, &next_bits(literal_size as usize)?)?;
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_le.to_vec()) {
-                // Return the literal.
-                Ok(_) => Ok(Self::Literal(literal, cache)),
-                Err(_) => bail!("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the literal.
+            Ok(Self::Literal(literal, OnceCell::with_value(bits_le.to_vec())))
         }
         // Struct
         else if variant == [false, true] {
@@ -61,13 +56,8 @@ impl<N: Network> FromBits for Plaintext<N> {
                 }
             }
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_le.to_vec()) {
-                // Return the struct.
-                Ok(_) => Ok(Self::Struct(members, cache)),
-                Err(_) => bail!("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the struct.
+            Ok(Self::Struct(members, OnceCell::with_value(bits_le.to_vec())))
         }
         // Unknown variant.
         else {
@@ -96,13 +86,8 @@ impl<N: Network> FromBits for Plaintext<N> {
             let literal_size = u16::from_bits_be(&next_bits(16)?)?;
             let literal = Literal::from_bits_be(literal_variant, &next_bits(literal_size as usize)?)?;
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_be.to_vec()) {
-                // Return the literal.
-                Ok(_) => Ok(Self::Literal(literal, cache)),
-                Err(_) => bail!("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the literal.
+            Ok(Self::Literal(literal, OnceCell::with_value(bits_be.to_vec())))
         }
         // Struct
         else if variant == [false, true] {
@@ -121,13 +106,8 @@ impl<N: Network> FromBits for Plaintext<N> {
                 }
             }
 
-            // Store the plaintext bits in the cache.
-            let cache = OnceCell::new();
-            match cache.set(bits_be.to_vec()) {
-                // Return the struct.
-                Ok(_) => Ok(Self::Struct(members, cache)),
-                Err(_) => bail!("Failed to store the plaintext bits in the cache."),
-            }
+            // Cache the plaintext bits, and return the struct.
+            Ok(Self::Struct(members, OnceCell::with_value(bits_be.to_vec())))
         }
         // Unknown variant.
         else {
