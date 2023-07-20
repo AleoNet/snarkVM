@@ -19,20 +19,24 @@ impl<A: Aleo> FromBits for Plaintext<A> {
 
     /// Initializes a new plaintext from a list of little-endian bits *without* trailing zeros.
     fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
-        let mut counter = 0;
+        let mut bits = bits_le.iter().cloned();
 
-        let variant = [bits_le[counter].eject_value(), bits_le[counter + 1].eject_value()];
-        counter += 2;
+        // Helper function to get the next n bits as a slice.
+        let mut next_bits = |n: usize| -> Vec<Boolean<A>> {
+            let bits: Vec<_> = bits.by_ref().take(n).collect();
+            if bits.len() < n {
+                return A::halt("Insufficient bits");
+            }
+            bits
+        };
+
+        let variant = next_bits(2).iter().map(|b| b.eject_value()).collect::<Vec<_>>();
 
         // Literal
         if variant == [false, false] {
-            let literal_variant = U8::from_bits_le(&bits_le[counter..counter + 8]);
-            counter += 8;
-
-            let literal_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
-            counter += 16;
-
-            let literal = Literal::from_bits_le(&literal_variant, &bits_le[counter..counter + *literal_size as usize]);
+            let literal_variant = U8::from_bits_le(&next_bits(8));
+            let literal_size = U16::from_bits_le(&next_bits(16)).eject_value();
+            let literal = Literal::from_bits_le(&literal_variant, &next_bits(*literal_size as usize));
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
@@ -44,22 +48,15 @@ impl<A: Aleo> FromBits for Plaintext<A> {
         }
         // Struct
         else if variant == [false, true] {
-            let num_members = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
-            counter += 8;
+            let num_members = U8::from_bits_le(&next_bits(8)).eject_value();
 
             let mut members = IndexMap::with_capacity(*num_members as usize);
             for _ in 0..*num_members {
-                let identifier_size = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
-                counter += 8;
+                let identifier_size = U8::from_bits_le(&next_bits(8)).eject_value();
+                let identifier = Identifier::from_bits_le(&next_bits(*identifier_size as usize));
 
-                let identifier = Identifier::from_bits_le(&bits_le[counter..counter + *identifier_size as usize]);
-                counter += *identifier_size as usize;
-
-                let member_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
-                counter += 16;
-
-                let value = Plaintext::from_bits_le(&bits_le[counter..counter + *member_size as usize]);
-                counter += *member_size as usize;
+                let member_size = U16::from_bits_le(&next_bits(16)).eject_value();
+                let value = Plaintext::from_bits_le(&next_bits(*member_size as usize));
 
                 members.insert(identifier, value);
             }
@@ -80,20 +77,24 @@ impl<A: Aleo> FromBits for Plaintext<A> {
 
     /// Initializes a new plaintext from a list of big-endian bits *without* trailing zeros.
     fn from_bits_be(bits_be: &[Boolean<A>]) -> Self {
-        let mut counter = 0;
+        let mut bits = bits_be.iter().cloned();
 
-        let variant = [bits_be[counter].eject_value(), bits_be[counter + 1].eject_value()];
-        counter += 2;
+        // Helper function to get the next n bits as a slice.
+        let mut next_bits = |n: usize| -> Vec<Boolean<A>> {
+            let bits: Vec<_> = bits.by_ref().take(n).collect();
+            if bits.len() < n {
+                return A::halt("Insufficient bits.");
+            }
+            bits
+        };
+
+        let variant = next_bits(2).iter().map(|b| b.eject_value()).collect::<Vec<_>>();
 
         // Literal
         if variant == [false, false] {
-            let literal_variant = U8::from_bits_be(&bits_be[counter..counter + 8]);
-            counter += 8;
-
-            let literal_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
-            counter += 16;
-
-            let literal = Literal::from_bits_be(&literal_variant, &bits_be[counter..counter + *literal_size as usize]);
+            let literal_variant = U8::from_bits_be(&next_bits(8));
+            let literal_size = U16::from_bits_be(&next_bits(16)).eject_value();
+            let literal = Literal::from_bits_be(&literal_variant, &next_bits(*literal_size as usize));
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
@@ -105,22 +106,15 @@ impl<A: Aleo> FromBits for Plaintext<A> {
         }
         // Struct
         else if variant == [false, true] {
-            let num_members = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
-            counter += 8;
+            let num_members = U8::from_bits_be(&next_bits(8)).eject_value();
 
             let mut members = IndexMap::with_capacity(*num_members as usize);
             for _ in 0..*num_members {
-                let identifier_size = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
-                counter += 8;
+                let identifier_size = U8::from_bits_be(&next_bits(8)).eject_value();
+                let identifier = Identifier::from_bits_be(&next_bits(*identifier_size as usize));
 
-                let identifier = Identifier::from_bits_be(&bits_be[counter..counter + *identifier_size as usize]);
-                counter += *identifier_size as usize;
-
-                let member_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
-                counter += 16;
-
-                let value = Plaintext::from_bits_be(&bits_be[counter..counter + *member_size as usize]);
-                counter += *member_size as usize;
+                let member_size = U16::from_bits_be(&next_bits(16)).eject_value();
+                let value = Plaintext::from_bits_be(&next_bits(*member_size as usize));
 
                 members.insert(identifier, value);
             }
