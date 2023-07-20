@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::type_complexity)]
+
 use console::network::Network;
 use ledger_block::{Ratify, Transaction};
 use ledger_coinbase::ProverSolution;
@@ -28,7 +30,7 @@ pub fn decouple_transmissions<N: Network>(
     transmissions: impl Iterator<Item = (TransmissionID<N>, Transmission<N>)>,
 ) -> Result<(Vec<Ratify<N>>, Vec<ProverSolution<N>>, Vec<Transaction<N>>)> {
     // Initialize a list for the ratifications.
-    let mut ratifications = Vec::new();
+    let ratifications = Vec::new();
     // Initialize a list for the solutions.
     let mut solutions = Vec::new();
     // Initialize a list for the transactions.

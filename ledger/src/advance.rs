@@ -27,9 +27,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let private_key = PrivateKey::<N>::new(rng)?;
 
         // Decouple the transmissions into ratifications, solutions, and transactions.
-        let (_ratifications, solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
+        let (_ratifications, _solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
         // Construct the candidate block.
-        self.prepare_advance_to_next_block(&private_key, transactions, Some(solutions), rng)
+        self.prepare_advance_to_next_block(&private_key, transactions, None, rng)
     }
 
     /// Returns a candidate for the next block in the ledger.
