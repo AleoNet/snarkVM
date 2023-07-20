@@ -15,13 +15,18 @@
 use console::network::Network;
 use ledger_block::{Ratify, Transaction};
 use ledger_coinbase::ProverSolution;
-use ledger_narwhal::Transmission;
+use ledger_narwhal::{Transmission, TransmissionID};
 
-use anyhow::Result;
+use anyhow::{bail, ensure, Result};
+use indexmap::IndexSet;
+use std::collections::HashSet;
 
 /// Takes in an iterator of transmissions and returns a tuple of ratifications, solutions, and transactions.
+///
+/// This method ensures each transmission ID corresponds to its given transmission.
+/// This method guarantees that the output is 1) order-preserving, and 2) unique.
 pub fn decouple_transmissions<N: Network>(
-    transmissions: impl Iterator<Item = Transmission<N>>,
+    transmissions: impl Iterator<Item = (TransmissionID<N>, Transmission<N>)>,
 ) -> Result<(Vec<Ratify<N>>, Vec<ProverSolution<N>>, Vec<Transaction<N>>)> {
     // Initialize a list for the ratifications.
     let mut ratifications = Vec::new();
@@ -30,12 +35,33 @@ pub fn decouple_transmissions<N: Network>(
     // Initialize a list for the transactions.
     let mut transactions = Vec::new();
 
+    // Initialize a set to ensure the transmissions are unique.
+    let mut unique = HashSet::new();
+
     // Iterate over the transmissions.
-    for transmission in transmissions {
-        match transmission {
-            Transmission::Ratification => (), // ratifications.push();
-            Transmission::Solution(solution) => solutions.push(solution.deserialize_blocking()?),
-            Transmission::Transaction(transaction) => transactions.push(transaction.deserialize_blocking()?),
+    for (transmission_id, transmission) in transmissions {
+        // Ensure the transmission ID is unique.
+        ensure!(unique.insert(transmission_id), "Found a duplicate transmission ID - {transmission_id}");
+        // Deserialize and store the transmission.
+        match (transmission_id, transmission) {
+            (TransmissionID::Ratification, Transmission::Ratification) => (),
+            (TransmissionID::Solution(commitment), Transmission::Solution(solution)) => {
+                // Deserialize the solution.
+                let solution = solution.deserialize_blocking()?;
+                // Ensure the transmission ID corresponds to the solution.
+                ensure!(commitment == solution.commitment(), "Mismatching transmission ID (solution)");
+                // Insert the solution into the list.
+                solutions.push(solution);
+            }
+            (TransmissionID::Transaction(transaction_id), Transmission::Transaction(transaction)) => {
+                // Deserialize the transaction.
+                let transaction = transaction.deserialize_blocking()?;
+                // Ensure the transmission ID corresponds to the transaction.
+                ensure!(transaction_id == transaction.id(), "Mismatching transmission ID (transaction)");
+                // Insert the transaction into the list.
+                transactions.push(transaction);
+            }
+            _ => bail!("Mismatching (transmission ID, transmission) entry"),
         }
     }
     // Return the ratifications, solutions, and transactions.
