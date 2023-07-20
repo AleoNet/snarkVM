@@ -24,10 +24,10 @@ impl<A: Aleo> FromBits for Plaintext<A> {
         // Helper function to get the next n bits as a slice.
         let mut next_bits = |n: usize| -> Vec<Boolean<A>> {
             let bits: Vec<_> = bits.by_ref().take(n).collect();
-            if bits.len() < n {
-                return A::halt("Insufficient bits");
+            match bits.len() < 2 {
+                true => A::halt("Insufficient bits."),
+                false => bits,
             }
-            bits
         };
 
         let variant = next_bits(2).iter().map(|b| b.eject_value()).collect::<Vec<_>>();
@@ -72,10 +72,10 @@ impl<A: Aleo> FromBits for Plaintext<A> {
         // Helper function to get the next n bits as a slice.
         let mut next_bits = |n: usize| -> Vec<Boolean<A>> {
             let bits: Vec<_> = bits.by_ref().take(n).collect();
-            if bits.len() < n {
-                return A::halt("Insufficient bits.");
+            match bits.len() < 2 {
+                true => A::halt("Insufficient bits."),
+                false => bits,
             }
-            bits
         };
 
         let variant = next_bits(2).iter().map(|b| b.eject_value()).collect::<Vec<_>>();
