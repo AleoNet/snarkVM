@@ -59,6 +59,7 @@ use console::{
 };
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
+use ledger_narwhal::TransmissionID;
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
