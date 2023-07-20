@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod bft;
+pub use bft::*;
+
 mod rewards;
 pub use rewards::*;
 
@@ -20,6 +23,3 @@ pub use supply::*;
 
 mod target;
 pub use target::*;
-
-mod transmissions;
-pub use transmissions::*;
