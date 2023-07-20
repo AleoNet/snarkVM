@@ -30,7 +30,8 @@ mod helpers;
 pub use helpers::*;
 
 mod advance;
-mod check;
+mod check_next_block;
+mod check_transaction_basic;
 mod contains;
 mod find;
 mod get;
