@@ -2805,6 +2805,7 @@ dependencies = [
  "bs58",
  "criterion",
  "ed25519-dalek",
+ "once_cell",
  "serde_json",
  "snarkvm-console-network",
  "snarkvm-console-types",

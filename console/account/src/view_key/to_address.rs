@@ -17,7 +17,6 @@ use super::*;
 impl<N: Network> ViewKey<N> {
     /// Returns the address corresponding to the view key.
     pub fn to_address(&self) -> Address<N> {
-        // TODO (raychu86): We can cache this with a OnceCell.
         Address::new(N::g_scalar_multiply(self))
     }
 }
