@@ -141,6 +141,6 @@ mod tests {
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
 
-        anyhow::bail!("\n\nRemember to #[ignore] this test!\n\n")
+        bail!("\n\nRemember to #[ignore] this test!\n\n")
     }
 }
