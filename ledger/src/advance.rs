@@ -178,7 +178,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Construct the new block.
-        Block::new(private_key, latest_block.hash(), header, transactions, ratifications, coinbase, rng)
+        Block::new_beacon(private_key, latest_block.hash(), header, transactions, ratifications, coinbase, rng)
     }
 
     /// Adds the given block as the next block in the ledger.

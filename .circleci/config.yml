@@ -470,6 +470,15 @@ jobs:
           workspace_member: ledger
           cache_key: snarkvm-ledger-cache
 
+  ledger-authority:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/authority
+          cache_key: snarkvm-ledger-authority-cache
+
   ledger-block:
     docker:
       - image: cimg/rust:1.69
@@ -720,6 +729,7 @@ workflows:
       - curves
       - fields
       - ledger
+      - ledger-authority
       - ledger-block
       - ledger-coinbase
       - ledger-narwhal

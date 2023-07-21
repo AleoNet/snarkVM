@@ -32,6 +32,7 @@ async = [ "ledger-query/async", "synthesizer/async" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
+  "ledger-authority/serial",
   "ledger-block/serial",
   "ledger-coinbase/serial",
   "ledger-narwhal/serial",
@@ -47,9 +48,9 @@ package = "snarkvm-console"
 path = "../console"
 version = "=0.14.5"
 
-[dependencies.synthesizer]
-package = "snarkvm-synthesizer"
-path = "../synthesizer"
+[dependencies.ledger-authority]
+package = "snarkvm-ledger-authority"
+path = "./authority"
 version = "=0.14.5"
 
 [dependencies.ledger-block]
@@ -76,6 +77,11 @@ features = [ "query" ]
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
 path = "./store"
+version = "=0.14.5"
+
+[dependencies.synthesizer]
+package = "snarkvm-synthesizer"
+path = "../synthesizer"
 version = "=0.14.5"
 
 [dependencies.aleo-std]
