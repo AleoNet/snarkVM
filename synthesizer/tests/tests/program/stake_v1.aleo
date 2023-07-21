@@ -1,3 +1,10 @@
+/*
+randomness: 54329
+cases:
+  - function: bond_validator
+    inputs: [999_999u64]
+*/
+
 // Disclosure: This program is experimental and not intended for production use.
 // This program is provided "as is" without warranties of any kind.
 // The author disclaims liability for damages of any kind arising from the use of this program.
@@ -18,7 +25,7 @@ struct stake:
 // The `lock` struct track the amount of microcredits that are currently locked for the specified owner until the
 // specified unlock height.
 struct lock:
-    owner as address;
+    owned_by as address;
     bond as bond;
     unlock_height as u32;
 
@@ -43,7 +50,6 @@ mapping locked:
     key left as address.public;
     value right as [lock].public;
 
-
 //
 // The `bond_validator` function bonds a given number of microcredits as a validator.
 //
@@ -59,7 +65,7 @@ function bond_validator:
     assert.eq r1 true;
 
     // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
-    call credits.aleo/transfer_public stake.aleo r1;
+    // call credits.aleo/transfer_public stake.aleo r1; // TODO (raychu86): We do not have program addresses yet.
 
     finalize self.caller r0;
 
@@ -70,7 +76,7 @@ finalize bond_validator:
     input r1 as u64.public;
 
     // Construct the default stake struct.
-    cast 0u64 0u64 into stake as r2;
+    cast 0u64 0u64 into r2 as stake;
     // Get the stake for the specified validator.
     get.or_use validators[r0] r2 into r3;
 
@@ -83,15 +89,14 @@ finalize bond_validator:
     assert.eq r5 true;
 
     // Construct the new stake struct.
-    cast r4 r3.delegated into stake as r6;
+    cast r4 r3.delegated into r6 as stake;
 
     // Update the stake for the specified validator.
-    set validators[r0] r6;
+    set r6 into validators[r0];
 
     // Initialize an entry in the delegators mapping for the specified validator.
     cast into r7 as [address];
-    set delegators[r0] r7;
-
+    set r7 into delegators[r0];
 
 //
 // The `bond_staker` function bonds a given number of microcredits to the specified validator.
@@ -117,7 +122,7 @@ function bond_staker:
     assert.eq r2 true;
 
     // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
-    call credits.aleo/transfer_public stake.aleo r1;
+    // call credits.aleo/transfer_public stake.aleo r1; // TODO (raychu86): We do not have program addresses yet.
 
     // Bond the specified amount of microcredits to the specified validator.
     finalize self.caller r0 r1;
@@ -146,9 +151,9 @@ finalize bond_staker:
     // Increment the delegated stake for the specified validator.
     add r4.delegated r2 into r6;
     // Construct the updated stake struct.
-    cast r4.principal r6 into stake as r7;
+    cast r4.principal r6 into r7 as stake;
     // Update the stake for the specified validator.
-    set validators[r1] r7;
+    set r7 into validators[r1];
 
     // Check if the staker is already bonded.
     contains bonded[r0] into r8;
@@ -159,7 +164,9 @@ finalize bond_staker:
     // Add the staker's address to the delegators for the specified validator.
     push r9 r0;
     // Update the delegators for the specified validator.
-    set delegators[r1] r9;
+    set r9 into delegators[r1];
+
+    position end_update_delegators;
 
     // Construct the initial bond struct.
     cast r1 0u64 into r10 as bond;
@@ -173,8 +180,7 @@ finalize bond_staker:
     // Construct the updated bond struct.
     cast r1 r12 into r13 as bond;
     // Update the bond struct for the caller.
-    set bonded[r0] r13;
-
+    set r13 into bonded[r0];
 
 //
 // The `unbond_validator` function unbonds a given number of microcredits as a validator.
@@ -186,15 +192,15 @@ function unbond_validator:
     input r0 as u64.public;
 
     // Determine if the amount is at least one credit.
-    gte r1 1_000_000u64 into r0;
+    gte r0 1_000_000u64 into r1;
     // Enforce the amount is at least one credit.
-    assert.eq r2 true;
+    assert.eq r1 true;
 
     finalize self.caller r0;
 
 finalize unbond_validator:
     // Input the validator address.
-    input r0 as addres.public;
+    input r0 as address.public;
     // Input the amount of microcredits to unbond.
     input r1 as u64.public;
 
@@ -203,16 +209,16 @@ finalize unbond_validator:
     // Construct the new principal stake.
     sub r2.principal r1 into r3;
     // Create the new stake struct.
-    cast r3 r2.delegated into stake as r4;
+    cast r3 r2.delegated into r4 as stake;
     // Update the stake for the validator.
-    set validators[r0] r4;
+    set r4 into validators[r0];
 
     // Construct the bond struct for the lock.
     cast r0 r1 into r5 as bond;
     // Construct the unlock height.
     add block.height 256u32 into r6;
     // Construct the lock struct.
-    cast r0 r4 r6 into r7 as lock;
+    cast r0 r5 r6 into r7 as lock;
 
     // Initialize an empty vector.
     cast into r8 as [lock];
@@ -221,7 +227,7 @@ finalize unbond_validator:
     // Insert the new lock.
     push r9 r7;
     // Update the locks.
-    set locked[r0] r9;
+    set r9 into locked[r0];
 
     // Check if the remaining stake is at least 1 million credits.
     gte r3 1_000_000_000_000u64 into r10;
@@ -234,19 +240,20 @@ finalize unbond_validator:
     get.or_use delegators[r0] r11 into r12;
 
     // Get the number of delegators.
-    len r12 into r13;
+    length r12 into r13;
     // Loop through all the delegators.
     position start_loop;
-    branch.eq r13 0u64 to end_loop;
-    // Remove the delegator.
-    remove r11 r13 into r14;
+    branch.eq r13 0u32 to end_loop;
+    // Remove the delegator from the vector.
+    delete r11 r13 into r14;
     // Get the bond of the delegator.
     get bonded[r14] into r15;
-    // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
+
     // Unbond the staker.
-    call unbond_staker r0 r14 r15.microcredits;
+    // call unbond_staker r0 r14 r15.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
+
     // Decrement the index.
-    sub r13 1u64 into r13;
+    sub r13 1u32 into r13;
     // Jump back to the start of the loop.
     branch.eq true true to start_loop;
     position end_loop;
@@ -260,7 +267,7 @@ finalize unbond_validator:
     position skip_unbond_delegators;
 
     // If the remaining principal stake is zero, then remove the validator.
-    branch.neq r3.principal 0u64 to skip_remove_validator;
+    branch.neq r4.principal 0u64 to skip_remove_validator;
     // Remove the validator from the list of validators.
     remove validators[r0];
     // The position we jump to if the validator still has some stake.
@@ -307,7 +314,7 @@ finalize unbond_staker:
     // Enforce that the validator matches in the bond struct.
     assert.eq r4.validator r1;
     // Decrement the microcredits in the bond struct.
-    sub r3.microcredits r2 into r5;
+    sub r4.microcredits r2 into r5;
 
     // Remove the bond struct.
     remove bonded[r0];
@@ -320,47 +327,48 @@ finalize unbond_staker:
     // Construct the updated bond struct.
     cast r1 r5 into r7 as bond;
     // Update the bond struct for the caller.
-    set bonded[r0] r7;
+    set r7 into bonded[r0];
 
     // The position we jump to if the remaining bond is zero.
     position remove_only;
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get validators[r1] into r6;
+    get validators[r1] into r8;
     // Decrement the stake for the specified validator.
-    sub r6.delegated r2 into r7;
+    sub r8.delegated r2 into r9;
     // Construct the new stake struct.
-    cast r6.princial r7 into r8 as stake;
+    cast r8.principal r9 into r10 as stake;
     // Update the stake for the specified validator.
-    set validators[r1] r8;
+    set r10 into validators[r1];
 
     // If the remaining stake is zero, then remove the staker from the list of delegators.
-    branch.neq r7 0u64 to skip_remove_delegator;
+    branch.neq r9 0u64 to skip_remove_delegator;
     // Get the delegators for the specified validator.
-    get delegators[r1] into r8;
+    get delegators[r1] into r11;
     // Remove the delegator from the list of delegators.
-    remove r8[r0];
+    // TODO: Iterate through the list and remove the delegator.
+    // delete r11 r0 into r12;
     // Set the updated list of delegators.
-    set r8 into delegators[r1];
+    set r11 into delegators[r1];
 
-    position skip_remove_delegator
+    position skip_remove_delegator;
 
     // Construct the bond struct for the lock.
-    cast r1 r2 into r9 as bond;
+    cast r1 r2 into r13 as bond;
     // Construct the unlock height.
-    add block.height 256u32 into r10;
+    add block.height 256u32 into r14;
     // Construct the lock struct.
-    cast r0 r9 r10 into r11 as lock;
+    cast r0 r13 r14 into r15 as lock;
 
     // Initialize an empty vector.
-    cast into r12 as [lock];
+    cast into r16 as [lock];
     // Add the lock to the list of locks associated with the staker.
-    get.or_use locked[r0] r12 into r13;
+    get.or_use locked[r0] r16 into r17;
     // Insert the new lock.
-    push r13 r11;
+    push r17 r15;
     // Update the locks.
-    set locked[r0] r13;
+    set r17 into locked[r0];
 
 
 // The `unlock_stake` function attempts to unlock all valid locks for the staker.
@@ -383,26 +391,26 @@ finalize unlock_stake:
     length r1 into r2;
 
     // Initialize a counter.
-    add 0u64 0u64 into r3;
+    add 0u32 0u32 into r3;
     // Iterate through the locks, unlocking any that are valid.
     position start_loop;
     // If the counter is equal to the length, then we have reached the end of the loop.
     branch.eq r3 r2 to end_loop;
 
     // Get the lock from the list.
-    get r1[r3] into r4;
+    index r1 r3 into r4;
     // If the unlock height is greater than the current block height, then the lock is not yet valid.
     // Nor will any subsequent locks be valid, so we can exit the loop.
     gt r4.unlock_height block.height into r5;
     branch.eq r5 true to end_loop;
     // Otherwise, the lock is valid, so we can unlock the microcredits.
     // Remove the lock.
-    remove r1[r0];
+    delete r1 r3 into r6;
     // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
     // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-    call.finalize credits.aleo/transfer_public r0 r4.microcredits;
+    // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
     // Increment the counter.
-    add r3 1u64 into r6;
+    add r3 1u32 into r7;
     // Jump back to the start of the loop.
     branch.eq true true to start_loop;
 
@@ -410,24 +418,4 @@ finalize unlock_stake:
     position end_loop;
 
     // Update the list of locks for the staker.
-    set locked[r0] r1;
-
-
-// TODO: Implement slashing.
-//// The `slash_stake` function slashes a percentage of stake for a validator and it's delegators.
-//function slash:
-//
-//finalize slash:
-//    // Slash the principal stake for the validator.
-//
-//    // Iterate through `delegators` mapping and slash each delegator's stake.
-//
-//    // Iterate through the locks slash the locks validator associated with the validator.
-//
-//    // Update the delegated stake for the validator.
-//
-//    // Confirm that the sum of the delegated stake is equivalent to the delegated stake stored in the `validators` mapping.
-//
-//    // Check if the remaining principal balance is less than 1 million credits.
-//
-//    // If the validator does not have 1 million credits, unbond all delegators.
+    set r1 into locked[r0];

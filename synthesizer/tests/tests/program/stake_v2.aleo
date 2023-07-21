@@ -307,7 +307,7 @@ finalize unbond_staker:
     // Enforce that the validator matches in the bond struct.
     assert.eq r4.validator r1;
     // Decrement the microcredits in the bond struct.
-    sub r3.microcredits r2 into r5;
+    sub r4.microcredits r2 into r5;
 
     // Remove the bond struct.
     remove bonded[r0];
