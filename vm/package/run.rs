@@ -63,6 +63,7 @@ impl<N: Network> Package<N> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use snarkvm_utilities::TestRng;
 
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
@@ -113,5 +114,33 @@ mod tests {
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    /// Use `cargo test profiler --features timer` to run this test.
+    #[ignore]
+    #[test]
+    fn test_profiler() -> Result<()> {
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package();
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+        // Sample the function inputs.
+        let (private_key, function_name, inputs) =
+            crate::package::test_helpers::sample_package_run(package.program_id());
+        // Run the program function.
+        let (_response, _metrics) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+
+        bail!("\n\nRemember to #[ignore] this test!\n\n")
     }
 }
