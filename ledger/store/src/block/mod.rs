@@ -23,11 +23,11 @@ use crate::{
     TransitionStore,
 };
 use console::{
-    account::Signature,
     network::prelude::*,
     program::{BlockTree, HeaderLeaf, ProgramID, StatePath},
     types::Field,
 };
+use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use synthesizer_program::Program;
@@ -140,8 +140,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type CoinbaseSolutionMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
     /// The mapping of `puzzle commitment` to `block height`.
     type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
-    /// The mapping of `block hash` to `block signature`.
-    type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
+    /// The mapping of `block hash` to `block authority`.
+    type AuthorityMap: for<'a> Map<'a, N::BlockHash, Authority<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -168,8 +168,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap;
     /// Returns the coinbase puzzle commitment map.
     fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap;
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap;
+    /// Returns the authority map.
+    fn authority_map(&self) -> &Self::AuthorityMap;
 
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
@@ -194,7 +194,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().start_atomic();
         self.coinbase_solution_map().start_atomic();
         self.coinbase_puzzle_commitment_map().start_atomic();
-        self.signature_map().start_atomic();
+        self.authority_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -210,7 +210,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.ratifications_map().is_atomic_in_progress()
             || self.coinbase_solution_map().is_atomic_in_progress()
             || self.coinbase_puzzle_commitment_map().is_atomic_in_progress()
-            || self.signature_map().is_atomic_in_progress()
+            || self.authority_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -226,7 +226,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().atomic_checkpoint();
         self.coinbase_solution_map().atomic_checkpoint();
         self.coinbase_puzzle_commitment_map().atomic_checkpoint();
-        self.signature_map().atomic_checkpoint();
+        self.authority_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
@@ -242,7 +242,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().clear_latest_checkpoint();
         self.coinbase_solution_map().clear_latest_checkpoint();
         self.coinbase_puzzle_commitment_map().clear_latest_checkpoint();
-        self.signature_map().clear_latest_checkpoint();
+        self.authority_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -258,7 +258,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().atomic_rewind();
         self.coinbase_solution_map().atomic_rewind();
         self.coinbase_puzzle_commitment_map().atomic_rewind();
-        self.signature_map().atomic_rewind();
+        self.authority_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -274,7 +274,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().abort_atomic();
         self.coinbase_solution_map().abort_atomic();
         self.coinbase_puzzle_commitment_map().abort_atomic();
-        self.signature_map().abort_atomic();
+        self.authority_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -290,7 +290,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.ratifications_map().finish_atomic()?;
         self.coinbase_solution_map().finish_atomic()?;
         self.coinbase_puzzle_commitment_map().finish_atomic()?;
-        self.signature_map().finish_atomic()
+        self.authority_map().finish_atomic()
     }
 
     /// Stores the given `(state root, block)` pair into storage.
@@ -340,8 +340,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 }
             }
 
-            // Store the block signature.
-            self.signature_map().insert(block.hash(), *block.signature())?;
+            // Store the block authority.
+            self.authority_map().insert(block.hash(), block.authority().clone())?;
 
             Ok(())
         })
@@ -409,8 +409,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 }
             }
 
-            // Remove the block signature.
-            self.signature_map().remove(block_hash)?;
+            // Remove the block authority.
+            self.authority_map().remove(block_hash)?;
 
             Ok(())
         })
@@ -613,10 +613,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the block signature for the given `block hash`.
-    fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
-        match self.signature_map().get_confirmed(block_hash)? {
-            Some(signature) => Ok(Some(cow_to_cloned!(signature))),
+    /// Returns the block authority for the given `block hash`.
+    fn get_block_authority(&self, block_hash: &N::BlockHash) -> Result<Option<Authority<N>>> {
+        match self.authority_map().get_confirmed(block_hash)? {
+            Some(authority) => Ok(Some(cow_to_cloned!(authority))),
             None => Ok(None),
         }
     }
@@ -659,14 +659,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Ok(coinbase_solution) => coinbase_solution,
             Err(_) => bail!("Missing coinbase solution for block {height} ('{block_hash}')"),
         };
-        // Retrieve the block signature.
-        let signature = match self.get_block_signature(block_hash)? {
-            Some(signature) => signature,
-            None => bail!("Missing signature for block {height} ('{block_hash}')"),
+        // Retrieve the block authority.
+        let Some(authority) = self.get_block_authority(block_hash)? else {
+            bail!("Missing authority for block {height} ('{block_hash}')");
         };
 
         // Return the block.
-        Ok(Some(Block::from(previous_hash, header, transactions, ratifications, coinbase, signature)?))
+        Ok(Some(Block::from(previous_hash, header, transactions, ratifications, coinbase, authority)?))
     }
 }
 
@@ -897,9 +896,9 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.get_block_coinbase(block_hash)
     }
 
-    /// Returns the block signature for the given `block hash`.
-    pub fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
-        self.storage.get_block_signature(block_hash)
+    /// Returns the block authority for the given `block hash`.
+    pub fn get_block_authority(&self, block_hash: &N::BlockHash) -> Result<Option<Authority<N>>> {
+        self.storage.get_block_authority(block_hash)
     }
 
     /// Returns the block for the given `block hash`.

@@ -179,21 +179,21 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().get_block_coinbase(&block_hash)
     }
 
-    /// Returns the block signature for the given block height.
-    pub fn get_signature(&self, height: u32) -> Result<Signature<N>> {
-        // If the height is 0, return the genesis block signature.
+    /// Returns the block authority for the given block height.
+    pub fn get_authority(&self, height: u32) -> Result<Authority<N>> {
+        // If the height is 0, return the genesis block authority.
         if height == 0 {
-            return Ok(*self.genesis.signature());
+            return Ok(self.genesis.authority().clone());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
             Some(block_hash) => block_hash,
             None => bail!("Block {height} does not exist in storage"),
         };
-        // Retrieve the block signature.
-        match self.vm.block_store().get_block_signature(&block_hash)? {
-            Some(signature) => Ok(signature),
-            None => bail!("Missing signature for block {height}"),
+        // Retrieve the block authority.
+        match self.vm.block_store().get_block_authority(&block_hash)? {
+            Some(authority) => Ok(authority),
+            None => bail!("Missing authority for block {height}"),
         }
     }
 }

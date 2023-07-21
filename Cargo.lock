@@ -3161,6 +3161,7 @@ dependencies = [
  "serde",
  "serial_test",
  "snarkvm-console",
+ "snarkvm-ledger-authority",
  "snarkvm-ledger-block",
  "snarkvm-ledger-coinbase",
  "snarkvm-ledger-test-helpers",

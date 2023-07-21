@@ -25,7 +25,8 @@ use crate::{
     TransactionStore,
     TransitionStore,
 };
-use console::{account::Signature, prelude::*};
+use console::prelude::*;
+use ledger_authority::Authority;
 use ledger_block::{Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
@@ -54,8 +55,8 @@ pub struct BlockDB<N: Network> {
     coinbase_solution_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
     coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, u32>,
-    /// The signature map.
-    signature_map: DataMap<N::BlockHash, Signature<N>>,
+    /// The authority map.
+    authority_map: DataMap<N::BlockHash, Authority<N>>,
 }
 
 #[rustfmt::skip]
@@ -72,7 +73,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type RatificationsMap = DataMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = DataMap<PuzzleCommitment<N>, u32>;
-    type SignatureMap = DataMap<N::BlockHash, Signature<N>>;
+    type AuthorityMap = DataMap<N::BlockHash, Authority<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -93,7 +94,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             ratifications_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Ratifications))?,
             coinbase_solution_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbaseSolution))?,
             coinbase_puzzle_commitment_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::CoinbasePuzzleCommitment))?,
-            signature_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Signature))?,
+            authority_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Authority))?,
         })
     }
 
@@ -152,8 +153,8 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.coinbase_puzzle_commitment_map
     }
 
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap {
-        &self.signature_map
+    /// Returns the authority map.
+    fn authority_map(&self) -> &Self::AuthorityMap {
+        &self.authority_map
     }
 }

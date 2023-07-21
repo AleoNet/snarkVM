@@ -30,7 +30,7 @@ impl<N: Network> Serialize for Block<N> {
                     block.serialize_field("coinbase", coinbase)?;
                 }
 
-                block.serialize_field("signature", &self.signature)?;
+                block.serialize_field("authority", &self.authority)?;
                 block.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -54,7 +54,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     DeserializeExt::take_from_value::<D>(&mut block, "ratifications")?,
                     serde_json::from_value(block.get_mut("coinbase").unwrap_or(&mut serde_json::Value::Null).take())
                         .map_err(de::Error::custom)?,
-                    DeserializeExt::take_from_value::<D>(&mut block, "signature")?,
+                    DeserializeExt::take_from_value::<D>(&mut block, "authority")?,
                 )
                 .map_err(de::Error::custom)?;
 

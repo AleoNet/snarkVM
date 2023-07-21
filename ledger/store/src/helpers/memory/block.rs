@@ -19,7 +19,8 @@ use crate::{
     TransactionStore,
     TransitionStore,
 };
-use console::{account::Signature, prelude::*};
+use console::prelude::*;
+use ledger_authority::Authority;
 use ledger_block::{Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
@@ -48,8 +49,8 @@ pub struct BlockMemory<N: Network> {
     coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
     coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
-    /// The signature map.
-    signature_map: MemoryMap<N::BlockHash, Signature<N>>,
+    /// The authority map.
+    authority_map: MemoryMap<N::BlockHash, Authority<N>>,
 }
 
 #[rustfmt::skip]
@@ -66,7 +67,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
-    type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
+    type AuthorityMap = MemoryMap<N::BlockHash, Authority<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -87,7 +88,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             ratifications_map: MemoryMap::default(),
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),
-            signature_map: MemoryMap::default(),
+            authority_map: MemoryMap::default(),
         })
     }
 
@@ -146,8 +147,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.coinbase_puzzle_commitment_map
     }
 
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap {
-        &self.signature_map
+    /// Returns the authority map.
+    fn authority_map(&self) -> &Self::AuthorityMap {
+        &self.authority_map
     }
 }

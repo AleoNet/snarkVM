@@ -49,11 +49,11 @@ impl<N: Network> FromBytes for Block<N> {
             _ => return Err(error("Invalid coinbase variant")),
         };
 
-        // Write the signature.
-        let signature = FromBytes::read_le(&mut reader)?;
+        // Write the authority.
+        let authority = FromBytes::read_le(&mut reader)?;
 
         // Construct the block.
-        let block = Self::from(previous_hash, header, transactions, ratifications, coinbase, signature)
+        let block = Self::from(previous_hash, header, transactions, ratifications, coinbase, authority)
             .map_err(|e| error(e.to_string()))?;
 
         // Ensure the block hash matches.
@@ -95,8 +95,8 @@ impl<N: Network> ToBytes for Block<N> {
             }
         }
 
-        // Write the signature.
-        self.signature.write_le(&mut writer)
+        // Write the authority.
+        self.authority.write_le(&mut writer)
     }
 }
 
