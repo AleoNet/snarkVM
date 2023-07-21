@@ -3042,6 +3042,8 @@ dependencies = [
  "rand 0.8.5",
  "serde_json",
  "snarkvm-console",
+ "snarkvm-ledger-authority",
+ "snarkvm-ledger-narwhal-batch-certificate",
 ]
 
 [[package]]
