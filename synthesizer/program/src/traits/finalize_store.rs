@@ -63,10 +63,11 @@ pub trait FinalizeStoreTrait<N: Network> {
     ) -> Result<FinalizeOperation<N>>;
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
+    /// If the `key` does not exist, the method returns `None`.
     fn remove_key_value(
         &self,
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<FinalizeOperation<N>>;
+    ) -> Result<Option<FinalizeOperation<N>>>;
 }
