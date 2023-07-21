@@ -42,7 +42,7 @@ mod iterators;
 mod tests;
 
 use console::{
-    account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
+    account::{Address, GraphKey, PrivateKey, ViewKey},
     network::prelude::*,
     program::{
         Ciphertext,
