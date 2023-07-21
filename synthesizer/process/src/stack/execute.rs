@@ -178,7 +178,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
-
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
         lap!(timer, "Verify the circuit request");
