@@ -79,24 +79,24 @@ impl<N: Network> Authority<N> {
 
 impl<N: Network> Authority<N> {
     /// Initializes a new beacon authority from the given signature.
-    pub fn from_beacon(signature: Signature<N>) -> Self {
+    pub const fn from_beacon(signature: Signature<N>) -> Self {
         Self::Beacon(signature)
     }
 
     /// Initializes a new quorum authority.
-    pub fn from_quorum(certificates: CompactCertificates) -> Self {
+    pub const fn from_quorum(certificates: CompactCertificates) -> Self {
         Self::Quorum(certificates)
     }
 }
 
 impl<N: Network> Authority<N> {
     /// Returns `true` if the authority is a beacon.
-    pub fn is_beacon(&self) -> bool {
+    pub const fn is_beacon(&self) -> bool {
         matches!(self, Self::Beacon(_))
     }
 
     /// Returns `true` if the authority is a quorum.
-    pub fn is_quorum(&self) -> bool {
+    pub const fn is_quorum(&self) -> bool {
         matches!(self, Self::Quorum(_))
     }
 }

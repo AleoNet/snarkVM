@@ -49,10 +49,10 @@ impl<'de, N: Network> Deserialize<'de> for Authority<N> {
 
                 // Recover the authority.
                 match type_.as_str() {
-                    "beacon" => Ok(Self::Beacon(
+                    "beacon" => Ok(Self::from_beacon(
                         DeserializeExt::take_from_value::<D>(&mut authority, "signature").map_err(de::Error::custom)?,
                     )),
-                    "quorum" => Ok(Self::Quorum(
+                    "quorum" => Ok(Self::from_quorum(
                         DeserializeExt::take_from_value::<D>(&mut authority, "certificates")
                             .map_err(de::Error::custom)?,
                     )),
