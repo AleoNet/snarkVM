@@ -26,9 +26,9 @@ impl<N: Network> Serialize for Authority<N> {
                         authority.serialize_field("type", "beacon")?;
                         authority.serialize_field("signature", signature)?;
                     }
-                    Self::Quorum(certificates) => {
+                    Self::Quorum(subdag) => {
                         authority.serialize_field("type", "quorum")?;
-                        authority.serialize_field("certificates", certificates)?;
+                        authority.serialize_field("subdag", subdag)?;
                     }
                 }
                 authority.end()
@@ -53,8 +53,7 @@ impl<'de, N: Network> Deserialize<'de> for Authority<N> {
                         DeserializeExt::take_from_value::<D>(&mut authority, "signature").map_err(de::Error::custom)?,
                     )),
                     "quorum" => Ok(Self::from_quorum(
-                        DeserializeExt::take_from_value::<D>(&mut authority, "certificates")
-                            .map_err(de::Error::custom)?,
+                        DeserializeExt::take_from_value::<D>(&mut authority, "subdag").map_err(de::Error::custom)?,
                     )),
                     _ => Err(error("Invalid authority type")).map_err(de::Error::custom),
                 }

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
 mod bytes;
 mod serialize;
 mod string;
@@ -45,17 +48,16 @@ use console::{
     },
     types::Field,
 };
+use narwhal_batch_certificate::BatchCertificate;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-
-/// A helper type to represent the compact batch certificates.
-pub type CompactCertificates = u64;
+use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Authority<N: Network> {
     Beacon(Signature<N>),
-    Quorum(CompactCertificates),
+    Quorum(BTreeMap<u64, Vec<BatchCertificate<N>>>),
 }
 
 impl<N: Network> Authority<N> {
@@ -72,8 +74,8 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub fn new_quorum(certificates: CompactCertificates) -> Self {
-        Self::Quorum(certificates)
+    pub fn new_quorum(subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>) -> Self {
+        Self::Quorum(subdag)
     }
 }
 
@@ -84,8 +86,8 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub const fn from_quorum(certificates: CompactCertificates) -> Self {
-        Self::Quorum(certificates)
+    pub const fn from_quorum(subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>) -> Self {
+        Self::Quorum(subdag)
     }
 }
 
@@ -114,17 +116,33 @@ impl<N: Network> Authority<N> {
     }
 }
 
-#[cfg(test)]
-mod test_helpers {
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod test_helpers {
     use super::*;
     use console::prelude::{TestRng, Uniform};
 
     pub type CurrentNetwork = console::network::Testnet3;
 
+    /// Returns a sample beacon authority.
+    pub fn sample_beacon_authority(rng: &mut TestRng) -> Authority<CurrentNetwork> {
+        Authority::new_beacon(&PrivateKey::new(rng).unwrap(), Field::rand(rng), rng).unwrap()
+    }
+
+    /// Returns a sample quorum authority.
+    pub fn sample_quorum_authority(rng: &mut TestRng) -> Authority<CurrentNetwork> {
+        // Sample a list of batch certificates.
+        let batch_certificates = narwhal_batch_certificate::test_helpers::sample_batch_certificates(rng);
+        // Group the batch certificates by round.
+        let mut subdag = BTreeMap::new();
+        for batch_certificate in batch_certificates {
+            subdag.entry(batch_certificate.round()).or_insert_with(Vec::new).push(batch_certificate);
+        }
+        // Return the quorum authority.
+        Authority::new_quorum(subdag)
+    }
+
+    /// Returns a list of sample authorities.
     pub fn sample_authorities(rng: &mut TestRng) -> Vec<Authority<CurrentNetwork>> {
-        vec![
-            Authority::new_beacon(&PrivateKey::new(rng).unwrap(), Field::rand(rng), rng).unwrap(),
-            Authority::new_quorum(rng.gen()),
-        ]
+        vec![sample_beacon_authority(rng), sample_quorum_authority(rng)]
     }
 }

@@ -22,7 +22,30 @@ impl<N: Network> FromBytes for Authority<N> {
         // Match the variant.
         match variant {
             0 => Ok(Self::Beacon(FromBytes::read_le(&mut reader)?)),
-            1 => Ok(Self::Quorum(FromBytes::read_le(&mut reader)?)),
+            1 => {
+                // Read the number of rounds.
+                let num_rounds = u16::read_le(&mut reader)?;
+                // Initialize the subdag.
+                let mut subdag = BTreeMap::new();
+                // Iterate over the rounds.
+                for _ in 0..num_rounds {
+                    // Read the round.
+                    let round = u64::read_le(&mut reader)?;
+                    // Read the number of certificates.
+                    let num_certificates = u16::read_le(&mut reader)?;
+                    // Initialize the certificates.
+                    let mut certificates = Vec::with_capacity(num_certificates as usize);
+                    // Iterate over the certificates.
+                    for _ in 0..num_certificates {
+                        // Read the certificate.
+                        certificates.push(FromBytes::read_le(&mut reader)?);
+                    }
+                    // Insert the certificates.
+                    subdag.insert(round, certificates);
+                }
+                // Return the subdag.
+                Ok(Self::Quorum(subdag))
+            }
             2.. => Err(error("Invalid authority variant")),
         }
     }
@@ -34,12 +57,28 @@ impl<N: Network> ToBytes for Authority<N> {
         // Write the authority.
         match self {
             Self::Beacon(signature) => {
+                // Write the variant.
                 0u8.write_le(&mut writer)?;
+                // Write the signature.
                 signature.write_le(&mut writer)
             }
-            Self::Quorum(certificates) => {
+            Self::Quorum(subdag) => {
+                // Write the variant.
                 1u8.write_le(&mut writer)?;
-                certificates.write_le(&mut writer)
+                // Write the number of rounds.
+                u16::try_from(subdag.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                // Iterate over the certificates.
+                for (round, certificates) in subdag {
+                    // Write the round.
+                    round.write_le(&mut writer)?;
+                    // Write the number of certificates.
+                    u16::try_from(certificates.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                    // Iterate over the certificates.
+                    for certificate in certificates {
+                        certificate.write_le(&mut writer)?;
+                    }
+                }
+                Ok(())
             }
         }
     }
