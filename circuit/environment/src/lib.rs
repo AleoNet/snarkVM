@@ -73,14 +73,13 @@ pub mod prelude {
             Inverse as _,
             Square as _,
             SquareRoot as _,
-            ToBits as _,
         },
         Parser,
         ParserResult,
         TypeName,
     };
     pub use snarkvm_fields::{Field as _, PrimeField, Zero as _};
-    pub use snarkvm_utilities::ToBits as _;
+    pub use snarkvm_utilities::{ToBits as _, ToBitsInto as _};
 
     #[cfg(debug_assertions)]
     pub use snarkvm_curves::AffineCurve as _;

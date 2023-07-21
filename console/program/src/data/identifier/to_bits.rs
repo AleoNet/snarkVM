@@ -14,29 +14,33 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Identifier<N> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<N: Network> ToBitsInto for Identifier<N> {
     /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<bool> {
-        (&self).to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        (&self).to_bits_le_into(vec);
     }
 
     /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<bool> {
-        (&self).to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        (&self).to_bits_be_into(vec);
     }
 }
 
-impl<N: Network> ToBits for &Identifier<N> {
+impl<N: Network> ToBitsInto for &Identifier<N> {
     /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<bool> {
-        self.0.to_bits_le()[..8 * self.1 as usize].to_vec()
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.0.to_bits_le_into(vec);
+        vec.truncate(initial_len + 8 * self.1 as usize);
     }
 
     /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits = self.to_bits_le();
-        bits.reverse();
-        bits
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.to_bits_le_into(vec);
+        vec[initial_len..].reverse();
     }
 }
 

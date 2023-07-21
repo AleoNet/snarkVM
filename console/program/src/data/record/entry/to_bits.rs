@@ -14,66 +14,34 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Entry<N, Plaintext<N>> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<N: Network, T: Visibility> ToBitsInto for Entry<N, T> {
     /// Returns this entry as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_le = match self {
-            Self::Constant(..) => vec![false, false],
-            Self::Public(..) => vec![false, true],
-            Self::Private(..) => vec![true, false],
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        match self {
+            Self::Constant(..) => vec.extend_from_slice(&[false, false]),
+            Self::Public(..) => vec.extend_from_slice(&[false, true]),
+            Self::Private(..) => vec.extend_from_slice(&[true, false]),
         };
         match self {
-            Self::Constant(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Public(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Private(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-        }
-        bits_le
+            Self::Constant(plaintext) => plaintext.to_bits_le_into(vec),
+            Self::Public(plaintext) => plaintext.to_bits_le_into(vec),
+            Self::Private(plaintext) => plaintext.to_bits_le_into(vec),
+        };
     }
 
     /// Returns this entry as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_be = match self {
-            Self::Constant(..) => vec![false, false],
-            Self::Public(..) => vec![false, true],
-            Self::Private(..) => vec![true, false],
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        match self {
+            Self::Constant(..) => vec.extend_from_slice(&[false, false]),
+            Self::Public(..) => vec.extend_from_slice(&[false, true]),
+            Self::Private(..) => vec.extend_from_slice(&[true, false]),
         };
         match self {
-            Self::Constant(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Public(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Private(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-        }
-        bits_be
-    }
-}
-
-impl<N: Network> ToBits for Entry<N, Ciphertext<N>> {
-    /// Returns this entry as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_le = match self {
-            Self::Constant(..) => vec![false, false],
-            Self::Public(..) => vec![false, true],
-            Self::Private(..) => vec![true, false],
+            Self::Constant(plaintext) => plaintext.to_bits_be_into(vec),
+            Self::Public(plaintext) => plaintext.to_bits_be_into(vec),
+            Self::Private(plaintext) => plaintext.to_bits_be_into(vec),
         };
-        match self {
-            Self::Constant(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Public(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Private(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-        }
-        bits_le
-    }
-
-    /// Returns this entry as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_be = match self {
-            Self::Constant(..) => vec![false, false],
-            Self::Public(..) => vec![false, true],
-            Self::Private(..) => vec![true, false],
-        };
-        match self {
-            Self::Constant(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Public(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Private(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-        }
-        bits_be
     }
 }

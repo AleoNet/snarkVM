@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBits, ToBytes};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBitsInto, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -473,19 +473,15 @@ impl<P: Fp12Parameters> From<u8> for Fp12<P> {
     }
 }
 
-impl<P: Fp12Parameters> ToBits for Fp12<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_le());
-        res.extend_from_slice(&self.c1.to_bits_le());
-        res
+impl<P: Fp12Parameters> ToBitsInto for Fp12<P> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        self.c0.to_bits_le_into(vec);
+        self.c1.to_bits_le_into(vec);
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_be());
-        res.extend_from_slice(&self.c1.to_bits_be());
-        res
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        self.c0.to_bits_be_into(vec);
+        self.c1.to_bits_be_into(vec);
     }
 }
 

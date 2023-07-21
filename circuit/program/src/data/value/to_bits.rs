@@ -14,24 +14,24 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for Value<A> {
+impl<A: Aleo> ToBitsInto for Value<A> {
     type Boolean = Boolean<A>;
 
     /// Returns the circuit value as a list of **little-endian** bits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
         match self {
-            Self::Plaintext(plaintext) => plaintext.to_bits_le(),
-            Self::Record(record) => record.to_bits_le(),
+            Self::Plaintext(plaintext) => plaintext.to_bits_le_into(vec),
+            Self::Record(record) => record.to_bits_le_into(vec),
         }
     }
 
     /// Returns the circuit value as a list of **big-endian** bits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
         match self {
-            Self::Plaintext(plaintext) => plaintext.to_bits_be(),
-            Self::Record(record) => record.to_bits_be(),
+            Self::Plaintext(plaintext) => plaintext.to_bits_be_into(vec),
+            Self::Record(record) => record.to_bits_be_into(vec),
         }
     }
 }

@@ -14,16 +14,20 @@
 
 use super::*;
 
-impl<N: Network> ToBits for HeaderLeaf<N> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<N: Network> ToBitsInto for HeaderLeaf<N> {
     /// Returns the little-endian bits of the Merkle leaf.
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
         // Construct the leaf as (index || ID).
-        self.index.to_bits_le().into_iter().chain(self.id.to_bits_le().into_iter()).collect()
+        self.index.to_bits_le_into(vec);
+        self.id.to_bits_le_into(vec);
     }
 
     /// Returns the big-endian bits of the Merkle leaf.
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
         // Construct the leaf as (index || ID).
-        self.index.to_bits_be().into_iter().chain(self.id.to_bits_be().into_iter()).collect()
+        self.index.to_bits_be_into(vec);
+        self.id.to_bits_be_into(vec);
     }
 }

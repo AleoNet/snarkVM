@@ -14,6 +14,8 @@
 
 use super::*;
 
+use snarkvm_utilities::ToBitsInto;
+
 impl<N: Network> Process<N> {
     /// Verifies the given execution is valid.
     /// Note: This does *not* check that the global state root exists in the ledger.
@@ -186,7 +188,10 @@ impl<N: Network> Process<N> {
                     ensure!(finalize.len() == num_inputs, "The number of inputs for finalize is incorrect");
 
                     // Convert the finalize inputs into concatenated bits.
-                    let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
+                    let mut finalize_bits = vec![];
+                    for f in finalize.iter() {
+                        f.to_bits_le_into(&mut finalize_bits);
+                    }
                     // Compute the checksum of the finalize inputs.
                     let checksum = N::hash_bhp1024(&finalize_bits)?;
 

@@ -23,6 +23,7 @@ use console::{
     program::{Literal, LiteralType, Plaintext, Register, Value},
     types::{Address, Boolean, Field, Group, Scalar, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
 };
+use snarkvm_utilities::bits::ToBitsInto;
 
 use rand::SeedableRng;
 
@@ -88,14 +89,15 @@ impl<N: Network> RandChaCha<N> {
         let seeds: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
         // Construct the random seed.
-        let mut preimage = Vec::new();
-        preimage.extend_from_slice(&registers.state().random_seed().to_bits_le());
-        preimage.extend_from_slice(&(**registers.transition_id()).to_bits_le());
-        preimage.extend_from_slice(&stack.program_id().to_bits_le());
-        preimage.extend_from_slice(&registers.function_name().to_bits_le());
-        preimage.extend_from_slice(&self.destination.locator().to_bits_le());
-        preimage.extend_from_slice(&self.destination_type.type_id().to_bits_le());
-        preimage.extend_from_slice(&seeds.iter().flat_map(|seed| seed.to_bits_le()).collect::<Vec<_>>());
+        let mut preimage = registers.state().random_seed().to_bits_le();
+        (**registers.transition_id()).to_bits_le_into(&mut preimage);
+        stack.program_id().to_bits_le_into(&mut preimage);
+        registers.function_name().to_bits_le_into(&mut preimage);
+        self.destination.locator().to_bits_le_into(&mut preimage);
+        self.destination_type.type_id().to_bits_le_into(&mut preimage);
+        for seed in &seeds {
+            seed.to_bits_le_into(&mut preimage);
+        }
 
         // Hash the preimage.
         let digest = N::hash_bhp1024(&preimage)?.to_bytes_le()?;

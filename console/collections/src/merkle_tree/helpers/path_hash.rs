@@ -14,6 +14,7 @@
 
 use snarkvm_console_algorithms::{Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
+use snarkvm_utilities::bits::ToBitsInto;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -47,8 +48,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for 
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![true];
-        input.extend(left.to_bits_le());
-        input.extend(right.to_bits_le());
+        left.to_bits_le_into(&mut input);
+        right.to_bits_le_into(&mut input);
         // Hash the input.
         Hash::hash(self, &input)
     }

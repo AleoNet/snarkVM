@@ -14,33 +14,31 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType> ToBits for Integer<E, I> {
+impl<E: Environment, I: IntegerType> ToBitsInto for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *with* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_le_into(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *with* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_be_into(vec);
     }
 }
 
-impl<E: Environment, I: IntegerType> ToBits for &Integer<E, I> {
+impl<E: Environment, I: IntegerType> ToBitsInto for &Integer<E, I> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *with* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.bits_le.clone()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.extend_from_slice(&self.bits_le);
     }
 
     /// Outputs the big-endian bit representation of `self` *with* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.to_bits_le();
-        bits_le.reverse();
-        bits_le
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.extend(self.bits_le.iter().rev().cloned());
     }
 }
 

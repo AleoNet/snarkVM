@@ -14,82 +14,74 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for Record<A, Plaintext<A>> {
+impl<A: Aleo> ToBitsInto for Record<A, Plaintext<A>> {
     type Boolean = Boolean<A>;
 
     /// Returns this data as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
         // Compute the data bits.
-        let data_bits_le = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_le = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_le_into(&mut data_bits_le);
+            entry.to_bits_le_into(&mut data_bits_le);
+        }
 
         // Construct the record bits.
-        let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(U32::constant(console::U32::new(data_bits_le.len() as u32)).to_bits_le());
-        bits_le.extend(data_bits_le);
-        bits_le.extend(self.nonce.to_bits_le());
-        bits_le
+        self.owner.to_bits_le_into(vec);
+        U32::constant(console::U32::new(data_bits_le.len() as u32)).to_bits_le_into(vec);
+        vec.extend_from_slice(&data_bits_le);
+        self.nonce.to_bits_le_into(vec);
     }
 
     /// Returns this data as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
         // Compute the data bits.
-        let data_bits_be = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_be = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_be_into(&mut data_bits_be);
+            entry.to_bits_be_into(&mut data_bits_be);
+        }
 
         // Construct the record bits.
-        let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(U32::constant(console::U32::new(data_bits_be.len() as u32)).to_bits_le());
-        bits_be.extend(data_bits_be);
-        bits_be.extend(self.nonce.to_bits_be());
-        bits_be
+        self.owner.to_bits_be_into(vec);
+        U32::constant(console::U32::new(data_bits_be.len() as u32)).to_bits_be_into(vec);
+        vec.extend_from_slice(&data_bits_be);
+        self.nonce.to_bits_be_into(vec);
     }
 }
 
-impl<A: Aleo> ToBits for Record<A, Ciphertext<A>> {
+impl<A: Aleo> ToBitsInto for Record<A, Ciphertext<A>> {
     type Boolean = Boolean<A>;
 
     /// Returns this data as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
         // Compute the data bits.
-        let data_bits_le = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_le = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_le_into(&mut data_bits_le);
+            entry.to_bits_le_into(&mut data_bits_le);
+        }
 
         // Construct the record bits.
-        let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(U32::constant(console::U32::new(data_bits_le.len() as u32)).to_bits_le());
-        bits_le.extend(data_bits_le);
-        bits_le.extend(self.nonce.to_bits_le());
-        bits_le
+        self.owner.to_bits_le_into(vec);
+        U32::constant(console::U32::new(data_bits_le.len() as u32)).to_bits_le_into(vec);
+        vec.extend_from_slice(&data_bits_le);
+        self.nonce.to_bits_le_into(vec);
     }
 
     /// Returns this data as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
         // Compute the data bits.
-        let data_bits_be = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_be = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_be_into(&mut data_bits_be);
+            entry.to_bits_be_into(&mut data_bits_be);
+        }
 
         // Construct the record bits.
-        let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(U32::constant(console::U32::new(data_bits_be.len() as u32)).to_bits_le());
-        bits_be.extend(data_bits_be);
-        bits_be.extend(self.nonce.to_bits_be());
-        bits_be
+        self.owner.to_bits_be_into(vec);
+        U32::constant(console::U32::new(data_bits_be.len() as u32)).to_bits_be_into(vec);
+        vec.extend_from_slice(&data_bits_be);
+        self.nonce.to_bits_be_into(vec);
     }
 }

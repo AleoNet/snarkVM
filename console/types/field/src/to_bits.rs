@@ -14,15 +14,17 @@
 
 use super::*;
 
-impl<E: Environment> ToBits for Field<E> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<E: Environment> ToBitsInto for Field<E> {
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<bool> {
-        (**self).to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        (**self).to_bits_le_into(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<bool> {
-        (**self).to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        (**self).to_bits_be_into(vec);
     }
 }
 

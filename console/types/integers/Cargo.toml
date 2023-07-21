@@ -18,6 +18,10 @@ version = "=0.14.6"
 path = "../field"
 version = "=0.14.6"
 
+[dependencies.snarkvm-utilities]
+path = "../../../utilities"
+version = "=0.14.6"
+
 [dev-dependencies.bincode]
 version = "1.3"
 

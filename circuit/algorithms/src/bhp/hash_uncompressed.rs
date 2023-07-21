@@ -44,12 +44,13 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                 // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
                 true => {
                     preimage.extend(self.domain.clone());
-                    preimage.extend(U64::constant(console::U64::new(input.len() as u64)).to_bits_le());
+                    U64::constant(console::U64::new(input.len() as u64)).to_bits_le_into(&mut preimage);
                     preimage.extend_from_slice(input_bits);
                 }
                 // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
                 false => {
-                    preimage.extend(digest.to_x_coordinate().to_bits_le().into_iter().take(num_data_bits));
+                    digest.to_x_coordinate().to_bits_le_into(&mut preimage);
+                    preimage.truncate(num_data_bits);
                     preimage.extend_from_slice(input_bits);
                 }
             }

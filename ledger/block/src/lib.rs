@@ -45,6 +45,7 @@ use console::{
 use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use ledger_narwhal_subdag::Subdag;
+use snarkvm_utilities::bits::ToBitsInto;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -77,7 +78,9 @@ impl<N: Network> Block<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the block hash.
-        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        let mut to_hash = previous_hash.to_bits_le();
+        header.to_root()?.to_bits_le_into(&mut to_hash);
+        let block_hash = N::hash_bhp1024(&to_hash)?;
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
@@ -114,7 +117,9 @@ impl<N: Network> Block<N> {
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
 
         // Compute the block hash.
-        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        let mut to_hash = previous_hash.to_bits_le();
+        header.to_root()?.to_bits_le_into(&mut to_hash);
+        let block_hash = N::hash_bhp1024(&to_hash)?;
 
         // Verify the authority.
         match &authority {

@@ -14,6 +14,8 @@
 
 use super::*;
 
+use snarkvm_utilities::bits::ToBitsInto;
+
 impl<N: Network> Transaction<N> {
     /// The maximum number of transitions allowed in a transaction.
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
@@ -110,11 +112,9 @@ impl<N: Network> Transaction<N> {
         // Prepare the leaves.
         let leaves = program.functions().values().enumerate().map(|(index, function)| {
             // Construct the transaction leaf.
-            Ok(TransactionLeaf::new_deployment(
-                u16::try_from(index)?,
-                N::hash_bhp1024(&[program.id().to_bits_le(), function.to_bytes_le()?.to_bits_le()].concat())?,
-            )
-            .to_bits_le())
+            let mut to_hash = program.id().to_bits_le();
+            function.to_bytes_le()?.to_bits_le_into(&mut to_hash);
+            Ok(TransactionLeaf::new_deployment(u16::try_from(index)?, N::hash_bhp1024(&to_hash)?).to_bits_le())
         });
         // If the fee is present, add it to the leaves.
         let leaves = match fee {

@@ -14,6 +14,8 @@
 
 use super::*;
 
+use snarkvm_utilities::ToBitsInto;
+
 impl<N: Network> FromBits for FinalizeOperation<N> {
     /// Reads `Self` from a boolean array in little-endian order.
     fn from_bits_le(bits: &[bool]) -> Result<Self> {
@@ -144,129 +146,99 @@ impl<N: Network> FromBits for FinalizeOperation<N> {
     }
 }
 
-impl<N: Network> ToBits for FinalizeOperation<N> {
+impl<N: Network> ToBitsInto for FinalizeOperation<N> {
     /// Returns the little-endian bits of the finalize operation.
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
         match self {
             Self::InitializeMapping(mapping_id) => {
-                vec![
-                    // Write the variant.
-                    0u8.to_bits_le(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_le(),
-                ]
-                .concat()
+                // Write the variant.
+                0u8.to_bits_le_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_le_into(vec);
             }
             Self::InsertKeyValue(mapping_id, key_id, value_id) => {
-                vec![
-                    // Write the variant.
-                    1u8.to_bits_le(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_le(),
-                    // Write the key ID.
-                    key_id.to_bits_le(),
-                    // Write the value ID.
-                    value_id.to_bits_le(),
-                ]
-                .concat()
+                // Write the variant.
+                1u8.to_bits_le_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_le_into(vec);
+                // Write the key ID.
+                key_id.to_bits_le_into(vec);
+                // Write the value ID.
+                value_id.to_bits_le_into(vec);
             }
             Self::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
-                vec![
-                    // Write the variant.
-                    2u8.to_bits_le(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_le(),
-                    // Write the index.
-                    index.to_bits_le(),
-                    // Write the key ID.
-                    key_id.to_bits_le(),
-                    // Write the value ID.
-                    value_id.to_bits_le(),
-                ]
-                .concat()
+                // Write the variant.
+                2u8.to_bits_le_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_le_into(vec);
+                // Write the index.
+                index.to_bits_le_into(vec);
+                // Write the key ID.
+                key_id.to_bits_le_into(vec);
+                // Write the value ID.
+                value_id.to_bits_le_into(vec);
             }
             Self::RemoveKeyValue(mapping_id, index) => {
-                vec![
-                    // Write the variant.
-                    3u8.to_bits_le(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_le(),
-                    // Write the index.
-                    index.to_bits_le(),
-                ]
-                .concat()
+                // Write the variant.
+                3u8.to_bits_le_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_le_into(vec);
+                // Write the index.
+                index.to_bits_le_into(vec);
             }
             Self::RemoveMapping(mapping_id) => {
-                vec![
-                    // Write the variant.
-                    4u8.to_bits_le(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_le(),
-                ]
-                .concat()
+                // Write the variant.
+                4u8.to_bits_le_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_le_into(vec);
             }
         }
     }
 
     /// Returns the big-endian bits of the finalize operation.
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
         match self {
             Self::InitializeMapping(mapping_id) => {
-                vec![
-                    // Write the variant.
-                    0u8.to_bits_be(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_be(),
-                ]
-                .concat()
+                // Write the variant.
+                0u8.to_bits_be_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_be_into(vec);
             }
             Self::InsertKeyValue(mapping_id, key_id, value_id) => {
-                vec![
-                    // Write the variant.
-                    1u8.to_bits_be(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_be(),
-                    // Write the key ID.
-                    key_id.to_bits_be(),
-                    // Write the value ID.
-                    value_id.to_bits_be(),
-                ]
-                .concat()
+                // Write the variant.
+                1u8.to_bits_be_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_be_into(vec);
+                // Write the key ID.
+                key_id.to_bits_be_into(vec);
+                // Write the value ID.
+                value_id.to_bits_be_into(vec);
             }
             Self::UpdateKeyValue(mapping_id, index, key_id, value_id) => {
-                vec![
-                    // Write the variant.
-                    2u8.to_bits_be(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_be(),
-                    // Write the index.
-                    index.to_bits_be(),
-                    // Write the key ID.
-                    key_id.to_bits_be(),
-                    // Write the value ID.
-                    value_id.to_bits_be(),
-                ]
-                .concat()
+                // Write the variant.
+                2u8.to_bits_be_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_be_into(vec);
+                // Write the index.
+                index.to_bits_be_into(vec);
+                // Write the key ID.
+                key_id.to_bits_be_into(vec);
+                // Write the value ID.
+                value_id.to_bits_be_into(vec);
             }
             Self::RemoveKeyValue(mapping_id, index) => {
-                vec![
-                    // Write the variant.
-                    3u8.to_bits_be(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_be(),
-                    // Write the index.
-                    index.to_bits_be(),
-                ]
-                .concat()
+                // Write the variant.
+                3u8.to_bits_be_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_be_into(vec);
+                // Write the index.
+                index.to_bits_be_into(vec);
             }
             Self::RemoveMapping(mapping_id) => {
-                vec![
-                    // Write the variant.
-                    4u8.to_bits_be(),
-                    // Write the mapping ID.
-                    mapping_id.to_bits_be(),
-                ]
-                .concat()
+                // Write the variant.
+                4u8.to_bits_be_into(vec);
+                // Write the mapping ID.
+                mapping_id.to_bits_be_into(vec);
             }
         }
     }

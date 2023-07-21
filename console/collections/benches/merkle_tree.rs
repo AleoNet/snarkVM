@@ -16,11 +16,12 @@
 extern crate criterion;
 
 use snarkvm_console_network::{
-    prelude::{TestRng, ToBits, Uniform},
+    prelude::{TestRng, Uniform},
     Network,
     Testnet3,
 };
 use snarkvm_console_types::Field;
+use snarkvm_utilities::ToBits;
 
 use criterion::{BatchSize, BenchmarkId, Criterion};
 use std::collections::BTreeMap;

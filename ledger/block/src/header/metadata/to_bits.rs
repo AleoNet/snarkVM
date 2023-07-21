@@ -14,43 +14,39 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Metadata<N> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<N: Network> ToBitsInto for Metadata<N> {
     /// Returns the little-endian bits of the metadata.
-    fn to_bits_le(&self) -> Vec<bool> {
-        vec![
-            0u8.to_bits_le(),                               // 1 byte
-            self.network.to_bits_le(),                      // 2 bytes
-            self.round.to_bits_le(),                        // 8 bytes
-            self.height.to_bits_le(),                       // 4 bytes
-            self.total_supply_in_microcredits.to_bits_le(), // 8 bytes
-            self.cumulative_weight.to_bits_le(),            // 16 bytes
-            self.cumulative_proof_target.to_bits_le(),      // 16 bytes
-            self.coinbase_target.to_bits_le(),              // 8 bytes
-            self.proof_target.to_bits_le(),                 // 8 bytes
-            self.last_coinbase_target.to_bits_le(),         // 8 bytes
-            self.last_coinbase_height.to_bits_le(),         // 4 bytes
-            self.timestamp.to_bits_le(),                    // 8 bytes
-        ]
-        .concat()
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        0u8.to_bits_le_into(vec);                               // 1 byte
+        self.network.to_bits_le_into(vec);                      // 2 bytes
+        self.round.to_bits_le_into(vec);                        // 8 bytes
+        self.height.to_bits_le_into(vec);                       // 4 bytes
+        self.total_supply_in_microcredits.to_bits_le_into(vec); // 8 bytes
+        self.cumulative_weight.to_bits_le_into(vec);            // 16 bytes
+        self.cumulative_proof_target.to_bits_le_into(vec);      // 16 bytes
+        self.coinbase_target.to_bits_le_into(vec);              // 8 bytes
+        self.proof_target.to_bits_le_into(vec);                 // 8 bytes
+        self.last_coinbase_target.to_bits_le_into(vec);         // 8 bytes
+        self.last_coinbase_height.to_bits_le_into(vec);         // 4 bytes
+        self.timestamp.to_bits_le_into(vec);                    // 8 bytes
     }
 
     /// Returns the big-endian bits of the metadata.
-    fn to_bits_be(&self) -> Vec<bool> {
-        vec![
-            0u8.to_bits_be(),                               // 1 byte
-            self.network.to_bits_be(),                      // 2 bytes
-            self.round.to_bits_be(),                        // 8 bytes
-            self.height.to_bits_be(),                       // 4 bytes
-            self.total_supply_in_microcredits.to_bits_be(), // 8 bytes
-            self.cumulative_weight.to_bits_be(),            // 16 bytes
-            self.cumulative_proof_target.to_bits_be(),      // 16 bytes
-            self.coinbase_target.to_bits_be(),              // 8 bytes
-            self.proof_target.to_bits_be(),                 // 8 bytes
-            self.last_coinbase_target.to_bits_be(),         // 8 bytes
-            self.last_coinbase_height.to_bits_be(),         // 4 bytes
-            self.timestamp.to_bits_be(),                    // 8 bytes
-        ]
-        .concat()
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        0u8.to_bits_be_into(vec);                               // 1 byte
+        self.network.to_bits_be_into(vec);                      // 2 bytes
+        self.round.to_bits_be_into(vec);                        // 8 bytes
+        self.height.to_bits_be_into(vec);                       // 4 bytes
+        self.total_supply_in_microcredits.to_bits_be_into(vec); // 8 bytes
+        self.cumulative_weight.to_bits_be_into(vec);            // 16 bytes
+        self.cumulative_proof_target.to_bits_be_into(vec);      // 16 bytes
+        self.coinbase_target.to_bits_be_into(vec);              // 8 bytes
+        self.proof_target.to_bits_be_into(vec);                 // 8 bytes
+        self.last_coinbase_target.to_bits_be_into(vec);         // 8 bytes
+        self.last_coinbase_height.to_bits_be_into(vec);         // 4 bytes
+        self.timestamp.to_bits_be_into(vec);                    // 8 bytes
     }
 }
 

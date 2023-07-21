@@ -16,12 +16,38 @@ use crate::Vec;
 
 use anyhow::Result;
 
-pub trait ToBits: Sized {
+pub trait ToBitsInto: Sized {
+    /// Converts `self` to booleans moved into the given vector in
+    /// little-endian order.
+    fn to_bits_le_into(&self, _vec: &mut Vec<bool>);
+
+    /// Converts `self` to booleans moved into the given vector in
+    /// big-endian order.
+    fn to_bits_be_into(&self, _vec: &mut Vec<bool>);
+}
+
+pub trait ToBits: Sized + ToBitsInto {
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool>;
 
     /// Returns `self` as a boolean array in big-endian order.
     fn to_bits_be(&self) -> Vec<bool>;
+}
+
+impl<T: ToBitsInto> ToBits for T {
+    /// Returns `self` as a boolean array in little-endian order.
+    fn to_bits_le(&self) -> Vec<bool> {
+        let mut vec = vec![];
+        self.to_bits_le_into(&mut vec);
+        vec
+    }
+
+    /// Returns `self` as a boolean array in big-endian order.
+    fn to_bits_be(&self) -> Vec<bool> {
+        let mut vec = vec![];
+        self.to_bits_be_into(&mut vec);
+        vec
+    }
 }
 
 pub trait FromBits: Sized {
@@ -51,46 +77,40 @@ impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
 /****** Tuples ******/
 /********************/
 
-/// A helper macro to implement `ToBits` for a tuple of `ToBits` circuits.
+/// A helper macro to implement `ToBitsInto` for a tuple of `ToBitsInto` circuits.
 macro_rules! to_bits_tuple {
     (($t0:ident, $i0:tt), $(($ty:ident, $idx:tt)),+) => {
-        impl<$t0: ToBits, $($ty: ToBits),+> ToBits for ($t0, $($ty),+) {
+        impl<$t0: ToBitsInto, $($ty: ToBitsInto),+> ToBitsInto for ($t0, $($ty),+) {
             /// A helper method to return a concatenated list of little-endian bits from the circuits.
             #[inline]
-            fn to_bits_le(&self) -> Vec<bool> {
+            fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_le().into_iter()
-                    $(.chain(self.$idx.to_bits_le().into_iter()))+
-                    .collect()
+                (&self).to_bits_le_into(vec);
             }
 
             /// A helper method to return a concatenated list of big-endian bits from the circuits.
             #[inline]
-            fn to_bits_be(&self) -> Vec<bool> {
+            fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_be().into_iter()
-                    $(.chain(self.$idx.to_bits_be().into_iter()))+
-                    .collect()
+                (&self).to_bits_be_into(vec);
             }
         }
 
-        impl<'a, $t0: ToBits, $($ty: ToBits),+> ToBits for &'a ($t0, $($ty),+) {
+        impl<'a, $t0: ToBitsInto, $($ty: ToBitsInto),+> ToBitsInto for &'a ($t0, $($ty),+) {
             /// A helper method to return a concatenated list of little-endian bits from the circuits.
             #[inline]
-            fn to_bits_le(&self) -> Vec<bool> {
+            fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_le().into_iter()
-                    $(.chain(self.$idx.to_bits_le().into_iter()))+
-                    .collect()
+                self.$i0.to_bits_le_into(vec);
+                $(self.$idx.to_bits_le_into(vec);)+
             }
 
             /// A helper method to return a concatenated list of big-endian bits from the circuits.
             #[inline]
-            fn to_bits_be(&self) -> Vec<bool> {
+            fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_be().into_iter()
-                    $(.chain(self.$idx.to_bits_be().into_iter()))+
-                    .collect()
+                self.$i0.to_bits_be_into(vec);
+                $(self.$idx.to_bits_be_into(vec);)+
             }
         }
     }
@@ -113,23 +133,23 @@ to_bits_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C
 
 macro_rules! impl_bits_for_integer {
     ($int:ty) => {
-        impl ToBits for $int {
+        impl ToBitsInto for $int {
             /// Returns `self` as a boolean array in little-endian order.
             #[inline]
-            fn to_bits_le(&self) -> Vec<bool> {
-                let mut bits_le = Vec::with_capacity(<$int>::BITS as usize);
+            fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+                vec.reserve(<$int>::BITS as usize);
                 let mut value = *self;
                 for _ in 0..<$int>::BITS {
-                    bits_le.push(value & 1 == 1);
+                    vec.push(value & 1 == 1);
                     value = value.wrapping_shr(1u32);
                 }
-                bits_le
             }
 
             /// Returns `self` as a boolean array in big-endian order.
             #[inline]
-            fn to_bits_be(&self) -> Vec<bool> {
-                self.to_bits_le().into_iter().rev().collect()
+            fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+                let reversed = self.reverse_bits();
+                reversed.to_bits_le_into(vec);
             }
         }
 
@@ -171,19 +191,17 @@ impl_bits_for_integer!(i128);
 /****** String ******/
 /********************/
 
-impl ToBits for String {
+impl ToBitsInto for String {
     /// A helper method to return a concatenated list of little-endian bits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<bool> {
-        // The vector is order-preserving, meaning the first byte in is the first byte bits out.
-        self.as_bytes().to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        self.as_bytes().to_bits_le_into(vec);
     }
 
     /// A helper method to return a concatenated list of big-endian bits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<bool> {
-        // The vector is order-preserving, meaning the first byte in is the first byte bits out.
-        self.as_bytes().to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        self.as_bytes().to_bits_be_into(vec);
     }
 }
 
@@ -191,51 +209,55 @@ impl ToBits for String {
 /****** Arrays ******/
 /********************/
 
-impl<C: ToBits> ToBits for Vec<C> {
+impl<C: ToBitsInto> ToBitsInto for Vec<C> {
     /// A helper method to return a concatenated list of little-endian bits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
         // The vector is order-preserving, meaning the first variable in is the first variable bits out.
-        self.as_slice().to_bits_le()
+        self.as_slice().to_bits_le_into(vec);
     }
 
     /// A helper method to return a concatenated list of big-endian bits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
         // The vector is order-preserving, meaning the first variable in is the first variable bits out.
-        self.as_slice().to_bits_be()
+        self.as_slice().to_bits_be_into(vec);
     }
 }
 
-impl<C: ToBits, const N: usize> ToBits for [C; N] {
+impl<C: ToBitsInto, const N: usize> ToBitsInto for [C; N] {
     /// A helper method to return a concatenated list of little-endian bits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
-        self.as_slice().to_bits_le()
+        self.as_slice().to_bits_le_into(vec);
     }
 
     /// A helper method to return a concatenated list of big-endian bits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
-        self.as_slice().to_bits_be()
+        self.as_slice().to_bits_be_into(vec);
     }
 }
 
-impl<C: ToBits> ToBits for &[C] {
+impl<C: ToBitsInto> ToBitsInto for &[C] {
     /// A helper method to return a concatenated list of little-endian bits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
-        self.iter().flat_map(|c| c.to_bits_le()).collect()
+        for elem in self.iter() {
+            elem.to_bits_le_into(vec);
+        }
     }
 
     /// A helper method to return a concatenated list of big-endian bits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
-        self.iter().flat_map(|c| c.to_bits_be()).collect()
+        for elem in self.iter() {
+            elem.to_bits_be_into(vec);
+        }
     }
 }
 

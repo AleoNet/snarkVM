@@ -84,6 +84,10 @@ package = "snarkvm-synthesizer"
 path = "../synthesizer"
 version = "=0.14.6"
 
+[dependencies.snarkvm-utilities]
+path = "../utilities"
+version = "=0.14.6"
+
 [dependencies.aleo-std]
 version = "0.1.18"
 default-features = false

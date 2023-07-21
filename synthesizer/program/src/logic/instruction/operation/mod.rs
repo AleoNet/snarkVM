@@ -41,6 +41,8 @@ mod macros;
 use crate::Opcode;
 use console::network::prelude::*;
 
+use snarkvm_utilities::ToBits;
+
 pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
     /// The opcode of the operation.
     const OPCODE: Opcode;

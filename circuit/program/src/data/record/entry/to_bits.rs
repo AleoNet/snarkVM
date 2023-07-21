@@ -14,70 +14,34 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for Entry<A, Plaintext<A>> {
+impl<A: Aleo, T: Visibility<A>> ToBitsInto for Entry<A, T> {
     type Boolean = Boolean<A>;
 
     /// Returns this entry as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        let mut bits_le = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        match self {
+            Self::Constant(..) => vec.extend_from_slice(&[Boolean::constant(false), Boolean::constant(false)]),
+            Self::Public(..) => vec.extend_from_slice(&[Boolean::constant(false), Boolean::constant(true)]),
+            Self::Private(..) => vec.extend_from_slice(&[Boolean::constant(true), Boolean::constant(false)]),
         };
         match self {
-            Self::Constant(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Public(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Private(plaintext) => bits_le.extend(plaintext.to_bits_le()),
+            Self::Constant(plaintext) => plaintext.to_bits_le_into(vec),
+            Self::Public(plaintext) => plaintext.to_bits_le_into(vec),
+            Self::Private(plaintext) => plaintext.to_bits_le_into(vec),
         }
-        bits_le
     }
 
     /// Returns this entry as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
-        let mut bits_be = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        match self {
+            Self::Constant(..) => vec.extend_from_slice(&[Boolean::constant(false), Boolean::constant(false)]),
+            Self::Public(..) => vec.extend_from_slice(&[Boolean::constant(false), Boolean::constant(true)]),
+            Self::Private(..) => vec.extend_from_slice(&[Boolean::constant(true), Boolean::constant(false)]),
         };
         match self {
-            Self::Constant(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Public(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Private(plaintext) => bits_be.extend(plaintext.to_bits_be()),
+            Self::Constant(plaintext) => plaintext.to_bits_be_into(vec),
+            Self::Public(plaintext) => plaintext.to_bits_be_into(vec),
+            Self::Private(plaintext) => plaintext.to_bits_be_into(vec),
         }
-        bits_be
-    }
-}
-
-impl<A: Aleo> ToBits for Entry<A, Ciphertext<A>> {
-    type Boolean = Boolean<A>;
-
-    /// Returns this entry as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        let mut bits_le = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
-        };
-        match self {
-            Self::Constant(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Public(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-            Self::Private(plaintext) => bits_le.extend(plaintext.to_bits_le()),
-        }
-        bits_le
-    }
-
-    /// Returns this entry as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
-        let mut bits_be = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
-        };
-        match self {
-            Self::Constant(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Public(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-            Self::Private(plaintext) => bits_be.extend(plaintext.to_bits_be()),
-        }
-        bits_be
     }
 }

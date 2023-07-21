@@ -14,31 +14,31 @@
 
 use super::*;
 
-impl<N: Network> ToBits for ProgramID<N> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<N: Network> ToBitsInto for ProgramID<N> {
     /// Returns the little-endian bits of the program ID.
-    fn to_bits_le(&self) -> Vec<bool> {
-        (&self).to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        (&self).to_bits_le_into(vec);
     }
 
     /// Returns the big-endian bits of the program ID.
-    fn to_bits_be(&self) -> Vec<bool> {
-        (&self).to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        (&self).to_bits_be_into(vec);
     }
 }
 
-impl<N: Network> ToBits for &ProgramID<N> {
+impl<N: Network> ToBitsInto for &ProgramID<N> {
     /// Returns the little-endian bits of the program ID.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits = self.name().to_bits_le();
-        bits.extend(self.network().to_bits_le());
-        bits
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        self.name().to_bits_le_into(vec);
+        self.network().to_bits_le_into(vec);
     }
 
     /// Returns the big-endian bits of the program ID.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits = self.name().to_bits_be();
-        bits.extend(self.network().to_bits_be());
-        bits
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        self.name().to_bits_be_into(vec);
+        self.network().to_bits_be_into(vec);
     }
 }
 

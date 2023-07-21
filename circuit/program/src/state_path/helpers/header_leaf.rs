@@ -58,20 +58,18 @@ impl<A: Aleo> Eject for HeaderLeaf<A> {
     }
 }
 
-impl<A: Aleo> ToBits for HeaderLeaf<A> {
+impl<A: Aleo> ToBitsInto for HeaderLeaf<A> {
     type Boolean = Boolean<A>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.index.to_bits_le();
-        bits_le.extend(self.id.to_bits_le());
-        bits_le
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.index.to_bits_le_into(vec);
+        self.id.to_bits_le_into(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_be = self.index.to_bits_be();
-        bits_be.extend(self.id.to_bits_be());
-        bits_be
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.index.to_bits_be_into(vec);
+        self.id.to_bits_be_into(vec);
     }
 }

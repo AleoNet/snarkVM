@@ -33,9 +33,6 @@ pub use parse::*;
 pub mod string;
 pub use string::string_parser;
 
-pub mod to_bits;
-pub use to_bits::*;
-
 pub mod to_field;
 pub use to_field::*;
 

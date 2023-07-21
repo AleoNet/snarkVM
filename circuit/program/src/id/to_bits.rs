@@ -14,35 +14,33 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for ProgramID<A> {
+impl<A: Aleo> ToBitsInto for ProgramID<A> {
     type Boolean = Boolean<A>;
 
     /// Returns the little-endian bits of the program ID.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_le_into(vec);
     }
 
     /// Returns the big-endian bits of the program ID.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_be_into(vec);
     }
 }
 
-impl<A: Aleo> ToBits for &ProgramID<A> {
+impl<A: Aleo> ToBitsInto for &ProgramID<A> {
     type Boolean = Boolean<A>;
 
     /// Returns the little-endian bits of the program ID.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mut bits = self.name().to_bits_le();
-        bits.extend(self.network().to_bits_le());
-        bits
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.name().to_bits_le_into(vec);
+        self.network().to_bits_le_into(vec);
     }
 
     /// Returns the big-endian bits of the program ID.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits = self.name().to_bits_be();
-        bits.extend(self.network().to_bits_be());
-        bits
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.name().to_bits_be_into(vec);
+        self.network().to_bits_be_into(vec);
     }
 }
 

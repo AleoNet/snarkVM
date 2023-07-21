@@ -17,7 +17,7 @@ use snarkvm_utilities::{
     rand::Uniform,
     serialize::{SerializationError, *},
     FromBytes,
-    ToBits,
+    ToBitsInto,
     ToBytes,
 };
 
@@ -287,19 +287,15 @@ impl<P: Fp2Parameters> From<u8> for Fp2<P> {
     }
 }
 
-impl<P: Fp2Parameters> ToBits for Fp2<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_le());
-        res.extend_from_slice(&self.c1.to_bits_le());
-        res
+impl<P: Fp2Parameters> ToBitsInto for Fp2<P> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        self.c0.to_bits_le_into(vec);
+        self.c1.to_bits_le_into(vec);
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut res = vec![];
-        res.extend_from_slice(&self.c0.to_bits_be());
-        res.extend_from_slice(&self.c1.to_bits_be());
-        res
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        self.c0.to_bits_be_into(vec);
+        self.c1.to_bits_be_into(vec);
     }
 }
 

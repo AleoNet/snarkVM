@@ -171,64 +171,60 @@ impl<A: Aleo> Owner<A, Ciphertext<A>> {
     }
 }
 
-impl<A: Aleo> ToBits for Owner<A, Plaintext<A>> {
+impl<A: Aleo> ToBitsInto for Owner<A, Plaintext<A>> {
     type Boolean = Boolean<A>;
 
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        let mut bits_le = vec![self.is_private()];
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_le.extend(public.to_bits_le()),
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_le.extend(address.to_bits_le()),
+            Self::Public(public) => public.to_bits_le_into(vec),
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address.to_bits_le_into(vec),
             _ => A::halt("Internal error: plaintext to_bits_le corrupted in record owner"),
         }
-        bits_le
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
-        let mut bits_be = vec![self.is_private()];
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_be.extend(public.to_bits_be()),
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_be.extend(address.to_bits_be()),
+            Self::Public(public) => public.to_bits_be_into(vec),
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address.to_bits_be_into(vec),
             _ => A::halt("Internal error: plaintext to_bits_be corrupted in record owner"),
         }
-        bits_be
     }
 }
 
-impl<A: Aleo> ToBits for Owner<A, Ciphertext<A>> {
+impl<A: Aleo> ToBitsInto for Owner<A, Ciphertext<A>> {
     type Boolean = Boolean<A>;
 
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        let mut bits_le = vec![self.is_private()];
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_le.extend(public.to_bits_le()),
+            Self::Public(public) => public.to_bits_le_into(vec),
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
-                    true => bits_le.extend(ciphertext[0].to_bits_le()),
+                    true => ciphertext[0].to_bits_le_into(vec),
                     false => A::halt("Internal error: ciphertext to_bits_le corrupted in record owner"),
                 }
             }
         }
-        bits_le
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
-        let mut bits_be = vec![self.is_private()];
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_be.extend(public.to_bits_be()),
+            Self::Public(public) => public.to_bits_be_into(vec),
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
-                    true => bits_be.extend(ciphertext[0].to_bits_be()),
+                    true => ciphertext[0].to_bits_be_into(vec),
                     false => A::halt("Internal error: ciphertext to_bits_be corrupted in record owner"),
                 }
             }
         }
-        bits_be
     }
 }

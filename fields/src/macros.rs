@@ -84,6 +84,7 @@ macro_rules! impl_primefield_from_int {
 macro_rules! sqrt_impl {
     ($Self:ident, $P:tt, $self:expr) => {{
         use crate::LegendreSymbol::*;
+        use snarkvm_utilities::ToBits;
         // https://eprint.iacr.org/2020/1407.pdf (page 4, algorithm 1)
         match $self.legendre() {
             Zero => Some(*$self),

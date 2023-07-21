@@ -14,31 +14,31 @@
 
 use super::*;
 
-impl<E: Environment> ToBits for Address<E> {
+impl<E: Environment> ToBitsInto for Address<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_le_into(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_be_into(vec);
     }
 }
 
-impl<E: Environment> ToBits for &Address<E> {
+impl<E: Environment> ToBitsInto for &Address<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.0.to_bits_le_into(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.0.to_bits_be_into(vec);
     }
 }
 

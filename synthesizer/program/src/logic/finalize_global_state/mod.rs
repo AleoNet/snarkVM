@@ -14,6 +14,8 @@
 
 use console::network::prelude::*;
 
+use snarkvm_utilities::bits::ToBitsInto;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FinalizeGlobalState {
     /// The block height.
@@ -34,11 +36,11 @@ impl FinalizeGlobalState {
     ) -> Result<Self> {
         // Initialize the preimage.
         let mut preimage = Vec::with_capacity(605);
-        preimage.extend_from_slice(&block_round.to_bits_le());
-        preimage.extend_from_slice(&block_height.to_bits_le());
-        preimage.extend_from_slice(&block_cumulative_weight.to_bits_le());
-        preimage.extend_from_slice(&block_cumulative_proof_target.to_bits_le());
-        preimage.extend_from_slice(&(*previous_block_hash).to_bits_le());
+        block_round.to_bits_le_into(&mut preimage);
+        block_height.to_bits_le_into(&mut preimage);
+        block_cumulative_weight.to_bits_le_into(&mut preimage);
+        block_cumulative_proof_target.to_bits_le_into(&mut preimage);
+        (*previous_block_hash).to_bits_le_into(&mut preimage);
 
         // Hash the preimage to get the random seed.
         let seed = N::hash_bhp768(&preimage)?.to_bytes_le()?;

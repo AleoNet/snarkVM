@@ -14,35 +14,35 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for Identifier<A> {
+impl<A: Aleo> ToBitsInto for Identifier<A> {
     type Boolean = Boolean<A>;
 
     /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_le()[..8 * self.1 as usize].to_vec()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_le_into(vec);
     }
 
     /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits = self.to_bits_le();
-        bits.reverse();
-        bits
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_be_into(vec);
     }
 }
 
-impl<A: Aleo> ToBits for &Identifier<A> {
+impl<A: Aleo> ToBitsInto for &Identifier<A> {
     type Boolean = Boolean<A>;
 
     /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_le()[..8 * self.1 as usize].to_vec()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        let initial_len = vec.len();
+        self.0.to_bits_le_into(vec);
+        vec.truncate(initial_len + 8 * self.1 as usize);
     }
 
     /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits = self.to_bits_le();
-        bits.reverse();
-        bits
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        let initial_len = vec.len();
+        self.to_bits_le_into(vec);
+        vec[initial_len..].reverse();
     }
 }
 

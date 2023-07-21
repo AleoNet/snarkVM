@@ -14,15 +14,17 @@
 
 use super::*;
 
-impl<E: Environment> ToBits for Boolean<E> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<E: Environment> ToBitsInto for Boolean<E> {
     /// Outputs `self` in a vector.
-    fn to_bits_le(&self) -> Vec<bool> {
-        vec![**self]
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        vec.push(**self);
     }
 
     /// Outputs `self` in a vector.
-    fn to_bits_be(&self) -> Vec<bool> {
-        vec![**self]
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        vec.push(**self);
     }
 }
 

@@ -25,7 +25,7 @@ use snarkvm_utilities::{
         Flags,
     },
     FromBytes,
-    ToBits,
+    ToBitsInto,
     ToBytes,
 };
 
@@ -40,7 +40,7 @@ use serde::{Deserialize, Serialize};
 /// The interface for a generic field.
 pub trait Field:
     'static
-    + ToBits
+    + ToBitsInto
     + ToBytes
     + FromBytes
     + Copy

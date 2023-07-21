@@ -21,6 +21,10 @@ version = "=0.14.6"
 default-features = false
 features = [ "field", "integers" ]
 
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "=0.14.6"
+
 [dependencies.aleo-std]
 version = "0.1.18"
 default-features = false
@@ -30,6 +34,9 @@ version = "1"
 
 [dev-dependencies.snarkvm-console-network]
 path = "../network"
+
+[dev-dependencies.snarkvm-utilities]
+path = "../../utilities"
 
 [dev-dependencies.criterion]
 version = "0.5.1"

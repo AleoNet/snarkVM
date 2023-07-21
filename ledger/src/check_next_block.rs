@@ -14,6 +14,8 @@
 
 use super::*;
 
+use snarkvm_utilities::bits::ToBitsInto;
+
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Checks the given block is valid next block.
     pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
@@ -228,7 +230,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Check the block hash.
-        match N::hash_bhp1024(&[block.previous_hash().to_bits_le(), header_root.to_bits_le()].concat()) {
+        let mut to_hash = block.previous_hash().to_bits_le();
+        header_root.to_bits_le_into(&mut to_hash);
+        match N::hash_bhp1024(&to_hash) {
             Ok(candidate_hash) => {
                 // Ensure the block hash matches the one in the block.
                 if candidate_hash != *block.hash() {

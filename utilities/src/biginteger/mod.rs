@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{rand::Uniform, FromBits, FromBytes, ToBits, ToBytes};
+use crate::{rand::Uniform, FromBits, FromBytes, ToBitsInto, ToBytes};
 
 use num_bigint::BigUint;
 use std::fmt::{Debug, Display};
@@ -29,7 +29,7 @@ mod tests;
 /// This defines a `BigInteger`, a smart wrapper around a
 /// sequence of `u64` limbs, least-significant digit first.
 pub trait BigInteger:
-    ToBits
+    ToBitsInto
     + FromBits
     + ToBytes
     + FromBytes

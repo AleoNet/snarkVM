@@ -14,18 +14,20 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Ciphertext<N> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<N: Network> ToBitsInto for Ciphertext<N> {
     /// Returns this ciphertext as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let bits_le = self.0.to_bits_le();
-        assert_eq!(self.0.len() * Field::<N>::size_in_bits(), bits_le.len());
-        bits_le
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.0.to_bits_le_into(vec);
+        assert_eq!(self.0.len() * Field::<N>::size_in_bits(), vec.len() - initial_len);
     }
 
     /// Returns this ciphertext as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let bits_be = self.0.to_bits_be();
-        assert_eq!(self.0.len() * Field::<N>::size_in_bits(), bits_be.len());
-        bits_be
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.0.to_bits_be_into(vec);
+        assert_eq!(self.0.len() * Field::<N>::size_in_bits(), vec.len() - initial_len);
     }
 }

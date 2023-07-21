@@ -14,86 +14,72 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Record<N, Plaintext<N>> {
+use snarkvm_utilities::ToBitsInto;
+
+impl<N: Network> ToBitsInto for Record<N, Plaintext<N>> {
     /// Returns this data as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
         // Compute the data bits.
-        let data_bits_le = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_le = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_le_into(&mut data_bits_le);
+            entry.to_bits_le_into(&mut data_bits_le);
+        }
 
         // Construct the record bits.
-        let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(
-            u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le(),
-        );
-        bits_le.extend(data_bits_le);
-        bits_le.extend(self.nonce.to_bits_le());
-        bits_le
+        self.owner.to_bits_le_into(vec);
+        u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le_into(vec);
+        vec.extend_from_slice(&data_bits_le);
+        self.nonce.to_bits_le_into(vec);
     }
 
     /// Returns this data as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
         // Compute the data bits.
-        let data_bits_be = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_be = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_be_into(&mut data_bits_be);
+            entry.to_bits_be_into(&mut data_bits_be);
+        }
 
         // Construct the record bits.
-        let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(
-            u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be(),
-        );
-        bits_be.extend(data_bits_be);
-        bits_be.extend(self.nonce.to_bits_be());
-        bits_be
+        self.owner.to_bits_be_into(vec);
+        u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be_into(vec);
+        vec.extend_from_slice(&data_bits_be);
+        self.nonce.to_bits_be_into(vec);
     }
 }
 
-impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
+impl<N: Network> ToBitsInto for Record<N, Ciphertext<N>> {
     /// Returns this data as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le_into(&self, vec: &mut Vec<bool>) {
         // Compute the data bits.
-        let data_bits_le = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_le(), entry.to_bits_le()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_le = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_le_into(&mut data_bits_le);
+            entry.to_bits_le_into(&mut data_bits_le);
+        }
 
         // Construct the record bits.
-        let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(
-            u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le(),
-        );
-        bits_le.extend(data_bits_le);
-        bits_le.extend(self.nonce.to_bits_le());
-        bits_le
+        self.owner.to_bits_le_into(vec);
+        u32::try_from(data_bits_le.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_le_into(vec);
+        vec.extend_from_slice(&data_bits_le);
+        self.nonce.to_bits_le_into(vec);
     }
 
     /// Returns this data as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be_into(&self, vec: &mut Vec<bool>) {
         // Compute the data bits.
-        let data_bits_be = self
-            .data
-            .iter()
-            .flat_map(|(identifier, entry)| [identifier.to_bits_be(), entry.to_bits_be()])
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut data_bits_be = vec![];
+        for (identifier, entry) in &self.data {
+            identifier.to_bits_be_into(&mut data_bits_be);
+            entry.to_bits_be_into(&mut data_bits_be);
+        }
 
         // Construct the record bits.
-        let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(
-            u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be(),
-        );
-        bits_be.extend(data_bits_be);
-        bits_be.extend(self.nonce.to_bits_be());
-        bits_be
+        self.owner.to_bits_be_into(vec);
+        u32::try_from(data_bits_be.len()).or_halt_with::<N>("Record data exceeds u32::MAX bits").to_bits_be_into(vec);
+        vec.extend_from_slice(&data_bits_be);
+        self.nonce.to_bits_be_into(vec);
     }
 }

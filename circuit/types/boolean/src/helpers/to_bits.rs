@@ -14,31 +14,31 @@
 
 use super::*;
 
-impl<E: Environment> ToBits for Boolean<E> {
+impl<E: Environment> ToBitsInto for Boolean<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_le_into(vec);
     }
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).to_bits_be_into(vec);
     }
 }
 
-impl<E: Environment> ToBits for &Boolean<E> {
+impl<E: Environment> ToBitsInto for &Boolean<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        vec![(*self).clone()]
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push((*self).clone());
     }
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        vec![(*self).clone()]
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push((*self).clone());
     }
 }
 

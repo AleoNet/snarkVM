@@ -14,6 +14,8 @@
 
 use crate::prelude::*;
 
+use snarkvm_utilities::ToBits;
+
 pub trait Visibility:
     Equal<Self, Output = Self::Boolean> + ToBytes + FromBytes + ToBits + FromBits + ToFields + FromFields
 {

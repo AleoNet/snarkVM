@@ -82,24 +82,22 @@ impl<A: Aleo> Eject for TransitionLeaf<A> {
     }
 }
 
-impl<A: Aleo> ToBits for TransitionLeaf<A> {
+impl<A: Aleo> ToBitsInto for TransitionLeaf<A> {
     type Boolean = Boolean<A>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.version.to_bits_le();
-        bits_le.extend(self.index.to_bits_le());
-        bits_le.extend(self.variant.to_bits_le());
-        bits_le.extend(self.id.to_bits_le());
-        bits_le
+    fn to_bits_le_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.version.to_bits_le_into(vec);
+        self.index.to_bits_le_into(vec);
+        self.variant.to_bits_le_into(vec);
+        self.id.to_bits_le_into(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_be = self.version.to_bits_be();
-        bits_be.extend(self.index.to_bits_be());
-        bits_be.extend(self.variant.to_bits_be());
-        bits_be.extend(self.id.to_bits_be());
-        bits_be
+    fn to_bits_be_into(&self, vec: &mut Vec<Self::Boolean>) {
+        self.version.to_bits_be_into(vec);
+        self.index.to_bits_be_into(vec);
+        self.variant.to_bits_be_into(vec);
+        self.id.to_bits_be_into(vec);
     }
 }

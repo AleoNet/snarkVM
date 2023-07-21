@@ -77,12 +77,8 @@ impl<A: Aleo> StatePath<A> {
                 & self.header_leaf.index().is_equal(&U8::one()); // Index = 1 (Header::transactions_root)
 
         // Construct the block hash preimage.
-        let block_hash_preimage = self
-            .previous_block_hash
-            .to_bits_le()
-            .into_iter()
-            .chain(self.header_root.to_bits_le().into_iter())
-            .collect::<Vec<_>>();
+        let mut block_hash_preimage = self.previous_block_hash.to_bits_le();
+        self.header_root.to_bits_le_into(&mut block_hash_preimage);
 
         // Ensure the block path is valid.
         let check_block_hash = A::hash_bhp1024(&block_hash_preimage).is_equal(&self.block_hash);
