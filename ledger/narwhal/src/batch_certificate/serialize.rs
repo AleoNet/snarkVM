@@ -19,11 +19,11 @@ impl<N: Network> Serialize for BatchCertificate<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("BatchCertificate", 3)?;
-                header.serialize_field("certificate_id", &self.certificate_id)?;
-                header.serialize_field("batch_header", &self.batch_header)?;
-                header.serialize_field("signatures", &self.signatures)?;
-                header.end()
+                let mut certificate = serializer.serialize_struct("BatchCertificate", 3)?;
+                certificate.serialize_field("certificate_id", &self.certificate_id)?;
+                certificate.serialize_field("batch_header", &self.batch_header)?;
+                certificate.serialize_field("signatures", &self.signatures)?;
+                certificate.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
