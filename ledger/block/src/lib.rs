@@ -53,14 +53,14 @@ pub struct Block<N: Network> {
     previous_hash: N::BlockHash,
     /// The header of this block.
     header: Header<N>,
+    /// The authority for this block.
+    authority: Authority<N>,
     /// The transactions in this block.
     transactions: Transactions<N>,
     /// The ratifications in this block.
     ratifications: Vec<Ratify<N>>,
     /// The coinbase solution.
     coinbase: Option<CoinbaseSolution<N>>,
-    /// The authority for this block.
-    authority: Authority<N>,
 }
 
 impl<N: Network> Block<N> {
@@ -82,7 +82,7 @@ impl<N: Network> Block<N> {
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
-        Self::from(previous_hash, header, transactions, ratifications, coinbase, authority)
+        Self::from(previous_hash, header, authority, transactions, ratifications, coinbase)
     }
 
     /// Initializes a new block from the given previous block hash,
@@ -90,10 +90,10 @@ impl<N: Network> Block<N> {
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
+        authority: Authority<N>,
         transactions: Transactions<N>,
         ratifications: Vec<Ratify<N>>,
         coinbase: Option<CoinbaseSolution<N>>,
-        authority: Authority<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
@@ -127,10 +127,10 @@ impl<N: Network> Block<N> {
             block_hash: block_hash.into(),
             previous_hash,
             header,
+            authority,
             transactions,
             ratifications,
             coinbase,
-            authority,
         })
     }
 }
@@ -146,6 +146,11 @@ impl<N: Network> Block<N> {
         self.previous_hash
     }
 
+    /// Returns the authority.
+    pub const fn authority(&self) -> &Authority<N> {
+        &self.authority
+    }
+
     /// Returns the ratifications in this block.
     pub const fn ratifications(&self) -> &Vec<Ratify<N>> {
         &self.ratifications
@@ -154,11 +159,6 @@ impl<N: Network> Block<N> {
     /// Returns the coinbase solution.
     pub const fn coinbase(&self) -> Option<&CoinbaseSolution<N>> {
         self.coinbase.as_ref()
-    }
-
-    /// Returns the authority.
-    pub const fn authority(&self) -> &Authority<N> {
-        &self.authority
     }
 }
 
