@@ -23,11 +23,11 @@ use crate::{
     TransitionStore,
 };
 use console::{
-    account::Signature,
     network::prelude::*,
     program::{BlockTree, HeaderLeaf, ProgramID, StatePath},
     types::Field,
 };
+use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use synthesizer_program::Program;
@@ -126,6 +126,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type ReverseIDMap: for<'a> Map<'a, N::BlockHash, u32>;
     /// The mapping of `block hash` to `block header`.
     type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
+    /// The mapping of `block hash` to `block authority`.
+    type AuthorityMap: for<'a> Map<'a, N::BlockHash, Authority<N>>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
@@ -140,8 +142,6 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type CoinbaseSolutionMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
     /// The mapping of `puzzle commitment` to `block height`.
     type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
-    /// The mapping of `block hash` to `block signature`.
-    type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -156,6 +156,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
     /// Returns the header map.
     fn header_map(&self) -> &Self::HeaderMap;
+    /// Returns the authority map.
+    fn authority_map(&self) -> &Self::AuthorityMap;
     /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
     /// Returns the confirmed transactions map.
@@ -168,8 +170,6 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap;
     /// Returns the coinbase puzzle commitment map.
     fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap;
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap;
 
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
@@ -188,13 +188,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.id_map().start_atomic();
         self.reverse_id_map().start_atomic();
         self.header_map().start_atomic();
+        self.authority_map().start_atomic();
         self.transactions_map().start_atomic();
         self.confirmed_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
         self.ratifications_map().start_atomic();
         self.coinbase_solution_map().start_atomic();
         self.coinbase_puzzle_commitment_map().start_atomic();
-        self.signature_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
@@ -204,13 +204,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.id_map().is_atomic_in_progress()
             || self.reverse_id_map().is_atomic_in_progress()
             || self.header_map().is_atomic_in_progress()
+            || self.authority_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
             || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
             || self.ratifications_map().is_atomic_in_progress()
             || self.coinbase_solution_map().is_atomic_in_progress()
             || self.coinbase_puzzle_commitment_map().is_atomic_in_progress()
-            || self.signature_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
@@ -220,13 +220,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.id_map().atomic_checkpoint();
         self.reverse_id_map().atomic_checkpoint();
         self.header_map().atomic_checkpoint();
+        self.authority_map().atomic_checkpoint();
         self.transactions_map().atomic_checkpoint();
         self.confirmed_transactions_map().atomic_checkpoint();
         self.transaction_store().atomic_checkpoint();
         self.ratifications_map().atomic_checkpoint();
         self.coinbase_solution_map().atomic_checkpoint();
         self.coinbase_puzzle_commitment_map().atomic_checkpoint();
-        self.signature_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
@@ -236,13 +236,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.id_map().clear_latest_checkpoint();
         self.reverse_id_map().clear_latest_checkpoint();
         self.header_map().clear_latest_checkpoint();
+        self.authority_map().clear_latest_checkpoint();
         self.transactions_map().clear_latest_checkpoint();
         self.confirmed_transactions_map().clear_latest_checkpoint();
         self.transaction_store().clear_latest_checkpoint();
         self.ratifications_map().clear_latest_checkpoint();
         self.coinbase_solution_map().clear_latest_checkpoint();
         self.coinbase_puzzle_commitment_map().clear_latest_checkpoint();
-        self.signature_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
@@ -252,13 +252,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.id_map().atomic_rewind();
         self.reverse_id_map().atomic_rewind();
         self.header_map().atomic_rewind();
+        self.authority_map().atomic_rewind();
         self.transactions_map().atomic_rewind();
         self.confirmed_transactions_map().atomic_rewind();
         self.transaction_store().atomic_rewind();
         self.ratifications_map().atomic_rewind();
         self.coinbase_solution_map().atomic_rewind();
         self.coinbase_puzzle_commitment_map().atomic_rewind();
-        self.signature_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
@@ -268,13 +268,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.id_map().abort_atomic();
         self.reverse_id_map().abort_atomic();
         self.header_map().abort_atomic();
+        self.authority_map().abort_atomic();
         self.transactions_map().abort_atomic();
         self.confirmed_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
         self.ratifications_map().abort_atomic();
         self.coinbase_solution_map().abort_atomic();
         self.coinbase_puzzle_commitment_map().abort_atomic();
-        self.signature_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
@@ -284,13 +284,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.id_map().finish_atomic()?;
         self.reverse_id_map().finish_atomic()?;
         self.header_map().finish_atomic()?;
+        self.authority_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
         self.confirmed_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()?;
         self.ratifications_map().finish_atomic()?;
         self.coinbase_solution_map().finish_atomic()?;
-        self.coinbase_puzzle_commitment_map().finish_atomic()?;
-        self.signature_map().finish_atomic()
+        self.coinbase_puzzle_commitment_map().finish_atomic()
     }
 
     /// Stores the given `(state root, block)` pair into storage.
@@ -316,6 +316,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the block header.
             self.header_map().insert(block.hash(), *block.header())?;
 
+            // Store the block authority.
+            self.authority_map().insert(block.hash(), block.authority().clone())?;
+
             // Store the transaction IDs.
             self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
 
@@ -339,9 +342,6 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                     self.coinbase_puzzle_commitment_map().insert(puzzle_commitment, block.height())?;
                 }
             }
-
-            // Store the block signature.
-            self.signature_map().insert(block.hash(), *block.signature())?;
 
             Ok(())
         })
@@ -385,6 +385,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Remove the block header.
             self.header_map().remove(block_hash)?;
 
+            // Remove the block authority.
+            self.authority_map().remove(block_hash)?;
+
             // Remove the transaction IDs.
             self.transactions_map().remove(block_hash)?;
 
@@ -408,9 +411,6 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                     self.coinbase_puzzle_commitment_map().remove(&puzzle_commitment)?;
                 }
             }
-
-            // Remove the block signature.
-            self.signature_map().remove(block_hash)?;
 
             Ok(())
         })
@@ -566,6 +566,14 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
+    /// Returns the block authority for the given `block hash`.
+    fn get_block_authority(&self, block_hash: &N::BlockHash) -> Result<Option<Authority<N>>> {
+        match self.authority_map().get_confirmed(block_hash)? {
+            Some(authority) => Ok(Some(cow_to_cloned!(authority))),
+            None => Ok(None),
+        }
+    }
+
     /// Returns the block transactions for the given `block hash`.
     fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
         // Retrieve the transaction IDs.
@@ -613,26 +621,14 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the block signature for the given `block hash`.
-    fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
-        match self.signature_map().get_confirmed(block_hash)? {
-            Some(signature) => Ok(Some(cow_to_cloned!(signature))),
-            None => Ok(None),
-        }
-    }
-
     /// Returns the block for the given `block hash`.
     fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
         // Retrieve the block height.
-        let height = match self.get_block_height(block_hash)? {
-            Some(height) => height,
-            None => return Ok(None),
-        };
+        let Some(height) = self.get_block_height(block_hash)? else { return Ok(None) };
 
         // Retrieve the block header.
-        let header = match self.get_block_header(block_hash)? {
-            Some(header) => header,
-            None => bail!("Missing block header for block {height} ('{block_hash}')"),
+        let Some(header) = self.get_block_header(block_hash)? else {
+            bail!("Missing block header for block {height} ('{block_hash}')");
         };
         // Ensure the block height matches.
         if header.height() != height {
@@ -640,33 +636,29 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
 
         // Retrieve the previous block hash.
-        let previous_hash = match self.get_previous_block_hash(height)? {
-            Some(previous_block_hash) => previous_block_hash,
-            None => bail!("Missing previous block hash for block {height} ('{block_hash}')"),
+        let Some(previous_hash) = self.get_previous_block_hash(height)? else {
+            bail!("Missing previous block hash for block {height} ('{block_hash}')");
+        };
+        // Retrieve the block authority.
+        let Some(authority) = self.get_block_authority(block_hash)? else {
+            bail!("Missing authority for block {height} ('{block_hash}')");
         };
         // Retrieve the block transactions.
-        let transactions = match self.get_block_transactions(block_hash)? {
-            Some(transactions) => transactions,
-            None => bail!("Missing transactions for block {height} ('{block_hash}')"),
+        let Some(transactions) = self.get_block_transactions(block_hash)? else {
+            bail!("Missing transactions for block {height} ('{block_hash}')");
         };
         // Retrieve the block ratifications.
-        let ratifications = match self.get_block_ratifications(block_hash)? {
-            Some(ratifications) => ratifications,
-            None => bail!("Missing ratifications for block {height} ('{block_hash}')"),
+        let Some(ratifications) = self.get_block_ratifications(block_hash)? else {
+            bail!("Missing ratifications for block {height} ('{block_hash}')");
         };
         // Retrieve the block coinbase solution.
         let coinbase = match self.get_block_coinbase(block_hash) {
             Ok(coinbase_solution) => coinbase_solution,
             Err(_) => bail!("Missing coinbase solution for block {height} ('{block_hash}')"),
         };
-        // Retrieve the block signature.
-        let signature = match self.get_block_signature(block_hash)? {
-            Some(signature) => signature,
-            None => bail!("Missing signature for block {height} ('{block_hash}')"),
-        };
 
         // Return the block.
-        Ok(Some(Block::from(previous_hash, header, transactions, ratifications, coinbase, signature)?))
+        Ok(Some(Block::from(previous_hash, header, authority, transactions, ratifications, coinbase)?))
     }
 }
 
@@ -882,6 +874,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.get_block_header(block_hash)
     }
 
+    /// Returns the block authority for the given `block hash`.
+    pub fn get_block_authority(&self, block_hash: &N::BlockHash) -> Result<Option<Authority<N>>> {
+        self.storage.get_block_authority(block_hash)
+    }
+
     /// Returns the block transactions for the given `block hash`.
     pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
         self.storage.get_block_transactions(block_hash)
@@ -895,11 +892,6 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block coinbase solution for the given `block hash`.
     pub fn get_block_coinbase(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
         self.storage.get_block_coinbase(block_hash)
-    }
-
-    /// Returns the block signature for the given `block hash`.
-    pub fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
-        self.storage.get_block_signature(block_hash)
     }
 
     /// Returns the block for the given `block hash`.

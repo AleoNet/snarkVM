@@ -52,7 +52,7 @@ use rand::{CryptoRng, Rng};
 /// A helper type to represent the compact batch certificates.
 pub type CompactCertificates = u64;
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Authority<N: Network> {
     Beacon(Signature<N>),
     Quorum(CompactCertificates),

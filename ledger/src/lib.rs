@@ -18,6 +18,7 @@
 #[macro_use]
 extern crate tracing;
 
+pub use ledger_authority as authority;
 pub use ledger_block as block;
 pub use ledger_coinbase as coinbase;
 pub use ledger_narwhal as narwhal;
@@ -41,7 +42,7 @@ mod iterators;
 mod tests;
 
 use console::{
-    account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
+    account::{Address, GraphKey, PrivateKey, ViewKey},
     network::prelude::*,
     program::{
         Ciphertext,
@@ -57,6 +58,7 @@ use console::{
     },
     types::{Field, Group},
 };
+use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
 use ledger_narwhal::{BatchCertificate, Transmission, TransmissionID};
@@ -170,7 +172,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Add the genesis validator to the committee.
-        ledger.current_committee.write().insert(genesis.signature().to_address());
+        ledger.current_committee.write().insert(genesis.authority().to_address());
 
         // If the block store is empty, initialize the genesis block.
         if ledger.vm.block_store().heights().max().is_none() {

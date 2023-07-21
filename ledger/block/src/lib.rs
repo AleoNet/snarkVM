@@ -37,7 +37,7 @@ mod serialize;
 mod string;
 
 use console::{
-    account::{PrivateKey, Signature},
+    account::PrivateKey,
     network::prelude::*,
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
@@ -53,14 +53,14 @@ pub struct Block<N: Network> {
     previous_hash: N::BlockHash,
     /// The header of this block.
     header: Header<N>,
+    /// The authority for this block.
+    authority: Authority<N>,
     /// The transactions in this block.
     transactions: Transactions<N>,
     /// The ratifications in this block.
     ratifications: Vec<Ratify<N>>,
     /// The coinbase solution.
     coinbase: Option<CoinbaseSolution<N>>,
-    /// The signature for this block.
-    signature: Signature<N>,
 }
 
 impl<N: Network> Block<N> {
@@ -82,12 +82,7 @@ impl<N: Network> Block<N> {
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
-        match authority {
-            Authority::Beacon(authority) => {
-                Self::from(previous_hash, header, transactions, ratifications, coinbase, authority)
-            }
-            _ => unreachable!(),
-        }
+        Self::from(previous_hash, header, authority, transactions, ratifications, coinbase)
     }
 
     /// Initializes a new block from the given previous block hash,
@@ -95,39 +90,47 @@ impl<N: Network> Block<N> {
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
+        authority: Authority<N>,
         transactions: Transactions<N>,
         ratifications: Vec<Ratify<N>>,
         coinbase: Option<CoinbaseSolution<N>>,
-        signature: Signature<N>,
     ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
+
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
-        // Derive the signer address.
-        let address = signature.to_address();
-        // Ensure the signature is valid.
-        ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
+
+        // Verify the authority.
+        match &authority {
+            Authority::Beacon(signature) => {
+                // Derive the signer address.
+                let address = signature.to_address();
+                // Ensure the signature is valid.
+                ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
+            }
+            // TODO (howardwu): Verify the certificates.
+            Authority::Quorum(_certificates) => (),
+        }
 
         // Ensure that coinbase accumulator matches the coinbase solution.
         let expected_accumulator_point = match &coinbase {
             Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
             None => Field::<N>::zero(),
         };
-        ensure!(
-            header.coinbase_accumulator_point() == expected_accumulator_point,
-            "The coinbase accumulator point in the block header does not correspond to the given coinbase solution"
-        );
+        if header.coinbase_accumulator_point() != expected_accumulator_point {
+            bail!("The coinbase accumulator point in the block does not correspond to the coinbase solution");
+        }
 
         // Construct the block.
         Ok(Self {
             block_hash: block_hash.into(),
             previous_hash,
             header,
+            authority,
             transactions,
             ratifications,
             coinbase,
-            signature,
         })
     }
 }
@@ -143,6 +146,11 @@ impl<N: Network> Block<N> {
         self.previous_hash
     }
 
+    /// Returns the authority.
+    pub const fn authority(&self) -> &Authority<N> {
+        &self.authority
+    }
+
     /// Returns the ratifications in this block.
     pub const fn ratifications(&self) -> &Vec<Ratify<N>> {
         &self.ratifications
@@ -151,11 +159,6 @@ impl<N: Network> Block<N> {
     /// Returns the coinbase solution.
     pub const fn coinbase(&self) -> Option<&CoinbaseSolution<N>> {
         self.coinbase.as_ref()
-    }
-
-    /// Returns the signature.
-    pub const fn signature(&self) -> &Signature<N> {
-        &self.signature
     }
 }
 
