@@ -126,12 +126,6 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
             ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
         }
 
-        // Check if the command is a branch command.
-        if let Some(position) = command.branch_to() {
-            // Ensure the branch target does not reference an earlier position.
-            ensure!(!self.positions.contains_key(position), "Cannot branch to an earlier position '{position}'");
-        }
-
         // Check if the command is a position command.
         if let Some(position) = command.position() {
             // Ensure the position is not yet defined.

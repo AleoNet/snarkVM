@@ -191,8 +191,7 @@ fn branch_to<N: Network, const VARIANT: u8>(
 
     // A helper to get the index corresponding to a position.
     let get_position_index = |position: &Identifier<N>| match finalize.positions().get(position) {
-        Some(index) if *index > counter => Ok(*index),
-        Some(_) => bail!("Cannot branch to an earlier position '{position}' in the program"),
+        Some(index) => Ok(*index),
         None => bail!("The position '{position}' does not exist."),
     };
 
