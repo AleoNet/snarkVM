@@ -14,36 +14,51 @@
 
 use super::*;
 
-impl<N: Network> Serialize for BatchCertificate<N> {
-    /// Serializes the batch certificate to a JSON-string or buffer.
+impl<N: Network> Serialize for Authority<N> {
+    /// Serializes the authority into string or bytes.
+    #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("BatchCertificate", 3)?;
-                header.serialize_field("certificate_id", &self.certificate_id)?;
-                header.serialize_field("batch_header", &self.batch_header)?;
-                header.serialize_field("signatures", &self.signatures)?;
-                header.end()
+                let mut authority = serializer.serialize_struct("Authority", 2)?;
+                match self {
+                    Self::Beacon(signature) => {
+                        authority.serialize_field("type", "beacon")?;
+                        authority.serialize_field("signature", signature)?;
+                    }
+                    Self::Quorum(subdag) => {
+                        authority.serialize_field("type", "quorum")?;
+                        authority.serialize_field("subdag", subdag)?;
+                    }
+                }
+                authority.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for BatchCertificate<N> {
-    /// Deserializes the batch certificate from a JSON-string or buffer.
+impl<'de, N: Network> Deserialize<'de> for Authority<N> {
+    /// Deserializes the authority from a string or bytes.
+    #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let mut value = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self::from(
-                    DeserializeExt::take_from_value::<D>(&mut value, "certificate_id")?,
-                    DeserializeExt::take_from_value::<D>(&mut value, "batch_header")?,
-                    DeserializeExt::take_from_value::<D>(&mut value, "signatures")?,
-                )
-                .map_err(de::Error::custom)?)
+                let mut authority = serde_json::Value::deserialize(deserializer)?;
+                let type_: String = DeserializeExt::take_from_value::<D>(&mut authority, "type")?;
+
+                // Recover the authority.
+                match type_.as_str() {
+                    "beacon" => Ok(Self::from_beacon(
+                        DeserializeExt::take_from_value::<D>(&mut authority, "signature").map_err(de::Error::custom)?,
+                    )),
+                    "quorum" => Ok(Self::from_quorum(
+                        DeserializeExt::take_from_value::<D>(&mut authority, "subdag").map_err(de::Error::custom)?,
+                    )),
+                    _ => Err(error("Invalid authority type")).map_err(de::Error::custom),
+                }
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "batch certificate"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "authority"),
         }
     }
 }
@@ -51,6 +66,7 @@ impl<'de, N: Network> Deserialize<'de> for BatchCertificate<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use console::prelude::TestRng;
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
@@ -58,21 +74,16 @@ mod tests {
         expected: T,
     ) {
         // Serialize
-        let expected_string = expected.to_string();
+        let expected_string = &expected.to_string();
         let candidate_string = serde_json::to_string(&expected).unwrap();
-        let candidate = serde_json::from_str::<T>(&candidate_string).unwrap();
-        assert_eq!(expected, candidate);
-        assert_eq!(expected_string, candidate_string);
-        assert_eq!(expected_string, candidate.to_string());
+        assert_eq!(expected_string, &serde_json::Value::from_str(&candidate_string).unwrap().to_string());
 
         // Deserialize
-        assert_eq!(expected, T::from_str(&expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
+        assert_eq!(expected, T::from_str(expected_string).unwrap_or_else(|_| panic!("FromStr: {expected_string}")));
         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
     }
 
-    fn check_bincode<
-        T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
-    >(
+    fn check_bincode<T: Serialize + for<'a> Deserialize<'a> + Debug + PartialEq + Eq + ToBytes + FromBytes>(
         expected: T,
     ) {
         // Serialize
@@ -89,7 +100,7 @@ mod tests {
     fn test_serde_json() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch_certificate::test_helpers::sample_batch_certificates(rng) {
+        for expected in crate::test_helpers::sample_authorities(rng) {
             check_serde_json(expected);
         }
     }
@@ -98,7 +109,7 @@ mod tests {
     fn test_bincode() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch_certificate::test_helpers::sample_batch_certificates(rng) {
+        for expected in crate::test_helpers::sample_authorities(rng) {
             check_bincode(expected);
         }
     }

@@ -12,11 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
+mod helpers;
+pub use helpers::*;
+
 mod bytes;
 mod serialize;
 mod string;
 
-use crate::helpers::Data;
 use console::prelude::*;
 use ledger_block::Transaction;
 use ledger_coinbase::ProverSolution;

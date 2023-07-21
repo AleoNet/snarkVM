@@ -60,7 +60,7 @@ mod tests {
     fn test_string() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::transmission_id::test_helpers::sample_transmission_ids(rng) {
+        for expected in crate::test_helpers::sample_transmission_ids(rng) {
             // Check the string representation.
             let candidate = format!("{expected}");
             assert_eq!(expected, TransmissionID::from_str(&candidate).unwrap());

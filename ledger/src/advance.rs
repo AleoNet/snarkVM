@@ -15,6 +15,23 @@
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
+    /// Returns a candidate for the next block in the ledger, using a committed subdag and its transmissions.
+    pub fn prepare_advance_to_next_block_with_bft(
+        &self,
+        _committed_subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>,
+        transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
+    ) -> Result<Block<N>> {
+        // Initialize a fixed seed RNG.
+        let rng = &mut rand_chacha::ChaChaRng::from_seed([0u8; 32]);
+        // Sample a fixed dummy private key, as we don't need a real one in this case.
+        let private_key = PrivateKey::<N>::new(rng)?;
+
+        // Decouple the transmissions into ratifications, solutions, and transactions.
+        let (_ratifications, _solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
+        // Construct the candidate block.
+        self.prepare_advance_to_next_block(&private_key, transactions, None, rng)
+    }
+
     /// Returns a candidate for the next block in the ledger.
     pub fn prepare_advance_to_next_block<R: Rng + CryptoRng>(
         &self,
@@ -161,7 +178,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Construct the new block.
-        Block::new(private_key, latest_block.hash(), header, transactions, ratifications, coinbase, rng)
+        Block::new_beacon(private_key, latest_block.hash(), header, transactions, ratifications, coinbase, rng)
     }
 
     /// Adds the given block as the next block in the ledger.

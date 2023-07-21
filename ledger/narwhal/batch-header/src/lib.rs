@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
 mod bytes;
 mod serialize;
+mod string;
 mod to_id;
 
-use crate::TransmissionID;
 use console::{
     account::{Address, PrivateKey, Signature},
     prelude::*,
     types::Field,
 };
 use indexmap::IndexSet;
+use narwhal_transmission_id::TransmissionID;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
     /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificate IDs.
     batch_id: Field<N>,
@@ -152,6 +156,7 @@ impl<N: Network> BatchHeader<N> {
 pub mod test_helpers {
     use super::*;
     use console::{account::PrivateKey, network::Testnet3, prelude::TestRng};
+
     use time::OffsetDateTime;
 
     type CurrentNetwork = Testnet3;
@@ -167,7 +172,7 @@ pub mod test_helpers {
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample transmission IDs.
         let transmission_ids =
-            crate::transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
+            narwhal_transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
         // Sample certificate IDs.
         let certificate_ids = (0..10).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
         // Checkpoint the timestamp for the batch.

@@ -17,7 +17,7 @@ use super::*;
 impl<A: Aleo> ViewKey<A> {
     /// Returns the account address for this account view key.
     pub fn to_address(&self) -> Address<A> {
-        Address::from_group(A::g_scalar_multiply(&self.0))
+        self.1.get_or_init(|| Address::from_group(A::g_scalar_multiply(&self.0))).clone()
     }
 }
 

@@ -67,7 +67,7 @@ mod tests {
     fn test_bytes() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::transmission::test_helpers::sample_transmissions(rng) {
+        for expected in crate::test_helpers::sample_transmissions(rng) {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Transmission::read_le(&expected_bytes[..]).unwrap());
