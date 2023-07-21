@@ -167,6 +167,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Ensure the request is well-formed.
         ensure!(console_request.verify(&input_types), "Request is invalid");
+        lap!(timer, "Verify the console request");
+
+        // Initialize the registers.
+        let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
 
         use circuit::{Eject, Inject};
 
@@ -177,10 +181,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
-        lap!(timer, "Verify the request");
-
-        // Initialize the registers.
-        let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
+        lap!(timer, "Verify the circuit request");
 
         // Set the transition caller.
         registers.set_caller(*console_request.caller());
