@@ -506,6 +506,42 @@ jobs:
           workspace_member: ledger/narwhal
           cache_key: snarkvm-ledger-narwhal-cache
 
+  ledger-narwhal-batch-certificate:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/batch-certificate
+          cache_key: snarkvm-ledger-narwhal-batch-certificate-cache
+
+  ledger-narwhal-batch-header:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/batch-header
+          cache_key: snarkvm-ledger-narwhal-batch-header-cache
+
+  ledger-narwhal-transmission:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/transmission
+          cache_key: snarkvm-ledger-narwhal-transmission-cache
+
+  ledger-narwhal-transmission-id:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/transmission-id
+          cache_key: snarkvm-ledger-narwhal-transmission-id-cache
+
   ledger-query:
     docker:
       - image: cimg/rust:1.69
@@ -733,6 +769,10 @@ workflows:
       - ledger-block
       - ledger-coinbase
       - ledger-narwhal
+      - ledger-narwhal-batch-certificate
+      - ledger-narwhal-batch-header
+      - ledger-narwhal-transmission
+      - ledger-narwhal-transmission-id
       - ledger-query
       - ledger-store
       - ledger-test-helpers

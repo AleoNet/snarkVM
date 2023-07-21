@@ -15,27 +15,22 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::cast_possible_truncation)]
 
-#[cfg(feature = "transmission")]
-mod helpers;
-#[cfg(feature = "transmission")]
-pub use helpers::*;
-
 #[cfg(feature = "batch-certificate")]
-pub mod batch_certificate;
+pub use narwhal_batch_certificate as batch_certificate;
 #[cfg(feature = "batch-certificate")]
-pub use batch_certificate::*;
+pub use narwhal_batch_certificate::BatchCertificate;
 
 #[cfg(feature = "batch-header")]
-pub mod batch_header;
+pub use narwhal_batch_header as batch_header;
 #[cfg(feature = "batch-header")]
-pub use batch_header::*;
+pub use narwhal_batch_header::BatchHeader;
 
 #[cfg(feature = "transmission")]
-pub mod transmission;
+pub use narwhal_transmission as transmission;
 #[cfg(feature = "transmission")]
-pub use transmission::*;
+pub use narwhal_transmission::{Data, Transmission};
 
 #[cfg(feature = "transmission-id")]
-pub mod transmission_id;
+pub use narwhal_transmission_id as transmission_id;
 #[cfg(feature = "transmission-id")]
-pub use transmission_id::*;
+pub use narwhal_transmission_id::TransmissionID;

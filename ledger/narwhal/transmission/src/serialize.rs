@@ -14,55 +14,55 @@
 
 use super::*;
 
-impl<N: Network> Serialize for BatchHeader<N> {
+impl<N: Network> Serialize for Transmission<N> {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("BatchHeader", 7)?;
-                header.serialize_field("batch_id", &self.batch_id)?;
-                header.serialize_field("author", &self.author)?;
-                header.serialize_field("round", &self.round)?;
-                header.serialize_field("timestamp", &self.timestamp)?;
-                header.serialize_field("transmission_ids", &self.transmission_ids)?;
-                header.serialize_field("previous_certificate_ids", &self.previous_certificate_ids)?;
-                header.serialize_field("signature", &self.signature)?;
-                header.end()
+                let mut transmission = serializer.serialize_struct("Transmission", 2)?;
+                match self {
+                    Self::Ratification => {
+                        transmission.serialize_field("type", "ratification")?;
+                    }
+                    Self::Solution(solution) => {
+                        transmission.serialize_field("type", "solution")?;
+                        transmission.serialize_field("transmission", solution)?;
+                    }
+                    Self::Transaction(transaction) => {
+                        transmission.serialize_field("type", "transaction")?;
+                        transmission.serialize_field("transmission", transaction)?;
+                    }
+                }
+                transmission.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for BatchHeader<N> {
+impl<'de, N: Network> Deserialize<'de> for Transmission<N> {
     #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let mut header = serde_json::Value::deserialize(deserializer)?;
-                let batch_id: Field<N> = DeserializeExt::take_from_value::<D>(&mut header, "batch_id")?;
+                let mut transmission = serde_json::Value::deserialize(deserializer)?;
+                let type_: String = DeserializeExt::take_from_value::<D>(&mut transmission, "type")?;
 
-                // Recover the header.
-                let batch_header = Self::from(
-                    DeserializeExt::take_from_value::<D>(&mut header, "author")?,
-                    DeserializeExt::take_from_value::<D>(&mut header, "round")?,
-                    DeserializeExt::take_from_value::<D>(&mut header, "timestamp")?,
-                    DeserializeExt::take_from_value::<D>(&mut header, "transmission_ids")?,
-                    DeserializeExt::take_from_value::<D>(&mut header, "previous_certificate_ids")?,
-                    DeserializeExt::take_from_value::<D>(&mut header, "signature")?,
-                )
-                .map_err(de::Error::custom)?;
-
-                // Ensure that the batch ID matches the recovered header.
-                match batch_id == batch_header.batch_id() {
-                    true => Ok(batch_header),
-                    false => {
-                        Err(error(format!("Batch ID mismatch: expected {batch_id}, got {}", batch_header.batch_id())))
-                            .map_err(de::Error::custom)
-                    }
+                // Recover the transmission.
+                match type_.as_str() {
+                    "ratification" => Ok(Self::Ratification),
+                    "solution" => Ok(Self::Solution(
+                        DeserializeExt::take_from_value::<D>(&mut transmission, "transmission")
+                            .map_err(de::Error::custom)?,
+                    )),
+                    "transaction" => Ok(Self::Transaction(
+                        DeserializeExt::take_from_value::<D>(&mut transmission, "transmission")
+                            .map_err(de::Error::custom)?,
+                    )),
+                    _ => Err(error("Invalid transmission type")).map_err(de::Error::custom),
                 }
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "batch header"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transmission"),
         }
     }
 }
@@ -103,7 +103,7 @@ mod tests {
     fn test_serde_json() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch_header::test_helpers::sample_batch_headers(rng) {
+        for expected in crate::test_helpers::sample_transmissions(rng) {
             check_serde_json(expected);
         }
     }
@@ -112,7 +112,7 @@ mod tests {
     fn test_bincode() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch_header::test_helpers::sample_batch_headers(rng) {
+        for expected in crate::test_helpers::sample_transmissions(rng) {
             check_bincode(expected);
         }
     }

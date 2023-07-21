@@ -14,36 +14,22 @@
 
 use super::*;
 
-impl<N: Network> Serialize for BatchCertificate<N> {
-    /// Serializes the batch certificate to a JSON-string or buffer.
+impl<N: Network> Serialize for TransmissionID<N> {
+    #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
-            true => {
-                let mut certificate = serializer.serialize_struct("BatchCertificate", 3)?;
-                certificate.serialize_field("certificate_id", &self.certificate_id)?;
-                certificate.serialize_field("batch_header", &self.batch_header)?;
-                certificate.serialize_field("signatures", &self.signatures)?;
-                certificate.end()
-            }
+            true => serializer.collect_str(self),
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for BatchCertificate<N> {
-    /// Deserializes the batch certificate from a JSON-string or buffer.
+impl<'de, N: Network> Deserialize<'de> for TransmissionID<N> {
+    #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => {
-                let mut value = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self::from(
-                    DeserializeExt::take_from_value::<D>(&mut value, "certificate_id")?,
-                    DeserializeExt::take_from_value::<D>(&mut value, "batch_header")?,
-                    DeserializeExt::take_from_value::<D>(&mut value, "signatures")?,
-                )
-                .map_err(de::Error::custom)?)
-            }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "batch certificate"),
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transmission ID"),
         }
     }
 }
@@ -62,7 +48,7 @@ mod tests {
         let candidate_string = serde_json::to_string(&expected).unwrap();
         let candidate = serde_json::from_str::<T>(&candidate_string).unwrap();
         assert_eq!(expected, candidate);
-        assert_eq!(expected_string, candidate_string);
+        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
         assert_eq!(expected_string, candidate.to_string());
 
         // Deserialize
@@ -89,7 +75,7 @@ mod tests {
     fn test_serde_json() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch_certificate::test_helpers::sample_batch_certificates(rng) {
+        for expected in crate::test_helpers::sample_transmission_ids(rng) {
             check_serde_json(expected);
         }
     }
@@ -98,7 +84,7 @@ mod tests {
     fn test_bincode() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch_certificate::test_helpers::sample_batch_certificates(rng) {
+        for expected in crate::test_helpers::sample_transmission_ids(rng) {
             check_bincode(expected);
         }
     }

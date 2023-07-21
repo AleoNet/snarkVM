@@ -78,7 +78,7 @@ mod tests {
     fn test_bytes() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::batch_certificate::test_helpers::sample_batch_certificates(rng) {
+        for expected in crate::test_helpers::sample_batch_certificates(rng) {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, BatchCertificate::read_le(&expected_bytes[..]).unwrap());
