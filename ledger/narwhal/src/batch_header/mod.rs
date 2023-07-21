@@ -14,6 +14,7 @@
 
 mod bytes;
 mod serialize;
+mod string;
 mod to_id;
 
 use crate::TransmissionID;
@@ -24,7 +25,7 @@ use console::{
 };
 use indexmap::IndexSet;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BatchHeader<N: Network> {
     /// The batch ID, defined as the hash of the round number, timestamp, transmission IDs, and previous batch certificate IDs.
     batch_id: Field<N>,
