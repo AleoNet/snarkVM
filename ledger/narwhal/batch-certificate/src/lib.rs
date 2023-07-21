@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
 mod bytes;
 mod serialize;
 mod string;
 
-use crate::{BatchHeader, TransmissionID};
 use console::{
     account::{Address, Signature},
     prelude::*,
     types::Field,
 };
+use narwhal_batch_header::BatchHeader;
+use narwhal_transmission_id::TransmissionID;
 
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
@@ -178,7 +182,7 @@ pub mod test_helpers {
     /// Returns a sample batch certificate with a given round; the rest is sampled at random.
     pub fn sample_batch_certificate_for_round(round: u64, rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
         // Sample a batch header.
-        let batch_header = crate::batch_header::test_helpers::sample_batch_header_for_round(round, rng);
+        let batch_header = narwhal_batch_header::test_helpers::sample_batch_header_for_round(round, rng);
         // Sample a list of signatures.
         let mut signatures = IndexMap::with_capacity(5);
         for _ in 0..5 {
