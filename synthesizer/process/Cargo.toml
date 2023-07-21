@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-synthesizer-process"
-version = "0.14.5"
+version = "0.14.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A process for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -47,40 +47,40 @@ timer = [ "aleo-std/timer" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.14.5"
+version = "=0.14.6"
 default-features = false
 features = [ "network", "program", "types" ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../../ledger/block"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
 path = "../../ledger/query"
-version = "=0.14.5"
+version = "=0.14.6"
 default-features = false
 
 [dependencies.ledger-store]
 package = "snarkvm-ledger-store"
 path = "../../ledger/store"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.synthesizer-snark]
 package = "snarkvm-synthesizer-snark"
 path = "../../synthesizer/snark"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.aleo-std]
 version = "0.1.18"
