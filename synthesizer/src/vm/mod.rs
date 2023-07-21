@@ -201,7 +201,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let coinbase_solution = None; // The genesis block does not require a coinbase solution.
 
         // Construct the block.
-        let block = Block::new(private_key, previous_hash, header, transactions, vec![], coinbase_solution, rng)?;
+        let block =
+            Block::new_beacon(private_key, previous_hash, header, transactions, vec![], coinbase_solution, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -568,7 +569,7 @@ function compute:
         )?;
 
         // Construct the new block.
-        Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)
+        Block::new_beacon(private_key, previous_block.hash(), header, transactions, vec![], None, rng)
     }
 
     #[test]

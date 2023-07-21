@@ -42,6 +42,7 @@ use console::{
     program::{Ciphertext, Record},
     types::{Field, Group, U64},
 };
+use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -63,8 +64,9 @@ pub struct Block<N: Network> {
 }
 
 impl<N: Network> Block<N> {
-    /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
-    pub fn new<R: Rng + CryptoRng>(
+    /// Initializes a new beacon block from the given previous block hash,
+    /// block header, transactions, ratifications, coinbase, and authority.
+    pub fn new_beacon<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         previous_hash: N::BlockHash,
         header: Header<N>,
@@ -77,10 +79,15 @@ impl<N: Network> Block<N> {
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
-        // Sign the block hash.
-        let signature = private_key.sign(&[block_hash], rng)?;
+        // Construct the beacon authority.
+        let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
-        Self::from(previous_hash, header, transactions, ratifications, coinbase, signature)
+        match authority {
+            Authority::Beacon(authority) => {
+                Self::from(previous_hash, header, transactions, ratifications, coinbase, authority)
+            }
+            _ => unreachable!(),
+        }
     }
 
     /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
@@ -533,7 +540,7 @@ pub mod test_helpers {
         let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
         // Construct the block.
-        let block = Block::new(&private_key, previous_hash, header, transactions, vec![], None, rng).unwrap();
+        let block = Block::new_beacon(&private_key, previous_hash, header, transactions, vec![], None, rng).unwrap();
         assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
         // Return the block, transaction, and private key.
         (block, transaction, private_key)

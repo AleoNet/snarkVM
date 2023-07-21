@@ -62,6 +62,7 @@ members = [
   "curves",
   "fields",
   "ledger",
+  "ledger/authority",
   "ledger/block",
   "ledger/coinbase",
   "ledger/narwhal",
