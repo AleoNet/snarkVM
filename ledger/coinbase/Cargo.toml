@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-coinbase"
-version = "0.14.5"
+version = "0.14.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Coinbase puzzle for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -49,27 +49,27 @@ wasm = [
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.snarkvm-synthesizer-snark]
 path = "../../synthesizer/snark"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
-version = "=0.14.5"
+version = "=0.14.6"
 default-features = false
 
 [dependencies.anyhow]

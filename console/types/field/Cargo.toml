@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-types-field"
-version = "0.14.5"
+version = "0.14.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Type operations for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -8,11 +8,11 @@ edition = "2021"
 
 [dependencies.snarkvm-console-network-environment]
 path = "../../network/environment"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.snarkvm-console-types-boolean]
 path = "../boolean"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dev-dependencies.bincode]
 version = "1.3"

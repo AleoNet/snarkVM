@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-circuit-types-boolean"
-version = "0.14.5"
+version = "0.14.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Boolean circuit for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -14,12 +14,12 @@ harness = false
 [dependencies.console]
 package = "snarkvm-console-types-boolean"
 path = "../../../console/types/boolean"
-version = "=0.14.5"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-circuit-environment]
 path = "../../environment"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dev-dependencies.criterion]
 version = "0.5"

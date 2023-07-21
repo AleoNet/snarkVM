@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ledger-authority"
-version = "0.14.5"
+version = "0.14.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Data structures for a block authority in a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -32,12 +32,12 @@ test-helpers = [ "narwhal-batch-certificate/test-helpers" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.narwhal-batch-certificate]
 package = "snarkvm-ledger-narwhal-batch-certificate"
 path = "../narwhal/batch-certificate"
-version = "=0.14.5"
+version = "=0.14.6"
 
 [dependencies.anyhow]
 version = "1"
