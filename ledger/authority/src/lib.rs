@@ -12,19 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod bytes;
+mod serialize;
+mod string;
+
 use console::{
     account::{Address, PrivateKey, Signature},
     network::Network,
+    prelude::{
+        de,
+        error,
+        fmt,
+        ser,
+        Debug,
+        Deserialize,
+        DeserializeExt,
+        Deserializer,
+        Display,
+        Error,
+        Formatter,
+        FromBytes,
+        FromBytesDeserializer,
+        FromStr,
+        IoResult,
+        Read,
+        Serialize,
+        SerializeStruct,
+        Serializer,
+        ToBytes,
+        ToBytesSerializer,
+        Write,
+    },
     types::Field,
 };
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 
-#[derive(Debug)]
+/// A helper type to represent the compact batch certificates.
+pub type CompactCertificates = u64;
+
+#[derive(PartialEq, Eq)]
 pub enum Authority<N: Network> {
     Beacon(Signature<N>),
-    Quorum,
+    Quorum(CompactCertificates),
 }
 
 impl<N: Network> Authority<N> {
@@ -41,8 +72,8 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub fn new_quorum() -> Self {
-        Self::Quorum
+    pub fn new_quorum(certificates: CompactCertificates) -> Self {
+        Self::Quorum(certificates)
     }
 }
 
@@ -53,8 +84,8 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub fn from_quorum() -> Self {
-        Self::Quorum
+    pub fn from_quorum(certificates: CompactCertificates) -> Self {
+        Self::Quorum(certificates)
     }
 }
 
@@ -66,7 +97,7 @@ impl<N: Network> Authority<N> {
 
     /// Returns `true` if the authority is a quorum.
     pub fn is_quorum(&self) -> bool {
-        matches!(self, Self::Quorum)
+        matches!(self, Self::Quorum(_))
     }
 }
 
@@ -74,10 +105,26 @@ impl<N: Network> Authority<N> {
     /// Returns address of the authority.
     /// If the authority is a beacon, the address of the signer is returned.
     /// If the authority is a quorum, the address of the leader is returned.
+    #[allow(deprecated)]
     pub fn to_address(&self) -> Address<N> {
         match self {
             Self::Beacon(signature) => signature.to_address(),
-            Self::Quorum => Address::zero(),
+            Self::Quorum(..) => Address::zero(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test_helpers {
+    use super::*;
+    use console::prelude::{TestRng, Uniform};
+
+    pub type CurrentNetwork = console::network::Testnet3;
+
+    pub fn sample_authorities(rng: &mut TestRng) -> Vec<Authority<CurrentNetwork>> {
+        vec![
+            Authority::new_beacon(&PrivateKey::new(rng).unwrap(), Field::rand(rng), rng).unwrap(),
+            Authority::new_quorum(rng.gen()),
+        ]
     }
 }

@@ -90,7 +90,8 @@ impl<N: Network> Block<N> {
         }
     }
 
-    /// Initializes a new block from a given previous hash, header, transactions, ratifications, coinbase, and signature.
+    /// Initializes a new block from the given previous block hash,
+    /// block header, transactions, ratifications, coinbase, and authority.
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,

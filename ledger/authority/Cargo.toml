@@ -38,3 +38,10 @@ version = "1"
 
 [dependencies.rand]
 version = "0.8"
+
+[dependencies.serde_json]
+version = "1.0"
+features = [ "preserve_order" ]
+
+[dev-dependencies.bincode]
+version = "1.3"

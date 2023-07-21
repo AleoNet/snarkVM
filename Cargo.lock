@@ -3072,7 +3072,9 @@ name = "snarkvm-ledger-authority"
 version = "0.14.5"
 dependencies = [
  "anyhow",
+ "bincode",
  "rand 0.8.5",
+ "serde_json",
  "snarkvm-console",
 ]
 
