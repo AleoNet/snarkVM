@@ -32,6 +32,7 @@ async = [ "ledger-query/async", "synthesizer/async" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
+  "ledger-authority/serial",
   "ledger-block/serial",
   "ledger-coinbase/serial",
   "ledger-narwhal/serial",

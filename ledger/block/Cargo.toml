@@ -20,12 +20,14 @@ edition = "2021"
 default = [ "indexmap/rayon", "rayon" ]
 serial = [
   "console/serial",
+  "ledger-authority/serial",
   "ledger-coinbase/serial",
   "synthesizer-program/serial",
   "synthesizer-snark/serial"
 ]
 wasm = [
   "console/wasm",
+  "ledger-authority/wasm",
   "ledger-coinbase/wasm",
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm"
