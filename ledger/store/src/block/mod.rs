@@ -624,9 +624,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the block for the given `block hash`.
     fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
         // Retrieve the block height.
-        let Some(height) = self.get_block_height(block_hash)? else {
-            return Ok(None)
-        };
+        let Some(height) = self.get_block_height(block_hash)? else { return Ok(None) };
 
         // Retrieve the block header.
         let Some(header) = self.get_block_header(block_hash)? else {
