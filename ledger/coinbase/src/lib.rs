@@ -29,6 +29,7 @@ use console::{
     account::Address,
     prelude::{anyhow, bail, cfg_iter, ensure, has_duplicates, Network, Result, ToBytes},
     program::cfg_into_iter,
+    types::Field,
 };
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
@@ -162,7 +163,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         Ok(ProverSolution::new(partial_solution, proof))
     }
 
-    /// Returns a coinbase solution for the given epoch challenge and prover solutions.
+    /// Returns a coinbase solution and accumulator point for the given epoch challenge and prover solutions.
     ///
     /// # Note
     /// This method does *not* check that the prover solutions are valid.
@@ -170,7 +171,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         &self,
         epoch_challenge: &EpochChallenge<N>,
         prover_solutions: &[ProverSolution<N>],
-    ) -> Result<CoinbaseSolution<N>> {
+    ) -> Result<(CoinbaseSolution<N>, Field<N>)> {
         // Ensure there exists prover solutions.
         if prover_solutions.is_empty() {
             bail!("Cannot accumulate an empty list of prover solutions.");
@@ -207,9 +208,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         ensure!(challenges.len() == partial_solutions.len() + 1, "Invalid number of challenge points");
 
         // Pop the last challenge as the accumulator challenge point.
-        let accumulator_point = match challenges.pop() {
-            Some(point) => point,
-            None => bail!("Missing the accumulator challenge point"),
+        let Some(accumulator_point) = challenges.pop() else {
+            bail!("Missing the accumulator challenge point");
         };
 
         // Accumulate the prover polynomial.
@@ -252,8 +252,8 @@ impl<N: Network> CoinbasePuzzle<N> {
             bail!("The coinbase proof must be non-hiding");
         }
 
-        // Return the accumulated proof.
-        Ok(CoinbaseSolution::new(partial_solutions, proof))
+        // Return the accumulated proof and accumulator point.
+        Ok((CoinbaseSolution::new(partial_solutions, proof), Field::new(accumulator_point)))
     }
 
     /// Returns `true` if the coinbase solution is valid.

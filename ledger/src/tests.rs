@@ -126,7 +126,7 @@ finalize foo:
     assert!(ledger.vm().verify_transaction(&transaction, None));
 
     // Construct the next block.
-    let block = ledger.prepare_advance_to_next_block(&private_key, vec![transaction], None, rng).unwrap();
+    let block = ledger.prepare_advance_to_next_block(&private_key, vec![], vec![transaction], rng).unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 1);
@@ -137,7 +137,7 @@ finalize foo:
 
     // Construct the next block.
     let block =
-        ledger.prepare_advance_to_next_block(&private_key, vec![transfer_transaction.clone()], None, rng).unwrap();
+        ledger.prepare_advance_to_next_block(&private_key, vec![], vec![transfer_transaction.clone()], rng).unwrap();
     // Advance to the next block.
     ledger.advance_to_next_block(&block).unwrap();
     assert_eq!(ledger.latest_height(), 2);
@@ -226,7 +226,7 @@ finalize failed_assert:
 
     // Construct the deployment block.
     let deployment_block =
-        ledger.prepare_advance_to_next_block(&private_key, vec![deployment_transaction], None, rng).unwrap();
+        ledger.prepare_advance_to_next_block(&private_key, vec![], vec![deployment_transaction], rng).unwrap();
 
     // Check that the next block is valid.
     ledger.check_next_block(&deployment_block).unwrap();
@@ -248,8 +248,9 @@ finalize failed_assert:
         .unwrap();
 
     // Construct the next block containing the new transaction.
-    let next_block =
-        ledger.prepare_advance_to_next_block(&private_key, vec![failed_assert_transaction.clone()], None, rng).unwrap();
+    let next_block = ledger
+        .prepare_advance_to_next_block(&private_key, vec![], vec![failed_assert_transaction.clone()], rng)
+        .unwrap();
 
     // Check that the block contains 1 rejected execution.
     assert_eq!(next_block.transactions().len(), 1);

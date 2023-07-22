@@ -3035,7 +3035,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ledger-authority"
-version = "0.14.5"
+version = "0.14.6"
 dependencies = [
  "anyhow",
  "bincode",
@@ -3088,7 +3088,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ledger-narwhal"
-version = "0.14.5"
+version = "0.14.6"
 dependencies = [
  "snarkvm-ledger-narwhal",
  "snarkvm-ledger-narwhal-batch-certificate",
@@ -3099,7 +3099,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ledger-narwhal-batch-certificate"
-version = "0.14.5"
+version = "0.14.6"
 dependencies = [
  "bincode",
  "indexmap 2.0.0",
@@ -3113,7 +3113,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ledger-narwhal-batch-header"
-version = "0.14.5"
+version = "0.14.6"
 dependencies = [
  "bincode",
  "indexmap 2.0.0",
@@ -3126,7 +3126,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ledger-narwhal-transmission"
-version = "0.14.5"
+version = "0.14.6"
 dependencies = [
  "bincode",
  "bytes",
@@ -3138,7 +3138,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ledger-narwhal-transmission-id"
-version = "0.14.5"
+version = "0.14.6"
 dependencies = [
  "bincode",
  "serde_json",

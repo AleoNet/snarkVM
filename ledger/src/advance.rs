@@ -27,17 +27,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let private_key = PrivateKey::<N>::new(rng)?;
 
         // Decouple the transmissions into ratifications, solutions, and transactions.
-        let (_ratifications, _solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
+        let (_ratifications, solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
         // Construct the candidate block.
-        self.prepare_advance_to_next_block(&private_key, transactions, None, rng)
+        self.prepare_advance_to_next_block(&private_key, solutions, transactions, rng)
     }
 
     /// Returns a candidate for the next block in the ledger.
     pub fn prepare_advance_to_next_block<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        candidate_transactions: Vec<Transaction<N>>,
-        candidate_solutions: Option<Vec<ProverSolution<N>>>,
+        solutions: Vec<ProverSolution<N>>,
+        transactions: Vec<Transaction<N>>,
         rng: &mut R,
     ) -> Result<Block<N>> {
         // Retrieve the latest state root.
@@ -54,19 +54,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_cumulative_weight = latest_block.cumulative_weight();
 
         // Construct the coinbase solution.
-        let (coinbase, coinbase_accumulator_point, cumulative_proof_target) = match &candidate_solutions {
-            Some(solutions) => {
+        let (coinbase, coinbase_accumulator_point, cumulative_proof_target) = match solutions.is_empty() {
+            true => (None, Field::<N>::zero(), 0u128),
+            false => {
                 // Accumulate the prover solutions into a coinbase solution.
-                let coinbase = self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, solutions)?;
-                // Compute the accumulator point of the coinbase solution.
-                let coinbase_accumulator_point = coinbase.to_accumulator_point()?;
+                let (coinbase, coinbase_accumulator_point) =
+                    self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, &solutions)?;
                 // Compute the cumulative proof target. Using '.sum' here is safe because we sum u64s into a u128.
                 let cumulative_proof_target =
                     solutions.iter().map(|s| Ok(s.to_target()? as u128)).sum::<Result<u128>>()?;
                 // Output the coinbase solution, coinbase accumulator point, and cumulative proof target.
                 (Some(coinbase), coinbase_accumulator_point, cumulative_proof_target)
             }
-            None => (None, Field::<N>::zero(), 0u128),
         };
 
         // Compute the next round number.
@@ -85,7 +84,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             latest_block.hash(),
         )?;
         // Select the transactions from the memory pool.
-        let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
+        let transactions = self.vm.speculate(state, transactions.iter())?;
 
         // Compute the next total supply in microcredits.
         let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, &transactions)?;
@@ -94,8 +93,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // TODO (raychu86): Pay the provers.
-        let (proving_rewards, staking_rewards) = match candidate_solutions {
-            Some(prover_solutions) => {
+        let (proving_rewards, staking_rewards) = match solutions.is_empty() {
+            true => {
+                // Output the proving and staking rewards.
+                (vec![], vec![])
+            }
+            false => {
                 // Calculate the coinbase reward.
                 let coinbase_reward = coinbase_reward(
                     latest_block.last_coinbase_timestamp(),
@@ -106,15 +109,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 )?;
 
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(prover_solutions, coinbase_reward, cumulative_proof_target)?;
+                let proving_rewards = proving_rewards(solutions, coinbase_reward, cumulative_proof_target)?;
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
                 (proving_rewards, staking_rewards)
-            }
-            None => {
-                // Output the proving and staking rewards.
-                (vec![], vec![])
             }
         };
 
