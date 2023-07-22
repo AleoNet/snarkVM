@@ -40,6 +40,8 @@ use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_synthesizer_snark::UniversalSRS;
 use snarkvm_utilities::cfg_zip_fold;
 
+use aleo_std::prelude::*;
+
 use std::sync::Arc;
 
 #[cfg(feature = "serial")]
@@ -264,6 +266,8 @@ impl<N: Network> CoinbasePuzzle<N> {
         coinbase_target: u64,
         proof_target: u64,
     ) -> Result<bool> {
+        let timer = timer!("CoinbasePuzzle::verify");
+
         // Ensure the coinbase solution is not empty.
         if coinbase_solution.is_empty() {
             bail!("The coinbase solution does not contain any partial solutions");
@@ -292,6 +296,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         if has_duplicates(coinbase_solution.puzzle_commitments()) {
             bail!("The coinbase solution contains duplicate puzzle commitments");
         }
+        lap!(timer, "Perform initial checks");
 
         // Compute the prover polynomials.
         let prover_polynomials = cfg_iter!(coinbase_solution.partial_solutions())
@@ -302,6 +307,7 @@ impl<N: Network> CoinbasePuzzle<N> {
                 false => bail!("Prover puzzle does not meet the proof target requirements."),
             })
             .collect::<Result<Vec<_>>>()?;
+        lap!(timer, "Compute the prover polynomials");
 
         // Compute the challenge points.
         let mut challenge_points =
@@ -316,6 +322,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             Some(point) => point,
             None => bail!("Missing the accumulator challenge point"),
         };
+        lap!(timer, "Construct the accumulator point");
 
         // Compute the accumulator evaluation.
         let mut accumulator_evaluation = cfg_zip_fold!(
@@ -328,6 +335,7 @@ impl<N: Network> CoinbasePuzzle<N> {
             _
         );
         accumulator_evaluation *= &epoch_challenge.epoch_polynomial().evaluate(accumulator_point);
+        lap!(timer, "Compute the accumulator evaluation");
 
         // Compute the accumulator commitment.
         let commitments: Vec<_> =
@@ -335,6 +343,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         let fs_challenges = challenge_points.into_iter().map(|f| f.to_bigint()).collect::<Vec<_>>();
         let accumulator_commitment =
             KZGCommitment::<N::PairingCurve>(VariableBase::msm(&commitments, &fs_challenges).into());
+        lap!(timer, "Compute the accumulator commitment");
 
         // Retrieve the coinbase verifying key.
         let coinbase_verifying_key = match self {
@@ -342,14 +351,20 @@ impl<N: Network> CoinbasePuzzle<N> {
             Self::Verifier(coinbase_verifying_key) => coinbase_verifying_key,
         };
 
-        // Return the verification result.
-        Ok(KZG10::check(
+        // Verify the KZG10 proof.
+        let check = KZG10::check(
             coinbase_verifying_key,
             &accumulator_commitment,
             accumulator_point,
             accumulator_evaluation,
             coinbase_solution.proof(),
-        )?)
+        )?;
+        lap!(timer, "Verify the KZG10 proof");
+
+        finish!(timer);
+
+        // Return the verification result.
+        Ok(check)
     }
 
     /// Returns the coinbase proving key.
