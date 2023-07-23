@@ -106,7 +106,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         let mut values = Evaluations::new();
         let point = E::Fr::rand(rng);
         for (i, label) in labels.iter().enumerate() {
-            query_set.insert((label.clone(), ("rand".into(), point)));
+            query_set.insert((label.clone(), (0, ("rand".into(), point))));
             let value = polynomials[i].evaluate(point);
             values.insert((label.clone(), point), value);
         }
@@ -202,7 +202,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         for point_id in 0..num_points_in_query_set {
             let point = E::Fr::rand(rng);
             for (polynomial, label) in polynomials.iter().zip_eq(labels.iter()) {
-                query_set.insert((label.clone(), (format!("rand_{point_id}"), point)));
+                query_set.insert((label.clone(), (0, (format!("rand_{point_id}"), point))));
                 let value = polynomial.evaluate(point);
                 values.insert((label.clone(), point), value);
             }
@@ -333,7 +333,7 @@ where
         for point_id in 0..num_points_in_query_set {
             let point = E::Fr::rand(rng);
             for (polynomial, label) in polynomials.iter().zip_eq(labels.iter()) {
-                query_set.insert((label.clone(), (format!("rand_{point_id}"), point)));
+                query_set.insert((label.clone(), (0, (format!("rand_{point_id}"), point))));
                 let value = polynomial.evaluate(point);
                 values.insert((label.clone(), point), value);
             }
@@ -492,7 +492,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
                 if !lc.is_empty() {
                     linear_combinations.push(lc);
                     // Insert query
-                    query_set.insert((label.clone(), (format!("rand_{i}"), point)));
+                    query_set.insert((label.clone(), (0, (format!("rand_{i}"), point))));
                 }
             }
         }

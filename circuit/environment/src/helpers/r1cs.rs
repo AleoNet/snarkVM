@@ -15,7 +15,9 @@
 use crate::{
     helpers::{Constraint, Counter},
     prelude::*,
+    LookupConstraint,
 };
+use snarkvm_algorithms::r1cs::LookupTable;
 use snarkvm_fields::PrimeField;
 
 use std::rc::Rc;
@@ -28,7 +30,9 @@ pub struct R1CS<F: PrimeField> {
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
     constraints: Vec<Constraint<F>>,
+    lookup_constraints: Vec<LookupConstraint<F>>,
     counter: Counter<F>,
+    pub(crate) tables: Vec<LookupTable<F>>,
     nonzeros: (u64, u64, u64),
 }
 
@@ -40,9 +44,15 @@ impl<F: PrimeField> R1CS<F> {
             public: vec![Variable::Public(0u64, Rc::new(F::one()))],
             private: Default::default(),
             constraints: Default::default(),
+            lookup_constraints: Default::default(),
             counter: Default::default(),
+            tables: Default::default(),
             nonzeros: (0, 0, 0),
         }
+    }
+
+    pub(crate) fn add_lookup_table(&mut self, table: LookupTable<F>) {
+        self.tables.push(table);
     }
 
     /// Appends the given scope to the current environment.
@@ -90,6 +100,17 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.add_constraint(constraint);
     }
 
+    /// Adds one constraint enforcing that `(A * B) == C`.
+    pub(crate) fn enforce_lookup(&mut self, constraint: LookupConstraint<F>) {
+        let (a_nonzeros, b_nonzeros, c_nonzeros) = constraint.num_nonzeros();
+        self.nonzeros.0 += a_nonzeros;
+        self.nonzeros.1 += b_nonzeros;
+        self.nonzeros.2 += c_nonzeros;
+
+        self.lookup_constraints.push(constraint.clone());
+        self.counter.add_lookup_constraint(constraint);
+    }
+
     /// Returns `true` if all constraints in the environment are satisfied.
     pub(crate) fn is_satisfied(&self) -> bool {
         self.constraints.iter().all(|constraint| constraint.is_satisfied())
@@ -125,6 +146,11 @@ impl<F: PrimeField> R1CS<F> {
         self.constraints.len() as u64
     }
 
+    /// Returns the number of lookup constraints in the constraint system.
+    pub(crate) fn num_lookup_constraints(&self) -> u64 {
+        self.lookup_constraints.len() as u64
+    }
+
     /// Returns the number of nonzeros in the constraint system.
     pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
         self.nonzeros
@@ -150,6 +176,11 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.num_constraints_in_scope()
     }
 
+    /// Returns the number of lookup constraints for the current scope.
+    pub(crate) fn num_lookup_constraints_in_scope(&self) -> u64 {
+        self.counter.num_lookup_constraints_in_scope()
+    }
+
     /// Returns the number of nonzeros for the current scope.
     pub(crate) fn num_nonzeros_in_scope(&self) -> (u64, u64, u64) {
         self.counter.num_nonzeros_in_scope()
@@ -169,12 +200,20 @@ impl<F: PrimeField> R1CS<F> {
     pub fn to_constraints(&self) -> &Vec<Constraint<F>> {
         &self.constraints
     }
+
+    /// Returns the lookup constraints in the constraint system.
+    pub(crate) fn to_lookup_constraints(&self) -> &Vec<LookupConstraint<F>> {
+        &self.lookup_constraints
+    }
 }
 
 impl<F: PrimeField> Display for R1CS<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::default();
         for constraint in self.to_constraints() {
+            output += &constraint.to_string();
+        }
+        for constraint in self.to_lookup_constraints() {
             output += &constraint.to_string();
         }
         output += "\n";

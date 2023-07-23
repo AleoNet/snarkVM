@@ -90,10 +90,10 @@ pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSyst
 
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixEvals<F: PrimeField> {
-    /// Evaluations of the `row` polynomial.
-    pub row: EvaluationsOnDomain<F>,
     /// Evaluations of the `col` polynomial.
     pub col: EvaluationsOnDomain<F>,
+    /// Evaluations of the `row` polynomial.
+    pub row: EvaluationsOnDomain<F>,
     /// Evaluations of the `row_col` polynomial.
     /// After indexing, we drop these evaluations to save space in the ProvingKey
     pub row_col: Option<EvaluationsOnDomain<F>>,
@@ -105,10 +105,10 @@ impl<F: PrimeField> MatrixEvals<F> {
     pub(crate) fn evaluate(&self, lagrange_coefficients_at_point: &[F]) -> Result<[F; 4]> {
         ensure!(self.row_col.is_some(), "row_col evaluations are not available");
         Ok([
-            self.row.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.col.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.row_col.as_ref().unwrap().evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.row_col_val.evaluate_with_coeffs(lagrange_coefficients_at_point),
+            self.col.evaluate_with_coeffs_eq(lagrange_coefficients_at_point),
+            self.row.evaluate_with_coeffs_eq(lagrange_coefficients_at_point),
+            self.row_col.as_ref().unwrap().evaluate_with_coeffs_eq(lagrange_coefficients_at_point),
+            self.row_col_val.evaluate_with_coeffs_eq(lagrange_coefficients_at_point),
         ])
     }
 }
@@ -197,18 +197,17 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     ensure!(matrix_evals.row_col.is_some(), "row_col evaluations are not available");
 
     let interpolate_time = start_timer!(|| "Interpolating on K");
-    let row = matrix_evals.row.clone().interpolate();
     let col = matrix_evals.col.clone().interpolate();
+    let row = matrix_evals.row.clone().interpolate();
     let row_col = matrix_evals.row_col.as_ref().unwrap().clone().interpolate();
     let row_col_val = matrix_evals.row_col_val.clone().interpolate();
     end_timer!(interpolate_time);
 
-    let label = &[label];
-    let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels(label, std::iter::once(id));
+    let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels_m(*id, label);
 
     Ok(MatrixArithmetization {
-        row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
         col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
+        row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
         row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
         row_col_val: LabeledPolynomial::new(labels.next().unwrap(), row_col_val, None, None),
         evals_on_K: matrix_evals,

@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain},
+    fft::{DensePolynomial, EvaluationDomain, SparsePolynomial},
+    polycommit::sonic_pc::LabeledPolynomial,
     r1cs::ConstraintSynthesizer,
     snark::varuna::{
         ahp::{indexer::Circuit, AHPError, AHPForR1CS},
@@ -26,7 +27,7 @@ use snarkvm_fields::PrimeField;
 use anyhow::Result;
 use itertools::Itertools;
 use rand::Rng;
-use rand_core::CryptoRng;
+use rand_core::{CryptoRng, RngCore};
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "std"))]
@@ -39,6 +40,7 @@ use rayon::prelude::*;
 mod fifth;
 mod first;
 mod fourth;
+mod lookup;
 mod second;
 mod third;
 
@@ -105,6 +107,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                             num_constraints,
                             num_public_variables,
                             num_private_variables,
+                            table_indices_used,
                             ..
                         } = pcs;
 
@@ -154,7 +157,14 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                         end_timer!(eval_z_c_time);
 
                         end_timer!(init_time);
-                        Ok(prover::Assignments::<F>(padded_public_variables, private_variables, z_a, z_b, z_c))
+                        Ok(prover::Assignments::<F>(
+                            padded_public_variables,
+                            private_variables,
+                            z_a,
+                            z_b,
+                            z_c,
+                            table_indices_used,
+                        ))
                     })
                     .collect::<Result<Vec<prover::Assignments<F>>, AHPError>>()?;
                 Ok((*circuit, assignments))
@@ -219,6 +229,34 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             end_timer!(selector_time);
             Ok((h_i, Some(xg_i)))
         }
+    }
+
+    fn calculate_mask_poly<R: RngCore>(
+        label: String,
+        domain: EvaluationDomain<F>,
+        rng: &mut R,
+    ) -> LabeledPolynomial<F> {
+        let mask_poly_time = start_timer!(|| "Computing mask polynomial");
+        // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
+        let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.
+        let h_1_mask =
+            SparsePolynomial::from_coefficients(h_1_mask.into_iter().enumerate()).mul(&domain.vanishing_polynomial());
+        assert_eq!(h_1_mask.degree(), domain.size() + 3);
+        // multiply g_1_mask by X
+        let mut g_1_mask = DensePolynomial::rand(5, rng);
+        g_1_mask.coeffs[0] = F::zero();
+        let g_1_mask = SparsePolynomial::from_coefficients(
+            g_1_mask.coeffs.into_iter().enumerate().filter(|(_, coeff)| !coeff.is_zero()),
+        );
+
+        let mut mask_poly = h_1_mask;
+        mask_poly += &g_1_mask;
+        debug_assert!(domain.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
+        assert_eq!(mask_poly.degree(), domain.size() + 3);
+        assert!(mask_poly.degree() <= 2 * domain.size() + 2 * Self::zk_bound().unwrap() - 3);
+
+        end_timer!(mask_poly_time);
+        LabeledPolynomial::new(label, mask_poly, None, None)
     }
 }
 

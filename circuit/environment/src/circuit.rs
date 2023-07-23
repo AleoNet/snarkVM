@@ -12,10 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{helpers::Constraint, Mode, *};
+use crate::{
+    helpers::{Constraint, LookupConstraint},
+    Mode,
+    *,
+};
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
+
+use snarkvm_algorithms::r1cs::LookupTable;
 
 type Field = <console::Testnet3 as console::Environment>::Field;
 
@@ -43,6 +49,17 @@ impl Environment for Circuit {
     /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField> {
         ONE.with(|one| one.clone())
+    }
+
+    fn add_lookup_table(table: LookupTable<Self::BaseField>) {
+        IN_WITNESS.with(|in_witness| {
+            // Ensure we are not in witness mode.
+            if !(*(**in_witness).borrow()) {
+                CIRCUIT.with(|circuit| {
+                    (**circuit).borrow_mut().add_lookup_table(table);
+                });
+            }
+        });
     }
 
     /// Returns a new variable of the given mode and value.
@@ -179,6 +196,30 @@ impl Environment for Circuit {
         })
     }
 
+    fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
+    where
+        Fn: FnOnce() -> (A, B, C, usize),
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+        C: Into<LinearCombination<Self::BaseField>>,
+    {
+        IN_WITNESS.with(|in_witness| {
+            // Ensure we are not in witness mode.
+            if !(*(**in_witness).borrow()) {
+                CIRCUIT.with(|circuit| {
+                    // let z = LinearCombination::zero();
+                    let (a, b, c, table_index) = constraint();
+                    let (a, b, c) = (a.into(), b.into(), c.into());
+                    let constraint = LookupConstraint((**circuit).borrow().scope(), a, b, c, table_index);
+
+                    // let constraint = LookupConstraint((**circuit).borrow().scope(), a(z.clone()), b(z.clone()), c(z), table_index);
+                    // Append the constraint.
+                    (**circuit).borrow_mut().enforce_lookup(constraint);
+                });
+            }
+        });
+    }
+
     /// Returns `true` if all constraints in the environment are satisfied.
     fn is_satisfied() -> bool {
         CIRCUIT.with(|circuit| (**circuit).borrow().is_satisfied())
@@ -232,6 +273,11 @@ impl Environment for Circuit {
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints_in_scope())
+    }
+
+    /// Returns the number of lookup constraints for the current scope.
+    fn num_lookup_constraints_in_scope() -> u64 {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_lookup_constraints_in_scope())
     }
 
     /// Returns the number of nonzeros for the current scope.

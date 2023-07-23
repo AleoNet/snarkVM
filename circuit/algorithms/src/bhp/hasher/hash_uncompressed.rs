@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_algorithms::r1cs::LookupTable;
 
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
     for BHPHasher<E, NUM_WINDOWS, WINDOW_SIZE>
@@ -62,6 +63,19 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             // Ensure `lambda` is correct by enforcing:
             // `lambda * (that_x - this_x) == (that_y - this_y)`
             E::enforce(|| (&lambda, that_x - this_x, that_y - this_y));
+
+            // TODO: even though the syntax works now, it is still unclear *how* we can get a table and values which make sense.
+            // I should try to make an XOR example in a signature repository
+            let table_index = 0usize;
+            let num_lookups = 10;
+            let mut lookup_table = LookupTable::default();
+            let lc: LinearCombination<E::BaseField> = this_x.into();
+            for _ in 0..num_lookups {
+                let lookup_value = [lc.value(), lc.value()];
+                lookup_table.fill(lookup_value, lc.value());
+            }
+            E::add_lookup_table(lookup_table);
+            E::enforce_lookup(|| (&lambda, that_x - this_x, that_y - this_y, table_index));
 
             // Construct `sum_x` as a witness defined as:
             // `sum_x := (B * lambda^2) - A - this_x - that_x`

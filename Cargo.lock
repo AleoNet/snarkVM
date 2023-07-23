@@ -2557,6 +2557,7 @@ name = "snarkvm-circuit-algorithms"
 version = "0.14.6"
 dependencies = [
  "anyhow",
+ "snarkvm-algorithms",
  "snarkvm-circuit-types",
  "snarkvm-console-algorithms",
  "snarkvm-curves",
@@ -2606,6 +2607,7 @@ version = "0.14.6"
 name = "snarkvm-circuit-network"
 version = "0.14.6"
 dependencies = [
+ "snarkvm-algorithms",
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-collections",
  "snarkvm-circuit-types",
@@ -2751,6 +2753,7 @@ dependencies = [
  "criterion",
  "expect-test",
  "hex",
+ "indexmap 2.0.0",
  "serde",
  "serde_json",
  "smallvec",

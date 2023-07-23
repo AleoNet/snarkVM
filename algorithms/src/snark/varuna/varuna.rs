@@ -30,6 +30,7 @@ use crate::{
         proof,
         prover,
         witness_label,
+        BatchSize,
         CircuitProvingKey,
         CircuitVerifyingKey,
         Proof,
@@ -88,7 +89,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             let coefficient_support = AHPForR1CS::<E::Fr, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Varuna only needs degree 2 random polynomials.
-            let supported_hiding_bound = 1;
+            let supported_hiding_bound = AHPForR1CS::<E::Fr, MM>::zk_bound().unwrap_or(0);
             let supported_lagrange_sizes = [].into_iter(); // TODO: consider removing lagrange_bases_at_beta_g from CommitterKey
             let (committer_key, _) = SonicKZG10::<E, FS>::trim(
                 universal_srs,
@@ -107,6 +108,8 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
+            println!("indexing circuit_commitments: {:?}", circuit_commitments);
+            println!("indexing circuit_commitment_randomness: {:?}", circuit_commitment_randomness);
             let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
             indexed_circuit.prune_row_col_evals();
             let circuit_verifying_key = CircuitVerifyingKey {
@@ -158,7 +161,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
 
     fn absorb_labeled_with_sums(
         comms: &[LabeledCommitment<Commitment<E>>],
-        sums: &[prover::MatrixSums<E::Fr>],
+        sums: impl IntoIterator<Item = E::Fr>,
         sponge: &mut FS,
     ) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
@@ -176,12 +179,10 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
         end_timer!(sponge_time);
     }
 
-    fn absorb_with_sums(commitments: &[Commitment<E>], sums: &[prover::MatrixSums<E::Fr>], sponge: &mut FS) {
+    fn absorb_with_sums(commitments: &[Commitment<E>], sums: impl IntoIterator<Item = E::Fr>, sponge: &mut FS) {
         let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
-        for sum in sums.iter() {
-            sponge.absorb_nonnative_field_elements([sum.sum_a, sum.sum_b, sum.sum_c]);
-        }
+        sponge.absorb_nonnative_field_elements(sums);
         end_timer!(sponge_time);
     }
 }
@@ -244,16 +245,18 @@ where
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        for (poly, &c) in proving_key.circuit.iter().zip(linear_combination_challenges) {
+        for (poly, &c) in proving_key.circuit.iter().zip_eq(linear_combination_challenges) {
             lc.add(c, poly.label());
         }
 
-        let circuit_id = std::iter::once(&verifying_key.id);
-        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
+        let lookups_used = proving_key.circuit.table_info.is_some();
+        let circuit = std::iter::once((&verifying_key.id, lookups_used));
+        let query_set = QuerySet::from_iter([("circuit_check".into(), (0, ("challenge".into(), point)))]);
+
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id).values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
 
@@ -283,7 +286,6 @@ where
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
         let circuit_id = &verifying_key.id;
-        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(std::iter::once(circuit_id));
         // Initialize sponge.
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
@@ -299,12 +301,15 @@ where
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
         let mut evaluation = E::Fr::zero();
+        let lookups_used = verifying_key.circuit_commitments.len() > 12;
+        let circuit_iter = std::iter::once((circuit_id, lookups_used));
+        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_iter);
         for ((label, &c), eval) in info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
             lc.add(c, label.as_str());
             evaluation += c * eval;
         }
 
-        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
+        let query_set = QuerySet::from_iter([("circuit_check".into(), (0, ("challenge".into(), point)))]);
         let commitments = verifying_key
             .iter()
             .cloned()
@@ -353,19 +358,24 @@ where
         let mut total_instances = 0;
         let mut public_inputs = BTreeMap::new(); // inputs need to live longer than the rest of prover_state
         let num_unique_circuits = keys_to_constraints.len();
-        let mut circuit_ids = Vec::with_capacity(num_unique_circuits);
+        let total_lookup_instances = prover_state.total_lookup_instances;
+        let mut total_lookup_circuits = 0;
+        let lookups_used = total_lookup_instances > 0;
         for pk in keys_to_constraints.keys() {
             let batch_size = prover_state.batch_size(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let public_input = prover_state.public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let padded_public_input =
                 prover_state.padded_public_inputs(&pk.circuit).ok_or(SNARKError::CircuitNotFound)?;
             let circuit_id = pk.circuit.id;
-            batch_sizes.insert(circuit_id, batch_size);
+            let lookups_used_i = pk.circuit.table_info.is_some();
+            batch_sizes.insert(circuit_id, BatchSize { num_instances: batch_size, lookups_used: lookups_used_i });
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             inputs_and_batch_sizes.insert(circuit_id, (batch_size, padded_public_input));
             total_instances += batch_size;
+            if lookups_used_i {
+                total_lookup_circuits += 1;
+            }
             public_inputs.insert(circuit_id, public_input);
-            circuit_ids.push(circuit_id);
         }
         assert_eq!(prover_state.total_instances, total_instances);
 
@@ -383,11 +393,11 @@ where
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = {
-            let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
+            let first_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
             SonicKZG10::<E, FS>::commit(
                 universal_prover,
                 &committer_key,
-                first_round_oracles.iter().map(Into::into),
+                first_oracles.iter().map(Into::into),
                 MM::ZK.then_some(zk_rng),
             )?
         };
@@ -403,29 +413,59 @@ where
             prover_state.max_non_zero_domain,
             &mut sponge,
         )?;
-        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
+        let first_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
 
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Lookup round
+        let (lookup_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_lookup_round(&verifier_first_message, prover_state, zk_rng)?;
+
+        let lookup_round_comm_time = start_timer!(|| "Committing to lookup round polys");
+        let (lookup_commitments, lookup_commitment_randomnesses) = {
+            SonicKZG10::<E, FS>::commit(
+                universal_prover,
+                &committer_key,
+                lookup_oracles.iter().map(Into::into),
+                Some(zk_rng),
+            )?
+        };
+        end_timer!(lookup_round_comm_time);
+
+        Self::absorb_labeled(&lookup_commitments, &mut sponge);
+
+        let (verifier_lookup_msg, verifier_state) =
+            AHPForR1CS::<_, MM>::verifier_lookup_round(verifier_state, lookups_used, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Second round
 
-        let (second_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_message, prover_state, zk_rng)?;
+        let mut prover_state = AHPForR1CS::<_, MM>::prover_second_round(
+            &verifier_first_message,
+            &verifier_lookup_msg,
+            prover_state,
+            zk_rng,
+        )?;
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
-        let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
-            universal_prover,
-            &committer_key,
-            second_oracles.iter().map(Into::into),
-            MM::ZK.then_some(zk_rng),
-        )?;
+        let (second_commitments, second_commitment_randomnesses) = {
+            let second_oracles = Arc::get_mut(prover_state.second_round_oracles.as_mut().unwrap()).unwrap();
+            SonicKZG10::<E, FS>::commit(
+                universal_prover,
+                &committer_key,
+                second_oracles.iter().map(Into::into),
+                MM::ZK.then_some(zk_rng),
+            )?
+        };
         end_timer!(second_round_comm_time);
 
         Self::absorb_labeled(&second_commitments, &mut sponge);
 
         let (verifier_second_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_second_round(verifier_state, &mut sponge)?;
+        let second_oracles = Arc::clone(prover_state.second_round_oracles.as_ref().unwrap());
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -447,11 +487,7 @@ where
         )?;
         end_timer!(third_round_comm_time);
 
-        Self::absorb_labeled_with_sums(
-            &third_commitments,
-            &prover_third_message.sums.clone().into_iter().flatten().collect_vec(),
-            &mut sponge,
-        );
+        Self::absorb_labeled_with_sums(&third_commitments, prover_third_message.clone().into_iter(), &mut sponge);
 
         let (verifier_third_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
@@ -472,7 +508,7 @@ where
         )?;
         end_timer!(fourth_round_comm_time);
 
-        Self::absorb_labeled_with_sums(&fourth_commitments, &prover_fourth_message.sums, &mut sponge);
+        Self::absorb_labeled_with_sums(&fourth_commitments, prover_fourth_message.clone().into_iter(), &mut sponge);
 
         let (verifier_fourth_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
@@ -501,54 +537,72 @@ where
         let polynomials: Vec<_> = keys_to_constraints
             .keys()
             .flat_map(|pk| pk.circuit.iter())
-            .chain(first_round_oracles.iter())
+            .chain(first_oracles.iter())
+            .chain(lookup_oracles.iter())
             .chain(second_oracles.iter())
             .chain(third_oracles.iter())
             .chain(fourth_oracles.iter())
             .chain(fifth_oracles.iter())
             .collect();
+
         assert!(
             polynomials.len()
-                == num_unique_circuits * 12 + // row, col, rowcol, rowcolval
-            AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances) +
-            AHPForR1CS::<E::Fr, MM>::num_second_round_oracles() +
-            AHPForR1CS::<E::Fr, MM>::num_third_round_oracles() +
-            AHPForR1CS::<E::Fr, MM>::num_fourth_round_oracles(num_unique_circuits) +
-            AHPForR1CS::<E::Fr, MM>::num_fifth_round_oracles()
+                == AHPForR1CS::<E::Fr, MM>::num_indexing_oracles(num_unique_circuits, total_lookup_circuits)
+                    + AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances, total_lookup_instances)
+                    + AHPForR1CS::<E::Fr, MM>::num_lookup_round_oracles(total_lookup_instances)
+                    + AHPForR1CS::<E::Fr, MM>::num_second_round_oracles(lookups_used)
+                    + AHPForR1CS::<E::Fr, MM>::num_third_round_oracles()
+                    + AHPForR1CS::<E::Fr, MM>::num_fourth_round_oracles(num_unique_circuits)
+                    + AHPForR1CS::<E::Fr, MM>::num_fifth_round_oracles()
         );
 
         // Gather commitments in one vector.
-        let witness_comm_len = if MM::ZK { first_commitments.len() - 1 } else { first_commitments.len() };
-        let mask_poly = MM::ZK.then(|| *first_commitments[witness_comm_len].commitment());
-        let witness_commitments = first_commitments[..witness_comm_len]
-            .iter()
-            .map(|c| proof::WitnessCommitments { w: *c.commitment() })
-            .collect_vec();
+        let mask_poly_0 = (MM::ZK && lookups_used).then(|| *second_commitments[2].commitment());
+        let mask_poly_1 = MM::ZK.then(|| *second_commitments[1].commitment());
+        let mut witness_commitments = Vec::with_capacity(total_instances);
+        let mut instance_index = 0;
+        for batch_size in batch_sizes.values() {
+            for _ in 0..batch_size.num_instances {
+                witness_commitments.push(proof::WitnessCommitments {
+                    w: *first_commitments[instance_index].commitment(),
+                    multiplicities: batch_size
+                        .lookups_used
+                        .then(|| *first_commitments[instance_index + 1].commitment()),
+                });
+                instance_index += batch_size.lookups_used.then_some(2).unwrap_or(1);
+            }
+        }
+
         let fourth_commitments_chunked = fourth_commitments.chunks_exact(3);
 
-        #[rustfmt::skip]
+        let (g_a_commitments, g_b_commitments, g_c_commitments) = fourth_commitments_chunked
+            .map(|c| (*c[0].commitment(), *c[1].commitment(), *c[2].commitment()))
+            .multiunzip();
+        let g_0_commitments = lookups_used.then(|| lookup_commitments.iter().map(|c| *c.commitment()).collect());
         let commitments = proof::Commitments {
             witness_commitments,
-            mask_poly,
-
+            mask_poly_0,
+            g_0_commitments,
             h_0: *second_commitments[0].commitment(),
-
+            mask_poly_1,
             g_1: *third_commitments[0].commitment(),
             h_1: *third_commitments[1].commitment(),
-
-            g_a_commitments: fourth_commitments_chunked.clone().map(|c| *c[0].commitment()).collect(),
-            g_b_commitments: fourth_commitments_chunked.clone().map(|c| *c[1].commitment()).collect(),
-            g_c_commitments: fourth_commitments_chunked.map(|c| *c[2].commitment()).collect(),
-
+            g_a_commitments,
+            g_b_commitments,
+            g_c_commitments,
             h_2: *fifth_commitments[0].commitment(),
         };
 
         let labeled_commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
+            .zip_eq(
+                AHPForR1CS::<E::Fr, MM>::index_polynomial_info(batch_sizes.iter().map(|(id, b)| (id, b.lookups_used)))
+                    .values(),
+            )
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments.into_iter())
+            .chain(lookup_commitments.into_iter())
             .chain(second_commitments.into_iter())
             .chain(third_commitments.into_iter())
             .chain(fourth_commitments.into_iter())
@@ -560,6 +614,7 @@ where
             .keys()
             .flat_map(|pk| pk.circuit_commitment_randomness.clone())
             .chain(first_commitment_randomnesses)
+            .chain(lookup_commitment_randomnesses)
             .chain(second_commitment_randomnesses)
             .chain(third_commitment_randomnesses)
             .chain(fourth_commitment_randomnesses)
@@ -583,7 +638,7 @@ where
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations = std::collections::BTreeMap::new();
-        for (label, (_, point)) in query_set.to_set() {
+        for (label, (_, (_, point))) in query_set.to_set() {
             if !AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
                 let lc = lc_s.get(&label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
                 let evaluation = polynomials.get_lc_eval(lc, point)?;
@@ -636,14 +691,16 @@ where
 
         let batch_sizes_vec = proof.batch_sizes()?;
         let mut batch_sizes = BTreeMap::new();
+        let mut num_instances = BTreeMap::new(); // TODO: we could get rid of this duplication if we also use BatchSize in poly_info(...), State, etc.
         for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
-            batch_sizes.insert(vk.id, batch_sizes_vec[i]);
+            batch_sizes.insert(vk.id, batch_sizes_vec[i].clone());
+            num_instances.insert(vk.id, batch_sizes_vec[i].num_instances);
 
             if public_inputs_i.is_empty() {
                 return Err(SNARKError::EmptyBatch);
             }
 
-            if public_inputs_i.len() != batch_sizes_vec[i] {
+            if public_inputs_i.len() != batch_sizes_vec[i].num_instances {
                 return Err(SNARKError::BatchSizeMismatch);
             }
         }
@@ -657,7 +714,6 @@ where
         let mut inputs_and_batch_sizes = BTreeMap::new();
         let mut input_domains = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
-        let mut circuit_ids = Vec::with_capacity(keys_to_inputs.len());
         for (vk, public_inputs_i) in keys_to_inputs.iter() {
             max_num_constraints = max_num_constraints.max(vk.circuit_info.num_constraints);
             max_num_variables = max_num_variables.max(vk.circuit_info.num_variables);
@@ -688,9 +744,8 @@ where
             public_inputs.insert(circuit_id, parsed_public_inputs_i);
             padded_public_vec.push(padded_public_inputs_i);
             circuit_infos.insert(circuit_id, &vk.circuit_info);
-            circuit_ids.push(circuit_id);
         }
-        for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(batch_sizes.values()).enumerate() {
+        for (i, (vk, &batch_size)) in keys_to_inputs.keys().zip(num_instances.values()).enumerate() {
             inputs_and_batch_sizes.insert(vk.id, (batch_size, padded_public_vec[i].as_slice()));
         }
         let max_constraint_domain =
@@ -699,11 +754,13 @@ where
             EvaluationDomain::<E::Fr>::new(max_num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let max_non_zero_domain = max_non_zero_domain.ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
+        let lookups_used = proof.commitments.g_0_commitments.is_some();
         let comms = &proof.commitments;
+        // TODO: use mask_poly_0 for correctness check, create own function
         let proof_has_correct_zk_mode = if MM::ZK {
-            proof.pc_proof.is_hiding() & comms.mask_poly.is_some()
+            proof.pc_proof.is_hiding() & comms.mask_poly_1.is_some()
         } else {
-            !proof.pc_proof.is_hiding() & comms.mask_poly.is_none()
+            !proof.pc_proof.is_hiding() & comms.mask_poly_1.is_none()
         };
         if !proof_has_correct_zk_mode {
             eprintln!(
@@ -715,35 +772,62 @@ where
 
         let verifier_time = start_timer!(|| format!("Varuna::Verify with batch sizes: {:?}", batch_sizes));
 
-        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
-
         let mut first_comms_consumed = 0;
-        let mut first_commitments = batch_sizes
-            .iter()
-            .flat_map(|(circuit_id, &batch_size)| {
-                let first_comms = comms.witness_commitments[first_comms_consumed..][..batch_size]
-                    .iter()
-                    .enumerate()
-                    .map(|(j, w_comm)| {
-                        LabeledCommitment::new_with_info(
-                            &first_round_info[&witness_label(*circuit_id, "w", j)],
-                            w_comm.w,
-                        )
-                    });
-                first_comms_consumed += batch_size;
-                first_comms
-            })
-            .collect_vec();
-
-        if MM::ZK {
-            first_commitments.push(LabeledCommitment::new_with_info(
-                first_round_info.get("mask_poly").unwrap(),
-                comms.mask_poly.unwrap(),
-            ));
+        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(
+            batch_sizes.iter().map(|(c, b)| (*c, b.num_instances, b.lookups_used)),
+        );
+        let mut first_commitments = Vec::with_capacity(comms.witness_commitments.len());
+        for (circuit_id, batch_size) in &batch_sizes {
+            for j in 0..batch_size.num_instances {
+                first_commitments.push(LabeledCommitment::new_with_info(
+                    &first_round_info[&witness_label(*circuit_id, "w", j)],
+                    comms.witness_commitments[first_comms_consumed].w,
+                ));
+                if batch_size.lookups_used {
+                    first_commitments.push(LabeledCommitment::new_with_info(
+                        &first_round_info[&witness_label(*circuit_id, "multiplicities", j)],
+                        comms.witness_commitments[first_comms_consumed].multiplicities.unwrap(),
+                    ));
+                }
+                first_comms_consumed += 1;
+            }
         }
 
-        let second_round_info = AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info();
-        let second_commitments = [LabeledCommitment::new_with_info(&second_round_info["h_0"], comms.h_0)];
+        let mut lookup_commitments = vec![];
+        if lookups_used {
+            let mut lookup_comms_consumed = 0;
+            let lookup_round_info = AHPForR1CS::<E::Fr, MM>::lookup_round_polynomial_info(
+                circuit_infos.clone().into_iter().zip(num_instances.values()),
+            );
+            lookup_commitments = Vec::with_capacity(comms.g_0_commitments.as_ref().unwrap().len());
+            for (circuit_id, batch_size) in &batch_sizes {
+                if batch_size.lookups_used {
+                    for j in 0..batch_size.num_instances {
+                        lookup_commitments.push(LabeledCommitment::new_with_info(
+                            &lookup_round_info[&witness_label(*circuit_id, "g_0", j)],
+                            comms.g_0_commitments.as_ref().unwrap()[lookup_comms_consumed],
+                        ));
+                        lookup_comms_consumed += 1;
+                    }
+                }
+            }
+        }
+
+        let second_round_info = AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(lookups_used);
+        let mut second_commitments = vec![LabeledCommitment::new_with_info(&second_round_info["h_0"], comms.h_0)];
+
+        if MM::ZK {
+            second_commitments.push(LabeledCommitment::new_with_info(
+                second_round_info.get("mask_poly_1").unwrap(),
+                comms.mask_poly_1.unwrap(),
+            ));
+        }
+        if MM::ZK && lookups_used {
+            second_commitments.push(LabeledCommitment::new_with_info(
+                second_round_info.get("mask_poly_0").unwrap(),
+                comms.mask_poly_0.unwrap(),
+            ));
+        }
 
         let third_round_info = AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(max_variable_domain.size());
         let third_commitments = [
@@ -758,7 +842,7 @@ where
             .iter()
             .zip_eq(comms.g_b_commitments.iter())
             .zip_eq(comms.g_c_commitments.iter())
-            .zip_eq(circuit_ids.iter())
+            .zip_eq(batch_sizes.keys())
             .flat_map(|(((g_a, g_b), g_c), circuit_id)| {
                 [
                     LabeledCommitment::new_with_info(&fourth_round_info[&witness_label(*circuit_id, "g_a", 0)], *g_a),
@@ -790,6 +874,15 @@ where
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
+        // Lookup round
+        let lookup_round_time = start_timer!(|| "Lookup round");
+        Self::absorb_labeled(&lookup_commitments, &mut sponge);
+        let (_, verifier_state) =
+            AHPForR1CS::<_, MM>::verifier_lookup_round(verifier_state, lookups_used, &mut sponge)?;
+        end_timer!(lookup_round_time);
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
         // Second round
         let second_round_time = start_timer!(|| "Second round");
         Self::absorb_labeled(&second_commitments, &mut sponge);
@@ -800,11 +893,7 @@ where
         // --------------------------------------------------------------------
         // Third round
         let third_round_time = start_timer!(|| "Third round");
-        Self::absorb_labeled_with_sums(
-            &third_commitments,
-            &proof.third_msg.sums.clone().into_iter().flatten().collect_vec(),
-            &mut sponge,
-        );
+        Self::absorb_labeled_with_sums(&third_commitments, proof.third_msg.clone().into_iter(), &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
         end_timer!(third_round_time);
         // --------------------------------------------------------------------
@@ -813,7 +902,7 @@ where
         // Fourth round
         let fourth_round_time = start_timer!(|| "Fourth round");
 
-        Self::absorb_labeled_with_sums(&fourth_commitments, &proof.fourth_msg.sums, &mut sponge);
+        Self::absorb_labeled_with_sums(&fourth_commitments, proof.fourth_msg.clone().into_iter(), &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         end_timer!(fourth_round_time);
         // --------------------------------------------------------------------
@@ -835,9 +924,13 @@ where
         let commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
+            .zip_eq(
+                AHPForR1CS::<E::Fr, MM>::index_polynomial_info(batch_sizes.iter().map(|(id, b)| (id, b.lookups_used)))
+                    .values(),
+            )
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments)
+            .chain(lookup_commitments)
             .chain(second_commitments)
             .chain(third_commitments)
             .chain(fourth_commitments)
@@ -851,25 +944,11 @@ where
         sponge.absorb_nonnative_field_elements(proof.evaluations.to_field_elements());
 
         let mut evaluations = Evaluations::new();
-
-        let mut current_circuit_id = "".to_string();
-        let mut circuit_index: i64 = -1;
-
-        for (label, (_point_name, q)) in query_set.to_set() {
+        for (label, (index, (_point_name, q))) in query_set.to_set() {
             if AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), E::Fr::zero());
             } else {
-                if label != "g_1" {
-                    let circuit_id = CircuitId::from_witness_label(&label).to_string();
-                    if circuit_id != current_circuit_id {
-                        circuit_index += 1;
-                        current_circuit_id = circuit_id;
-                    }
-                }
-                let eval = proof
-                    .evaluations
-                    .get(circuit_index as usize, &label)
-                    .ok_or_else(|| AHPError::MissingEval(label.clone()))?;
+                let eval = proof.evaluations.get(index, &label).ok_or_else(|| AHPError::MissingEval(label.clone()))?;
                 evaluations.insert((label, q), eval);
             }
         }
@@ -898,7 +977,7 @@ where
 
         if !evaluations_are_correct {
             #[cfg(debug_assertions)]
-            eprintln!("SonicKZG10::Check failed using final challenge: {:?}", verifier_state.gamma);
+            eprintln!("SonicKZG10::Check failed using final challenge: {:?}", verifier_state.fifth_round_message);
         }
 
         end_timer!(verifier_time, || format!(

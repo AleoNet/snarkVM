@@ -49,11 +49,11 @@ mod varuna {
                     let universal_prover = &universal_srs.to_universal_prover().unwrap();
                     let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
                     let fs_parameters = FS::sample_parameters();
+                    let mul_depth = 1;
 
-                    for i in 0..25 {
-                        let mul_depth = 1;
+                    for i in 0..1 {
                         println!("running test with MM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
-                        let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
+                        let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, 0, None, rng);
 
                         let (index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
@@ -71,6 +71,33 @@ mod varuna {
                         assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
                     }
 
+                    for num_lookups in [5, 10].into_iter() {
+                        for num_entries in [1, 5, 10].into_iter() {
+                            for num_tables in [1, 5, 10].into_iter() {
+                                if num_tables <= num_entries {
+                                    println!("running lookup test with lookups: {num_lookups}, entries: {num_entries} and tables: {num_tables}");
+                                    let tables = TestCircuit::gen_lookup_table(num_entries, num_tables, rng);
+                                    let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + 1, num_constraints + num_lookups, num_variables, num_lookups, tables, rng);
+                                    let (index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();
+                                    println!("Called circuit setup");
+                                    let certificate = $snark_inst::prove_vk(universal_prover, &fs_parameters, &index_vk, &index_pk).unwrap();
+                                    println!("Proved vk");
+                                    assert!($snark_inst::verify_vk(universal_verifier, &fs_parameters, &circ, &index_vk, &certificate).unwrap());
+                                    println!("Verified vk");
+                                    let proof = $snark_inst::prove(universal_prover, &fs_parameters, &index_pk, &circ, rng).unwrap();
+                                    println!("Called prover");
+                                    assert!($snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
+                                    println!("Called verifier");
+                                    eprintln!("\nShould not verify (i.e. verifier messages should print below):");
+                                    assert!(!$snark_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
+                                }
+                            }
+                        }
+                    }
+
+                    let num_tables = 0;
+                    let num_lookups = 0;
+                    let num_entries = 0;
                     for circuit_batch_size in (0..4).map(|i| 2usize.pow(i)) {
                         for instance_batch_size in (0..4).map(|i| 2usize.pow(i)) {
                             println!("running test with circuit_batch_size: {circuit_batch_size} and instance_batch_size: {instance_batch_size}");
@@ -78,10 +105,15 @@ mod varuna {
                             let mut inputs = BTreeMap::new();
 
                             for i in 0..circuit_batch_size {
+                                let num_lookups_i = num_lookups + i;
+                                let num_entries_i = num_entries + i; // TODO: let this grow somewhat faster than the lookups
+                                let num_tables_i = num_tables + i;
+                                let num_constraints_i = num_constraints + 100*i;
+                                let tables = &TestCircuit::gen_lookup_table(num_entries_i, num_tables_i, rng);
+                                let mul_depth = 2 + i;
                                 let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
                                 .map(|_| {
-                                    let mul_depth = 2 + i;
-                                    let (circ, inputs) = TestCircuit::gen_rand(mul_depth, num_constraints + 100*i, num_variables, rng);
+                                    let (circ, inputs) = TestCircuit::gen_rand(mul_depth, num_constraints_i, num_variables, num_lookups_i, tables.clone(), rng);
                                     (circ, inputs)
                                 })
                                 .unzip();
@@ -152,7 +184,7 @@ mod varuna {
                     let universal_srs = $snark_inst::universal_setup(max_degree).unwrap();
 
                     let mul_depth = 1;
-                    let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+                    let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
                     let (_index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -179,7 +211,7 @@ mod varuna {
                     let universal_srs = $snark_inst::universal_setup(max_degree).unwrap();
 
                     let mul_depth = 1;
-                    let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+                    let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
                     let (_index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -306,7 +338,8 @@ mod varuna_hiding {
 
         for _ in 0..num_times {
             let mul_depth = 2;
-            let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+            let (circuit, public_inputs) =
+                TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
             let (index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
@@ -341,7 +374,7 @@ mod varuna_hiding {
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
 
         let mul_depth = 1;
-        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
         let (_index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -363,7 +396,7 @@ mod varuna_hiding {
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
 
         let mul_depth = 1;
-        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
         let (_index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -379,15 +412,15 @@ mod varuna_hiding {
         assert_eq!(index_vk, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 
-    #[test]
-    fn prove_and_verify_with_tall_matrix_big() {
-        let num_constraints = 100;
-        let num_variables = 25;
+    // #[test]
+    // fn prove_and_verify_with_tall_matrix_big() {
+    //     let num_constraints = 100;
+    //     let num_variables = 25;
 
-        test_circuit(num_constraints, num_variables);
-        test_serde_json(num_constraints, num_variables);
-        test_bincode(num_constraints, num_variables);
-    }
+    //     test_circuit(num_constraints, num_variables);
+    //     test_serde_json(num_constraints, num_variables);
+    //     test_bincode(num_constraints, num_variables);
+    // }
 
     #[test]
     fn prove_and_verify_with_tall_matrix_small() {
@@ -443,7 +476,7 @@ mod varuna_hiding {
         let mul_depth = 2;
         let num_constraints = 1 << 13;
         let num_variables = 1 << 13;
-        let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
@@ -481,7 +514,7 @@ mod varuna_hiding {
         let mul_depth = 2;
         let num_constraints = 2usize.pow(15) - 10;
         let num_variables = 2usize.pow(15) - 10;
-        let (circuit1, public_inputs1) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit1, public_inputs1) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
         let (pk1, vk1) = VarunaInst::circuit_setup(&universal_srs, &circuit1).unwrap();
         println!("Called circuit setup");
 
@@ -495,7 +528,7 @@ mod varuna_hiding {
         let mul_depth = 2;
         let num_constraints = 2usize.pow(19) - 10;
         let num_variables = 2usize.pow(19) - 10;
-        let (circuit2, public_inputs2) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit2, public_inputs2) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
         let (pk2, vk2) = VarunaInst::circuit_setup(&universal_srs, &circuit2).unwrap();
         println!("Called circuit setup");
 

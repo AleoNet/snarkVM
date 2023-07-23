@@ -19,6 +19,7 @@ use crate::{
     r1cs::{SynthesisError, SynthesisResult},
     snark::varuna::{AHPError, AHPForR1CS, Circuit, SNARKMode},
 };
+use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 
 /// Circuit Specific State of the Prover
@@ -53,12 +54,22 @@ pub struct CircuitSpecificState<F: PrimeField> {
     /// The length of this list must be equal to the batch size.
     pub(super) z_c: Option<Vec<Vec<F>>>,
 
+    /// Randomizers for the multiplicities.
+    /// The length of this list must be equal to the batch size.
+    pub(super) multiplicity_randomizer: Option<Vec<F>>,
+
     /// A list of polynomials corresponding to the interpolation of the public input.
     /// The length of this list must be equal to the batch size.
     pub(super) x_polys: Vec<DensePolynomial<F>>,
 
     /// Polynomials involved in the holographic sumcheck.
-    pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
+    pub(super) h_polynomials: Option<[DensePolynomial<F>; 3]>,
+
+    /// Polynomials involved in the lookup sumcheck.
+    pub(super) lookup_h_polynomials: Option<Vec<DensePolynomial<F>>>,
+
+    /// How often is each table entry used in a lookup
+    pub(super) m_evals: Option<Vec<Vec<F>>>,
 }
 
 /// State for the AHP prover.
@@ -68,12 +79,17 @@ pub struct State<'a, F: PrimeField, MM: SNARKMode> {
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
+    /// The second round oracles sent by the prover.
+    /// The length of this list must be equal to the batch size.
+    pub(in crate::snark) second_round_oracles: Option<Arc<super::SecondOracles<F>>>,
     /// The largest non_zero domain of all circuits in the batch.
     pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
     /// The largest constraint domain of all circuits in the batch.
     pub(in crate::snark) max_constraint_domain: EvaluationDomain<F>,
     /// The largest variable domain of all circuits in the batch.
     pub(in crate::snark) max_variable_domain: EvaluationDomain<F>,
+    // The total number of instances which use a lookup.
+    pub(in crate::snark) total_lookup_instances: usize,
     /// The total number of instances we're proving in the batch.
     pub(in crate::snark) total_instances: usize,
 }
@@ -95,6 +111,7 @@ pub(super) struct Assignments<F>(
     pub(super) Za<F>,
     pub(super) Zb<F>,
     pub(super) Zc<F>,
+    pub(super) BTreeMap<(usize, usize), F>,
 );
 
 impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
@@ -105,9 +122,31 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
         let mut max_num_constraints = 0;
         let mut max_num_variables = 0;
         let mut total_instances = 0;
+        let mut total_lookup_instances = 0;
+
+        // We need to compute the cumulative table sizes in order to easily compute the multiplicity lookup poly
+        let mut cumulative_table_sizes = Vec::with_capacity(indices_and_assignments.len());
+        for circuit in indices_and_assignments.keys() {
+            if circuit.table_info.is_some() {
+                let mut table_sizes = vec![0usize];
+                circuit
+                    .table_info
+                    .as_ref()
+                    .unwrap()
+                    .lookup_tables
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, table)| table_sizes.push(table_sizes[i] + table.table.len()));
+                cumulative_table_sizes.push(Some(table_sizes));
+            } else {
+                cumulative_table_sizes.push(None);
+            }
+        }
+
         let circuit_specific_states = indices_and_assignments
             .into_iter()
-            .map(|(circuit, variable_assignments)| {
+            .zip_eq(cumulative_table_sizes)
+            .map(|((circuit, variable_assignments), cum_table_sizes)| {
                 let index_info = &circuit.index_info;
 
                 let constraint_domain = EvaluationDomain::new(index_info.num_constraints)
@@ -132,7 +171,13 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                 let mut padded_public_variables = Vec::with_capacity(batch_size);
                 let mut private_variables = Vec::with_capacity(batch_size);
 
-                for Assignments(padded_public_input, private_input, z_a, z_b, z_c) in variable_assignments {
+                let lookups_used = circuit.table_info.is_some();
+                let mut m_evals = lookups_used.then(|| Vec::with_capacity(batch_size));
+
+                for Assignments(padded_public_input, private_input, z_a, z_b, z_c, table_indices_used_j) in
+                    variable_assignments
+                {
+                    let num_constraints = z_a.len();
                     z_as.push(z_a);
                     z_bs.push(z_b);
                     z_cs.push(z_c);
@@ -141,6 +186,15 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                     x_polys.push(x_poly);
                     padded_public_variables.push(padded_public_input);
                     private_variables.push(private_input);
+                    if let Some(cum_table_sizes) = cum_table_sizes.as_ref() {
+                        let mut m_evals_j = vec![F::zero(); num_constraints];
+                        // m_i_j_k is the number of times element t_i_j_k appears in f_i_j
+                        table_indices_used_j.iter().for_each(|((table_index, table_entry_index), num_times_used)| {
+                            m_evals_j[cum_table_sizes[*table_index] + table_entry_index] = *num_times_used;
+                        });
+                        m_evals.as_mut().unwrap().push(m_evals_j);
+                        total_lookup_instances += 1;
+                    }
                 }
 
                 let state = CircuitSpecificState {
@@ -157,7 +211,10 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                     z_a: Some(z_as),
                     z_b: Some(z_bs),
                     z_c: Some(z_cs),
-                    lhs_polynomials: None,
+                    multiplicity_randomizer: None,
+                    h_polynomials: None,
+                    lookup_h_polynomials: None,
+                    m_evals,
                 };
                 Ok((circuit, state))
             })
@@ -174,8 +231,10 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
             max_variable_domain,
             max_non_zero_domain,
             circuit_specific_states,
-            total_instances,
             first_round_oracles: None,
+            second_round_oracles: None,
+            total_lookup_instances,
+            total_instances,
         })
     }
 
@@ -198,7 +257,7 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
     }
 
     /// Iterate over the lhs_polynomials
-    pub fn lhs_polys_into_iter(self) -> impl Iterator<Item = DensePolynomial<F>> + 'a {
-        self.circuit_specific_states.into_values().flat_map(|s| s.lhs_polynomials.unwrap().into_iter())
+    pub fn h_polys_into_iter(self) -> impl Iterator<Item = DensePolynomial<F>> + 'a {
+        self.circuit_specific_states.into_values().flat_map(|s| s.h_polynomials.unwrap().into_iter())
     }
 }

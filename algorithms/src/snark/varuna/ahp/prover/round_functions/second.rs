@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     fft::{polynomial::PolyMultiplier, DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
@@ -26,7 +26,8 @@ use crate::{
         SNARKMode,
     },
 };
-use anyhow::Result;
+use anyhow::{ensure, Result};
+use itertools::Itertools;
 use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, cfg_reduce, ExecutionPool};
@@ -36,45 +37,64 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the second round.
-    pub const fn num_second_round_oracles() -> usize {
-        1
+    pub const fn num_second_round_oracles(lookups_used: bool) -> usize {
+        1 + (MM::ZK as usize) + ((MM::ZK && lookups_used) as usize)
     }
 
     /// Output the degree bounds of oracles in the second round.
-    pub fn second_round_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        [PolynomialInfo::new("h_0".into(), None, None)].into_iter().map(|info| (info.label().into(), info)).collect()
+    pub fn second_round_polynomial_info(lookups_used: bool) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        let mut polynomials = Vec::with_capacity(Self::num_second_round_oracles(lookups_used));
+        polynomials.push(PolynomialInfo::new("h_0".into(), None, None));
+        if MM::ZK {
+            polynomials.push(PolynomialInfo::new("mask_poly_1".to_string(), None, None));
+        }
+        if MM::ZK && lookups_used {
+            polynomials.push(PolynomialInfo::new("mask_poly_0".to_string(), None, None));
+        }
+        polynomials.into_iter().map(|info| (info.label().into(), info)).collect()
     }
 
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
-        verifier_message: &verifier::FirstMessage<F>,
+        verifier_first_message: &verifier::FirstMessage<F>,
+        verifier_lookup_message: &Option<verifier::LookupMessage<F>>,
         mut state: prover::State<'a, F, MM>,
-        _r: &mut R,
-    ) -> Result<(prover::SecondOracles<F>, prover::State<'a, F, MM>)> {
+        rng: &mut R,
+    ) -> Result<prover::State<'a, F, MM>, anyhow::Error> {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let zk_bound = Self::zk_bound();
 
         let max_constraint_domain = state.max_constraint_domain;
 
-        let verifier::FirstMessage { batch_combiners, .. } = verifier_message;
+        let verifier::FirstMessage { batch_combiners, .. } = verifier_first_message;
+        let lookup_combiner = verifier_lookup_message.is_some().then(|| verifier_lookup_message.unwrap().phi);
 
-        let h_0 = Self::calculate_rowcheck_witness(&mut state, batch_combiners)?;
+        let h_0 = Self::calculate_rowcheck_witness(&mut state, batch_combiners, lookup_combiner)?;
 
         assert!(h_0.degree() <= 2 * max_constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
 
-        let oracles = prover::SecondOracles { h_0: LabeledPolynomial::new("h_0", h_0, None, None) };
-        assert!(oracles.matches_info(&Self::second_round_polynomial_info()));
+        let lookups_used = lookup_combiner.is_some();
+        let mask_poly_0 = (MM::ZK && lookups_used)
+            .then(|| Self::calculate_mask_poly("mask_poly_0".to_string(), state.max_constraint_domain, rng)); // TODO: max_constraint_domain or constraint_domain?
+        let mask_poly_1 =
+            MM::ZK.then(|| Self::calculate_mask_poly("mask_poly_1".to_string(), state.max_variable_domain, rng));
+        let oracles =
+            prover::SecondOracles { h_0: LabeledPolynomial::new("h_0", h_0, None, None), mask_poly_0, mask_poly_1 };
+        assert!(oracles.matches_info(&Self::second_round_polynomial_info(lookups_used)));
+
+        state.second_round_oracles = Some(Arc::new(oracles));
 
         end_timer!(round_time);
 
-        Ok((oracles, state))
+        Ok(state)
     }
 
     fn calculate_rowcheck_witness(
         state: &mut prover::State<F, MM>,
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
-    ) -> Result<DensePolynomial<F>> {
+        lookup_combiner: Option<F>,
+    ) -> Result<DensePolynomial<F>, anyhow::Error> {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
         let max_constraint_domain = state.max_constraint_domain;
 
@@ -83,16 +103,20 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             let z_b = circuit_specific_state.z_b.take().unwrap();
             let z_c = circuit_specific_state.z_c.take().unwrap();
 
+            let h_lookup_polys =
+                circuit_specific_state.lookup_h_polynomials.take().unwrap_or(vec![DensePolynomial::zero(); z_a.len()]);
+
             let circuit_combiner = batch_combiners[&circuit.id].circuit_combiner;
             let instance_combiners = batch_combiners[&circuit.id].instance_combiners.clone();
             let constraint_domain = circuit_specific_state.constraint_domain;
             let fft_precomputation = &circuit.fft_precomputation;
             let ifft_precomputation = &circuit.ifft_precomputation;
+            let s_mul = circuit.s_mul.as_ref();
 
             let _circuit_id = &circuit.id; // seems like a compiler bug marks this as unused
 
-            for (j, (instance_combiner, z_a, z_b, z_c)) in
-                itertools::izip!(instance_combiners, z_a, z_b, z_c).enumerate()
+            for (j, ((((instance_combiner, z_a), z_b), z_c), h_lookup)) in
+                instance_combiners.into_iter().zip_eq(z_a).zip_eq(z_b).zip_eq(z_c).zip_eq(h_lookup_polys).enumerate()
             {
                 job_pool.add_job(move || {
                     let mut instance_lhs = DensePolynomial::zero();
@@ -102,12 +126,26 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                     let z_a = Self::calculate_z_m(za_label, z_a, constraint_domain, circuit);
                     let z_b = Self::calculate_z_m(zb_label, z_b, constraint_domain, circuit);
                     let z_c = Self::calculate_z_m(zc_label, z_c, constraint_domain, circuit);
-                    let mut multiplier_2 = PolyMultiplier::new();
-                    multiplier_2.add_precomputation(fft_precomputation, ifft_precomputation);
-                    multiplier_2.add_polynomial(z_a, "z_a");
-                    multiplier_2.add_polynomial(z_b, "z_b");
-                    let mut rowcheck = multiplier_2.multiply().unwrap();
+                    let mut multiplier = PolyMultiplier::new();
+                    multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
+                    multiplier.add_polynomial(z_a, "z_a");
+                    multiplier.add_polynomial(z_b, "z_b");
+                    let mut rowcheck = multiplier.multiply().unwrap();
                     cfg_iter_mut!(rowcheck.coeffs).zip(&z_c.coeffs).for_each(|(ab, c)| *ab -= c);
+                    if let Some(s_mul_poly) = s_mul {
+                        let mut multiplier = PolyMultiplier::new();
+                        multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
+                        multiplier.add_polynomial(rowcheck, "rowcheck");
+                        multiplier.add_polynomial_ref(s_mul_poly.polynomial().as_dense().unwrap(), "s_mul");
+                        rowcheck = multiplier.multiply().unwrap();
+
+                        ensure!(h_lookup != DensePolynomial::zero());
+                        ensure!(lookup_combiner.is_some());
+
+                        if let Some(phi) = lookup_combiner {
+                            rowcheck += &(h_lookup * phi);
+                        }
+                    }
 
                     instance_lhs += &(&rowcheck * instance_combiner);
 

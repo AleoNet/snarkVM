@@ -19,11 +19,22 @@ use crate::{
     snark::varuna::{
         ahp::{
             indexer::{CircuitId, CircuitInfo},
-            verifier::{BatchCombiners, FirstMessage, FourthMessage, QuerySet, SecondMessage, State, ThirdMessage},
+            verifier::{
+                BatchCombiners,
+                FifthMessage,
+                FirstMessage,
+                FourthMessage,
+                LookupMessage,
+                QuerySet,
+                SecondMessage,
+                State,
+                ThirdMessage,
+            },
             AHPError,
             AHPForR1CS,
         },
         verifier::CircuitSpecificState,
+        BatchSize,
         SNARKMode,
     },
     AlgebraicSponge,
@@ -35,7 +46,7 @@ use std::collections::BTreeMap;
 impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        batch_sizes: &BTreeMap<CircuitId, usize>,
+        batch_sizes: &BTreeMap<CircuitId, BatchSize>,
         circuit_infos: &BTreeMap<CircuitId, &CircuitInfo>,
         max_constraint_domain: EvaluationDomain<TargetField>,
         max_variable_domain: EvaluationDomain<TargetField>,
@@ -47,14 +58,19 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
         let mut num_circuit_combiners = vec![1; batch_sizes.len()];
         num_circuit_combiners[0] = 0; // the first circuit_combiner is TargetField::one() and needs no random sampling
 
+        let challenges = fs_rng.squeeze_nonnative_field_elements(2);
+        let theta: TargetField = challenges[0];
+        let zeta: TargetField = challenges[1];
+
         for ((batch_size, (circuit_id, circuit_info)), num_c_combiner) in
             batch_sizes.values().zip(circuit_infos).zip(num_circuit_combiners)
         {
+            let num_instances = batch_size.num_instances;
             let squeeze_time = start_timer!(|| format!("Squeezing challenges for {circuit_id}"));
-            let elems = fs_rng.squeeze_nonnative_field_elements(*batch_size - 1 + num_c_combiner);
+            let elems = fs_rng.squeeze_nonnative_field_elements(num_instances - 1 + num_c_combiner);
             end_timer!(squeeze_time);
 
-            let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
+            let (instance_combiners, circuit_combiner) = elems.split_at(num_instances - 1);
             assert_eq!(circuit_combiner.len(), num_c_combiner);
             let mut combiners =
                 BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
@@ -101,12 +117,12 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
                 non_zero_a_domain,
                 non_zero_b_domain,
                 non_zero_c_domain,
-                batch_size: *batch_size,
+                batch_size: batch_size.clone(),
             };
             circuit_specific_states.insert(*circuit_id, circuit_specific_state);
         }
 
-        let message = FirstMessage { batch_combiners };
+        let message = FirstMessage { batch_combiners, zeta, theta };
 
         let new_state = State {
             circuit_specific_states,
@@ -115,15 +131,35 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
             max_non_zero_domain,
 
             first_round_message: Some(message.clone()),
+            lookup_round_message: None,
             second_round_message: None,
             third_round_message: None,
             fourth_round_message: None,
+            fifth_round_message: None,
 
-            gamma: None,
             mode: PhantomData,
         };
 
         Ok((message, new_state))
+    }
+
+    /// Output the lookup message and next round state.
+    pub fn verifier_lookup_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        mut state: State<TargetField, MM>,
+        lookups_used: bool,
+        fs_rng: &mut R,
+    ) -> Result<(Option<LookupMessage<TargetField>>, State<TargetField, MM>), AHPError> {
+        let message = if lookups_used {
+            let elems = fs_rng.squeeze_nonnative_field_elements(1);
+            let phi = elems[0];
+            assert!(!state.max_constraint_domain.evaluate_vanishing_polynomial(phi).is_zero());
+            Some(LookupMessage { phi })
+        } else {
+            None
+        };
+        state.lookup_round_message = message;
+
+        Ok((message, state))
     }
 
     /// Output the second message and next round state.
@@ -193,7 +229,9 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
 
-        state.gamma = Some(gamma);
+        let message = FifthMessage { gamma };
+
+        state.fifth_round_message = Some(message);
         Ok(state)
     }
 

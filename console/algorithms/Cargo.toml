@@ -16,6 +16,10 @@ name = "poseidon_sponge"
 path = "benches/poseidon.rs"
 harness = false
 
+[dependencies.indexmap]
+version = "2.0"
+features = [ "rayon" ]
+
 [dependencies.snarkvm-console-types]
 path = "../types"
 version = "=0.14.6"

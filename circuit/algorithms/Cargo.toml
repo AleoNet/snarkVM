@@ -12,6 +12,12 @@ path = "../../console/algorithms"
 version = "=0.14.6"
 optional = true
 
+[dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "=0.14.6"
+default-features = false
+features = [ "r1cs" ]
+
 [dependencies.snarkvm-circuit-types]
 path = "../types"
 version = "=0.14.6"

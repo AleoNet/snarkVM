@@ -22,6 +22,9 @@ pub use snarkvm_console_types::prelude::*;
 pub mod bhp;
 pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
 
+pub mod ecdsa;
+pub use ecdsa::ECDSA;
+
 mod blake2xs;
 pub use blake2xs::Blake2Xs;
 

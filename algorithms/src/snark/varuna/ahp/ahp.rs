@@ -57,10 +57,16 @@ pub(crate) struct NonZeroDomains<F: PrimeField> {
     pub(crate) domain_c: EvaluationDomain<F>,
 }
 
+pub(crate) struct LookupCombinations<F: PrimeField> {
+    pub(crate) s_mul: LinearCombination<F>,
+    pub(crate) s_lookup: LinearCombination<F>,
+    pub(crate) table: LinearCombination<F>,
+}
+
 impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     /// The linear combinations that are statically known to evaluate to zero.
     /// These correspond to the virtual commitments as noted in the Aleo varuna protocol docs
-    pub const LC_WITH_ZERO_EVAL: [&'static str; 3] = ["matrix_sumcheck", "lineval_sumcheck", "rowcheck_zerocheck"];
+    pub const LC_WITH_ZERO_EVAL: [&'static str; 3] = ["matrix_sumcheck", "lineval_sumcheck", "rowcheck_sumcheck"];
 
     pub fn zk_bound() -> Option<usize> {
         MM::ZK.then_some(1)
@@ -96,7 +102,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         Ok(*[
             2 * constraint_domain_size + 2 * zk_bound - 2,
             2 * variable_domain_size + 2 * zk_bound - 2,
-            if MM::ZK { variable_domain_size + 3 } else { 0 }, // mask_poly
+            if MM::ZK { constraint_domain_size + 3 } else { 0 }, // mask_poly_0
+            if MM::ZK { variable_domain_size + 3 } else { 0 },   // mask_poly_1
             variable_domain_size,
             constraint_domain_size,
             non_zero_domain_size - 1, // non-zero polynomials
@@ -143,7 +150,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         non_zero_c_domain_size: usize,
     ) -> Option<(FFTPrecomputation<F>, IFFTPrecomputation<F>)> {
         let largest_domain_size = [
-            2 * constraint_domain_size,
+            3 * constraint_domain_size,
             2 * variable_domain_size,
             2 * non_zero_a_domain_size,
             2 * non_zero_b_domain_size,
@@ -162,8 +169,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     /// Public input should be unformatted.
     /// We construct the linear combinations as per section 5 of our protocol documentation.
     /// We can distinguish between:
-    /// (1) simple comitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
-    /// (2) virtual commitments for the lincheck_sumcheck and matrix_sumcheck. These are linear combinations of the simple commitments
+    /// (1) simple commitments: $\{\cm{g_A}, \cm{g_B}, \cm{g_C}\}$ and $\{\cm{\hat{z}_{B,i,j}}\}_{i \in {[\mathcal{D}]}}$, $\cm{g_1}$
+    /// (2) virtual commitments for the rowcheck_sumcheck, lineval_sumcheck and matrix_sumcheck. These are linear combinations of the simple commitments
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_inputs: &BTreeMap<CircuitId, Vec<Vec<F>>>,
@@ -198,32 +205,41 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let alpha = second_round_msg.alpha;
         let eta_b = second_round_msg.eta_b;
         let eta_c = second_round_msg.eta_c;
+        let zeta = first_round_msg.zeta;
+        let zeta_squared = zeta * zeta;
+        let theta = first_round_msg.theta;
         let batch_combiners = &first_round_msg.batch_combiners;
         let sums_fourth_msg = &prover_fourth_message.sums;
+
+        let lookup_round_message = state.lookup_round_message;
 
         let batch_lineval_sum =
             prover_third_message.sum(batch_combiners, eta_b, eta_c) * state.max_variable_domain.size_inv;
 
         let verifier::FourthMessage { delta_a, delta_b, delta_c } = state.fourth_round_message.as_ref().unwrap();
         let beta = state.third_round_message.unwrap().beta;
-        let gamma = state.gamma.unwrap();
+        let gamma = state.fifth_round_message.as_ref().unwrap().gamma;
 
         let mut linear_combinations = BTreeMap::new();
         let mut selectors = BTreeMap::new();
 
-        // We're now going to calculate the rowcheck_zerocheck
+        // We're now going to calculate the rowcheck_sumcheck
         let rowcheck_time = start_timer!(|| "Rowcheck");
 
         let v_R_at_alpha_time = start_timer!(|| "v_R_at_alpha");
         let v_R_at_alpha = max_constraint_domain.evaluate_vanishing_polynomial(alpha);
         end_timer!(v_R_at_alpha_time);
 
-        let rowcheck_zerocheck = {
-            let mut rowcheck_zerocheck = LinearCombination::empty("rowcheck_zerocheck");
+        let rowcheck_sumcheck = {
+            let mut rowcheck_sumcheck = LinearCombination::empty("rowcheck_sumcheck");
             for (i, (id, c)) in batch_combiners.iter().enumerate() {
-                let mut circuit_term = LinearCombination::empty(format!("rowcheck_zerocheck term {id}"));
+                let mut circuit_term = LinearCombination::empty(format!("rowcheck_sumcheck term {id}"));
                 let third_sums_i = &prover_third_message.sums[i];
                 let circuit_state = &state.circuit_specific_states[id];
+
+                let lookups_used = circuit_state.batch_size.lookups_used;
+                let lookup_combinations =
+                    lookups_used.then(|| Self::lookup_linear_combinations(*id, zeta, zeta_squared));
 
                 for (j, instance_combiner) in c.instance_combiners.iter().enumerate() {
                     let mut rowcheck = LinearCombination::empty(format!("rowcheck term {id}"));
@@ -231,21 +247,59 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                     let sum_b_third = third_sums_i[j].sum_b;
                     let sum_c_third = third_sums_i[j].sum_c;
 
-                    rowcheck.add(sum_a_third * sum_b_third - sum_c_third, LCTerm::One);
+                    if !lookups_used {
+                        rowcheck.add(sum_a_third * sum_b_third - sum_c_third, LCTerm::One);
+                    } else {
+                        let LookupCombinations { s_mul, s_lookup, table } = lookup_combinations.as_ref().unwrap();
 
+                        rowcheck.add(sum_a_third * sum_b_third - sum_c_third, s_mul.label.clone());
+
+                        let g_0_label = witness_label(*id, "g_0", j);
+                        let g_0 = LinearCombination::new(g_0_label.clone(), [(F::one(), g_0_label)]);
+                        let g_0_at_alpha = evals.get_lc_eval(&g_0, alpha)?;
+                        linear_combinations.insert(g_0.label.clone(), g_0);
+
+                        let lookup_at_alpha = sum_a_third + zeta * sum_b_third + zeta_squared * sum_c_third;
+                        let multiplicities_label = witness_label(*id, "multiplicities", j);
+
+                        let mut lhs_lookup = LinearCombination::empty(format!("rowcheck lookup term {id}"));
+                        let s_lookup_eval = evals.get_lc_eval(s_lookup, alpha)?;
+                        Self::add_lookup_term(
+                            &mut lhs_lookup,
+                            table,
+                            multiplicities_label,
+                            lookup_at_alpha,
+                            g_0_at_alpha,
+                            alpha,
+                            theta,
+                            s_lookup_eval,
+                        )?;
+                        // TODO:
+                        // if MM::ZK {
+                        //     lhs_lookup.add(F::one(), "mask_poly_0");
+                        // }
+
+                        rowcheck += (lookup_round_message.as_ref().unwrap().phi, &lhs_lookup);
+                    }
                     circuit_term += (*instance_combiner, &rowcheck);
+                }
+                if lookups_used {
+                    let LookupCombinations { s_mul, s_lookup, table } = lookup_combinations.unwrap();
+                    linear_combinations.insert(s_mul.label.clone(), s_mul);
+                    linear_combinations.insert(s_lookup.label.clone(), s_lookup);
+                    linear_combinations.insert(table.label.clone(), table);
                 }
                 let constraint_domain = circuit_state.constraint_domain;
                 let selector = selector_evals(&mut selectors, &max_constraint_domain, &constraint_domain, alpha);
                 circuit_term *= selector;
-                rowcheck_zerocheck += (c.circuit_combiner, &circuit_term);
+                rowcheck_sumcheck += (c.circuit_combiner, &circuit_term);
             }
-            rowcheck_zerocheck.add(-v_R_at_alpha, "h_0");
-            rowcheck_zerocheck
+            rowcheck_sumcheck.add(-v_R_at_alpha, "h_0");
+            rowcheck_sumcheck
         };
 
-        debug_assert!(evals.get_lc_eval(&rowcheck_zerocheck, alpha)?.is_zero());
-        linear_combinations.insert("rowcheck_zerocheck".into(), rowcheck_zerocheck);
+        debug_assert!(evals.get_lc_eval(&rowcheck_sumcheck, alpha)?.is_zero());
+        linear_combinations.insert("rowcheck_sumcheck".into(), rowcheck_sumcheck);
         end_timer!(rowcheck_time);
 
         // Lineval sumcheck:
@@ -287,7 +341,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let lineval_sumcheck = {
             let mut lineval_sumcheck = LinearCombination::empty("lineval_sumcheck");
             if MM::ZK {
-                lineval_sumcheck.add(F::one(), "mask_poly");
+                lineval_sumcheck.add(F::one(), "mask_poly_1");
             }
             for (i, (id, c)) in batch_combiners.iter().enumerate() {
                 let mut circuit_term = LinearCombination::empty(format!("lineval_sumcheck term {id}"));
@@ -385,6 +439,47 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         linear_combinations.insert("matrix_sumcheck".into(), matrix_sumcheck);
 
         Ok(linear_combinations)
+    }
+
+    fn lookup_linear_combinations(id: CircuitId, zeta: F, zeta_squared: F) -> LookupCombinations<F> {
+        let s_mul_label = witness_label(id, "s_mul", 0);
+        let s_mul = LinearCombination::new(s_mul_label.clone(), [(F::one(), s_mul_label)]);
+        let s_lookup_label = witness_label(id, "s_lookup", 0);
+        let s_lookup = LinearCombination::new(s_lookup_label.clone(), [(F::one(), s_lookup_label)]);
+        let table_label = witness_label(id, "table", 0);
+        let table_column_a_label = format!("circuit_{id}_table_column_a");
+        let table_column_b_label = format!("circuit_{id}_table_column_b");
+        let table_column_c_label = format!("circuit_{id}_table_column_c");
+        let table = LinearCombination::new(table_label, [
+            (F::one(), table_column_a_label),
+            (zeta, table_column_b_label),
+            (zeta_squared, table_column_c_label),
+        ]);
+        LookupCombinations { s_mul, s_lookup, table }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn add_lookup_term(
+        rowcheck: &mut LinearCombination<F>,
+        table: &LinearCombination<F>,
+        multiplicities_label: String,
+        lookup_at_alpha: F,
+        g_at_alpha: F,
+        alpha: F,
+        theta: F,
+        s_lookup_at_alpha: F,
+    ) -> Result<(), AHPError> {
+        let multplicities = LinearCombination::new(multiplicities_label.clone(), [(F::one(), multiplicities_label)]);
+        let b_term = (theta + lookup_at_alpha) * alpha * g_at_alpha; // (\theta + f(\alpha))Xg_0(\alpha)
+
+        let mut table_theta = table.clone();
+        table_theta += theta;
+
+        *rowcheck += (theta + lookup_at_alpha, &multplicities);
+        *rowcheck -= (s_lookup_at_alpha, &table_theta);
+        *rowcheck -= (b_term, &table_theta);
+
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -156,6 +156,23 @@ impl<F: PrimeField> R1CS<F> {
                 |lc| lc + convert_linear_combination(b),
                 |lc| lc + convert_linear_combination(c),
             );
+
+            // Add the lookup tables.
+            for table in &self.tables {
+                cs.add_lookup_table(table.clone())
+            }
+
+            // Enforce all of the lookup constraints.
+            for (i, constraint) in self.to_lookup_constraints().iter().enumerate() {
+                let (a, b, c, table_index) = constraint.to_terms();
+                cs.enforce_lookup(
+                    || format!("Lookup Constraint {i}"),
+                    |lc| lc + convert_linear_combination(a),
+                    |lc| lc + convert_linear_combination(b),
+                    |lc| lc + convert_linear_combination(c),
+                    table_index,
+                )?;
+            }
         }
 
         // Ensure the given `cs` matches in size with the first system.

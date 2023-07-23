@@ -15,6 +15,7 @@
 use std::collections::BTreeMap;
 
 use crate::snark::varuna::{verifier::BatchCombiners, CircuitId};
+use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
@@ -23,6 +24,16 @@ pub struct MatrixSums<F: PrimeField> {
     pub sum_a: F,
     pub sum_b: F,
     pub sum_c: F,
+}
+
+impl<F: PrimeField> MatrixSums<F> {
+    pub fn into_iter(self) -> impl Iterator<Item = F> {
+        [self.sum_a, self.sum_b, self.sum_c].into_iter()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = F> {
+        [self.sum_a, self.sum_b, self.sum_c].into_iter()
+    }
 }
 
 /// The prover message in the third round.
@@ -35,7 +46,7 @@ impl<F: PrimeField> ThirdMessage<F> {
     pub(crate) fn sum(&self, batch_combiners: &BTreeMap<CircuitId, BatchCombiners<F>>, eta_b: F, eta_c: F) -> F {
         self.sums
             .iter()
-            .zip(batch_combiners.values())
+            .zip_eq(batch_combiners.values())
             .map(|(circuit_sums, combiners)| {
                 combiners.circuit_combiner
                     * circuit_sums
@@ -45,6 +56,10 @@ impl<F: PrimeField> ThirdMessage<F> {
                         .sum::<F>()
             })
             .sum()
+    }
+
+    pub fn into_iter(self) -> impl IntoIterator<Item = F> {
+        self.sums.into_iter().flatten().flat_map(|sums| sums.into_iter())
     }
 }
 
@@ -58,6 +73,12 @@ impl<F: PrimeField> ToBytes for ThirdMessage<F> {
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct FourthMessage<F: PrimeField> {
     pub sums: Vec<MatrixSums<F>>,
+}
+
+impl<F: PrimeField> FourthMessage<F> {
+    pub fn into_iter(self) -> impl Iterator<Item = F> {
+        self.sums.into_iter().flat_map(|sums| sums.into_iter())
+    }
 }
 
 impl<F: PrimeField> ToBytes for FourthMessage<F> {

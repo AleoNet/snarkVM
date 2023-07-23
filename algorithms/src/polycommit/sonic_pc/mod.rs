@@ -316,7 +316,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, (point_name, point)) in query_set.iter() {
+        for (label, (_index, (point_name, point))) in query_set.iter() {
             let labels = query_to_labels_map.entry(point_name).or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }
@@ -370,7 +370,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         ));
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, (point_name, point)) in query_set.iter() {
+        for (label, (_index, (point_name, point))) in query_set.iter() {
             let labels = query_to_labels_map.entry(point_name).or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }

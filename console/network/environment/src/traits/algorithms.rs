@@ -79,6 +79,13 @@ pub trait HashUncompressed {
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Result<Self::Output>;
 }
 
+/// A trait for a signature function
+pub trait Verify {
+    type Input;
+
+    fn verify(&self, input: &[Self::Input]) -> Result<bool>;
+}
+
 /// A trait for a pseudorandom function.
 pub trait PRF {
     type Seed;
