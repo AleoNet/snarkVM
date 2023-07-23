@@ -20,7 +20,8 @@ use crate::{
         EvaluationDomain,
     },
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
+    r1cs::LookupTable,
+    snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix, TableInfo},
 };
 use blake2::Digest;
 use hex::FromHex;
@@ -49,15 +50,20 @@ impl CircuitId {
 }
 
 /// The indexed version of the constraint system.
-/// This struct contains three kinds of objects:
+/// This struct contains the following kinds of objects:
 /// 1) `index_info` is information about the index, such as the size of the
 ///     public input
-/// 2) `{a,b,c}` are the matrices defining the R1CS instance
-/// 3) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
+/// 3) `table_info` is information about the index regarding lookups, such as the
+///     defined lookup tables
+/// 4) `{a,b,c}` are the matrices defining the R1CS instance
+/// 5) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
+/// 6) `s_mul and s_lookup` are selectors used to distinguish between mul and lookup constraints
 #[derive(Clone, Debug)]
 pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo,
+    /// Optional information about the lookup tables in the circuit.
+    pub table_info: Option<TableInfo<F>>,
 
     /// The A matrix for the R1CS instance
     pub a: Matrix<F>,
@@ -73,6 +79,12 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
 
     pub fft_precomputation: FFTPrecomputation<F>,
     pub ifft_precomputation: IFFTPrecomputation<F>,
+
+    /// Selectors, only used when lookups are activated
+    pub s_mul: Option<LabeledPolynomial<F>>,
+    pub s_lookup: Option<LabeledPolynomial<F>>, // TODO: re-evaluate if storing s_lookup_evals saves so much compute
+    pub s_lookup_evals: Option<Vec<F>>,
+
     pub(crate) _mode: PhantomData<MM>,
     pub(crate) id: CircuitId,
 }
@@ -99,15 +111,23 @@ impl<F: PrimeField, MM: MarlinMode> PartialOrd for Circuit<F, MM> {
 impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     pub fn hash(
         index_info: &CircuitInfo,
+        table_info: &Option<&Vec<LookupTable<F>>>,
         a: &Matrix<F>,
         b: &Matrix<F>,
         c: &Matrix<F>,
+        s_mul: &Option<&Vec<F>>,
+        s_lookup: &Option<&Vec<F>>,
     ) -> Result<CircuitId, SerializationError> {
         let mut blake2 = blake2::Blake2s256::new();
         index_info.serialize_uncompressed(&mut blake2)?;
         a.serialize_uncompressed(&mut blake2)?;
         b.serialize_uncompressed(&mut blake2)?;
         c.serialize_uncompressed(&mut blake2)?;
+        if table_info.is_some() {
+            table_info.as_ref().unwrap().serialize_uncompressed(&mut blake2)?;
+            s_mul.as_ref().unwrap().serialize_uncompressed(&mut blake2)?;
+            s_lookup.as_ref().unwrap().serialize_uncompressed(&mut blake2)?;
+        }
         Ok(CircuitId(blake2.finalize().into()))
     }
 
@@ -128,7 +148,10 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
 
     /// Iterate over the indexed polynomials.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        // Alphabetical order
+        assert_eq!(self.s_lookup.is_some(), self.s_mul.is_some());
+        assert_eq!(self.s_lookup.is_some(), self.s_lookup_evals.is_some());
+        assert_eq!(self.s_lookup.is_some(), self.table_info.is_some());
+        // Alphabetical order of their labels
         [
             &self.a_arith.col,
             &self.b_arith.col,
@@ -144,6 +167,10 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
             &self.c_arith.row_col_val,
         ]
         .into_iter()
+        .chain(self.s_lookup.as_ref())
+        .chain(self.s_mul.as_ref())
+        .chain(self.table_info.is_some().then(|| self.table_info.as_ref().unwrap().iter()).into_iter().flatten())
+        // .chain([&self.a_arith.row_col_val, &self.b_arith.row_col_val, &self.c_arith.row_col_val])
     }
 
     /// After indexing, we drop these evaluations to save space in the ProvingKey.
@@ -158,12 +185,16 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
     #[allow(unused_mut, unused_variables)]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.index_info.serialize_with_mode(&mut writer, compress)?;
+        self.table_info.serialize_with_mode(&mut writer, compress)?;
         self.a.serialize_with_mode(&mut writer, compress)?;
         self.b.serialize_with_mode(&mut writer, compress)?;
         self.c.serialize_with_mode(&mut writer, compress)?;
         self.a_arith.serialize_with_mode(&mut writer, compress)?;
         self.b_arith.serialize_with_mode(&mut writer, compress)?;
         self.c_arith.serialize_with_mode(&mut writer, compress)?;
+        self.s_mul.serialize_with_mode(&mut writer, compress)?;
+        self.s_lookup.serialize_with_mode(&mut writer, compress)?;
+        self.s_lookup_evals.serialize_with_mode(&mut writer, compress)?;
         Ok(())
     }
 
@@ -171,12 +202,16 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
     fn serialized_size(&self, mode: Compress) -> usize {
         let mut size = 0;
         size += self.index_info.serialized_size(mode);
+        size += self.table_info.serialized_size(mode);
         size += self.a.serialized_size(mode);
         size += self.b.serialized_size(mode);
         size += self.c.serialized_size(mode);
         size += self.a_arith.serialized_size(mode);
         size += self.b_arith.serialized_size(mode);
         size += self.c_arith.serialized_size(mode);
+        size += self.s_mul.serialized_size(mode);
+        size += self.s_lookup.serialized_size(mode);
+        size += self.s_lookup_evals.serialized_size(mode);
         size
     }
 }
@@ -201,6 +236,8 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let table_info: Option<TableInfo<F>> =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
             .ok_or(SerializationError::InvalidData)?;
         let variable_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_variables)
@@ -223,17 +260,44 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let id = Self::hash(&index_info, &a, &b, &c)?;
+
+        let a_arith = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let b_arith = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let c_arith = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+
+        let s_mul: Option<LabeledPolynomial<F>> =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let s_lookup = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let s_lookup_evals: Option<Vec<F>> =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let constraint_domain = EvaluationDomain::new(constraint_domain_size).ok_or(SerializationError::InvalidData)?;
+        let s_mul_evals = s_mul.is_some().then(|| {
+            s_mul
+                .as_ref()
+                .unwrap()
+                .polynomial()
+                .as_dense()
+                .unwrap()
+                .evaluate_over_domain_by_ref(constraint_domain)
+                .evaluations
+        });
+        let lookup_tables = table_info.is_some().then(|| &table_info.as_ref().unwrap().lookup_tables);
+
+        let id = Self::hash(&index_info, &lookup_tables, &a, &b, &c, &s_mul_evals.as_ref(), &s_lookup_evals.as_ref())?;
         Ok(Circuit {
             index_info,
+            table_info,
             a,
             b,
             c,
-            a_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            b_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            c_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            a_arith,
+            b_arith,
+            c_arith,
             fft_precomputation,
             ifft_precomputation,
+            s_mul,
+            s_lookup,
+            s_lookup_evals,
             _mode: PhantomData,
             id,
         })

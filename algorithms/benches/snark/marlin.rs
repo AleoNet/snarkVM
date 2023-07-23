@@ -50,7 +50,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
         let num_constraints = size;
         let num_variables = size;
         let mul_depth = 1;
-        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
         c.bench_function(&format!("snark_circuit_setup_{size}"), |b| {
             b.iter(|| MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap())
         });
@@ -69,7 +69,7 @@ fn snark_prove(c: &mut Criterion) {
         let universal_prover = &universal_srs.to_universal_prover().unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
         let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         b.iter(|| MarlinInst::prove(universal_prover, &fs_parameters, &params.0, &circuit, rng).unwrap())
@@ -102,7 +102,7 @@ fn snark_batch_prove(c: &mut Criterion) {
 
             let mut circuits = Vec::with_capacity(instance_batch_size);
             for _ in 0..instance_batch_size {
-                let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+                let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
                 circuits.push(circuit);
             }
             let (pk, _) = MarlinInst::circuit_setup(&universal_srs, &circuits[0]).unwrap();
@@ -131,7 +131,7 @@ fn snark_verify(c: &mut Criterion) {
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
 
-        let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
         let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
@@ -172,7 +172,8 @@ fn snark_batch_verify(c: &mut Criterion) {
             let mut circuits = Vec::with_capacity(circuit_batch_size);
             let mut inputs = Vec::with_capacity(circuit_batch_size);
             for _ in 0..instance_batch_size {
-                let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+                let (circuit, public_inputs) =
+                    TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
                 circuits.push(circuit);
                 inputs.push(public_inputs);
             }
@@ -212,7 +213,7 @@ fn snark_vk_serialize(c: &mut Criterion) {
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
-        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
         let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         let mut bytes = Vec::with_capacity(10000);
@@ -247,7 +248,7 @@ fn snark_vk_deserialize(c: &mut Criterion) {
 
             let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree).unwrap();
-            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
 
             let (_, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             let mut bytes = Vec::with_capacity(10000);
@@ -277,7 +278,7 @@ fn snark_certificate_prove(c: &mut Criterion) {
             let num_constraints = size;
             let num_variables = size;
             let mul_depth = 1;
-            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
             let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
             b.iter(|| MarlinInst::prove_vk(universal_prover, fs_p, &vk, &pk).unwrap())
@@ -300,7 +301,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
             let num_constraints = size;
             let num_variables = size;
             let mul_depth = 1;
-            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+            let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, 0, None, rng);
             let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             let certificate = MarlinInst::prove_vk(universal_prover, fs_p, &vk, &pk).unwrap();
 

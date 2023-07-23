@@ -17,7 +17,8 @@ use core::marker::PhantomData;
 use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
-        ahp::verifier::{FirstMessage, FourthMessage, SecondMessage, ThirdMessage},
+        ahp::verifier::{FifthMessage, FirstMessage, FourthMessage, LookupMessage, SecondMessage, ThirdMessage},
+        BatchSize,
         CircuitId,
         MarlinMode,
     },
@@ -36,7 +37,7 @@ pub struct CircuitSpecificState<F: PrimeField> {
     pub(crate) non_zero_c_domain: EvaluationDomain<F>,
 
     /// The number of instances being proved in this batch.
-    pub(in crate::snark::marlin) batch_size: usize,
+    pub(in crate::snark::marlin) batch_size: BatchSize,
 }
 /// State of the AHP verifier.
 #[derive(Debug)]
@@ -52,6 +53,8 @@ pub struct State<F: PrimeField, MM: MarlinMode> {
 
     /// The verifier message in the first round of the AHP
     pub(crate) first_round_message: Option<FirstMessage<F>>,
+    /// The verifier message in the lookup round of the AHP
+    pub(crate) lookup_round_message: Option<LookupMessage<F>>,
     /// The verifier message in the second round of the AHP
     pub(crate) second_round_message: Option<SecondMessage<F>>,
     /// The verifier message in the third round of the AHP
@@ -59,6 +62,6 @@ pub struct State<F: PrimeField, MM: MarlinMode> {
     /// The verifier message in the fourth round of the AHP
     pub(crate) fourth_round_message: Option<FourthMessage<F>>,
     /// The verifier's random challenge in the last round of the AHP
-    pub(crate) gamma: Option<F>,
+    pub(crate) fifth_round_message: Option<FifthMessage<F>>,
     pub(crate) mode: PhantomData<MM>,
 }

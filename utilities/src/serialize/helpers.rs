@@ -36,7 +36,19 @@ pub fn serialize_vec_without_len<'a>(
 /// Serialize a Vector's element sizes without serializing the Vector's length
 /// If you want to serialize the full Vector, use `CanonicalSerialize for Vec<T>`
 pub fn serialized_vec_size_without_len(src: &[impl CanonicalSerialize], compress: Compress) -> usize {
+    // TODO: an empty Vec should not return a len() of 0, need at least a bool to indicate that the vector is empty... Look at CanonicalSerialize for Option<T>
     if src.is_empty() { 0 } else { src.len() * CanonicalSerialize::serialized_size(&src[0], compress) }
+}
+
+/// Serialize an Optional Vector's element sizes without serializing the Vector's length
+/// If you want to serialize the full Vector, use `CanonicalSerialize for Vec<T>`
+pub fn serialized_opt_vec_size_without_len(src: &Option<Vec<impl CanonicalSerialize>>, compress: Compress) -> usize {
+    if src.is_none() {
+        0
+    } else {
+        let src = src.as_ref().unwrap();
+        src.len() * CanonicalSerialize::serialized_size(&src[0], compress)
+    }
 }
 
 /// Deserialize a Vector's elements without deserializing the Vector's length

@@ -12,7 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::r1cs::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, OptionalVec, Variable};
+use crate::r1cs::{
+    errors::SynthesisError,
+    ConstraintSystem,
+    Index,
+    LinearCombination,
+    LookupTable,
+    OptionalVec,
+    Variable,
+};
 use snarkvm_fields::Field;
 
 use cfg_if::cfg_if;
@@ -92,6 +100,8 @@ pub struct TestConstraintSystem<F: Field> {
     // a stack of current path's segments and the index of the current path's
     // index in the named_objects map
     current_namespace: CurrentNamespace,
+    // the currently applicable lookup table
+    lookup_table: Option<LookupTable<F>>,
     // the list of currently applicable constraints
     constraints: OptionalVec<TestConstraint>,
     // the list of currently applicable input variables
@@ -133,6 +143,7 @@ impl<F: Field> Default for TestConstraintSystem<F> {
             interned_path_segments,
             named_objects,
             current_namespace: Default::default(),
+            lookup_table: None,
             constraints,
             public_variables: inputs,
             private_variables: Default::default(),
@@ -204,6 +215,15 @@ impl<F: Field> TestConstraintSystem<F> {
         for TestConstraint { interned_path, .. } in self.constraints.iter() {
             println!("{}", self.unintern_path(*interned_path));
         }
+    }
+
+    fn intern_fields(&mut self, lc: &LinearCombination<F>) -> Vec<(Variable, InternedField)> {
+        lc.0.iter()
+            .map(|(var, field)| {
+                let interned_field = self.interned_fields.insert_full(*field).0;
+                (*var, interned_field)
+            })
+            .collect()
     }
 
     fn eval_lc(&self, terms: &[(Variable, InternedField)]) -> F {
@@ -373,6 +393,10 @@ impl<F: Field> TestConstraintSystem<F> {
 impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
     type Root = Self;
 
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
+        self.lookup_table = Some(lookup_table);
+    }
+
     fn alloc<Fn, A, AR>(&mut self, annotation: A, f: Fn) -> Result<Variable, SynthesisError>
     where
         Fn: FnOnce() -> Result<F, SynthesisError>,
@@ -421,21 +445,46 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
         self.register_object_in_namespace(named_obj.clone());
         self.set_named_obj(interned_path, named_obj);
 
-        let mut intern_fields = |uninterned: Vec<(Variable, F)>| -> Vec<(Variable, InternedField)> {
-            uninterned
-                .into_iter()
-                .map(|(var, field)| {
-                    let interned_field = self.interned_fields.insert_full(field).0;
-                    (var, interned_field)
-                })
-                .collect()
-        };
-
-        let a = intern_fields(a(LinearCombination::zero()).0);
-        let b = intern_fields(b(LinearCombination::zero()).0);
-        let c = intern_fields(c(LinearCombination::zero()).0);
+        let a = self.intern_fields(&a(LinearCombination::zero()));
+        let b = self.intern_fields(&b(LinearCombination::zero()));
+        let c = self.intern_fields(&c(LinearCombination::zero()));
 
         self.constraints.insert(TestConstraint { interned_path, a, b, c });
+    }
+
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        _table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        let interned_path = self.compute_path(annotation().as_ref());
+        let a = self.intern_fields(&a(LinearCombination::zero()));
+        let b = self.intern_fields(&b(LinearCombination::zero()));
+        let c = self.intern_fields(&c(LinearCombination::zero()));
+        let evaluated = vec![a.clone(), b.clone(), c.clone()].iter().map(|lc| self.eval_lc(lc)).collect::<Vec<F>>();
+
+        let res = if let Some(lookup_table) = &self.lookup_table {
+            lookup_table.lookup(&evaluated[..1]).ok_or(SynthesisError::LookupValueMissing)?
+        } else {
+            return Err(SynthesisError::LookupTableMissing);
+        };
+
+        if *res.2 == evaluated[2] {
+            self.constraints.insert(TestConstraint { interned_path, a, b, c });
+            Ok(())
+        } else {
+            Err(SynthesisError::LookupValueMissing)
+        }
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {

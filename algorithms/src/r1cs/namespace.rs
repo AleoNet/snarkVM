@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::r1cs::{errors::SynthesisError, ConstraintSystem, LinearCombination, Variable};
+use crate::r1cs::{errors::SynthesisError, ConstraintSystem, LinearCombination, LookupTable, Variable};
 use snarkvm_fields::Field;
 
 use std::marker::PhantomData;
@@ -27,6 +27,11 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
     #[inline]
     fn one() -> Variable {
         CS::one()
+    }
+
+    #[inline]
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
+        self.0.add_lookup_table(lookup_table);
     }
 
     #[inline]
@@ -59,6 +64,25 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
         self.0.enforce(annotation, a, b, c)
+    }
+
+    #[inline]
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        self.0.enforce_lookup(annotation, a, b, c, table_index)
     }
 
     // Downstream users who use `namespace` will never interact with these

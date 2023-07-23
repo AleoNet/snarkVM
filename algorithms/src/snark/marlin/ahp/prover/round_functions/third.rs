@@ -77,7 +77,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let max_variable_domain = state.max_variable_domain;
 
-        let verifier::FirstMessage { batch_combiners } = verifier_message;
+        let verifier::FirstMessage { batch_combiners, .. } = verifier_message;
         let verifier::SecondMessage { alpha, eta_b, eta_c } = verifier_second_message;
 
         let assignments = Self::calculate_assignments(&mut state)?;
@@ -139,6 +139,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // Compute lineval sumcheck witnesses
         let mut job_pool = ExecutionPool::with_capacity(total_instances * 3);
         for ((((circuit, circuit_specific_state), batch_combiner), assignments_i), matrix_transposes_i) in state
+        // for (((circuit, circuit_specific_state), batch_combiner), first_round_oracles) in state
             .circuit_specific_states
             .iter_mut()
             .zip_eq(batch_combiners.values())
@@ -157,6 +158,33 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             {
                 for (label, matrix_combiner) in itertools::izip!(matrix_labels, matrix_combiners) {
                     let matrix_transpose = &matrix_transposes_i[label];
+                    // let columns_to_non_zero_indices_time =
+                    //     start_timer!(|| format!("Precomputing columns_to_non_zero_indices for circuit {}", circuit.id));
+                    // let mut c_i_to_k = BTreeMap::new(); // mapping of which column indices are used in which k non-zero entries
+                    // c_i_to_k.insert("a", non_zero_entries_per_column(&circuit.a, variable_domain, input_domain)?);
+                    // c_i_to_k.insert("b", non_zero_entries_per_column(&circuit.b, variable_domain, input_domain)?);
+                    // c_i_to_k.insert("c", non_zero_entries_per_column(&circuit.c, variable_domain, input_domain)?);
+                    // end_timer!(columns_to_non_zero_indices_time);
+
+                    // for (_j, ((instance_combiner, first_round_oracle_entry), x_poly)) in
+                    //     instance_combiners.iter().zip_eq(first_round_oracles).zip_eq(x_polys).enumerate()
+                    // {
+                    //     let z_time = start_timer!(move || format!("Compute z poly for circuit {} {}", circuit.id, _j));
+                    //     let mut assignment = first_round_oracle_entry
+                    //         .w_poly
+                    //         .polynomial()
+                    //         .as_dense()
+                    //         .unwrap()
+                    //         .mul_by_vanishing_poly(*input_domain);
+                    //     // Zip safety: `x_poly` is smaller than `z_poly`.
+                    //     assignment.coeffs.iter_mut().zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
+                    //     end_timer!(z_time);
+
+                    //     for ((label, matrix_combiner), arith) in
+                    //         matrix_labels.into_iter().zip_eq(matrix_combiners).zip_eq(matrix_arith)
+                    //     {
+                    //         let lineval_assignment = assignment.clone(); // further below, PolyMultiplier does not want just a reference
+                    //         let lineval_c_i_to_k = c_i_to_k[label].clone();
                     let combiner = circuit_combiner * instance_combiner * matrix_combiner;
                     job_pool.add_job(move || {
                         Self::calculate_lineval_sumcheck_instance_witness(
@@ -204,7 +232,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             }
         }
 
-        let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
+        let mask_poly = state.second_round_oracles.as_ref().unwrap().mask_poly_1.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
         assert_eq!(!MM::ZK, mask_poly.is_none());
         let mask_poly = &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense());
@@ -223,16 +251,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .circuit_specific_states
             .iter()
             .zip_eq(state.first_round_oracles.as_ref().unwrap().batches.values())
-            .map(|((circuit, circuit_specific_state), w_polys)| {
+            .map(|((circuit, circuit_specific_state), oracles)| {
                 let x_polys = &circuit_specific_state.x_polys;
                 let input_domain = &circuit_specific_state.input_domain;
-                let assignments_i: Vec<_> = cfg_iter!(w_polys)
+                let assignments_i: Vec<_> = cfg_iter!(oracles)
                     .zip_eq(x_polys)
                     .enumerate()
-                    .map(|(_j, (w_poly, x_poly))| {
+                    .map(|(_j, (oracles, x_poly))| {
                         let z_time = start_timer!(move || format!("Compute z poly for circuit {} {}", circuit.id, _j));
                         let mut assignment =
-                            w_poly.0.polynomial().as_dense().unwrap().mul_by_vanishing_poly(*input_domain);
+                            oracles.w_poly.polynomial().as_dense().unwrap().mul_by_vanishing_poly(*input_domain);
                         // Zip safety: `x_poly` is smaller than `z_poly`.
                         assignment.coeffs.iter_mut().zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
                         end_timer!(z_time);

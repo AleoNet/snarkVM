@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::r1cs::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
+use crate::r1cs::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, LookupTable, Variable};
 use snarkvm_fields::Field;
 
 /// Constraint counter for testing purposes.
@@ -25,6 +25,8 @@ pub struct ConstraintCounter {
 
 impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
     type Root = Self;
+
+    fn add_lookup_table(&mut self, _: LookupTable<ConstraintF>) {}
 
     fn alloc<F, A, AR>(&mut self, _: A, _: F) -> Result<Variable, SynthesisError>
     where
@@ -58,6 +60,18 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         LC: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
     {
         self.num_constraints += 1;
+    }
+
+    fn enforce_lookup<A, AR, LA, LB, LC>(&mut self, _: A, _: LA, _: LB, _: LC, _: usize) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
+        LB: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
+        LC: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
+    {
+        self.num_constraints += 1;
+        Ok(())
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

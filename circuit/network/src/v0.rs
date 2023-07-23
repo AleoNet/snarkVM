@@ -31,6 +31,9 @@ use snarkvm_circuit_algorithms::{
     BHP512,
     BHP768,
 };
+
+use snarkvm_algorithms::r1cs::LookupTable;
+
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
     environment::{prelude::*, Assignment, Circuit, R1CS},
@@ -322,6 +325,11 @@ impl Environment for AleoV0 {
         E::one()
     }
 
+    /// Adds a lookup table to the environment.
+    fn add_lookup_table(table: LookupTable<Self::BaseField>) {
+        E::add_lookup_table(table);
+    }
+
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
         E::new_variable(mode, value)
@@ -349,6 +357,17 @@ impl Environment for AleoV0 {
         C: Into<LinearCombination<Self::BaseField>>,
     {
         E::enforce(constraint)
+    }
+
+    /// Adds a lookup constraint.
+    fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
+    where
+        Fn: FnOnce() -> (A, B, C, usize),
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+        C: Into<LinearCombination<Self::BaseField>>,
+    {
+        E::enforce_lookup(constraint)
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
@@ -404,6 +423,11 @@ impl Environment for AleoV0 {
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> u64 {
         E::num_constraints_in_scope()
+    }
+
+    /// Returns the number of lookup constraints for the current scope.
+    fn num_lookup_constraints_in_scope() -> u64 {
+        E::num_lookup_constraints_in_scope()
     }
 
     /// Returns the number of nonzeros for the current scope.

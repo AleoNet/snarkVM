@@ -13,11 +13,21 @@
 // limitations under the License.
 
 use crate::{
-    r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable},
+    r1cs::{
+        errors::SynthesisError,
+        ConstraintIndex,
+        ConstraintSystem as CS,
+        Index as VarIndex,
+        LinearCombination,
+        LookupConstraints,
+        LookupTable,
+        Variable,
+    },
     snark::marlin::ahp::matrices::to_matrix_helper,
 };
 use snarkvm_fields::Field;
 use snarkvm_utilities::serialize::*;
+use std::collections::HashSet;
 
 /// Stores constraints during index generation.
 pub(crate) struct ConstraintSystem<F: Field> {
@@ -27,6 +37,8 @@ pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) num_public_variables: usize,
     pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
+    pub(crate) mul_constraints: HashSet<ConstraintIndex>,
+    pub(crate) lookup_constraints: Vec<LookupConstraints<F>>,
 }
 
 impl<F: Field> ConstraintSystem<F> {
@@ -39,6 +51,8 @@ impl<F: Field> ConstraintSystem<F> {
             num_public_variables: 1,
             num_private_variables: 0,
             num_constraints: 0,
+            mul_constraints: HashSet::new(),
+            lookup_constraints: vec![],
         }
     }
 
@@ -68,6 +82,10 @@ impl<F: Field> ConstraintSystem<F> {
 
 impl<F: Field> CS<F> for ConstraintSystem<F> {
     type Root = Self;
+
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
+        self.lookup_constraints.push(LookupConstraints::new(lookup_table));
+    }
 
     #[inline]
     fn alloc<Fn, A, AR>(&mut self, _: A, _: Fn) -> Result<Variable, SynthesisError>
@@ -113,7 +131,35 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         self.b.push(Self::make_row(&b(LinearCombination::zero())));
         self.c.push(Self::make_row(&c(LinearCombination::zero())));
 
+        self.mul_constraints.insert(self.num_constraints);
         self.num_constraints += 1;
+    }
+
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        _: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        self.a.push(Self::make_row(&a(LinearCombination::zero())));
+        self.b.push(Self::make_row(&b(LinearCombination::zero())));
+        self.c.push(Self::make_row(&c(LinearCombination::zero())));
+
+        self.lookup_constraints
+            .get_mut(table_index)
+            .ok_or(SynthesisError::LookupTableMissing)?
+            .insert(self.num_constraints);
+        self.num_constraints += 1;
+        Ok(())
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

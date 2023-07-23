@@ -42,7 +42,7 @@ use std::collections::BTreeMap;
 use rayon::prelude::*;
 
 type Sum<F> = F;
-type Lhs<F> = DensePolynomial<F>;
+type H<F> = DensePolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
@@ -94,7 +94,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let k_domains = [state_i.non_zero_a_domain, state_i.non_zero_b_domain, state_i.non_zero_c_domain];
             let ariths = [&circuit.a_arith, &circuit.b_arith, &circuit.c_arith];
 
-            for (matrix_label, non_zero_domain, arith) in itertools::izip!(matrix_labels, k_domains, ariths) {
+            for ((matrix_label, non_zero_domain), arith) in matrix_labels.into_iter().zip_eq(k_domains).zip_eq(ariths) {
                 let label = witness_label(circuit.id, matrix_label, 0);
                 pool.add_job(move || {
                     let result = Self::calculate_matrix_sumcheck_witness(
@@ -122,12 +122,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         {
             assert_eq!(circuit_a, circuit_b);
             assert_eq!(circuit_a, circuit_c);
-            let (sum_a, lhs_a, g_a) = results_a?;
-            let (sum_b, lhs_b, g_b) = results_b?;
-            let (sum_c, lhs_c, g_c) = results_c?;
+            let (sum_a, h_a, g_a) = results_a?;
+            let (sum_b, h_b, g_b) = results_b?;
+            let (sum_c, h_c, g_c) = results_c?;
             let matrix_sum = prover::message::MatrixSums { sum_a, sum_b, sum_c };
             sums.push(matrix_sum);
-            state.circuit_specific_states.get_mut(circuit_a).unwrap().lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
+            state.circuit_specific_states.get_mut(circuit_a).unwrap().h_polynomials = Some([h_a, h_b, h_c]);
             let matrix_gs = prover::MatrixGs { g_a, g_b, g_c };
             gs.insert(circuit_a.id, matrix_gs);
         }
@@ -157,7 +157,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         max_non_zero_domain: EvaluationDomain<F>,
         fft_precomputation: &FFTPrecomputation<F>,
         ifft_precomputation: &IFFTPrecomputation<F>,
-    ) -> Result<(Sum<F>, Lhs<F>, Gpoly<F>)> {
+    ) -> Result<(Sum<F>, H<F>, Gpoly<F>)> {
+        let matrix_sumcheck_helper_time = start_timer!(|| format!("matrix_sumcheck_helper {label}"));
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| format!("Computing a poly for {label}"));
@@ -211,28 +212,29 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // we define f as the rational equation for which we're running the sumcheck protocol
         let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain)
             .interpolate_with_pc(ifft_precomputation);
+        let sum = f.coeffs[0];
 
         end_timer!(f_poly_time);
         let g = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
         let mut h = &a_poly
             - &{
                 let mut multiplier = PolyMultiplier::new();
-                multiplier.add_polynomial_ref(&b_poly, "b");
-                multiplier.add_polynomial_ref(&f, "f");
+                multiplier.add_polynomial(b_poly, "b");
+                multiplier.add_polynomial(f, "f");
                 multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
                 multiplier.multiply().unwrap()
             };
-        assert_eq!(h, &a_poly - &(&b_poly * &f));
 
         let combiner = F::one(); // We are applying combiners in the fifth round when summing the witnesses
-        let (lhs, remainder) =
+        let (h, remainder) =
             Self::apply_randomized_selector(&mut h, combiner, &max_non_zero_domain, &non_zero_domain, false)?;
         assert!(remainder.is_none());
 
         let g = LabeledPolynomial::new(label, g, Some(non_zero_domain.size() - 2), None);
+        end_timer!(matrix_sumcheck_helper_time);
 
-        assert!(lhs.degree() <= non_zero_domain.size() - 2);
+        assert!(h.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
-        Ok((f.coeffs[0], lhs, g))
+        Ok((sum, h, g))
     }
 }

@@ -20,6 +20,9 @@ pub(crate) use circuit::*;
 mod circuit_info;
 pub(crate) use circuit_info::*;
 
+mod table_info;
+pub(crate) use table_info::*;
+
 mod constraint_system;
 pub(crate) use constraint_system::*;
 

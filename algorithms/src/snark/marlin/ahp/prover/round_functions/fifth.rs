@@ -24,10 +24,10 @@ use crate::{
     },
 };
 
+use crate::{cfg_par_bridge, cfg_reduce};
 use itertools::Itertools;
 use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_par_bridge, cfg_reduce};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -45,12 +45,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         _r: &mut R,
     ) -> Result<prover::FifthOracles<F>, AHPError> {
         let lhs_sum: DensePolynomial<F> = cfg_reduce!(
-            cfg_par_bridge!(verifier_message.into_iter().zip_eq(state.lhs_polys_into_iter())).map(
-                |(delta, mut lhs)| {
-                    lhs *= delta;
-                    lhs
-                }
-            ),
+            cfg_par_bridge!(verifier_message.into_iter().zip_eq(state.h_polys_into_iter())).map(|(delta, mut lhs)| {
+                lhs *= delta;
+                lhs
+            }),
             || DensePolynomial::zero(),
             |mut a, mut b| {
                 if b != DensePolynomial::zero() {

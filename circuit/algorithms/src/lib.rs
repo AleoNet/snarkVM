@@ -18,6 +18,9 @@
 pub mod bhp;
 pub use bhp::*;
 
+pub mod ecdsa;
+pub use ecdsa::*;
+
 pub mod elligator2;
 pub use elligator2::Elligator2;
 

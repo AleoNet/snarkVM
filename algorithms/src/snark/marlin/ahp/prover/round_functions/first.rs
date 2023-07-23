@@ -15,7 +15,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
+    fft::{domain::IFFTPrecomputation, DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS},
@@ -36,24 +36,26 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
-    pub fn num_first_round_oracles(total_batch_size: usize) -> usize {
-        total_batch_size + (MM::ZK as usize)
+    pub fn num_first_round_oracles(total_batch_size: usize, total_lookups: usize) -> usize {
+        total_batch_size + total_lookups
     }
 
     /// Output the degree bounds of oracles in the first round.
-    pub fn first_round_polynomial_info<'a>(
-        circuits: impl Iterator<Item = (&'a CircuitId, &'a usize)>,
+    pub fn first_round_polynomial_info(
+        batch_sizes: impl Iterator<Item = (CircuitId, usize, bool)>,
     ) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let mut polynomials = circuits
-            .flat_map(|(&circuit_id, &batch_size)| {
-                (0..batch_size)
-                    .flat_map(move |i| [PolynomialInfo::new(witness_label(circuit_id, "w", i), None, Self::zk_bound())])
+        batch_sizes
+            .flat_map(|(circuit_id, batch_size, lookups_used)| {
+                (0..batch_size).flat_map(move |i| {
+                    [PolynomialInfo::new(witness_label(circuit_id, "w", i), None, Self::zk_bound())].into_iter().chain(
+                        lookups_used.then(|| {
+                            PolynomialInfo::new(witness_label(circuit_id, "multiplicities", i), None, Self::zk_bound())
+                        }),
+                    )
+                })
             })
-            .collect::<Vec<_>>();
-        if MM::ZK {
-            polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
-        }
-        polynomials.into_iter().map(|info| (info.label().into(), info)).collect()
+            .map(|info| (info.label().into(), info))
+            .collect()
     }
 
     /// Output the first round message and the next state.
@@ -63,8 +65,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
+
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(state.total_instances);
-        for (circuit, circuit_state) in state.circuit_specific_states.iter_mut() {
+        let mut r_m_s = Vec::with_capacity(state.circuit_specific_states.len());
+        for (&circuit, circuit_state) in state.circuit_specific_states.iter_mut() {
             let batch_size = circuit_state.batch_size;
 
             let private_variables = core::mem::take(&mut circuit_state.private_variables);
@@ -72,56 +76,49 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             assert_eq!(private_variables.len(), batch_size);
             assert_eq!(x_polys.len(), batch_size);
 
+            let c_domain = circuit_state.constraint_domain;
             let v_domain = circuit_state.variable_domain;
             let i_domain = circuit_state.input_domain;
+            // We clone m_evals because we also need them in the next round
+            let m_evals = circuit_state.m_evals.clone().take().unwrap_or(vec![vec![]; batch_size]);
+            let ifft = &circuit.ifft_precomputation;
 
-            for (j, (private_vars, x_poly)) in itertools::izip!(private_variables, x_polys).enumerate() {
+            let mut circuit_r_m_s = Vec::with_capacity(batch_size);
+            for (j, ((private_vars, x_poly), m_evals_j)) in
+                private_variables.into_iter().zip_eq(x_polys).zip_eq(m_evals).enumerate()
+            {
+                let r_m = F::rand(rng);
+                let m_label = witness_label(circuit.id, "multiplicities", j);
+                job_pool.add_job(move || {
+                    Self::calc_multiplicities(m_label, m_evals_j, c_domain, ifft, MM::ZK.then_some(r_m))
+                });
                 let w_label = witness_label(circuit.id, "w", j);
                 job_pool.add_job(move || Self::calculate_w(w_label, private_vars, x_poly, v_domain, i_domain, circuit));
+                circuit_r_m_s.push(r_m);
             }
+            r_m_s.push(circuit_r_m_s);
         }
-        let mut batches =
-            job_pool.execute_all().into_iter().map(|w_poly| prover::WitnessPoly(w_poly)).collect::<Vec<_>>();
+        let mut batches = job_pool
+            .execute_all()
+            .into_iter()
+            .tuples()
+            .map(|(multiplicities, w_poly)| prover::SingleEntry { multiplicities, w_poly: w_poly.unwrap() })
+            .collect::<Vec<_>>();
         assert_eq!(batches.len(), state.total_instances);
 
         let mut circuit_specific_batches = BTreeMap::new();
-        for (circuit, state) in state.circuit_specific_states.iter_mut() {
-            let batches = batches.drain(0..state.batch_size).collect_vec();
+        for ((circuit, state_i), r_m_s) in state.circuit_specific_states.iter_mut().zip_eq(r_m_s) {
+            let batches = batches.drain(0..state_i.batch_size).collect_vec();
             circuit_specific_batches.insert(circuit.id, batches);
-            end_timer!(round_time);
+            state_i.multiplicity_randomizer = MM::ZK.then_some(r_m_s);
         }
-        let mask_poly = MM::ZK.then(|| Self::calculate_mask_poly(state.max_variable_domain, rng));
-        let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
+        let oracles = prover::FirstOracles { batches: circuit_specific_batches };
         assert!(oracles.matches_info(&Self::first_round_polynomial_info(
-            state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
+            state.circuit_specific_states.iter().map(|(c, s)| (c.id, s.batch_size, s.m_evals.is_some()))
         )));
         state.first_round_oracles = Some(Arc::new(oracles));
+        end_timer!(round_time);
         Ok(state)
-    }
-
-    fn calculate_mask_poly<R: RngCore>(variable_domain: EvaluationDomain<F>, rng: &mut R) -> LabeledPolynomial<F> {
-        assert!(MM::ZK);
-        let mask_poly_time = start_timer!(|| "Computing mask polynomial");
-        // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
-        let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.
-        let h_1_mask = SparsePolynomial::from_coefficients(h_1_mask.into_iter().enumerate())
-            .mul(&variable_domain.vanishing_polynomial());
-        assert_eq!(h_1_mask.degree(), variable_domain.size() + 3);
-        // multiply g_1_mask by X
-        let mut g_1_mask = DensePolynomial::rand(5, rng);
-        g_1_mask.coeffs[0] = F::zero();
-        let g_1_mask = SparsePolynomial::from_coefficients(
-            g_1_mask.coeffs.into_iter().enumerate().filter(|(_, coeff)| !coeff.is_zero()),
-        );
-
-        let mut mask_poly = h_1_mask;
-        mask_poly += &g_1_mask;
-        debug_assert!(variable_domain.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
-        assert_eq!(mask_poly.degree(), variable_domain.size() + 3);
-        assert!(mask_poly.degree() <= 2 * variable_domain.size() + 2 * Self::zk_bound().unwrap() - 3);
-
-        end_timer!(mask_poly_time);
-        LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None)
     }
 
     fn calculate_w(
@@ -131,7 +128,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         variable_domain: EvaluationDomain<F>,
         input_domain: EvaluationDomain<F>,
         circuit: &Circuit<F, MM>,
-    ) -> Witness<F> {
+    ) -> Option<LabeledPolynomial<F>> {
         let mut w_extended = private_variables;
         let ratio = variable_domain.size() / input_domain.size();
         w_extended.resize(variable_domain.size() - input_domain.size(), F::zero());
@@ -157,8 +154,30 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         assert!(w_poly.degree() < variable_domain.size() - input_domain.size());
         end_timer!(w_poly_time);
-        LabeledPolynomial::new(label, w_poly, None, Self::zk_bound())
+        Some(LabeledPolynomial::new(label, w_poly, None, Self::zk_bound()))
+    }
+
+    fn calc_multiplicities(
+        label: String,
+        m_evals: Vec<F>,
+        c_domain: EvaluationDomain<F>,
+        ifft_precomputation: &IFFTPrecomputation<F>,
+        r_m: Option<F>,
+    ) -> Option<LabeledPolynomial<F>> {
+        if m_evals.is_empty() {
+            return None;
+        }
+
+        let m_poly_time = start_timer!(|| "Computing multiplicity poly");
+        let mut m_poly =
+            EvaluationsOnDomain::from_vec_and_domain(m_evals, c_domain).interpolate_with_pc(ifft_precomputation);
+
+        if let Some(r_m) = r_m {
+            let v_H = c_domain.vanishing_polynomial();
+            m_poly += &(&v_H * r_m);
+        }
+        end_timer!(m_poly_time);
+
+        Some(LabeledPolynomial::new(label, m_poly, None, Self::zk_bound()))
     }
 }
-
-pub type Witness<F> = LabeledPolynomial<F>;

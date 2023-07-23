@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{witness_mode, Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
+use snarkvm_algorithms::r1cs::LookupTable;
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::traits::*;
 
@@ -48,6 +49,10 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField>;
 
+    /// Add a lookup table to the constraint system. This allows for calls to `lookup`,
+    /// adding lookup constraints to the circuit.
+    fn add_lookup_table(table: LookupTable<Self::BaseField>);
+
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField>;
 
@@ -63,6 +68,14 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     fn enforce<Fn, A, B, C>(constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+        C: Into<LinearCombination<Self::BaseField>>;
+
+    /// Add a lookup constraint.
+    fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
+    where
+        Fn: FnOnce() -> (A, B, C, usize),
         A: Into<LinearCombination<Self::BaseField>>,
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>;
@@ -140,6 +153,9 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
 
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> u64;
+
+    /// Returns the number of constraints for the current scope.
+    fn num_lookup_constraints_in_scope() -> u64;
 
     /// Returns the number of nonzeros for the current scope.
     fn num_nonzeros_in_scope() -> (u64, u64, u64);
