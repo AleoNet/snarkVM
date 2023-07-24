@@ -254,9 +254,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().header().total_supply_in_microcredits()
     }
 
-    /// Returns the latest latest cumulative weight.
+    /// Returns the latest block cumulative weight.
     pub fn latest_cumulative_weight(&self) -> u128 {
         self.current_block.read().cumulative_weight()
+    }
+
+    /// Returns the latest block cumulative proof target.
+    pub fn latest_cumulative_proof_target(&self) -> u128 {
+        self.current_block.read().cumulative_proof_target()
     }
 
     /// Returns the latest block coinbase accumulator point.

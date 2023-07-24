@@ -261,18 +261,17 @@ impl<N: Network> CoinbasePuzzle<N> {
         &self,
         coinbase_solution: &CoinbaseSolution<N>,
         epoch_challenge: &EpochChallenge<N>,
-        coinbase_target: u64,
         proof_target: u64,
     ) -> Result<bool> {
         // Ensure the solutions are not empty.
         if coinbase_solution.is_empty() {
-            bail!("The coinbase solution does not contain any partial solutions");
+            bail!("There are no solutions");
         }
 
         // Ensure the number of partial solutions does not exceed `MAX_PROVER_SOLUTIONS`.
         if coinbase_solution.len() > N::MAX_PROVER_SOLUTIONS {
             bail!(
-                "The coinbase solution exceeds the allowed number of partial solutions. ({} > {})",
+                "The solutions exceed the allowed number of partial solutions. ({} > {})",
                 coinbase_solution.len(),
                 N::MAX_PROVER_SOLUTIONS
             );
@@ -283,14 +282,9 @@ impl<N: Network> CoinbasePuzzle<N> {
             bail!("The coinbase proof must be non-hiding");
         }
 
-        // Ensure the coinbase proof meets the required coinbase target.
-        if coinbase_solution.to_cumulative_proof_target()? < coinbase_target as u128 {
-            bail!("The coinbase proof does not meet the coinbase target");
-        }
-
         // Ensure the puzzle commitments are unique.
         if has_duplicates(coinbase_solution.puzzle_commitments()) {
-            bail!("The coinbase solution contains duplicate puzzle commitments");
+            bail!("The solutions contain duplicate puzzle commitments");
         }
 
         // Compute the prover polynomials.
