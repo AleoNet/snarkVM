@@ -342,15 +342,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Coinbase Proof */
 
-        // Ensure the coinbase solution is valid, if it exists.
+        // Ensure the solutions are valid, if they exist.
         if let Some(coinbase) = block.coinbase() {
-            // Ensure coinbase solutions are not accepted after the anchor block height at year 10.
+            // Ensure the solutions are not accepted after the anchor block height at year 10.
             if block.height() > anchor_block_height(N::ANCHOR_TIME, 10) {
                 bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
             }
             // Ensure the coinbase accumulator point matches in the block header.
             if block.header().coinbase_accumulator_point() != coinbase.to_accumulator_point()? {
-                bail!("Coinbase accumulator point does not match the coinbase solution.");
+                bail!("Coinbase accumulator point does not match the solutions.");
             }
             // Ensure the number of prover solutions is within the allowed range.
             if coinbase.len() > N::MAX_PROVER_SOLUTIONS {
@@ -362,19 +362,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
                 }
             }
-            // Ensure the coinbase solution is valid.
+            // Ensure the solutions are valid.
             if !self.coinbase_puzzle.verify(
                 coinbase,
                 &self.latest_epoch_challenge()?,
                 self.latest_coinbase_target(),
                 self.latest_proof_target(),
             )? {
-                bail!("Invalid coinbase solution: {:?}", coinbase);
+                bail!("Invalid solutions: {coinbase:?}");
             }
         } else {
             // Ensure that the block header does not contain a coinbase accumulator point.
             if block.header().coinbase_accumulator_point() != Field::<N>::zero() {
-                bail!("Coinbase accumulator point should be zero as there is no coinbase solution in the block.");
+                bail!("Coinbase accumulator point should be zero as there are no solutions in the block.");
             }
         }
 

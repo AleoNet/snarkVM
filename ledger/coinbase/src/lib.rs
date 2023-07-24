@@ -163,7 +163,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         Ok(ProverSolution::new(partial_solution, proof))
     }
 
-    /// Returns a coinbase solution and accumulator point for the given epoch challenge and prover solutions.
+    /// Returns the solutions and accumulator point for the given epoch challenge and prover solutions.
     ///
     /// # Note
     /// This method does *not* check that the prover solutions are valid.
@@ -256,7 +256,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         Ok((CoinbaseSolution::new(partial_solutions, proof), Field::new(accumulator_point)))
     }
 
-    /// Returns `true` if the coinbase solution is valid.
+    /// Returns `true` if the solutions are valid.
     pub fn verify(
         &self,
         coinbase_solution: &CoinbaseSolution<N>,
@@ -264,7 +264,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         coinbase_target: u64,
         proof_target: u64,
     ) -> Result<bool> {
-        // Ensure the coinbase solution is not empty.
+        // Ensure the solutions are not empty.
         if coinbase_solution.is_empty() {
             bail!("The coinbase solution does not contain any partial solutions");
         }

@@ -91,12 +91,12 @@ impl<N: Network> ToBytes for Block<N> {
             ratification.write_le(&mut writer)?;
         }
 
-        // Write the coinbase solution.
+        // Write the solutions.
         match self.coinbase {
             None => 0u8.write_le(&mut writer)?,
-            Some(ref coinbase) => {
+            Some(ref solutions) => {
                 1u8.write_le(&mut writer)?;
-                coinbase.write_le(&mut writer)?;
+                solutions.write_le(&mut writer)?;
             }
         }
         Ok(())

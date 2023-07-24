@@ -197,8 +197,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
-        // Prepare the coinbase solution.
-        let coinbase_solution = None; // The genesis block does not require a coinbase solution.
+        // Prepare the solutions.
+        let coinbase_solution = None; // The genesis block does not require solutions.
 
         // Construct the block.
         let block =

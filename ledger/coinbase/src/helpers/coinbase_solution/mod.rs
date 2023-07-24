@@ -23,12 +23,12 @@ use super::*;
 pub struct CoinbaseSolution<N: Network> {
     /// The partial solutions of the coinbase puzzle, which are aggregated into a single solution.
     partial_solutions: Vec<PartialSolution<N>>,
-    /// The KZG proof of the coinbase solution.
+    /// The KZG proof of the solutions.
     proof: PuzzleProof<N>,
 }
 
 impl<N: Network> CoinbaseSolution<N> {
-    /// Initializes a new instance of a coinbase solution.
+    /// Initializes a new instance of the solutions.
     pub const fn new(partial_solutions: Vec<PartialSolution<N>>, proof: PuzzleProof<N>) -> Self {
         Self { partial_solutions, proof }
     }

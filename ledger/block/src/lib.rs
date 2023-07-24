@@ -59,7 +59,7 @@ pub struct Block<N: Network> {
     transactions: Transactions<N>,
     /// The ratifications in this block.
     ratifications: Vec<Ratify<N>>,
-    /// The coinbase solution.
+    /// The solutions in the block.
     coinbase: Option<CoinbaseSolution<N>>,
 }
 
@@ -113,13 +113,13 @@ impl<N: Network> Block<N> {
             Authority::Quorum(_certificates) => (),
         }
 
-        // Ensure that coinbase accumulator matches the coinbase solution.
+        // Ensure that coinbase accumulator matches the solutions.
         let expected_accumulator_point = match &coinbase {
             Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
             None => Field::<N>::zero(),
         };
         if header.coinbase_accumulator_point() != expected_accumulator_point {
-            bail!("The coinbase accumulator point in the block does not correspond to the coinbase solution");
+            bail!("The coinbase accumulator point in the block does not correspond to the solutions");
         }
 
         // Construct the block.
@@ -156,7 +156,7 @@ impl<N: Network> Block<N> {
         &self.ratifications
     }
 
-    /// Returns the coinbase solution.
+    /// Returns the solutions in the block.
     pub const fn coinbase(&self) -> Option<&CoinbaseSolution<N>> {
         self.coinbase.as_ref()
     }

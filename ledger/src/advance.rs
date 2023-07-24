@@ -57,17 +57,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Retrieve the latest coinbase target.
         let latest_coinbase_target = latest_block.coinbase_target();
 
-        // Construct the coinbase solution.
+        // Construct the solutions.
         let (coinbase, coinbase_accumulator_point, combined_proof_target) = match solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
             false => {
-                // Accumulate the prover solutions into a coinbase solution.
+                // Accumulate the prover solutions.
                 let (coinbase, coinbase_accumulator_point) =
                     self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, &solutions)?;
                 // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
                 let combined_proof_target =
                     solutions.iter().map(|s| Ok(s.to_target()? as u128)).sum::<Result<u128>>()?;
-                // Output the coinbase solution, coinbase accumulator point, and combined proof target.
+                // Output the solutions, coinbase accumulator point, and combined proof target.
                 (Some(coinbase), coinbase_accumulator_point, combined_proof_target)
             }
         };

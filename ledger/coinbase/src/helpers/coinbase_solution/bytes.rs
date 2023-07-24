@@ -15,7 +15,7 @@
 use super::*;
 
 impl<N: Network> FromBytes for CoinbaseSolution<N> {
-    /// Reads the coinbase solution from the buffer.
+    /// Reads the solutions from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let partial_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
 
@@ -32,7 +32,7 @@ impl<N: Network> FromBytes for CoinbaseSolution<N> {
 }
 
 impl<N: Network> ToBytes for CoinbaseSolution<N> {
-    /// Writes the coinbase solution to the buffer.
+    /// Writes the solutions to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (u32::try_from(self.partial_solutions.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
 
@@ -55,7 +55,7 @@ mod tests {
     fn test_bytes() -> Result<()> {
         let mut rng = TestRng::default();
 
-        // Sample a new coinbase solution.
+        // Sample new solutions.
         let mut partial_solutions = vec![];
         for _ in 0..rng.gen_range(1..10) {
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;

@@ -34,7 +34,7 @@ impl<N: Network> Block<N> {
             && self.transactions.num_finalize() == 0
             // Ensure there is the correct number of ratification operations in the genesis block.
             && self.ratifications.is_empty()
-            // Ensure the coinbase solution does not exist.
+            // Ensure there are no solutions in the genesis block.
             && self.coinbase.is_none()
     }
 }
