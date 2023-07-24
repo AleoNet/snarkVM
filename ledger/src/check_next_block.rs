@@ -106,11 +106,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Block Header */
 
-        // If the block is the genesis block, check that it is valid.
-        if block.height() == 0 && !block.is_genesis() {
-            bail!("Invalid genesis block");
-        }
-
         // Ensure the block header is valid.
         if !block.header().is_valid() {
             bail!("Invalid block header: {:?}", block.header());
@@ -181,22 +176,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             N::GENESIS_COINBASE_TARGET,
         )?;
 
+        // Ensure the coinbase target is correct.
         if block.coinbase_target() != expected_coinbase_target {
-            bail!("Invalid coinbase target: expected {}, got {}", expected_coinbase_target, block.coinbase_target())
+            bail!("Invalid coinbase target: expected {expected_coinbase_target}, got {}", block.coinbase_target())
         }
 
         // Ensure the proof target is correct.
         let expected_proof_target = proof_target(expected_coinbase_target, N::GENESIS_PROOF_TARGET);
         if block.proof_target() != expected_proof_target {
-            bail!("Invalid proof target: expected {}, got {}", expected_proof_target, block.proof_target())
+            bail!("Invalid proof target: expected {expected_proof_target}, got {}", block.proof_target())
         }
 
         /* Block Hash */
 
         // Compute the Merkle root of the block header.
-        let header_root = match block.header().to_root() {
-            Ok(root) => root,
-            Err(error) => bail!("Failed to compute the Merkle root of the block header: {error}"),
+        let Ok(header_root) = block.header().to_root() else {
+            bail!("Failed to compute the Merkle root of the block header");
         };
 
         // Check the block hash.
@@ -214,17 +209,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Authority */
 
-        // Retrieve the block authority.
-        let authority = block.authority();
-
         // Ensure the block is signed by a validator in the committee.
-        let signer = authority.to_address();
+        let signer = block.authority().to_address();
         if !self.current_committee.read().contains(&signer) {
             bail!("Block {} ({}) is signed by an unauthorized account ({signer})", block.height(), block.hash());
         }
 
         // Verify the block authority.
-        match authority {
+        match block.authority() {
             Authority::Beacon(signature) => {
                 // Check the signature.
                 if !signature.verify(&signer, &[*block.hash()]) {
