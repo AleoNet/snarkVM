@@ -37,20 +37,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Block height '{}' already exists in the ledger", block.height())
         }
 
-        // TODO (raychu86): Ensure the next round number includes timeouts.
-        // Ensure the next round is correct.
-        if self.latest_round() > 0 && self.latest_round() + 1 /*+ block.number_of_timeouts()*/ != block.round() {
-            bail!("The next block has an incorrect round number")
-        }
-
         // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
         // Ensure the next block timestamp is after the current block timestamp.
         if block.height() > 0 {
             let next_timestamp = block.header().timestamp();
-            let latest_timestamp = self.latest_block().header().timestamp();
+            let latest_timestamp = self.latest_header().timestamp();
             if next_timestamp <= latest_timestamp {
                 bail!("The next block timestamp {next_timestamp} is before the current timestamp {latest_timestamp}")
             }
+        }
+
+        // TODO (raychu86): Ensure the next round number includes timeouts.
+        // Ensure the next round is correct.
+        if self.latest_round() > 0 && self.latest_round() + 1 /*+ block.number_of_timeouts()*/ != block.round() {
+            bail!("The next block has an incorrect round number")
         }
 
         // Ensure there are no duplicate transition IDs.
