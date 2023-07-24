@@ -47,10 +47,22 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
-        // TODO (raychu86): Ensure the next round number includes timeouts.
-        // Ensure the next round is correct.
-        if self.latest_round() > 0 && self.latest_round() + 1 /*+ block.number_of_timeouts()*/ != block.round() {
-            bail!("The next block has an incorrect round number")
+        // Ensure the next block round is correct.
+        match block.authority() {
+            Authority::Beacon(..) => {
+                // Ensure the next beacon block round is correct.
+                if self.latest_round() > 0 && self.latest_round() + 1 != block.round() {
+                    bail!("The next beacon block has an incorrect round number")
+                }
+            }
+            Authority::Quorum(subdag) => {
+                // Retrieve the expected round from the subdag.
+                let expected_round = subdag.iter().next_back().map_or(0, |(round, _)| *round);
+                // Ensure the next quorum block round is correct.
+                if expected_round != block.round() {
+                    bail!("The next quorum block has an incorrect round number")
+                }
+            }
         }
 
         // Ensure there are no duplicate transition IDs.
@@ -135,17 +147,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 if block.cumulative_proof_target() >= self.latest_coinbase_target() as u128 {
                     bail!("The block cumulative proof target is greater than or equal to the latest coinbase target")
                 }
-                // Compute the cumulative proof target (which can exceed the coinbase target).
+                // Compute the actual cumulative proof target (which can exceed the coinbase target).
                 let cumulative_proof_target =
                     self.latest_cumulative_proof_target().saturating_add(combined_proof_target);
-                // Compute the expected cumulative proof target (which cannot exceed the coinbase target).
-                let (expected_cumulative_proof_target, is_coinbase_target_reached) =
-                    match cumulative_proof_target >= self.latest_coinbase_target() as u128 {
-                        true => (0u128, true),
-                        false => (cumulative_proof_target, false),
-                    };
+                // Determine if the coinbase target is reached.
+                let is_coinbase_target_reached = cumulative_proof_target >= self.latest_coinbase_target() as u128;
+                // Compute the block cumulative proof target (which cannot exceed the coinbase target).
+                let cumulative_proof_target = match is_coinbase_target_reached {
+                    true => 0u128,
+                    false => cumulative_proof_target,
+                };
                 // Ensure that the cumulative proof target is correct.
-                if block.cumulative_proof_target() != expected_cumulative_proof_target {
+                if block.cumulative_proof_target() != cumulative_proof_target {
                     bail!("The cumulative proof target does not match the expected cumulative proof target")
                 }
                 // Ensure the last coinbase target and last coinbase timestamp are correct.
