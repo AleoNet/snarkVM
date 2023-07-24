@@ -2826,6 +2826,7 @@ dependencies = [
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
  "snarkvm-console-types",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2909,6 +2910,7 @@ dependencies = [
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
  "snarkvm-console-types-group",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2918,6 +2920,7 @@ dependencies = [
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2928,6 +2931,7 @@ dependencies = [
  "serde_json",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2940,6 +2944,7 @@ dependencies = [
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
  "snarkvm-console-types-scalar",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2951,6 +2956,7 @@ dependencies = [
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2962,6 +2968,7 @@ dependencies = [
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -3028,6 +3035,7 @@ dependencies = [
  "snarkvm-ledger-query",
  "snarkvm-ledger-store",
  "snarkvm-synthesizer",
+ "snarkvm-utilities",
  "time",
  "tracing",
 ]
@@ -3064,6 +3072,7 @@ dependencies = [
  "snarkvm-synthesizer-process",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -3288,6 +3297,7 @@ dependencies = [
  "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -3303,6 +3313,7 @@ dependencies = [
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-synthesizer-process",
+ "snarkvm-utilities",
 ]
 
 [[package]]
