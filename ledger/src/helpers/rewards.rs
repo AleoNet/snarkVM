@@ -21,12 +21,12 @@ use anyhow::Result;
 /// Returns the proving rewards for a given coinbase reward and list of prover solutions.
 ///
 /// The prover reward is defined as:
-///   1/2 * coinbase_reward * (prover_target / cumulative_prover_target)
-///   = (coinbase_reward * prover_target) / (2 * cumulative_prover_target)
+///   1/2 * coinbase_reward * (prover_target / combined_prover_target)
+///   = (coinbase_reward * prover_target) / (2 * combined_prover_target)
 pub fn proving_rewards<N: Network>(
     prover_solutions: Vec<ProverSolution<N>>,
     coinbase_reward: u64,
-    cumulative_proof_target: u128,
+    combined_prover_target: u128,
 ) -> Result<Vec<Ratify<N>>> {
     // Initialize a vector to store the proving rewards.
     let mut proving_rewards = Vec::with_capacity(prover_solutions.len());
@@ -39,7 +39,7 @@ pub fn proving_rewards<N: Network>(
             .ok_or_else(|| anyhow!("Proving reward numerator overflowed"))?;
         // Compute the denominator.
         let denominator =
-            cumulative_proof_target.checked_mul(2).ok_or_else(|| anyhow!("Proving reward denominator overflowed"))?;
+            combined_prover_target.checked_mul(2).ok_or_else(|| anyhow!("Proving reward denominator overflowed"))?;
         // Compute the quotient.
         let quotient =
             numerator.checked_div(denominator).ok_or_else(|| anyhow!("Proving reward quotient overflowed"))?;
