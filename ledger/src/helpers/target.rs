@@ -29,19 +29,24 @@ pub const fn staking_reward(starting_supply: u64, anchor_time: u16) -> u64 {
 }
 
 /// Calculates the coinbase reward for a given block.
-///     R_coinbase = max(0, H_Y10 - H) * R_anchor * 2^(-1 * (D - B) / B).
+///     R_coinbase = max(0, H_Y10 - H) * R_anchor * min(C_R, P) / C
 ///     R_anchor = Anchor reward.
 ///     H_Y10 = Anchor block height at year 10.
 ///     H = Current block height.
-///     D = Time elapsed since the previous block.
-///     B = Anchor block time.
+///     C_R = Remaining coinbase target.
+///     C = Coinbase target.
+///     P = Combined proof target.
 pub fn coinbase_reward(
-    previous_timestamp: i64,
-    timestamp: i64,
     block_height: u32,
     starting_supply: u64,
     anchor_time: u16,
+    combined_proof_target: u128,
+    remaining_coinbase_target: u64,
+    coinbase_target: u64,
 ) -> Result<u64> {
+    // Ensure the remaining coinbase target is less than or equal to the coinbase target.
+    ensure!(remaining_coinbase_target <= coinbase_target, "Coinbase reward portion exceeds coinbase target");
+
     // Compute the anchor block height at year 10.
     let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10);
     // Compute the anchor reward.
@@ -53,8 +58,21 @@ pub fn coinbase_reward(
         // After the anchor block height at year 10, the coinbase reward is 0.
         0 => Ok(0),
         // Until the anchor block height at year 10, the coinbase reward is determined by this equation:
-        //   (num_remaining_blocks_to_year_10 * anchor_reward) * 2^{-1 * ((timestamp - previous_timestamp) - ANCHOR_TIME) / ANCHOR_TIME}
-        reward => retarget(reward, previous_timestamp, timestamp, anchor_time as u32, true, anchor_time),
+        //   (num_remaining_blocks_to_year_10 * anchor_reward) * min(remaining_coinbase_target, combined_proof_target) / coinbase_target
+        reward => {
+            // Calculate the portion of the coinbase target to pay out. The maximum portion to pay out is the remaining coinbase target.
+            let portion = core::cmp::min(remaining_coinbase_target as u128, combined_proof_target);
+
+            // Calculate the coinbase reward.
+            let reward = (reward as u128)
+                .checked_mul(portion)
+                .ok_or_else(|| anyhow!("Coinbase reward numerator overflow"))?
+                .checked_div(coinbase_target as u128)
+                .ok_or_else(|| anyhow!("Coinbase reward denominator underflow"))?;
+
+            // Return the reward
+            Ok(u64::try_from(reward)?)
+        }
     }
 }
 
@@ -210,7 +228,7 @@ mod tests {
 
     const EXPECTED_ANCHOR_REWARD: u64 = 18;
     const EXPECTED_STAKING_REWARD: u64 = 29_727_929;
-    const EXPECTED_COINBASE_REWARD_FOR_BLOCK_1: u64 = 227_059_182;
+    const EXPECTED_COINBASE_REWARD: u64 = 227_059_182;
 
     #[test]
     fn test_anchor_reward() {
@@ -242,59 +260,140 @@ mod tests {
 
     #[test]
     fn test_coinbase_reward() {
+        let coinbase_target: u64 = 10000;
+        let remaining_coinbase_target: u64 = coinbase_target;
+        let combined_proof_target: u128 = coinbase_target as u128;
+
         let reward = coinbase_reward(
-            CurrentNetwork::GENESIS_TIMESTAMP,
-            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64,
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            combined_proof_target,
+            remaining_coinbase_target,
+            coinbase_target,
         )
         .unwrap();
-        assert_eq!(reward, EXPECTED_COINBASE_REWARD_FOR_BLOCK_1);
+        assert_eq!(reward, EXPECTED_COINBASE_REWARD);
 
-        // Increasing the block time to twice the anchor time *at most* halves the reward.
+        // Halving the combined proof target halves the reward.
         let smaller_reward = coinbase_reward(
-            CurrentNetwork::GENESIS_TIMESTAMP,
-            CurrentNetwork::GENESIS_TIMESTAMP + (2 * CurrentNetwork::ANCHOR_TIME as i64),
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            combined_proof_target / 2,
+            remaining_coinbase_target,
+            coinbase_target,
         )
         .unwrap();
-        assert!(smaller_reward >= reward / 2);
+        assert_eq!(smaller_reward, reward / 2);
 
-        // Increasing the block time beyond the anchor time will decrease the reward.
+        // Halving the remaining coinbase target halves the reward.
         let smaller_reward = coinbase_reward(
-            CurrentNetwork::GENESIS_TIMESTAMP,
-            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64 + 1,
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            combined_proof_target,
+            remaining_coinbase_target / 2,
+            coinbase_target,
         )
         .unwrap();
         assert!(reward > smaller_reward);
 
-        // Decreasing the block time below the anchor time will increase the reward.
-        let larger_reward = coinbase_reward(
-            CurrentNetwork::GENESIS_TIMESTAMP,
-            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64 - 1,
+        // Dramatically increasing the combined proof target greater than the remaining coinbase target will not increase the reward.
+        let equivalent_reward = coinbase_reward(
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            u128::MAX,
+            remaining_coinbase_target,
+            coinbase_target,
         )
         .unwrap();
-        assert!(reward < larger_reward);
+        assert_eq!(reward, equivalent_reward);
 
-        // Decreasing the block time to 0 *at most* doubles the reward.
-        let larger_reward = coinbase_reward(
-            CurrentNetwork::GENESIS_TIMESTAMP,
-            CurrentNetwork::GENESIS_TIMESTAMP,
+        // Decreasing the combined proof target to 0 will result in a reward of 0.
+        let zero_reward = coinbase_reward(
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            0,
+            remaining_coinbase_target,
+            coinbase_target,
         )
         .unwrap();
-        assert!(larger_reward <= reward * 2);
+        assert_eq!(zero_reward, 0);
+    }
+
+    #[test]
+    fn test_coinbase_reward_remaining_target() {
+        let mut rng = TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Increasing the remaining coinbase target will not increase the reward if the combined proof target is less than or equal to the remaining coinbase target.
+            {
+                let coinbase_target = rng.gen_range(1_000_000..1_000_000_000_000_000);
+                let remaining_coinbase_target = coinbase_target / 2;
+                let combined_proof_target = remaining_coinbase_target as u128 / 2;
+
+                let reward = coinbase_reward(
+                    1,
+                    CurrentNetwork::STARTING_SUPPLY,
+                    CurrentNetwork::ANCHOR_TIME,
+                    combined_proof_target,
+                    remaining_coinbase_target,
+                    coinbase_target,
+                )
+                .unwrap();
+
+                // Increasing the remaining coinbase target will not increase the reward if the combined proof target is less than or equal to the remaining coinbase target.
+                let equivalent_reward = coinbase_reward(
+                    1,
+                    CurrentNetwork::STARTING_SUPPLY,
+                    CurrentNetwork::ANCHOR_TIME,
+                    combined_proof_target,
+                    remaining_coinbase_target * 2,
+                    coinbase_target,
+                )
+                .unwrap();
+                assert_eq!(reward, equivalent_reward);
+
+                // Decreasing the remaining coinbase will decrease the reward if the combined proof target is greater than the remaining coinbase target.
+                let lower_reward = coinbase_reward(
+                    1,
+                    CurrentNetwork::STARTING_SUPPLY,
+                    CurrentNetwork::ANCHOR_TIME,
+                    combined_proof_target,
+                    u64::try_from(combined_proof_target / 2).unwrap(),
+                    coinbase_target,
+                )
+                .unwrap();
+                assert!(reward > lower_reward);
+
+                // Decreasing the remaining coinbase will not decrease the reward if the combined proof target is less than the remaining coinbase target.
+                let equivalent_reward = coinbase_reward(
+                    1,
+                    CurrentNetwork::STARTING_SUPPLY,
+                    CurrentNetwork::ANCHOR_TIME,
+                    combined_proof_target,
+                    rng.gen_range(u64::try_from(combined_proof_target).unwrap()..remaining_coinbase_target),
+                    coinbase_target,
+                )
+                .unwrap();
+                assert_eq!(reward, equivalent_reward);
+
+                // Increasing the combined proof target will increase the reward if the combined proof target is less than the remaining coinbase target.
+                let larger_reward = coinbase_reward(
+                    1,
+                    CurrentNetwork::STARTING_SUPPLY,
+                    CurrentNetwork::ANCHOR_TIME,
+                    rng.gen_range(combined_proof_target + 1..remaining_coinbase_target as u128),
+                    remaining_coinbase_target,
+                    coinbase_target,
+                )
+                .unwrap();
+                assert!(larger_reward > reward);
+            }
+        }
     }
 
     #[test]
@@ -302,36 +401,21 @@ mod tests {
         let anchor_height_at_year_10 = anchor_block_height(CurrentNetwork::ANCHOR_TIME, 10);
 
         let mut block_height = 1;
-        let mut previous_timestamp = CurrentNetwork::GENESIS_TIMESTAMP;
-        let mut timestamp = CurrentNetwork::GENESIS_TIMESTAMP;
 
-        let mut previous_reward = coinbase_reward(
-            previous_timestamp,
-            timestamp,
-            block_height,
-            CurrentNetwork::STARTING_SUPPLY,
-            CurrentNetwork::ANCHOR_TIME,
-        )
-        .unwrap();
+        let mut previous_reward =
+            coinbase_reward(block_height, CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME, 1, 1, 1)
+                .unwrap();
 
         block_height *= 2;
-        timestamp = CurrentNetwork::GENESIS_TIMESTAMP + block_height as i64 * CurrentNetwork::ANCHOR_TIME as i64;
 
         while block_height < anchor_height_at_year_10 {
-            let reward = coinbase_reward(
-                previous_timestamp,
-                timestamp,
-                block_height,
-                CurrentNetwork::STARTING_SUPPLY,
-                CurrentNetwork::ANCHOR_TIME,
-            )
-            .unwrap();
+            let reward =
+                coinbase_reward(block_height, CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME, 1, 1, 1)
+                    .unwrap();
             assert!(reward <= previous_reward);
 
             previous_reward = reward;
-            previous_timestamp = timestamp;
             block_height *= 2;
-            timestamp = CurrentNetwork::GENESIS_TIMESTAMP + block_height as i64 * CurrentNetwork::ANCHOR_TIME as i64;
         }
     }
 
@@ -343,11 +427,12 @@ mod tests {
 
         // Check that block `anchor_height_at_year_10` has a reward of 0.
         let reward = coinbase_reward(
-            CurrentNetwork::GENESIS_TIMESTAMP,
-            CurrentNetwork::GENESIS_TIMESTAMP + CurrentNetwork::ANCHOR_TIME as i64,
             anchor_height_at_year_10,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            1,
+            1,
+            1,
         )
         .unwrap();
         assert_eq!(reward, 0);
@@ -355,17 +440,17 @@ mod tests {
         // Check that the subsequent blocks have a reward of 0.
         for _ in 0..ITERATIONS {
             let block_height: u32 = rng.gen_range(anchor_height_at_year_10..anchor_height_at_year_10 * 10);
-
-            let timestamp =
-                CurrentNetwork::GENESIS_TIMESTAMP + block_height as i64 * CurrentNetwork::ANCHOR_TIME as i64;
-            let new_timestamp = timestamp + CurrentNetwork::ANCHOR_TIME as i64;
+            let coinbase_target = rng.gen_range(1_000_000..1_000_000_000_000_000);
+            let remaining_coinbase_target = rng.gen_range(0..coinbase_target);
+            let combined_proof_target = rng.gen_range(0..coinbase_target as u128);
 
             let reward = coinbase_reward(
-                timestamp,
-                new_timestamp,
                 block_height,
                 CurrentNetwork::STARTING_SUPPLY,
                 CurrentNetwork::ANCHOR_TIME,
+                combined_proof_target,
+                remaining_coinbase_target,
+                coinbase_target,
             )
             .unwrap();
 
