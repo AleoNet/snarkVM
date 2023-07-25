@@ -369,9 +369,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Ensure the solutions are valid, if they exist.
         if let Some(coinbase) = block.coinbase() {
-            // Ensure the solutions are not accepted after the anchor block height at year 10.
-            if block.height() > anchor_block_height(N::ANCHOR_TIME, 10) {
-                bail!("Coinbase proofs are no longer accepted after the anchor block height at year 10.");
+            // Ensure the solutions are not accepted after the block height at year 10.
+            if block.height() > block_height_at_year(N::BLOCK_TIME, 10) {
+                bail!("Coinbase proofs are no longer accepted after the block height at year 10.");
             }
             // Ensure the coinbase accumulator point matches in the block header.
             if block.header().coinbase_accumulator_point() != coinbase.to_accumulator_point()? {

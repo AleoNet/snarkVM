@@ -14,18 +14,17 @@
 
 use anyhow::{anyhow, ensure, Result};
 
-/// Calculate the staking reward, given the starting supply and anchor time.
-///     R_staking = floor((0.025 * S) / H_Y1)
+/// Calculate the staking reward, given the starting supply and block time.
+///     R_staking = floor((0.05 * S) / H_Y1)
 ///     S = Starting supply.
-///     H_Y1 = Anchor block height at year 1.
-#[allow(dead_code)]
-pub const fn staking_reward(starting_supply: u64, anchor_time: u16) -> u64 {
-    // Compute the anchor block height at year 1.
-    let anchor_height_at_year_1 = anchor_block_height(anchor_time, 1);
-    // Compute the annual staking reward: (0.025 * S).
-    let annual_staking_reward = (starting_supply / 1000) * 25;
-    // Compute the staking reward: (0.025 * S) / H_Y1.
-    annual_staking_reward / anchor_height_at_year_1 as u64
+///     H_Y1 = Expected block height at year 1.
+pub const fn staking_reward(starting_supply: u64, block_time: u16) -> u64 {
+    // Compute the expected block height at year 1.
+    let block_height_at_year_1 = block_height_at_year(block_time, 1);
+    // Compute the annual staking reward: (0.05 * S).
+    let annual_staking_reward = (starting_supply / 1000) * 50;
+    // Compute the staking reward: (0.05 * S) / H_Y1.
+    annual_staking_reward / block_height_at_year_1 as u64
 }
 
 /// Calculates the coinbase reward for a given block.
@@ -48,12 +47,12 @@ pub fn coinbase_reward(
     // Ensure the remaining coinbase target is less than or equal to the coinbase target.
     ensure!(remaining_coinbase_target <= coinbase_target, "Coinbase reward portion exceeds coinbase target");
 
-    // Compute the anchor block height at year 10.
-    let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10);
+    // Compute the block height at year 10.
+    let block_height_at_year_10 = block_height_at_year(block_time, 10);
     // Compute the anchor reward.
     let anchor_reward = anchor_reward(starting_supply, anchor_time, block_time);
     // Compute the remaining blocks until year 10, as a u64.
-    let num_remaining_blocks_to_year_10 = anchor_height_at_year_10.saturating_sub(block_height) as u64;
+    let num_remaining_blocks_to_year_10 = block_height_at_year_10.saturating_sub(block_height) as u64;
     // Return the coinbase reward.
     match num_remaining_blocks_to_year_10.checked_mul(anchor_reward).ok_or_else(|| anyhow!("Anchor reward overflow"))? {
         // After the anchor block height at year 10, the coinbase reward is 0.
@@ -84,24 +83,24 @@ pub fn coinbase_reward(
 ///     B = Block time.
 ///     H_Y10 = Expected block height at year 10.
 const fn anchor_reward(starting_supply: u64, anchor_time: u16, block_time: u16) -> u64 {
-    // Calculate the anchor block height at year 10.
-    let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10) as u64;
+    // Calculate the block height at year 10.
+    let block_height_at_year_10 = block_height_at_year(block_time, 10) as u64;
     // Compute the numerator.
     let numerator = 2 * starting_supply * anchor_time as u64 / block_time as u64;
     // Compute the denominator.
-    let denominator = anchor_height_at_year_10 * (anchor_height_at_year_10 + 1);
+    let denominator = block_height_at_year_10 * (block_height_at_year_10 + 1);
     // Return the anchor reward.
     numerator / denominator
 }
 
-/// Returns the anchor block height after a given number of years for a specific anchor time.
-pub const fn anchor_block_height(anchor_time: u16, num_years: u32) -> u32 {
+/// Returns the block height after a given number of years for a specific block time.
+pub const fn block_height_at_year(block_time: u16, num_years: u32) -> u32 {
     // Calculate the number of seconds in a year.
     const SECONDS_IN_A_YEAR: u32 = 60 * 60 * 24 * 365;
-    // Calculate the one-year anchor block height.
-    let anchor_block_height_at_year_1 = SECONDS_IN_A_YEAR / anchor_time as u32;
-    // Return the anchor block height for the given number of years.
-    anchor_block_height_at_year_1 * num_years
+    // Calculate the one-year block height.
+    let block_height_at_year_1 = SECONDS_IN_A_YEAR / block_time as u32;
+    // Return the block height for the given number of years.
+    block_height_at_year_1 * num_years
 }
 
 /// Calculate the coinbase target for the given block height.
@@ -229,9 +228,9 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
-    const EXPECTED_ANCHOR_REWARD: u64 = 235;
-    const EXPECTED_STAKING_REWARD: u64 = 29_727_929;
-    const EXPECTED_COINBASE_REWARD_AT_BLOCK_1: u64 = 2_964_383_765;
+    const EXPECTED_ANCHOR_REWARD: u64 = 1;
+    const EXPECTED_STAKING_REWARD: u64 = 4_756_468;
+    const EXPECTED_COINBASE_REWARD_AT_BLOCK_1: u64 = 157_679_999;
 
     #[test]
     fn test_anchor_reward() {
@@ -241,26 +240,26 @@ mod tests {
 
         // Increasing the anchor time will increase the reward.
         let larger_reward =
-            anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME + 1, CurrentNetwork::BLOCK_TIME);
+            anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME * 2, CurrentNetwork::BLOCK_TIME);
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
         let smaller_reward =
-            anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME - 1, CurrentNetwork::BLOCK_TIME);
+            anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME / 2, CurrentNetwork::BLOCK_TIME);
         assert!(reward > smaller_reward);
     }
 
     #[test]
     fn test_staking_reward() {
-        let reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME);
+        let reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME);
         assert_eq!(reward, EXPECTED_STAKING_REWARD);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME + 1);
+        let larger_reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME + 1);
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME - 1);
+        let smaller_reward = staking_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME - 1);
         assert!(reward > smaller_reward);
     }
 
@@ -414,7 +413,7 @@ mod tests {
 
     #[test]
     fn test_coinbase_reward_up_to_year_10() {
-        let anchor_height_at_year_10 = anchor_block_height(CurrentNetwork::ANCHOR_TIME, 10);
+        let block_height_at_year_10 = block_height_at_year(CurrentNetwork::BLOCK_TIME, 10);
 
         let mut block_height = 1;
 
@@ -436,7 +435,7 @@ mod tests {
         let coinbase_target = (CurrentNetwork::ANCHOR_TIME / CurrentNetwork::BLOCK_TIME) as u64;
         let mut index = coinbase_target;
 
-        while block_height < anchor_height_at_year_10 {
+        while block_height < block_height_at_year_10 {
             let reward = coinbase_reward(
                 block_height,
                 CurrentNetwork::STARTING_SUPPLY,
@@ -460,18 +459,18 @@ mod tests {
             };
         }
 
-        assert_eq!(total_reward, 1_558_082_818_454_185, "Update me if my parameters have changed");
+        assert_eq!(total_reward, 1_035_957_665_700_000, "Update me if my parameters have changed");
     }
 
     #[test]
     fn test_coinbase_reward_after_year_10() {
         let mut rng = TestRng::default();
 
-        let anchor_height_at_year_10 = anchor_block_height(CurrentNetwork::ANCHOR_TIME, 10);
+        let block_height_at_year_10 = block_height_at_year(CurrentNetwork::BLOCK_TIME, 10);
 
-        // Check that block `anchor_height_at_year_10` has a reward of 0.
+        // Check that the block at year 10 has a reward of 0.
         let reward = coinbase_reward(
-            anchor_height_at_year_10,
+            block_height_at_year_10,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
             CurrentNetwork::BLOCK_TIME,
@@ -484,7 +483,7 @@ mod tests {
 
         // Check that the subsequent blocks have a reward of 0.
         for _ in 0..ITERATIONS {
-            let block_height: u32 = rng.gen_range(anchor_height_at_year_10..anchor_height_at_year_10 * 10);
+            let block_height: u32 = rng.gen_range(block_height_at_year_10..block_height_at_year_10 * 10);
             let coinbase_target = rng.gen_range(1_000_000..1_000_000_000_000_000);
             let remaining_coinbase_target = rng.gen_range(0..coinbase_target);
             let combined_proof_target = rng.gen_range(0..coinbase_target as u128);
@@ -664,7 +663,7 @@ mod tests {
         }
 
         println!(
-            "For block times of {}s and anchor time of {}s, doubling the coinbase target took {num_blocks} blocks. ({} seconds)",
+            "For block times of {}s and epochs of {} blocks, doubling the coinbase target took {num_blocks} blocks. ({} seconds)",
             BLOCK_TIME,
             CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
             previous_timestamp - initial_timestamp
