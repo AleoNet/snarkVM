@@ -51,20 +51,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 }
             }
             Authority::Quorum(subdag) => {
-                // Retrieve the expected round from the subdag.
-                let expected_round = subdag.iter().next_back().map_or(0, |(round, _)| *round);
                 // Ensure the next quorum block round is correct.
-                if expected_round != block.round() {
+                if block.round() != subdag.anchor_round() {
                     bail!("The next quorum block has an incorrect round number")
                 }
-                // // Retrieve the median timestamp from the subdag.
-                // let expected_timestamp = subdag.iter().next_back().map_or(0, |(_, certificates)| {
-                //
-                // });
-                // // Ensure the next block timestamp is the median timestamp.
-                // if block.timestamp() != expected_timestamp {
-                //     bail!("The next block timestamp must be the median timestamp from the subdag")
-                // }
+                // Ensure the next block timestamp is the median timestamp from the subdag.
+                if block.timestamp() != subdag.timestamp() {
+                    bail!("The next block timestamp must be the median timestamp from the subdag")
+                }
             }
         }
 

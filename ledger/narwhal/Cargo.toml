@@ -24,28 +24,32 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "batch-certificate", "batch-header", "transmission", "transmission-id" ]
+default = [ "batch-certificate", "batch-header", "subdag", "transmission", "transmission-id" ]
 serial = [
     "narwhal-batch-certificate/serial",
     "narwhal-batch-header/serial",
+    "narwhal-subdag/serial",
     "narwhal-transmission/serial",
     "narwhal-transmission-id/serial",
 ]
 wasm = [
     "narwhal-batch-certificate/wasm",
     "narwhal-batch-header/wasm",
+    "narwhal-subdag/wasm",
     "narwhal-transmission/wasm",
     "narwhal-transmission-id/wasm",
 ]
 test-helpers = [
     "narwhal-batch-certificate/test-helpers",
     "narwhal-batch-header/test-helpers",
+    "narwhal-subdag/test-helpers",
     "narwhal-transmission/test-helpers",
     "narwhal-transmission-id/test-helpers",
 ]
 
 batch-certificate = [ "narwhal-batch-certificate" ]
 batch-header = [ "narwhal-batch-header" ]
+subdag = [ "narwhal-subdag" ]
 transmission = [ "narwhal-transmission" ]
 transmission-id = [ "narwhal-transmission-id" ]
 
@@ -58,6 +62,12 @@ optional = true
 [dependencies.narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "./batch-header"
+version = "=0.14.6"
+optional = true
+
+[dependencies.narwhal-subdag]
+package = "snarkvm-ledger-narwhal-subdag"
+path = "./subdag"
 version = "=0.14.6"
 optional = true
 
