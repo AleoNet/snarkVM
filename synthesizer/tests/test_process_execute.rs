@@ -28,7 +28,7 @@ use rayon::prelude::*;
 #[test]
 fn test_process_execute() {
     // Load the tests.
-    let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/process/execute");
+    let tests = load_tests::<_, ProgramTest>("./tests/process/execute", "./expectations/process/execute");
     // Initialize a process.
     let process = Process::<CurrentNetwork>::load().unwrap();
 

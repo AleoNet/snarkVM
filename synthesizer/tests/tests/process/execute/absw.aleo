@@ -1,9 +1,6 @@
 /*
-
 randomness: 0
-
 cases:
-
   - function: absw_i8
     inputs: [0i8]
   - function: absw_i8
