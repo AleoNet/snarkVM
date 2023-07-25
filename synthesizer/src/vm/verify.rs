@@ -453,7 +453,7 @@ mod tests {
 
         // Construct a new block for the deploy transaction.
         let deployment_block =
-            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, transactions, vec![], None, rng)
+            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, vec![], None, transactions, rng)
                 .unwrap();
 
         // Add the deployment block.
