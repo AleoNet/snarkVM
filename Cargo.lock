@@ -3043,7 +3043,7 @@ dependencies = [
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-authority",
- "snarkvm-ledger-narwhal-batch-certificate",
+ "snarkvm-ledger-narwhal-subdag",
 ]
 
 [[package]]
@@ -3093,6 +3093,7 @@ dependencies = [
  "snarkvm-ledger-narwhal",
  "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-transmission",
  "snarkvm-ledger-narwhal-transmission-id",
 ]
@@ -3122,6 +3123,18 @@ dependencies = [
  "snarkvm-ledger-narwhal-batch-header",
  "snarkvm-ledger-narwhal-transmission-id",
  "time",
+]
+
+[[package]]
+name = "snarkvm-ledger-narwhal-subdag"
+version = "0.14.6"
+dependencies = [
+ "bincode",
+ "indexmap 2.0.0",
+ "serde_json",
+ "snarkvm-console",
+ "snarkvm-ledger-narwhal-batch-certificate",
+ "snarkvm-ledger-narwhal-subdag",
 ]
 
 [[package]]

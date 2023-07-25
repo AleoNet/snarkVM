@@ -18,7 +18,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns a candidate for the next block in the ledger, using a committed subdag and its transmissions.
     pub fn prepare_advance_to_next_block_with_bft(
         &self,
-        _committed_subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>,
+        _committed_subdag: Subdag<N>,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
     ) -> Result<Block<N>> {
         // Initialize a fixed seed RNG.

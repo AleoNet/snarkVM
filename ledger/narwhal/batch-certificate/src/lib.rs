@@ -181,8 +181,25 @@ pub mod test_helpers {
 
     /// Returns a sample batch certificate with a given round; the rest is sampled at random.
     pub fn sample_batch_certificate_for_round(round: u64, rng: &mut TestRng) -> BatchCertificate<CurrentNetwork> {
+        // Sample certificate IDs.
+        let certificate_ids = (0..10).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
+        // Return the batch certificate.
+        sample_batch_certificate_for_round_with_previous_certificate_ids(round, certificate_ids, rng)
+    }
+
+    /// Returns a sample batch certificate with a given round; the rest is sampled at random.
+    pub fn sample_batch_certificate_for_round_with_previous_certificate_ids(
+        round: u64,
+        previous_certificate_ids: IndexSet<Field<CurrentNetwork>>,
+        rng: &mut TestRng,
+    ) -> BatchCertificate<CurrentNetwork> {
         // Sample a batch header.
-        let batch_header = narwhal_batch_header::test_helpers::sample_batch_header_for_round(round, rng);
+        let batch_header =
+            narwhal_batch_header::test_helpers::sample_batch_header_for_round_with_previous_certificate_ids(
+                round,
+                previous_certificate_ids,
+                rng,
+            );
         // Sample a list of signatures.
         let mut signatures = IndexMap::with_capacity(5);
         for _ in 0..5 {

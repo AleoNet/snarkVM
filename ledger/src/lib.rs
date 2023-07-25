@@ -61,7 +61,7 @@ use console::{
 use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
-use ledger_narwhal::{BatchCertificate, Transmission, TransmissionID};
+use ledger_narwhal::{Subdag, Transmission, TransmissionID};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
@@ -75,7 +75,7 @@ use core::ops::Range;
 use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng, SeedableRng};
-use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 use time::OffsetDateTime;
 
 #[cfg(not(feature = "serial"))]

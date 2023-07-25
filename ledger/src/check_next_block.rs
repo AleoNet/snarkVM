@@ -37,17 +37,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Block height '{}' already exists in the ledger", block.height())
         }
 
-        // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
         // Ensure the next block timestamp is after the current block timestamp.
-        if block.height() > 0 {
-            let next_timestamp = block.header().timestamp();
-            let latest_timestamp = self.latest_header().timestamp();
-            if next_timestamp <= latest_timestamp {
-                bail!("The next block timestamp {next_timestamp} is before the current timestamp {latest_timestamp}")
-            }
+        if self.latest_height() > 0 && block.timestamp() <= self.latest_timestamp() {
+            bail!("The next block timestamp is before the current timestamp")
         }
 
-        // Ensure the next block round is correct.
+        // Ensure the next block round and block timestamp are correct.
         match block.authority() {
             Authority::Beacon(..) => {
                 // Ensure the next beacon block round is correct.
@@ -56,11 +51,13 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 }
             }
             Authority::Quorum(subdag) => {
-                // Retrieve the expected round from the subdag.
-                let expected_round = subdag.iter().next_back().map_or(0, |(round, _)| *round);
                 // Ensure the next quorum block round is correct.
-                if expected_round != block.round() {
+                if block.round() != subdag.anchor_round() {
                     bail!("The next quorum block has an incorrect round number")
+                }
+                // Ensure the next block timestamp is the median timestamp from the subdag.
+                if block.timestamp() != subdag.timestamp() {
+                    bail!("The next block timestamp must be the median timestamp from the subdag")
                 }
             }
         }
