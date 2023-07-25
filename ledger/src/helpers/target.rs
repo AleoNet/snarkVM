@@ -40,6 +40,7 @@ pub fn coinbase_reward(
     block_height: u32,
     starting_supply: u64,
     anchor_time: u16,
+    block_time: u16,
     combined_proof_target: u128,
     remaining_coinbase_target: u64,
     coinbase_target: u64,
@@ -50,7 +51,7 @@ pub fn coinbase_reward(
     // Compute the anchor block height at year 10.
     let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10);
     // Compute the anchor reward.
-    let anchor_reward = anchor_reward(starting_supply, anchor_time);
+    let anchor_reward = anchor_reward(starting_supply, anchor_time, block_time);
     // Compute the remaining blocks until year 10, as a u64.
     let num_remaining_blocks_to_year_10 = anchor_height_at_year_10.saturating_sub(block_height) as u64;
     // Return the coinbase reward.
@@ -77,14 +78,15 @@ pub fn coinbase_reward(
 }
 
 /// Calculates the anchor reward.
-///     R_anchor = floor((2 * S) / (H_Y10 * (H_Y10 + 1))).
+///     R_anchor = floor((2 * S * B) / (H_Y10 * (H_Y10 + 1))).
 ///     S = Starting supply.
+///     B = Block time.
 ///     H_Y10 = Expected block height at year 10.
-const fn anchor_reward(starting_supply: u64, anchor_time: u16) -> u64 {
+const fn anchor_reward(starting_supply: u64, anchor_time: u16, block_time: u16) -> u64 {
     // Calculate the anchor block height at year 10.
     let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10) as u64;
     // Compute the numerator.
-    let numerator = 2 * starting_supply;
+    let numerator = 2 * starting_supply * (anchor_time / block_time) as u64;
     // Compute the denominator.
     let denominator = anchor_height_at_year_10 * (anchor_height_at_year_10 + 1);
     // Return the anchor reward.
@@ -232,15 +234,18 @@ mod tests {
 
     #[test]
     fn test_anchor_reward() {
-        let reward = anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME);
+        let reward =
+            anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME, CurrentNetwork::BLOCK_TIME);
         assert_eq!(reward, EXPECTED_ANCHOR_REWARD);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME + 1);
+        let larger_reward =
+            anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME + 1, CurrentNetwork::BLOCK_TIME);
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME - 1);
+        let smaller_reward =
+            anchor_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME - 1, CurrentNetwork::BLOCK_TIME);
         assert!(reward > smaller_reward);
     }
 
@@ -268,6 +273,7 @@ mod tests {
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            CurrentNetwork::BLOCK_TIME,
             combined_proof_target,
             remaining_coinbase_target,
             coinbase_target,
@@ -280,6 +286,7 @@ mod tests {
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            CurrentNetwork::BLOCK_TIME,
             combined_proof_target / 2,
             remaining_coinbase_target,
             coinbase_target,
@@ -292,6 +299,7 @@ mod tests {
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            CurrentNetwork::BLOCK_TIME,
             combined_proof_target,
             remaining_coinbase_target / 2,
             coinbase_target,
@@ -304,6 +312,7 @@ mod tests {
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            CurrentNetwork::BLOCK_TIME,
             u128::MAX,
             remaining_coinbase_target,
             coinbase_target,
@@ -316,6 +325,7 @@ mod tests {
             1,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            CurrentNetwork::BLOCK_TIME,
             0,
             remaining_coinbase_target,
             coinbase_target,
@@ -339,6 +349,7 @@ mod tests {
                     1,
                     CurrentNetwork::STARTING_SUPPLY,
                     CurrentNetwork::ANCHOR_TIME,
+                    CurrentNetwork::BLOCK_TIME,
                     combined_proof_target,
                     remaining_coinbase_target,
                     coinbase_target,
@@ -350,6 +361,7 @@ mod tests {
                     1,
                     CurrentNetwork::STARTING_SUPPLY,
                     CurrentNetwork::ANCHOR_TIME,
+                    CurrentNetwork::BLOCK_TIME,
                     combined_proof_target,
                     remaining_coinbase_target * 2,
                     coinbase_target,
@@ -362,6 +374,7 @@ mod tests {
                     1,
                     CurrentNetwork::STARTING_SUPPLY,
                     CurrentNetwork::ANCHOR_TIME,
+                    CurrentNetwork::BLOCK_TIME,
                     combined_proof_target,
                     u64::try_from(combined_proof_target / 2).unwrap(),
                     coinbase_target,
@@ -374,6 +387,7 @@ mod tests {
                     1,
                     CurrentNetwork::STARTING_SUPPLY,
                     CurrentNetwork::ANCHOR_TIME,
+                    CurrentNetwork::BLOCK_TIME,
                     combined_proof_target,
                     rng.gen_range(u64::try_from(combined_proof_target).unwrap()..remaining_coinbase_target),
                     coinbase_target,
@@ -386,6 +400,7 @@ mod tests {
                     1,
                     CurrentNetwork::STARTING_SUPPLY,
                     CurrentNetwork::ANCHOR_TIME,
+                    CurrentNetwork::BLOCK_TIME,
                     rng.gen_range(combined_proof_target + 1..remaining_coinbase_target as u128),
                     remaining_coinbase_target,
                     coinbase_target,
@@ -402,21 +417,49 @@ mod tests {
 
         let mut block_height = 1;
 
-        let mut previous_reward =
-            coinbase_reward(block_height, CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME, 1, 1, 1)
-                .unwrap();
+        let mut previous_reward = coinbase_reward(
+            block_height,
+            CurrentNetwork::STARTING_SUPPLY,
+            CurrentNetwork::ANCHOR_TIME,
+            CurrentNetwork::BLOCK_TIME,
+            1,
+            1,
+            1,
+        )
+        .unwrap();
 
-        block_height *= 2;
+        block_height += 1;
+
+        let mut total_reward = previous_reward;
+
+        let coinbase_target = (CurrentNetwork::ANCHOR_TIME / CurrentNetwork::BLOCK_TIME) as u64;
+        let mut index = coinbase_target;
 
         while block_height < anchor_height_at_year_10 {
-            let reward =
-                coinbase_reward(block_height, CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::ANCHOR_TIME, 1, 1, 1)
-                    .unwrap();
+            let reward = coinbase_reward(
+                block_height,
+                CurrentNetwork::STARTING_SUPPLY,
+                CurrentNetwork::ANCHOR_TIME,
+                CurrentNetwork::BLOCK_TIME,
+                1,
+                index,
+                coinbase_target,
+            )
+            .unwrap();
             assert!(reward <= previous_reward);
 
+            total_reward += reward;
             previous_reward = reward;
-            block_height *= 2;
+            block_height += 1;
+
+            // Update the index.
+            index = match index.saturating_sub(1) {
+                0 => coinbase_target,
+                index => index,
+            };
         }
+
+        println!("Total reward up to year 10: {}", total_reward);
     }
 
     #[test]
@@ -430,6 +473,7 @@ mod tests {
             anchor_height_at_year_10,
             CurrentNetwork::STARTING_SUPPLY,
             CurrentNetwork::ANCHOR_TIME,
+            CurrentNetwork::BLOCK_TIME,
             1,
             1,
             1,
@@ -448,6 +492,7 @@ mod tests {
                 block_height,
                 CurrentNetwork::STARTING_SUPPLY,
                 CurrentNetwork::ANCHOR_TIME,
+                CurrentNetwork::BLOCK_TIME,
                 combined_proof_target,
                 remaining_coinbase_target,
                 coinbase_target,

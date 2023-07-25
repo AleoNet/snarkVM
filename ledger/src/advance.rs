@@ -119,6 +119,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     next_height,
                     N::STARTING_SUPPLY,
                     N::ANCHOR_TIME,
+                    N::BLOCK_TIME,
                     combined_proof_target,
                     remaining_coinbase_target,
                     latest_coinbase_target,
