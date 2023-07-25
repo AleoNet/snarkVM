@@ -113,12 +113,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
             false => {
                 // Calculate the coinbase reward.
+                let remaining_coinbase_target =
+                    latest_coinbase_target.saturating_sub(u64::try_from(latest_cumulative_proof_target)?);
                 let coinbase_reward = coinbase_reward(
-                    latest_block.last_coinbase_timestamp(),
-                    next_timestamp,
                     next_height,
                     N::STARTING_SUPPLY,
                     N::ANCHOR_TIME,
+                    N::BLOCK_TIME,
+                    combined_proof_target,
+                    remaining_coinbase_target,
+                    latest_coinbase_target,
                 )?;
 
                 // Calculate the proving rewards.
