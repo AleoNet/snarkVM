@@ -30,10 +30,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let (header, ratifications, solutions, transactions) =
             self.construct_block_template(&previous_block, Some(&subdag), solutions, transactions)?;
 
-        // Construct the beacon authority.
-        let authority = Authority::new_quorum(subdag);
         // Construct the new quorum block.
-        Block::new_quorum(previous_block.hash(), header, authority, ratifications, solutions, transactions)
+        Block::new_quorum(previous_block.hash(), header, subdag, ratifications, solutions, transactions)
     }
 
     /// Returns a candidate for the next block in the ledger.
@@ -77,6 +75,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Constructs a block template for the next block in the ledger.
+    #[allow(clippy::type_complexity)]
     fn construct_block_template(
         &self,
         previous_block: &Block<N>,

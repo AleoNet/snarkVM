@@ -44,6 +44,7 @@ use console::{
 };
 use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_narwhal_subdag::Subdag;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -84,17 +85,17 @@ impl<N: Network> Block<N> {
     }
 
     /// Initializes a new quorum block from the given previous block hash,
-    /// block header, authority, ratifications, solutions, and transactions.
+    /// block header, subdag, ratifications, solutions, and transactions.
     pub fn new_quorum(
         previous_hash: N::BlockHash,
         header: Header<N>,
-        authority: Authority<N>,
+        subdag: Subdag<N>,
         ratifications: Vec<Ratify<N>>,
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
     ) -> Result<Self> {
-        // Ensure the block authority is a quorum.
-        ensure!(authority.is_quorum(), "Cannot create a quorum block with a non-quorum authority");
+        // Construct the beacon authority.
+        let authority = Authority::new_quorum(subdag);
         // Construct the block.
         Self::from(previous_hash, header, authority, transactions, ratifications, solutions)
     }
