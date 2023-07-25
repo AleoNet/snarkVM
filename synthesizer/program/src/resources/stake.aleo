@@ -343,7 +343,7 @@ finalize unbond_staker:
     // delete r11 r0 into r12; // TODO (raychu86): Uncomment this. This line causes parse failure.
     add 0u32 0u32 into r12; // TODO (raychu86): Remove this placeholder when the above line is fixed.
     // Set the updated list of delegators.
-    set r11 into delegators[r1]; // TODO (raychu86): This should be r12 (the updated vector)
+    set r11 into delegators[r1];
 
     position skip_remove_delegator;
 
