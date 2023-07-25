@@ -302,4 +302,200 @@ mod tests {
             assert_eq!(2076, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
+
+    #[test]
+    fn test_load_stake_program() {
+        println!("Loading stake program...");
+
+        // Initialize a new program.
+        let _program =
+            Program::<CurrentNetwork>::from_str(include_str!("../../program/src/resources/credits.aleo")).unwrap();
+
+        println!("Finished loading stake program.");
+    }
+
+    /// Helper function to initialize stakers and validators. Returns `((validator_private_key, (public_balance, records)), (staker_private_key, (public_balance, records)))`.
+    fn initialize_validators_and_stakers<R: Rng + CryptoRng>(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        caller_private_key: &PrivateKey<CurrentNetwork>,
+        num_validators: usize,
+        num_stakers: usize,
+        input_records: &Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>,
+        rng: &mut R,
+    ) -> Result<(
+        IndexMap<PrivateKey<CurrentNetwork>, (u64, Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>)>,
+        IndexMap<PrivateKey<CurrentNetwork>, (u64, Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>)>,
+    )> {
+        // Helper function to get the balance of a `credits.aleo` record.
+        let get_balance = |record: &Record<CurrentNetwork, Plaintext<CurrentNetwork>>| -> u64 {
+            match record.data().get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
+                Entry::Private(Plaintext::Literal(Literal::U64(amount), ..)) => **amount,
+                _ => unreachable!("Invalid entry type for credits.aleo."),
+            }
+        };
+
+        ensure!((num_stakers + num_stakers) * 4 < input_records.len(), "Not enough input records.");
+
+        // Derive the caller view key.
+        let caller_view_key = ViewKey::try_from(caller_private_key)?;
+
+        // Initialize the validators and stakers.
+        let mut validators: IndexMap<_, _> = Default::default();
+        let mut stakers: IndexMap<_, _> = Default::default();
+
+        // Create the initial transactions to fund the validators and stakers.
+        let mut transactions = Vec::new();
+
+        // Change records for the caller.
+        let mut change_records = Vec::new();
+
+        let mut input_records = input_records.iter().cloned();
+
+        for index in 0..num_validators + num_stakers {
+            // Construct the recipient address.
+            let recipient_private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+            let recipient_view_key = ViewKey::try_from(&recipient_private_key)?;
+            let recipient_address = Address::try_from(&recipient_private_key)?;
+
+            // Construct the private to public transfer.
+
+            // Construct inputs
+            let record = input_records.next().unwrap();
+            let fee_record = input_records.next().unwrap();
+            let private_amount = get_balance(&record);
+            let inputs = [
+                Value::<CurrentNetwork>::Record(record),
+                Value::<CurrentNetwork>::from_str(&recipient_address.to_string())?,
+                Value::<CurrentNetwork>::from_str(&format!("{private_amount}u64"))?,
+            ]
+            .into_iter();
+            let fee = Some((fee_record, 0u64));
+
+            // Construct the transaction.
+            let private_to_public_transfer = vm
+                .execute(caller_private_key, ("credits.aleo", "transfer_private_to_public"), inputs, fee, None, rng)
+                .unwrap();
+
+            // Track the change records.
+            let change_record = private_to_public_transfer.records().collect_vec()[0].1.decrypt(&caller_view_key)?;
+            change_records.push(change_record);
+
+            // Construct the private transfer.
+
+            // Construct inputs
+            let record = input_records.next().unwrap();
+            let fee_record = input_records.next().unwrap();
+            let public_amount = get_balance(&record);
+            let inputs = [
+                Value::<CurrentNetwork>::Record(record),
+                Value::<CurrentNetwork>::from_str(&recipient_address.to_string())?,
+                Value::<CurrentNetwork>::from_str(&format!("{public_amount}u64"))?,
+            ]
+            .into_iter();
+            let fee = Some((fee_record, 0u64));
+
+            // Construct the transaction.
+            let private_transfer =
+                vm.execute(caller_private_key, ("credits.aleo", "transfer_private"), inputs, fee, None, rng)?;
+            let new_record = private_transfer.records().collect_vec()[0].1.decrypt(&recipient_view_key)?;
+
+            // Add the transactions.
+            transactions.push(private_to_public_transfer);
+            transactions.push(private_transfer);
+
+            // Initialize the validator or staker.
+            if index < num_validators {
+                validators.insert(recipient_private_key, (public_amount, vec![new_record]));
+            } else {
+                stakers.insert(recipient_private_key, (public_amount, vec![new_record]));
+            }
+        }
+
+        // Sample the next block.
+        let block = crate::test_helpers::sample_next_block(vm, caller_private_key, &transactions, rng)?;
+        // Advance the block
+        vm.add_next_block(&block)?;
+
+        // Deploy the stake program.
+        let stake_program =
+            Program::<CurrentNetwork>::from_str(include_str!("../../program/src/resources/stake.aleo"))?;
+
+        // Construct the deploy transaction.
+
+        // Fetch the fee record.
+        let remaining_records = input_records.chain(change_records.iter().cloned()).collect::<Vec<_>>();
+        let fee_record = remaining_records[0].clone();
+
+        // Deploy the staking program.
+        let deployment = vm.deploy(caller_private_key, &stake_program, (fee_record, 0), None, rng)?;
+        // Sample the next block.
+        let block = crate::test_helpers::sample_next_block(vm, caller_private_key, &[deployment], rng)?;
+        // Advance the block
+        vm.add_next_block(&block)?;
+
+        Ok((validators, stakers))
+    }
+
+    #[test]
+    fn test_staking() {
+        let rng = &mut TestRng::default();
+
+        let num_validators = 1;
+        let num_stakers = 1;
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, records) = prepare_vm(rng).unwrap();
+
+        // Decrypt the records.
+        let records = records.values().map(|record| record.decrypt(&caller_view_key).unwrap()).collect::<Vec<_>>();
+
+        let (mut validators, mut stakers) =
+            initialize_validators_and_stakers(&vm, &caller_private_key, num_validators, num_stakers, &records, rng)
+                .unwrap();
+
+        // Bond the validators.
+        {
+            let mut transactions = Vec::with_capacity(validators.len());
+
+            // Bond each validator.
+            for (validator_private_key, (amount, records)) in validators.iter_mut() {
+                // Derive the validator view key.
+                let validator_view_key = ViewKey::try_from(validator_private_key).unwrap();
+
+                // Construct the inputs.
+                let inputs = [Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap()];
+
+                // Construct the fee.
+                let fee = Some((records.pop().unwrap(), 0u64));
+
+                // Construct the transaction.
+                let bond_validator_transaction = vm
+                    .execute(validator_private_key, ("stake.aleo", "bond_validator"), inputs.iter(), fee, None, rng)
+                    .unwrap();
+
+                // Add the change record.
+                let change_record =
+                    bond_validator_transaction.records().collect_vec()[0].1.decrypt(&validator_view_key).unwrap();
+                records.push(change_record);
+
+                // Add the bond transaction.
+                transactions.push(bond_validator_transaction);
+            }
+
+            // Construct the next block.
+            let block = crate::test_helpers::sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
+            // Advance the block.
+            vm.add_next_block(&block).unwrap();
+        }
+
+        // Bond the delegators
+
+        // Unbond the delegators/validators
+
+        // Unlock the delegators/validators
+    }
 }
