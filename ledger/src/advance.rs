@@ -18,7 +18,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns a candidate for the next block in the ledger, using a committed subdag and its transmissions.
     pub fn prepare_advance_to_next_block_with_bft(
         &self,
-        _committed_subdag: Subdag<N>,
+        _subdag: Subdag<N>,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
     ) -> Result<Block<N>> {
         // Initialize a fixed seed RNG.
@@ -44,14 +44,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_state_root = *self.latest_state_root();
         // Retrieve the latest block.
         let latest_block = self.latest_block();
-        // Retrieve the latest round.
-        let latest_round = latest_block.round();
-        // Retrieve the latest height.
-        let latest_height = latest_block.height();
-        // Retrieve the latest total supply in microcredits.
-        let latest_total_supply = latest_block.total_supply_in_microcredits();
-        // Retrieve the latest cumulative weight.
-        let latest_cumulative_weight = latest_block.cumulative_weight();
         // Retrieve the latest cumulative proof target.
         let latest_cumulative_proof_target = latest_block.cumulative_proof_target();
         // Retrieve the latest coinbase target.
@@ -75,11 +67,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Compute the next round number.
-        let next_round = latest_round.saturating_add(1);
+        let next_round = latest_block.round().saturating_add(1);
         // Compute the next height.
-        let next_height = latest_height.saturating_add(1);
+        let next_height = latest_block.height().saturating_add(1);
         // Compute the next cumulative weight.
-        let next_cumulative_weight = latest_cumulative_weight.saturating_add(combined_proof_target);
+        let next_cumulative_weight = latest_block.cumulative_weight().saturating_add(combined_proof_target);
         // Compute the next cumulative proof target.
         let next_cumulative_proof_target = latest_cumulative_proof_target.saturating_add(combined_proof_target);
         // Determine if the coinbase target is reached.
@@ -89,23 +81,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             true => 0,
             false => next_cumulative_proof_target,
         };
-
-        // Construct the finalize state.
-        let state = FinalizeGlobalState::new::<N>(
-            next_round,
-            next_height,
-            next_cumulative_weight,
-            next_cumulative_proof_target,
-            latest_block.hash(),
-        )?;
-        // Select the transactions from the memory pool.
-        let transactions = self.vm.speculate(state, transactions.iter())?;
-
-        // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, &transactions)?;
-
-        // Checkpoint the timestamp for the next block.
-        let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // TODO (raychu86): Pay the provers.
         let (proving_rewards, staking_rewards) = match proof_targets.is_empty() {
@@ -149,6 +124,24 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 .collect::<Result<Vec<_>, _>>()?,
         )?
         .root();
+
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new::<N>(
+            next_round,
+            next_height,
+            next_cumulative_weight,
+            next_cumulative_proof_target,
+            latest_block.hash(),
+        )?;
+        // Select the transactions from the memory pool.
+        let transactions = self.vm.speculate(state, transactions.iter())?;
+
+        // Compute the next total supply in microcredits.
+        let next_total_supply_in_microcredits =
+            update_total_supply(latest_block.total_supply_in_microcredits(), &transactions)?;
+
+        // Checkpoint the timestamp for the next block.
+        let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // Construct the next coinbase target.
         let next_coinbase_target = coinbase_target(
@@ -214,7 +207,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Update the current epoch challenge.
             self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
         }
-
         Ok(())
     }
 }
