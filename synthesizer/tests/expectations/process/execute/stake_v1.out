@@ -1,1 +1,11 @@
 - 'Failed to evaluate instruction (assert.eq r1 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- []
+- []
+- 'Failed to evaluate instruction (assert.eq r2 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- []
+- []
+- 'Failed to evaluate instruction (assert.eq r2 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- []
+- 'Failed to evaluate instruction (assert.eq r1 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- []
+- []

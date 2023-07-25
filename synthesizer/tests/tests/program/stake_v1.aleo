@@ -3,6 +3,37 @@ randomness: 54329
 cases:
   - function: bond_validator
     inputs: [999_999u64]
+    private_key: APrivateKey1zkpGzBtBV2qKXduBDLrNVBBAJtSj6GQ2iPZNMW83f6rboGp
+  - function: bond_validator
+    inputs: [1_000_000u64]
+    private_key: APrivateKey1zkpGzBtBV2qKXduBDLrNVBBAJtSj6GQ2iPZNMW83f6rboGp
+  - function: bond_validator
+    inputs: [1_000_000_000_000u64]
+    private_key: APrivateKey1zkpGzBtBV2qKXduBDLrNVBBAJtSj6GQ2iPZNMW83f6rboGp
+  - function: bond_staker
+    inputs: [aleo1zgzwm7had6av2n92xqfxnc5h7fvq7a7fc7wrnkcr69q55wkk5qzsr9pwky, 999_999u64]
+    private_key: APrivateKey1zkp5Up4Qs7bvhEgtpmW3wKvkC1BguKXwHNvQ3Bs5NDvc8GU
+  - function: bond_staker
+    inputs: [aleo1zgzwm7had6av2n92xqfxnc5h7fvq7a7fc7wrnkcr69q55wkk5qzsr9pwky, 1_000_000u64]
+    private_key: APrivateKey1zkp5Up4Qs7bvhEgtpmW3wKvkC1BguKXwHNvQ3Bs5NDvc8GU
+  - function: bond_staker
+    inputs: [aleo1zgzwm7had6av2n92xqfxnc5h7fvq7a7fc7wrnkcr69q55wkk5qzsr9pwky, 2_000_000u64]
+    private_key: APrivateKey1zkp6qC1QksvNWGQcZ4e5mwrm6AeyJ2En5TFrxCU942GP9F2
+  - function: unbond_staker
+    inputs: [aleo1zgzwm7had6av2n92xqfxnc5h7fvq7a7fc7wrnkcr69q55wkk5qzsr9pwky, 999_999u64]
+    private_key: APrivateKey1zkp5Up4Qs7bvhEgtpmW3wKvkC1BguKXwHNvQ3Bs5NDvc8GU
+  - function: unbond_staker
+    inputs: [aleo1zgzwm7had6av2n92xqfxnc5h7fvq7a7fc7wrnkcr69q55wkk5qzsr9pwky, 1_000_000u64]
+    private_key: APrivateKey1zkp5Up4Qs7bvhEgtpmW3wKvkC1BguKXwHNvQ3Bs5NDvc8GU
+  - function: unbond_validator
+    inputs: [999_999u64]
+    private_key: APrivateKey1zkpGzBtBV2qKXduBDLrNVBBAJtSj6GQ2iPZNMW83f6rboGp
+  - function: unbond_validator
+    inputs: [1_000_000u64]
+    private_key: APrivateKey1zkpGzBtBV2qKXduBDLrNVBBAJtSj6GQ2iPZNMW83f6rboGp
+  - function: unbond_validator
+    inputs: [999_999_999_999u64]
+    private_key: APrivateKey1zkpGzBtBV2qKXduBDLrNVBBAJtSj6GQ2iPZNMW83f6rboGp
 */
 
 // Disclosure: This program is experimental and not intended for production use.

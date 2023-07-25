@@ -1,1 +1,11 @@
 - execute: 'Failed to evaluate instruction (assert.eq r1 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- execute: Input record for 'credits.aleo' must belong to the signer
+- execute: Input record for 'credits.aleo' must belong to the signer
+- execute: 'Failed to evaluate instruction (assert.eq r2 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- execute: Input record for 'credits.aleo' must belong to the signer
+- execute: Input record for 'credits.aleo' must belong to the signer
+- execute: 'Failed to evaluate instruction (assert.eq r2 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- execute: Input record for 'credits.aleo' must belong to the signer
+- execute: 'Failed to evaluate instruction (assert.eq r1 true ;): ''assert.eq'' failed: ''false'' is not equal to ''true'' (should be equal)'
+- execute: Input record for 'credits.aleo' must belong to the signer
+- execute: Input record for 'credits.aleo' must belong to the signer
