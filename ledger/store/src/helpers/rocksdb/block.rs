@@ -53,7 +53,7 @@ pub struct BlockDB<N: Network> {
     transaction_store: TransactionStore<N, TransactionDB<N>>,
     /// The ratifications map.
     ratifications_map: DataMap<N::BlockHash, Vec<Ratify<N>>>,
-    /// The coinbase solution map.
+    /// The solutions map.
     coinbase_solution_map: DataMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
     coinbase_puzzle_commitment_map: DataMap<PuzzleCommitment<N>, u32>,
@@ -148,7 +148,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         &self.ratifications_map
     }
 
-    /// Returns the coinbase solution map.
+    /// Returns the solutions map.
     fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap {
         &self.coinbase_solution_map
     }

@@ -23,12 +23,12 @@ use super::*;
 pub struct CoinbaseSolution<N: Network> {
     /// The partial solutions of the coinbase puzzle, which are aggregated into a single solution.
     partial_solutions: Vec<PartialSolution<N>>,
-    /// The KZG proof of the coinbase solution.
+    /// The KZG proof of the solutions.
     proof: PuzzleProof<N>,
 }
 
 impl<N: Network> CoinbaseSolution<N> {
-    /// Initializes a new instance of a coinbase solution.
+    /// Initializes a new instance of the solutions.
     pub const fn new(partial_solutions: Vec<PartialSolution<N>>, proof: PuzzleProof<N>) -> Self {
         Self { partial_solutions, proof }
     }
@@ -58,11 +58,11 @@ impl<N: Network> CoinbaseSolution<N> {
         self.partial_solutions.is_empty()
     }
 
-    /// Returns the cumulative sum of the prover solutions.
-    pub fn to_cumulative_proof_target(&self) -> Result<u128> {
-        // Compute the cumulative target as a u128.
-        self.partial_solutions.iter().try_fold(0u128, |cumulative, solution| {
-            cumulative.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Cumulative target overflowed"))
+    /// Returns the combined sum of the prover solutions.
+    pub fn to_combined_proof_target(&self) -> Result<u128> {
+        // Compute the combined proof target as a u128.
+        self.partial_solutions.iter().try_fold(0u128, |combined, solution| {
+            combined.checked_add(solution.to_target()? as u128).ok_or_else(|| anyhow!("Combined target overflowed"))
         })
     }
 
