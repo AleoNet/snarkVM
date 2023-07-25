@@ -78,15 +78,16 @@ pub fn coinbase_reward(
 }
 
 /// Calculates the anchor reward.
-///     R_anchor = floor((2 * S * B) / (H_Y10 * (H_Y10 + 1))).
+///     R_anchor = floor((2 * S * A / B) / (H_Y10 * (H_Y10 + 1))).
 ///     S = Starting supply.
+///     A = Anchor time.
 ///     B = Block time.
 ///     H_Y10 = Expected block height at year 10.
 const fn anchor_reward(starting_supply: u64, anchor_time: u16, block_time: u16) -> u64 {
     // Calculate the anchor block height at year 10.
     let anchor_height_at_year_10 = anchor_block_height(anchor_time, 10) as u64;
     // Compute the numerator.
-    let numerator = 2 * starting_supply * (anchor_time / block_time) as u64;
+    let numerator = 2 * starting_supply * anchor_time as u64 / block_time as u64;
     // Compute the denominator.
     let denominator = anchor_height_at_year_10 * (anchor_height_at_year_10 + 1);
     // Return the anchor reward.
@@ -228,9 +229,9 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
-    const EXPECTED_ANCHOR_REWARD: u64 = 18;
+    const EXPECTED_ANCHOR_REWARD: u64 = 235;
     const EXPECTED_STAKING_REWARD: u64 = 29_727_929;
-    const EXPECTED_COINBASE_REWARD: u64 = 227_059_182;
+    const EXPECTED_COINBASE_REWARD_AT_BLOCK_1: u64 = 2_964_383_765;
 
     #[test]
     fn test_anchor_reward() {
@@ -279,7 +280,7 @@ mod tests {
             coinbase_target,
         )
         .unwrap();
-        assert_eq!(reward, EXPECTED_COINBASE_REWARD);
+        assert_eq!(reward, EXPECTED_COINBASE_REWARD_AT_BLOCK_1);
 
         // Halving the combined proof target halves the reward.
         let smaller_reward = coinbase_reward(
@@ -305,7 +306,7 @@ mod tests {
             coinbase_target,
         )
         .unwrap();
-        assert!(reward > smaller_reward);
+        assert_eq!(smaller_reward, reward / 2);
 
         // Dramatically increasing the combined proof target greater than the remaining coinbase target will not increase the reward.
         let equivalent_reward = coinbase_reward(
@@ -459,7 +460,7 @@ mod tests {
             };
         }
 
-        println!("Total reward up to year 10: {}", total_reward);
+        assert_eq!(total_reward, 1_558_082_818_454_185, "Update me if my parameters have changed");
     }
 
     #[test]
