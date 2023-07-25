@@ -22,7 +22,9 @@ fn main() -> anyhow::Result<()> {
     // Run the updater.
     println!("{}", Updater::print_cli());
     // Run the CLI.
-    println!("{}", cli.command.parse()?);
-
+    match cli.command.parse() {
+        Ok(output) => println!("{output}\n"),
+        Err(error) => println!("⚠️  {error}\n"),
+    }
     Ok(())
 }

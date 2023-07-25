@@ -1,0 +1,47 @@
+- execute:
+    mapping_operations.aleo/empty_remove:
+      outputs: []
+      finalize:
+      - 10u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"3469929382687995735563548932522636164565339362193790961168225742603306642381field","checksum":"4851912648674817151416486906308762270127342924004841542182383685122007704094field","value":"record1qyqsqxx4wfp4dp52s6wydyjhav0ef8q5e3nflq5aqqmp3q40l9ju5kc9qyxx66trwfhkxun9v35hguerqqpqzqph69u3w4dfvu4ddhsftmudakengx98k2ydrga0qe0zp2m309c8pvcew40qwxqg338ajpnyawe8z7884rym27regrlfyy8c0m3lcckq2wxexgh"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    mapping_operations.aleo/insert_contains_remove:
+      outputs: []
+      finalize:
+      - 0u8
+      - 0u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"2045266782113316558106177208631026758904908122232403013712519500316911444067field","checksum":"1999821344129667689924969237503954444262517400891821438212669894826596692730field","value":"record1qyqsq46tdtfwjjdy9hvr7kcqqeggyfqp2gz6cw7dapvy46ctwqcwgagrqyxx66trwfhkxun9v35hguerqqpqzqq6nkxs4ryfvvg7q4h32eywcwwntq3hysdhsf5azfvevlxesvgkpneagyrchdnm4nw9qk5zgnxvsxzxdl34hq8xzgzpvkjm9zemxhkqxwhwrfs"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    mapping_operations.aleo/insert_contains_remove:
+      outputs: []
+      finalize:
+      - 0u8
+      - 0u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"8317152069488575203104851926235878001151715228265718637883101830011962411947field","checksum":"2325772429111211422907408986591950122622606917282803605559703347790731400965field","value":"record1qyqsqvypj57sr70q2cd60f4e874arjnp5j0qj6zjflf300w3sh9thucpqyxx66trwfhkxun9v35hguerqqpqzq8gcjdtk807350lx5q7nf5u094tsu9htsj3qzd06uj3g2pz0ynpqphcel633nmlw6h627amg5hrw7t3zcd4zdmg2ar473nnx76ydjrsk7xx8se"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    mapping_operations.aleo/insert_contains_remove:
+      outputs: []
+      finalize:
+      - 0u8
+      - 1u8
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"5971305852828094191657282179365838895372769696815175657695696968033849260243field","checksum":"2805707635275114294240551931083813092067029800793416780865335646174481621384field","value":"record1qyqsp73wc09xku83wc3e46yw8hugy3w5tk4f5aly5fw4n8wc2vk9ptcrqyxx66trwfhkxun9v35hguerqqpqzqp6hlayyaqwpnqq5ulel2h5kkhrppvl2s6lp0yvlg8mmdna8p0sqmpwx9up84kg9lrgpxunalexe76jywgdce2r0apta6ymgrg0gq0qku68pz0"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.

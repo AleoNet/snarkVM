@@ -25,7 +25,7 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Scalar};
 use core::ops::Deref;
 
 /// The account view key is able to decrypt records and ciphertext.
-pub struct ViewKey<A: Aleo>(Scalar<A>);
+pub struct ViewKey<A: Aleo>(Scalar<A>, OnceCell<Address<A>>);
 
 #[cfg(console)]
 impl<A: Aleo> Inject for ViewKey<A> {
@@ -33,7 +33,7 @@ impl<A: Aleo> Inject for ViewKey<A> {
 
     /// Initializes an account view key from the given mode and scalar field element.
     fn new(mode: Mode, view_key: Self::Primitive) -> ViewKey<A> {
-        Self(Scalar::new(mode, *view_key))
+        Self(Scalar::new(mode, *view_key), Default::default())
     }
 }
 
