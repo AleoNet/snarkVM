@@ -18,7 +18,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns a candidate for the next block in the ledger, using a committed subdag and its transmissions.
     pub fn prepare_advance_to_next_block_with_bft(
         &self,
-        _committed_subdag: Subdag<N>,
+        _subdag: Subdag<N>,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
     ) -> Result<Block<N>> {
         // Initialize a fixed seed RNG.
@@ -40,23 +40,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         transactions: Vec<Transaction<N>>,
         rng: &mut R,
     ) -> Result<Block<N>> {
-        // Retrieve the latest state root.
-        let latest_state_root = *self.latest_state_root();
-        // Retrieve the latest block.
-        let latest_block = self.latest_block();
-        // Retrieve the latest round.
-        let latest_round = latest_block.round();
-        // Retrieve the latest height.
-        let latest_height = latest_block.height();
-        // Retrieve the latest total supply in microcredits.
-        let latest_total_supply = latest_block.total_supply_in_microcredits();
-        // Retrieve the latest cumulative weight.
-        let latest_cumulative_weight = latest_block.cumulative_weight();
-        // Retrieve the latest cumulative proof target.
-        let latest_cumulative_proof_target = latest_block.cumulative_proof_target();
-        // Retrieve the latest coinbase target.
-        let latest_coinbase_target = latest_block.coinbase_target();
-
         // Construct the solutions.
         let (coinbase, coinbase_accumulator_point, proof_targets, combined_proof_target) = match solutions.is_empty() {
             true => (None, Field::<N>::zero(), Default::default(), 0u128),
@@ -74,12 +57,21 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         };
 
+        // Retrieve the latest state root.
+        let latest_state_root = *self.latest_state_root();
+        // Retrieve the latest block.
+        let latest_block = self.latest_block();
+        // Retrieve the latest cumulative proof target.
+        let latest_cumulative_proof_target = latest_block.cumulative_proof_target();
+        // Retrieve the latest coinbase target.
+        let latest_coinbase_target = latest_block.coinbase_target();
+
         // Compute the next round number.
-        let next_round = latest_round.saturating_add(1);
+        let next_round = latest_block.round().saturating_add(1);
         // Compute the next height.
-        let next_height = latest_height.saturating_add(1);
+        let next_height = latest_block.height().saturating_add(1);
         // Compute the next cumulative weight.
-        let next_cumulative_weight = latest_cumulative_weight.saturating_add(combined_proof_target);
+        let next_cumulative_weight = latest_block.cumulative_weight().saturating_add(combined_proof_target);
         // Compute the next cumulative proof target.
         let next_cumulative_proof_target = latest_cumulative_proof_target.saturating_add(combined_proof_target);
         // Determine if the coinbase target is reached.
@@ -90,50 +82,21 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             false => next_cumulative_proof_target,
         };
 
-        // Construct the finalize state.
-        let state = FinalizeGlobalState::new::<N>(
-            next_round,
+        // Calculate the coinbase reward.
+        let coinbase_reward = coinbase_reward(
             next_height,
-            next_cumulative_weight,
-            next_cumulative_proof_target,
-            latest_block.hash(),
+            N::STARTING_SUPPLY,
+            N::ANCHOR_TIME,
+            N::BLOCK_TIME,
+            combined_proof_target,
+            latest_coinbase_target.saturating_sub(u64::try_from(latest_cumulative_proof_target)?),
+            latest_coinbase_target,
         )?;
-        // Select the transactions from the memory pool.
-        let transactions = self.vm.speculate(state, transactions.iter())?;
-
-        // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, &transactions)?;
-
-        // Checkpoint the timestamp for the next block.
-        let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
-
         // TODO (raychu86): Pay the provers.
-        let (proving_rewards, staking_rewards) = match proof_targets.is_empty() {
-            true => {
-                // Output the proving and staking rewards.
-                (vec![], vec![])
-            }
-            false => {
-                // Calculate the coinbase reward.
-                let remaining_coinbase_target =
-                    latest_coinbase_target.saturating_sub(u64::try_from(latest_cumulative_proof_target)?);
-                let coinbase_reward = coinbase_reward(
-                    next_height,
-                    N::STARTING_SUPPLY,
-                    N::ANCHOR_TIME,
-                    N::BLOCK_TIME,
-                    combined_proof_target,
-                    remaining_coinbase_target,
-                    latest_coinbase_target,
-                )?;
-                // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
-                // Calculate the staking rewards.
-                let staking_rewards = Vec::<Ratify<N>>::new();
-                // Output the proving and staking rewards.
-                (proving_rewards, staking_rewards)
-            }
-        };
+        // Calculate the proving rewards.
+        let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
+        // Calculate the staking rewards.
+        let staking_rewards = Vec::<Ratify<N>>::new();
 
         // Construct the ratifications.
         let mut ratifications = Vec::<Ratify<N>>::new();
@@ -149,6 +112,24 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 .collect::<Result<Vec<_>, _>>()?,
         )?
         .root();
+
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new::<N>(
+            next_round,
+            next_height,
+            next_cumulative_weight,
+            next_cumulative_proof_target,
+            latest_block.hash(),
+        )?;
+        // Select the transactions from the memory pool.
+        let transactions = self.vm.speculate(state, transactions.iter())?;
+
+        // Compute the next total supply in microcredits.
+        let next_total_supply_in_microcredits =
+            update_total_supply(latest_block.total_supply_in_microcredits(), &transactions)?;
+
+        // Checkpoint the timestamp for the next block.
+        let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // Construct the next coinbase target.
         let next_coinbase_target = coinbase_target(
@@ -214,7 +195,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Update the current epoch challenge.
             self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
         }
-
         Ok(())
     }
 }
