@@ -58,17 +58,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let latest_coinbase_target = latest_block.coinbase_target();
 
         // Construct the solutions.
-        let (coinbase, coinbase_accumulator_point, combined_proof_target) = match solutions.is_empty() {
-            true => (None, Field::<N>::zero(), 0u128),
+        let (coinbase, coinbase_accumulator_point, proof_targets, combined_proof_target) = match solutions.is_empty() {
+            true => (None, Field::<N>::zero(), Default::default(), 0u128),
             false => {
                 // Accumulate the prover solutions.
                 let (coinbase, coinbase_accumulator_point) =
                     self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, &solutions)?;
+                // Compute the proof targets, with the corresponding addresses.
+                let proof_targets =
+                    solutions.iter().map(|s| Ok((s.address(), s.to_target()? as u128))).collect::<Result<Vec<_>>>()?;
                 // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
-                let combined_proof_target =
-                    solutions.iter().map(|s| Ok(s.to_target()? as u128)).sum::<Result<u128>>()?;
+                let combined_proof_target = proof_targets.iter().map(|(_, t)| t).sum::<u128>();
                 // Output the solutions, coinbase accumulator point, and combined proof target.
-                (Some(coinbase), coinbase_accumulator_point, combined_proof_target)
+                (Some(coinbase), coinbase_accumulator_point, proof_targets, combined_proof_target)
             }
         };
 
@@ -106,7 +108,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let next_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // TODO (raychu86): Pay the provers.
-        let (proving_rewards, staking_rewards) = match solutions.is_empty() {
+        let (proving_rewards, staking_rewards) = match proof_targets.is_empty() {
             true => {
                 // Output the proving and staking rewards.
                 (vec![], vec![])
@@ -124,9 +126,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     remaining_coinbase_target,
                     latest_coinbase_target,
                 )?;
-
                 // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(solutions, coinbase_reward, combined_proof_target)?;
+                let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
                 // Calculate the staking rewards.
                 let staking_rewards = Vec::<Ratify<N>>::new();
                 // Output the proving and staking rewards.
