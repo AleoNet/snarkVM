@@ -40,15 +40,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         transactions: Vec<Transaction<N>>,
         rng: &mut R,
     ) -> Result<Block<N>> {
-        // Retrieve the latest state root.
-        let latest_state_root = *self.latest_state_root();
-        // Retrieve the latest block.
-        let latest_block = self.latest_block();
-        // Retrieve the latest cumulative proof target.
-        let latest_cumulative_proof_target = latest_block.cumulative_proof_target();
-        // Retrieve the latest coinbase target.
-        let latest_coinbase_target = latest_block.coinbase_target();
-
         // Construct the solutions.
         let (coinbase, coinbase_accumulator_point, proof_targets, combined_proof_target) = match solutions.is_empty() {
             true => (None, Field::<N>::zero(), Default::default(), 0u128),
@@ -66,6 +57,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         };
 
+        // Retrieve the latest state root.
+        let latest_state_root = *self.latest_state_root();
+        // Retrieve the latest block.
+        let latest_block = self.latest_block();
+        // Retrieve the latest cumulative proof target.
+        let latest_cumulative_proof_target = latest_block.cumulative_proof_target();
+        // Retrieve the latest coinbase target.
+        let latest_coinbase_target = latest_block.coinbase_target();
+
         // Compute the next round number.
         let next_round = latest_block.round().saturating_add(1);
         // Compute the next height.
@@ -82,33 +82,21 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             false => next_cumulative_proof_target,
         };
 
+        // Calculate the coinbase reward.
+        let coinbase_reward = coinbase_reward(
+            next_height,
+            N::STARTING_SUPPLY,
+            N::ANCHOR_TIME,
+            N::BLOCK_TIME,
+            combined_proof_target,
+            latest_coinbase_target.saturating_sub(u64::try_from(latest_cumulative_proof_target)?),
+            latest_coinbase_target,
+        )?;
         // TODO (raychu86): Pay the provers.
-        let (proving_rewards, staking_rewards) = match proof_targets.is_empty() {
-            true => {
-                // Output the proving and staking rewards.
-                (vec![], vec![])
-            }
-            false => {
-                // Calculate the coinbase reward.
-                let remaining_coinbase_target =
-                    latest_coinbase_target.saturating_sub(u64::try_from(latest_cumulative_proof_target)?);
-                let coinbase_reward = coinbase_reward(
-                    next_height,
-                    N::STARTING_SUPPLY,
-                    N::ANCHOR_TIME,
-                    N::BLOCK_TIME,
-                    combined_proof_target,
-                    remaining_coinbase_target,
-                    latest_coinbase_target,
-                )?;
-                // Calculate the proving rewards.
-                let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
-                // Calculate the staking rewards.
-                let staking_rewards = Vec::<Ratify<N>>::new();
-                // Output the proving and staking rewards.
-                (proving_rewards, staking_rewards)
-            }
-        };
+        // Calculate the proving rewards.
+        let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
+        // Calculate the staking rewards.
+        let staking_rewards = Vec::<Ratify<N>>::new();
 
         // Construct the ratifications.
         let mut ratifications = Vec::<Ratify<N>>::new();
