@@ -388,10 +388,11 @@ impl<N: Network> CoinbasePuzzle<N> {
     ) -> Result<DensePolynomial<<N::PairingCurve as PairingEngine>::Fr>> {
         let input = {
             let mut bytes = [0u8; 76];
-            bytes[..4].copy_from_slice(&epoch_challenge.epoch_number().to_bytes_le()?);
-            bytes[4..36].copy_from_slice(&epoch_challenge.epoch_block_hash().to_bytes_le()?);
-            bytes[36..68].copy_from_slice(&address.to_bytes_le()?);
-            bytes[68..].copy_from_slice(&nonce.to_le_bytes());
+            epoch_challenge.epoch_number().write_le(&mut bytes[..4])?;
+            epoch_challenge.epoch_block_hash().write_le(&mut bytes[4..36])?;
+            address.write_le(&mut bytes[36..68])?;
+            nonce.write_le(&mut bytes[68..])?;
+
             bytes
         };
         Ok(hash_to_polynomial::<<N::PairingCurve as PairingEngine>::Fr>(&input, epoch_challenge.degree()))
