@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns a candidate for the next block in the ledger, using a committed subdag and its transmissions.
-    pub fn prepare_advance_to_next_block_with_bft(
+    pub fn prepare_advance_to_next_quorum_block(
         &self,
         subdag: Subdag<N>,
         transmissions: IndexMap<TransmissionID<N>, Transmission<N>>,
@@ -35,7 +35,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns a candidate for the next block in the ledger.
-    pub fn prepare_advance_to_next_block<R: Rng + CryptoRng>(
+    pub fn prepare_advance_to_next_beacon_block<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         candidate_solutions: Vec<ProverSolution<N>>,
