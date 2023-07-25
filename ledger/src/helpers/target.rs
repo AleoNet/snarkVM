@@ -29,13 +29,13 @@ pub const fn staking_reward(starting_supply: u64, anchor_time: u16) -> u64 {
 }
 
 /// Calculates the coinbase reward for a given block.
-///     R_coinbase = max(0, H_Y10 - H) * R_anchor * min(C_R, P) / C
+///     R_coinbase = max(0, H_Y10 - H) * R_anchor * min(P, C_R) / C
 ///     R_anchor = Anchor reward.
 ///     H_Y10 = Anchor block height at year 10.
 ///     H = Current block height.
+///     P = Combined proof target.
 ///     C_R = Remaining coinbase target.
 ///     C = Coinbase target.
-///     P = Combined proof target.
 pub fn coinbase_reward(
     block_height: u32,
     starting_supply: u64,
