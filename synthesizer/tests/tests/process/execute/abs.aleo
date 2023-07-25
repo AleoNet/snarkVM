@@ -1,7 +1,5 @@
 /*
-
 randomness: 0
-
 cases:
 
   - function: abs_i8
