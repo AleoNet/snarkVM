@@ -314,12 +314,12 @@ mod tests {
         println!("Finished loading stake program.");
     }
 
-    /// Helper function to initialize stakers and validators. Returns `((validator_private_key, (public_balance, records)), (staker_private_key, (public_balance, records)))`.
-    fn initialize_validators_and_stakers<R: Rng + CryptoRng>(
+    /// Helper function to initialize validators and delegators. Returns `((validator_private_key, (public_balance, records)), (delegator_private_key, (public_balance, records)))`.
+    fn initialize_validators_and_delegators<R: Rng + CryptoRng>(
         vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
         caller_private_key: &PrivateKey<CurrentNetwork>,
         num_validators: usize,
-        num_stakers: usize,
+        num_delegators: usize,
         input_records: &Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<(
@@ -334,14 +334,14 @@ mod tests {
             }
         };
 
-        ensure!((num_stakers + num_stakers) * 4 < input_records.len(), "Not enough input records.");
+        ensure!((num_validators + num_delegators) * 4 < input_records.len(), "Not enough input records.");
 
         // Derive the caller view key.
         let caller_view_key = ViewKey::try_from(caller_private_key)?;
 
-        // Initialize the validators and stakers.
+        // Initialize the validators and delegators.
         let mut validators: IndexMap<_, _> = Default::default();
-        let mut stakers: IndexMap<_, _> = Default::default();
+        let mut delegators: IndexMap<_, _> = Default::default();
 
         // Create the initial transactions to fund the validators and stakers.
         let mut transactions = Vec::new();
@@ -351,7 +351,7 @@ mod tests {
 
         let mut input_records = input_records.iter().cloned();
 
-        for index in 0..num_validators + num_stakers {
+        for index in 0..num_validators + num_delegators {
             // Construct the recipient address.
             let recipient_private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let recipient_view_key = ViewKey::try_from(&recipient_private_key)?;
@@ -407,7 +407,7 @@ mod tests {
             if index < num_validators {
                 validators.insert(recipient_private_key, (public_amount, vec![new_record]));
             } else {
-                stakers.insert(recipient_private_key, (public_amount, vec![new_record]));
+                delegators.insert(recipient_private_key, (public_amount, vec![new_record]));
             }
         }
 
@@ -433,7 +433,7 @@ mod tests {
         // Advance the block
         vm.add_next_block(&block)?;
 
-        Ok((validators, stakers))
+        Ok((validators, delegators))
     }
 
     #[test]
@@ -453,9 +453,17 @@ mod tests {
         // Decrypt the records.
         let records = records.values().map(|record| record.decrypt(&caller_view_key).unwrap()).collect::<Vec<_>>();
 
+        // Initialize the validators and stakers.
         let (mut validators, mut stakers) =
-            initialize_validators_and_stakers(&vm, &caller_private_key, num_validators, num_stakers, &records, rng)
+            initialize_validators_and_delegators(&vm, &caller_private_key, num_validators, num_stakers, &records, rng)
                 .unwrap();
+
+        // Declare the mapping types.
+        let staking_program_id = ProgramID::<CurrentNetwork>::from_str("stake.aleo").unwrap();
+        let validators_mapping = Identifier::<CurrentNetwork>::from_str("validators").unwrap();
+        let delegators_mapping = Identifier::<CurrentNetwork>::from_str("delegators").unwrap();
+        let bonded_mapping = Identifier::<CurrentNetwork>::from_str("bonded").unwrap();
+        let locked_mapping = Identifier::<CurrentNetwork>::from_str("locked").unwrap();
 
         // Bond the validators.
         {
@@ -490,6 +498,26 @@ mod tests {
             let block = crate::test_helpers::sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
             // Advance the block.
             vm.add_next_block(&block).unwrap();
+
+            // Check that the validator stakes are correct.
+            for (validator_private_key, (amount, records)) in validators.iter() {
+                let validator_address = Address::try_from(validator_private_key).unwrap();
+
+                // Get the stake object from the public mapping.
+                let validator_key = Plaintext::from_str(&validator_address.to_string()).unwrap();
+                let stake = vm
+                    .finalize_store()
+                    .get_value_confirmed(&staking_program_id, &validators_mapping, &validator_key)
+                    .unwrap()
+                    .unwrap();
+
+                // Check the struct manually.
+                let expected = Plaintext::<CurrentNetwork>::from_str(&format!(
+                    "{{ owner: {validator_address}, token_amount: {amount}u64 }}"
+                ))
+                .unwrap();
+                assert_eq!(stake, Value::from(expected));
+            }
         }
 
         // Bond the delegators
