@@ -15,7 +15,7 @@
 use anyhow::{ensure, Result};
 
 /// A safety bound (sanity-check) for the coinbase reward.
-const MAX_COINBASE_REWARD: u128 = 237_823_432; // Coinbase reward at block 1.
+const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
 
 /// Calculate the staking reward, given the starting supply and block time.
 ///     R_staking = floor((0.05 * S) / H_Y1)
@@ -62,7 +62,7 @@ pub fn coinbase_reward(
     let reward = anchor_block_reward.saturating_mul(remaining_proof_target).saturating_div(coinbase_target as u128);
 
     // Ensure the coinbase reward is less than the maximum coinbase reward.
-    ensure!(reward <= MAX_COINBASE_REWARD, "Coinbase reward ({reward}) exceeds maximum of {MAX_COINBASE_REWARD}");
+    ensure!(reward <= MAX_COINBASE_REWARD as u128, "Coinbase reward ({reward}) exceeds maximum {MAX_COINBASE_REWARD}");
 
     // Return the coinbase reward.
     // Note: This '.expect' is guaranteed to be safe, as we ensure the reward is within a safe bound.
@@ -219,11 +219,11 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: usize = 1000;
+    const ITERATIONS: u32 = 1000;
 
-    const EXPECTED_ANCHOR_BLOCK_REWARD_AT_BLOCK_1: u128 = MAX_COINBASE_REWARD;
+    const EXPECTED_ANCHOR_BLOCK_REWARD_AT_BLOCK_1: u128 = MAX_COINBASE_REWARD as u128;
     const EXPECTED_STAKING_REWARD: u64 = 11_891_171;
-    const EXPECTED_COINBASE_REWARD_AT_BLOCK_1: u64 = MAX_COINBASE_REWARD as u64;
+    const EXPECTED_COINBASE_REWARD_AT_BLOCK_1: u64 = MAX_COINBASE_REWARD;
 
     #[test]
     fn test_anchor_block_reward() {
@@ -253,7 +253,7 @@ mod tests {
         }
 
         // Ensure that the reward is zero for blocks after year 10.
-        for height in block_height_at_year_10..(block_height_at_year_10 + ITERATIONS as u32) {
+        for height in block_height_at_year_10..(block_height_at_year_10 + ITERATIONS) {
             let reward = anchor_block_reward_at_height(
                 height,
                 CurrentNetwork::STARTING_SUPPLY,
