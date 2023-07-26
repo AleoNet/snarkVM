@@ -22,6 +22,7 @@ use snarkvm_utilities::{
     string::String,
     FromBytes,
     FromBytesDeserializer,
+    ToBits,
     ToBytes,
     ToBytesSerializer,
     ToMinimalBits,
@@ -67,37 +68,17 @@ impl<E: PairingEngine> ToMinimalBits for CircuitVerifyingKey<E> {
         let non_zero_domain_b_size = non_zero_domain_b.size() as u64;
         let non_zero_domain_c_size = non_zero_domain_c.size() as u64;
 
-        let constraint_domain_size_bits = constraint_domain_size
-            .to_le_bytes()
-            .iter()
-            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
-            .collect::<Vec<bool>>();
-        let non_zero_domain_size_a_bits = non_zero_domain_a_size
-            .to_le_bytes()
-            .iter()
-            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
-            .collect::<Vec<bool>>();
-        let non_zero_domain_size_b_bits = non_zero_domain_b_size
-            .to_le_bytes()
-            .iter()
-            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
-            .collect::<Vec<bool>>();
-        let non_zero_domain_size_c_bits = non_zero_domain_c_size
-            .to_le_bytes()
-            .iter()
-            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8))
-            .collect::<Vec<bool>>();
+        let mut bits = vec![];
+        constraint_domain_size.write_bits_le(&mut bits);
+        non_zero_domain_a_size.write_bits_le(&mut bits);
+        non_zero_domain_b_size.write_bits_le(&mut bits);
+        non_zero_domain_c_size.write_bits_le(&mut bits);
 
         let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
 
-        [
-            constraint_domain_size_bits,
-            non_zero_domain_size_a_bits,
-            non_zero_domain_size_b_bits,
-            non_zero_domain_size_c_bits,
-            circuit_commitments_bits,
-        ]
-        .concat()
+        bits.extend_from_slice(&circuit_commitments_bits);
+
+        bits
     }
 }
 
