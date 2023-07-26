@@ -636,9 +636,9 @@ mod tests {
         let mut rng = TestRng::default();
 
         // The custom block height drift that is faster than the anchor height.
-        const BLOCK_HEIGHT_DELTA: u32 = 4;
+        const BLOCK_HEIGHT_DELTA: u32 = 3;
         // The expected number of blocks before the coinbase target is doubled.
-        const EXPECTED_NUM_BLOCKS_TO_DOUBLE: u32 = 512;
+        const EXPECTED_NUM_BLOCKS_TO_DOUBLE: u32 = 540;
 
         let minimum_coinbase_target: u64 = 2u64.pow(10) - 1;
 
