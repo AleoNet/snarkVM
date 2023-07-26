@@ -12,11 +12,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::helpers::{block_stake_reward, MAX_COINBASE_REWARD};
 use console::{account::Address, network::prelude::*};
 use ledger_block::Ratify;
 
-/// A safety bound (sanity-check) for the proving reward.
-const MAX_PROVING_REWARD: u128 = 3_000_000_000;
+/// Returns the staking rewards for a given stakers and coinbase reward.
+///
+/// The staking reward is defined as:
+///   block_stake_reward * stake / total_stake
+pub fn staking_rewards<N: Network>(
+    stakers: Vec<(Address<N>, u64)>,
+    coinbase_reward: u64,
+    total_stake: u64,
+) -> Vec<Ratify<N>> {
+    // (Debug Mode) Ensure the total stake is equal to the sum of the individual stakes.
+    debug_assert_eq!(total_stake, stakers.iter().map(|(_, s)| s).sum::<u64>());
+
+    // Filter the list of stakers to only include those with a stake.
+    let stakers = stakers.into_iter().filter(|(_, s)| *s > 0).collect::<Vec<_>>();
+    // If the list of stakers is empty or there is no stake, return an empty vector.
+    if stakers.is_empty() || total_stake == 0 {
+        return Vec::new();
+    }
+
+    // Compute the block stake reward.
+    let block_stake_reward = block_stake_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
+
+    // Initialize a vector to store the staking rewards.
+    let mut rewards = Vec::with_capacity(stakers.len());
+
+    // Calculate the rewards for the individual stakers.
+    for (address, stake) in stakers {
+        // Compute the numerator.
+        let numerator = (block_stake_reward as u128).saturating_mul(stake as u128);
+        // Compute the denominator.
+        // Note: We guarantee this denominator cannot be 0 (as we return early if the total stake is 0).
+        let denominator = total_stake as u128;
+        // Compute the quotient.
+        let quotient = numerator.saturating_div(denominator);
+        // Ensure the staking reward is within a safe bound.
+        if quotient > MAX_COINBASE_REWARD as u128 {
+            error!("Staking reward ({quotient}) is too large - skipping {address}");
+            continue;
+        }
+        // Cast the staking reward as a u64.
+        // Note: This '.expect' is guaranteed to be safe, as we ensure the quotient is within a safe bound.
+        let staking_reward = u64::try_from(quotient).expect("Staking reward is too large");
+        // Add the staking reward to the list of rewards.
+        rewards.push(Ratify::StakingReward(address, staking_reward));
+    }
+
+    // Return the proving rewards.
+    rewards
+}
 
 /// Returns the proving rewards for a given coinbase reward and list of prover solutions.
 ///
@@ -49,7 +97,7 @@ pub fn proving_rewards<N: Network>(
         // Compute the quotient.
         let quotient = numerator.saturating_div(denominator);
         // Ensure the proving reward is within a safe bound.
-        if quotient > MAX_PROVING_REWARD {
+        if quotient > MAX_COINBASE_REWARD as u128 {
             error!("Prover reward ({quotient}) is too large - skipping solution from {address}");
             continue;
         }
@@ -84,7 +132,7 @@ mod tests {
             // Sample a random address.
             let address = Address::new(Group::rand(rng));
             // Sample a random coinbase reward.
-            let coinbase_reward = rng.gen_range(0..u64::try_from(MAX_PROVING_REWARD).unwrap());
+            let coinbase_reward = rng.gen_range(0..u64::try_from(MAX_COINBASE_REWARD).unwrap());
             // Check that a maxed out proof target fails.
             let rewards =
                 proving_rewards::<CurrentNetwork>(vec![(address, u64::MAX as u128)], coinbase_reward, u64::MAX as u128);
@@ -120,7 +168,7 @@ mod tests {
             // Sample a random address.
             let address = Address::new(Group::rand(rng));
             // Sample a random overly-large coinbase reward.
-            let coinbase_reward = rng.gen_range(u64::try_from(MAX_PROVING_REWARD).unwrap()..u64::MAX);
+            let coinbase_reward = rng.gen_range(u64::try_from(MAX_COINBASE_REWARD).unwrap()..u64::MAX);
             // Sample a random proof target.
             let proof_target = rng.gen_range(0..u64::MAX as u128);
             // Check that a maxed out proof target fails.

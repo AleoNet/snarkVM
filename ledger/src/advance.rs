@@ -160,8 +160,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // TODO (raychu86): Pay the provers.
         // Calculate the proving rewards.
         let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
+        // TODO (howardwu): Add in the stakers and their total stake.
         // Calculate the staking rewards.
-        let staking_rewards = Vec::<Ratify<N>>::new();
+        let staking_rewards = staking_rewards(vec![], coinbase_reward, 0);
 
         // Construct the ratifications.
         let mut ratifications = Vec::<Ratify<N>>::new();
