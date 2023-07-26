@@ -134,10 +134,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let coinbase_reward = coinbase_reward(
             next_height,
             N::STARTING_SUPPLY,
-            N::ANCHOR_TIME,
+            N::ANCHOR_HEIGHT,
             N::BLOCK_TIME,
             combined_proof_target,
-            latest_coinbase_target.saturating_sub(u64::try_from(latest_cumulative_proof_target)?),
+            u64::try_from(latest_cumulative_proof_target)?,
             latest_coinbase_target,
         )?;
         // TODO (raychu86): Pay the provers.
