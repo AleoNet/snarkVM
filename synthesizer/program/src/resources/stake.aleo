@@ -159,7 +159,6 @@ finalize bond_staker:
     // Update the delegators for the specified validator.
     set r9 into delegators[r1];
 
-    // The position we jump to if the delegator already exists.
     position end_update_delegators;
 
     // Construct the initial bond struct.
@@ -249,7 +248,7 @@ finalize unbond_validator:
     // Decrement the index.
     sub r13 1u32 into r13;
     // Jump back to the start of the loop.
-    // branch.eq true true to start_loop; // TODO (raychu86): Uncomment this. This line causes parse failure.
+    branch.eq true true to start_loop;
     position end_loop;
 
     // Get the stake state of the validator.
@@ -261,11 +260,12 @@ finalize unbond_validator:
     position skip_unbond_delegators;
 
     // If the remaining principal stake is zero, then remove the validator.
-    branch.neq r3 0u64 to skip_remove_validator;
+    branch.neq r4.principal 0u64 to skip_remove_validator;
     // Remove the validator from the list of validators.
     remove validators[r0];
     // The position we jump to if the validator still has some stake.
     position skip_remove_validator;
+
 
 //
 // The `unbond_staker` function unbonds a given number of microcredits. The unbonded amount
@@ -340,28 +340,54 @@ finalize unbond_staker:
     // Get the delegators for the specified validator.
     get delegators[r1] into r11;
     // Remove the delegator from the list of delegators.
-    // delete r11 r0 into r12; // TODO (raychu86): Uncomment this. This line causes parse failure.
-    add 0u32 0u32 into r12; // TODO (raychu86): Remove this placeholder when the above line is fixed.
+    // Get the length of the list of delegators.
+    length r11 into r12;
+    // Initialize a counter.
+    add 0u32 0u32 into r13;
+    // Loop through all the delegators.
+    position start_loop;
+    branch.eq r13 r12 to end_loop;
+    // Get the delegator at the current position.
+    index r11 r13 into r14;
+    // Check if the delegator matches the staker.
+    is.eq r14 r0 into r15;
+    // If the delegator matches the staker, then remove the delegator.
+    branch.eq r15 true to remove_delegator;
+    // Increment the counter.
+    add r13 1u32 into r13;
+    // Jump back to the start of the loop.
+    branch.eq true true to start_loop;
+
+    position remove_delegator;
+    // Remove the delegator from the list of delegators.
+    delete r11 r13 into r16;
+
+    // Terminate the loop.
+    branch.eq true true to end_loop;
+
+    position end_loop;
+
     // Set the updated list of delegators.
     set r11 into delegators[r1];
 
     position skip_remove_delegator;
 
     // Construct the bond struct for the lock.
-    cast r1 r2 into r13 as bond;
+    cast r1 r2 into r17 as bond;
     // Construct the unlock height.
-    add block.height 256u32 into r14;
+    add block.height 256u32 into r18;
     // Construct the lock struct.
-    cast r0 r13 r14 into r15 as lock;
+    cast r0 r17 r18 into r19 as lock;
 
     // Initialize an empty vector.
-    cast into r16 as [lock];
+    cast into r20 as [lock];
     // Add the lock to the list of locks associated with the staker.
-    get.or_use locked[r0] r16 into r17;
+    get.or_use locked[r0] r20 into r21;
     // Insert the new lock.
-    push r17 r15;
+    push r21 r19;
     // Update the locks.
-    set r17 into locked[r0];
+    set r21 into locked[r0];
+
 
 // The `unlock_stake` function attempts to unlock all valid locks for the staker.
 // Anyone can unlock tokens for a staker.
@@ -397,14 +423,14 @@ finalize unlock_stake:
     branch.eq r5 true to end_loop;
     // Otherwise, the lock is valid, so we can unlock the microcredits.
     // Remove the lock.
-     delete r1 r3 into r6;
+    delete r1 r3 into r6;
     // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
     // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
     // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
     // Increment the counter.
-    add r3 1u32 into r3;
+    add r3 1u32 into r7;
     // Jump back to the start of the loop.
-    // branch.eq true true to start_loop; // TODO (raychu86): Uncomment this. This line causes parse failure.
+    branch.eq true true to start_loop;
 
     // The position we jump to if there are no more locks associated with the staker.
     position end_loop;

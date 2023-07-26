@@ -309,7 +309,7 @@ mod tests {
 
         // Initialize a new program.
         let _program =
-            Program::<CurrentNetwork>::from_str(include_str!("../../program/src/resources/credits.aleo")).unwrap();
+            Program::<CurrentNetwork>::from_str(include_str!("../../program/src/resources/stake.aleo")).unwrap();
 
         println!("Finished loading stake program.");
     }
