@@ -158,7 +158,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 if block.cumulative_proof_target() != cumulative_proof_target {
                     bail!("The cumulative proof target does not match the expected cumulative proof target")
                 }
-                // Ensure the last coinbase target and last coinbase timestamp are correct.
+                // Ensure the last coinbase target and last coinbase height are correct.
                 if is_coinbase_target_reached {
                     // Ensure the last coinbase target matches the coinbase target.
                     if block.last_coinbase_target() != block.coinbase_target() {

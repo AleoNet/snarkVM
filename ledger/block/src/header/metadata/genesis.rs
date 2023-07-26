@@ -66,7 +66,7 @@ impl<N: Network> Metadata<N> {
             && self.proof_target == N::GENESIS_PROOF_TARGET
             // Ensure the last coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
             && self.last_coinbase_target == N::GENESIS_COINBASE_TARGET
-            // Ensure the last coinbase timestamp in the genesis block is `GENESIS_TIMESTAMP`.
+            // Ensure the last coinbase height in the genesis block is 0.
             && self.last_coinbase_height == 0u32
             // Ensure the timestamp in the genesis block is `GENESIS_TIMESTAMP`.
             && self.timestamp == N::GENESIS_TIMESTAMP

@@ -54,7 +54,7 @@ impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
                     DeserializeExt::take_from_value::<D>(&mut metadata, "coinbase_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "proof_target")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_target")?,
-                    DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_timestamp")?,
+                    DeserializeExt::take_from_value::<D>(&mut metadata, "last_coinbase_height")?,
                     DeserializeExt::take_from_value::<D>(&mut metadata, "timestamp")?,
                 )
                 .map_err(de::Error::custom)?)
