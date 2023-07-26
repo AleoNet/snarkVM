@@ -73,6 +73,8 @@ lazy_static! {
     };
 }
 
+pub const TRANSACTION_PREFIX: &str = "at";
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Testnet3;
 
@@ -117,7 +119,7 @@ impl Network for Testnet3 {
     /// The state root type.
     type StateRoot = AleoID<Field<Self>, { hrp2!("ar") }>;
     /// The transaction ID type.
-    type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
+    type TransactionID = AleoID<Field<Self>, { hrp2!(TRANSACTION_PREFIX) }>;
     /// The transition ID type.
     type TransitionID = AleoID<Field<Self>, { hrp2!("as") }>;
 

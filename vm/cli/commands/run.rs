@@ -16,19 +16,13 @@ use super::*;
 
 pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
 
-/// Executes an Aleo program function locally
+/// Runs an Aleo program function
 #[derive(Debug, Parser)]
 pub struct Run {
     /// The function name.
     function: Identifier<CurrentNetwork>,
     /// The function inputs.
     inputs: Vec<Value<CurrentNetwork>>,
-    /// Uses the specified endpoint.
-    #[clap(long)]
-    endpoint: Option<String>,
-    /// Toggles offline mode.
-    #[clap(long)]
-    offline: bool,
 }
 
 impl Run {
@@ -40,22 +34,18 @@ impl Run {
 
         // Load the package.
         let package = Package::open(&path)?;
+        // Load the private key.
+        let private_key = crate::cli::helpers::dotenv_private_key()?;
 
         // Initialize an RNG.
         let rng = &mut rand::thread_rng();
 
         // Execute the request.
-        let (response, trace) = package.run::<Aleo, _>(
-            self.endpoint,
-            package.manifest_file().development_private_key(),
-            self.function,
-            &self.inputs,
-            rng,
-        )?;
+        let (response, metrics) = package.run::<Aleo, _>(&private_key, self.function, &self.inputs, rng)?;
 
         // Count the number of times a function is called.
         let mut program_frequency = HashMap::<String, usize>::new();
-        for metric in trace.call_metrics().iter() {
+        for metric in metrics.iter() {
             // Prepare the function name string.
             let function_name_string = format!("'{}/{}'", metric.program_id, metric.function_name).bold();
 
@@ -77,7 +67,7 @@ impl Run {
         // Log the metrics.
         use num_format::ToFormattedString;
 
-        println!("\n⛓  Constraints\n");
+        println!("⛓  Constraints\n");
         for (function_constraints, counter) in program_frequency {
             // Log the constraints
             let counter_string = match counter {
@@ -104,26 +94,28 @@ impl Run {
         // Prepare the path string.
         let path_string = format!("(in \"{}\")", path.display());
 
-        Ok(format!("✅ Executed '{}' {}", locator.to_string().bold(), path_string.dimmed()))
+        Ok(format!("✅ Finished '{}' {}", locator.to_string().bold(), path_string.dimmed()))
     }
+}
 
-    #[cfg(test)]
-    pub fn function(&self) -> Identifier<CurrentNetwork> {
-        self.function
-    }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        cli::{Command, CLI},
+        prelude::{Identifier, Value},
+    };
 
-    #[cfg(test)]
-    pub fn inputs(&self) -> &[Value<CurrentNetwork>] {
-        &self.inputs
-    }
+    #[test]
+    fn clap_snarkvm_run() {
+        let arg_vec = vec!["snarkvm", "run", "hello", "1u32", "2u32"];
+        let cli = CLI::parse_from(&arg_vec);
 
-    #[cfg(test)]
-    pub fn endpoint(&self) -> Option<&str> {
-        self.endpoint.as_deref()
-    }
-
-    #[cfg(test)]
-    pub fn offline(&self) -> bool {
-        self.offline
+        if let Command::Run(run) = cli.command {
+            assert_eq!(run.function, Identifier::try_from(arg_vec[2]).unwrap());
+            assert_eq!(run.inputs, vec![Value::try_from(arg_vec[3]).unwrap(), Value::try_from(arg_vec[4]).unwrap()]);
+        } else {
+            panic!("Unexpected result of clap parsing!");
+        }
     }
 }

@@ -453,7 +453,7 @@ mod tests {
 
         // Construct a new block for the deploy transaction.
         let deployment_block =
-            Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, vec![], None, rng)
+            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, vec![], None, transactions, rng)
                 .unwrap();
 
         // Add the deployment block.
@@ -480,5 +480,36 @@ mod tests {
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());
         assert!(vm.verify_transaction(&transaction, None));
+    }
+
+    #[test]
+    fn test_failed_credits_deployment() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Fetch the credits program
+        let program = Program::credits().unwrap();
+
+        // Ensure that the program can't be deployed.
+        assert!(vm.deploy_raw(&program, rng).is_err());
+
+        // Create a new `credits.aleo` program.
+        let program = Program::from_str(
+            r"
+program credits.aleo;
+
+record token:
+    owner as address.private;
+    amount as u64.private;
+
+function compute:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+        )
+        .unwrap();
+
+        // Ensure that the program can't be deployed.
+        assert!(vm.deploy_raw(&program, rng).is_err());
     }
 }

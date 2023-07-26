@@ -178,17 +178,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Convert the transaction index to a u32.
                 // Note: On failure, this will abort the entire atomic batch.
                 let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
-
+                // Ensure the index matches the expected index.
+                if index != transaction.index() {
+                    // Note: This will abort the entire atomic batch.
+                    return Err(format!("Mismatch in {} transaction index", transaction.variant()));
+                }
                 // Process the transaction in an isolated atomic batch.
                 // - If the transaction succeeds, the finalize operations are stored.
                 // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
                 let outcome: Result<(), String> = match transaction {
-                    ConfirmedTransaction::AcceptedDeploy(idx, transaction, finalize) => {
-                        // Ensure the index matches the expected index.
-                        if index != *idx {
-                            // Note: This will abort the entire atomic batch.
-                            return Err("Mismatch in accepted deploy transaction index".to_string());
-                        }
+                    ConfirmedTransaction::AcceptedDeploy(_, transaction, finalize) => {
                         // Extract the deployment from the transaction.
                         let deployment = match transaction {
                             Transaction::Deploy(_, _, deployment, _) => deployment,
@@ -226,12 +225,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         };
                         Ok(())
                     }
-                    ConfirmedTransaction::AcceptedExecute(idx, transaction, finalize) => {
-                        // Ensure the index matches the expected index.
-                        if index != *idx {
-                            // Note: This will abort the entire atomic batch.
-                            return Err("Mismatch in accepted execute transaction index".to_string());
-                        }
+                    ConfirmedTransaction::AcceptedExecute(_, transaction, finalize) => {
                         // Extract the execution from the transaction.
                         let execution = match transaction {
                             Transaction::Execute(_, execution, _) => execution,
@@ -263,12 +257,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedDeploy(idx, _fee_transaction, rejected) => {
-                        // Ensure the index matches the expected index.
-                        if index != *idx {
-                            // Note: This will abort the entire atomic batch.
-                            return Err("Mismatch in rejected deploy transaction index".to_string());
-                        }
+                    ConfirmedTransaction::RejectedDeploy(_, _fee_transaction, rejected) => {
                         // Extract the rejected deployment.
                         #[allow(unused_variables)]
                         let Some(deployment) = rejected.deployment() else {
@@ -284,12 +273,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedExecute(idx, _fee_transaction, rejected) => {
-                        // Ensure the index matches the expected index.
-                        if index != *idx {
-                            // Note: This will abort the entire atomic batch.
-                            return Err("Mismatch in rejected execute transaction index".to_string());
-                        }
+                    ConfirmedTransaction::RejectedExecute(_, _fee_transaction, rejected) => {
                         // Extract the rejected execution.
                         #[allow(unused_variables)]
                         let Some(execution) = rejected.execution() else {
@@ -454,7 +438,7 @@ finalize transfer_public:
             metadata,
         )?;
 
-        let block = Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)?;
+        let block = Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)?;
 
         // Track the new records.
         let new_records = block

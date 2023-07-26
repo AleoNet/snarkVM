@@ -69,7 +69,10 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
+pub type Assignments<N> = Arc<RwLock<Vec<(circuit::Assignment<<N as Environment>::Field>, CallMetrics<N>)>>>;
 
 #[derive(Clone)]
 pub enum CallStack<N: Network> {
@@ -313,6 +316,8 @@ impl<N: Network> Stack<N> {
     /// Returns the proving key for the given function name.
     #[inline]
     pub fn get_proving_key(&self, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+        // If the program is 'credits.aleo', try to load the proving key, if it does not exist.
+        self.try_insert_credits_function_proving_key(function_name)?;
         // Return the proving key, if it exists.
         match self.proving_keys.read().get(function_name) {
             Some(proving_key) => Ok(proving_key.clone()),
@@ -368,6 +373,22 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
         self.verifying_keys.write().remove(function_name);
+    }
+}
+
+impl<N: Network> Stack<N> {
+    /// Inserts the proving key if the program ID is 'credits.aleo'.
+    fn try_insert_credits_function_proving_key(&self, function_name: &Identifier<N>) -> Result<()> {
+        // If the program is 'credits.aleo' and it does not exist yet, load the proving key directly.
+        if self.program_id() == &ProgramID::from_str("credits.aleo")?
+            && !self.proving_keys.read().contains_key(function_name)
+        {
+            // Load the 'credits.aleo' function proving key.
+            let proving_key = N::get_credits_proving_key(function_name.to_string())?;
+            // Insert the 'credits.aleo' function proving key.
+            self.insert_proving_key(function_name, ProvingKey::new(proving_key.clone()))?;
+        }
+        Ok(())
     }
 }
 

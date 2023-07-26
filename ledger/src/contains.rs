@@ -30,14 +30,23 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().contains_block_hash(block_hash)
     }
 
-    /// Returns `true` if the given puzzle commitment exists.
-    pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
-        self.vm.block_store().contains_puzzle_commitment(puzzle_commitment)
-    }
-
     /// Returns `true` if the given program ID exists.
     pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
         self.vm.transaction_store().contains_program_id(program_id)
+    }
+
+    /// Returns `true` if the transmission exists in the ledger.
+    pub fn contains_transmission(&self, transmission_id: &TransmissionID<N>) -> Result<bool> {
+        match transmission_id {
+            TransmissionID::Ratification => Ok(false),
+            TransmissionID::Solution(puzzle_commitment) => self.contains_puzzle_commitment(puzzle_commitment),
+            TransmissionID::Transaction(transaction_id) => self.contains_transaction_id(transaction_id),
+        }
+    }
+
+    /// Returns `true` if the given puzzle commitment exists.
+    pub fn contains_puzzle_commitment(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<bool> {
+        self.vm.block_store().contains_puzzle_commitment(puzzle_commitment)
     }
 
     /// Returns `true` if the given transaction ID exists.

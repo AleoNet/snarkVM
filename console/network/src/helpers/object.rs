@@ -35,7 +35,6 @@ pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq +
     + Send
 {
     fn prefix() -> String;
-    fn size_in_bytes() -> usize;
 }
 
 /// Converts a string of 4 characters into a `u32` for a human-readable prefix in Bech32.
@@ -49,34 +48,19 @@ macro_rules! hrp4 {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct AleoObject<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
->(T);
+pub struct AleoObject<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32>(T);
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Bech32Object<T> for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Bech32Object<T>
+    for AleoObject<T, PREFIX>
 {
     #[inline]
     fn prefix() -> String {
         String::from_utf8(PREFIX.to_le_bytes().to_vec()).expect("Failed to convert prefix to string")
     }
-
-    #[inline]
-    fn size_in_bytes() -> usize {
-        SIZE_IN_DATA_BYTES
-    }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> From<T> for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> From<T>
+    for AleoObject<T, PREFIX>
 {
     #[inline]
     fn from(data: T) -> Self {
@@ -84,11 +68,8 @@ impl<
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> FromBytes for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> FromBytes
+    for AleoObject<T, PREFIX>
 {
     /// Reads data into a buffer.
     #[inline]
@@ -97,11 +78,8 @@ impl<
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> ToBytes for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> ToBytes
+    for AleoObject<T, PREFIX>
 {
     /// Writes the data to a buffer.
     #[inline]
@@ -110,11 +88,8 @@ impl<
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> FromStr for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> FromStr
+    for AleoObject<T, PREFIX>
 {
     type Err = Error;
 
@@ -135,11 +110,8 @@ impl<
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Display for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Display
+    for AleoObject<T, PREFIX>
 {
     #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -153,11 +125,8 @@ impl<
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Debug for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Debug
+    for AleoObject<T, PREFIX>
 {
     #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -165,53 +134,40 @@ impl<
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Serialize for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Serialize
+    for AleoObject<T, PREFIX>
 {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
-            false => ToBytesSerializer::serialize(self, serializer),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<
-    'de,
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Deserialize<'de> for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<'de, T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Deserialize<'de>
+    for AleoObject<T, PREFIX>
 {
     #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize(deserializer, &Self::prefix(), SIZE_IN_DATA_BYTES),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, &Self::prefix()),
         }
     }
 }
 
-impl<
-    T: Default + Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Default for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Default + Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Default
+    for AleoObject<T, PREFIX>
 {
     fn default() -> Self {
         Self(T::default())
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Deref for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Deref
+    for AleoObject<T, PREFIX>
 {
     type Target = T;
 
@@ -221,11 +177,8 @@ impl<
     }
 }
 
-impl<
-    T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send,
-    const PREFIX: u32,
-    const SIZE_IN_DATA_BYTES: usize,
-> Borrow<T> for AleoObject<T, PREFIX, SIZE_IN_DATA_BYTES>
+impl<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send, const PREFIX: u32> Borrow<T>
+    for AleoObject<T, PREFIX>
 {
     #[inline]
     fn borrow(&self) -> &T {

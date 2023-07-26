@@ -131,11 +131,11 @@ fn coinbase_puzzle_verify(c: &mut Criterion) {
                     puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let solution = puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap();
+            let (solution, _) = puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap();
 
             c.bench_function(
                 &format!("CoinbasePuzzle::Verify {batch_size} of 2^{}", ((degree + 1) as f64).log2()),
-                |b| b.iter(|| assert!(puzzle.verify(&solution, &epoch_challenge, 0u64, 0u64).unwrap())),
+                |b| b.iter(|| assert!(puzzle.verify(&solution, &epoch_challenge, 0u64).unwrap())),
             );
         }
     }

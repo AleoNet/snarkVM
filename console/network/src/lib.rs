@@ -101,8 +101,10 @@ pub trait Network:
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
 
-    /// The anchor time per block in seconds, which must be greater than the round time per block.
+    /// The anchor time in seconds.
     const ANCHOR_TIME: u16 = 25;
+    /// The expected time per block in seconds.
+    const BLOCK_TIME: u16 = 2;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.

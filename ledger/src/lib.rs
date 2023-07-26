@@ -18,8 +18,10 @@
 #[macro_use]
 extern crate tracing;
 
+pub use ledger_authority as authority;
 pub use ledger_block as block;
 pub use ledger_coinbase as coinbase;
+pub use ledger_narwhal as narwhal;
 pub use ledger_query as query;
 pub use ledger_store as store;
 
@@ -29,7 +31,8 @@ mod helpers;
 pub use helpers::*;
 
 mod advance;
-mod check;
+mod check_next_block;
+mod check_transaction_basic;
 mod contains;
 mod find;
 mod get;
@@ -39,7 +42,7 @@ mod iterators;
 mod tests;
 
 use console::{
-    account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
+    account::{Address, GraphKey, PrivateKey, ViewKey},
     network::prelude::*,
     program::{
         Ciphertext,
@@ -55,8 +58,10 @@ use console::{
     },
     types::{Field, Group},
 };
+use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
+use ledger_narwhal::{Subdag, Transmission, TransmissionID};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
@@ -167,7 +172,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Add the genesis validator to the committee.
-        ledger.current_committee.write().insert(genesis.signature().to_address());
+        ledger.current_committee.write().insert(genesis.authority().to_address());
 
         // If the block store is empty, initialize the genesis block.
         if ledger.vm.block_store().heights().max().is_none() {
@@ -249,9 +254,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().header().total_supply_in_microcredits()
     }
 
-    /// Returns the latest latest cumulative weight.
+    /// Returns the latest block cumulative weight.
     pub fn latest_cumulative_weight(&self) -> u128 {
         self.current_block.read().cumulative_weight()
+    }
+
+    /// Returns the latest block cumulative proof target.
+    pub fn latest_cumulative_proof_target(&self) -> u128 {
+        self.current_block.read().cumulative_proof_target()
     }
 
     /// Returns the latest block coinbase accumulator point.

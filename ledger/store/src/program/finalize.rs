@@ -310,12 +310,13 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
+    /// If the `key` does not exist, `None` is returned.
     fn remove_key_value(
         &self,
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
+    ) -> Result<Option<(FinalizeOperation<N>, RollbackOperation<N>)>> {
         // Retrieve the mapping ID.
         let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
             Some(mapping_id) => mapping_id,
@@ -328,9 +329,9 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
             None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove key-value."),
         };
-        // Ensure the key ID exists.
+        // If the key ID does not exist, return `None`.
         if !key_value_ids.contains_key(&key_id) {
-            bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot remove key-value.");
+            return Ok(None);
         }
 
         // Retrieve the index of the key ID in the key-value ID map.
@@ -366,7 +367,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         let rollback_operation = RollbackOperation::RemoveKeyValue(mapping_id, index, key.clone(), previous_value);
 
         // Return the finalize operation and its corresponding rollback operation.
-        Ok((finalize_operation, rollback_operation))
+        Ok(Some((finalize_operation, rollback_operation)))
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
@@ -925,7 +926,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)> {
+    ) -> Result<Option<(FinalizeOperation<N>, RollbackOperation<N>)>> {
         self.storage.remove_key_value(program_id, mapping_name, key)
     }
 }
@@ -1256,6 +1257,27 @@ mod tests {
         // Ensure the mapping name got initialized.
         assert!(finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
 
+        // Attempt to remove a key-value pairs that do not exist.
+        for item in 0..1000 {
+            // Prepare the key.
+            let key = Plaintext::from_str(&format!("{item}field")).unwrap();
+            // Ensure the key did not get initialized.
+            assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
+            // Ensure the value returns None.
+            assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
+
+            // Remove the key-value pair.
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            // Ensure the program ID is still initialized.
+            assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
+            // Ensure the mapping name is still initialized.
+            assert!(finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
+            // Ensure the key did not get initialized.
+            assert!(!finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
+            // Ensure the value returns None.
+            assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
+        }
+
         // Insert the list of keys and values.
         for item in 0..1000 {
             // Prepare the key and value.
@@ -1289,7 +1311,7 @@ mod tests {
             assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
             // Remove the key-value pair.
-            finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_some());
             // Ensure the program ID is still initialized.
             assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
@@ -1685,7 +1707,8 @@ mod tests {
         assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
         // Remove the key-value pair.
-        let (_, rollback_operation) = finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+        let (_, rollback_operation) =
+            finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is still initialized.

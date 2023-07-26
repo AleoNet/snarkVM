@@ -167,7 +167,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Ensure the request is well-formed.
         ensure!(console_request.verify(&input_types), "Request is invalid");
-        lap!(timer, "Verify the request");
+        lap!(timer, "Verify the console request");
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
@@ -180,6 +180,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
+        lap!(timer, "Verify the circuit request");
 
         // Set the transition caller.
         registers.set_caller(*console_request.caller());
@@ -436,8 +437,17 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
         if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+            // Construct the call metrics.
+            let metrics = CallMetrics {
+                program_id: *self.program_id(),
+                function_name: *function.name(),
+                num_instructions: function.instructions().len(),
+                num_request_constraints,
+                num_function_constraints,
+                num_response_constraints,
+            };
             // Add the assignment to the assignments.
-            assignments.write().push(assignment);
+            assignments.write().push((assignment, metrics));
             lap!(timer, "Save the circuit assignment");
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.

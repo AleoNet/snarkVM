@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::cli::commands::{Build, Clean, New, Run, Update};
+use crate::cli::commands::{Build, Clean, Execute, New, Run, Update};
 
 use anstyle::{AnsiColor, Color, Style};
 use anyhow::Result;
@@ -42,6 +42,8 @@ pub enum Command {
     Build(Build),
     #[clap(name = "clean")]
     Clean(Clean),
+    #[clap(name = "execute")]
+    Execute(Execute),
     #[clap(name = "new")]
     New(New),
     #[clap(name = "run")]
@@ -56,6 +58,7 @@ impl Command {
         match self {
             Self::Build(command) => command.parse(),
             Self::Clean(command) => command.parse(),
+            Self::Execute(command) => command.parse(),
             Self::New(command) => command.parse(),
             Self::Run(command) => command.parse(),
             Self::Update(command) => command.parse(),
@@ -72,22 +75,5 @@ mod tests {
     fn verify_cli() {
         use clap::CommandFactory;
         CLI::command().debug_assert()
-    }
-
-    #[test]
-    fn clap_snarkvm_run() {
-        use crate::prelude::{Identifier, Value};
-
-        let arg_vec = vec!["snarkvm", "run", "hello", "1u32", "2u32", "--endpoint", "ENDPOINT", "--offline"];
-        let cli = CLI::parse_from(&arg_vec);
-
-        if let Command::Run(run) = cli.command {
-            assert_eq!(run.function(), Identifier::try_from(arg_vec[2]).unwrap());
-            assert_eq!(run.inputs(), vec![Value::try_from(arg_vec[3]).unwrap(), Value::try_from(arg_vec[4]).unwrap()]);
-            assert_eq!(run.endpoint(), Some("ENDPOINT"));
-            assert!(run.offline());
-        } else {
-            panic!("Unexpected result of clap parsing!");
-        }
     }
 }

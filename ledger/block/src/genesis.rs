@@ -24,6 +24,8 @@ impl<N: Network> Block<N> {
         self.previous_hash == N::BlockHash::default()
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
+            // Ensure the genesis authority is a beacon.
+            && self.authority.is_beacon()
             // Ensure there is the correct number of accepted transaction in the genesis block.
             && self.transactions.num_accepted() == Self::NUM_GENESIS_TRANSACTIONS
             // Ensure there is the correct number of rejected transaction in the genesis block.
@@ -32,7 +34,7 @@ impl<N: Network> Block<N> {
             && self.transactions.num_finalize() == 0
             // Ensure there is the correct number of ratification operations in the genesis block.
             && self.ratifications.is_empty()
-            // Ensure the coinbase solution does not exist.
+            // Ensure there are no solutions in the genesis block.
             && self.coinbase.is_none()
     }
 }

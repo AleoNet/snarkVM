@@ -61,12 +61,12 @@ pub enum BlockMap {
     ID = DataID::BlockIDMap as u16,
     ReverseID = DataID::BlockReverseIDMap as u16,
     Header = DataID::BlockHeaderMap as u16,
+    Authority = DataID::BlockAuthorityMap as u16,
     Transactions = DataID::BlockTransactionsMap as u16,
     ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
     Ratifications = DataID::BlockRatificationsMap as u16,
     CoinbaseSolution = DataID::BlockCoinbaseSolutionMap as u16,
     CoinbasePuzzleCommitment = DataID::BlockCoinbasePuzzleCommitmentMap as u16,
-    Signature = DataID::BlockSignatureMap as u16,
 }
 
 /// The RocksDB map prefix for deployment-related entries.
@@ -189,6 +189,9 @@ pub enum RollbackMap {
 #[repr(u16)]
 pub enum TestMap {
     Test = DataID::Test as u16,
+    Test2 = DataID::Test2 as u16,
+    Test3 = DataID::Test3 as u16,
+    Test4 = DataID::Test4 as u16,
 }
 
 /// The RocksDB map prefix.
@@ -205,12 +208,12 @@ enum DataID {
     BlockIDMap,
     BlockReverseIDMap,
     BlockHeaderMap,
+    BlockAuthorityMap,
     BlockTransactionsMap,
     BlockConfirmedTransactionsMap,
     BlockRatificationsMap,
     BlockCoinbaseSolutionMap,
     BlockCoinbasePuzzleCommitmentMap,
-    BlockSignatureMap,
     // Deployment
     DeploymentIDMap,
     DeploymentEditionMap,
@@ -265,4 +268,10 @@ enum DataID {
     // Testing
     #[cfg(test)]
     Test,
+    #[cfg(test)]
+    Test2,
+    #[cfg(test)]
+    Test3,
+    #[cfg(test)]
+    Test4,
 }
