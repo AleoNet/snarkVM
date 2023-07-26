@@ -29,7 +29,7 @@ impl<N: Network> Serialize for Metadata<N> {
                 metadata.serialize_field("coinbase_target", &self.coinbase_target)?;
                 metadata.serialize_field("proof_target", &self.proof_target)?;
                 metadata.serialize_field("last_coinbase_target", &self.last_coinbase_target)?;
-                metadata.serialize_field("last_coinbase_timestamp", &self.last_coinbase_timestamp)?;
+                metadata.serialize_field("last_coinbase_height", &self.last_coinbase_height)?;
                 metadata.serialize_field("timestamp", &self.timestamp)?;
                 metadata.end()
             }

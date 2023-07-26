@@ -103,7 +103,7 @@ mod tests {
         assert_eq!(header.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(header.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(header.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
-        assert_eq!(header.last_coinbase_timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
+        assert_eq!(header.last_coinbase_height(), 0);
         assert_eq!(header.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
 
         // Ensure the genesis block does *not* contain the following.

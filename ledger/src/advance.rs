@@ -129,6 +129,23 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             true => 0,
             false => next_cumulative_proof_target,
         };
+        // Construct the next coinbase target.
+        let next_coinbase_target = coinbase_target(
+            previous_block.last_coinbase_target(),
+            previous_block.last_coinbase_height(),
+            next_height,
+            N::ANCHOR_HEIGHT,
+            N::NUM_BLOCKS_PER_EPOCH,
+            N::GENESIS_COINBASE_TARGET,
+        )?;
+        // Construct the next proof target.
+        let next_proof_target = proof_target(next_coinbase_target, N::GENESIS_PROOF_TARGET);
+
+        // Construct the next last coinbase target and next last coinbase height.
+        let (next_last_coinbase_target, next_last_coinbase_height) = match is_coinbase_target_reached {
+            true => (next_coinbase_target, next_height),
+            false => (previous_block.last_coinbase_target(), previous_block.last_coinbase_height()),
+        };
 
         // Calculate the coinbase reward.
         let coinbase_reward = coinbase_reward(
@@ -182,25 +199,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             None => OffsetDateTime::now_utc().unix_timestamp(),
         };
 
-        // Construct the next coinbase target.
-        let next_coinbase_target = coinbase_target(
-            previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_timestamp(),
-            next_timestamp,
-            N::ANCHOR_TIME,
-            N::NUM_BLOCKS_PER_EPOCH,
-            N::GENESIS_COINBASE_TARGET,
-        )?;
-
-        // Construct the next proof target.
-        let next_proof_target = proof_target(next_coinbase_target, N::GENESIS_PROOF_TARGET);
-
-        // Construct the next last coinbase target and next last coinbase timestamp.
-        let (next_last_coinbase_target, next_last_coinbase_timestamp) = match is_coinbase_target_reached {
-            true => (next_coinbase_target, next_timestamp),
-            false => (previous_block.last_coinbase_target(), previous_block.last_coinbase_timestamp()),
-        };
-
         // Construct the metadata.
         let metadata = Metadata::new(
             N::ID,
@@ -212,7 +210,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,
-            next_last_coinbase_timestamp,
+            next_last_coinbase_height,
             next_timestamp,
         )?;
 

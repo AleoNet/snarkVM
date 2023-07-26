@@ -164,18 +164,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     if block.last_coinbase_target() != block.coinbase_target() {
                         bail!("The last coinbase target does not match the coinbase target")
                     }
-                    // Ensure the last coinbase timestamp matches the block timestamp.
-                    if block.last_coinbase_timestamp() != block.timestamp() {
-                        bail!("The last coinbase timestamp does not match the block timestamp")
+                    // Ensure the last coinbase height matches the block height.
+                    if block.last_coinbase_height() != block.height() {
+                        bail!("The last coinbase height does not match the block height")
                     }
                 } else {
                     // Ensure the block last coinbase target matches the last coinbase target.
                     if block.last_coinbase_target() != self.last_coinbase_target() {
                         bail!("The last coinbase target does not match the coinbase target")
                     }
-                    // Ensure the block last coinbase timestamp matches the last coinbase timestamp.
-                    if block.last_coinbase_timestamp() != self.last_coinbase_timestamp() {
-                        bail!("The last coinbase timestamp does not match the block timestamp")
+                    // Ensure the block last coinbase height matches the last coinbase height.
+                    if block.last_coinbase_height() != self.last_coinbase_height() {
+                        bail!("The last coinbase height does not match the block height")
                     }
                 }
             }
@@ -184,9 +184,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 if block.last_coinbase_target() != self.last_coinbase_target() {
                     bail!("The last coinbase target does not match the previous block coinbase target")
                 }
-                // Ensure the last coinbase timestamp matches the previous block's last coinbase timestamp.
-                if block.last_coinbase_timestamp() != self.last_coinbase_timestamp() {
-                    bail!("The last coinbase timestamp does not match the previous block's last coinbase timestamp")
+                // Ensure the last coinbase height matches the previous block's last coinbase height.
+                if block.last_coinbase_height() != self.last_coinbase_height() {
+                    bail!("The last coinbase height does not match the previous block's last coinbase height")
                 }
                 // Ensure that the cumulative weight is the same as the previous block.
                 if block.cumulative_weight() != self.latest_cumulative_weight() {
@@ -202,9 +202,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Construct the next coinbase target.
         let expected_coinbase_target = coinbase_target(
             self.last_coinbase_target(),
-            self.last_coinbase_timestamp(),
-            block.timestamp(),
-            N::ANCHOR_TIME,
+            self.last_coinbase_height(),
+            block.height(),
+            N::ANCHOR_HEIGHT,
             N::NUM_BLOCKS_PER_EPOCH,
             N::GENESIS_COINBASE_TARGET,
         )?;

@@ -106,7 +106,7 @@ pub trait Network:
     /// The anchor time in seconds.
     const ANCHOR_TIME: u16 = 25;
     /// The expected time per block in seconds.
-    const BLOCK_TIME: u16 = 2;
+    const BLOCK_TIME: u16 = 5;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.

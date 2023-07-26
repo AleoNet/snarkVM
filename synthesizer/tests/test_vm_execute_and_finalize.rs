@@ -313,7 +313,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         CurrentNetwork::GENESIS_COINBASE_TARGET,
         CurrentNetwork::GENESIS_PROOF_TARGET,
         previous_block.last_coinbase_target(),
-        previous_block.last_coinbase_timestamp(),
+        previous_block.last_coinbase_height(),
         CurrentNetwork::GENESIS_TIMESTAMP + 1,
     )?;
     // Construct the block header.

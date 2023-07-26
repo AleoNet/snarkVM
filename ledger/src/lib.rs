@@ -284,9 +284,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().last_coinbase_target()
     }
 
-    /// Returns the last coinbase timestamp.
-    pub fn last_coinbase_timestamp(&self) -> i64 {
-        self.current_block.read().last_coinbase_timestamp()
+    /// Returns the last coinbase height.
+    pub fn last_coinbase_height(&self) -> u32 {
+        self.current_block.read().last_coinbase_height()
     }
 
     /// Returns the latest block timestamp.

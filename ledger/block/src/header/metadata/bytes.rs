@@ -35,7 +35,7 @@ impl<N: Network> FromBytes for Metadata<N> {
         let coinbase_target = u64::read_le(&mut reader)?;
         let proof_target = u64::read_le(&mut reader)?;
         let last_coinbase_target = u64::read_le(&mut reader)?;
-        let last_coinbase_timestamp = i64::read_le(&mut reader)?;
+        let last_coinbase_height = u32::read_le(&mut reader)?;
         let timestamp = i64::read_le(&mut reader)?;
 
         // Construct the metadata.
@@ -49,7 +49,7 @@ impl<N: Network> FromBytes for Metadata<N> {
             coinbase_target,
             proof_target,
             last_coinbase_target,
-            last_coinbase_timestamp,
+            last_coinbase_height,
             timestamp,
         )
         .map_err(|e| error(e.to_string()))
@@ -73,7 +73,7 @@ impl<N: Network> ToBytes for Metadata<N> {
         self.coinbase_target.write_le(&mut writer)?;
         self.proof_target.write_le(&mut writer)?;
         self.last_coinbase_target.write_le(&mut writer)?;
-        self.last_coinbase_timestamp.write_le(&mut writer)?;
+        self.last_coinbase_height.write_le(&mut writer)?;
         self.timestamp.write_le(&mut writer)
     }
 }

@@ -436,7 +436,7 @@ mod tests {
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
-            genesis.last_coinbase_timestamp(),
+            genesis.last_coinbase_height(),
             CurrentNetwork::GENESIS_TIMESTAMP + 1,
         )
         .unwrap();
