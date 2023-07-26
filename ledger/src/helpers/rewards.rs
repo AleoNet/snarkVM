@@ -132,7 +132,7 @@ mod tests {
             // Sample a random address.
             let address = Address::new(Group::rand(rng));
             // Sample a random coinbase reward.
-            let coinbase_reward = rng.gen_range(0..u64::try_from(MAX_COINBASE_REWARD).unwrap());
+            let coinbase_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
             // Check that a maxed out proof target fails.
             let rewards =
                 proving_rewards::<CurrentNetwork>(vec![(address, u64::MAX as u128)], coinbase_reward, u64::MAX as u128);
@@ -168,7 +168,7 @@ mod tests {
             // Sample a random address.
             let address = Address::new(Group::rand(rng));
             // Sample a random overly-large coinbase reward.
-            let coinbase_reward = rng.gen_range(u64::try_from(MAX_COINBASE_REWARD).unwrap()..u64::MAX);
+            let coinbase_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
             // Sample a random proof target.
             let proof_target = rng.gen_range(0..u64::MAX as u128);
             // Check that a maxed out proof target fails.
