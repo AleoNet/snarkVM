@@ -415,7 +415,7 @@ finalize transfer_public:
             metadata,
         )?;
 
-        let block = Block::new_beacon(private_key, previous_block.hash(), header, transactions, vec![], None, rng)?;
+        let block = Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)?;
 
         // Track the new records.
         let new_records = block

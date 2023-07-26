@@ -44,6 +44,7 @@ use console::{
 };
 use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_narwhal_subdag::Subdag;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -65,24 +66,38 @@ pub struct Block<N: Network> {
 
 impl<N: Network> Block<N> {
     /// Initializes a new beacon block from the given previous block hash,
-    /// block header, transactions, ratifications, coinbase, and authority.
+    /// block header, ratifications, solutions, and transactions.
     pub fn new_beacon<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         previous_hash: N::BlockHash,
         header: Header<N>,
-        transactions: Transactions<N>,
         ratifications: Vec<Ratify<N>>,
-        coinbase: Option<CoinbaseSolution<N>>,
+        solutions: Option<CoinbaseSolution<N>>,
+        transactions: Transactions<N>,
         rng: &mut R,
     ) -> Result<Self> {
-        // Ensure the block is not empty.
-        ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
-        Self::from(previous_hash, header, authority, transactions, ratifications, coinbase)
+        Self::from(previous_hash, header, authority, transactions, ratifications, solutions)
+    }
+
+    /// Initializes a new quorum block from the given previous block hash,
+    /// block header, subdag, ratifications, solutions, and transactions.
+    pub fn new_quorum(
+        previous_hash: N::BlockHash,
+        header: Header<N>,
+        subdag: Subdag<N>,
+        ratifications: Vec<Ratify<N>>,
+        solutions: Option<CoinbaseSolution<N>>,
+        transactions: Transactions<N>,
+    ) -> Result<Self> {
+        // Construct the beacon authority.
+        let authority = Authority::new_quorum(subdag);
+        // Construct the block.
+        Self::from(previous_hash, header, authority, transactions, ratifications, solutions)
     }
 
     /// Initializes a new block from the given previous block hash,
@@ -95,8 +110,8 @@ impl<N: Network> Block<N> {
         ratifications: Vec<Ratify<N>>,
         coinbase: Option<CoinbaseSolution<N>>,
     ) -> Result<Self> {
-        // Ensure the block is not empty.
-        ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions.");
+        // Ensure the block contains transactions.
+        ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
 
         // Compute the block hash.
         let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
@@ -544,7 +559,7 @@ pub mod test_helpers {
         let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 
         // Construct the block.
-        let block = Block::new_beacon(&private_key, previous_hash, header, transactions, vec![], None, rng).unwrap();
+        let block = Block::new_beacon(&private_key, previous_hash, header, vec![], None, transactions, rng).unwrap();
         assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
         // Return the block, transaction, and private key.
         (block, transaction, private_key)
