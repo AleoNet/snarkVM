@@ -6,9 +6,9 @@ cases:
   - function: rand_chacha_with_struct
     inputs: ["{ first: 0field, second: 0field, third: 0field, fourth: 0field, fifth: 0field }"]
   - function: rand_chacha_check
-    inputs: [0field, false]
+    inputs: [0field, true]
   - function: rand_chacha_check
-    inputs: [1field, true]
+    inputs: [1field, false]
 */
 
 program test_rand.aleo;
