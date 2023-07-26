@@ -240,7 +240,7 @@ mod tests {
 
         // Ensure that the reward is decreasing for blocks before year 10.
         let mut previous_reward = reward;
-        let anchor_height = (CurrentNetwork::ANCHOR_TIME / CurrentNetwork::BLOCK_TIME) as usize;
+        let anchor_height = CurrentNetwork::ANCHOR_HEIGHT as usize;
         for height in (2..block_height_at_year_10).step_by(anchor_height).skip(1) {
             let reward = anchor_block_reward_at_height(
                 height,
@@ -440,7 +440,7 @@ mod tests {
 
         let mut total_reward = previous_reward;
 
-        let coinbase_target = (CurrentNetwork::ANCHOR_TIME / CurrentNetwork::BLOCK_TIME) as u64;
+        let coinbase_target = CurrentNetwork::ANCHOR_HEIGHT as u64;
         let mut cumulative_proof_target = 0;
 
         while block_height < block_height_at_year_10 {
