@@ -101,16 +101,18 @@ pub trait Network:
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
 
+    /// The anchor height, defined as the expected number of blocks to reach the coinbase target.
+    const ANCHOR_HEIGHT: u32 = Self::ANCHOR_TIME as u32 / Self::BLOCK_TIME as u32;
     /// The anchor time in seconds.
     const ANCHOR_TIME: u16 = 25;
     /// The expected time per block in seconds.
-    const BLOCK_TIME: u16 = 2;
+    const BLOCK_TIME: u16 = 5;
     /// The coinbase puzzle degree.
     const COINBASE_PUZZLE_DEGREE: u32 = (1 << 13) - 1; // 8,191
     /// The maximum number of prover solutions that can be included per block.
     const MAX_PROVER_SOLUTIONS: usize = 1 << 8; // 256 prover solutions
-    /// The number of blocks per epoch (1 hour).
-    const NUM_BLOCKS_PER_EPOCH: u32 = 1 << 8; // 256 blocks == ~1 hour
+    /// The number of blocks per epoch.
+    const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 720 blocks == ~1 hour
 
     /// The maximum number of entries in data.
     const MAX_DATA_ENTRIES: usize = 32;

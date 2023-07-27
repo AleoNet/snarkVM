@@ -127,7 +127,7 @@ mod tests {
                     coinbase_target,
                     proof_target,
                     u64::rand(rng),
-                    rng.gen_range(0..i64::MAX),
+                    rng.gen_range(0..u32::MAX),
                     rng.gen_range(0..i64::MAX),
                 )?,
             )?;
