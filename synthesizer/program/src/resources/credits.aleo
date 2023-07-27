@@ -131,6 +131,8 @@ finalize bond_public:
     cast 0u64 false into r4 as state;
     // Retrieve the state of the specified validator.
     get.or_use committee[r0] r4 into r5;
+    // Ensure that the validator is not locked.
+    assert_eq r5.is_locked false;
 
     // Increment the stake for the specified validator.
     add r5.microcredits r2 into r6;
@@ -199,24 +201,28 @@ finalize bond_public:
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r1] into r16;
+    // Ensure that the validator is not locked.
+    assert.eq r16.is_locked false;
     // Increment the stake for the specified validator.
-    add r16 r2 into r17;
+    add r16.microcredits r2 into r17;
+    // Construct the updated state struct.
+    cast r17 r16.is_locked into r18 as state;
 
     /* End Committee */
 
     /* Start Bonded */
 
     // Construct the initial bond struct.
-    cast r1 0u64 into r18 as bond;
+    cast r1 0u64 into r19 as bond;
     // Get the bond struct for the caller, or default to the initial bond struct.
-    get.or_use bonded[r0] r18 into r19;
+    get.or_use bonded[r0] r19 into r20;
     // Enforce the validator matches in the bond struct.
-    assert.eq r19.validator r1;
+    assert.eq r20.validator r1;
 
     // Increment the microcredits in the bond struct.
-    add r19.microcredits r2 into r20;
+    add r20.microcredits r2 into r21;
     // Construct the updated bond struct.
-    cast r1 r20 into r21 as bond;
+    cast r1 r21 into r22 as bond;
 
     /* End Bonded */
 
@@ -224,25 +230,180 @@ finalize bond_public:
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r22;
+    get account[r0] into r23;
     // Decrement the balance of the caller.
-    sub r22 r2 into r23;
+    sub r23 r2 into r24;
 
     /* End Account */
 
     /* Start Writes */
 
     // Update the stake for the specified validator.
-    set committee[r1] r17;
+    set committee[r1] r18;
     // Update the bond struct for the caller.
-    set bonded[r0] r21;
+    set bonded[r0] r22;
     // Update the balance of the caller.
-    set account[r0] r23;
+    set account[r0] r24;
 
     /* End Writes */
 
     // The terminus.
     position end;
+
+/**********************************************************************************************************************/
+
+function lock_validator:
+    // Lock the validator.
+    finalize self.caller;
+
+finalize lock_validator:
+    // Input the validator's address.
+    input r0 as address.public;
+
+    // Get the state for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r0] into r1;
+
+    // Ensure that the validator is currently unlocked.
+    assert.eq r1.is_locked false;
+
+    // Construct the updated committee state.
+    cast r1.microcredits true into r2 as state;
+
+    // Update the state for the specified validator.
+    set committee[r0] r2;
+
+/**********************************************************************************************************************/
+
+function unlock_validator:
+    // Unlock the validator.
+    finalize self.caller;
+
+finalize unlock_validator:
+    // Input the validator's address.
+    input r0 as address.public;
+
+    // Get the state for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r0] into r1;
+
+    // Ensure that the validator is currently true.
+    assert.eq r1.is_locked true;
+
+    // Construct the updated committee state.
+    cast r1.microcredits false into r2 as state;
+
+    // Update the state for the specified validator.
+    set committee[r0] r2;
+
+/**********************************************************************************************************************/
+
+function unbond_validator:
+    // Input the amount of microcredits to unbond.
+    input r0 as u64.public;
+
+    // Enforce the amount is nonzero.
+    assert.neq r0 0u64;
+
+    // Unbond the specified amount of microcredits to the caller.
+    finalize self.caller r0;
+
+// Check that the caller is currently a validator.
+
+// If the validator is not locked:
+    // Ensure that the remaining stack is greater than 1 million credits.
+
+// If the validator is locked:
+    // Ensure that there are no more delegators (bond amount and state is equivalent)
+
+    // Ensure that input amount is the entire unbonding amount?
+    // Remove the validator from the committee.
+    // Unbond the specified amount of microcredits to the validator.
+finalize unbond_validator:
+    // Input the validator's address.
+    input r0 as address.public;
+    // Input the amount of microcredits to unbond.
+    input r1 as u64.public;
+
+    // Get the state for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r3.validator] into r2;
+    // Ensure that the validator is locked.
+    assert.eq r2.is_locked true;
+    // Decrement the stake for the specified validator.
+    sub r2.microcredits r1 into r3;
+
+    // Get the bond struct for the validator, or fail if it does not exist.
+    get bonded[r0] into r4;
+    // Decrement the microcredits in the bond struct.
+    sub r4.microcredits r1 into r5;
+
+    // Determine if the remaining bond is at least one million credits.
+    gte r5 1_000_000_000_000u64 into r6;
+
+    // If the remaining balance is greater than 1 million, jump to the `remain_validator` logic.
+    branch.eq r6 true to remain_validator;
+    // If the remaining balance is less than 1 million, jump to the `remove_validator` logic.
+    branch.eq r6 false to remove_validator;
+
+    /******* Remain Validator *******/
+
+    // Starts the `remain_validator` logic.
+    position remain_validator;
+
+    // Construct the updated state struct.
+    cast r3 r2.is_locked into r7 as state;
+    // Update the state for the validator.
+    set committee[r0] r7;
+
+    // Construct the updated bond struct.
+    cast r4.validator r5 into r8 as bond;
+    // Update the bond struct for the validator.
+    set bonded[r0] r8;
+
+    // Ends the `sufficient_balance` logic.
+    branch.eq true true to end_if;
+
+    /******* Remove Validator *******/
+
+    // Starts the `remove_validator` logic.
+    position remove_validator;
+
+    // Ensure that the validator has no delegators.
+    assert.eq r3 r5;
+    // Ensure that the amount being unbonded is the entire amount.
+    assert.eq r3 0u64;;
+
+    // Remove the validator from the committee.
+    remove committee[r0];
+    // Remove the bond struct for the validator.
+    remove bonded[r0];
+
+    // Ends the `insufficient_balance` logic.
+    branch.eq true true to end_if;
+
+    // The end of the if condition.
+    position end_if;
+
+    /* Start Unbond */
+
+    // Construct the default unbond struct.
+    cast 0u64 0u32 into r9 as unbond;
+    // Get the unbond struct for the caller, or default to the default unbond struct.
+    get.or_use unbonding[r0] r9 into r10;
+
+    // Increment the microcredits in the unbond struct.
+    add r10.microcredits r1 into r11;
+    // Compute the height at which the unbonding will be complete, starting from the current block.
+    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
+    add block.height 720u32 into r12;
+
+    // Construct the updated unbond struct.
+    cast r11 r12 into r13 as unbond;
+    // Update the unbond struct for the caller.
+    set unbonding[r0] r13;
+
+    /* End Unbond */
 
 /**********************************************************************************************************************/
 
@@ -272,11 +433,19 @@ finalize unbond_delegator:
     // Decrement the microcredits in the bond struct.
     sub r3.microcredits r1 into r4;
 
-    // TODO: Add jump to skip if 'r4' is now '0', as you can 'remove'. Otherwise, the address can only bond to the same validator forever.
+    // Pre-emptively remove the bond struct from the bonded mapping.
+    remove bonded[r0];
+    // If the microcredits in the bond struct is now zero, then do not update the bond struct.
+    branch.eq r4 0u64 to remove_only;
+
     // Construct the updated bond struct.
     cast r3.validator r4 into r5 as bond;
     // Update the bond struct for the caller.
+    // This will only be executed if the microcredits in the bond struct is nonzero.
     set bonded[r0] r5;
+
+    // The position we jump to if the remaining bond is zero.
+    position remove_only;
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
@@ -304,6 +473,79 @@ finalize unbond_delegator:
 
 /**********************************************************************************************************************/
 
+function unbond_delegator_as_validator:
+    // Input the delegator to unbond.
+    input r0 as address.public;
+
+    // Unbond the delegator.
+    finalize self.caller r0;
+
+finalize unbond_delegator_as_validator:
+    // Input the validator's address.
+    input r0 as address.public;
+    // Input the delegator's address.
+    input r1 as address.public;
+
+    /* Start Committee */
+
+    // Check if the delegator is a validator.
+    contains committee[r1] into r2;
+    // Enforce the delegator is not *a* validator.
+    assert.eq r2 false;
+
+    // Get the state for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r0] into r2;
+    // Enforce that the validator is locked.
+    assert.eq r2.locked true;
+
+    /* End Committee */
+
+    /* Start Bonded */
+
+    // Get the bond struct for the delegator, or fail if it does not exist.
+    get bonded[r1] into r3;
+    // Enforce that the delegator is bonded to the validator.
+    assert.eq r3.validator r0;
+
+    // Decrement the stake for the specified validator.
+    sub r2.microcredits r3.microcredits into r4;
+    // Construct the updated committee state.
+    cast r4 true into r5 as state;
+
+    /* End Bonded */
+
+    /* Start Unbond */
+
+    // Construct the default unbond struct.
+    cast 0u64 0u32 into r6 as unbond;
+    // Get the unbond struct for the caller, or default to the default unbond struct.
+    get.or_use unbonding[r1] r6 into r7;
+
+    // Increment the microcredits in the unbond struct.
+    add r7.microcredits r3.microcredits into r8;
+    // Compute the height at which the unbonding will be complete, starting from the current block.
+    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
+    add block.height 720u32 into r9;
+
+    // Construct the updated unbond struct.
+    cast r8 r9 into r10 as unbond;
+
+    /* End Unbond */
+
+    /* Start Writes */
+
+    // Remove the bond struct for the delegator.
+    remove bonded[r1];
+    // Update the stake for the specified validator.
+    set committee[r0] r5;
+    // Update the unbond struct for the delegator.
+    set unbonding[r1] r10;
+
+    /* End Writes */
+
+/**********************************************************************************************************************/
+
 function claim_unbond:
     // Claim the unbonded microcredits.
     finalize self.caller;
@@ -317,15 +559,16 @@ finalize claim_unbond:
     // Enforce the unbonding is complete.
     assert.gte block.height r1.height;
 
-    // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-    call credits.aleo/transfer_public r0 r1.microcredits;
+    // Add the unbonded amount to the stakers's public balance.
+    // Increments `account[r0]` by `r1`.
+    // If `account[r1]` does not exist, 0u64 is used.
+    // If `account[r1] + r2` overflows, `transfer_public` is reverted.
+    get.or_use account[r0] 0u64 into r2;
+    add r1.microcredits r2 into r3;
+    set account[r0] r3;
 
     // Remove the unbond struct for the caller.
     remove unbonding[r0];
-
-//    // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
-//    // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-//    call credits.aleo/transfer_public r0 r1;
 
 // Open Questions:
 // - Should the 720 be more?
