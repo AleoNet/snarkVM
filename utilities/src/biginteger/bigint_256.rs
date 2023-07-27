@@ -265,7 +265,11 @@ impl FromBits for BigInteger256 {
 impl ToBytes for BigInteger256 {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write_le(writer)
+        let mut arr = [0u8; 8 * 4];
+        for (i, num) in self.0.iter().enumerate() {
+            arr[i * 8..][..8].copy_from_slice(&num.to_le_bytes());
+        }
+        arr.write_le(writer)
     }
 }
 
