@@ -15,6 +15,8 @@
 use console::prelude::*;
 
 use ::bytes::Bytes;
+#[cfg(feature = "async")]
+use tokio::task;
 
 const PREFIX: &str = "data";
 
@@ -34,10 +36,32 @@ impl<T: FromBytes + ToBytes + Send + 'static> Data<T> {
         }
     }
 
+    #[cfg(feature = "async")]
+    pub async fn deserialize(self) -> Result<T> {
+        match self {
+            Self::Object(x) => Ok(x),
+            Self::Buffer(bytes) => match task::spawn_blocking(move || T::from_bytes_le(&bytes)).await {
+                Ok(x) => x,
+                Err(err) => Err(err.into()),
+            },
+        }
+    }
+
     pub fn deserialize_blocking(self) -> Result<T> {
         match self {
             Self::Object(x) => Ok(x),
             Self::Buffer(bytes) => T::from_bytes_le(&bytes),
+        }
+    }
+
+    #[cfg(feature = "async")]
+    pub async fn serialize(self) -> Result<Bytes> {
+        match self {
+            Self::Object(x) => match task::spawn_blocking(move || x.to_bytes_le()).await {
+                Ok(bytes) => bytes.map(|vec| vec.into()),
+                Err(err) => Err(err.into()),
+            },
+            Self::Buffer(bytes) => Ok(bytes),
         }
     }
 

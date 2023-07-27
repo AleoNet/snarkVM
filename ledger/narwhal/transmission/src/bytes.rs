@@ -14,6 +14,8 @@
 
 use super::*;
 
+use ledger_narwhal_data::Data;
+
 impl<N: Network> FromBytes for Transmission<N> {
     /// Reads the transmission from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
