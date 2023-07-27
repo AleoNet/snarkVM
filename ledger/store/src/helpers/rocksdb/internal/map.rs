@@ -21,6 +21,31 @@ use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
 use std::{borrow::Cow, sync::atomic::Ordering};
 
+
+
+#![allow(clippy::type_complexity)]
+
+use super::*;
+use crate::helpers::{Map, MapRead};
+
+use core::{fmt, fmt::Debug, hash::Hash, mem};
+use indexmap::IndexMap;
+use std::{borrow::Cow, sync::atomic::Ordering};
+
+#[derive(Clone)]
+pub struct EventDataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
+    // name serves as identifier for when we export the data points
+    pub(super) name: String,
+    pub(super) database: RocksDB,
+    pub(super) context: Vec<u8>,
+    /// The tracker for whether a database transaction is in progress.
+    pub(super) batch_in_progress: Arc<AtomicBool>,
+    /// The database transaction.
+    pub(super) atomic_batch: Arc<Mutex<Vec<(K, Option<V>)>>>,
+    /// The checkpoint stack for the batched operations within the map.
+    pub(super) checkpoints: Arc<Mutex<Vec<usize>>>,
+}
+
 #[derive(Clone)]
 pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
     pub(super) database: RocksDB,

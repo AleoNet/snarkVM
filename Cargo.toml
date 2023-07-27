@@ -287,3 +287,6 @@ lto = "thin"
 incremental = true
 debug = true
 debug-assertions = true
+
+[dependencies]
+rdkafka = "0.33.2"
