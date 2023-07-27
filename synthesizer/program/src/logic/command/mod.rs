@@ -82,6 +82,8 @@ pub enum Command<N: Network> {
     BranchNeq(BranchNeq<N>),
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
+    /// Evaluates the loop body over its range..
+    ForLoop(ForLoop<N>),
 }
 
 impl<N: Network> CommandTrait<N> for Command<N> {
@@ -100,7 +102,8 @@ impl<N: Network> CommandTrait<N> for Command<N> {
             | Command::Set(_)
             | Command::BranchEq(_)
             | Command::BranchNeq(_)
-            | Command::Position(_) => vec![],
+            | Command::Position(_)
+            | Command::ForLoop(_) => vec![],
         }
     }
 
@@ -151,10 +154,10 @@ impl<N: Network> Command<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
-    ) -> Result<Option<FinalizeOperation<N>>> {
+    ) -> Result<Option<Vec<FinalizeOperation<N>>>> {
         match self {
             // Finalize the instruction, and return no finalize operation.
-            Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
+            Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|result| None),
             // Finalize the 'contains' command, and return no finalize operation.
             Command::Contains(contains) => contains.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get' command, and return no finalize operation.
@@ -164,15 +167,17 @@ impl<N: Network> Command<N> {
             // Finalize the `rand.chacha` command, and return no finalize operation.
             Command::RandChaCha(rand_chacha) => rand_chacha.finalize(stack, registers).map(|_| None),
             // Finalize the 'remove' command, and return the finalize operation.
-            Command::Remove(remove) => remove.finalize(stack, store, registers).map(Some),
+            Command::Remove(remove) => remove.finalize(stack, store, registers).map(|result| Some(vec![result])),
             // Finalize the 'set' command, and return the finalize operation.
-            Command::Set(set) => set.finalize(stack, store, registers).map(Some),
+            Command::Set(set) => set.finalize(stack, store, registers).map(|result| Some(vec![result])),
             // 'branch.eq' and 'branch.neq' instructions are processed by the caller of this method.
             Command::BranchEq(_) | Command::BranchNeq(_) => {
                 bail!("`branch` instructions cannot be finalized directly.")
             }
             // Finalize the `position` command, and return no finalize operation.
             Command::Position(position) => position.finalize().map(|_| None),
+            // Finalize the `for` loop and return the finalize operations collected.
+            Command::ForLoop(for_loop) => for_loop.finalize(stack, store, registers).map(Some),
         }
     }
 }
@@ -203,8 +208,10 @@ impl<N: Network> FromBytes for Command<N> {
             8 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
             // Read the `position` command.
             9 => Ok(Self::Position(Position::read_le(&mut reader)?)),
+            // Read the `for` loop.
+            10 => Ok(Self::ForLoop(ForLoop::read_le(&mut reader)?)),
             // Invalid variant.
-            10.. => Err(error(format!("Invalid command variant: {variant}"))),
+            11.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -273,6 +280,12 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the position command.
                 position.write_le(&mut writer)
             }
+            Self::ForLoop(for_loop) => {
+                // Write the variant.
+                10u8.write_le(&mut writer)?;
+                // Write the `for` loop.
+                for_loop.write_le(&mut writer)
+            }
         }
     }
 }
@@ -293,6 +306,7 @@ impl<N: Network> Parser for Command<N> {
             map(BranchEq::parse, |branch_eq| Self::BranchEq(branch_eq)),
             map(BranchNeq::parse, |branch_neq| Self::BranchNeq(branch_neq)),
             map(Position::parse, |position| Self::Position(position)),
+            map(ForLoop::parse, |for_loop| Self::ForLoop(for_loop)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -337,6 +351,7 @@ impl<N: Network> Display for Command<N> {
             Self::BranchEq(branch_eq) => Display::fmt(branch_eq, f),
             Self::BranchNeq(branch_neq) => Display::fmt(branch_neq, f),
             Self::Position(position) => Display::fmt(position, f),
+            Self::ForLoop(for_loop) => Display::fmt(for_loop, f),
         }
     }
 }
@@ -423,6 +438,12 @@ mod tests {
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // ForLoop
+        let expected = "for r0 in r1..r2: add r0 r0 into r3; end.for;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
     }
 
     #[test]
@@ -499,6 +520,12 @@ mod tests {
         let expected = "position exit;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // ForLoop
+        let expected = "for r0 in r1..r2: add r0 r0 into r3; end.for;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::ForLoop(ForLoop::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }

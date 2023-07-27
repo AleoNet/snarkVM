@@ -16,7 +16,7 @@ use super::*;
 
 use crate::RegisterTypes;
 
-use synthesizer_program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
+use synthesizer_program::{Branch, Contains, ForLoop, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
 
 use console::program::ElementType;
 
@@ -162,6 +162,7 @@ impl<N: Network> FinalizeTypes<N> {
             Command::BranchNeq(branch_neq) => self.check_branch(stack, finalize, branch_neq)?,
             // Note that the `Position`s are checked for uniqueness when constructing `Finalize`.
             Command::Position(_) => (),
+            Command::ForLoop(for_loop) => self.check_for_loop(stack, finalize, for_loop)?,
         }
         Ok(())
     }
@@ -407,6 +408,50 @@ impl<N: Network> FinalizeTypes<N> {
         if *mapping_key_type != key_type {
             bail!("Key type in `remove` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
+        Ok(())
+    }
+
+    /// Ensures the given `for` loop is well-formed.
+    #[inline]
+    fn check_for_loop(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        finalize: &Finalize<N>,
+        for_loop: &ForLoop<N>,
+    ) -> Result<()> {
+        // Ensure that the register is a locator.
+        ensure!(
+            matches!(for_loop.register(), Register::Locator(..)),
+            "Register '{}' must be a locator.",
+            for_loop.register()
+        );
+        // Ensure that the start and end of the loop are valid.
+        let start_type = self.get_type_from_operand(stack, for_loop.range().start())?;
+        let end_type = self.get_type_from_operand(stack, for_loop.range().end())?;
+        // Ensure that the start and end types are the same.
+        ensure!(start_type == end_type, "Start type '{start_type}' must be the same as end type '{end_type}'.",);
+        // Ensure that the start and end types are (in/de)crementable.
+        match start_type {
+            FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Field))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Scalar))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::I8))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::I16))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::I32))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::I64))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::I128))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U8))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U16))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U32))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U64))
+            | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U128)) => (),
+            _ => bail!("Loop range types '{start_type}' must be incrementable."),
+        }
+
+        // Ensure that the loop body is well-formed.
+        for command in for_loop.body() {
+            self.check_command(stack, finalize, command)?;
+        }
+
         Ok(())
     }
 

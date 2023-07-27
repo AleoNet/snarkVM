@@ -15,6 +15,7 @@
 use crate::{
     traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
     Command,
+    FinalizeOperation,
     FinalizeRegistersState,
     Opcode,
     Operand,
@@ -70,7 +71,7 @@ impl<N: Network> ForLoop<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
-    ) -> Result<()> {
+    ) -> Result<Vec<FinalizeOperation<N>>> {
         // Get the start of the range.
         let start = registers.load_literal(stack, self.range.start())?;
         // Get the end of the range.
@@ -93,6 +94,8 @@ impl<N: Network> ForLoop<N> {
         };
         // Store the start of the range in the register.
         registers.store(stack, self.register(), Value::from(start))?;
+        // Initialize storage for the `FinalizeOperation`s.
+        let mut operations = Vec::new();
         // If the value of the register is within the range, run the loop body.
         let value = registers.load_literal(stack, &Operand::Register(self.register().clone()))?;
         while match (&value, &end) {
@@ -184,7 +187,9 @@ impl<N: Network> ForLoop<N> {
         } {
             // Run the loop body.
             for command in &self.body {
-                command.finalize(stack, store, registers)?;
+                if let Some(operation) = command.finalize(stack, store, registers)? {
+                    operations.extend(operation);
+                }
             }
             // Increment or decrement the register depending on the direction of the loop.
             match &value {
@@ -291,7 +296,7 @@ impl<N: Network> ForLoop<N> {
                 _ => bail!("Invalid register value."),
             }
         }
-        Ok(())
+        Ok(operations)
     }
 }
 
@@ -386,11 +391,10 @@ impl<N: Network> ForLoop<N> {
         for command in &self.body {
             // Print the command.
             match command {
-                // TODO: Enable this once the for loop command is implemented.
-                // Command::ForLoop(command) => {
-                //     // Print the command.
-                //     command.fmt_internal(f, depth + 1)?;
-                // }
+                Command::ForLoop(command) => {
+                    // Print the command.
+                    command.fmt_internal(f, depth + 1)?;
+                }
                 _ => {
                     // Print the command.
                     write!(f, "{:indent$}{}", "", command, indent = (depth + 1) * INDENT)?;

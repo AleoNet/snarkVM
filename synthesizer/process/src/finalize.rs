@@ -156,7 +156,7 @@ impl<N: Network> Process<N> {
 
                         match result {
                             // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
+                            Ok(Ok(Some(finalize_operation))) => finalize_operations.extend(finalize_operation),
                             // If the evaluation succeeds with no operation, continue.
                             Ok(Ok(None)) => (),
                             // If the evaluation fails, bail and return the error.
