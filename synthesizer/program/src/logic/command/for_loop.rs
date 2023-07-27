@@ -15,12 +15,13 @@
 use crate::{
     traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
     Command,
+    FinalizeRegistersState,
     Opcode,
     Operand,
 };
 use console::{
     network::prelude::*,
-    program::{Literal, Register},
+    program::{Field, Literal, Register, Scalar, Value, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
 };
 
 /// A for loop, e.g. `for r0 in 0u8..255u8: ... end.for;`.
@@ -68,9 +69,229 @@ impl<N: Network> ForLoop<N> {
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
-        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
     ) -> Result<()> {
-        todo!()
+        // Get the start of the range.
+        let start = registers.load_literal(stack, self.range.start())?;
+        // Get the end of the range.
+        let end = registers.load_literal(stack, self.range.end())?;
+        // Get the direction of the range.
+        let is_increasing = match (&start, &end) {
+            (Literal::Field(start), Literal::Field(end)) => start <= end,
+            (Literal::Scalar(start), Literal::Scalar(end)) => start <= end,
+            (Literal::I8(start), Literal::I8(end)) => start <= end,
+            (Literal::I16(start), Literal::I16(end)) => start <= end,
+            (Literal::I32(start), Literal::I32(end)) => start <= end,
+            (Literal::I64(start), Literal::I64(end)) => start <= end,
+            (Literal::I128(start), Literal::I128(end)) => start <= end,
+            (Literal::U8(start), Literal::U8(end)) => start <= end,
+            (Literal::U16(start), Literal::U16(end)) => start <= end,
+            (Literal::U32(start), Literal::U32(end)) => start <= end,
+            (Literal::U64(start), Literal::U64(end)) => start <= end,
+            (Literal::U128(start), Literal::U128(end)) => start <= end,
+            _ => bail!("Invalid range."),
+        };
+        // Store the start of the range in the register.
+        registers.store(stack, self.register(), Value::from(start))?;
+        // If the value of the register is within the range, run the loop body.
+        let value = registers.load_literal(stack, &Operand::Register(self.register().clone()))?;
+        while match (&value, &end) {
+            (Literal::Field(value), Literal::Field(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::Scalar(value), Literal::Scalar(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::I8(value), Literal::I8(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::I16(value), Literal::I16(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::I32(value), Literal::I32(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::I64(value), Literal::I64(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::I128(value), Literal::I128(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::U8(value), Literal::U8(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::U16(value), Literal::U16(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::U32(value), Literal::U32(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::U64(value), Literal::U64(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            (Literal::U128(value), Literal::U128(end)) => {
+                if is_increasing {
+                    value <= end
+                } else {
+                    value >= end
+                }
+            }
+            _ => bail!("Invalid register and ending range."),
+        } {
+            // Run the loop body.
+            for command in &self.body {
+                command.finalize(stack, store, registers)?;
+            }
+            // Increment or decrement the register depending on the direction of the loop.
+            match &value {
+                Literal::Field(value) => {
+                    if is_increasing {
+                        registers.store(
+                            stack,
+                            self.register(),
+                            Value::from(Literal::Field(value.add(Field::one()))),
+                        )?;
+                    } else {
+                        registers.store(
+                            stack,
+                            self.register(),
+                            Value::from(Literal::Field(value.sub(Field::one()))),
+                        )?;
+                    }
+                }
+                Literal::Scalar(value) => {
+                    if is_increasing {
+                        registers.store(
+                            stack,
+                            self.register(),
+                            Value::from(Literal::Scalar(value.add(Scalar::one()))),
+                        )?;
+                    } else {
+                        registers.store(
+                            stack,
+                            self.register(),
+                            Value::from(Literal::Scalar(value.sub(Scalar::one()))),
+                        )?;
+                    }
+                }
+                Literal::I8(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::I8(value.add(I8::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::I8(value.sub(I8::one()))))?;
+                    }
+                }
+                Literal::I16(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::I16(value.add(I16::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::I16(value.sub(I16::one()))))?;
+                    }
+                }
+                Literal::I32(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::I32(value.add(I32::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::I32(value.sub(I32::one()))))?;
+                    }
+                }
+                Literal::I64(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::I64(value.add(I64::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::I64(value.sub(I64::one()))))?;
+                    }
+                }
+                Literal::I128(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::I128(value.add(I128::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::I128(value.sub(I128::one()))))?;
+                    }
+                }
+                Literal::U8(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::U8(value.add(U8::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::U8(value.sub(U8::one()))))?;
+                    }
+                }
+                Literal::U16(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::U16(value.add(U16::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::U16(value.sub(U16::one()))))?;
+                    }
+                }
+                Literal::U32(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::U32(value.add(U32::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::U32(value.sub(U32::one()))))?;
+                    }
+                }
+                Literal::U64(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::U64(value.add(U64::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::U64(value.sub(U64::one()))))?;
+                    }
+                }
+                Literal::U128(value) => {
+                    if is_increasing {
+                        registers.store(stack, self.register(), Value::from(Literal::U128(value.add(U128::one()))))?;
+                    } else {
+                        registers.store(stack, self.register(), Value::from(Literal::U128(value.sub(U128::one()))))?;
+                    }
+                }
+                _ => bail!("Invalid register value."),
+            }
+        }
+        Ok(())
     }
 }
 
