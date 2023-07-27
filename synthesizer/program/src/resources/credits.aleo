@@ -62,6 +62,169 @@ record credits:
 
 /**********************************************************************************************************************/
 
+// fn bond_validator
+// - if the bond is now 33% or more, lock the validator. (determine how hard to impl this)
+
+// fn unbond_validator
+//  - can only be triggered after the validator has unbonded all of their delegators.
+//  - does it matter if the validator is locked here?
+
+// fn unbond_delegator_as_validator
+//  - can only trigger this when the validator is locked.
+
+// Useful for when you want to lock your validator from others bonding more.
+// i.e. you as validator want to unbond yourself, or say you're approaching 33% of the total stake.
+// fn lock_validator
+
+// Allows you and others to bond more to your validator.
+// fn unlock_validator
+
+/**********************************************************************************************************************/
+
+function bond_delegator:
+    // Input the validator address.
+    input r0 as address.public;
+    // Input the amount of microcredits to bond.
+    input r1 as u64.public;
+
+    // Enforce the caller is not *the* validator.
+    // Callers who wish to be a validator must use the `bond_validator` function.
+    assert.neq self.caller r0;
+
+    // Determine if the amount is at least one credit.
+    gte r1 1_000_000u64 into r2;
+    // Enforce the amount is at least one credit.
+    assert.eq r2 true;
+
+    // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
+    call credits.aleo/transfer_public stake.aleo r1;
+
+    // Bond the specified amount of microcredits to the specified validator.
+    finalize self.caller r0 r1;
+
+finalize bond_delegator:
+    // Input the delegator's address.
+    input r0 as address.public;
+    // Input the validator address.
+    input r1 as address.public;
+    // Input the amount of microcredits to bond.
+    input r2 as u64.public;
+
+    // Check if the caller is a validator.
+    contains committee[r0] into r3;
+    // Enforce the caller is not *a* validator.
+    assert.eq r3 false;
+
+    // Get the stake for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r1] into r4;
+    // Increment the stake for the specified validator.
+    add r4 r2 into r5;
+    // Update the stake for the specified validator.
+    set committee[r1] r5;
+
+    // Construct the initial bond struct.
+    cast r1 0u64 into r6 as bond;
+    // Get the bond struct for the caller, or default to the initial bond struct.
+    get.or_use bonded[r0] r6 into r7;
+    // Enforce the validator matches in the bond struct.
+    assert.eq r7.validator r1;
+
+    // Increment the microcredits in the bond struct.
+    add r7.microcredits r2 into r8;
+    // Construct the updated bond struct.
+    cast r1 r8 into r9 as bond;
+    // Update the bond struct for the caller.
+    set bonded[r0] r9;
+
+/**********************************************************************************************************************/
+
+function unbond_delegator:
+    // Input the amount of microcredits to unbond.
+    input r0 as u64.public;
+
+    // Enforce the amount is nonzero.
+    assert.neq r0 0u64;
+
+    // Unbond the specified amount of microcredits to the caller.
+    finalize self.caller r0;
+
+finalize unbond_delegator:
+    // Input the delegator's address.
+    input r0 as address.public;
+    // Input the amount of microcredits to unbond.
+    input r1 as u64.public;
+
+    // Check if the caller is a validator.
+    contains committee[r0] into r2;
+    // Enforce the caller is not *a* validator.
+    assert.eq r2 false;
+
+    // Get the bond struct for the caller, or fail if it does not exist.
+    get bonded[r0] into r3;
+    // Decrement the microcredits in the bond struct.
+    sub r3.microcredits r1 into r4;
+
+    // TODO: Add jump to skip if 'r4' is now '0', as you can 'remove'. Otherwise, the address can only bond to the same validator forever.
+    // Construct the updated bond struct.
+    cast r3.validator r4 into r5 as bond;
+    // Update the bond struct for the caller.
+    set bonded[r0] r5;
+
+    // Get the stake for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r3.validator] into r6;
+    // Decrement the stake for the specified validator.
+    sub r6 r1 into r7;
+    // Update the stake for the specified validator.
+    set committee[r3.validator] r7;
+
+    // Construct the default unbond struct.
+    cast 0u64 0u32 into r8 as unbond;
+    // Get the unbond struct for the caller, or default to the default unbond struct.
+    get.or_use unbonding[r0] r8 into r9;
+
+    // Increment the microcredits in the unbond struct.
+    add r9.microcredits r1 into r10;
+    // Compute the height at which the unbonding will be complete, starting from the current block.
+    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
+    add block.height 720u32 into r11;
+
+    // Construct the updated unbond struct.
+    cast r10 r11 into r12 as unbond;
+    // Update the unbond struct for the caller.
+    set unbonding[r0] r12;
+
+/**********************************************************************************************************************/
+
+function claim_unbond:
+    // Claim the unbonded microcredits.
+    finalize self.caller;
+
+finalize claim_unbond:
+    // Input the staker's address.
+    input r0 as address.public;
+
+    // Get the unbond struct for the caller, or fail if it does not exist.
+    get unbonding[r0] into r1;
+    // Enforce the unbonding is complete.
+    assert.gte block.height r1.height;
+
+    // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
+    call credits.aleo/transfer_public r0 r1.microcredits;
+
+    // Remove the unbond struct for the caller.
+    remove unbonding[r0];
+
+//    // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
+//    // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
+//    call credits.aleo/transfer_public r0 r1;
+
+// Open Questions:
+// - Should the 720 be more?
+
+/**********************************************************************************************************************/
+
 // The `mint` function generates the specified amount
 // into a record for the specified receiver.
 // Note: Additional rules are enforced in consensus.
@@ -273,164 +436,3 @@ function fee:
     output r4 as credits.record;
 
 /**********************************************************************************************************************/
-
-// fn bond_validator
-// - if the bond is now 33% or more, lock the validator. (determine how hard to impl this)
-
-// fn unbond_validator
-//  - can only be triggered after the validator has unbonded all of their delegators.
-//  - does it matter if the validator is locked here?
-
-// fn unbond_delegator_as_validator
-//  - can only trigger this when the validator is locked.
-
-// Useful for when you want to lock your validator from others bonding more.
-// i.e. you as validator want to unbond yourself, or say you're approaching 33% of the total stake.
-// fn lock_validator
-
-// Allows you and others to bond more to your validator.
-// fn unlock_validator
-
-/**********************************************************************************************************************/
-
-function bond_delegator:
-    // Input the validator address.
-    input r0 as address.public;
-    // Input the amount of microcredits to bond.
-    input r1 as u64.public;
-
-    // Enforce the caller is not *the* validator.
-    // Callers who wish to be a validator must use the `bond_validator` function.
-    assert.neq self.caller r0;
-
-    // Determine if the amount is at least one credit.
-    gte r1 1_000_000u64 into r2;
-    // Enforce the amount is at least one credit.
-    assert.eq r2 true;
-
-    // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
-    call credits.aleo/transfer_public stake.aleo r1;
-
-    // Bond the specified amount of microcredits to the specified validator.
-    finalize self.caller r0 r1;
-
-finalize bond_delegator:
-    // Input the delegator's address.
-    input r0 as address.public;
-    // Input the validator address.
-    input r1 as address.public;
-    // Input the amount of microcredits to bond.
-    input r2 as u64.public;
-
-    // Check if the caller is a validator.
-    contains committee[r0] into r3;
-    // Enforce the caller is not *a* validator.
-    assert.eq r3 false;
-
-    // Get the stake for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get committee[r1] into r4;
-    // Increment the stake for the specified validator.
-    add r4 r2 into r5;
-    // Update the stake for the specified validator.
-    set committee[r1] r5;
-
-    // Construct the initial bond struct.
-    cast r1 0u64 into r6 as bond;
-    // Get the bond struct for the caller, or default to the initial bond struct.
-    get.or_use bonded[r0] r6 into r7;
-    // Enforce the validator matches in the bond struct.
-    assert.eq r7.validator r1;
-
-    // Increment the microcredits in the bond struct.
-    add r7.microcredits r2 into r8;
-    // Construct the updated bond struct.
-    cast r1 r8 into r9 as bond;
-    // Update the bond struct for the caller.
-    set bonded[r0] r9;
-
-/**********************************************************************************************************************/
-
-function unbond_delegator:
-    // Input the amount of microcredits to unbond.
-    input r0 as u64.public;
-
-    // Enforce the amount is nonzero.
-    assert.neq r0 0u64;
-
-    // Unbond the specified amount of microcredits to the caller.
-    finalize self.caller r0;
-
-finalize unbond_delegator:
-    // Input the delegator's address.
-    input r0 as address.public;
-    // Input the amount of microcredits to unbond.
-    input r1 as u64.public;
-
-    // Check if the caller is a validator.
-    contains committee[r0] into r2;
-    // Enforce the caller is not *a* validator.
-    assert.eq r2 false;
-
-    // Get the bond struct for the caller, or fail if it does not exist.
-    get bonded[r0] into r3;
-    // Decrement the microcredits in the bond struct.
-    sub r3.microcredits r1 into r4;
-
-    // TODO: Add jump to skip if 'r4' is now '0', as you can 'remove'. Otherwise, the address can only bond to the same validator forever.
-    // Construct the updated bond struct.
-    cast r3.validator r4 into r5 as bond;
-    // Update the bond struct for the caller.
-    set bonded[r0] r5;
-
-    // Get the stake for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get committee[r3.validator] into r6;
-    // Decrement the stake for the specified validator.
-    sub r6 r1 into r7;
-    // Update the stake for the specified validator.
-    set committee[r3.validator] r7;
-
-    // Construct the default unbond struct.
-    cast 0u64 0u32 into r8 as unbond;
-    // Get the unbond struct for the caller, or default to the default unbond struct.
-    get.or_use unbonding[r0] r8 into r9;
-
-    // Increment the microcredits in the unbond struct.
-    add r9.microcredits r1 into r10;
-    // Compute the height at which the unbonding will be complete, starting from the current block.
-    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 720u32 into r11;
-
-    // Construct the updated unbond struct.
-    cast r10 r11 into r12 as unbond;
-    // Update the unbond struct for the caller.
-    set unbonding[r0] r12;
-
-/**********************************************************************************************************************/
-
-function claim_unbond:
-    // Claim the unbonded microcredits.
-    finalize self.caller;
-
-finalize claim_unbond:
-    // Input the staker's address.
-    input r0 as address.public;
-
-    // Get the unbond struct for the caller, or fail if it does not exist.
-    get unbonding[r0] into r1;
-    // Enforce the unbonding is complete.
-    assert.gte block.height r1.height;
-
-    // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-    call credits.aleo/transfer_public r0 r1.microcredits;
-
-    // Remove the unbond struct for the caller.
-    remove unbonding[r0];
-
-//    // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
-//    // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-//    call credits.aleo/transfer_public r0 r1;
-
-// Open Questions:
-// - Should the 720 be more?
