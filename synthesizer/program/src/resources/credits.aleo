@@ -9,8 +9,15 @@ program credits.aleo;
 mapping committee:
     // The key represents the address of the validator.
     key validator as address.public;
-    // The value represents the amount of microcredits bonded to the validator, by the validator and its delegators.
-    value stake as u64.public;
+    // The value represents the state of the validator.
+    value state as state.public;
+
+// The `state` struct tracks the state of the validator.
+struct state:
+    // The amount of microcredits bonded to the validator, by the validator and its delegators.
+    microcredits as u64.public;
+    // The boolean flag indicating if the validator is locked.
+    is_locked as boolean.public;
 
 /**********************************************************************************************************************/
 
@@ -81,61 +88,161 @@ record credits:
 
 /**********************************************************************************************************************/
 
-function bond_delegator:
-    // Input the validator address.
+function bond_public:
+    // Input the validator's address.
     input r0 as address.public;
     // Input the amount of microcredits to bond.
     input r1 as u64.public;
-
-    // Enforce the caller is not *the* validator.
-    // Callers who wish to be a validator must use the `bond_validator` function.
-    assert.neq self.caller r0;
 
     // Determine if the amount is at least one credit.
     gte r1 1_000_000u64 into r2;
     // Enforce the amount is at least one credit.
     assert.eq r2 true;
 
-    // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
-    call credits.aleo/transfer_public stake.aleo r1;
+//    // Perform the transfer of microcredits from the caller to the 'stake.aleo' program.
+//    call credits.aleo/transfer_public stake.aleo r1;
 
     // Bond the specified amount of microcredits to the specified validator.
     finalize self.caller r0 r1;
 
-finalize bond_delegator:
-    // Input the delegator's address.
+finalize bond_public:
+    // Input the staker's address.
     input r0 as address.public;
-    // Input the validator address.
+    // Input the validator's address.
     input r1 as address.public;
     // Input the amount of microcredits to bond.
     input r2 as u64.public;
 
+    // Determine whether the caller is a validator.
+    is.eq r0 r1 into r3;
+    // If the caller is a validator, jump to the `bond_validator` logic.
+    branch.eq r3 true to bond_validator;
+    // If the caller is not a validator, jump to the `bond_delegator` logic.
+    branch.eq r3 false to bond_delegator;
+
+    /******* Bond Validator *******/
+
+    // Starts the `bond_validator` logic.
+    position bond_validator;
+
+    /* Start Committee */
+
+    // Construct the initial committee state.
+    cast 0u64 false into r4 as state;
+    // Retrieve the state of the specified validator.
+    get.or_use committee[r0] r4 into r5;
+
+    // Increment the stake for the specified validator.
+    add r5.microcredits r2 into r6;
+    // Determine if the amount is at least one million credits.
+    gte r6 1_000_000_000_000u64 into r7;
+    // Enforce the amount is at least one million credits.
+    assert.eq r7 true;
+
+    // Construct the updated committee state.
+    cast r6 r5.is_locked into r8 as state;
+
+    /* End Committee */
+
+    /* Start Bonded */
+
+    // Construct the initial bond struct.
+    cast r1 0u64 into r9 as bond;
+    // Get the bond struct for the caller, or default to the initial bond struct.
+    get.or_use bonded[r0] r9 into r10;
+    // Enforce the validator matches in the bond struct.
+    assert.eq r10.validator r1;
+
+    // Increment the microcredits in the bond struct.
+    add r10.microcredits r2 into r11;
+    // Construct the updated bond struct.
+    cast r1 r11 into r12 as bond;
+
+    /* End Bonded */
+
+    /* Start Account */
+
+    // Get the balance of the caller.
+    // If the account does not exist, this finalize scope will fail.
+    get account[r0] into r13;
+    // Decrement the balance of the caller.
+    sub r13 r2 into r14;
+
+    /* End Account */
+
+    /* Start Writes */
+
+    // Update the state of the specified validator.
+    set committee[r0] r8;
+    // Update the bond struct for the caller.
+    set bonded[r0] r12;
+    // Update the balance of the caller.
+    set account[r0] r14;
+
+    /* End Writes */
+
+    // Ends the `bond_validator` logic.
+    branch.eq true true to end;
+
+    /******* Bond Delegator *******/
+
+    // Starts the `bond_delegator` logic.
+    position bond_delegator;
+
+    /* Start Committee */
+
     // Check if the caller is a validator.
-    contains committee[r0] into r3;
+    contains committee[r0] into r15;
     // Enforce the caller is not *a* validator.
-    assert.eq r3 false;
+    assert.eq r15 false;
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r1] into r4;
+    get committee[r1] into r16;
     // Increment the stake for the specified validator.
-    add r4 r2 into r5;
-    // Update the stake for the specified validator.
-    set committee[r1] r5;
+    add r16 r2 into r17;
+
+    /* End Committee */
+
+    /* Start Bonded */
 
     // Construct the initial bond struct.
-    cast r1 0u64 into r6 as bond;
+    cast r1 0u64 into r18 as bond;
     // Get the bond struct for the caller, or default to the initial bond struct.
-    get.or_use bonded[r0] r6 into r7;
+    get.or_use bonded[r0] r18 into r19;
     // Enforce the validator matches in the bond struct.
-    assert.eq r7.validator r1;
+    assert.eq r19.validator r1;
 
     // Increment the microcredits in the bond struct.
-    add r7.microcredits r2 into r8;
+    add r19.microcredits r2 into r20;
     // Construct the updated bond struct.
-    cast r1 r8 into r9 as bond;
+    cast r1 r20 into r21 as bond;
+
+    /* End Bonded */
+
+    /* Start Account */
+
+    // Get the balance of the caller.
+    // If the account does not exist, this finalize scope will fail.
+    get account[r0] into r22;
+    // Decrement the balance of the caller.
+    sub r22 r2 into r23;
+
+    /* End Account */
+
+    /* Start Writes */
+
+    // Update the stake for the specified validator.
+    set committee[r1] r17;
     // Update the bond struct for the caller.
-    set bonded[r0] r9;
+    set bonded[r0] r21;
+    // Update the balance of the caller.
+    set account[r0] r23;
+
+    /* End Writes */
+
+    // The terminus.
+    position end;
 
 /**********************************************************************************************************************/
 
