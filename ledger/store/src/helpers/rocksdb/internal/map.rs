@@ -21,17 +21,6 @@ use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
 use std::{borrow::Cow, sync::atomic::Ordering};
 
-
-
-#![allow(clippy::type_complexity)]
-
-use super::*;
-use crate::helpers::{Map, MapRead};
-
-use core::{fmt, fmt::Debug, hash::Hash, mem};
-use indexmap::IndexMap;
-use std::{borrow::Cow, sync::atomic::Ordering};
-
 #[derive(Clone)]
 pub struct EventDataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
     // name serves as identifier for when we export the data points
