@@ -23,31 +23,41 @@ mapping bonded:
 
 // The `bond` struct tracks the amount of microcredits that are currently bonded to the specified validator.
 struct bond:
-    // The key represents the address of the validator.
+    // The address of the validator.
     validator as address;
-    // The value represents the amount of microcredits that are currently bonded to the specified validator.
+    // The amount of microcredits that are currently bonded to the specified validator.
     microcredits as u64;
 
 /**********************************************************************************************************************/
 
+// The `unbonding` mapping contains a set of stakers with their unbonding microcredits and unlock height.
 mapping unbonding:
+    // The key represents the address of the staker, which includes the validators and their delegators.
     key staker as address.public;
+    // The value represents the unbond.
     value unbond as unbond.public;
 
+// The `unbond` struct tracks the microcredits that are currently unbonding.
 struct unbond:
+    // The amount of microcredits that are currently unbonding.
     microcredits as u64;
+    // The block height at which the unbonding will be complete, and can be claimed.
     height as u32;
 
 /**********************************************************************************************************************/
 
 // The `account` mapping is used to store credits publicly.
 mapping account:
+    // The key represents the address of the owner.
     key owner as address.public;
+    // The value represents the amount of public microcredits that belong to the specified owner.
     value microcredits as u64.public;
 
 // The `credits` record is used to store credits privately.
 record credits:
+    // The address of the owner.
     owner as address.private;
+    // The amount of private microcredits that belong to the specified owner.
     microcredits as u64.private;
 
 /**********************************************************************************************************************/
@@ -71,6 +81,8 @@ function mint:
     cast r0 r1 into r3 as credits.record;
     // Output the receiver's record.
     output r3 as credits.record;
+
+/**********************************************************************************************************************/
 
 // The `transfer_public` function sends the specified amount
 // from the sender's `account` to the receiver's `account`.
@@ -102,6 +114,8 @@ finalize transfer_public:
     add r5 r2 into r6;
     set r6 into account[r1];
 
+/**********************************************************************************************************************/
+
 // The `transfer_private` function sends the specified amount
 // from the sender's record to the receiver in a record.
 function transfer_private:
@@ -124,6 +138,8 @@ function transfer_private:
     output r4 as credits.record;
     // Output the sender's change record.
     output r5 as credits.record;
+
+/**********************************************************************************************************************/
 
 // The `transfer_private_to_public` function turns a specified amount
 // from a record into public credits for the specified receiver.
@@ -163,6 +179,8 @@ finalize transfer_private_to_public:
     // Updates the balance of the sender.
     set r3 into account[r0];
 
+/**********************************************************************************************************************/
+
 // The `transfer_public_to_private` function turns a specified amount
 // from the mapping `account` into a record for the specified receiver.
 //
@@ -194,6 +212,8 @@ finalize transfer_public_to_private:
     // Updates the balance of the sender.
     set r3 into account[r0];
 
+/**********************************************************************************************************************/
+
 // The `join` function combines two records into one.
 function join:
     // Input the first record.
@@ -208,6 +228,8 @@ function join:
     cast r0.owner r2 into r3 as credits.record;
     // Output the record.
     output r3 as credits.record;
+
+/**********************************************************************************************************************/
 
 // The `split` function splits a record into two records.
 function split:
@@ -227,6 +249,8 @@ function split:
     output r3 as credits.record;
     // Output the second record.
     output r4 as credits.record;
+
+/**********************************************************************************************************************/
 
 // The `fee` function charges the specified amount from the sender's record.
 function fee:
@@ -324,6 +348,8 @@ finalize bond_delegator:
     cast r1 r8 into r9 as bond;
     // Update the bond struct for the caller.
     set bonded[r0] r9;
+
+/**********************************************************************************************************************/
 
 function unbond_delegator:
     // Input the amount of microcredits to unbond.
