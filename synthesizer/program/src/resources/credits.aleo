@@ -5,7 +5,8 @@ program credits.aleo;
 
 /**********************************************************************************************************************/
 
-mapping validators:
+/// The `committee` mapping contains the active validator set and their corresponding stake.
+mapping committee:
     // The key represents the address of the validator.
     key validator as address.public;
     // The value represents the amount of microcredits bonded to the validator, by the validator and its delegators.
@@ -16,7 +17,7 @@ mapping validators:
 // The `bonded` mapping represents the amount of microcredits that are currently bonded.
 mapping bonded:
     // The key represents the address of the staker, which includes the validators and their delegators.
-    key owner as address.public;
+    key staker as address.public;
     // The value represents the bond.
     value bond as bond.public;
 
@@ -298,17 +299,17 @@ finalize bond_delegator:
     input r2 as u64.public;
 
     // Check if the caller is a validator.
-    contains validators[r0] into r3;
+    contains committee[r0] into r3;
     // Enforce the caller is not *a* validator.
     assert.eq r3 false;
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get validators[r1] into r4;
+    get committee[r1] into r4;
     // Increment the stake for the specified validator.
     add r4 r2 into r5;
     // Update the stake for the specified validator.
-    set validators[r1] r5;
+    set committee[r1] r5;
 
     // Construct the initial bond struct.
     cast r1 0u64 into r6 as bond;
@@ -341,7 +342,7 @@ finalize unbond_delegator:
     input r1 as u64.public;
 
     // Check if the caller is a validator.
-    contains validators[r0] into r2;
+    contains committee[r0] into r2;
     // Enforce the caller is not *a* validator.
     assert.eq r2 false;
 
@@ -358,11 +359,11 @@ finalize unbond_delegator:
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get validators[r3.validator] into r6;
+    get committee[r3.validator] into r6;
     // Decrement the stake for the specified validator.
     sub r6 r1 into r7;
     // Update the stake for the specified validator.
-    set validators[r3.validator] r7;
+    set committee[r3.validator] r7;
 
     // Construct the default unbond struct.
     cast 0u64 0u32 into r8 as unbond;
