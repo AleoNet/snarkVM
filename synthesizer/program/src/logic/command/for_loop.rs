@@ -97,90 +97,90 @@ impl<N: Network> ForLoop<N> {
         // Initialize storage for the `FinalizeOperation`s.
         let mut operations = Vec::new();
         // If the value of the register is within the range, run the loop body.
-        let value = registers.load_literal(stack, &Operand::Register(self.register().clone()))?;
+        let mut value = registers.load_literal(stack, &Operand::Register(self.register().clone()))?;
         while match (&value, &end) {
             (Literal::Field(value), Literal::Field(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::Scalar(value), Literal::Scalar(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::I8(value), Literal::I8(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::I16(value), Literal::I16(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::I32(value), Literal::I32(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::I64(value), Literal::I64(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::I128(value), Literal::I128(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::U8(value), Literal::U8(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::U16(value), Literal::U16(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::U32(value), Literal::U32(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::U64(value), Literal::U64(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             (Literal::U128(value), Literal::U128(end)) => {
                 if is_increasing {
-                    value <= end
+                    value < end
                 } else {
-                    value >= end
+                    value > end
                 }
             }
             _ => bail!("Invalid register and ending range."),
@@ -191,110 +191,48 @@ impl<N: Network> ForLoop<N> {
                     operations.extend(operation);
                 }
             }
-            // Increment or decrement the register depending on the direction of the loop.
-            match &value {
+            // Compute the new value of the register.
+            value = match &value {
                 Literal::Field(value) => {
-                    if is_increasing {
-                        registers.store(
-                            stack,
-                            self.register(),
-                            Value::from(Literal::Field(value.add(Field::one()))),
-                        )?;
-                    } else {
-                        registers.store(
-                            stack,
-                            self.register(),
-                            Value::from(Literal::Field(value.sub(Field::one()))),
-                        )?;
-                    }
+                    Literal::Field(if is_increasing { value.add(Field::one()) } else { value.sub(Field::one()) })
                 }
                 Literal::Scalar(value) => {
-                    if is_increasing {
-                        registers.store(
-                            stack,
-                            self.register(),
-                            Value::from(Literal::Scalar(value.add(Scalar::one()))),
-                        )?;
-                    } else {
-                        registers.store(
-                            stack,
-                            self.register(),
-                            Value::from(Literal::Scalar(value.sub(Scalar::one()))),
-                        )?;
-                    }
+                    Literal::Scalar(if is_increasing { value.add(Scalar::one()) } else { value.sub(Scalar::one()) })
                 }
                 Literal::I8(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::I8(value.add(I8::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::I8(value.sub(I8::one()))))?;
-                    }
+                    Literal::I8(if is_increasing { value.add(I8::one()) } else { value.sub(I8::one()) })
                 }
                 Literal::I16(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::I16(value.add(I16::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::I16(value.sub(I16::one()))))?;
-                    }
+                    Literal::I16(if is_increasing { value.add(I16::one()) } else { value.sub(I16::one()) })
                 }
                 Literal::I32(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::I32(value.add(I32::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::I32(value.sub(I32::one()))))?;
-                    }
+                    Literal::I32(if is_increasing { value.add(I32::one()) } else { value.sub(I32::one()) })
                 }
                 Literal::I64(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::I64(value.add(I64::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::I64(value.sub(I64::one()))))?;
-                    }
+                    Literal::I64(if is_increasing { value.add(I64::one()) } else { value.sub(I64::one()) })
                 }
                 Literal::I128(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::I128(value.add(I128::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::I128(value.sub(I128::one()))))?;
-                    }
+                    Literal::I128(if is_increasing { value.add(I128::one()) } else { value.sub(I128::one()) })
                 }
                 Literal::U8(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::U8(value.add(U8::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::U8(value.sub(U8::one()))))?;
-                    }
+                    Literal::U8(if is_increasing { value.add(U8::one()) } else { value.sub(U8::one()) })
                 }
                 Literal::U16(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::U16(value.add(U16::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::U16(value.sub(U16::one()))))?;
-                    }
+                    Literal::U16(if is_increasing { value.add(U16::one()) } else { value.sub(U16::one()) })
                 }
                 Literal::U32(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::U32(value.add(U32::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::U32(value.sub(U32::one()))))?;
-                    }
+                    Literal::U32(if is_increasing { value.add(U32::one()) } else { value.sub(U32::one()) })
                 }
                 Literal::U64(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::U64(value.add(U64::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::U64(value.sub(U64::one()))))?;
-                    }
+                    Literal::U64(if is_increasing { value.add(U64::one()) } else { value.sub(U64::one()) })
                 }
                 Literal::U128(value) => {
-                    if is_increasing {
-                        registers.store(stack, self.register(), Value::from(Literal::U128(value.add(U128::one()))))?;
-                    } else {
-                        registers.store(stack, self.register(), Value::from(Literal::U128(value.sub(U128::one()))))?;
-                    }
+                    Literal::U128(if is_increasing { value.add(U128::one()) } else { value.sub(U128::one()) })
                 }
                 _ => bail!("Invalid register value."),
-            }
+            };
+            // Store the new value of the register.
+            registers.store_literal(stack, self.register(), value.clone())?;
         }
         Ok(operations)
     }
@@ -418,7 +356,14 @@ impl<N: Network> FromBytes for ForLoop<N> {
         // Read the commands in the loop body.
         let mut body = Vec::with_capacity(num_commands as usize);
         for _ in 0..num_commands {
-            body.push(Command::read_le(&mut reader)?);
+            // Read the command (in 2 steps to prevent infinite recursion).
+            let num_bytes = u16::read_le(&mut reader)?;
+            // Read the command bytes.
+            let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+            // Recover the command.
+            let command = Command::read_le(&mut bytes.as_slice())?;
+            // Add the element.
+            body.push(command);
         }
         // Return the for loop.
         Ok(Self { register, range, body })
@@ -438,7 +383,12 @@ impl<N: Network> ToBytes for ForLoop<N> {
             .write_le(&mut writer)?;
         // Write the commands in the loop body.
         for command in &self.body {
-            command.write_le(&mut writer)?;
+            // Write the command (performed in 2 steps to prevent infinite recursion).
+            let bytes = command.to_bytes_le().map_err(|e| error(e.to_string()))?;
+            // Write the number of bytes.
+            u16::try_from(bytes.len()).or_halt_with::<N>("Command exceeds u16::MAX bytes.").write_le(&mut writer)?;
+            // Write the bytes.
+            bytes.write_le(&mut writer)?;
         }
         Ok(())
     }

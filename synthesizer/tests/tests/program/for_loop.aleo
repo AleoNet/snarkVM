@@ -4,9 +4,9 @@ cases:
   - function: run_test
     inputs: [0u32, 0u32]
   - function: run_test
-    inputs: [10u32, 55u32]
+    inputs: [10u32, 45u32]
   - function: run_test
-    inputs: [100u32, 5050u32]
+    inputs: [100u32, 4950u32]
 */
 
 program for_loop.aleo;

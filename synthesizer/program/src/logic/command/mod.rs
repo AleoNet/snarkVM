@@ -157,7 +157,7 @@ impl<N: Network> Command<N> {
     ) -> Result<Option<Vec<FinalizeOperation<N>>>> {
         match self {
             // Finalize the instruction, and return no finalize operation.
-            Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|result| None),
+            Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
             // Finalize the 'contains' command, and return no finalize operation.
             Command::Contains(contains) => contains.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get' command, and return no finalize operation.

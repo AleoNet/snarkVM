@@ -419,12 +419,6 @@ impl<N: Network> FinalizeTypes<N> {
         finalize: &Finalize<N>,
         for_loop: &ForLoop<N>,
     ) -> Result<()> {
-        // Ensure that the register is a locator.
-        ensure!(
-            matches!(for_loop.register(), Register::Locator(..)),
-            "Register '{}' must be a locator.",
-            for_loop.register()
-        );
         // Ensure that the start and end of the loop are valid.
         let start_type = self.get_type_from_operand(stack, for_loop.range().start())?;
         let end_type = self.get_type_from_operand(stack, for_loop.range().end())?;
@@ -444,14 +438,19 @@ impl<N: Network> FinalizeTypes<N> {
             | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U32))
             | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U64))
             | FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U128)) => (),
-            _ => bail!("Loop range types '{start_type}' must be incrementable."),
+            _ => bail!("Loop range types '{start_type}' must be (in/dec)crementable."),
         }
+
+        // Ensure that the register is a locator.
+        let loop_register = for_loop.register().clone();
+        ensure!(matches!(loop_register, Register::Locator(..)), "Register '{loop_register}' must be a locator.",);
+        // Insert the destination register.
+        self.add_destination(loop_register, start_type)?;
 
         // Ensure that the loop body is well-formed.
         for command in for_loop.body() {
             self.check_command(stack, finalize, command)?;
         }
-
         Ok(())
     }
 
