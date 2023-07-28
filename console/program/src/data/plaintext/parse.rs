@@ -391,4 +391,23 @@ mod tests {
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
     }
+
+    #[test]
+    fn test_nested_structs3() {
+        let expected = r"{
+  c: {
+    a: 0u8,
+    b: 1u8
+  },
+  d: {
+    a: 0u8,
+    b: 1u8
+  }
+}";
+
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
 }

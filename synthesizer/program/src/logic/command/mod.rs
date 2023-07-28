@@ -160,7 +160,7 @@ impl<N: Network> Command<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
-    ) -> Result<Option<Vec<FinalizeOperation<N>>>> {
+    ) -> Result<Option<FinalizeOperation<N>>> {
         match self {
             // Finalize the instruction, and return no finalize operation.
             Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
@@ -173,9 +173,9 @@ impl<N: Network> Command<N> {
             // Finalize the `rand.chacha` command, and return no finalize operation.
             Command::RandChaCha(rand_chacha) => rand_chacha.finalize(stack, registers).map(|_| None),
             // Finalize the 'remove' command, and return the finalize operation.
-            Command::Remove(remove) => remove.finalize(stack, store, registers).map(|result| Some(vec![result])),
+            Command::Remove(remove) => remove.finalize(stack, store, registers),
             // Finalize the 'set' command, and return the finalize operation.
-            Command::Set(set) => set.finalize(stack, store, registers).map(|result| Some(vec![result])),
+            Command::Set(set) => set.finalize(stack, store, registers).map(Some),
             // 'branch.eq' and 'branch.neq' instructions are processed by the caller of this method.
             Command::BranchEq(_) | Command::BranchNeq(_) => {
                 bail!("`branch` instructions cannot be finalized directly.")
