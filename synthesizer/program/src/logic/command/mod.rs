@@ -18,8 +18,11 @@ pub use branch::*;
 mod contains;
 pub use contains::*;
 
-mod for_loop;
-pub use for_loop::*;
+mod end_for;
+pub use end_for::*;
+
+mod for_;
+pub use for_::*;
 
 mod get;
 pub use get::*;
@@ -82,8 +85,10 @@ pub enum Command<N: Network> {
     BranchNeq(BranchNeq<N>),
     /// Indicates a position to which the program can branch to.
     Position(Position<N>),
-    /// Evaluates the loop body over its range..
-    ForLoop(ForLoop<N>),
+    /// Indicates the beginning of a for loop.
+    For(For<N>),
+    /// Indicates the end of a for loop.
+    EndFor(EndFor),
 }
 
 impl<N: Network> CommandTrait<N> for Command<N> {
@@ -103,7 +108,8 @@ impl<N: Network> CommandTrait<N> for Command<N> {
             | Command::BranchEq(_)
             | Command::BranchNeq(_)
             | Command::Position(_)
-            | Command::ForLoop(_) => vec![],
+            | Command::For(_)
+            | Command::EndFor(_) => vec![],
         }
     }
 
@@ -176,8 +182,10 @@ impl<N: Network> Command<N> {
             }
             // Finalize the `position` command, and return no finalize operation.
             Command::Position(position) => position.finalize().map(|_| None),
-            // Finalize the `for` loop and return the finalize operations collected.
-            Command::ForLoop(for_loop) => for_loop.finalize(stack, store, registers).map(Some),
+            // `for` commands are processed by the caller of this method.
+            Command::For(_) => bail!("`for` commands cannot be finalized directly."),
+            // `end.for` commands are processed by the caller of this method.
+            Command::EndFor(_) => bail!("`end.for` commands cannot be finalized directly."),
         }
     }
 }
@@ -208,10 +216,12 @@ impl<N: Network> FromBytes for Command<N> {
             8 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
             // Read the `position` command.
             9 => Ok(Self::Position(Position::read_le(&mut reader)?)),
-            // Read the `for` loop.
-            10 => Ok(Self::ForLoop(ForLoop::read_le(&mut reader)?)),
+            // Read the `for` command.
+            10 => Ok(Self::For(For::read_le(&mut reader)?)),
+            // Read the `end.for` command.
+            11 => Ok(Self::EndFor(EndFor::read_le(&mut reader)?)),
             // Invalid variant.
-            11.. => Err(error(format!("Invalid command variant: {variant}"))),
+            12.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -280,11 +290,17 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the position command.
                 position.write_le(&mut writer)
             }
-            Self::ForLoop(for_loop) => {
+            Self::For(for_) => {
                 // Write the variant.
                 10u8.write_le(&mut writer)?;
-                // Write the `for` loop.
-                for_loop.write_le(&mut writer)
+                // Write the `for` command.
+                for_.write_le(&mut writer)
+            }
+            Self::EndFor(end_for) => {
+                // Write the variant.
+                11u8.write_le(&mut writer)?;
+                // Write the `end.for` command.
+                end_for.write_le(&mut writer)
             }
         }
     }
@@ -306,7 +322,8 @@ impl<N: Network> Parser for Command<N> {
             map(BranchEq::parse, |branch_eq| Self::BranchEq(branch_eq)),
             map(BranchNeq::parse, |branch_neq| Self::BranchNeq(branch_neq)),
             map(Position::parse, |position| Self::Position(position)),
-            map(ForLoop::parse, |for_loop| Self::ForLoop(for_loop)),
+            map(For::parse, |for_| Self::For(for_)),
+            map(EndFor::parse, |end_for| Self::EndFor(end_for)),
             map(Instruction::parse, |instruction| Self::Instruction(instruction)),
         ))(string)
     }
@@ -351,7 +368,8 @@ impl<N: Network> Display for Command<N> {
             Self::BranchEq(branch_eq) => Display::fmt(branch_eq, f),
             Self::BranchNeq(branch_neq) => Display::fmt(branch_neq, f),
             Self::Position(position) => Display::fmt(position, f),
-            Self::ForLoop(for_loop) => Display::fmt(for_loop, f),
+            Self::For(for_) => Display::fmt(for_, f),
+            Self::EndFor(end_for) => Display::fmt(end_for, f),
         }
     }
 }
@@ -439,8 +457,14 @@ mod tests {
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
-        // ForLoop
-        let expected = "for r0 in r1..r2: add r0 r0 into r3; end.for;";
+        // For
+        let expected = "for r0 in r1..r2:";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // EndFor
+        let expected = "end.for;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
@@ -522,10 +546,16 @@ mod tests {
         assert_eq!(Command::Position(Position::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
 
-        // ForLoop
-        let expected = "for r0 in r1..r2: add r0 r0 into r3; end.for;";
+        // For
+        let expected = "for r0 in r1..r2:";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
-        assert_eq!(Command::ForLoop(ForLoop::from_str(expected).unwrap()), command);
+        assert_eq!(Command::For(For::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // EndFor
+        let expected = "end.for;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::EndFor(EndFor::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }

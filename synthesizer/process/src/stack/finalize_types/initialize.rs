@@ -16,7 +16,7 @@ use super::*;
 
 use crate::RegisterTypes;
 
-use synthesizer_program::{Branch, Contains, ForLoop, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
+use synthesizer_program::{Branch, Contains, For, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
 
 use console::program::ElementType;
 
@@ -38,9 +38,45 @@ impl<N: Network> FinalizeTypes<N> {
         }
 
         // Step 2. Check the commands are well-formed.
-        for command in finalize.commands() {
+
+        // Initialize a stack to track nested `For` loops.
+        let mut loop_stack = Vec::new();
+        for (i, command) in finalize.commands().iter().enumerate() {
             // Check the command opcode, operands, and destinations.
-            finalize_types.check_command(stack, finalize, command)?;
+            match command {
+                Command::Instruction(instruction) => {
+                    finalize_types.check_instruction(stack, finalize.name(), instruction)?
+                }
+                Command::Contains(contains) => finalize_types.check_contains(stack, finalize.name(), contains)?,
+                Command::Get(get) => finalize_types.check_get(stack, finalize.name(), get)?,
+                Command::GetOrUse(get_or_use) => finalize_types.check_get_or_use(stack, finalize.name(), get_or_use)?,
+                Command::RandChaCha(rand_chacha) => {
+                    finalize_types.check_rand_chacha(stack, finalize.name(), rand_chacha)?
+                }
+                Command::Remove(remove) => finalize_types.check_remove(stack, finalize.name(), remove)?,
+                Command::Set(set) => finalize_types.check_set(stack, finalize.name(), set)?,
+                Command::BranchEq(branch_eq) => finalize_types.check_branch(stack, finalize, branch_eq)?,
+                Command::BranchNeq(branch_neq) => finalize_types.check_branch(stack, finalize, branch_neq)?,
+                // Note that the `Position`s are checked for uniqueness when constructing `Finalize`.
+                Command::Position(_) => (),
+                Command::For(for_) => {
+                    finalize_types.check_for(stack, for_)?;
+                    // Push the index of the `For` loop onto the stack.
+                    loop_stack.push(i);
+                }
+                Command::EndFor(_) => {
+                    // Pop the index of the `For` loop from the stack.
+                    // If the stack is empty, then there is a mismatched `EndFor`.
+                    if loop_stack.pop().is_none() {
+                        bail!("Mismatched 'end.for'");
+                    }
+                }
+            }
+        }
+
+        // Check that all `For` loops have a matching `EndFor`.
+        if !loop_stack.is_empty() {
+            bail!("Mismatched 'for'");
         }
 
         Ok(finalize_types)
@@ -138,31 +174,6 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the register type and the input type match.
         if FinalizeType::Plaintext(*plaintext_type) != self.get_type(stack, register)? {
             bail!("Input '{register}' does not match the expected input register type.")
-        }
-        Ok(())
-    }
-
-    /// Ensures the given command is well-formed.
-    #[inline]
-    fn check_command(
-        &mut self,
-        stack: &(impl StackMatches<N> + StackProgram<N>),
-        finalize: &Finalize<N>,
-        command: &Command<N>,
-    ) -> Result<()> {
-        match command {
-            Command::Instruction(instruction) => self.check_instruction(stack, finalize.name(), instruction)?,
-            Command::Contains(contains) => self.check_contains(stack, finalize.name(), contains)?,
-            Command::Get(get) => self.check_get(stack, finalize.name(), get)?,
-            Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize.name(), get_or_use)?,
-            Command::RandChaCha(rand_chacha) => self.check_rand_chacha(stack, finalize.name(), rand_chacha)?,
-            Command::Remove(remove) => self.check_remove(stack, finalize.name(), remove)?,
-            Command::Set(set) => self.check_set(stack, finalize.name(), set)?,
-            Command::BranchEq(branch_eq) => self.check_branch(stack, finalize, branch_eq)?,
-            Command::BranchNeq(branch_neq) => self.check_branch(stack, finalize, branch_neq)?,
-            // Note that the `Position`s are checked for uniqueness when constructing `Finalize`.
-            Command::Position(_) => (),
-            Command::ForLoop(for_loop) => self.check_for_loop(stack, finalize, for_loop)?,
         }
         Ok(())
     }
@@ -411,17 +422,12 @@ impl<N: Network> FinalizeTypes<N> {
         Ok(())
     }
 
-    /// Ensures the given `for` loop is well-formed.
+    /// Ensures the given `for` command is well-formed.
     #[inline]
-    fn check_for_loop(
-        &mut self,
-        stack: &(impl StackMatches<N> + StackProgram<N>),
-        finalize: &Finalize<N>,
-        for_loop: &ForLoop<N>,
-    ) -> Result<()> {
+    fn check_for(&mut self, stack: &(impl StackMatches<N> + StackProgram<N>), for_: &For<N>) -> Result<()> {
         // Ensure that the start and end of the loop are valid.
-        let start_type = self.get_type_from_operand(stack, for_loop.range().start())?;
-        let end_type = self.get_type_from_operand(stack, for_loop.range().end())?;
+        let start_type = self.get_type_from_operand(stack, for_.range().start())?;
+        let end_type = self.get_type_from_operand(stack, for_.range().end())?;
         // Ensure that the start and end types are the same.
         ensure!(start_type == end_type, "Start type '{start_type}' must be the same as end type '{end_type}'.",);
         // Ensure that the start and end types are (in/de)crementable.
@@ -442,15 +448,11 @@ impl<N: Network> FinalizeTypes<N> {
         }
 
         // Ensure that the register is a locator.
-        let loop_register = for_loop.register().clone();
+        let loop_register = for_.register().clone();
         ensure!(matches!(loop_register, Register::Locator(..)), "Register '{loop_register}' must be a locator.",);
         // Insert the destination register.
         self.add_destination(loop_register, start_type)?;
 
-        // Ensure that the loop body is well-formed.
-        for command in for_loop.body() {
-            self.check_command(stack, finalize, command)?;
-        }
         Ok(())
     }
 

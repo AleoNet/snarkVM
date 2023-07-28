@@ -12,32 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    traits::{FinalizeStoreTrait, RegistersLoad, RegistersStore, StackMatches, StackProgram},
-    Command,
-    FinalizeOperation,
-    FinalizeRegistersState,
-    Opcode,
-    Operand,
-};
-use console::{
-    network::prelude::*,
-    program::{Field, Literal, Register, Scalar, Value, I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
-};
+use crate::{Opcode, Operand};
+use console::{network::prelude::*, program::Register};
 
-/// A for loop, e.g. `for r0 in 0u8..255u8: ... end.for;`.
-/// Runs the body of the loop for each value in the range.
+/// The loop header, e.g. `for r0 in 0u8..255u8:`.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct ForLoop<N: Network> {
+pub struct For<N: Network> {
     /// The loop register.
     register: Register<N>,
     /// The loop range.
     range: Range<N>,
-    /// The loop body.
-    body: Vec<Command<N>>,
 }
 
-impl<N: Network> ForLoop<N> {
+impl<N: Network> For<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -55,190 +42,9 @@ impl<N: Network> ForLoop<N> {
     pub const fn range(&self) -> &Range<N> {
         &self.range
     }
-
-    /// Returns the loop body.
-    #[inline]
-    pub fn body(&self) -> &[Command<N>] {
-        &self.body
-    }
 }
 
-impl<N: Network> ForLoop<N> {
-    /// Finalizes the command.
-    #[inline]
-    pub fn finalize(
-        &self,
-        stack: &(impl StackMatches<N> + StackProgram<N>),
-        store: &impl FinalizeStoreTrait<N>,
-        registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
-    ) -> Result<Vec<FinalizeOperation<N>>> {
-        // Get the start of the range.
-        let start = registers.load_literal(stack, self.range.start())?;
-        // Get the end of the range.
-        let end = registers.load_literal(stack, self.range.end())?;
-        // Get the direction of the range.
-        let is_increasing = match (&start, &end) {
-            (Literal::Field(start), Literal::Field(end)) => start <= end,
-            (Literal::Scalar(start), Literal::Scalar(end)) => start <= end,
-            (Literal::I8(start), Literal::I8(end)) => start <= end,
-            (Literal::I16(start), Literal::I16(end)) => start <= end,
-            (Literal::I32(start), Literal::I32(end)) => start <= end,
-            (Literal::I64(start), Literal::I64(end)) => start <= end,
-            (Literal::I128(start), Literal::I128(end)) => start <= end,
-            (Literal::U8(start), Literal::U8(end)) => start <= end,
-            (Literal::U16(start), Literal::U16(end)) => start <= end,
-            (Literal::U32(start), Literal::U32(end)) => start <= end,
-            (Literal::U64(start), Literal::U64(end)) => start <= end,
-            (Literal::U128(start), Literal::U128(end)) => start <= end,
-            _ => bail!("Invalid range."),
-        };
-        // Store the start of the range in the register.
-        registers.store(stack, self.register(), Value::from(start))?;
-        // Initialize storage for the `FinalizeOperation`s.
-        let mut operations = Vec::new();
-        // If the value of the register is within the range, run the loop body.
-        let mut value = registers.load_literal(stack, &Operand::Register(self.register().clone()))?;
-        while match (&value, &end) {
-            (Literal::Field(value), Literal::Field(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::Scalar(value), Literal::Scalar(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::I8(value), Literal::I8(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::I16(value), Literal::I16(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::I32(value), Literal::I32(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::I64(value), Literal::I64(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::I128(value), Literal::I128(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::U8(value), Literal::U8(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::U16(value), Literal::U16(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::U32(value), Literal::U32(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::U64(value), Literal::U64(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            (Literal::U128(value), Literal::U128(end)) => {
-                if is_increasing {
-                    value < end
-                } else {
-                    value > end
-                }
-            }
-            _ => bail!("Invalid register and ending range."),
-        } {
-            // Run the loop body.
-            for command in &self.body {
-                if let Some(operation) = command.finalize(stack, store, registers)? {
-                    operations.extend(operation);
-                }
-            }
-            // Compute the new value of the register.
-            value = match &value {
-                Literal::Field(value) => {
-                    Literal::Field(if is_increasing { value.add(Field::one()) } else { value.sub(Field::one()) })
-                }
-                Literal::Scalar(value) => {
-                    Literal::Scalar(if is_increasing { value.add(Scalar::one()) } else { value.sub(Scalar::one()) })
-                }
-                Literal::I8(value) => {
-                    Literal::I8(if is_increasing { value.add(I8::one()) } else { value.sub(I8::one()) })
-                }
-                Literal::I16(value) => {
-                    Literal::I16(if is_increasing { value.add(I16::one()) } else { value.sub(I16::one()) })
-                }
-                Literal::I32(value) => {
-                    Literal::I32(if is_increasing { value.add(I32::one()) } else { value.sub(I32::one()) })
-                }
-                Literal::I64(value) => {
-                    Literal::I64(if is_increasing { value.add(I64::one()) } else { value.sub(I64::one()) })
-                }
-                Literal::I128(value) => {
-                    Literal::I128(if is_increasing { value.add(I128::one()) } else { value.sub(I128::one()) })
-                }
-                Literal::U8(value) => {
-                    Literal::U8(if is_increasing { value.add(U8::one()) } else { value.sub(U8::one()) })
-                }
-                Literal::U16(value) => {
-                    Literal::U16(if is_increasing { value.add(U16::one()) } else { value.sub(U16::one()) })
-                }
-                Literal::U32(value) => {
-                    Literal::U32(if is_increasing { value.add(U32::one()) } else { value.sub(U32::one()) })
-                }
-                Literal::U64(value) => {
-                    Literal::U64(if is_increasing { value.add(U64::one()) } else { value.sub(U64::one()) })
-                }
-                Literal::U128(value) => {
-                    Literal::U128(if is_increasing { value.add(U128::one()) } else { value.sub(U128::one()) })
-                }
-                _ => bail!("Invalid register value."),
-            };
-            // Store the new value of the register.
-            registers.store_literal(stack, self.register(), value.clone())?;
-        }
-        Ok(operations)
-    }
-}
-
-impl<N: Network> Parser for ForLoop<N> {
+impl<N: Network> Parser for For<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -266,24 +72,12 @@ impl<N: Network> Parser for ForLoop<N> {
 
         // Parse the ":" from the string.
         let (string, _) = tag(":")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse(string)?;
 
-        // Parse the loop body from the string.
-        let (string, body) = many1(terminated(Command::parse, Sanitizer::parse))(string)?;
-
-        // Parse the "end.for" keyword from the string.
-        let (string, _) = tag("end.for")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the ";" from the string.
-        let (string, _) = tag(";")(string)?;
-
-        Ok((string, Self { register, range, body }))
+        Ok((string, Self { register, range }))
     }
 }
 
-impl<N: Network> FromStr for ForLoop<N> {
+impl<N: Network> FromStr for For<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -301,93 +95,49 @@ impl<N: Network> FromStr for ForLoop<N> {
     }
 }
 
-impl<N: Network> Debug for ForLoop<N> {
+impl<N: Network> Debug for For<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for ForLoop<N> {
+impl<N: Network> Display for For<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.fmt_internal(f, 0)
     }
 }
 
-impl<N: Network> ForLoop<N> {
-    /// Prints the plaintext with the given indentation depth.
+impl<N: Network> For<N> {
+    /// Prints the `For` command with the given indentation depth.
     fn fmt_internal(&self, f: &mut Formatter, depth: usize) -> fmt::Result {
         /// The number of spaces to indent.
         const INDENT: usize = 2;
 
-        // Print the loop header.
-        write!(f, "{:indent$}for {} in {}:", "", self.register, self.range, indent = depth * INDENT)?;
-        // Print the loop body.
-        for command in &self.body {
-            // Print the command.
-            match command {
-                Command::ForLoop(command) => {
-                    // Print the command.
-                    command.fmt_internal(f, depth + 1)?;
-                }
-                _ => {
-                    // Print the command.
-                    write!(f, "{:indent$}{}", "", command, indent = (depth + 1) * INDENT)?;
-                }
-            }
-        }
-        // Print the loop footer.
-        write!(f, "{:indent$}end.for;", "", indent = depth * INDENT)
+        write!(f, "{:indent$}for {} in {}:", "", self.register, self.range, indent = depth * INDENT)
     }
 }
 
-impl<N: Network> FromBytes for ForLoop<N> {
+impl<N: Network> FromBytes for For<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the register.
         let register = Register::read_le(&mut reader)?;
         // Read the range.
         let range = Range::read_le(&mut reader)?;
-        // Read the number of commands in the loop body.
-        let num_commands = u16::read_le(&mut reader)?;
-        // Read the commands in the loop body.
-        let mut body = Vec::with_capacity(num_commands as usize);
-        for _ in 0..num_commands {
-            // Read the command (in 2 steps to prevent infinite recursion).
-            let num_bytes = u16::read_le(&mut reader)?;
-            // Read the command bytes.
-            let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
-            // Recover the command.
-            let command = Command::read_le(&mut bytes.as_slice())?;
-            // Add the element.
-            body.push(command);
-        }
-        // Return the for loop.
-        Ok(Self { register, range, body })
+        // Return the loop header.
+        Ok(Self { register, range })
     }
 }
 
-impl<N: Network> ToBytes for ForLoop<N> {
+impl<N: Network> ToBytes for For<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the register.
         self.register.write_le(&mut writer)?;
         // Write the range.
         self.range.write_le(&mut writer)?;
-        // Write the number of commands in the loop body.
-        u16::try_from(self.body.len())
-            .or_halt_with::<N>("The loop body exceeds u16::MAX commands")
-            .write_le(&mut writer)?;
-        // Write the commands in the loop body.
-        for command in &self.body {
-            // Write the command (performed in 2 steps to prevent infinite recursion).
-            let bytes = command.to_bytes_le().map_err(|e| error(e.to_string()))?;
-            // Write the number of bytes.
-            u16::try_from(bytes.len()).or_halt_with::<N>("Command exceeds u16::MAX bytes.").write_le(&mut writer)?;
-            // Write the bytes.
-            bytes.write_le(&mut writer)?;
-        }
         Ok(())
     }
 }
@@ -490,23 +240,24 @@ impl<N: Network> ToBytes for Range<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{network::Testnet3, program::Register, types::U8};
+    use console::{
+        network::Testnet3,
+        program::{Literal, Register},
+        types::U8,
+    };
 
     type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_parse() {
-        let (string, for_loop) =
-            ForLoop::<CurrentNetwork>::parse("for r0 in 0u8..7u8: add r0 r0 into r1; end.for;").unwrap();
+        let (string, for_) = For::<CurrentNetwork>::parse("for r0 in 0u8..7u8:").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(for_loop.register, Register::Locator(0));
-        assert_eq!(for_loop.range, Range {
+        assert_eq!(for_.register, Register::Locator(0));
+        assert_eq!(for_.range, Range {
             start: Operand::Literal(Literal::U8(U8::new(0))),
             end: Operand::Literal(Literal::U8(U8::new(7))),
         });
-        assert_eq!(for_loop.range.start(), &Operand::Literal(Literal::U8(U8::new(0))));
-        assert_eq!(for_loop.range.end(), &Operand::Literal(Literal::U8(U8::new(7))));
-        assert_eq!(for_loop.body.len(), 1);
-        assert_eq!(for_loop.body[0], Command::from_str("add r0 r0 into r1;").unwrap());
+        assert_eq!(for_.range.start(), &Operand::Literal(Literal::U8(U8::new(0))));
+        assert_eq!(for_.range.end(), &Operand::Literal(Literal::U8(U8::new(7))));
     }
 }

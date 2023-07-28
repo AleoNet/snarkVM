@@ -314,12 +314,13 @@ mod tests {
         println!("Finished loading stake program.");
     }
 
-    /// Helper function to initialize stakers and validators. Returns `((validator_private_key, (public_balance, records)), (staker_private_key, (public_balance, records)))`.
-    fn initialize_validators_and_stakers<R: Rng + CryptoRng>(
+    /// Helper function to initialize validators and delegators.
+    /// Returns `((validator_private_key, (public_balance, records)), (staker_private_key, (public_balance, records)))`.
+    fn initialize_validators_and_delegators<R: Rng + CryptoRng>(
         vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
         caller_private_key: &PrivateKey<CurrentNetwork>,
         num_validators: usize,
-        num_stakers: usize,
+        num_delegators: usize,
         input_records: &Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<(
@@ -334,16 +335,16 @@ mod tests {
             }
         };
 
-        ensure!((num_stakers + num_stakers) * 4 < input_records.len(), "Not enough input records.");
+        ensure!((num_delegators + num_delegators) * 4 < input_records.len(), "Not enough input records.");
 
         // Derive the caller view key.
         let caller_view_key = ViewKey::try_from(caller_private_key)?;
 
-        // Initialize the validators and stakers.
+        // Initialize the validators and delegators.
         let mut validators: IndexMap<_, _> = Default::default();
-        let mut stakers: IndexMap<_, _> = Default::default();
+        let mut delegators: IndexMap<_, _> = Default::default();
 
-        // Create the initial transactions to fund the validators and stakers.
+        // Create the initial transactions to fund the validators and delegators.
         let mut transactions = Vec::new();
 
         // Change records for the caller.
@@ -351,7 +352,7 @@ mod tests {
 
         let mut input_records = input_records.iter().cloned();
 
-        for index in 0..num_validators + num_stakers {
+        for index in 0..num_validators + num_delegators {
             // Construct the recipient address.
             let recipient_private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let recipient_view_key = ViewKey::try_from(&recipient_private_key)?;
@@ -403,11 +404,11 @@ mod tests {
             transactions.push(private_to_public_transfer);
             transactions.push(private_transfer);
 
-            // Initialize the validator or staker.
+            // Initialize the validator or delegator.
             if index < num_validators {
                 validators.insert(recipient_private_key, (public_amount, vec![new_record]));
             } else {
-                stakers.insert(recipient_private_key, (public_amount, vec![new_record]));
+                delegators.insert(recipient_private_key, (public_amount, vec![new_record]));
             }
         }
 
@@ -433,7 +434,7 @@ mod tests {
         // Advance the block
         vm.add_next_block(&block)?;
 
-        Ok((validators, stakers))
+        Ok((validators, delegators))
     }
 
     #[test]
@@ -441,7 +442,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let num_validators = 1;
-        let num_stakers = 1;
+        let num_delegators = 1;
 
         // Initialize a new caller.
         let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
@@ -453,9 +454,15 @@ mod tests {
         // Decrypt the records.
         let records = records.values().map(|record| record.decrypt(&caller_view_key).unwrap()).collect::<Vec<_>>();
 
-        let (mut validators, mut stakers) =
-            initialize_validators_and_stakers(&vm, &caller_private_key, num_validators, num_stakers, &records, rng)
-                .unwrap();
+        let (mut validators, mut delegators) = initialize_validators_and_delegators(
+            &vm,
+            &caller_private_key,
+            num_validators,
+            num_delegators,
+            &records,
+            rng,
+        )
+        .unwrap();
 
         // Bond the validators.
         {
@@ -493,6 +500,39 @@ mod tests {
         }
 
         // Bond the delegators
+        {
+            let mut transactions = Vec::with_capacity(delegators.len());
+
+            // Bond each delegator.
+            for (delegator_private_key, (amount, records)) in delegators.iter_mut() {
+                // Derive the delegator view key.
+                let delegator_view_key = ViewKey::try_from(delegator_private_key).unwrap();
+
+                // Construct the inputs.
+                let inputs = [Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap()];
+
+                // Construct the fee.
+                let fee = Some((records.pop().unwrap(), 0u64));
+
+                // Construct the transaction.
+                let bond_delegator_transaction = vm
+                    .execute(delegator_private_key, ("stake.aleo", "bond_delegator"), inputs.iter(), fee, None, rng)
+                    .unwrap();
+
+                // Add the change record.
+                let change_record =
+                    bond_delegator_transaction.records().collect_vec()[0].1.decrypt(&delegator_view_key).unwrap();
+                records.push(change_record);
+
+                // Add the bond transaction.
+                transactions.push(bond_delegator_transaction);
+            }
+
+            // Construct the next block.
+            let block = crate::test_helpers::sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
+            // Advance the block.
+            vm.add_next_block(&block).unwrap();
+        }
 
         // Unbond the delegators/validators
 

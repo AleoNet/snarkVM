@@ -180,7 +180,8 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
             // TODO: The following 'finalize' commands are currently priced higher than expected.
             //  Expect these numbers to change as their usage is stabilized.
             Command::Contains(_) => Ok(250_000),
-            Command::ForLoop(for_loop) => for_loop.body().iter().map(|command| cost(command)).sum(),
+            Command::EndFor(_) => Ok(2_000),
+            Command::For(_) => Ok(2_000),
             Command::Get(_) => Ok(500_000),
             Command::GetOrUse(_) => Ok(500_000),
             Command::RandChaCha(_) => Ok(500_000),
