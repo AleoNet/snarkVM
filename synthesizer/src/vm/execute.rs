@@ -446,7 +446,6 @@ mod tests {
 
     #[test]
     fn test_staking() {
-
         // TODOs for this test:
         // - Check that the amounts are correct.
         // - Check that the transactions are accepted
@@ -575,7 +574,6 @@ mod tests {
             vm.add_next_block(&block).unwrap();
         }
 
-
         // Unbond the first delegator directly.
         {
             let mut transactions = Vec::with_capacity(delegators.len());
@@ -583,8 +581,6 @@ mod tests {
             let (delegator_private_key, (_, records)) = delegators.iter_mut().next().unwrap();
             // Derive the delegator view key.
             let delegator_view_key = ViewKey::try_from(delegator_private_key).unwrap();
-            // Derive the delegator address.
-            let delegator_address = Address::try_from(delegator_private_key).unwrap();
 
             // Get the validator address.
             let validator_address = Address::try_from(validators.keys().next().unwrap()).unwrap();
@@ -592,7 +588,8 @@ mod tests {
             // Construct the inputs.
             let inputs = [
                 Value::<CurrentNetwork>::Plaintext(Plaintext::from(Literal::Address(validator_address))),
-                Value::<CurrentNetwork>::from_str(&format!("{}u64", stake_map.get(delegator_private_key).unwrap())).unwrap(),
+                Value::<CurrentNetwork>::from_str(&format!("{}u64", stake_map.get(delegator_private_key).unwrap()))
+                    .unwrap(),
             ];
 
             // Split out the fee record.
@@ -628,7 +625,6 @@ mod tests {
         }
 
         // Unbond the remaining delegators/validators
-
 
         // Unlock the delegators/validators
     }

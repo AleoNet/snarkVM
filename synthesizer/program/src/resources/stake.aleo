@@ -98,7 +98,7 @@ finalize bond_validator:
 // - Bonding a minimum of 1 credit
 // - The caller is not a validator
 // - The validator exists
-// - If the staker is already bonded, the validator must match
+// - If the delegator is already bonded, the validator must match
 function bond_delegator:
     // Input the validator address.
     input r0 as address.public;
@@ -121,7 +121,7 @@ function bond_delegator:
     finalize self.caller r0 r1;
 
 finalize bond_delegator:
-    // Input the staker's address.
+    // Input the delegator's address.
     input r0 as address.public;
     // Input the validator address.
     input r1 as address.public;
@@ -148,13 +148,13 @@ finalize bond_delegator:
     // Update the stake for the specified validator.
     set r7 into validators[r1];
 
-    // Check if the staker is already bonded.
+    // Check if the delegator is already bonded.
     contains bonded[r0] into r8;
-    // If the staker is not already bonded, then add their address to the `delegators` mapping.
+    // If the delegator is not already bonded, then add their address to the `delegators` mapping.
     branch.eq r8 true to end_update_delegators;
     // Get the delegators for the specified validator.
     get delegators[r1] into r9;
-    // Add the staker's address to the delegators for the specified validator.
+    // Add the delegator's address to the delegators for the specified validator.
     push r9 r0;
     // Update the delegators for the specified validator.
     set r9 into delegators[r1];
@@ -215,7 +215,7 @@ finalize unbond_validator:
 
     // Initialize an empty vector.
     cast into r8 as [lock];
-    // Add the lock to the list of locks associated with the staker.
+    // Add the lock to the list of locks associated with the validator.
     get.or_use locked[r0] r8 into r9;
     // Insert the new lock.
     push r9 r7;
@@ -240,7 +240,7 @@ finalize unbond_validator:
         delete r12 r14 into r15;
         // Get the bond of the delegator.
         get bonded[r15] into r16;
-        // Unbond the staker.
+        // Unbond the delegator.
         // call unbond_delegator r0 r15 r16.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_delegator` function.
     end.for;
 
@@ -266,7 +266,7 @@ finalize unbond_validator:
 //
 // The following must be true for the `unbond_delegator` function to succeed:
 // - Unbonded amount must be nonzero
-// - Unbonded amount must be less than or equal to the staker's bonded amount
+// - Unbonded amount must be less than or equal to the delegator's bonded amount
 // - The caller is not a validator
 function unbond_delegator:
     // Input the validator address to unbond from.
@@ -283,7 +283,7 @@ function unbond_delegator:
     finalize self.caller r0 r1;
 
 finalize unbond_delegator:
-    // Input the staker's address.
+    // Input the delegator's address.
     input r0 as address.public;
     // Input the validator address.
     input r1 as address.public;
@@ -328,7 +328,7 @@ finalize unbond_delegator:
     // Update the stake for the specified validator.
     set r10 into validators[r1];
 
-    // If the remaining stake is zero, then remove the staker from the list of delegators.
+    // If the remaining stake is zero, then remove the delegator from the list of delegators.
     // TODO: Under the minimum?
     branch.neq r9 0u64 to skip_remove_delegator;
     // Get the delegators for the specified validator.
@@ -340,9 +340,9 @@ finalize unbond_delegator:
     for r13 in 0u32..r12:
         // Get the delegator at the current position.
         index r11 r13 into r14;
-        // Check if the delegator matches the staker.
+        // Check if the delegator matches the delegator.
         is.eq r14 r0 into r15;
-        // If the delegator does not match the staker, then skip to the end of the current iteration.
+        // If the delegator does not match the delegator, then skip to the end of the current iteration.
         branch.neq r15 true to end_iteration;
         // Remove the delegator from the list of delegators.
         delete r11 r13 into r16;
@@ -353,7 +353,7 @@ finalize unbond_delegator:
     // Set the updated list of delegators.
     set r11 into delegators[r1];
 
-    // The position we jump to if staker should not be removed.
+    // The position we jump to if delegator should not be removed.
     position skip_remove_delegator;
 
     // Construct the bond struct for the lock.
@@ -365,7 +365,7 @@ finalize unbond_delegator:
 
     // Initialize an empty vector.
     cast into r20 as [lock];
-    // Add the lock to the list of locks associated with the staker.
+    // Add the lock to the list of locks associated with the delegator.
     get.or_use locked[r0] r20 into r21;
     // Insert the new lock.
     push r21 r19;
@@ -404,7 +404,7 @@ finalize unlock_stake:
         delete r1 r3 into r6;
         // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
         // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-        // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_delgator` function.
+        // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `transfer_public` function.
 
         // Mark the end of the current iteration.
         position end_iteration;

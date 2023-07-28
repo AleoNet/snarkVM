@@ -229,6 +229,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Ensure the finalize operations match the expected.
                             Ok(finalize_operations) => {
                                 if finalize != &finalize_operations {
+                                    println!("Expected: {:#?}", finalize);
+                                    println!("Actual: {:#?}", finalize_operations);
                                     // Note: This will abort the entire atomic batch.
                                     return Err("Mismatch in finalize operations for an accepted execute".to_string());
                                 }

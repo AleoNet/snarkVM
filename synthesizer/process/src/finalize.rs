@@ -133,7 +133,8 @@ impl<N: Network> Process<N> {
                     // Initialize a counter for the index of the commands.
                     let mut counter = 0;
 
-                    // Initialize a stack for the loop hea
+                    // Initialize a stack for the loop headers.
+                    let mut loop_stack: Vec<(usize, Literal<N>)> = Vec::new();
 
                     // Evaluate the commands.
                     while counter < finalize.commands().len() {
@@ -149,16 +150,49 @@ impl<N: Network> Process<N> {
                                 counter = branch_to(counter, branch_neq, finalize, stack, &registers)?;
                                 Ok(None)
                             }
-                            _ => {
-                                let operations = command.finalize(stack, store, &mut registers);
+                            Command::For(for_) => {
+                                match loop_stack.last() {
+                                    // If the counter matches the index of the last entry on the loop stack, then this is at least the second iteration of the loop.
+                                    Some((i, current_value)) if *i == counter => {
+                                        // Load the loop register.
+                                        let register_value = registers.load_literal(
+                                            stack,
+                                            &synthesizer_program::Operand::Register(for_.register().clone()),
+                                        )?;
+                                        // Load the end of the range.
+                                        let end_value = registers.load_literal(stack, for_.range().end())?;
+                                        // Compare the values and (in/de)crement appropriately.
+                                    }
+                                    // Otherwise, this is the first iteration.
+                                    _ => {
+                                        // Get the value of the start of the range.
+                                        let start_value = registers.load_literal(stack, for_.range().start())?;
+                                        registers.store_literal(stack, for_.register(), start_value.clone())?;
+                                        // Push the current index and value to the loop stack.
+                                        loop_stack.push((counter, start_value));
+                                    }
+                                }
+                                // 1. If no entry is on the loop stack, push the current index to the loop stack.
+                                // 2. If there is an entry, then check that it matches the current index.
                                 counter += 1;
-                                operations
+                                Ok(None)
+                            }
+                            // Command::EndFor(end_for) => {
+                            //     // Pop the entry from the loop stack.
+                            //     // Check if another iteration is required.
+                            //     // If so, increment the loop register and branch to the loop header.
+                            //     // Otherwise, continue.
+                            // }
+                            _ => {
+                                let operation = command.finalize(stack, store, &mut registers);
+                                counter += 1;
+                                operation
                             }
                         }));
 
                         match result {
                             // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Ok(Some(finalize_operation))) => finalize_operations.extend(finalize_operation),
+                            Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
                             // If the evaluation succeeds with no operation, continue.
                             Ok(Ok(None)) => (),
                             // If the evaluation fails, bail and return the error.
