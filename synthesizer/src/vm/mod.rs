@@ -258,14 +258,12 @@ pub(crate) mod test_helpers {
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Value, RATIFICATIONS_DEPTH},
-        types::Field,
+        types::{Field, U64},
     };
     use ledger_block::{Block, Fee, Header, Metadata, Transition};
     use ledger_store::helpers::memory::ConsensusMemory;
     use synthesizer_program::Program;
 
-    use circuit::{Ciphertext, Private};
-    use console::types::U64;
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
     use std::borrow::Borrow;

@@ -137,6 +137,7 @@ mod tests {
     use ledger_block::Transition;
     use ledger_store::helpers::memory::ConsensusMemory;
 
+    use crate::vm::test_helpers::split_records;
     use indexmap::IndexMap;
 
     type CurrentNetwork = Testnet3;
@@ -321,7 +322,7 @@ mod tests {
         caller_private_key: &PrivateKey<CurrentNetwork>,
         num_validators: usize,
         num_delegators: usize,
-        input_records: &Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>,
+        input_records: Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>,
         rng: &mut R,
     ) -> Result<(
         IndexMap<PrivateKey<CurrentNetwork>, (u64, Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>)>,
@@ -335,7 +336,13 @@ mod tests {
             }
         };
 
-        ensure!((num_delegators + num_delegators) * 4 < input_records.len(), "Not enough input records.");
+        // Create enough input records to initialize the validators and delegators.
+        let mut records = input_records;
+        while records.len() < (num_validators + num_delegators) * 4 {
+            let (recs, block) = split_records(vm, records, caller_private_key, rng);
+            vm.add_next_block(&block)?;
+            records = recs;
+        }
 
         // Derive the caller view key.
         let caller_view_key = ViewKey::try_from(caller_private_key)?;
@@ -350,9 +357,9 @@ mod tests {
         // Change records for the caller.
         let mut change_records = Vec::new();
 
-        let mut input_records = input_records.iter().cloned();
+        let mut records = records.into_iter();
 
-        for index in 0..num_validators + num_delegators {
+        for index in 0..(num_validators + num_delegators) {
             // Construct the recipient address.
             let recipient_private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let recipient_view_key = ViewKey::try_from(&recipient_private_key)?;
@@ -361,8 +368,8 @@ mod tests {
             // Construct the private to public transfer.
 
             // Construct inputs
-            let record = input_records.next().unwrap();
-            let fee_record = input_records.next().unwrap();
+            let record = records.next().unwrap();
+            let fee_record = records.next().unwrap();
             let private_amount = get_balance(&record);
             let inputs = [
                 Value::<CurrentNetwork>::Record(record),
@@ -384,8 +391,8 @@ mod tests {
             // Construct the private transfer.
 
             // Construct inputs
-            let record = input_records.next().unwrap();
-            let fee_record = input_records.next().unwrap();
+            let record = records.next().unwrap();
+            let fee_record = records.next().unwrap();
             let public_amount = get_balance(&record);
             let inputs = [
                 Value::<CurrentNetwork>::Record(record),
@@ -424,7 +431,7 @@ mod tests {
         // Construct the deploy transaction.
 
         // Fetch the fee record.
-        let remaining_records = input_records.chain(change_records.iter().cloned()).collect::<Vec<_>>();
+        let remaining_records = records.chain(change_records.iter().cloned()).collect::<Vec<_>>();
         let fee_record = remaining_records[0].clone();
 
         // Deploy the staking program.
@@ -442,7 +449,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         let num_validators = 1;
-        let num_delegators = 1;
+        let num_delegators = 2;
 
         // Initialize a new caller.
         let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
@@ -459,7 +466,7 @@ mod tests {
             &caller_private_key,
             num_validators,
             num_delegators,
-            &records,
+            records,
             rng,
         )
         .unwrap();
@@ -508,8 +515,14 @@ mod tests {
                 // Derive the delegator view key.
                 let delegator_view_key = ViewKey::try_from(delegator_private_key).unwrap();
 
+                // Get the validator address.
+                let validator_address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+
                 // Construct the inputs.
-                let inputs = [Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap()];
+                let inputs = [
+                    Value::<CurrentNetwork>::Plaintext(Plaintext::from(Literal::Address(validator_address))),
+                    Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
+                ];
 
                 // Construct the fee.
                 let fee = Some((records.pop().unwrap(), 0u64));
