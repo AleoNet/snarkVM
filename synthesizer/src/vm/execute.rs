@@ -370,11 +370,11 @@ mod tests {
             // Construct inputs
             let record = records.next().unwrap();
             let fee_record = records.next().unwrap();
-            let private_amount = get_balance(&record);
+            let public_amount = get_balance(&record);
             let inputs = [
                 Value::<CurrentNetwork>::Record(record),
                 Value::<CurrentNetwork>::from_str(&recipient_address.to_string())?,
-                Value::<CurrentNetwork>::from_str(&format!("{private_amount}u64"))?,
+                Value::<CurrentNetwork>::from_str(&format!("{public_amount}u64"))?,
             ]
             .into_iter();
             let fee = Some((fee_record, 0u64));
@@ -393,11 +393,11 @@ mod tests {
             // Construct inputs
             let record = records.next().unwrap();
             let fee_record = records.next().unwrap();
-            let public_amount = get_balance(&record);
+            let private_amount = get_balance(&record);
             let inputs = [
                 Value::<CurrentNetwork>::Record(record),
                 Value::<CurrentNetwork>::from_str(&recipient_address.to_string())?,
-                Value::<CurrentNetwork>::from_str(&format!("{public_amount}u64"))?,
+                Value::<CurrentNetwork>::from_str(&format!("{private_amount}u64"))?,
             ]
             .into_iter();
             let fee = Some((fee_record, 0u64));
@@ -446,6 +446,11 @@ mod tests {
 
     #[test]
     fn test_staking() {
+
+        // TODOs for this test:
+        // - Check that the amounts are correct.
+        // - Check that the transactions are accepted
+
         let rng = &mut TestRng::default();
 
         let num_validators = 1;
@@ -471,6 +476,9 @@ mod tests {
         )
         .unwrap();
 
+        // Initialize a mapping to track each private key's stake.
+        let mut stake_map = IndexMap::new();
+
         // Bond the validators.
         {
             let mut transactions = Vec::with_capacity(validators.len());
@@ -483,8 +491,15 @@ mod tests {
                 // Construct the inputs.
                 let inputs = [Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap()];
 
+                // Split out the fee record.
+                let (mut recs, block) = split_records(&vm, vec![records.pop().unwrap()], validator_private_key, rng);
+                vm.add_next_block(&block).unwrap();
+
                 // Construct the fee.
-                let fee = Some((records.pop().unwrap(), 0u64));
+                let fee = Some((recs.pop().unwrap(), 0u64));
+
+                // Add the remaining records to map.
+                records.extend(recs);
 
                 // Construct the transaction.
                 let bond_validator_transaction = vm
@@ -498,6 +513,9 @@ mod tests {
 
                 // Add the bond transaction.
                 transactions.push(bond_validator_transaction);
+
+                // Add the stake to the map.
+                stake_map.insert(validator_private_key.clone(), *amount);
             }
 
             // Construct the next block.
@@ -524,8 +542,15 @@ mod tests {
                     Value::<CurrentNetwork>::from_str(&format!("{amount}u64")).unwrap(),
                 ];
 
+                // Split out the fee record.
+                let (mut recs, block) = split_records(&vm, vec![records.pop().unwrap()], delegator_private_key, rng);
+                vm.add_next_block(&block).unwrap();
+
                 // Construct the fee.
-                let fee = Some((records.pop().unwrap(), 0u64));
+                let fee = Some((recs.pop().unwrap(), 0u64));
+
+                // Add the remaining records to map.
+                records.extend(recs);
 
                 // Construct the transaction.
                 let bond_delegator_transaction = vm
@@ -539,6 +564,9 @@ mod tests {
 
                 // Add the bond transaction.
                 transactions.push(bond_delegator_transaction);
+
+                // Add the stake to the map.
+                stake_map.insert(delegator_private_key.clone(), *amount);
             }
 
             // Construct the next block.
@@ -547,7 +575,60 @@ mod tests {
             vm.add_next_block(&block).unwrap();
         }
 
-        // Unbond the delegators/validators
+
+        // Unbond the first delegator directly.
+        {
+            let mut transactions = Vec::with_capacity(delegators.len());
+
+            let (delegator_private_key, (_, records)) = delegators.iter_mut().next().unwrap();
+            // Derive the delegator view key.
+            let delegator_view_key = ViewKey::try_from(delegator_private_key).unwrap();
+            // Derive the delegator address.
+            let delegator_address = Address::try_from(delegator_private_key).unwrap();
+
+            // Get the validator address.
+            let validator_address = Address::try_from(validators.keys().next().unwrap()).unwrap();
+
+            // Construct the inputs.
+            let inputs = [
+                Value::<CurrentNetwork>::Plaintext(Plaintext::from(Literal::Address(validator_address))),
+                Value::<CurrentNetwork>::from_str(&format!("{}u64", stake_map.get(delegator_private_key).unwrap())).unwrap(),
+            ];
+
+            // Split out the fee record.
+            let (mut recs, block) = split_records(&vm, vec![records.pop().unwrap()], delegator_private_key, rng);
+            vm.add_next_block(&block).unwrap();
+
+            // Construct the fee.
+            let fee = Some((recs.pop().unwrap(), 0u64));
+
+            // Add the remaining records to map.
+            records.extend(recs);
+
+            // Construct the transaction.
+            let unbond_delegator_transaction = vm
+                .execute(delegator_private_key, ("stake.aleo", "unbond_delegator"), inputs.iter(), fee, None, rng)
+                .unwrap();
+
+            // Add the change record.
+            let change_record =
+                unbond_delegator_transaction.records().collect_vec()[0].1.decrypt(&delegator_view_key).unwrap();
+            records.push(change_record);
+
+            // Add the bond transaction.
+            transactions.push(unbond_delegator_transaction);
+
+            // Add the stake to the map.
+            stake_map.remove(delegator_private_key);
+
+            // Construct the next block.
+            let block = crate::test_helpers::sample_next_block(&vm, &caller_private_key, &transactions, rng).unwrap();
+            // Advance the block.
+            vm.add_next_block(&block).unwrap();
+        }
+
+        // Unbond the remaining delegators/validators
+
 
         // Unlock the delegators/validators
     }

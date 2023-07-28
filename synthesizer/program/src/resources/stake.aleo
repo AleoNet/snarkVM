@@ -92,14 +92,14 @@ finalize bond_validator:
     set r7 into delegators[r0];
 
 //
-// The `bond_staker` function bonds a given number of microcredits to the specified validator.
+// The `bond_delegator` function bonds a given number of microcredits to the specified validator.
 //
-// The following must be true for the `bond_staker` function to succeed:
+// The following must be true for the `bond_delegator` function to succeed:
 // - Bonding a minimum of 1 credit
 // - The caller is not a validator
 // - The validator exists
 // - If the staker is already bonded, the validator must match
-function bond_staker:
+function bond_delegator:
     // Input the validator address.
     input r0 as address.public;
     // Input the amount of microcredits to bond.
@@ -120,7 +120,7 @@ function bond_staker:
     // Bond the specified amount of microcredits to the specified validator.
     finalize self.caller r0 r1;
 
-finalize bond_staker:
+finalize bond_delegator:
     // Input the staker's address.
     input r0 as address.public;
     // Input the validator address.
@@ -241,7 +241,7 @@ finalize unbond_validator:
         // Get the bond of the delegator.
         get bonded[r15] into r16;
         // Unbond the staker.
-        // call unbond_staker r0 r15 r16.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
+        // call unbond_delegator r0 r15 r16.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_delegator` function.
     end.for;
 
     // Get the stake state of the validator.
@@ -261,14 +261,14 @@ finalize unbond_validator:
 
 
 //
-// The `unbond_staker` function unbonds a given number of microcredits. The unbonded amount
+// The `unbond_delegator` function unbonds a given number of microcredits. The unbonded amount
 // is locked for a specified number of blocks.
 //
-// The following must be true for the `unbond_staker` function to succeed:
+// The following must be true for the `unbond_delegator` function to succeed:
 // - Unbonded amount must be nonzero
 // - Unbonded amount must be less than or equal to the staker's bonded amount
 // - The caller is not a validator
-function unbond_staker:
+function unbond_delegator:
     // Input the validator address to unbond from.
     input r0 as address.public;
     // Input the amount of microcredits to unbond.
@@ -282,7 +282,7 @@ function unbond_staker:
     // Unbond the specified amount of microcredits to the caller.
     finalize self.caller r0 r1;
 
-finalize unbond_staker:
+finalize unbond_delegator:
     // Input the staker's address.
     input r0 as address.public;
     // Input the validator address.
@@ -404,7 +404,7 @@ finalize unlock_stake:
         delete r1 r3 into r6;
         // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
         // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-        // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
+        // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_delgator` function.
 
         // Mark the end of the current iteration.
         position end_iteration;

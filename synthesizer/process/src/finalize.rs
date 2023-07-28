@@ -133,6 +133,8 @@ impl<N: Network> Process<N> {
                     // Initialize a counter for the index of the commands.
                     let mut counter = 0;
 
+                    // Initialize a stack for the loop hea
+
                     // Evaluate the commands.
                     while counter < finalize.commands().len() {
                         // Retrieve the command.
