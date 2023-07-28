@@ -32,9 +32,13 @@ use ledger_block::{
     Transition,
 };
 use ledger_query::Query;
-use ledger_store::{helpers::memory::BlockMemory, BlockStore};
-use synthesizer_process::Process;
-use synthesizer_program::Program;
+use ledger_store::{
+    helpers::memory::{BlockMemory, FinalizeMemory},
+    BlockStore,
+    FinalizeStore,
+};
+use synthesizer_process::{Process, Stack};
+use synthesizer_program::{FinalizeOperation, Program, RollbackOperation};
 
 use once_cell::sync::OnceCell;
 
@@ -343,4 +347,20 @@ fn sample_genesis_block_and_components_raw(
     assert!(block.header().is_genesis(), "Failed to initialize a genesis block");
     // Return the block, transaction, and private key.
     (block, transaction, private_key)
+}
+
+/********************************************* Finalize **********************************************/
+
+/// Finalizes a deployment and returns the stack and resulting operations.
+pub fn finalize_deployment(
+    deployment: &Deployment<CurrentNetwork>,
+) -> (Stack<CurrentNetwork>, Vec<FinalizeOperation<CurrentNetwork>>, Vec<RollbackOperation<CurrentNetwork>>) {
+    // Initialize the process.
+    let process = Process::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Finalize the deployment.
+    process.finalize_deployment(&finalize_store, deployment).unwrap()
 }

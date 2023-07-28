@@ -23,7 +23,7 @@ impl<N: Network> Process<N> {
         &self,
         store: &FinalizeStore<N, P>,
         deployment: &Deployment<N>,
-    ) -> Result<(Stack<N>, Vec<FinalizeOperation<N>>)> {
+    ) -> Result<(Stack<N>, Vec<FinalizeOperation<N>>, Vec<RollbackOperation<N>>)> {
         let timer = timer!("Process::finalize_deployment");
 
         // Compute the program stack.
@@ -43,18 +43,24 @@ impl<N: Network> Process<N> {
         atomic_batch_scope!(store, {
             // Initialize a list for the finalize operations.
             let mut finalize_operations = Vec::with_capacity(deployment.program().mappings().len());
+            // Initialize the list for the rollback operations.
+            let mut rollback_operations = Vec::with_capacity(deployment.program().mappings().len());
 
             // Iterate over the mappings.
             for mapping in deployment.program().mappings().values() {
                 // Initialize the mapping.
-                finalize_operations.push(store.initialize_mapping(program_id, mapping.name())?);
+                let (finalize_operation, rollback_operation) = store.initialize_mapping(program_id, mapping.name())?;
+                // Insert the finalize operation.
+                finalize_operations.push(finalize_operation);
+                // Insert the rollback operation.
+                rollback_operations.push(rollback_operation);
             }
             lap!(timer, "Initialize the program mappings");
 
             finish!(timer);
 
-            // Return the stack and finalize operations.
-            Ok((stack, finalize_operations))
+            // Return the stack, finalize operations, and rollback operations.
+            Ok((stack, finalize_operations, rollback_operations))
         })
     }
 
@@ -67,7 +73,7 @@ impl<N: Network> Process<N> {
         state: FinalizeGlobalState,
         store: &FinalizeStore<N, P>,
         execution: &Execution<N>,
-    ) -> Result<Vec<FinalizeOperation<N>>> {
+    ) -> Result<(Vec<FinalizeOperation<N>>, Vec<RollbackOperation<N>>)> {
         let timer = timer!("Program::finalize_execution");
 
         // Ensure the execution contains transitions.
@@ -92,6 +98,8 @@ impl<N: Network> Process<N> {
         atomic_batch_scope!(store, {
             // Initialize a list for finalize operations.
             let mut finalize_operations = Vec::new();
+            // Initialize a list for rollback operations.
+            let mut rollback_operations = Vec::new();
 
             // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
             //  Currently this loop assumes a linearly execution stack.
@@ -156,7 +164,12 @@ impl<N: Network> Process<N> {
 
                         match result {
                             // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
+                            Ok(Ok(Some((finalize_operation, rollback_operation)))) => {
+                                // Insert the finalize operation.
+                                finalize_operations.push(finalize_operation);
+                                // Insert the rollback operation.
+                                rollback_operations.push(rollback_operation);
+                            }
                             // If the evaluation succeeds with no operation, continue.
                             Ok(Ok(None)) => (),
                             // If the evaluation fails, bail and return the error.
@@ -170,8 +183,8 @@ impl<N: Network> Process<N> {
             }
             finish!(timer);
 
-            // Return the finalize operations.
-            Ok(finalize_operations)
+            // Return the finalize operations and rollback operations.
+            Ok((finalize_operations, rollback_operations))
         })
     }
 }
@@ -267,7 +280,7 @@ function compute:
         assert!(!process.contains_program(program.id()));
 
         // Finalize the deployment.
-        let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+        let (stack, _, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
         // Add the stack *manually* to the process.
         process.add_stack(stack);
 

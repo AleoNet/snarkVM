@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::FinalizeOperation;
+use crate::{FinalizeOperation, RollbackOperation};
 use console::{
     network::Network,
     prelude::Result,
@@ -48,7 +48,7 @@ pub trait FinalizeStoreTrait<N: Network> {
         mapping_name: &Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
-    ) -> Result<FinalizeOperation<N>>;
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)>;
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
     /// If the `mapping name` is not initialized, an error is returned.
@@ -60,7 +60,7 @@ pub trait FinalizeStoreTrait<N: Network> {
         mapping_name: &Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
-    ) -> Result<FinalizeOperation<N>>;
+    ) -> Result<(FinalizeOperation<N>, RollbackOperation<N>)>;
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
     /// If the `key` does not exist, the method returns `None`.
@@ -69,5 +69,5 @@ pub trait FinalizeStoreTrait<N: Network> {
         program_id: &ProgramID<N>,
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
-    ) -> Result<Option<FinalizeOperation<N>>>;
+    ) -> Result<Option<(FinalizeOperation<N>, RollbackOperation<N>)>>;
 }

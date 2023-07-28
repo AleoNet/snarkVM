@@ -50,6 +50,7 @@ use crate::{
     FinalizeOperation,
     FinalizeRegistersState,
     Instruction,
+    RollbackOperation,
 };
 use console::{
     network::prelude::*,
@@ -148,7 +149,7 @@ impl<N: Network> Command<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         store: &impl FinalizeStoreTrait<N>,
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N> + FinalizeRegistersState<N>),
-    ) -> Result<Option<FinalizeOperation<N>>> {
+    ) -> Result<Option<(FinalizeOperation<N>, RollbackOperation<N>)>> {
         match self {
             // Finalize the instruction, and return no finalize operation.
             Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),

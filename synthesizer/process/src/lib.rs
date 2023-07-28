@@ -60,6 +60,7 @@ use synthesizer_program::{
     Program,
     RegistersLoad,
     RegistersStore,
+    RollbackOperation,
     StackProgram,
 };
 use synthesizer_snark::{ProvingKey, UniversalSRS, VerifyingKey};

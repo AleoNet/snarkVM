@@ -26,6 +26,7 @@ pub enum MapID {
     TransitionInput(TransitionInputMap),
     TransitionOutput(TransitionOutputMap),
     Program(ProgramMap),
+    Rollback(RollbackMap),
     #[cfg(test)]
     Test(TestMap),
 }
@@ -42,6 +43,7 @@ impl From<MapID> for u16 {
             MapID::TransitionInput(id) => id as u16,
             MapID::TransitionOutput(id) => id as u16,
             MapID::Program(id) => id as u16,
+            MapID::Rollback(id) => id as u16,
             #[cfg(test)]
             MapID::Test(id) => id as u16,
         }
@@ -171,6 +173,15 @@ pub enum ProgramMap {
     Value = DataID::ValueMap as u16,
 }
 
+/// The RocksDB map prefix for rollback-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum RollbackMap {
+    RollBack = DataID::RollbackMap as u16,
+}
+
 /// The RocksDB map prefix for test-related entries.
 // Note: the order of these variants can be changed at any point in time.
 #[cfg(test)]
@@ -251,6 +262,8 @@ enum DataID {
     KeyValueIDMap,
     KeyMap,
     ValueMap,
+    // Rollback
+    RollbackMap,
 
     // Testing
     #[cfg(test)]

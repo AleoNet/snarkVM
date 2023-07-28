@@ -88,7 +88,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // and adding the program to the finalize tree.
                     Transaction::Deploy(_, program_owner, deployment, fee) => match process.finalize_deployment(store, deployment) {
                         // Construct the accepted deploy transaction.
-                        Ok((_, finalize)) => ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
+                        Ok((_, finalize, _)) => ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
                         // Construct the rejected deploy transaction.
                         Err(_error) => {
                             // Construct the fee transaction.
@@ -104,7 +104,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // and update the respective leaves of the finalize tree.
                     Transaction::Execute(_, execution, fee) => match process.finalize_execution(state, store, execution) {
                         // Construct the accepted execute transaction.
-                        Ok(finalize) => ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
+                        Ok((finalize, _)) => ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
                         // Construct the rejected execute transaction.
                         Err(_error) => match fee {
                             Some(fee) => {
@@ -158,7 +158,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::atomic_finalize");
 
         // Perform the finalize operation on the preset finalize mode.
-        atomic_finalize!(self.finalize_store(), FinalizeMode::RealRun, {
+        atomic_finalize!(self.consensus_store(), FinalizeMode::RealRun, {
             // Acquire the write lock on the process.
             // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
             // we choose to acquire the write lock for the entire duration of this atomic batch.
@@ -166,6 +166,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Retrieve the finalize store.
             let store = self.finalize_store();
+
+            // Retrieve the rollback store.
+            let rollback_store = self.rollback_store();
 
             // Initialize a list for the deployed stacks.
             let mut stacks = Vec::new();
@@ -194,15 +197,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // The finalize operation here involves appending the 'stack',
                         // and adding the program to the finalize tree.
                         match process.finalize_deployment(store, deployment) {
-                            // Ensure the finalize operations match the expected.
-                            Ok((stack, finalize_operations)) => match finalize == &finalize_operations {
-                                // Store the stack.
-                                true => stacks.push(stack),
-                                // Note: This will abort the entire atomic batch.
-                                false => {
-                                    return Err("Mismatch in finalize operations for an accepted deploy".to_string());
+                            Ok((stack, finalize_operations, rollback_operations)) => {
+                                // Ensure the finalize operations match the expected.
+                                match finalize == &finalize_operations {
+                                    // Store the stack.
+                                    true => stacks.push(stack),
+                                    // Note: This will abort the entire atomic batch.
+                                    false => {
+                                        return Err(
+                                            "Mismatch in finalize operations for an accepted deploy".to_string()
+                                        );
+                                    }
                                 }
-                            },
+
+                                // Store the rollback operations.
+                                if let Err(error) =
+                                    rollback_store.insert_rollback_operations(&transaction.id(), rollback_operations)
+                                {
+                                    // Note: This will abort the entire atomic batch.
+                                    return Err(format!("Failed to store rollback operations - {error}"));
+                                }
+                            }
                             // Note: This will abort the entire atomic batch.
                             Err(error) => {
                                 return Err(format!("Failed to finalize an accepted deploy transaction - {error}"));
@@ -221,10 +236,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // and update the respective leaves of the finalize tree.
                         match process.finalize_execution(state, store, execution) {
                             // Ensure the finalize operations match the expected.
-                            Ok(finalize_operations) => {
+                            Ok((finalize_operations, rollback_operations)) => {
                                 if finalize != &finalize_operations {
                                     // Note: This will abort the entire atomic batch.
                                     return Err("Mismatch in finalize operations for an accepted execute".to_string());
+                                }
+
+                                // Store the rollback operations.
+                                if let Err(error) =
+                                    rollback_store.insert_rollback_operations(&transaction.id(), rollback_operations)
+                                {
+                                    // Note: This will abort the entire atomic batch.
+                                    return Err(format!("Failed to store rollback operations - {error}"));
                                 }
                             }
                             // Note: This will abort the entire atomic batch.

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod rollback_operation;
+pub use rollback_operation::*;
+
 mod bits;
 mod bytes;
 mod serialize;
@@ -22,19 +25,29 @@ use console::{network::prelude::*, types::Field};
 /// Enum to represent the allowed set of Merkle tree operations.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FinalizeOperation<N: Network> {
-    /// Appends a mapping to the program tree, as (`mapping ID`).
+    /// Initializes a new a mapping, (`mapping ID`).
     InitializeMapping(Field<N>),
-    /// Inserts a key-value leaf into the mapping tree,
-    /// as (`mapping ID`, `key ID`, `value ID`).
+    /// Inserts a key-value pair, (`mapping ID`, `key ID`, `value ID`).
     InsertKeyValue(Field<N>, Field<N>, Field<N>),
-    /// Updates the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`, `key ID`, `value ID`).
+    /// Updates the key-value pair, (`mapping ID`, `index`, `key ID`, `value ID`).
     UpdateKeyValue(Field<N>, u64, Field<N>, Field<N>),
-    /// Removes the key-value leaf at the given index in the mapping tree,
-    /// as (`mapping ID`, `index`).
+    /// Removes the key-value pair, (`mapping ID`, `index`).
     RemoveKeyValue(Field<N>, u64),
-    /// Removes a mapping from the program tree, as (`mapping ID`).
+    /// Removes a mapping, (`mapping ID`).
     RemoveMapping(Field<N>),
+}
+
+impl<N: Network> FinalizeOperation<N> {
+    /// Returns the mapping ID of the finalize operation.
+    pub fn mapping_id(&self) -> Field<N> {
+        match self {
+            FinalizeOperation::InitializeMapping(mapping_id) => *mapping_id,
+            FinalizeOperation::InsertKeyValue(mapping_id, _, _) => *mapping_id,
+            FinalizeOperation::UpdateKeyValue(mapping_id, _, _, _) => *mapping_id,
+            FinalizeOperation::RemoveKeyValue(mapping_id, _) => *mapping_id,
+            FinalizeOperation::RemoveMapping(mapping_id) => *mapping_id,
+        }
+    }
 }
 
 #[cfg(test)]
