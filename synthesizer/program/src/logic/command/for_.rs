@@ -363,10 +363,6 @@ impl<N: Network> FromBytes for ForLoop<N> {
             // Add the element.
             body.push(command);
         }
-        println!("Parseed for loop.");
-        println!("Register: {}", register);
-        println!("Range: {}", range);
-        println!("Body: {:?}", body);
         // Return the for loop.
         Ok(Self { register, range, body })
     }

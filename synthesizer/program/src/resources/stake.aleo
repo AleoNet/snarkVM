@@ -343,7 +343,7 @@ finalize unbond_staker:
         // Check if the delegator matches the staker.
         is.eq r14 r0 into r15;
         // If the delegator does not match the staker, then skip to the end of the current iteration.
-        branch.neq r15 true to remove_delegator;
+        branch.neq r15 true to end_iteration;
         // Remove the delegator from the list of delegators.
         delete r11 r13 into r16;
         // Mark the end of the current iteration.
