@@ -264,6 +264,8 @@ pub(crate) mod test_helpers {
     use ledger_store::helpers::memory::ConsensusMemory;
     use synthesizer_program::Program;
 
+    use circuit::{Ciphertext, Private};
+    use console::types::U64;
     use indexmap::IndexMap;
     use once_cell::sync::OnceCell;
     use std::borrow::Borrow;
@@ -581,6 +583,51 @@ function compute:
 
         // Construct the new block.
         Block::new(private_key, previous_block.hash(), header, transactions, vec![], None, rng)
+    }
+
+    pub fn split_records<R: Rng + CryptoRng>(
+        vm: &VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        records: Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>,
+        private_key: &PrivateKey<CurrentNetwork>,
+        rng: &mut R,
+    ) -> (Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>, Block<CurrentNetwork>) {
+        // Helper function to get the balance of a `credits.aleo` record.
+        let get_balance = |record: &Record<CurrentNetwork, Plaintext<CurrentNetwork>>| -> u64 {
+            match record.data().get(&Identifier::from_str("microcredits").unwrap()).unwrap() {
+                Entry::Private(Plaintext::Literal(Literal::U64(amount), ..)) => **amount,
+                _ => unreachable!("Invalid entry type for credits.aleo."),
+            }
+        };
+
+        // Get the balance of each record.
+        let records = records.into_iter().map(|record| (get_balance(&record), record)).collect::<Vec<_>>();
+
+        // Split each record and get the transactions.
+        let transactions = records
+            .into_iter()
+            .map(|(balance, record)| {
+                let inputs =
+                    vec![Value::Record(record), Value::Plaintext(Plaintext::from(Literal::U64(U64::new(balance / 2))))];
+                let transaction =
+                    vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, None, rng).unwrap();
+                transaction
+            })
+            .collect::<Vec<_>>();
+
+        // Get the new records.
+        let records = transactions
+            .iter()
+            .flat_map(|transaction| {
+                transaction
+                    .records()
+                    .map(|(_, record)| record.decrypt(&ViewKey::try_from(private_key).unwrap()).unwrap())
+            })
+            .collect();
+
+        // Construct the block.
+        let block = sample_next_block(vm, private_key, &transactions, rng).unwrap();
+
+        (records, block)
     }
 
     #[test]
