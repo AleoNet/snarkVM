@@ -234,27 +234,20 @@ finalize unbond_validator:
 
     // Get the number of delegators.
     length r12 into r13;
-    // Loop through all the delegators.
-    position start_loop;
-    branch.eq r13 0u32 to end_loop;
-    // Remove the delegator from the vector.
-    delete r11 r13 into r14;
-    // Get the bond of the delegator.
-    get bonded[r14] into r15;
-
-    // Unbond the staker.
-    // call unbond_staker r0 r14 r15.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
-
-    // Decrement the index.
-    sub r13 1u32 into r13;
-    // Jump back to the start of the loop.
-    branch.eq true true to start_loop;
-    position end_loop;
+    // Loop over the delegators and unbond them.
+    for r14 in 0u32..r13:
+        // Remove the delegator from the vector.
+        delete r12 r14 into r15;
+        // Get the bond of the delegator.
+        get bonded[r15] into r16;
+        // Unbond the staker.
+        // call unbond_staker r0 r15 r16.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
+    end.for;
 
     // Get the stake state of the validator.
-    get validators[r0] into r16;
+    get validators[r0] into r17;
     // Check that the delegated stake is now zero.
-    assert.eq r16.delegated 0u64;
+    assert.eq r17.delegated 0u64;
 
     // The position we jump to if the validator has more than 1 million credits.
     position skip_unbond_delegators;
@@ -336,40 +329,31 @@ finalize unbond_staker:
     set r10 into validators[r1];
 
     // If the remaining stake is zero, then remove the staker from the list of delegators.
+    // TODO: Under the minimum?
     branch.neq r9 0u64 to skip_remove_delegator;
     // Get the delegators for the specified validator.
     get delegators[r1] into r11;
     // Remove the delegator from the list of delegators.
     // Get the length of the list of delegators.
     length r11 into r12;
-    // Initialize a counter.
-    add 0u32 0u32 into r13;
     // Loop through all the delegators.
-    position start_loop;
-    branch.eq r13 r12 to end_loop;
-    // Get the delegator at the current position.
-    index r11 r13 into r14;
-    // Check if the delegator matches the staker.
-    is.eq r14 r0 into r15;
-    // If the delegator matches the staker, then remove the delegator.
-    branch.eq r15 true to remove_delegator;
-    // Increment the counter.
-    add r13 1u32 into r13;
-    // Jump back to the start of the loop.
-    branch.eq true true to start_loop;
-
-    position remove_delegator;
-    // Remove the delegator from the list of delegators.
-    delete r11 r13 into r16;
-
-    // Terminate the loop.
-    branch.eq true true to end_loop;
-
-    position end_loop;
+    for r13 in 0u32..r12:
+        // Get the delegator at the current position.
+        index r11 r13 into r14;
+        // Check if the delegator matches the staker.
+        is.eq r14 r0 into r15;
+        // If the delegator does not match the staker, then skip to the end of the current iteration.
+        branch.neq r15 true to remove_delegator;
+        // Remove the delegator from the list of delegators.
+        delete r11 r13 into r16;
+        // Mark the end of the current iteration.
+        position end_iteration;
+    end.for;
 
     // Set the updated list of delegators.
     set r11 into delegators[r1];
 
+    // The position we jump to if staker should not be removed.
     position skip_remove_delegator;
 
     // Construct the bond struct for the lock.
@@ -407,33 +391,24 @@ finalize unlock_stake:
 
     // Get the length of the locks.
     length r1 into r2;
-
-    // Initialize a counter.
-    add 0u32 0u32 into r3;
     // Iterate through the locks, unlocking any that are valid.
-    position start_loop;
-    // If the counter is equal to the length, then we have reached the end of the loop.
-    branch.eq r3 r2 to end_loop;
+    for r3 in 0u32..r2:
+        // Get the lock from the list.
+        index r1 r3 into r4;
+        // If the unlock height is greater than the current block height, then the lock is not yet valid.
+        // Nor will any subsequent locks be valid, so we can exit the loop.
+        gt r4.unlock_height block.height into r5;
+        branch.eq r5 true to end_iteration;
+        // Otherwise, the lock is valid, so we can unlock the microcredits.
+        // Remove the lock.
+        delete r1 r3 into r6;
+        // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
+        // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
+        // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
 
-    // Get the lock from the list.
-    index r1 r3 into r4;
-    // If the unlock height is greater than the current block height, then the lock is not yet valid.
-    // Nor will any subsequent locks be valid, so we can exit the loop.
-    gt r4.unlock_height block.height into r5;
-    branch.eq r5 true to end_loop;
-    // Otherwise, the lock is valid, so we can unlock the microcredits.
-    // Remove the lock.
-    delete r1 r3 into r6;
-    // TODO: Add support for calling external programs (by starting with their 'function' and moving to their 'finalize').
-    // Perform the transfer of microcredits from the 'stake.aleo' program to the caller.
-    // call.finalize credits.aleo/transfer_public r0 r4.microcredits; // TODO: Add support for calling the `finalize` scope of the `unbond_staker` function.
-    // Increment the counter.
-    add r3 1u32 into r7;
-    // Jump back to the start of the loop.
-    branch.eq true true to start_loop;
-
-    // The position we jump to if there are no more locks associated with the staker.
-    position end_loop;
+        // Mark the end of the current iteration.
+        position end_iteration;
+    end.for;
 
     // Update the list of locks for the staker.
     set r1 into locked[r0];

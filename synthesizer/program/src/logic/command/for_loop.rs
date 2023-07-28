@@ -262,17 +262,15 @@ impl<N: Network> Parser for ForLoop<N> {
         // Parse the range from the string.
         let (string, range) = Range::parse(string)?;
         // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        let (string, _) = Sanitizer::parse(string)?;
 
         // Parse the ":" from the string.
         let (string, _) = tag(":")(string)?;
         // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        let (string, _) = Sanitizer::parse(string)?;
 
         // Parse the loop body from the string.
-        let (string, body) = many1(terminated(Command::parse, Sanitizer::parse_whitespaces))(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        let (string, body) = many1(terminated(Command::parse, Sanitizer::parse))(string)?;
 
         // Parse the "end.for" keyword from the string.
         let (string, _) = tag("end.for")(string)?;
@@ -365,6 +363,10 @@ impl<N: Network> FromBytes for ForLoop<N> {
             // Add the element.
             body.push(command);
         }
+        println!("Parseed for loop.");
+        println!("Register: {}", register);
+        println!("Range: {}", range);
+        println!("Body: {:?}", body);
         // Return the for loop.
         Ok(Self { register, range, body })
     }
