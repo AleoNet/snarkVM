@@ -81,10 +81,10 @@ pub struct Subdag<N: Network> {
 impl<N: Network> Subdag<N> {
     /// Initializes a new subdag.
     pub fn from(subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>) -> Result<Self> {
-        // Ensure there are more than 2 rounds of certificates in the subdag.
-        ensure!(subdag.len() > 2, "There must be more than 2 rounds of certificates in the subdag");
-        // Ensure the leader round is even.
-        ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 0, "Leader round must be even");
+        // Ensure the subdag is not empty.
+        ensure!(!subdag.is_empty(), "Subdag cannot be empty");
+        // Ensure the anchor round is odd.
+        ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 1, "Anchor round must be odd");
         // Ensure there is only one leader certificate.
         ensure!(subdag.iter().next_back().map_or(0, |(_, c)| c.len()) == 1, "Subdag cannot have multiple leaders");
         // Ensure the rounds are sequential.
@@ -144,7 +144,7 @@ pub mod test_helpers {
         let starting_round = {
             loop {
                 let round = rng.gen_range(2..u64::MAX);
-                if round % 2 == 0 {
+                if round % 2 == 1 {
                     break round;
                 }
             }
