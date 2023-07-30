@@ -395,14 +395,14 @@ mod tests {
         store.insert(2, 1, committee_0.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 2);
         assert_eq!(store.current_height().unwrap(), 1);
-        assert_eq!(store.current_committee().unwrap(), committee_0.clone());
+        assert_eq!(store.current_committee().unwrap(), committee_0);
 
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
         assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 1);
         assert_eq!(store.get_height_for_round(3).unwrap(), None);
 
         assert_eq!(store.get_committee(0).unwrap(), None);
-        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0.clone());
+        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee(2).unwrap(), None);
 
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
@@ -416,7 +416,7 @@ mod tests {
         store.insert(5, 2, committee_1.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
         assert_eq!(store.current_height().unwrap(), 2);
-        assert_eq!(store.current_committee().unwrap(), committee_1.clone());
+        assert_eq!(store.current_committee().unwrap(), committee_1);
 
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
         assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 1);
@@ -426,15 +426,15 @@ mod tests {
         assert_eq!(store.get_height_for_round(6).unwrap(), None);
 
         assert_eq!(store.get_committee(0).unwrap(), None);
-        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0.clone());
-        assert_eq!(store.get_committee(2).unwrap().unwrap(), committee_1.clone());
+        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee(2).unwrap().unwrap(), committee_1);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
-        assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0.clone());
-        assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0.clone());
-        assert_eq!(store.get_committee_for_round(4).unwrap().unwrap(), committee_0.clone());
-        assert_eq!(store.get_committee_for_round(5).unwrap().unwrap(), committee_1.clone());
+        assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(4).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(5).unwrap().unwrap(), committee_1);
         assert_eq!(store.get_committee_for_round(6).unwrap(), None);
 
         // Remove the committee.
@@ -443,7 +443,7 @@ mod tests {
         assert!(store.remove(2).is_err());
         assert_eq!(store.current_round().unwrap(), 4);
         assert_eq!(store.current_height().unwrap(), 1);
-        assert_eq!(store.current_committee().unwrap(), committee_0.clone());
+        assert_eq!(store.current_committee().unwrap(), committee_0);
 
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
         assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 1);
@@ -453,14 +453,14 @@ mod tests {
         assert_eq!(store.get_height_for_round(6).unwrap(), None);
 
         assert_eq!(store.get_committee(0).unwrap(), None);
-        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0.clone());
+        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee(2).unwrap(), None);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
-        assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0.clone());
-        assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0.clone());
-        assert_eq!(store.get_committee_for_round(4).unwrap().unwrap(), committee_0.clone());
+        assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(4).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(5).unwrap(), None);
         assert_eq!(store.get_committee_for_round(6).unwrap(), None);
 
@@ -505,7 +505,7 @@ mod tests {
         store.insert(2, 1, committee_0.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 2);
         assert_eq!(store.current_height().unwrap(), 1);
-        assert_eq!(store.current_committee().unwrap(), committee_0.clone());
+        assert_eq!(store.current_committee().unwrap(), committee_0);
 
         // Sample another committee.
         let committee_1 = ledger_committee::test_helpers::sample_committee_for_round(5, rng);
@@ -514,7 +514,7 @@ mod tests {
         store.insert(5, 2, committee_1.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
         assert_eq!(store.current_height().unwrap(), 2);
-        assert_eq!(store.current_committee().unwrap(), committee_1.clone());
+        assert_eq!(store.current_committee().unwrap(), committee_1);
 
         // Observe: We remove the committee for round 2, but the current committee is still the one for round 5.
 
@@ -522,7 +522,7 @@ mod tests {
         store.remove(1).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
         assert_eq!(store.current_height().unwrap(), 2);
-        assert_eq!(store.current_committee().unwrap(), committee_1.clone());
+        assert_eq!(store.current_committee().unwrap(), committee_1);
 
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
         assert_eq!(store.get_height_for_round(2).unwrap(), None);
@@ -533,14 +533,14 @@ mod tests {
 
         assert_eq!(store.get_committee(0).unwrap(), None);
         assert_eq!(store.get_committee(1).unwrap(), None);
-        assert_eq!(store.get_committee(2).unwrap().unwrap(), committee_1.clone());
+        assert_eq!(store.get_committee(2).unwrap().unwrap(), committee_1);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
         assert_eq!(store.get_committee_for_round(2).unwrap(), None);
         assert_eq!(store.get_committee_for_round(3).unwrap(), None);
         assert_eq!(store.get_committee_for_round(4).unwrap(), None);
-        assert_eq!(store.get_committee_for_round(5).unwrap().unwrap(), committee_1.clone());
+        assert_eq!(store.get_committee_for_round(5).unwrap().unwrap(), committee_1);
         assert_eq!(store.get_committee_for_round(6).unwrap(), None);
 
         // Remove the committee.
