@@ -549,12 +549,21 @@ function compute:
         rng: &mut R,
     ) -> Result<Block<Testnet3>> {
         // Get the most recent block.
+
         let block_hash =
             vm.block_store().get_block_hash(*vm.block_store().heights().max().unwrap().borrow()).unwrap().unwrap();
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new::<Testnet3>(
+            previous_block.round().saturating_add(1),
+            previous_block.height().saturating_add(1),
+            previous_block.cumulative_weight(),
+            0,
+            previous_block.hash(),
+        )?;
         // Construct the new block header.
-        let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
+        let transactions = vm.speculate(state, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,

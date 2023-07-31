@@ -244,6 +244,11 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>> {
+        println!("Updating key-value.");
+        println!("Program ID: {}", program_id);
+        println!("Mapping name: {}", mapping_name);
+        println!("Key: {}", key);
+        println!("Value: {}", value);
         // Retrieve the mapping ID.
         let mapping_id = match self.get_mapping_id_speculative(program_id, mapping_name)? {
             Some(mapping_id) => mapping_id,
@@ -253,6 +258,9 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
         // Compute the value ID.
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
+
+        println!("Key ID: {}", key_id);
+        println!("Value ID: {}\n", value_id);
 
         // Retrieve the key-value IDs for the mapping ID.
         let mut key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {

@@ -14,6 +14,12 @@
 
 use super::*;
 
+use console::{
+    prelude::One,
+    types::{Scalar, I128, I16, I32, I64, I8, U128, U16, U32, U8},
+};
+use synthesizer_program::For;
+
 impl<N: Network> Process<N> {
     /// Finalizes the deployment.
     /// This method assumes the given deployment **is valid**.
@@ -136,57 +142,56 @@ impl<N: Network> Process<N> {
                     // Initialize a stack for the loop headers.
                     let mut loop_stack: Vec<(usize, Literal<N>)> = Vec::new();
 
+                    // Initialize a mask to skip the next command.
+                    let mut skip_next_command = false;
+
+                    // Initialize a variable to track the number of skipped for loops.
+                    let mut skipped_for_loops = 0;
+
                     // Evaluate the commands.
                     while counter < finalize.commands().len() {
                         // Retrieve the command.
                         let command = &finalize.commands()[counter];
                         // Finalize the command.
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match &command {
-                            Command::BranchEq(branch_eq) => {
+                            Command::BranchEq(branch_eq) if !skip_next_command => {
                                 counter = branch_to(counter, branch_eq, finalize, stack, &registers)?;
                                 Ok(None)
                             }
-                            Command::BranchNeq(branch_neq) => {
+                            Command::BranchNeq(branch_neq) if !skip_next_command => {
                                 counter = branch_to(counter, branch_neq, finalize, stack, &registers)?;
                                 Ok(None)
                             }
                             Command::For(for_) => {
-                                match loop_stack.last() {
-                                    // If the counter matches the index of the last entry on the loop stack, then this is at least the second iteration of the loop.
-                                    Some((i, current_value)) if *i == counter => {
-                                        // Load the loop register.
-                                        let register_value = registers.load_literal(
-                                            stack,
-                                            &synthesizer_program::Operand::Register(for_.register().clone()),
-                                        )?;
-                                        // Load the end of the range.
-                                        let end_value = registers.load_literal(stack, for_.range().end())?;
-                                        // Compare the values and (in/de)crement appropriately.
-                                    }
-                                    // Otherwise, this is the first iteration.
-                                    _ => {
-                                        // Get the value of the start of the range.
-                                        let start_value = registers.load_literal(stack, for_.range().start())?;
-                                        registers.store_literal(stack, for_.register(), start_value.clone())?;
-                                        // Push the current index and value to the loop stack.
-                                        loop_stack.push((counter, start_value));
-                                    }
+                                if skip_next_command {
+                                    skipped_for_loops += 1;
+                                } else {
+                                    (counter, skip_next_command) =
+                                        begin_iteration(counter, for_, stack, &mut registers, &mut loop_stack)?;
                                 }
-                                // 1. If no entry is on the loop stack, push the current index to the loop stack.
-                                // 2. If there is an entry, then check that it matches the current index.
-                                counter += 1;
                                 Ok(None)
                             }
-                            // Command::EndFor(end_for) => {
-                            //     // Pop the entry from the loop stack.
-                            //     // Check if another iteration is required.
-                            //     // If so, increment the loop register and branch to the loop header.
-                            //     // Otherwise, continue.
-                            // }
-                            _ => {
+                            Command::EndFor(_) => {
+                                if skip_next_command {
+                                    skipped_for_loops -= 1;
+                                    counter += 1;
+                                    if skipped_for_loops == 0 {
+                                        loop_stack.pop();
+                                        skip_next_command = false;
+                                    }
+                                } else {
+                                    counter = loop_stack.last().unwrap().0
+                                }
+                                Ok(None)
+                            }
+                            _ if !skip_next_command => {
                                 let operation = command.finalize(stack, store, &mut registers);
                                 counter += 1;
                                 operation
+                            }
+                            _ => {
+                                counter += 1;
+                                Ok(None)
                             }
                         }));
 
@@ -242,6 +247,88 @@ fn branch_to<N: Network, const VARIANT: u8>(
         _ => bail!("Invalid 'branch' variant: {VARIANT}"),
     }
 }
+
+// A helper function that begins an iteration of a for loop.
+#[inline]
+fn begin_iteration<N: Network>(
+    counter: usize,
+    for_: &For<N>,
+    stack: &Stack<N>,
+    registers: &mut FinalizeRegisters<N>,
+    loop_stack: &mut Vec<(usize, Literal<N>)>,
+) -> Result<(usize, bool)> {
+    // Set the loop register to the appropriate value.
+    match loop_stack.last() {
+        // If the counter matches the index of the last entry on the loop stack, then this is at least the second iteration of the loop.
+        Some((i, current)) if *i == counter => {
+            // Load the end of the range.
+            let end = registers.load_literal(stack, for_.range().end())?;
+            // Compare the values and (in/de)crement appropriately.
+            let value = match (current, end) {
+                (Literal::Field(current), Literal::Field(end)) => {
+                    Literal::Field(if current <= &end { current.add(Field::one()) } else { current.sub(Field::one()) })
+                }
+                (Literal::Scalar(current), Literal::Scalar(end)) => Literal::Scalar(if current <= &end {
+                    current.add(Scalar::one())
+                } else {
+                    current.sub(Scalar::one())
+                }),
+                (Literal::I8(current), Literal::I8(end)) => {
+                    Literal::I8(if current <= &end { current.add(I8::one()) } else { current.sub(I8::one()) })
+                }
+                (Literal::I16(current), Literal::I16(end)) => {
+                    Literal::I16(if current <= &end { current.add(I16::one()) } else { current.sub(I16::one()) })
+                }
+                (Literal::I32(current), Literal::I32(end)) => {
+                    Literal::I32(if current <= &end { current.add(I32::one()) } else { current.sub(I32::one()) })
+                }
+                (Literal::I64(current), Literal::I64(end)) => {
+                    Literal::I64(if current <= &end { current.add(I64::one()) } else { current.sub(I64::one()) })
+                }
+                (Literal::I128(current), Literal::I128(end)) => {
+                    Literal::I128(if current <= &end { current.add(I128::one()) } else { current.sub(I128::one()) })
+                }
+                (Literal::U8(current), Literal::U8(end)) => {
+                    Literal::U8(if current <= &end { current.add(U8::one()) } else { current.sub(U8::one()) })
+                }
+                (Literal::U16(current), Literal::U16(end)) => {
+                    Literal::U16(if current <= &end { current.add(U16::one()) } else { current.sub(U16::one()) })
+                }
+                (Literal::U32(current), Literal::U32(end)) => {
+                    Literal::U32(if current <= &end { current.add(U32::one()) } else { current.sub(U32::one()) })
+                }
+                (Literal::U64(current), Literal::U64(end)) => {
+                    Literal::U64(if current <= &end { current.add(U64::one()) } else { current.sub(U64::one()) })
+                }
+                (Literal::U128(current), Literal::U128(end)) => {
+                    Literal::U128(if current <= &end { current.add(U128::one()) } else { current.sub(U128::one()) })
+                }
+                _ => bail!("Incompatible types for the loop counter and range."),
+            };
+            // Store the new value.
+            registers.store_literal(stack, for_.register(), value.clone())?;
+            // Update the loop stack.
+            loop_stack.last_mut().unwrap().1 = value;
+        }
+        // Otherwise, this is the first iteration.
+        _ => {
+            // Get the value of the start of the range.
+            let start_value = registers.load_literal(stack, for_.range().start())?;
+            registers.store_literal(stack, for_.register(), start_value.clone())?;
+            // Push the current index and value to the loop stack.
+            loop_stack.push((counter, start_value));
+        }
+    }
+
+    // Get the current value of the loop counter.
+    let current = &loop_stack.last().unwrap().1;
+    // If the the value is equal to the end of the range, then the loop is complete.
+    let is_complete = current == &registers.load_literal(stack, for_.range().end())?;
+
+    Ok((counter + 1, is_complete))
+}
+
+// A helper function that ends an iteration of a for loop.
 
 #[cfg(test)]
 mod tests {

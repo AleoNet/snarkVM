@@ -6,7 +6,7 @@
       - 0u32
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"5889816895028615906435817348908547746375967387752403787574031604711269183890field","checksum":"6272197992411780839804296371590711039411855823425750178602875213568559358255field","value":"record1qyqsql9flwvlagn4m6zjr4dvde8mqye86y4p6z3rwpmkj03tg97r64g9qyxx66trwfhkxun9v35hguerqqpqzqyzd2m42zpy9n2tnrpcjrtc8dfjc878xzagvrrdqq6ruw470j00qv8s2s4gqz7vdaj5wnpkmrxe5r9sypvz27jx76tdaykx0htg2kgsyu4f6gy"}'
+      - '{"type":"record","id":"320359791875676736053513485051611660667520713494832810588717801944624138713field","checksum":"1592151062328730896495899453496757853817786216024512951011226606032078411791field","value":"record1qyqsql9flwvlagn4m6zjr4dvde8mqye86y4p6z3rwpmkj03tg97r64g9qyxx66trwfhkxun9v35hguerqqpqzqyzd2matjfr9n2tnrpcjrtc8dfjc878xzagvrrdqq6ruw470j00qv8s2s4gqz7vdaj5wnpkmrxe5r9sypvz27jx76tdaykx0htg2kgsy3w6zcy"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -18,7 +18,7 @@
       - 45u32
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"201019110351364081850026638780263127032534385702935556699966539576354723652field","checksum":"8331770890849940664669319337058899049175811158243607646447554242567598227188field","value":"record1qyqsp7983vqv2fagnwtgnalakqdrqqv5ndwwkewhgg4anzpduqfy9fcqqyxx66trwfhkxun9v35hguerqqpqzqq7djwqx52p4r08gn8t9cwhad3xgc5c2rsh0wvddf4hdcc2f0uapy9tg2a8m7fwvennz5axrpencsa5767q9a6hr7mpfd3fq7a23pqqjhrjdut"}'
+      - '{"type":"record","id":"3682910082334858174794084585420578115057369696103773288426086196892993810378field","checksum":"1453958157943083642627433414377106316875101185397225773705129923144837849823field","value":"record1qyqsp7983vqv2fagnwtgnalakqdrqqv5ndwwkewhgg4anzpduqfy9fcqqyxx66trwfhkxun9v35hguerqqpqzqq7djwgxyjp4r08gn8t9cwhad3xgc5c2rsh0wvddf4hdcc2f0uapy9tg2a8m7fwvennz5axrpencsa5767q9a6hr7mpfd3fq7a23pqqjplkeug"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -30,7 +30,7 @@
       - 4950u32
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"5066773795538162669591104836655314406924701381112449452041199608389083064068field","checksum":"376346491240179773472017050721380118981274945441598534725751196193447220211field","value":"record1qyqsqmmd2758gyacfthdzm2s78r0af05llnwveewgv7xxkj5et86chcwqyxx66trwfhkxun9v35hguerqqpqzqptcz75usgr98sxvpulwr9qj2cpjmn7kcqlvyep3t7qugvm3mrpqqw9a2qdm8jmys7ld6a5te5kx6lfhpr5cgdmj2fv7m4tqkkan98qvwf0f5d"}'
+      - '{"type":"record","id":"742637280358596486498765764453301923457045849021102121671588303273923332871field","checksum":"1134423640542211098687739282255991130168218717770536620644533829996623244316field","value":"record1qyqsqmmd2758gyacfthdzm2s78r0af05llnwveewgv7xxkj5et86chcwqyxx66trwfhkxun9v35hguerqqpqzqptcz7uuqsr98sxvpulwr9qj2cpjmn7kcqlvyep3t7qugvm3mrpqqw9a2qdm8jmys7ld6a5te5kx6lfhpr5cgdmj2fv7m4tqkkan98qvc4ta5w"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
