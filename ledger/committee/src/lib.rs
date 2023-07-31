@@ -124,7 +124,7 @@ impl<N: Network> Committee<N> {
     pub fn availability_threshold(&self) -> u64 {
         // Assuming `N = 3f + 1 + k`, where `0 <= k < 3`,
         // then `(N + 2) / 3 = f + 1 + k/3 = f + 1`.
-        self.total_stake().saturating_add(2) / 3
+        self.total_stake().saturating_add(2).saturating_div(3)
     }
 
     /// Returns the amount of stake required to reach a quorum threshold `(2f + 1)`.
