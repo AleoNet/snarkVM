@@ -70,14 +70,8 @@ impl<N: Network> Debug for Identifier<N> {
 impl<N: Network> Display for Identifier<N> {
     /// Prints the identifier as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Convert the identifier to bits.
-        let bits_le = self.0.to_bits_le();
-
-        // Convert the bits to bytes.
-        let bytes = bits_le
-            .chunks(8)
-            .map(|byte| u8::from_bits_le(byte).map_err(|_| fmt::Error))
-            .collect::<Result<Vec<u8>, _>>()?;
+        // Convert the identifier to bytes.
+        let bytes = self.0.to_bytes_le().map_err(|_| fmt::Error)?;
 
         // Parse the bytes as a UTF-8 string.
         let string = String::from_utf8(bytes).map_err(|_| fmt::Error)?;
