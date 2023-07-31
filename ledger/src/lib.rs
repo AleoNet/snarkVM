@@ -74,7 +74,7 @@ use synthesizer::{
 use aleo_std::prelude::{finish, lap, timer};
 use anyhow::Result;
 use core::ops::Range;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 use rand::{prelude::IteratorRandom, rngs::OsRng};
 use std::{borrow::Cow, sync::Arc};
