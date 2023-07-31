@@ -20,7 +20,7 @@ impl<N: Network> Serialize for Committee<N> {
         match serializer.is_human_readable() {
             true => {
                 let mut certificate = serializer.serialize_struct("Committee", 3)?;
-                certificate.serialize_field("round", &self.round)?;
+                certificate.serialize_field("starting_round", &self.starting_round)?;
                 certificate.serialize_field("members", &self.members)?;
                 certificate.serialize_field("total_stake", &self.total_stake)?;
                 certificate.end()
@@ -38,7 +38,7 @@ impl<'de, N: Network> Deserialize<'de> for Committee<N> {
                 let mut value = serde_json::Value::deserialize(deserializer)?;
                 let total_stake: u64 = DeserializeExt::take_from_value::<D>(&mut value, "total_stake")?;
                 let committee = Self::new(
-                    DeserializeExt::take_from_value::<D>(&mut value, "round")?,
+                    DeserializeExt::take_from_value::<D>(&mut value, "starting_round")?,
                     DeserializeExt::take_from_value::<D>(&mut value, "members")?,
                 )
                 .map_err(de::Error::custom)?;
