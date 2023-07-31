@@ -107,10 +107,10 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     genesis_block: Block<N>,
     /// The coinbase puzzle.
     coinbase_puzzle: CoinbasePuzzle<N>,
-    /// The current block.
-    current_block: Arc<RwLock<Block<N>>>,
     /// The current epoch challenge.
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
+    /// The current block.
+    current_block: Arc<RwLock<Block<N>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -166,8 +166,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             vm,
             genesis_block: genesis_block.clone(),
             coinbase_puzzle: CoinbasePuzzle::<N>::load()?,
-            current_block: Arc::new(RwLock::new(genesis_block.clone())),
             current_epoch_challenge: Default::default(),
+            current_block: Arc::new(RwLock::new(genesis_block.clone())),
         };
 
         // If the block store is empty, initialize the genesis block.
@@ -213,6 +213,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the latest state root.
     pub fn latest_state_root(&self) -> N::StateRoot {
         self.vm.block_store().current_state_root()
+    }
+
+    /// Returns the latest epoch number.
+    pub fn latest_epoch_number(&self) -> u32 {
+        self.current_block.read().height() / N::NUM_BLOCKS_PER_EPOCH
+    }
+
+    /// Returns the latest epoch challenge.
+    pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
+        match self.current_epoch_challenge.read().as_ref() {
+            Some(challenge) => Ok(challenge.clone()),
+            None => self.get_epoch_challenge(self.latest_height()),
+        }
     }
 
     /// Returns the latest block.
@@ -288,19 +301,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the latest block transactions.
     pub fn latest_transactions(&self) -> Transactions<N> {
         self.current_block.read().transactions().clone()
-    }
-
-    /// Returns the latest epoch number.
-    pub fn latest_epoch_number(&self) -> u32 {
-        self.current_block.read().height() / N::NUM_BLOCKS_PER_EPOCH
-    }
-
-    /// Returns the latest epoch challenge.
-    pub fn latest_epoch_challenge(&self) -> Result<EpochChallenge<N>> {
-        match self.current_epoch_challenge.read().as_ref() {
-            Some(challenge) => Ok(challenge.clone()),
-            None => self.get_epoch_challenge(self.latest_height()),
-        }
     }
 }
 
