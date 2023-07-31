@@ -25,10 +25,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let previous_block = self.latest_block();
 
         // Decouple the transmissions into ratifications, solutions, and transactions.
-        let (_ratifications, solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
+        let (ratifications, solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
+        // Currently, we do not support ratifications from the memory pool.
+        ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
         // Construct the block template.
         let (header, ratifications, solutions, transactions) =
-            self.construct_block_template(&previous_block, Some(&subdag), solutions, transactions)?;
+            self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
 
         // Construct the new quorum block.
         Block::new_quorum(previous_block.hash(), header, subdag, ratifications, solutions, transactions)
@@ -38,16 +40,25 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn prepare_advance_to_next_beacon_block<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
+        candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
         rng: &mut R,
     ) -> Result<Block<N>> {
+        // Currently, we do not support ratifications from the memory pool.
+        ensure!(candidate_ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
+
         // Retrieve the latest block as the previous block (for the next block).
         let previous_block = self.latest_block();
 
         // Construct the block template.
-        let (header, ratifications, solutions, transactions) =
-            self.construct_block_template(&previous_block, None, candidate_solutions, candidate_transactions)?;
+        let (header, ratifications, solutions, transactions) = self.construct_block_template(
+            &previous_block,
+            None,
+            candidate_ratifications,
+            candidate_solutions,
+            candidate_transactions,
+        )?;
 
         // Construct the new beacon block.
         Block::new_beacon(private_key, previous_block.hash(), header, ratifications, solutions, transactions, rng)
@@ -80,6 +91,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         &self,
         previous_block: &Block<N>,
         subdag: Option<&Subdag<N>>,
+        candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
     ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>), Error> {
@@ -164,8 +176,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Calculate the staking rewards.
         let staking_rewards = staking_rewards(vec![], coinbase_reward, 0);
 
+        // TODO (howardwu): We must first process the candidate ratifications to filter out invalid ratifications.
         // Construct the ratifications.
-        let mut ratifications = Vec::<Ratify<N>>::new();
+        let mut ratifications = candidate_ratifications;
         ratifications.extend_from_slice(&proving_rewards);
         ratifications.extend_from_slice(&staking_rewards);
 

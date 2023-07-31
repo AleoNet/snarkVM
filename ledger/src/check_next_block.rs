@@ -59,6 +59,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 if block.timestamp() != subdag.timestamp() {
                     bail!("The next block timestamp must be the median timestamp from the subdag")
                 }
+                // TODO (howardwu): Check the timestamp is after the previous timestamp.
             }
         }
 
@@ -262,12 +263,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 }
             }
             // TODO: Check the certificates of the quorum.
-            Authority::Quorum(_certificates) => {
-                // // Ensure the block is signed by a validator in the committee.
-                // let signer = block.authority().to_address();
-                // if !self.current_committee.read().contains(&signer) {
-                //     bail!("Block {} ({}) is signed by an unauthorized account ({signer})", block.height(), block.hash());
-                // }
+            Authority::Quorum(subdag) => {
+                // Retrieve the latest committee.
+                let committee = self.latest_committee()?;
+                // Compute the expected leader.
+                let expected_leader = committee.get_leader(block.round())?;
+                // Ensure the block is authored by the expected leader.
+                if subdag.leader_address() != expected_leader {
+                    bail!(
+                        "Block {} ({}) is authored by an unexpected leader (found: {}, expected: {expected_leader})",
+                        block.height(),
+                        block.hash(),
+                        subdag.leader_address()
+                    );
+                }
             }
         }
 

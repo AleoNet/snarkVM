@@ -106,11 +106,10 @@ impl<N: Network> Authority<N> {
     /// Returns address of the authority.
     /// If the authority is a beacon, the address of the signer is returned.
     /// If the authority is a quorum, the address of the leader is returned.
-    #[allow(deprecated)]
     pub fn to_address(&self) -> Address<N> {
         match self {
             Self::Beacon(signature) => signature.to_address(),
-            Self::Quorum(..) => Address::zero(),
+            Self::Quorum(subdag) => subdag.leader_address(),
         }
     }
 }
