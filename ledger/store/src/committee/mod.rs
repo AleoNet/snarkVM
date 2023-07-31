@@ -99,7 +99,9 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Stores the given `(next height, committee)` pair into storage,
     /// and indexes storage up to the `next round`.
-    fn insert(&self, next_round: u64, next_height: u32, committee: Committee<N>) -> Result<()> {
+    fn insert(&self, next_height: u32, committee: Committee<N>) -> Result<()> {
+        // Retrieve the next round.
+        let next_round = committee.starting_round();
         // Ensure the next round is at least the next height.
         ensure!(next_round >= next_height as u64, "Next round must be at least the next height");
 
@@ -112,6 +114,12 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
         let current_height = self.current_height().unwrap_or(0);
         // Ensure the next height is greater than the current height.
         ensure!(next_height > current_height, "Next height must be greater than current height");
+
+        // If the next round already exists, then return an error.
+        ensure!(
+            !self.round_to_height_map().contains_key_confirmed(&next_round)?,
+            "Next round {next_round} already exists in committee storage"
+        );
 
         // Start an atomic batch.
         atomic_batch_scope!(self, {
@@ -147,7 +155,7 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("Committee not found for height {height} in committee storage");
         };
         // Retrieve the round for the given height.
-        let committee_round = committee.round();
+        let committee_round = committee.starting_round();
 
         // If the current height matches the given height, it means we are removing the latest committee,
         // and we will need to update the current round.
@@ -325,8 +333,8 @@ impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
 impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
     /// Stores the given `(next height, committee)` pair into storage,
     /// and indexes storage up to the `next round`.
-    pub fn insert(&self, next_round: u64, next_height: u32, committee: Committee<N>) -> Result<()> {
-        self.storage.insert(next_round, next_height, committee)
+    pub fn insert(&self, next_height: u32, committee: Committee<N>) -> Result<()> {
+        self.storage.insert(next_height, committee)
     }
 
     /// Removes the committee for the given `height`, in the process
@@ -392,7 +400,7 @@ mod tests {
         assert_eq!(store.get_committee_for_round(rng.gen()).unwrap(), None);
 
         // Insert the committee.
-        store.insert(2, 1, committee_0.clone()).unwrap();
+        store.insert(1, committee_0.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 2);
         assert_eq!(store.current_height().unwrap(), 1);
         assert_eq!(store.current_committee().unwrap(), committee_0);
@@ -413,7 +421,7 @@ mod tests {
         let committee_1 = ledger_committee::test_helpers::sample_committee_for_round(5, rng);
 
         // Insert the committee.
-        store.insert(5, 2, committee_1.clone()).unwrap();
+        store.insert(2, committee_1.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
         assert_eq!(store.current_height().unwrap(), 2);
         assert_eq!(store.current_committee().unwrap(), committee_1);
@@ -502,7 +510,7 @@ mod tests {
         assert!(store.current_committee().is_err());
 
         // Insert the committee.
-        store.insert(2, 1, committee_0.clone()).unwrap();
+        store.insert(1, committee_0.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 2);
         assert_eq!(store.current_height().unwrap(), 1);
         assert_eq!(store.current_committee().unwrap(), committee_0);
@@ -511,7 +519,7 @@ mod tests {
         let committee_1 = ledger_committee::test_helpers::sample_committee_for_round(5, rng);
 
         // Insert the committee.
-        store.insert(5, 2, committee_1.clone()).unwrap();
+        store.insert(2, committee_1.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
         assert_eq!(store.current_height().unwrap(), 2);
         assert_eq!(store.current_committee().unwrap(), committee_1);

@@ -165,11 +165,11 @@ impl Hash for Validator {
 fn committee_advance(input: CommitteeContext) {
     let CommitteeContext(committee, _) = input;
 
-    let current_round = committee.round();
+    let current_round = committee.starting_round();
     let current_members = committee.members();
 
     let committee = committee.to_next_round();
-    assert_eq!(committee.round(), current_round + 1);
+    assert_eq!(committee.starting_round(), current_round + 1);
     assert_eq!(committee.members(), current_members);
 }
 

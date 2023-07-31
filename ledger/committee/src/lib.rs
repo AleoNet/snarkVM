@@ -37,8 +37,8 @@ use std::collections::HashSet;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Committee<N: Network> {
-    /// The current round number.
-    round: u64,
+    /// The starting round number for this committee.
+    starting_round: u64,
     /// A map of `address` to `stake`.
     members: IndexMap<Address<N>, u64>,
     /// The total stake of all `members`.
@@ -47,9 +47,9 @@ pub struct Committee<N: Network> {
 
 impl<N: Network> Committee<N> {
     /// Initializes a new `Committee` instance.
-    pub fn new(round: u64, members: IndexMap<Address<N>, u64>) -> Result<Self> {
-        // Ensure the round is nonzero.
-        ensure!(round > 0, "Round must be nonzero");
+    pub fn new(starting_round: u64, members: IndexMap<Address<N>, u64>) -> Result<Self> {
+        // Ensure the starting round is nonzero.
+        ensure!(starting_round > 0, "Round must be nonzero");
         // Ensure there are at least 4 members.
         ensure!(members.len() >= 4, "Committee must have at least 4 members");
         // Ensure all members have the minimum required stake.
@@ -57,21 +57,25 @@ impl<N: Network> Committee<N> {
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
         // Return the new committee.
-        Ok(Self { round, members, total_stake })
+        Ok(Self { starting_round, members, total_stake })
     }
 
     /// Returns a new `Committee` instance for the next round.
     /// TODO (howardwu): Add arguments for members (and stake) 1) to be added, 2) to be updated, and 3) to be removed.
     pub fn to_next_round(&self) -> Self {
         // Return the new committee.
-        Self { round: self.round.saturating_add(1), members: self.members.clone(), total_stake: self.total_stake }
+        Self {
+            starting_round: self.starting_round.saturating_add(1),
+            members: self.members.clone(),
+            total_stake: self.total_stake,
+        }
     }
 }
 
 impl<N: Network> Committee<N> {
-    /// Returns the current round number.
-    pub const fn round(&self) -> u64 {
-        self.round
+    /// Returns the starting round number for this committee.
+    pub const fn starting_round(&self) -> u64 {
+        self.starting_round
     }
 
     /// Returns the committee members alongside their stake.
@@ -143,11 +147,13 @@ impl<N: Network> Committee<N> {
 impl<N: Network> Committee<N> {
     /// Returns the leader address for the current round.
     /// Note: This method returns a deterministic result that is SNARK-friendly.
-    pub fn get_leader(&self) -> Result<Address<N>> {
+    pub fn get_leader(&self, current_round: u64) -> Result<Address<N>> {
+        // Ensure the current round is at least the starting round.
+        ensure!(current_round >= self.starting_round, "Current round must be at least the starting round");
         // Retrieve the total stake of the committee.
         let total_stake = self.total_stake();
         // Construct the round seed.
-        let seed = [self.round, total_stake].map(Field::from_u64);
+        let seed = [self.starting_round, current_round, total_stake].map(Field::from_u64);
         // Hash the round seed.
         let hash = Literal::Field(N::hash_to_group_psd2(&seed)?.to_x_coordinate());
         // Compute the stake index from the hash output.
@@ -293,10 +299,8 @@ mod tests {
         let leaders = Arc::new(RwLock::new(IndexMap::<Address<CurrentNetwork>, i64>::new()));
         // Iterate through the rounds.
         (1..=num_rounds).into_par_iter().for_each(|round| {
-            // Construct the committee for the round.
-            let committee = Committee::<CurrentNetwork>::new(round, committee.members.clone()).unwrap();
             // Compute the leader.
-            let leader = committee.get_leader().unwrap();
+            let leader = committee.get_leader(round).unwrap();
             // Increment the leader count for the current leader.
             leaders.write().entry(leader).or_default().add_assign(1);
         });
