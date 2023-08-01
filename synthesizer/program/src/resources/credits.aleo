@@ -69,10 +69,10 @@ record credits:
 
 /**********************************************************************************************************************/
 
-// fn bond_validator
+// fn bond
 // - if the bond is now 33% or more, close the validator. (determine how hard to impl this)
 
-// fn unbond_validator
+// fn unbond
 //  - can only be triggered after the validator has unbonded all of their delegators.
 
 // Open Questions:
@@ -80,21 +80,45 @@ record credits:
 
 /**********************************************************************************************************************/
 
-function bond_public:
+// This function allows any staker to bond microcredits to a validator.
+//
+// For public staking, set the address randomizer in input 'r2' to '1field'.
+// By using public staking, your staking address will be publicly-visible for everyone to observe on the network.
+// To 'unbond' and 'claim_unbond', you must use the same address randomizer as what was provided here.
+//
+// For private staking, set the address randomizer in input 'r2' to a unique random scalar.
+// By using private staking, your staking address will be randomized when viewed by everyone on the network.
+// To 'unbond' and 'claim_unbond', you must use the same address randomizer as what was provided here.
+//
+// Disclaimer: It is **strongly** advised and recommended that you use the proper services provided by Aleo to call this function.
+// This is to ensure that a best effort is made to deterministically retrieve your address randomizer using your view key,
+// so that it is possible for you to monitor and recover your own staking address in the future. Users who call this function
+// without using proper services provided by Aleo will be responsible and liable for their own actions and consequences.
+function bond:
     // Input the validator's address.
-    input r0 as address.public;
+    input r0 as address.private;
     // Input the amount of microcredits to bond.
     input r1 as u64.public;
+    // Input the address randomizer.
+    // Attention: By using this feature, you agree to and abide by the documentation and disclaimer above.
+    input r2 as scalar.private;
 
     // Determine if the amount is at least one credit.
     gte r1 1_000_000u64 into r2;
     // Enforce the amount is at least one credit.
     assert.eq r2 true;
 
-    // Bond the specified amount of microcredits to the specified validator.
-    finalize self.caller r0 r1;
+    // Cast the address to a group type.
+    cast self.caller into r3 as group;
+    // Compute the staker's address.
+    mul r3 r2 into r4;
+    // Cast the group to an address type.
+    cast r4 into r5 as address;
 
-finalize bond_public:
+    // Bond the specified amount of microcredits to the specified validator.
+    finalize r5 r0 r1;
+
+finalize bond:
     // Input the staker's address.
     input r0 as address.public;
     // Input the validator's address.
