@@ -120,7 +120,7 @@ record credits:
 // The corresponding functions for 'bond_public' are 'unbond_public' and 'claim_unbond_public'.
 function bond_public:
     // Input the validator's address.
-    input r0 as address.private;
+    input r0 as address.public;
     // Input the amount of microcredits to bond.
     input r1 as u64.public;
 
