@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_console_account::ComputeKey;
 
 impl<N: Network> Literal<N> {
     /// Returns a randomly-sampled literal of the given literal type.
@@ -33,6 +34,11 @@ impl<N: Network> Literal<N> {
             LiteralType::U64 => Literal::U64(U64::rand(rng)),
             LiteralType::U128 => Literal::U128(U128::rand(rng)),
             LiteralType::Scalar => Literal::Scalar(Scalar::rand(rng)),
+            LiteralType::Signature => Literal::Signature(Signature::from((
+                Scalar::rand(rng),
+                Scalar::rand(rng),
+                ComputeKey::try_from((Group::rand(rng), Group::rand(rng))).expect("ComputeKey::try_from failed."),
+            ))),
             LiteralType::String => Literal::String(StringType::rand(rng)),
         }
     }

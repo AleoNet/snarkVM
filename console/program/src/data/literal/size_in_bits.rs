@@ -33,6 +33,7 @@ impl<N: Network> Literal<N> {
             Self::U64(..) => U64::<N>::size_in_bits(),
             Self::U128(..) => U128::<N>::size_in_bits(),
             Self::Scalar(..) => Scalar::<N>::size_in_bits(),
+            Self::Signature(..) => Signature::<N>::size_in_bits(),
             Self::String(string) => match string.len().checked_mul(8) {
                 Some(size) => size,
                 None => N::halt("String exceeds usize::MAX bits."),
