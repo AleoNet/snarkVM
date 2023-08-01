@@ -250,48 +250,6 @@ finalize bond_public:
 
 /**********************************************************************************************************************/
 
-function close_validator:
-    // Close the validator to stakers.
-    finalize self.caller;
-
-finalize close_validator:
-    // Input the validator's address.
-    input r0 as address.public;
-
-    // Get the state for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get committee[r0] into r1;
-    // Ensure that the validator is open to stakers.
-    assert.eq r1.is_open true;
-
-    // Construct the updated committee state.
-    cast r1.microcredits true into r2 as state;
-    // Update the state for the specified validator.
-    set r2 into committee[r0];
-
-/**********************************************************************************************************************/
-
-function open_validator:
-    // Open the validator to stakers.
-    finalize self.caller;
-
-finalize open_validator:
-    // Input the validator's address.
-    input r0 as address.public;
-
-    // Get the state for the specified validator.
-    // If the validator does not exist, this finalize scope will fail.
-    get committee[r0] into r1;
-    // Ensure that the validator is closed to stakers.
-    assert.eq r1.is_open false;
-
-    // Construct the updated committee state.
-    cast r1.microcredits false into r2 as state;
-    // Update the state for the specified validator.
-    set r2 into committee[r0];
-
-/**********************************************************************************************************************/
-
 function unbond_public:
     // Input the amount of microcredits to unbond.
     input r0 as u64.public;
@@ -585,6 +543,48 @@ finalize claim_unbond:
 
     // Remove the unbond struct for the caller.
     remove unbonding[r0];
+
+/**********************************************************************************************************************/
+
+function open_validator:
+    // Open the validator to stakers.
+    finalize self.caller;
+
+finalize open_validator:
+    // Input the validator's address.
+    input r0 as address.public;
+
+    // Get the state for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r0] into r1;
+    // Ensure that the validator is closed to stakers.
+    assert.eq r1.is_open false;
+
+    // Construct the updated committee state.
+    cast r1.microcredits false into r2 as state;
+    // Update the state for the specified validator.
+    set r2 into committee[r0];
+
+/**********************************************************************************************************************/
+
+function close_validator:
+    // Close the validator to stakers.
+    finalize self.caller;
+
+finalize close_validator:
+    // Input the validator's address.
+    input r0 as address.public;
+
+    // Get the state for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r0] into r1;
+    // Ensure that the validator is open to stakers.
+    assert.eq r1.is_open true;
+
+    // Construct the updated committee state.
+    cast r1.microcredits true into r2 as state;
+    // Update the state for the specified validator.
+    set r2 into committee[r0];
 
 /**********************************************************************************************************************/
 
