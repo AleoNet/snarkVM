@@ -266,7 +266,7 @@ finalize bond:
 
 /**********************************************************************************************************************/
 
-function unbond_public:
+function unbond:
     // Input the amount of microcredits to unbond.
     input r0 as u64.public;
 
@@ -276,7 +276,7 @@ function unbond_public:
     // Unbond the specified amount of microcredits to the caller.
     finalize self.caller r0;
 
-finalize unbond_public:
+finalize unbond:
     // Input the staker's address.
     input r0 as address.public;
     // Input the amount of microcredits to unbond.
@@ -372,7 +372,7 @@ finalize unbond_public:
 
     /* End Unbond */
 
-    // Ends the `unbond_public` logic.
+    // Ends the `unbond_validator` logic.
     branch.eq true true to end;
 
     /******* Unbond Delegator *******/
