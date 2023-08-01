@@ -17,19 +17,19 @@ use anyhow::{ensure, Result};
 /// A safety bound (sanity-check) for the coinbase reward.
 pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
 
-/// Calculate the staking reward for a block, given the total supply and block time.
+/// Calculate the block reward, given the total supply, block time, and coinbase reward.
 ///     R_staking = floor((0.05 * S) / H_Y1) + CR / 2
 ///     S = Total supply.
 ///     H_Y1 = Expected block height at year 1.
 ///     CR = Coinbase reward.
-pub const fn block_stake_reward(total_supply: u64, block_time: u16, coinbase_reward: u64) -> u64 {
+pub const fn block_reward(total_supply: u64, block_time: u16, coinbase_reward: u64) -> u64 {
     // Compute the expected block height at year 1.
     let block_height_at_year_1 = block_height_at_year(block_time, 1);
     // Compute the annual reward: (0.05 * S).
     let annual_reward = (total_supply / 1000) * 50;
     // Compute the block reward: (0.05 * S) / H_Y1.
     let block_reward = annual_reward / block_height_at_year_1 as u64;
-    // Return the sum of the block and coinbase staking rewards.
+    // Return the sum of the block and coinbase rewards.
     block_reward + coinbase_reward / 2
 }
 
@@ -268,16 +268,16 @@ mod tests {
     }
 
     #[test]
-    fn test_block_stake_reward() {
-        let reward = block_stake_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME, 0);
+    fn test_block_reward() {
+        let reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME, 0);
         assert_eq!(reward, EXPECTED_STAKING_REWARD);
 
         // Increasing the anchor time will increase the reward.
-        let larger_reward = block_stake_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME + 1, 0);
+        let larger_reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME + 1, 0);
         assert!(reward < larger_reward);
 
         // Decreasing the anchor time will decrease the reward.
-        let smaller_reward = block_stake_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME - 1, 0);
+        let smaller_reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME - 1, 0);
         assert!(reward > smaller_reward);
     }
 

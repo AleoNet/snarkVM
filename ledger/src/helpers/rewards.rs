@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::helpers::{block_stake_reward, MAX_COINBASE_REWARD};
+use crate::helpers::{block_reward, MAX_COINBASE_REWARD};
 use console::{account::Address, network::prelude::*};
 use ledger_block::Ratify;
 
 /// Returns the staking rewards for a given stakers and coinbase reward.
 ///
 /// The staking reward is defined as:
-///   block_stake_reward * stake / total_stake
+///   block_reward * stake / total_stake
 pub fn staking_rewards<N: Network>(
     stakers: Vec<(Address<N>, u64)>,
     coinbase_reward: u64,
@@ -35,8 +35,8 @@ pub fn staking_rewards<N: Network>(
         return Vec::new();
     }
 
-    // Compute the block stake reward.
-    let block_stake_reward = block_stake_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
+    // Compute the block reward.
+    let block_reward = block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
 
     // Initialize a vector to store the staking rewards.
     let mut rewards = Vec::with_capacity(stakers.len());
@@ -44,7 +44,7 @@ pub fn staking_rewards<N: Network>(
     // Calculate the rewards for the individual stakers.
     for (address, stake) in stakers {
         // Compute the numerator.
-        let numerator = (block_stake_reward as u128).saturating_mul(stake as u128);
+        let numerator = (block_reward as u128).saturating_mul(stake as u128);
         // Compute the denominator.
         // Note: We guarantee this denominator cannot be 0 (as we return early if the total stake is 0).
         let denominator = total_stake as u128;
