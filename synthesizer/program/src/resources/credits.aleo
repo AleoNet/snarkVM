@@ -292,25 +292,25 @@ finalize open_validator:
 
 /**********************************************************************************************************************/
 
-//function unbond_public:
-//    // Input the amount of microcredits to unbond.
-//    input r0 as u64.public;
-//
-//    // Enforce the amount is nonzero.
-//    assert.neq r0 0u64;
-//
-//    // Unbond the specified amount of microcredits to the caller.
-//    finalize self.caller r0;
-//
-//finalize unbond_public:
-//    // Input the staker's address.
-//    input r0 as address.public;
-//    // Input the amount of microcredits to unbond.
-//    input r1 as u64.public;
-//
-//    // Determine if the caller is a validator or delegator.
-//    contains committee[r0] into r2;
-//
+function unbond_public:
+    // Input the amount of microcredits to unbond.
+    input r0 as u64.public;
+
+    // Enforce the amount is nonzero.
+    assert.neq r0 0u64;
+
+    // Unbond the specified amount of microcredits to the caller.
+    finalize self.caller r0;
+
+finalize unbond_public:
+    // Input the staker's address.
+    input r0 as address.public;
+    // Input the amount of microcredits to unbond.
+    input r1 as u64.public;
+
+    // Determine if the caller is a validator or delegator.
+    contains committee[r0] into r2;
+
 //    // If the caller is a validator, jump to the `unbond_validator` logic.
 //    branch.eq r2 true to unbond_validator;
 //    // If the caller is not a validator, jump to the `unbond_delegator` logic.

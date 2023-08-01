@@ -58,6 +58,24 @@ impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
 // Negative Powers of Beta in G2
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
+// BondPublic
+impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
+impl_remote!(BondPublicVerifier, REMOTE_URL, "resources/", "bond_public", "verifier");
+// UnbondPublic
+impl_remote!(UnbondPublicProver, REMOTE_URL, "resources/", "unbond_public", "prover");
+impl_remote!(UnbondPublicVerifier, REMOTE_URL, "resources/", "unbond_public", "verifier");
+// UnbondDelegatorAsValidator
+impl_remote!(UnbondDelegatorAsValidatorProver, REMOTE_URL, "resources/", "unbond_delegator_as_validator", "prover");
+impl_remote!(UnbondDelegatorAsValidatorVerifier, REMOTE_URL, "resources/", "unbond_delegator_as_validator", "verifier");
+// ClaimUnbond
+impl_remote!(ClaimUnbondProver, REMOTE_URL, "resources/", "claim_unbond", "prover");
+impl_remote!(ClaimUnbondVerifier, REMOTE_URL, "resources/", "claim_unbond", "verifier");
+// OpenValidator
+impl_remote!(OpenValidatorProver, REMOTE_URL, "resources/", "open_validator", "prover");
+impl_remote!(OpenValidatorVerifier, REMOTE_URL, "resources/", "open_validator", "verifier");
+// CloseValidator
+impl_remote!(CloseValidatorProver, REMOTE_URL, "resources/", "close_validator", "prover");
+impl_remote!(CloseValidatorVerifier, REMOTE_URL, "resources/", "close_validator", "verifier");
 // Mint
 impl_remote!(MintProver, REMOTE_URL, "resources/", "mint", "prover");
 impl_remote!(MintVerifier, REMOTE_URL, "resources/", "mint", "verifier");
@@ -88,6 +106,12 @@ macro_rules! insert_credit_keys {
     ($map:ident, $type:ident<$network:ident>, $variant:ident) => {{
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
+            $crate::insert_key!($map, string, $type<$network>, ("bond_public", $crate::testnet3::[<BondPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("unbond_public", $crate::testnet3::[<UnbondPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::testnet3::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("claim_unbond", $crate::testnet3::[<ClaimUnbond $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("open_validator", $crate::testnet3::[<OpenValidator $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("close_validator", $crate::testnet3::[<CloseValidator $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("mint", $crate::testnet3::[<Mint $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::testnet3::[<TransferPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::testnet3::[<TransferPublic $variant>]::load_bytes()));
@@ -133,11 +157,19 @@ mod tests {
     wasm_bindgen_test_configure!(run_in_browser);
 
     #[wasm_bindgen_test]
-    fn test_transfer_flow() {
+    fn test_load_bytes() {
         Degree16::load_bytes().expect("Failed to load degree 16");
         Degree17::load_bytes().expect("Failed to load degree 17");
         Degree18::load_bytes().expect("Failed to load degree 18");
         Degree19::load_bytes().expect("Failed to load degree 19");
+        Degree20::load_bytes().expect("Failed to load degree 20");
+        BondPublicVerifier::load_bytes().expect("Failed to load bond_public verifier");
+        UnbondPublicVerifier::load_bytes().expect("Failed to load unbond_public verifier");
+        UnbondDelegatorAsValidatorVerifier::load_bytes()
+            .expect("Failed to load unbond_delegator_as_validator verifier");
+        ClaimUnbondVerifier::load_bytes().expect("Failed to load claim_unbond verifier");
+        OpenValidatorVerifier::load_bytes().expect("Failed to load open_validator verifier");
+        CloseValidatorVerifier::load_bytes().expect("Failed to load close_validator verifier");
         TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
         TransferPublicVerifier::load_bytes().expect("Failed to load transfer_public verifier");
         TransferPrivateToPublicVerifier::load_bytes().expect("Failed to load transfer_private_to_public verifier");
