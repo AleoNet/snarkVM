@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod equal;
 mod from_private_key;
+mod helpers;
 mod to_address;
 
 #[cfg(test)]
@@ -20,8 +22,9 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::PrivateKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Group, Scalar};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Group, Scalar};
 
+#[derive(Clone)]
 pub struct ComputeKey<A: Aleo> {
     /// The signature public key `pk_sig` := G^sk_sig.
     pk_sig: Group<A>,
