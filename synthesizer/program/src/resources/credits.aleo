@@ -311,173 +311,175 @@ finalize unbond_public:
     // Determine if the caller is a validator or delegator.
     contains committee[r0] into r2;
 
-//    // If the caller is a validator, jump to the `unbond_validator` logic.
-//    branch.eq r2 true to unbond_validator;
-//    // If the caller is not a validator, jump to the `unbond_delegator` logic.
-//    branch.eq r2 false to unbond_delegator;
-//
-//    /******* Unbond Validator *******/
-//
-//    // Starts the `unbond_validator` logic.
-//    position unbond_validator;
-//
-//    // Get the state for the specified validator.
-//    get committee[r0] into r3;
-//    // Decrement the stake for the specified validator.
-//    sub r3.microcredits r1 into r4;
-//
-//    // Get the bond struct for the validator, or fail if it does not exist.
-//    get bonded[r0] into r5;
-//    // Decrement the microcredits in the bond struct.
-//    sub r5.microcredits r1 into r6;
-//
-//    // Determine if the remaining bond is at least one million credits.
-//    gte r6 1_000_000_000_000u64 into r7;
-//
-//    // If the remaining balance is greater than 1 million, jump to the `decrement_validator_stake` logic.
-//    branch.eq r7 true to unbond_validator_stake;
-//    // If the remaining balance is less than 1 million, jump to the `remove_validator` logic.
-//    branch.eq r7 false to remove_validator;
-//
-//    /******* Decrement Validator Stake *******/
-//
-//    // Starts the `decrement_validator_stake` logic.
-//    position decrement_validator_stake;
-//
-//    // Construct the updated state struct.
-//    cast r4 r3.is_open into r8 as state;
-//    // Update the state for the validator.
-//    set r8 into committee[r0];
-//
-//    // Construct the updated bond struct.
-//    cast r4.validator r5 into r9 as bond;
-//    // Update the bond struct for the validator.
-//    set r9 into bonded[r0];
-//
-//    // Ends the `decrement_validator_stake` logic.
-//    branch.eq true true to validator_end_if;
-//
-//    /******* Remove Validator *******/
-//
-//    // Starts the `remove_validator` logic.
-//    position remove_validator;
-//
-//    // Ensure that the validator has no delegators.
-//    assert.eq r4 r6;
-//    // Ensure that the amount being unbonded is the entire amount.
-//    assert.eq r3 0u64;
-//
-//    // Remove the validator from the committee.
-//    remove committee[r0];
-//    // Remove the bond struct for the validator.
-//    remove bonded[r0];
-//
-//    // Ends the `insufficient_balance` logic.
-//    branch.eq true true to validator_end_if;
-//
-//    // The end of the if condition.
-//    position validator_end_if;
-//
-//    /* Start Unbond */
-//
-//    // Construct the initial unbond struct.
-//    cast 0u64 0u32 into r10 as unbond;
-//    // Get the unbond struct for the caller, or default to the initial unbond struct.
-//    get.or_use unbonding[r0] r10 into r11;
-//
-//    // Increment the microcredits in the unbond struct.
-//    add r11.microcredits r1 into r12;
-//    // Compute the height at which the unbonding will be complete, starting from the current block.
-//    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-//    add block.height 720u32 into r13;
-//
-//    // Construct the updated unbond struct.
-//    cast r12 r13 into r14 as unbond;
-//    // Update the unbond struct for the caller.
-//    set r14 into unbonding[r0];
-//
-//    /* End Unbond */
-//
-//    // Ends the `unbond_public` logic.
-//    branch.eq true true to end;
-//
-//    /******* Unbond Delegator *******/
-//
-//    // Starts the `unbond_delegator` logic.
-//    position unbond_delegator;
-//
-//    // Get the bond struct for the caller, or fail if it does not exist.
-//    get bonded[r0] into r15;
-//    // Decrement the microcredits in the bond struct.
-//    sub r15.microcredits r1 into r16;
-//
-//    // If the amount of bonded microcredits is now zero, jump to the `decrement_delegator_stake` logic.
-//    branch.eq r16 0u64 to decrement_delegator_stake;
-//    // If the amount of bonded microcredits is now zero, jump to the `remove_bonded` logic.
-//    branch.neq r16 0u64 to remove_bonded;
-//
-//    /******* Decrement Delegator Stake *******/
-//
-//    // Starts the `decrement_delegator_stake` logic.
-//    position decrement_delegator_stake;
-//
-//    // Construct the updated bond struct.
-//    cast r15.validator r16 into r17 as bond;
-//    // Update the bond struct for the caller.
-//    // This will only be executed if the microcredits in the bond struct is nonzero.
-//    set r17 into bonded[r0];
-//
-//    // Ends the `decrement_delegator_stake` logic.
-//    branch.eq true true to delegator_end_if;
-//
-//    /******* Remove Bonded  *******/
-//
-//    // Starts the `remove_bonded` logic.
-//    position remove_bonded;
-//
-//    // Remove the caller from the bonded mapping.
-//    remove bonded[r0];
-//
-//    // Ends the `remove_bonded` logic.
-//    branch.eq true true to delegator_end_if;
-//
-//    // The end of the if condition.
-//    position delegator_end_if;
-//
-//    /* Start Committee */
-//
-//    // Get the stake for the specified validator.
-//    // If the validator does not exist, this finalize scope will fail.
-//    get committee[r15.validator] into r18;
-//    // Decrement the stake for the specified validator.
-//    sub r18 r1 into r19;
-//    // Update the stake for the specified validator.
-//    set r19 into committee[r15.validator];
-//
-//    /* End Committee */
-//
-//    /* Start Unbond */
-//
-//    // Construct the initial unbond struct.
-//    cast 0u64 0u32 into r20 as unbond;
-//    // Get the unbond struct for the caller, or default to the initial unbond struct.
-//    get.or_use unbonding[r0] r20 into r21;
-//
-//    // Increment the microcredits in the unbond struct.
-//    add r21.microcredits r1 into r22;
-//    // Compute the height at which the unbonding will be complete, starting from the current block.
-//    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-//    add block.height 720u32 into r23;
-//
-//    // Construct the updated unbond struct.
-//    cast r22 r23 into r24 as unbond;
-//    // Update the unbond struct for the caller.
-//    set r24 into unbonding[r0];
-//
-//    /* End Unbond */
-//
-//    // The terminus.
-//    position end;
+    // If the caller is a validator, jump to the `unbond_validator` logic.
+    branch.eq r2 true to unbond_validator;
+    // If the caller is not a validator, jump to the `unbond_delegator` logic.
+    branch.eq r2 false to unbond_delegator;
+
+    /******* Unbond Validator *******/
+
+    // Starts the `unbond_validator` logic.
+    position unbond_validator;
+
+    // Get the state for the specified validator.
+    get committee[r0] into r3;
+    // Decrement the stake for the specified validator.
+    sub r3.microcredits r1 into r4;
+
+    // Get the bond struct for the validator, or fail if it does not exist.
+    get bonded[r0] into r5;
+    // Decrement the microcredits in the bond struct.
+    sub r5.microcredits r1 into r6;
+
+    // Determine if the remaining bond is at least one million credits.
+    gte r6 1_000_000_000_000u64 into r7;
+
+    // If the remaining balance is greater than 1 million, jump to the `decrement_validator_stake` logic.
+    branch.eq r7 true to decrement_validator_stake;
+    // If the remaining balance is less than 1 million, jump to the `remove_validator` logic.
+    branch.eq r7 false to remove_validator;
+
+    /******* Decrement Validator Stake *******/
+
+    // Starts the `decrement_validator_stake` logic.
+    position decrement_validator_stake;
+
+    // Construct the updated state struct.
+    cast r4 r3.is_open into r8 as state;
+    // Update the state for the validator.
+    set r8 into committee[r0];
+
+    // Construct the updated bond struct.
+    cast r0 r6 into r9 as bond;
+    // Update the bond struct for the validator.
+    set r9 into bonded[r0];
+
+    // Ends the `decrement_validator_stake` logic.
+    branch.eq true true to validator_end_if;
+
+    /******* Remove Validator *******/
+
+    // Starts the `remove_validator` logic.
+    position remove_validator;
+
+    // Ensure that the validator has no delegators.
+    assert.eq r4 r6;
+    // Ensure that the amount being unbonded is the entire amount.
+    assert.eq r4 0u64;
+
+    // Remove the validator from the committee.
+    remove committee[r0];
+    // Remove the bond struct for the validator.
+    remove bonded[r0];
+
+    // Ends the `insufficient_balance` logic.
+    branch.eq true true to validator_end_if;
+
+    // The end of the if condition.
+    position validator_end_if;
+
+    /* Start Unbond */
+
+    // Construct the initial unbond struct.
+    cast 0u64 0u32 into r10 as unbond;
+    // Get the unbond struct for the caller, or default to the initial unbond struct.
+    get.or_use unbonding[r0] r10 into r11;
+
+    // Increment the microcredits in the unbond struct.
+    add r11.microcredits r1 into r12;
+    // Compute the height at which the unbonding will be complete, starting from the current block.
+    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
+    add block.height 720u32 into r13;
+
+    // Construct the updated unbond struct.
+    cast r12 r13 into r14 as unbond;
+    // Update the unbond struct for the caller.
+    set r14 into unbonding[r0];
+
+    /* End Unbond */
+
+    // Ends the `unbond_public` logic.
+    branch.eq true true to end;
+
+    /******* Unbond Delegator *******/
+
+    // Starts the `unbond_delegator` logic.
+    position unbond_delegator;
+
+    // Get the bond struct for the caller, or fail if it does not exist.
+    get bonded[r0] into r15;
+    // Decrement the microcredits in the bond struct.
+    sub r15.microcredits r1 into r16;
+
+    // If the amount of bonded microcredits is now zero, jump to the `decrement_delegator_stake` logic.
+    branch.eq r16 0u64 to decrement_delegator_stake;
+    // If the amount of bonded microcredits is now zero, jump to the `remove_bonded` logic.
+    branch.neq r16 0u64 to remove_bonded;
+
+    /******* Decrement Delegator Stake *******/
+
+    // Starts the `decrement_delegator_stake` logic.
+    position decrement_delegator_stake;
+
+    // Construct the updated bond struct.
+    cast r15.validator r16 into r17 as bond;
+    // Update the bond struct for the caller.
+    // This will only be executed if the microcredits in the bond struct is nonzero.
+    set r17 into bonded[r0];
+
+    // Ends the `decrement_delegator_stake` logic.
+    branch.eq true true to delegator_end_if;
+
+    /******* Remove Bonded  *******/
+
+    // Starts the `remove_bonded` logic.
+    position remove_bonded;
+
+    // Remove the caller from the bonded mapping.
+    remove bonded[r0];
+
+    // Ends the `remove_bonded` logic.
+    branch.eq true true to delegator_end_if;
+
+    // The end of the if condition.
+    position delegator_end_if;
+
+    /* Start Committee */
+
+    // Get the stake for the specified validator.
+    // If the validator does not exist, this finalize scope will fail.
+    get committee[r15.validator] into r18;
+    // Decrement the stake for the specified validator.
+    sub r18.microcredits r1 into r19;
+    // Construct the updated stake struct.
+    cast r19 r18.is_open into r20 as state;
+    // Update the stake for the specified validator.
+    set r20 into committee[r15.validator];
+
+    /* End Committee */
+
+    /* Start Unbond */
+
+    // Construct the initial unbond struct.
+    cast 0u64 0u32 into r21 as unbond;
+    // Get the unbond struct for the caller, or default to the initial unbond struct.
+    get.or_use unbonding[r0] r21 into r22;
+
+    // Increment the microcredits in the unbond struct.
+    add r22.microcredits r1 into r23;
+    // Compute the height at which the unbonding will be complete, starting from the current block.
+    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
+    add block.height 720u32 into r24;
+
+    // Construct the updated unbond struct.
+    cast r23 r24 into r25 as unbond;
+    // Update the unbond struct for the caller.
+    set r25 into unbonding[r0];
+
+    /* End Unbond */
+
+    // The terminus.
+    position end;
 
 /**********************************************************************************************************************/
 
