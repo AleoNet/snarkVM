@@ -31,6 +31,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             }
         }
 
+        // TODO (howardwu): DEPRECATE THIS - Remove support for `mint` altogether.
         // Ensure the mint transaction is attributed to a validator in the committee.
         if transaction.is_mint() {
             // Retrieve the execution.
@@ -42,7 +43,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 // Retrieve the address that minted.
                 let address = mint_address(transition)?;
                 // Check if the address is in the current committee.
-                if !self.current_committee.read().contains(address) {
+                if *address != self.genesis_block.authority().to_address() {
                     bail!("Mint transaction ({transaction_id}) is from an unauthorized account ({address})")
                 }
             }
