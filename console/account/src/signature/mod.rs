@@ -13,8 +13,12 @@
 // limitations under the License.
 
 mod bytes;
+mod equal;
+mod from_bits;
 mod parse;
 mod serialize;
+mod size_in_bits;
+mod to_bits;
 mod verify;
 
 #[cfg(feature = "private_key")]
@@ -27,7 +31,7 @@ use crate::PrivateKey;
 
 use crate::address::Address;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, Scalar};
+use snarkvm_console_types::{Boolean, Field, Scalar};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {
@@ -72,6 +76,14 @@ impl<N: Network> Signature<N> {
     /// Returns the signer address.
     pub fn to_address(&self) -> Address<N> {
         self.compute_key.to_address()
+    }
+}
+
+impl<N: Network> TypeName for Signature<N> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "signature"
     }
 }
 
