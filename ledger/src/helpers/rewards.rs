@@ -14,22 +14,55 @@
 
 use crate::helpers::{block_reward, MAX_COINBASE_REWARD};
 use console::{account::Address, network::prelude::*};
-use ledger_block::Ratify;
+use ledger_block::{ConfirmedTransaction, Ratify};
+
+use indexmap::IndexMap;
 
 /// Returns the staking rewards for a given stakers and coinbase reward.
 ///
 /// The staking reward is defined as:
 ///   block_reward * stake / total_stake
-pub fn staking_rewards<N: Network>(
-    stakers: Vec<(Address<N>, u64)>,
+pub fn staking_rewards<'a, N: Network>(
+    mut stakers: IndexMap<Address<N>, u64>,
     coinbase_reward: u64,
-    total_stake: u64,
+    confirmed_transactions: impl Iterator<Item = &'a ConfirmedTransaction<N>>,
 ) -> Vec<Ratify<N>> {
-    // (Debug Mode) Ensure the total stake is equal to the sum of the individual stakes.
-    debug_assert_eq!(total_stake, stakers.iter().map(|(_, s)| s).sum::<u64>());
+    // Filter the confirmed transactions down to the bond and unbond transitions.
+    let bonds_and_unbonds = confirmed_transactions
+        .filter_map(|transaction| {
+            // Note: Leave this explicit, optimizers begone.
+            match transaction {
+                ConfirmedTransaction::AcceptedExecute(_, transaction, _) => Some(transaction),
+                ConfirmedTransaction::AcceptedDeploy(..)
+                | ConfirmedTransaction::RejectedDeploy(..)
+                | ConfirmedTransaction::RejectedExecute(..) => None,
+            }
+        })
+        .flat_map(|transaction| {
+            transaction.transitions().filter(|transition| transition.is_bond() || transition.is_unbond())
+        });
+
+    // Update the stake of each staker based on the bond and unbond transitions.
+    for transition in bonds_and_unbonds {
+        // TODO (howardwu): Simulate the bond and unbond computations.
+        // if transition.is_bond() {
+        //     let stake = stakers.get_mut(transition.address()).unwrap();
+        //     *stake = stake.saturating_add(transition.amount());
+        // } else if transition.is_unbond() {
+        //     let stake = stakers.get_mut(transition.address()).unwrap();
+        //     *stake = stake.saturating_sub(transition.amount());
+        // }
+    }
 
     // Filter the list of stakers to only include those with a stake.
-    let stakers = stakers.into_iter().filter(|(_, s)| *s > 0).collect::<Vec<_>>();
+    let stakers = stakers.into_iter().filter(|(_, s)| *s > 0).collect::<IndexMap<_, _>>();
+
+    // Compute the total stake for the stakers.
+    let mut total_stake = 0u64;
+    for (_, stake) in &stakers {
+        total_stake = total_stake.saturating_add(*stake);
+    }
+
     // If the list of stakers is empty or there is no stake, return an empty vector.
     if stakers.is_empty() || total_stake == 0 {
         return Vec::new();
@@ -120,6 +153,8 @@ mod tests {
     use super::*;
     use console::{prelude::TestRng, types::Group};
 
+    use indexmap::indexmap;
+
     type CurrentNetwork = console::network::Testnet3;
 
     const ITERATIONS: usize = 1000;
@@ -131,7 +166,7 @@ mod tests {
         let address = Address::new(Group::rand(rng));
 
         // Ensure a 0 coinbase reward succeeds (i.e. post year 10 block reward simulation).
-        let rewards = staking_rewards::<CurrentNetwork>(vec![(address, 2)], 0, 2);
+        let rewards = staking_rewards::<CurrentNetwork>(indexmap![address => 2], 0, [].iter());
         assert_eq!(rewards.len(), 1);
         assert!(matches!(rewards[0], Ratify::StakingReward(..)));
         if let Ratify::StakingReward(candidate_address, candidate_amount) = rewards[0] {
@@ -152,7 +187,7 @@ mod tests {
             // Sample a random coinbase reward.
             let coinbase_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
 
-            let rewards = staking_rewards::<CurrentNetwork>(vec![(address, u64::MAX)], coinbase_reward, u64::MAX);
+            let rewards = staking_rewards::<CurrentNetwork>(indexmap![address => u64::MAX], coinbase_reward, [].iter());
             assert_eq!(rewards.len(), 1);
             assert!(matches!(rewards[0], Ratify::StakingReward(..)));
             if let Ratify::StakingReward(candidate_address, candidate_amount) = rewards[0] {
@@ -172,11 +207,11 @@ mod tests {
         let address = Address::new(Group::rand(rng));
 
         // Compute the staking rewards (empty).
-        let rewards = staking_rewards::<CurrentNetwork>(vec![], rng.gen(), 0);
+        let rewards = staking_rewards::<CurrentNetwork>(indexmap![], rng.gen(), [].iter());
         assert!(rewards.is_empty());
 
         // Check that a maxed out coinbase reward, returns empty.
-        let rewards = staking_rewards::<CurrentNetwork>(vec![(address, 2)], u64::MAX, 2);
+        let rewards = staking_rewards::<CurrentNetwork>(indexmap![address => 2], u64::MAX, [].iter());
         assert!(rewards.is_empty());
 
         // Ensure a staking reward that is too large, renders no rewards.
@@ -188,7 +223,7 @@ mod tests {
             // Sample a random stake.
             let stake = rng.gen_range(0..u64::MAX);
             // Check that an overly large coinbase reward fails.
-            let rewards = staking_rewards::<CurrentNetwork>(vec![(address, stake)], coinbase_reward, stake);
+            let rewards = staking_rewards::<CurrentNetwork>(indexmap![address => stake], coinbase_reward, [].iter());
             assert!(rewards.is_empty());
         }
     }
