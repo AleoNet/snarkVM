@@ -125,6 +125,75 @@ mod tests {
     const ITERATIONS: usize = 1000;
 
     #[test]
+    fn test_staking_rewards() {
+        let rng = &mut TestRng::default();
+        // Sample a random address.
+        let address = Address::new(Group::rand(rng));
+
+        // Ensure a 0 coinbase reward succeeds (i.e. post year 10 block reward simulation).
+        let rewards = staking_rewards::<CurrentNetwork>(vec![(address, 2)], 0, 2);
+        assert_eq!(rewards.len(), 1);
+        assert!(matches!(rewards[0], Ratify::StakingReward(..)));
+        if let Ratify::StakingReward(candidate_address, candidate_amount) = rewards[0] {
+            // Compute the expected block reward.
+            let block_reward = block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME, 0);
+            assert_eq!(candidate_address, address);
+            assert_eq!(candidate_amount, block_reward);
+        }
+    }
+
+    #[test]
+    fn test_staking_rewards_cannot_exceed_coinbase_reward() {
+        let rng = &mut TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample a random address.
+            let address = Address::new(Group::rand(rng));
+            // Sample a random coinbase reward.
+            let coinbase_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
+
+            let rewards = staking_rewards::<CurrentNetwork>(vec![(address, u64::MAX)], coinbase_reward, u64::MAX);
+            assert_eq!(rewards.len(), 1);
+            assert!(matches!(rewards[0], Ratify::StakingReward(..)));
+            if let Ratify::StakingReward(candidate_address, candidate_amount) = rewards[0] {
+                // Compute the expected block reward.
+                let block_reward =
+                    block_reward(CurrentNetwork::STARTING_SUPPLY, CurrentNetwork::BLOCK_TIME, coinbase_reward);
+                assert_eq!(candidate_address, address);
+                assert_eq!(candidate_amount, block_reward);
+            }
+        }
+    }
+
+    #[test]
+    fn test_staking_rewards_is_empty() {
+        let rng = &mut TestRng::default();
+        // Sample a random address.
+        let address = Address::new(Group::rand(rng));
+
+        // Compute the staking rewards (empty).
+        let rewards = staking_rewards::<CurrentNetwork>(vec![], rng.gen(), 0);
+        assert!(rewards.is_empty());
+
+        // Check that a maxed out coinbase reward, returns empty.
+        let rewards = staking_rewards::<CurrentNetwork>(vec![(address, 2)], u64::MAX, 2);
+        assert!(rewards.is_empty());
+
+        // Ensure a staking reward that is too large, renders no rewards.
+        for _ in 0..ITERATIONS {
+            // Sample a random address.
+            let address = Address::new(Group::rand(rng));
+            // Sample a random overly-large coinbase reward.
+            let coinbase_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
+            // Sample a random stake.
+            let stake = rng.gen_range(0..u64::MAX);
+            // Check that an overly large coinbase reward fails.
+            let rewards = staking_rewards::<CurrentNetwork>(vec![(address, stake)], coinbase_reward, stake);
+            assert!(rewards.is_empty());
+        }
+    }
+
+    #[test]
     fn test_proving_rewards_cannot_exceed_coinbase_reward() {
         let rng = &mut TestRng::default();
 
@@ -133,7 +202,7 @@ mod tests {
             let address = Address::new(Group::rand(rng));
             // Sample a random coinbase reward.
             let coinbase_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
-            // Check that a maxed out proof target fails.
+
             let rewards =
                 proving_rewards::<CurrentNetwork>(vec![(address, u64::MAX as u128)], coinbase_reward, u64::MAX as u128);
             assert_eq!(rewards.len(), 1);
