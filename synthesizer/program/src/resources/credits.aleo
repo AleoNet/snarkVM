@@ -16,8 +16,8 @@ mapping committee:
 struct state:
     // The amount of microcredits bonded to the validator, by the validator and its delegators.
     microcredits as u64;
-    // The boolean flag indicating if the validator is locked.
-    is_locked as boolean;
+    // The boolean flag indicating if the validator is open to stakers.
+    is_open as boolean;
 
 /**********************************************************************************************************************/
 
@@ -70,18 +70,18 @@ record credits:
 /**********************************************************************************************************************/
 
 // fn bond_validator
-// - if the bond is now 33% or more, lock the validator. (determine how hard to impl this)
+// - if the bond is now 33% or more, close the validator. (determine how hard to impl this)
 
 // fn unbond_validator
 //  - can only be triggered after the validator has unbonded all of their delegators.
-//  - does it matter if the validator is locked here?
+//  - does it matter if the validator is closed here?
 
-// Useful for when you want to lock your validator from others bonding more.
+// Useful for when you want to close your validator from others bonding more.
 // i.e. you as validator want to unbond yourself, or say you're approaching 33% of the total stake.
-// fn lock_validator
+// fn close_validator
 
 // Allows you and others to bond more to your validator.
-// fn unlock_validator
+// fn open_validator
 
 // Open Questions:
 // - Should the 720 be more?
@@ -128,8 +128,8 @@ finalize bond_public:
     cast 0u64 false into r4 as state;
     // Retrieve the state of the specified validator.
     get.or_use committee[r0] r4 into r5;
-    // Ensure that the validator is unlocked.
-    assert.eq r5.is_locked false;
+    // Ensure that the validator is open to stakers.
+    assert.eq r5.is_open true;
 
     // Increment the stake for the specified validator.
     add r5.microcredits r2 into r6;
@@ -139,7 +139,7 @@ finalize bond_public:
     assert.eq r7 true;
 
     // Construct the updated committee state.
-    cast r6 r5.is_locked into r8 as state;
+    cast r6 r5.is_open into r8 as state;
 
     /* End Committee */
 
@@ -198,13 +198,13 @@ finalize bond_public:
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r1] into r16;
-    // Ensure that the validator is unlocked.
-    assert.eq r16.is_locked false;
+    // Ensure that the validator is open to stakers.
+    assert.eq r16.is_open true;
 
     // Increment the stake for the specified validator.
     add r16.microcredits r2 into r17;
     // Construct the updated state struct.
-    cast r17 r16.is_locked into r18 as state;
+    cast r17 r16.is_open into r18 as state;
 
     /* End Committee */
 
@@ -250,19 +250,19 @@ finalize bond_public:
 
 /**********************************************************************************************************************/
 
-function lock_validator:
-    // Lock the validator.
+function close_validator:
+    // Close the validator to stakers.
     finalize self.caller;
 
-finalize lock_validator:
+finalize close_validator:
     // Input the validator's address.
     input r0 as address.public;
 
     // Get the state for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r0] into r1;
-    // Ensure that the validator is unlocked.
-    assert.eq r1.is_locked false;
+    // Ensure that the validator is open to stakers.
+    assert.eq r1.is_open true;
 
     // Construct the updated committee state.
     cast r1.microcredits true into r2 as state;
@@ -271,19 +271,19 @@ finalize lock_validator:
 
 /**********************************************************************************************************************/
 
-function unlock_validator:
-    // Unlock the validator.
+function open_validator:
+    // Open the validator to stakers.
     finalize self.caller;
 
-finalize unlock_validator:
+finalize open_validator:
     // Input the validator's address.
     input r0 as address.public;
 
     // Get the state for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r0] into r1;
-    // Ensure that the validator is locked.
-    assert.eq r1.is_locked true;
+    // Ensure that the validator is closed to stakers.
+    assert.eq r1.is_open false;
 
     // Construct the updated committee state.
     cast r1.microcredits false into r2 as state;
@@ -323,8 +323,6 @@ finalize unbond_public:
 
     // Get the state for the specified validator.
     get committee[r0] into r3;
-    // Ensure that the validator is locked.
-    assert.eq r3.is_locked true;
     // Decrement the stake for the specified validator.
     sub r3.microcredits r1 into r4;
 
@@ -347,7 +345,7 @@ finalize unbond_public:
     position decrement_validator_stake;
 
     // Construct the updated state struct.
-    cast r3 r2.is_locked into r8 as state;
+    cast r4 r3.is_open into r8 as state;
     // Update the state for the validator.
     set r8 into committee[r0];
 
@@ -501,8 +499,8 @@ finalize unbond_delegator_as_validator:
     // Get the state for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r0] into r2;
-    // Enforce that the validator is locked.
-    assert.eq r2.is_locked true;
+    // Enforce that the validator is closed to stakers.
+    assert.eq r2.is_open false;
 
     // Check if the delegator is a validator.
     contains committee[r1] into r3;
@@ -525,7 +523,7 @@ finalize unbond_delegator_as_validator:
     // Decrement the stake for the specified validator.
     sub r2.microcredits r4.microcredits into r5;
     // Construct the updated committee state.
-    cast r5 r2.is_locked into r6 as state;
+    cast r5 r2.is_open into r6 as state;
 
     /* End Committee */
 
