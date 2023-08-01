@@ -82,43 +82,57 @@ record credits:
 
 // This function allows any staker to bond their microcredits to a validator.
 //
-// For public staking, set the address randomizer in input 'r2' to '1field'.
-// By using public staking, your staking address will be publicly-visible for everyone to observe on the network.
-// To 'unbond' and 'claim_unbond', you must use the same address randomizer as what was provided here.
-//
 // For private staking, set the address randomizer in input 'r2' to a unique random scalar.
 // By using private staking, your staking address will be randomized when viewed by everyone on the network.
-// To 'unbond' and 'claim_unbond', you must use the same address randomizer as what was provided here.
+// To 'unbond_private' and 'claim_unbond_private', you must use the same address randomizer as what was provided here.
 //
 // Disclaimer: It is **strongly** advised and recommended that you use the proper services provided by Aleo to call this function.
 // This is to ensure that a best effort is made to deterministically retrieve your address randomizer using your view key,
 // so that it is possible for you to monitor and recover your own staking address in the future. Users who call this function
 // without using proper services provided by Aleo will be responsible and liable for their own actions and consequences.
-function bond:
+//function bond_private:
+//    // Input the validator's address.
+//    input r0 as address.private;
+//    // Input the amount of microcredits to bond.
+//    input r1 as u64.public;
+//    // Input the address randomizer.
+//    // Attention: By using this feature, you agree to and abide by the documentation and disclaimer above.
+//    input r2 as scalar.private;
+//
+//    // Determine if the amount is at least one credit.
+//    gte r1 1_000_000u64 into r3;
+//    // Enforce the amount is at least one credit.
+//    assert.eq r3 true;
+//
+//    // Cast the address to a group type.
+//    cast self.caller into r4 as group;
+//    // Compute the staker's address.
+//    mul r4 r2 into r5;
+//    // Cast the group to an address type.
+//    cast r5 into r6 as address;
+//
+//    // Bond the specified amount of microcredits to the specified validator.
+//    finalize r6 r0 r1;
+
+/**********************************************************************************************************************/
+
+// This function allows any staker to bond their microcredits to a validator.
+// The corresponding functions for 'bond_public' are 'unbond_public' and 'claim_unbond_public'.
+function bond_public:
     // Input the validator's address.
     input r0 as address.private;
     // Input the amount of microcredits to bond.
     input r1 as u64.public;
-    // Input the address randomizer.
-    // Attention: By using this feature, you agree to and abide by the documentation and disclaimer above.
-    input r2 as scalar.private;
 
     // Determine if the amount is at least one credit.
-    gte r1 1_000_000u64 into r3;
+    gte r1 1_000_000u64 into r2;
     // Enforce the amount is at least one credit.
-    assert.eq r3 true;
-
-    // Cast the address to a group type.
-    cast self.caller into r4 as group;
-    // Compute the staker's address.
-    mul r4 r2 into r5;
-    // Cast the group to an address type.
-    cast r5 into r6 as address;
+    assert.eq r2 true;
 
     // Bond the specified amount of microcredits to the specified validator.
-    finalize r6 r0 r1;
+    finalize self.caller r0 r1;
 
-finalize bond:
+finalize bond_public:
     // Input the staker's address.
     input r0 as address.public;
     // Input the validator's address.
@@ -268,36 +282,43 @@ finalize bond:
 
 // This function allows any staker to unbond their microcredits from a validator.
 //
-// For public staking, set the address randomizer in input 'r1' to '1field'.
-// By using public staking, your staking address will be publicly-visible for everyone to observe on the network.
-// To 'claim_unbond', you must use the same address randomizer as what was provided here.
-//
 // For private staking, set the address randomizer in input 'r1' to a unique random scalar.
 // By using private staking, your staking address will be randomized when viewed by everyone on the network.
-// To 'claim_unbond', you must use the same address randomizer as what was provided here.
+// To 'claim_unbond_private', you must use the same address randomizer as what was provided here.
 //
 // Disclaimer: It is **strongly** advised and recommended that you use the proper services provided by Aleo to call this function.
 // This is to ensure that a best effort is made to deterministically retrieve your address randomizer using your view key,
 // so that it is possible for you to monitor and recover your own staking address in the future. Users who call this function
 // without using proper services provided by Aleo will be responsible and liable for their own actions and consequences.
-function unbond:
+//function unbond_private:
+//    // Input the amount of microcredits to unbond.
+//    input r0 as u64.public;
+//    // Input the address randomizer.
+//    // Attention: By using this feature, you agree to and abide by the documentation and disclaimer above.
+//    input r1 as scalar.private;
+//
+//    // Cast the address to a group type.
+//    cast self.caller into r2 as group;
+//    // Compute the staker's address.
+//    mul r2 r1 into r3;
+//    // Cast the group to an address type.
+//    cast r3 into r4 as address;
+//
+//    // Unbond the specified amount of microcredits to the caller.
+//    finalize r4 r0;
+
+/**********************************************************************************************************************/
+
+// This function allows any staker to unbond their microcredits from a validator.
+// The corresponding functions for 'unbond_public' is 'claim_unbond_public'.
+function unbond_public:
     // Input the amount of microcredits to unbond.
     input r0 as u64.public;
-    // Input the address randomizer.
-    // Attention: By using this feature, you agree to and abide by the documentation and disclaimer above.
-    input r1 as scalar.private;
-
-    // Cast the address to a group type.
-    cast self.caller into r2 as group;
-    // Compute the staker's address.
-    mul r2 r1 into r3;
-    // Cast the group to an address type.
-    cast r3 into r4 as address;
 
     // Unbond the specified amount of microcredits to the caller.
-    finalize r4 r0;
+    finalize self.caller r0;
 
-finalize unbond:
+finalize unbond_public:
     // Input the staker's address.
     input r0 as address.public;
     // Input the amount of microcredits to unbond.
@@ -557,21 +578,25 @@ finalize unbond_delegator_as_validator:
 
 // This function allows any staker to claim their microcredits after the unbonding period.
 //
-// For public staking, set the address randomizer in input 'r1' to '1field'.
-// By using public staking, your staking address will be publicly-visible for everyone to observe on the network.
-//
-// For private staking, set the address randomizer in input 'r1' to a unique random scalar.
+// For private staking, set the address randomizer in input 'r0' to a unique random scalar.
 // By using private staking, your staking address will be randomized when viewed by everyone on the network.
 //
 // Disclaimer: It is **strongly** advised and recommended that you use the proper services provided by Aleo to call this function.
 // This is to ensure that a best effort is made to deterministically retrieve your address randomizer using your view key,
 // so that it is possible for you to monitor and recover your own staking address in the future. Users who call this function
 // without using proper services provided by Aleo will be responsible and liable for their own actions and consequences.
-function claim_unbond:
+//function claim_unbond_private:
+//    // Claim the unbonded microcredits.
+//    finalize self.caller;
+
+/**********************************************************************************************************************/
+
+// This function allows any staker to claim their microcredits after the unbonding period.
+function claim_unbond_public:
     // Claim the unbonded microcredits.
     finalize self.caller;
 
-finalize claim_unbond:
+finalize claim_unbond_public:
     // Input the staker's address.
     input r0 as address.public;
 
@@ -585,7 +610,7 @@ finalize claim_unbond:
     // Add the unbonded amount to the stakers's public balance.
     // Increments `account[r0]` by `r1`.
     // If `account[r0]` does not exist, 0u64 is used.
-    // If `account[r0] + r2` overflows, `claim_unbond` is reverted.
+    // If `account[r0] + r2` overflows, `claim_unbond_public` is reverted.
     get.or_use account[r0] 0u64 into r3;
     add r1.microcredits r3 into r4;
     set r4 into account[r0];
