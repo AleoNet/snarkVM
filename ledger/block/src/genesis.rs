@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network> Block<N> {
     /// Specifies the number of genesis transactions.
-    pub const NUM_GENESIS_TRANSACTIONS: usize = 16;
+    pub const NUM_GENESIS_TRANSACTIONS: usize = 4;
 
     /// Returns `true` if the block is a genesis block.
     pub fn is_genesis(&self) -> bool {
