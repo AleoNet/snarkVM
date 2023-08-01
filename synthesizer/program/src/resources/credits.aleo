@@ -15,9 +15,9 @@ mapping committee:
 // The `state` struct tracks the state of the validator.
 struct state:
     // The amount of microcredits bonded to the validator, by the validator and its delegators.
-    microcredits as u64.public;
+    microcredits as u64;
     // The boolean flag indicating if the validator is locked.
-    is_locked as boolean.public;
+    is_locked as boolean;
 
 /**********************************************************************************************************************/
 
@@ -129,7 +129,7 @@ finalize bond_public:
     // Retrieve the state of the specified validator.
     get.or_use committee[r0] r4 into r5;
     // Ensure that the validator is unlocked.
-    assert_eq r5.is_locked false;
+    assert.eq r5.is_locked false;
 
     // Increment the stake for the specified validator.
     add r5.microcredits r2 into r6;
@@ -172,11 +172,11 @@ finalize bond_public:
     /* Start Writes */
 
     // Update the state of the specified validator.
-    set committee[r0] r8;
+    set r8 into committee[r0];
     // Update the bond struct for the caller.
-    set bonded[r0] r12;
+    set r12 into bonded[r0];
     // Update the balance of the caller.
-    set account[r0] r14;
+    set r14 into account[r0];
 
     /* End Writes */
 
@@ -267,7 +267,7 @@ finalize lock_validator:
     // Construct the updated committee state.
     cast r1.microcredits true into r2 as state;
     // Update the state for the specified validator.
-    set committee[r0] r2;
+    set r2 into committee[r0];
 
 /**********************************************************************************************************************/
 
@@ -288,10 +288,11 @@ finalize unlock_validator:
     // Construct the updated committee state.
     cast r1.microcredits false into r2 as state;
     // Update the state for the specified validator.
-    set committee[r0] r2;
+    set r2 into committee[r0];
 
 /**********************************************************************************************************************/
-d_validator:
+
+//function unbond_validator:
 //    // Input the amount of microcredits to unbond.
 //    input r0 as u64.public;
 //
@@ -397,7 +398,6 @@ d_validator:
 //    set unbonding[r0] r13;
 //
 //    /* End Unbond */
-//function unbon
 
 /**********************************************************************************************************************/
 
@@ -434,7 +434,7 @@ finalize unbond_delegator:
     cast r3.validator r4 into r5 as bond;
     // Update the bond struct for the caller.
     // This will only be executed if the microcredits in the bond struct is nonzero.
-    set bonded[r0] r5;
+    set r5 into bonded[r0];
 
     // Proceed to continue to unbond.
     branch.eq true true to continue_to_unbond;
@@ -453,7 +453,7 @@ finalize unbond_delegator:
     // Decrement the stake for the specified validator.
     sub r6 r1 into r7;
     // Update the stake for the specified validator.
-    set committee[r3.validator] r7;
+    set r7 into committee[r3.validator];
 
     // Construct the initial unbond struct.
     cast 0u64 0u32 into r8 as unbond;
@@ -469,7 +469,7 @@ finalize unbond_delegator:
     // Construct the updated unbond struct.
     cast r10 r11 into r12 as unbond;
     // Update the unbond struct for the caller.
-    set unbonding[r0] r12;
+    set r12 into unbonding[r0];
 
 /**********************************************************************************************************************/
 
@@ -560,16 +560,18 @@ finalize claim_unbond:
 
     // Get the unbond struct for the caller, or fail if it does not exist.
     get unbonding[r0] into r1;
+    // Determine if unbonding is complete
+    gte block.height r1.height into r2;
     // Enforce the unbonding is complete.
-    assert.gte block.height r1.height;
+    assert.eq r2 true;
 
     // Add the unbonded amount to the stakers's public balance.
     // Increments `account[r0]` by `r1`.
     // If `account[r0]` does not exist, 0u64 is used.
     // If `account[r0] + r2` overflows, `claim_unbond` is reverted.
-    get.or_use account[r0] 0u64 into r2;
-    add r1.microcredits r2 into r3;
-    set account[r0] r3;
+    get.or_use account[r0] 0u64 into r3;
+    add r1.microcredits r3 into r4;
+    set r4 into account[r0];
 
     // Remove the unbond struct for the caller.
     remove unbonding[r0];
