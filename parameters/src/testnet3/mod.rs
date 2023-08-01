@@ -58,9 +58,9 @@ impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
 // Negative Powers of Beta in G2
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
-// BondPublic
-impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
-impl_remote!(BondPublicVerifier, REMOTE_URL, "resources/", "bond_public", "verifier");
+// Bond
+impl_remote!(BondProver, REMOTE_URL, "resources/", "bond", "prover");
+impl_remote!(BondVerifier, REMOTE_URL, "resources/", "bond", "verifier");
 // UnbondPublic
 impl_remote!(UnbondPublicProver, REMOTE_URL, "resources/", "unbond_public", "prover");
 impl_remote!(UnbondPublicVerifier, REMOTE_URL, "resources/", "unbond_public", "verifier");
@@ -103,7 +103,7 @@ macro_rules! insert_credit_keys {
     ($map:ident, $type:ident<$network:ident>, $variant:ident) => {{
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
-            $crate::insert_key!($map, string, $type<$network>, ("bond_public", $crate::testnet3::[<BondPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("bond", $crate::testnet3::[<Bond $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("unbond_public", $crate::testnet3::[<UnbondPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::testnet3::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("claim_unbond", $crate::testnet3::[<ClaimUnbond $variant>]::load_bytes()));
@@ -159,7 +159,7 @@ mod tests {
         Degree18::load_bytes().expect("Failed to load degree 18");
         Degree19::load_bytes().expect("Failed to load degree 19");
         Degree20::load_bytes().expect("Failed to load degree 20");
-        BondPublicVerifier::load_bytes().expect("Failed to load bond_public verifier");
+        BondVerifier::load_bytes().expect("Failed to load bond verifier");
         UnbondPublicVerifier::load_bytes().expect("Failed to load unbond_public verifier");
         UnbondDelegatorAsValidatorVerifier::load_bytes()
             .expect("Failed to load unbond_delegator_as_validator verifier");
