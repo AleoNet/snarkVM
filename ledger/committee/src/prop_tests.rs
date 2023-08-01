@@ -33,8 +33,9 @@ type CurrentNetwork = console::network::Testnet3;
 
 #[derive(Debug, Clone)]
 pub struct Validator {
-    pub stake: u64,
     pub address: Address<CurrentNetwork>,
+    pub stake: u64,
+    pub is_locked: bool,
 }
 
 impl Arbitrary for Validator {
@@ -46,8 +47,22 @@ impl Arbitrary for Validator {
     }
 }
 
+impl PartialEq<Self> for Validator {
+    fn eq(&self, other: &Self) -> bool {
+        self.address == other.address
+    }
+}
+
+impl Eq for Validator {}
+
+impl Hash for Validator {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.address.hash(state);
+    }
+}
+
 fn to_committee((round, ValidatorSet(validators)): (u64, ValidatorSet)) -> Result<Committee<CurrentNetwork>> {
-    Committee::new(round, validators.iter().map(|v| (v.address, v.stake)).collect())
+    Committee::new(round, validators.iter().map(|v| (v.address, (v.stake, v.is_locked))).collect())
 }
 
 fn validator_set<T: Strategy<Value = Validator>>(
@@ -86,32 +101,6 @@ impl Default for CommitteeContext {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ValidatorSet(pub HashSet<Validator>);
-
-impl Default for ValidatorSet {
-    fn default() -> Self {
-        ValidatorSet(
-            (0..4u64)
-                .map(|i| {
-                    let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(i);
-                    Validator { stake: MIN_STAKE, address: Address::new(rng.gen()) }
-                })
-                .collect(),
-        )
-    }
-}
-
-impl Arbitrary for ValidatorSet {
-    type Parameters = ();
-    type Strategy = BoxedStrategy<ValidatorSet>;
-
-    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
-        // use minimal validator set to speed up tests that require signing from the committee members
-        validator_set(any_valid_validator(), size_range(4..=4usize)).boxed()
-    }
-}
-
 impl Arbitrary for CommitteeContext {
     type Parameters = ValidatorSet;
     type Strategy = BoxedStrategy<CommitteeContext>;
@@ -129,13 +118,43 @@ impl Arbitrary for CommitteeContext {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ValidatorSet(pub HashSet<Validator>);
+
+impl Default for ValidatorSet {
+    fn default() -> Self {
+        ValidatorSet(
+            (0..4u64)
+                .map(|i| {
+                    let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(i);
+                    Validator { address: Address::new(rng.gen()), stake: MIN_STAKE, is_locked: false }
+                })
+                .collect(),
+        )
+    }
+}
+
+impl Arbitrary for ValidatorSet {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<ValidatorSet>;
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        // use minimal validator set to speed up tests that require signing from the committee members
+        validator_set(any_valid_validator(), size_range(4..=4usize)).boxed()
+    }
+}
+
 pub fn any_valid_validator() -> BoxedStrategy<Validator> {
-    (MIN_STAKE..5_000_000_000, any_valid_address()).prop_map(|(stake, address)| Validator { stake, address }).boxed()
+    (MIN_STAKE..5_000_000_000, any_valid_address(), any::<bool>())
+        .prop_map(|(stake, address, is_locked)| Validator { address, stake, is_locked })
+        .boxed()
 }
 
 #[allow(dead_code)]
 fn invalid_stake_validator() -> BoxedStrategy<Validator> {
-    (0..MIN_STAKE, any_valid_address()).prop_map(|(stake, address)| Validator { stake, address }).boxed()
+    (0..MIN_STAKE, any_valid_address(), any::<bool>())
+        .prop_map(|(stake, address, is_locked)| Validator { address, stake, is_locked })
+        .boxed()
 }
 
 pub fn any_valid_address() -> BoxedStrategy<Address<CurrentNetwork>> {
@@ -145,20 +164,6 @@ pub fn any_valid_address() -> BoxedStrategy<Address<CurrentNetwork>> {
             Address::new(rng.gen())
         })
         .boxed()
-}
-
-impl PartialEq<Self> for Validator {
-    fn eq(&self, other: &Self) -> bool {
-        self.address == other.address
-    }
-}
-
-impl Eq for Validator {}
-
-impl Hash for Validator {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.address.hash(state);
-    }
 }
 
 #[proptest]
