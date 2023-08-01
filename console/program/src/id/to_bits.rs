@@ -16,29 +16,27 @@ use super::*;
 
 impl<N: Network> ToBits for ProgramID<N> {
     /// Returns the little-endian bits of the program ID.
-    fn to_bits_le(&self) -> Vec<bool> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Returns the big-endian bits of the program ID.
-    fn to_bits_be(&self) -> Vec<bool> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        (&self).write_bits_be(vec);
     }
 }
 
 impl<N: Network> ToBits for &ProgramID<N> {
     /// Returns the little-endian bits of the program ID.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits = self.name().to_bits_le();
-        bits.extend(self.network().to_bits_le());
-        bits
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        self.name().write_bits_le(vec);
+        self.network().write_bits_le(vec);
     }
 
     /// Returns the big-endian bits of the program ID.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits = self.name().to_bits_be();
-        bits.extend(self.network().to_bits_be());
-        bits
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        self.name().write_bits_be(vec);
+        self.network().write_bits_be(vec);
     }
 }
 

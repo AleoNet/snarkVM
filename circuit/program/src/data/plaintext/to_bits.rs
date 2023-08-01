@@ -18,60 +18,52 @@ impl<A: Aleo> ToBits for Plaintext<A> {
     type Boolean = Boolean<A>;
 
     /// Returns this plaintext as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
+    fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Literal(literal, bits_le) => bits_le
-                .get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
-                    bits_le.extend(literal.variant().to_bits_le());
-                    bits_le.extend(literal.size_in_bits().to_bits_le());
-                    bits_le.extend(literal.to_bits_le());
-                    bits_le
-                })
-                .clone(),
-            Self::Struct(members, bits_le) => bits_le
-                .get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
-                    bits_le.extend(U8::constant(console::U8::new(members.len() as u8)).to_bits_le());
-                    for (identifier, value) in members {
-                        let value_bits = value.to_bits_le();
-                        bits_le.extend(identifier.size_in_bits().to_bits_le());
-                        bits_le.extend(identifier.to_bits_le());
-                        bits_le.extend(U16::constant(console::U16::new(value_bits.len() as u16)).to_bits_le());
-                        bits_le.extend(value_bits);
-                    }
-                    bits_le
-                })
-                .clone(),
-        }
+            Self::Literal(literal, bits_le) => vec.extend_from_slice(bits_le.get_or_init(|| {
+                let mut bits = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
+                literal.variant().write_bits_le(&mut bits);
+                literal.size_in_bits().write_bits_le(&mut bits);
+                literal.write_bits_le(&mut bits);
+                bits
+            })),
+            Self::Struct(members, bits_le) => vec.extend_from_slice(bits_le.get_or_init(|| {
+                let mut bits = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                U8::constant(console::U8::new(members.len() as u8)).write_bits_le(&mut bits);
+                for (identifier, value) in members {
+                    let value_bits = value.to_bits_le();
+                    identifier.size_in_bits().write_bits_le(&mut bits);
+                    identifier.write_bits_le(&mut bits);
+                    U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_le(&mut bits);
+                    bits.extend_from_slice(&value_bits);
+                }
+                bits
+            })),
+        };
     }
 
     /// Returns this plaintext as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+    fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Literal(literal, bits_be) => bits_be
-                .get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
-                    bits_be.extend(literal.variant().to_bits_be());
-                    bits_be.extend(literal.size_in_bits().to_bits_be());
-                    bits_be.extend(literal.to_bits_be());
-                    bits_be
-                })
-                .clone(),
-            Self::Struct(members, bits_be) => bits_be
-                .get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
-                    bits_be.extend(U8::constant(console::U8::new(members.len() as u8)).to_bits_be());
-                    for (identifier, value) in members {
-                        let value_bits = value.to_bits_be();
-                        bits_be.extend(identifier.size_in_bits().to_bits_be());
-                        bits_be.extend(identifier.to_bits_be());
-                        bits_be.extend(U16::constant(console::U16::new(value_bits.len() as u16)).to_bits_be());
-                        bits_be.extend(value_bits);
-                    }
-                    bits_be
-                })
-                .clone(),
-        }
+            Self::Literal(literal, bits_be) => vec.extend_from_slice(bits_be.get_or_init(|| {
+                let mut bits = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
+                literal.variant().write_bits_le(&mut bits);
+                literal.size_in_bits().write_bits_le(&mut bits);
+                literal.write_bits_le(&mut bits);
+                bits
+            })),
+            Self::Struct(members, bits_be) => vec.extend_from_slice(bits_be.get_or_init(|| {
+                let mut bits = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                U8::constant(console::U8::new(members.len() as u8)).write_bits_be(&mut bits);
+                for (identifier, value) in members {
+                    let value_bits = value.to_bits_be();
+                    identifier.size_in_bits().write_bits_be(&mut bits);
+                    identifier.write_bits_be(&mut bits);
+                    U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_be(&mut bits);
+                    bits.extend_from_slice(&value_bits);
+                }
+                bits
+            })),
+        };
     }
 }
