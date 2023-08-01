@@ -69,7 +69,7 @@ impl<N: Network> FromBytes for Ratify<N> {
                 // Return the ratify object.
                 Self::StakingReward(address, amount)
             }
-            2.. => return Err(error(format!("Failed to decode ratify object variant {variant}"))),
+            3.. => return Err(error(format!("Failed to decode ratify object variant {variant}"))),
         };
         Ok(literal)
     }
