@@ -27,7 +27,7 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
-    types::Field,
+    types::{Field, U64},
 };
 use ledger_block::{
     Block,
@@ -258,7 +258,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(state, block.transactions()) {
+        match self.finalize(state, block.ratifications(), block.transactions()) {
             Ok(_) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())

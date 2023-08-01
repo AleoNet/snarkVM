@@ -36,11 +36,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Finalizes the given transactions into the VM.
     #[inline]
-    pub fn finalize(&self, state: FinalizeGlobalState, transactions: &Transactions<N>) -> Result<()> {
+    pub fn finalize(
+        &self,
+        state: FinalizeGlobalState,
+        ratifications: &Vec<Ratify<N>>,
+        transactions: &Transactions<N>,
+    ) -> Result<()> {
         let timer = timer!("VM::finalize");
 
-        // Performs a **real-run** of finalize over the list of transactions.
-        self.atomic_finalize(state, transactions)?;
+        // Performs a **real-run** of finalize over the list of ratifications and transactions.
+        self.atomic_finalize(state, ratifications, transactions)?;
 
         finish!(timer, "Finished real-run of finalize");
         Ok(())
@@ -154,11 +159,36 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Performs atomic finalization over a list of transactions.
     #[inline]
-    fn atomic_finalize(&self, state: FinalizeGlobalState, transactions: &Transactions<N>) -> Result<()> {
+    fn atomic_finalize(
+        &self,
+        state: FinalizeGlobalState,
+        ratifications: &Vec<Ratify<N>>,
+        transactions: &Transactions<N>,
+    ) -> Result<()> {
         let timer = timer!("VM::atomic_finalize");
 
         // Perform the finalize operation on the preset finalize mode.
         atomic_finalize!(self.finalize_store(), FinalizeMode::RealRun, {
+            // Initialize an iterator for ratifications before finalize.
+            let pre_ratifications = ratifications.iter().filter(|r| match r {
+                Ratify::Genesis(_, _) => true,
+                Ratify::ProvingReward(..) | Ratify::StakingReward(..) => false,
+            });
+            // Initialize an iterator for ratifications after finalize.
+            let post_ratifications = ratifications.iter().filter(|r| match r {
+                Ratify::Genesis(_, _) => false,
+                Ratify::ProvingReward(..) | Ratify::StakingReward(..) => true,
+            });
+
+            /* Perform the ratifications before finalize. */
+
+            if let Err(e) = self.atomic_pre_ratify(state, pre_ratifications) {
+                // Note: This will abort the entire atomic batch.
+                return Err(format!("Failed to pre-ratify - {e}"));
+            }
+
+            /* Perform the atomic finalize over the transactions. */
+
             // Acquire the write lock on the process.
             // Note: Due to the highly-sensitive nature of processing all `finalize` calls,
             // we choose to acquire the write lock for the entire duration of this atomic batch.
@@ -281,6 +311,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 }
             }
 
+            /* Perform the ratifications after finalize. */
+
+            if let Err(e) = self.atomic_post_ratify(post_ratifications) {
+                // Note: This will abort the entire atomic batch.
+                return Err(format!("Failed to post-ratify - {e}"));
+            }
+
             /* Start the commit process. */
 
             // Commit all of the stacks to the process.
@@ -292,6 +329,84 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             Ok(())
         })
+    }
+
+    /// Performs the pre-ratifications before finalizing transactions.
+    #[inline]
+    fn atomic_pre_ratify<'a>(
+        &self,
+        state: FinalizeGlobalState,
+        pre_ratifications: impl Iterator<Item = &'a Ratify<N>>,
+    ) -> Result<()> {
+        // Construct the program ID.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the mapping name.
+        let mapping = Identifier::from_str("account")?;
+
+        // Iterate over the ratifications.
+        for ratify in pre_ratifications {
+            match ratify {
+                Ratify::Genesis(committee, public_balances) => {
+                    // If the committee is given, insert the committee into committee storage.
+                    if let Some(committee) = committee {
+                        // Insert the committee into storage.
+                        self.committee_store().insert(state.block_height(), committee.clone())?;
+                    }
+                    // Iterate over the public balances.
+                    for (address, amount) in public_balances {
+                        // Construct the key.
+                        let key = Plaintext::from(Literal::Address(*address));
+                        // Retrieve the current public balance.
+                        let value = self.finalize_store().get_value_speculative(&program_id, &mapping, &key)?;
+                        // Compute the next public balance.
+                        let next_value = Value::from(Literal::U64(U64::new(match value {
+                            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
+                                (*value).saturating_add(*amount)
+                            }
+                            None => *amount,
+                            v => bail!("Critical bug in pre-ratify - Invalid public balance type ({v:?})"),
+                        })));
+                        // Update the public balance in finalize storage.
+                        self.finalize_store().update_key_value(&program_id, &mapping, key, next_value)?;
+                    }
+                }
+                Ratify::ProvingReward(..) | Ratify::StakingReward(..) => continue,
+            }
+        }
+        Ok(())
+    }
+
+    /// Performs the post-ratifications after finalizing transactions.
+    #[inline]
+    fn atomic_post_ratify<'a>(&self, post_ratifications: impl Iterator<Item = &'a Ratify<N>>) -> Result<()> {
+        // Construct the program ID.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        // Construct the mapping name.
+        let mapping = Identifier::from_str("account")?;
+
+        // Iterate over the ratifications.
+        for ratify in post_ratifications {
+            match ratify {
+                Ratify::Genesis(..) => continue,
+                Ratify::ProvingReward(address, amount) | Ratify::StakingReward(address, amount) => {
+                    // Construct the key.
+                    let key = Plaintext::from(Literal::Address(*address));
+                    // Retrieve the current public balance.
+                    let value = self.finalize_store().get_value_speculative(&program_id, &mapping, &key)?;
+                    // Compute the next public balance.
+                    let next_value = Value::from(Literal::U64(U64::new(match value {
+                        Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
+                            (*value).saturating_add(*amount)
+                        }
+                        None => *amount,
+                        v => bail!("Critical bug in post-ratify - Invalid public balance type ({v:?})"),
+                    })));
+                    // Update the public balance in finalize storage.
+                    self.finalize_store().update_key_value(&program_id, &mapping, key, next_value)?;
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -571,13 +686,13 @@ finalize transfer_public:
         assert!(!vm.contains_program(&program_id));
 
         // Finalize the transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &confirmed_transactions).is_ok());
+        assert!(vm.finalize(sample_finalize_state(1), &vec![], &confirmed_transactions).is_ok());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &confirmed_transactions).is_err());
+        assert!(vm.finalize(sample_finalize_state(1), &vec![], &confirmed_transactions).is_err());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
