@@ -9,11 +9,11 @@ program credits.aleo;
 mapping committee:
     // The key represents the address of the validator.
     key validator as address.public;
-    // The value represents the state of the validator.
-    value state as state.public;
+    // The value represents the committee state of the validator.
+    value committee_state as committee_state.public;
 
-// The `state` struct tracks the state of the validator.
-struct state:
+// The `committee_state` struct tracks the total stake of the validator, and whether they are open to stakers.
+struct committee_state:
     // The amount of microcredits bonded to the validator, by the validator and its delegators.
     microcredits as u64;
     // The boolean flag indicating if the validator is open to stakers.
@@ -44,7 +44,7 @@ mapping unbonding:
     // The value represents the unbond state.
     value unbond_state as unbond_state.public;
 
-// The `unbond_state` struct tracks the microcredits that are currently unbonding.
+// The `unbond_state` struct tracks the microcredits that are currently unbonding, along with the unlock height.
 struct unbond_state:
     // The amount of microcredits that are currently unbonding.
     microcredits as u64;
@@ -141,8 +141,8 @@ finalize bond:
     /* Start Committee */
 
     // Construct the initial committee state.
-    cast 0u64 false into r4 as state;
-    // Retrieve the state of the specified validator.
+    cast 0u64 false into r4 as committee_state;
+    // Retrieve the committee state of the specified validator.
     get.or_use committee[r0] r4 into r5;
     // Ensure that the validator is open to stakers.
     assert.eq r5.is_open true;
@@ -155,7 +155,7 @@ finalize bond:
     assert.eq r7 true;
 
     // Construct the updated committee state.
-    cast r6 r5.is_open into r8 as state;
+    cast r6 r5.is_open into r8 as committee_state;
 
     /* End Committee */
 
@@ -219,8 +219,8 @@ finalize bond:
 
     // Increment the stake for the specified validator.
     add r16.microcredits r2 into r17;
-    // Construct the updated state struct.
-    cast r17 r16.is_open into r18 as state;
+    // Construct the updated committee state.
+    cast r17 r16.is_open into r18 as committee_state;
 
     /* End Committee */
 
@@ -295,7 +295,7 @@ finalize unbond_public:
     // Starts the `unbond_validator` logic.
     position unbond_validator;
 
-    // Get the state for the specified validator.
+    // Get the committee state for the specified validator.
     get committee[r0] into r3;
     // Decrement the stake for the specified validator.
     sub r3.microcredits r1 into r4;
@@ -318,9 +318,9 @@ finalize unbond_public:
     // Starts the `decrement_validator_stake` logic.
     position decrement_validator_stake;
 
-    // Construct the updated state struct.
-    cast r4 r3.is_open into r8 as state;
-    // Update the state for the validator.
+    // Construct the updated committee state.
+    cast r4 r3.is_open into r8 as committee_state;
+    // Update the committee state for the validator.
     set r8 into committee[r0];
 
     // Construct the updated bond state.
@@ -425,8 +425,8 @@ finalize unbond_public:
     get committee[r15.validator] into r18;
     // Decrement the stake for the specified validator.
     sub r18.microcredits r1 into r19;
-    // Construct the updated stake struct.
-    cast r19 r18.is_open into r20 as state;
+    // Construct the updated committee state.
+    cast r19 r18.is_open into r20 as committee_state;
     // Update the stake for the specified validator.
     set r20 into committee[r15.validator];
 
@@ -472,7 +472,7 @@ finalize unbond_delegator_as_validator:
 
     /* Start Committee */
 
-    // Get the state for the specified validator.
+    // Get the committee state for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r0] into r2;
     // Enforce that the validator is closed to stakers.
@@ -499,7 +499,7 @@ finalize unbond_delegator_as_validator:
     // Decrement the stake for the specified validator.
     sub r2.microcredits r4.microcredits into r5;
     // Construct the updated committee state.
-    cast r5 r2.is_open into r6 as state;
+    cast r5 r2.is_open into r6 as committee_state;
 
     /* End Committee */
 
@@ -581,13 +581,13 @@ finalize set_validator_state:
     // Input the 'is_open' state.
     input r1 as boolean.public;
 
-    // Get the state for the specified validator.
+    // Get the committee state for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
     get committee[r0] into r2;
 
     // Construct the updated committee state.
-    cast r2.microcredits r1 into r3 as state;
-    // Update the state for the specified validator.
+    cast r2.microcredits r1 into r3 as committee_state;
+    // Update the committee state for the specified validator.
     set r3 into committee[r0];
 
 /**********************************************************************************************************************/
