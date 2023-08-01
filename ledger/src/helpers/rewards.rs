@@ -45,6 +45,7 @@ pub fn staking_rewards<'a, N: Network>(
     // Update the stake of each staker based on the bond and unbond transitions.
     for transition in bonds_and_unbonds {
         // TODO (howardwu): Simulate the bond and unbond computations.
+        //  Test: unbond, unbond+unbond, bond, bond+unbond, bond+unbond+bond, bond+unbond+unbond, etc.
         // if transition.is_bond() {
         //     let stake = stakers.get_mut(transition.address()).unwrap();
         //     *stake = stake.saturating_add(transition.amount());
