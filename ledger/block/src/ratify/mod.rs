@@ -17,11 +17,18 @@ mod serialize;
 mod string;
 
 use console::{network::prelude::*, types::Address};
+use ledger_committee::Committee;
+
+use indexmap::IndexMap;
 
 type Variant = u8;
+/// A helper type to represent the public balances.
+type PublicBalances<N> = IndexMap<Address<N>, u64>;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Ratify<N: Network> {
+    /// The genesis.
+    Genesis(Option<Committee<N>>, PublicBalances<N>),
     /// The proving reward.
     ProvingReward(Address<N>, u64),
     /// The staking reward.
@@ -36,6 +43,17 @@ mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     pub(crate) fn sample_ratify_objects(rng: &mut TestRng) -> Vec<Ratify<CurrentNetwork>> {
-        vec![Ratify::ProvingReward(Address::new(rng.gen()), 100), Ratify::StakingReward(Address::new(rng.gen()), 200)]
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        let mut public_balances = PublicBalances::new();
+        for (address, _) in committee.members().iter() {
+            public_balances.insert(*address, rng.gen());
+        }
+
+        vec![
+            Ratify::Genesis(None, public_balances.clone()),
+            Ratify::Genesis(Some(committee), public_balances),
+            Ratify::ProvingReward(Address::new(rng.gen()), rng.gen()),
+            Ratify::StakingReward(Address::new(rng.gen()), rng.gen()),
+        ]
     }
 }

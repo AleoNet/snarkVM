@@ -27,6 +27,33 @@ impl<N: Network> FromBytes for Ratify<N> {
         let variant = Variant::read_le(&mut reader)?;
         let literal = match variant {
             0 => {
+                // Read the committee.
+                let committee_variant = u8::read_le(&mut reader)?;
+                let committee = match committee_variant {
+                    0 => None,
+                    1 => {
+                        // Read the committee.
+                        let committee: Committee<N> = FromBytes::read_le(&mut reader)?;
+                        Some(committee)
+                    }
+                    _ => return Err(error(format!("Failed to decode committee variant {variant}"))),
+                };
+                // Read the number of public balances.
+                let num_public_balances: u16 = FromBytes::read_le(&mut reader)?;
+                // Read the public balances.
+                let mut public_balances = PublicBalances::with_capacity(num_public_balances as usize);
+                for _ in 0..num_public_balances {
+                    // Read the address.
+                    let address: Address<N> = FromBytes::read_le(&mut reader)?;
+                    // Read the amount.
+                    let amount: u64 = FromBytes::read_le(&mut reader)?;
+                    // Insert the public balance.
+                    public_balances.insert(address, amount);
+                }
+                // Return the ratify object.
+                Self::Genesis(committee, public_balances)
+            }
+            1 => {
                 // Read the address.
                 let address: Address<N> = FromBytes::read_le(&mut reader)?;
                 // Read the amount.
@@ -34,7 +61,7 @@ impl<N: Network> FromBytes for Ratify<N> {
                 // Return the ratify object.
                 Self::ProvingReward(address, amount)
             }
-            1 => {
+            2 => {
                 // Read the address.
                 let address: Address<N> = FromBytes::read_le(&mut reader)?;
                 // Read the amount.
@@ -55,13 +82,29 @@ impl<N: Network> ToBytes for Ratify<N> {
         0u8.write_le(&mut writer)?;
 
         match self {
-            Self::ProvingReward(address, amount) => {
+            Self::Genesis(committee, public_balances) => {
                 (0 as Variant).write_le(&mut writer)?;
+                match committee {
+                    None => 0u8.write_le(&mut writer)?,
+                    Some(committee) => {
+                        1u8.write_le(&mut writer)?;
+                        committee.write_le(&mut writer)?;
+                    }
+                }
+                u16::try_from(public_balances.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                for (address, amount) in public_balances {
+                    address.write_le(&mut writer)?;
+                    amount.write_le(&mut writer)?;
+                }
+                Ok(())
+            }
+            Self::ProvingReward(address, amount) => {
+                (1 as Variant).write_le(&mut writer)?;
                 address.write_le(&mut writer)?;
                 amount.write_le(&mut writer)
             }
             Self::StakingReward(address, amount) => {
-                (1 as Variant).write_le(&mut writer)?;
+                (2 as Variant).write_le(&mut writer)?;
                 address.write_le(&mut writer)?;
                 amount.write_le(&mut writer)
             }

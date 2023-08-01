@@ -29,7 +29,18 @@ use console::{
     program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
     types::Field,
 };
-use ledger_block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    Deployment,
+    Execution,
+    Fee,
+    Header,
+    Ratify,
+    Transaction,
+    Transactions,
+};
+use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
     atomic_finalize,
@@ -47,6 +58,7 @@ use synthesizer_process::{Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -179,13 +191,26 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new genesis block.
-    pub fn genesis<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+    pub fn genesis<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        committee: Option<Committee<N>>,
+        public_balances: IndexMap<Address<N>, u64>,
+        rng: &mut R,
+    ) -> Result<Block<N>> {
+        // Tabulate the current supply.
+        let current_supply = {
+            let committee_amount = committee.as_ref().map_or(0, |c| c.total_stake());
+            let public_amount = public_balances.values().sum::<u64>();
+            N::STARTING_SUPPLY.saturating_sub(committee_amount).saturating_sub(public_amount)
+        };
+
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
         // Prepare the locator.
         let locator = ("credits.aleo", "mint");
         // Prepare the amount for each call to the mint function.
-        let amount = N::STARTING_SUPPLY.saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS as u64);
+        let amount = current_supply.saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS as u64);
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
@@ -206,9 +231,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Prepare the solutions.
         let solutions = None; // The genesis block does not require solutions.
+        // Prepare the ratifications.
+        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
 
         // Construct the block.
-        let block = Block::new_beacon(private_key, previous_hash, header, vec![], solutions, transactions, rng)?;
+        let block = Block::new_beacon(private_key, previous_hash, header, ratifications, solutions, transactions, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -296,7 +323,7 @@ pub(crate) mod test_helpers {
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 // Return the block.
-                vm.genesis(&caller_private_key, rng).unwrap()
+                vm.genesis(&caller_private_key, None, Default::default(), rng).unwrap()
             })
             .clone()
     }
@@ -730,7 +757,7 @@ finalize getter:
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
-        let genesis = vm.genesis(&caller_private_key, rng).unwrap();
+        let genesis = vm.genesis(&caller_private_key, None, Default::default(), rng).unwrap();
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 

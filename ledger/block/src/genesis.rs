@@ -33,7 +33,7 @@ impl<N: Network> Block<N> {
             // Ensure there is the correct number of finalize operations in the genesis block.
             && self.transactions.num_finalize() == 0
             // Ensure there is the correct number of ratification operations in the genesis block.
-            && self.ratifications.is_empty()
+            && self.ratifications.len() == 1
             // Ensure there are no solutions in the genesis block.
             && self.coinbase.is_none()
     }

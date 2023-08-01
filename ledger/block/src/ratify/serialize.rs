@@ -19,6 +19,13 @@ impl<N: Network> Serialize for Ratify<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
+                Self::Genesis(committee, public_balances) => {
+                    let mut input = serializer.serialize_struct("Ratify", 3)?;
+                    input.serialize_field("type", "genesis")?;
+                    input.serialize_field("committee", &committee)?;
+                    input.serialize_field("public_balances", &public_balances)?;
+                    input.end()
+                }
                 Self::ProvingReward(address, amount) => {
                     let mut input = serializer.serialize_struct("Ratify", 3)?;
                     input.serialize_field("type", "proving_reward")?;
@@ -49,6 +56,16 @@ impl<'de, N: Network> Deserialize<'de> for Ratify<N> {
 
                 // Recover the ratify object.
                 let ratify = match object.get("type").and_then(|t| t.as_str()) {
+                    Some("genesis") => {
+                        // Retrieve the committee.
+                        let committee: Option<Committee<N>> =
+                            DeserializeExt::take_from_value::<D>(&mut object, "committee")?;
+                        // Retrieve the public balances.
+                        let public_balances: PublicBalances<N> =
+                            DeserializeExt::take_from_value::<D>(&mut object, "public_balances")?;
+                        // Construct the ratify object.
+                        Ratify::Genesis(committee, public_balances)
+                    }
                     Some("proving_reward") => {
                         // Retrieve the address.
                         let address: Address<N> = DeserializeExt::take_from_value::<D>(&mut object, "address")?;

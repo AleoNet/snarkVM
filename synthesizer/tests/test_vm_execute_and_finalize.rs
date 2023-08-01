@@ -221,7 +221,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
         VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
-    let genesis = vm.genesis(private_key, rng).unwrap();
+    let genesis = vm.genesis(private_key, None, Default::default(), rng).unwrap();
 
     // Select a record to spend.
     let view_key = ViewKey::try_from(private_key).unwrap();

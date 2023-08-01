@@ -426,7 +426,7 @@ pub(crate) mod test_helpers {
         // Initialize the store.
         let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
         // Create a genesis block.
-        let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
+        let genesis = VM::from(store).unwrap().genesis(&private_key, None, Default::default(), rng).unwrap();
         // Initialize the ledger with the genesis block.
         let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
         // Ensure the genesis block is correct.
