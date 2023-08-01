@@ -326,7 +326,7 @@ finalize unbond_public:
     // Ensure that the validator is locked.
     assert.eq r3.is_locked true;
     // Decrement the stake for the specified validator.
-    sub r2.microcredits r1 into r4;
+    sub r3.microcredits r1 into r4;
 
     // Get the bond struct for the validator, or fail if it does not exist.
     get bonded[r0] into r5;
