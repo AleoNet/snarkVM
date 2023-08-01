@@ -446,6 +446,9 @@ mod tests {
         let coinbase_target = CurrentNetwork::ANCHOR_HEIGHT as u64;
         let mut cumulative_proof_target = 0;
 
+        let mut hit_500m = false;
+        let mut hit_1b = false;
+
         while block_height < block_height_at_year_10 {
             let reward = coinbase_reward(
                 block_height,
@@ -468,6 +471,16 @@ mod tests {
                 cumulative_proof_target if cumulative_proof_target == coinbase_target => 0,
                 cumulative_proof_target => cumulative_proof_target,
             };
+
+            if !hit_500m && total_reward > 500_000_000_000_000 {
+                println!("500M credits block height is {block_height}");
+                assert_eq!(block_height, 11_573_925, "Update me if my parameters have changed");
+                hit_500m = true;
+            } else if !hit_1b && total_reward > 1_000_000_000_000_000 {
+                println!("1B credits block height is {block_height}");
+                assert_eq!(block_height, 26_657_360, "Update me if my parameters have changed");
+                hit_1b = true;
+            }
         }
 
         assert_eq!(total_reward, 1_500_000_111_158_059, "Update me if my parameters have changed");
