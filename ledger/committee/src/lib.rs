@@ -39,7 +39,7 @@ use std::collections::HashSet;
 pub struct Committee<N: Network> {
     /// The starting round number for this committee.
     starting_round: u64,
-    /// A map of `address` to `(stake, is_locked)` state.
+    /// A map of `address` to `(stake, is_open)` state.
     members: IndexMap<Address<N>, (u64, bool)>,
     /// The total stake of all `members`.
     total_stake: u64,
@@ -94,7 +94,7 @@ impl<N: Network> Committee<N> {
         self.members.contains_key(&address)
     }
 
-    /// Returns `true` if the given address is in the committee and is locked.
+    /// Returns `true` if the given address is in the committee and is open.
     pub fn is_committee_member_locked(&self, address: Address<N>) -> bool {
         self.members.get(&address).copied().unwrap_or_default().1
     }

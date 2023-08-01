@@ -35,7 +35,7 @@ type CurrentNetwork = console::network::Testnet3;
 pub struct Validator {
     pub address: Address<CurrentNetwork>,
     pub stake: u64,
-    pub is_locked: bool,
+    pub is_open: bool,
 }
 
 impl Arbitrary for Validator {
@@ -62,7 +62,7 @@ impl Hash for Validator {
 }
 
 fn to_committee((round, ValidatorSet(validators)): (u64, ValidatorSet)) -> Result<Committee<CurrentNetwork>> {
-    Committee::new(round, validators.iter().map(|v| (v.address, (v.stake, v.is_locked))).collect())
+    Committee::new(round, validators.iter().map(|v| (v.address, (v.stake, v.is_open))).collect())
 }
 
 fn validator_set<T: Strategy<Value = Validator>>(
@@ -127,7 +127,7 @@ impl Default for ValidatorSet {
             (0..4u64)
                 .map(|i| {
                     let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(i);
-                    Validator { address: Address::new(rng.gen()), stake: MIN_STAKE, is_locked: false }
+                    Validator { address: Address::new(rng.gen()), stake: MIN_STAKE, is_open: false }
                 })
                 .collect(),
         )
@@ -146,14 +146,14 @@ impl Arbitrary for ValidatorSet {
 
 pub fn any_valid_validator() -> BoxedStrategy<Validator> {
     (MIN_STAKE..5_000_000_000, any_valid_address(), any::<bool>())
-        .prop_map(|(stake, address, is_locked)| Validator { address, stake, is_locked })
+        .prop_map(|(stake, address, is_open)| Validator { address, stake, is_open })
         .boxed()
 }
 
 #[allow(dead_code)]
 fn invalid_stake_validator() -> BoxedStrategy<Validator> {
     (0..MIN_STAKE, any_valid_address(), any::<bool>())
-        .prop_map(|(stake, address, is_locked)| Validator { address, stake, is_locked })
+        .prop_map(|(stake, address, is_open)| Validator { address, stake, is_open })
         .boxed()
 }
 
