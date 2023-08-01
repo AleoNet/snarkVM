@@ -49,6 +49,7 @@ impl<A: Aleo> ToBits for &Literal<A> {
             Literal::U64(literal) => literal.to_bits_le(),
             Literal::U128(literal) => literal.to_bits_le(),
             Literal::Scalar(literal) => literal.to_bits_le(),
+            Literal::Signature(literal) => literal.to_bits_le(),
             Literal::String(literal) => literal.to_bits_le(),
         }
     }
@@ -71,6 +72,7 @@ impl<A: Aleo> ToBits for &Literal<A> {
             Literal::U64(literal) => literal.to_bits_be(),
             Literal::U128(literal) => literal.to_bits_be(),
             Literal::Scalar(literal) => literal.to_bits_be(),
+            Literal::Signature(literal) => literal.to_bits_be(),
             Literal::String(literal) => literal.to_bits_be(),
         }
     }
