@@ -169,28 +169,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             u64::try_from(latest_cumulative_proof_target)?,
             latest_coinbase_target,
         )?;
-        // TODO (raychu86): Pay the provers.
-        // Calculate the proving rewards.
-        let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
-        // TODO (howardwu): Add in the stakers and their total stake.
-        // Calculate the staking rewards.
-        let staking_rewards = staking_rewards(vec![], coinbase_reward, 0);
-
-        // TODO (howardwu): We must first process the candidate ratifications to filter out invalid ratifications.
-        // Construct the ratifications.
-        let mut ratifications = candidate_ratifications;
-        ratifications.extend_from_slice(&proving_rewards);
-        ratifications.extend_from_slice(&staking_rewards);
-
-        // Compute the ratifications root.
-        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
-            // TODO (howardwu): Formalize the Merklization of each Ratify enum.
-            &ratifications
-                .iter()
-                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
-                .collect::<Result<Vec<_>, _>>()?,
-        )?
-        .root();
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
@@ -203,9 +181,50 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Select the transactions from the memory pool.
         let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
 
+        // TODO (howardwu): Add in the stakers and their total stake.
+        // Determine the stakers, by fetching the current stakers from storage,
+        // and excluding stakers who are now unbonding their full amount of stake.
+        // By filtering out the stakers who are fully unbonding now, we ensure they can fully unbond to 0.
+        let stakers = vec![];
+
+        // Filter the stakers by their bond and unbond transitions.
+        let stakers = stakers;
+
+        // Compute the total stake for the stakers.
+        let mut total_stake = 0u64;
+        for (_, stake) in &stakers {
+            total_stake = total_stake.saturating_add(*stake);
+        }
+
+        // TODO (raychu86): Pay the provers and stakers.
+        // Calculate the proving rewards.
+        let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
+        // Calculate the staking rewards.
+        let staking_rewards = staking_rewards(stakers, coinbase_reward, total_stake);
+
+        // TODO (howardwu): We must first process the candidate ratifications to filter out invalid ratifications.
+        // Construct the ratifications.
+        // Attention: Do not change the order of the ratifications.
+        let mut ratifications = Vec::new();
+        // First, we must append the proving rewards and staking rewards.
+        ratifications.extend_from_slice(&proving_rewards);
+        ratifications.extend_from_slice(&staking_rewards);
+        // Lastly, we must append the candidate ratifications.
+        ratifications.extend_from_slice(&candidate_ratifications);
+
+        // Compute the ratifications root.
+        let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
+            // TODO (howardwu): Formalize the Merklization of each Ratify enum.
+            &ratifications
+                .iter()
+                .map(|r| Ok::<_, Error>(r.to_bytes_le()?.to_bits_le()))
+                .collect::<Result<Vec<_>, _>>()?,
+        )?
+        .root();
+
         // Compute the next total supply in microcredits.
         let next_total_supply_in_microcredits =
-            update_total_supply(previous_block.total_supply_in_microcredits(), &transactions)?;
+            update_total_supply(previous_block.total_supply_in_microcredits(), &ratifications, &transactions)?;
 
         // Determine the timestamp for the next block.
         let next_timestamp = match subdag {

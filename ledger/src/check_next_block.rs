@@ -124,7 +124,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Retrieve the latest total supply.
         let latest_total_supply = self.latest_total_supply_in_microcredits();
         // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, block.transactions())?;
+        let next_total_supply_in_microcredits =
+            update_total_supply(latest_total_supply, block.ratifications(), block.transactions())?;
         // Ensure the total supply in microcredits is correct.
         if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
             bail!("Invalid total supply in microcredits")
@@ -370,6 +371,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         /* Ratifications Root */
+
+        // TODO (howardwu): Check equivalency of `committee struct` == `committee mapping` == `bonded mapping`.
 
         // Compute the ratifications root of the block.
         let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(
