@@ -20,8 +20,24 @@ pub trait ToBits: Sized {
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool>;
 
+    /// Writes `self` into the given vector as a boolean array
+    /// in little-endian order.
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        // A default, unoptimized implementation.
+        let bits = self.to_bits_le();
+        vec.extend_from_slice(&bits);
+    }
+
     /// Returns `self` as a boolean array in big-endian order.
     fn to_bits_be(&self) -> Vec<bool>;
+
+    /// Writes `self` into the given vector as a boolean array
+    /// in big-endian order.
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        // A default, unoptimized implementation.
+        let bits = self.to_bits_be();
+        vec.extend_from_slice(&bits);
+    }
 }
 
 pub trait FromBits: Sized {
@@ -126,10 +142,26 @@ macro_rules! impl_bits_for_integer {
                 bits_le
             }
 
+            #[inline]
+            fn write_bits_le(&self, vec: &mut Vec<bool>) {
+                vec.reserve(<$int>::BITS as usize);
+                let mut value = *self;
+                for _ in 0..<$int>::BITS {
+                    vec.push(value & 1 == 1);
+                    value = value.wrapping_shr(1u32);
+                }
+            }
+
             /// Returns `self` as a boolean array in big-endian order.
             #[inline]
             fn to_bits_be(&self) -> Vec<bool> {
                 self.to_bits_le().into_iter().rev().collect()
+            }
+
+            #[inline]
+            fn write_bits_be(&self, vec: &mut Vec<bool>) {
+                let reversed = self.reverse_bits();
+                reversed.write_bits_le(vec);
             }
         }
 
@@ -228,14 +260,32 @@ impl<C: ToBits> ToBits for &[C] {
     #[inline]
     fn to_bits_le(&self) -> Vec<bool> {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
-        self.iter().flat_map(|c| c.to_bits_le()).collect()
+        let mut vec = vec![];
+        self.write_bits_le(&mut vec);
+        vec
+    }
+
+    #[inline]
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        for elem in self.iter() {
+            elem.write_bits_le(vec);
+        }
     }
 
     /// A helper method to return a concatenated list of big-endian bits.
     #[inline]
     fn to_bits_be(&self) -> Vec<bool> {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
-        self.iter().flat_map(|c| c.to_bits_be()).collect()
+        let mut vec = vec![];
+        self.write_bits_be(&mut vec);
+        vec
+    }
+
+    #[inline]
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        for elem in self.iter() {
+            elem.write_bits_be(vec);
+        }
     }
 }
 
