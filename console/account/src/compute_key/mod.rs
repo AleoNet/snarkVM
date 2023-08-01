@@ -13,8 +13,11 @@
 // limitations under the License.
 
 mod bytes;
+mod from_bits;
 mod serialize;
+mod size_in_bits;
 mod to_address;
+mod to_bits;
 mod try_from;
 
 #[cfg(feature = "private_key")]
