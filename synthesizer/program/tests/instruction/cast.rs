@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-include!("../helpers/macros.rs");
-
 use crate::helpers::sample::{sample_finalize_registers, sample_registers};
 
 use circuit::{AleoV0, Eject, Environment};
