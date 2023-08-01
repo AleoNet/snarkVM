@@ -470,6 +470,124 @@ jobs:
           workspace_member: ledger
           cache_key: snarkvm-ledger-cache
 
+  ledger-authority:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/authority
+          cache_key: snarkvm-ledger-authority-cache
+
+  ledger-block:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/block
+          cache_key: snarkvm-ledger-block-cache
+
+  ledger-coinbase:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/coinbase
+          cache_key: snarkvm-ledger-coinbase-cache
+
+  ledger-committee:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/committee
+          cache_key: snarkvm-ledger-committee-cache
+
+  ledger-narwhal:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal
+          cache_key: snarkvm-ledger-narwhal-cache
+
+  ledger-narwhal-batch-certificate:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/batch-certificate
+          cache_key: snarkvm-ledger-narwhal-batch-certificate-cache
+
+  ledger-narwhal-batch-header:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/batch-header
+          cache_key: snarkvm-ledger-narwhal-batch-header-cache
+
+  ledger-narwhal-subdag:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/subdag
+          cache_key: snarkvm-ledger-narwhal-subdag-cache
+
+  ledger-narwhal-transmission:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/transmission
+          cache_key: snarkvm-ledger-narwhal-transmission-cache
+
+  ledger-narwhal-transmission-id:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/transmission-id
+          cache_key: snarkvm-ledger-narwhal-transmission-id-cache
+
+  ledger-query:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/query
+          cache_key: snarkvm-ledger-query-cache
+
+  ledger-store:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --features=rocks
+          workspace_member: ledger/store
+          cache_key: snarkvm-ledger-store-cache
+
+  ledger-test-helpers:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/test-helpers
+          cache_key: snarkvm-ledger-test-helpers-cache
+
   parameters:
     docker:
       - image: cimg/rust:1.69
@@ -479,33 +597,43 @@ jobs:
           workspace_member: parameters
           cache_key: snarkvm-parameters-cache
 
-  r1cs:
-    docker:
-      - image: cimg/rust:1.69
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: r1cs
-          cache_key: snarkvm-r1cs-cache
-
   synthesizer:
     docker:
       - image: cimg/rust:1.69
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --features=rocks
+          flags: --lib --bins
           workspace_member: synthesizer
           cache_key: snarkvm-synthesizer-cache
 
-  synthesizer-coinbase:
+  synthesizer-integration:
     docker:
       - image: cimg/rust:1.69
     resource_class: 2xlarge
     steps:
       - run_serial:
-          workspace_member: synthesizer/coinbase
-          cache_key: snarkvm-synthesizer-coinbase-cache
+          flags: --test '*'
+          workspace_member: synthesizer
+          cache_key: snarkvm-synthesizer-integration-cache
+
+  synthesizer-process:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: synthesizer/process
+          cache_key: snarkvm-synthesizer-process-cache
+
+  synthesizer-program:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
 
   synthesizer-snark:
     docker:
@@ -655,10 +783,24 @@ workflows:
       - curves
       - fields
       - ledger
+      - ledger-authority
+      - ledger-block
+      - ledger-coinbase
+      - ledger-committee
+      - ledger-narwhal
+      - ledger-narwhal-batch-certificate
+      - ledger-narwhal-batch-header
+      - ledger-narwhal-subdag
+      - ledger-narwhal-transmission
+      - ledger-narwhal-transmission-id
+      - ledger-query
+      - ledger-store
+      - ledger-test-helpers
       - parameters
-      - r1cs
       - synthesizer
-      - synthesizer-coinbase
+      - synthesizer-integration
+      - synthesizer-process
+      - synthesizer-program
       - synthesizer-snark
       - utilities
       - utilities-derives
@@ -678,8 +820,8 @@ workflows:
                 console,
                 curves,
                 fields,
+                ledger,
                 parameters,
-                r1cs,
                 synthesizer,
                 utilities,
               ]

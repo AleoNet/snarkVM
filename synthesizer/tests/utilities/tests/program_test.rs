@@ -14,12 +14,12 @@
 
 use crate::{get_expectation_path, print_difference, CurrentNetwork, ExpectedTest};
 
-use console::program::{Identifier, Value};
-use snarkvm_synthesizer::Program;
+use console::{account::PrivateKey, program::Identifier};
+use snarkvm_synthesizer::program::Program;
 
 use anyhow::{bail, Result};
 use itertools::Itertools;
-use serde_yaml::Sequence;
+use serde_yaml::{Mapping, Sequence, Value};
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
@@ -28,91 +28,87 @@ use std::{
 // TODO: Handle tests where the execution panics or fails.
 //  One approach is to create an enum `ExpectedOutput` which can be `Ok(Vec<Value>)` or `Err(String)`.
 
-/// A test for a program, containing the program definition and a set of test cases.
+/// A test for a program, containing the program definition, an optional seed for the RNG, and a set of test cases.
+// Note: We use YAML for `cases` and `expected` to allow for flexible definitions across various types of tests.
 pub struct ProgramTest {
-    test_program: Program<CurrentNetwork>,
-    test_cases: Vec<(Identifier<CurrentNetwork>, Vec<Value<CurrentNetwork>>)>,
-    expected_results: Vec<Vec<Value<CurrentNetwork>>>,
-    expectation_path: PathBuf,
+    /// The program.
+    program: Program<CurrentNetwork>,
+    /// The set of test cases.
+    cases: Vec<Value>,
+    /// The set of expected outputs for each test case.
+    expected: Vec<Value>,
+    /// The path to the expectation file.
+    path: PathBuf,
+    /// Whether the expectation file should be rewritten.
     rewrite: bool,
+    /// The seed for the RNG.
+    randomness: Option<u64>,
 }
 
 impl ProgramTest {
-    /// Returns the test program.
-    pub fn test_program(&self) -> &Program<CurrentNetwork> {
-        &self.test_program
+    /// Returns the program.
+    pub fn program(&self) -> &Program<CurrentNetwork> {
+        &self.program
     }
 
     /// Returns the test cases.
-    pub fn test_cases(&self) -> &[(Identifier<CurrentNetwork>, Vec<Value<CurrentNetwork>>)] {
-        &self.test_cases
+    pub fn cases(&self) -> &[Value] {
+        &self.cases
+    }
+
+    /// Returns the optional seed for the RNG.
+    pub fn randomness(&self) -> Option<u64> {
+        self.randomness
     }
 }
 
 impl ExpectedTest for ProgramTest {
-    type Output = Vec<Vec<Value<CurrentNetwork>>>;
-    type Test = Vec<Vec<Value<CurrentNetwork>>>;
+    type Output = Vec<Value>;
+    type Test = Vec<Value>;
 
     /// Loads the test from a given path.
     fn load<P: AsRef<Path>>(test_path: P, expectation_dir: P) -> Self {
         // Check if the expectation file should be rewritten.
         let rewrite = std::env::var("REWRITE_EXPECTATIONS").is_ok();
+
         // Read the contents of the test file.
         let source = std::fs::read_to_string(&test_path).expect("Failed to read test file.");
+
         // Parse out the first comment, denoted by `/* ... */`.
         let first_comment_start = source.find("/*").expect("test file must contain a comment");
         let end_first_comment = source[first_comment_start + 2..].find("*/").expect("test file must contain a comment");
         let comment = &source[first_comment_start + 2..first_comment_start + 2 + end_first_comment];
-        // Parse the comment into a sequence of test cases.
-        let test_cases = serde_yaml::from_str::<Sequence>(comment)
-            .expect("invalid test configuration")
-            .into_iter()
-            .map(|value| {
-                let value = value.as_sequence().expect("invalid test case");
-                let (function_name, args) =
-                    value.split_first().expect("test case must specify the function name and arguments");
-                let function_name = Identifier::<CurrentNetwork>::from_str(
-                    function_name.as_str().expect("function name must be a string"),
-                )
-                .expect("function name must be an identifier");
-                let args = args
-                    .iter()
-                    .map(|value| {
-                        Value::<CurrentNetwork>::from_str(value.as_str().expect("argument must be a string"))
-                            .expect("argument must be a value")
-                    })
-                    .collect_vec();
-                (function_name, args)
-            })
-            .collect_vec();
+
+        // Parse the comment into the test configuration.
+        let test_config = serde_yaml::from_str::<Mapping>(comment).expect("invalid test configuration");
+
+        // If the `randomness` field is present in the config, parse it as a `u64`.
+        let randomness = test_config.get("randomness").map(|value| value.as_u64().expect("`randomness` must be a u64"));
+
+        // Extract the test cases from the config.
+        let cases = test_config
+            .get("cases")
+            .expect("configuration must contain `cases`")
+            .as_sequence()
+            .expect("cases must be a sequence")
+            .clone();
+
         // Parse the remainder of the test file into a program.
-        let test_program =
-            Program::<CurrentNetwork>::from_str(&source[first_comment_start + 2 + end_first_comment + 2..])
-                .expect("Failed to parse program.");
-        // Construct the path the expectation file.
-        let expectation_path = get_expectation_path(&test_path, &expectation_dir);
+        let program = Program::<CurrentNetwork>::from_str(&source[first_comment_start + 2 + end_first_comment + 2..])
+            .expect("Failed to parse program.");
+
+        // Construct the path to the expectation file.
+        let path = get_expectation_path(&test_path, &expectation_dir);
         // If the expectation file should be rewritten, then there is no need to read the expectation file.
-        let expected_results = match rewrite {
+        let expected = match rewrite {
             true => vec![],
             false => {
-                let source = std::fs::read_to_string(&expectation_path).expect("Failed to read expectation file.");
-                serde_yaml::from_str::<Sequence>(&source)
-                    .expect("invalid expectation")
-                    .into_iter()
-                    .map(|value| {
-                        let value = value.as_sequence().expect("invalid expectation case");
-                        value
-                            .iter()
-                            .map(|value| {
-                                Value::<CurrentNetwork>::from_str(value.as_str().expect("expected must be a string"))
-                                    .expect("expected must be a value")
-                            })
-                            .collect_vec()
-                    })
-                    .collect_vec()
+                let source = std::fs::read_to_string(&path).expect("Failed to read expectation file.");
+                serde_yaml::from_str::<Sequence>(&source).expect("invalid expectation")
             }
         };
-        Self { test_program, test_cases, expected_results, expectation_path, rewrite }
+
+        Self { program, cases, expected, path, rewrite, randomness }
     }
 
     fn check(&self, output: &Self::Output) -> Result<()> {
@@ -120,13 +116,14 @@ impl ExpectedTest for ProgramTest {
         let mut errors = Vec::new();
         // If the expectation file should be rewritten, then there is no need to check the output.
         if !self.rewrite {
-            self.test_cases.iter().zip_eq(self.expected_results.iter().zip_eq(output.iter())).for_each(
-                |((function_name, args), (expected, actual))| {
+            self.cases.iter().zip_eq(self.expected.iter().zip_eq(output.iter())).for_each(
+                |(test, (expected, actual))| {
                     if expected != actual {
-                        let mut test = format!("Function: {}\nInputs: ", function_name);
-                        test.push_str(&args.iter().map(|value| value.to_string()).join(", "));
-                        let expected = expected.iter().map(|value| value.to_string()).join(",");
-                        let actual = actual.iter().map(|value| value.to_string()).join(",");
+                        let test = serde_yaml::to_string(test).expect("failed to serialize test to string");
+                        let expected =
+                            serde_yaml::to_string(expected).expect("failed to serialize expected output to string");
+                        let actual =
+                            serde_yaml::to_string(actual).expect("failed to serialize actual output to string");
                         errors.push(print_difference(test, expected, actual));
                     }
                 },
@@ -141,23 +138,7 @@ impl ExpectedTest for ProgramTest {
 
     fn save(&self, output: &Self::Output) -> Result<()> {
         if self.rewrite {
-            let output = serde_yaml::Value::Sequence(
-                output
-                    .iter()
-                    .map(|values| {
-                        serde_yaml::Value::Sequence(
-                            values
-                                .iter()
-                                .map(|value| serde_yaml::Value::String(value.to_string()))
-                                .collect::<Sequence>(),
-                        )
-                    })
-                    .collect::<Sequence>(),
-            );
-            std::fs::write(
-                &self.expectation_path,
-                serde_yaml::to_string(&output).expect("failed to serialize output to string"),
-            )?;
+            std::fs::write(&self.path, serde_yaml::to_string(&output).expect("failed to serialize output to string"))?;
         }
         Ok(())
     }

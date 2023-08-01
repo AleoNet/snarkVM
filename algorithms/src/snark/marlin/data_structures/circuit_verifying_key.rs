@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{fft::EvaluationDomain, polycommit::sonic_pc, snark::marlin::ahp::indexer::*};
+use crate::{fft::EvaluationDomain, polycommit::sonic_pc, r1cs::SynthesisError, snark::marlin::ahp::indexer::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_r1cs::SynthesisError;
 use snarkvm_utilities::{
     error,
     io::{self, Read, Write},

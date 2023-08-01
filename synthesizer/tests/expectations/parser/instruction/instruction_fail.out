@@ -16,3 +16,57 @@
   add s0 r1 into r3;
   ^
 
+- |+
+  0: at line 1, in Tag:
+  hash.bhp2048 r0 into r1 as field;
+  ^
+
+  1: at line 1, in Alt:
+  hash.bhp2048 r0 into r1 as field;
+  ^
+
+- |+
+  0: at line 1, in Tag:
+  hash.pds2 r0 into r1 as field;
+  ^
+
+  1: at line 1, in Alt:
+  hash.pds2 r0 into r1 as field;
+  ^
+
+- |+
+  0: at line 1, in Tag:
+  commit.ped128 r0 r1 into r2;
+  ^
+
+  1: at line 1, in Alt:
+  commit.ped128 r0 r1 into r2;
+  ^
+
+- |+
+  0: at line 1, in Tag:
+  add_w r0 r1 into r2;
+  ^
+
+  1: at line 1, in Alt:
+  add_w r0 r1 into r2;
+  ^
+
+- |+
+  0: at line 1, in Tag:
+  assert r0;
+  ^
+
+  1: at line 1, in Alt:
+  assert r0;
+  ^
+
+- |+
+  0: at line 1, in Tag:
+  neg r0 into 3field;
+  ^
+
+  1: at line 1, in Alt:
+  neg r0 into 3field;
+  ^
+

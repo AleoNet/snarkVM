@@ -16,14 +16,16 @@ mod utilities;
 use utilities::*;
 
 use console::network::prelude::*;
-use snarkvm_synthesizer::Program;
+use snarkvm_synthesizer::program::Program;
+
+use rayon::prelude::*;
 
 #[test]
 fn test_program_parse() {
     // Load the tests.
     let tests = load_tests::<_, FileParseTest>("./tests/parser/program", "./expectations/parser/program");
     // Run each test and compare it against its corresponding expectation.
-    for test in &tests {
+    tests.par_iter().for_each(|test| {
         // Run the parser on the test string.
         let test_string = test.test_string();
         let output = convert_result(Program::<CurrentNetwork>::parse(test_string), test_string);
@@ -31,5 +33,5 @@ fn test_program_parse() {
         test.check(&output).unwrap();
         // Save the output.
         test.save(&output).unwrap();
-    }
+    });
 }

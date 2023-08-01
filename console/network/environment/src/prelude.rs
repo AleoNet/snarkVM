@@ -17,6 +17,8 @@ pub use super::*;
 pub use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 pub use snarkvm_fields::{Field as _, PrimeField as _, SquareRootField as _, Zero as _};
 pub use snarkvm_utilities::{
+    cfg_find,
+    cfg_find_map,
     cfg_into_iter,
     cfg_iter,
     cfg_iter_mut,
@@ -24,6 +26,7 @@ pub use snarkvm_utilities::{
     error,
     has_duplicates,
     io::{Read, Result as IoResult, Write},
+    DeserializeExt,
     FromBits as _,
     FromBytes,
     FromBytesDeserializer,
@@ -87,7 +90,7 @@ pub use rand::{
 };
 pub use serde::{
     de,
-    de::DeserializeOwned,
+    de::{DeserializeOwned, SeqAccess, Visitor},
     ser::{self, SerializeSeq, SerializeStruct},
     Deserialize,
     Deserializer,

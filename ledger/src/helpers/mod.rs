@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod cost;
-pub use cost::*;
+mod bft;
+pub use bft::*;
+
+mod rewards;
+pub use rewards::*;
 
 mod supply;
 pub use supply::*;

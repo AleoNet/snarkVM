@@ -265,11 +265,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 mod tests {
     use super::*;
 
-    use crate::{vm::test_helpers::sample_finalize_state, Block, Header, Metadata, Transaction};
+    use crate::vm::test_helpers::sample_finalize_state;
     use console::{
         account::{Address, ViewKey},
         types::Field,
     };
+    use ledger_block::{Block, Header, Metadata, Transaction};
 
     type CurrentNetwork = test_helpers::CurrentNetwork;
 
@@ -431,10 +432,11 @@ mod tests {
             1,
             CurrentNetwork::STARTING_SUPPLY,
             0,
+            0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
-            genesis.last_coinbase_timestamp(),
+            genesis.last_coinbase_height(),
             CurrentNetwork::GENESIS_TIMESTAMP + 1,
         )
         .unwrap();
@@ -443,6 +445,7 @@ mod tests {
             *vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
+            crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             deployment_metadata,
         )
@@ -450,7 +453,8 @@ mod tests {
 
         // Construct a new block for the deploy transaction.
         let deployment_block =
-            Block::new(&caller_private_key, genesis.hash(), deployment_header, transactions, None, rng).unwrap();
+            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, vec![], None, transactions, rng)
+                .unwrap();
 
         // Add the deployment block.
         vm.add_next_block(&deployment_block).unwrap();
@@ -476,5 +480,36 @@ mod tests {
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());
         assert!(vm.verify_transaction(&transaction, None));
+    }
+
+    #[test]
+    fn test_failed_credits_deployment() {
+        let rng = &mut TestRng::default();
+        let vm = crate::vm::test_helpers::sample_vm();
+
+        // Fetch the credits program
+        let program = Program::credits().unwrap();
+
+        // Ensure that the program can't be deployed.
+        assert!(vm.deploy_raw(&program, rng).is_err());
+
+        // Create a new `credits.aleo` program.
+        let program = Program::from_str(
+            r"
+program credits.aleo;
+
+record token:
+    owner as address.private;
+    amount as u64.private;
+
+function compute:
+    input r0 as u32.private;
+    add r0 r0 into r1;
+    output r1 as u32.public;",
+        )
+        .unwrap();
+
+        // Ensure that the program can't be deployed.
+        assert!(vm.deploy_raw(&program, rng).is_err());
     }
 }

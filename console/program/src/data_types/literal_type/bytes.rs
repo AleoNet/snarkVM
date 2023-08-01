@@ -16,13 +16,13 @@ use super::*;
 
 impl FromBytes for LiteralType {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index = u16::read_le(&mut reader)?;
-        FromPrimitive::from_u16(index).ok_or_else(|| error("Failed to deserialize literal type variant {index}"))
+        let index = u8::read_le(&mut reader)?;
+        FromPrimitive::from_u8(index).ok_or_else(|| error("Failed to deserialize literal type variant {index}"))
     }
 }
 
 impl ToBytes for LiteralType {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (*self as u16).write_le(&mut writer)
+        self.type_id().write_le(&mut writer)
     }
 }
