@@ -33,8 +33,9 @@ impl<N: Network> Literal<N> {
             Self::U64(..) => 12,
             Self::U128(..) => 13,
             Self::Scalar(..) => 14,
-            Self::Signature(..) => 15,
-            Self::String(..) => 16,
+            Self::String(..) => 15,
+            // Note: This is placed here in order to preserve (de)serializing existing variants.
+            Self::Signature(..) => 16,
         }
     }
 }

@@ -54,10 +54,11 @@ pub enum LiteralType {
     U128,
     /// The scalar type (scalar field).
     Scalar,
-    /// The signature type.
-    Signature,
     /// The string type.
     String,
+    /// The signature type.
+    // Note: This is placed here in order to preserve (de)serializing existing variants.
+    Signature,
 }
 
 impl LiteralType {
