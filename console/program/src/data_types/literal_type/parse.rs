@@ -35,6 +35,7 @@ impl Parser for LiteralType {
             map(tag("u64"), |_| Self::U64),
             map(tag("u128"), |_| Self::U128),
             map(tag("scalar"), |_| Self::Scalar),
+            map(tag("signature"), |_| Self::Signature),
             map(tag("string"), |_| Self::String),
         ))(string)
     }
