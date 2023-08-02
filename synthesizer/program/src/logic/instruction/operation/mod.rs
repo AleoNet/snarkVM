@@ -38,6 +38,9 @@ pub use literals::*;
 
 mod macros;
 
+mod sign_verify;
+pub use sign_verify::*;
+
 use crate::Opcode;
 use console::network::prelude::*;
 
