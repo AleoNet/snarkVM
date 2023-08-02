@@ -167,6 +167,8 @@ pub enum Instruction<N: Network> {
     Shl(Shl<N>),
     /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
     ShlWrapped(ShlWrapped<N>),
+    /// Computes whether `signature` is valid for the given `address` and `message`.
+    SignVerify(SignVerify<N>),
     /// Shifts `first` right by `second` bits, storing the outcome in `destination`.
     Shr(Shr<N>),
     /// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
@@ -273,6 +275,8 @@ macro_rules! instruction {
             SubWrapped,
             Ternary,
             Xor,
+            // Note: This is placed here in order to preserve (de)serializing existing variants.
+            SignVerify,
         }}
     };
     // A variant **without** curly braces:
@@ -442,7 +446,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            59,
+            60,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

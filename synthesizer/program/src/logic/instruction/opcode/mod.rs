@@ -35,8 +35,6 @@ pub enum Opcode {
     Is(&'static str),
     /// The opcode is for a literal operation (i.e. `add`).
     Literal(&'static str),
-    /// The opcode is for a `sign.verify` operation.
-    SignVerify,
 }
 
 impl Deref for Opcode {
@@ -54,7 +52,6 @@ impl Deref for Opcode {
             Opcode::Hash(opcode) => opcode,
             Opcode::Is(opcode) => opcode,
             Opcode::Literal(opcode) => opcode,
-            Opcode::SignVerify => &"sign.verify",
         }
     }
 }
@@ -79,7 +76,6 @@ impl Display for Opcode {
             Self::Hash(opcode) => write!(f, "{opcode}"),
             Self::Is(opcode) => write!(f, "{opcode}"),
             Self::Literal(opcode) => write!(f, "{opcode}"),
-            Self::SignVerify => write!(f, "{}", self.deref()),
         }
     }
 }
