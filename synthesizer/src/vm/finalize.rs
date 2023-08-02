@@ -14,6 +14,7 @@
 
 use super::*;
 use ledger_block::{ConfirmedTransaction, Rejected, Transactions};
+use ledger_coinbase::CoinbaseSolution;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Speculates on the given list of transactions in the VM, returning the confirmed transactions.
@@ -39,13 +40,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn finalize(
         &self,
         state: FinalizeGlobalState,
-        ratifications: &Vec<Ratify<N>>,
+        ratifications: &[Ratify<N>],
+        solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
     ) -> Result<()> {
         let timer = timer!("VM::finalize");
 
-        // Performs a **real-run** of finalize over the list of ratifications and transactions.
-        self.atomic_finalize(state, ratifications, transactions)?;
+        // Performs a **real-run** of finalize over the list of ratifications, solutions, and transactions.
+        self.atomic_finalize(state, ratifications, solutions, transactions)?;
 
         finish!(timer, "Finished real-run of finalize");
         Ok(())
@@ -162,7 +164,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     fn atomic_finalize(
         &self,
         state: FinalizeGlobalState,
-        ratifications: &Vec<Ratify<N>>,
+        ratifications: &[Ratify<N>],
+        solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
     ) -> Result<()> {
         let timer = timer!("VM::atomic_finalize");
@@ -172,12 +175,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Initialize an iterator for ratifications before finalize.
             let pre_ratifications = ratifications.iter().filter(|r| match r {
                 Ratify::Genesis(_, _) => true,
-                Ratify::ProvingReward(..) | Ratify::StakingReward(..) => false,
+                Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => false,
             });
             // Initialize an iterator for ratifications after finalize.
             let post_ratifications = ratifications.iter().filter(|r| match r {
                 Ratify::Genesis(_, _) => false,
-                Ratify::ProvingReward(..) | Ratify::StakingReward(..) => true,
+                Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => true,
             });
 
             /* Perform the ratifications before finalize. */
@@ -313,7 +316,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             /* Perform the ratifications after finalize. */
 
-            if let Err(e) = self.atomic_post_ratify(post_ratifications) {
+            if let Err(e) = self.atomic_post_ratify(post_ratifications, solutions) {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!("Failed to post-ratify - {e}"));
             }
@@ -340,24 +343,40 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     ) -> Result<()> {
         // Construct the program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
-        // Construct the mapping name.
-        let mapping = Identifier::from_str("account")?;
+        // Construct the committee mapping name.
+        let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the account mapping name.
+        let account_mapping = Identifier::from_str("account")?;
 
         // Iterate over the ratifications.
         for ratify in pre_ratifications {
             match ratify {
                 Ratify::Genesis(committee, public_balances) => {
+                    // Ensure this is the genesis block.
+                    ensure!(state.block_height() == 0, "Ratify::Genesis(..) expected a genesis block");
+
                     // If the committee is given, insert the committee into committee storage.
                     if let Some(committee) = committee {
                         // Insert the committee into storage.
                         self.committee_store().insert(state.block_height(), committee.clone())?;
+                        // Iterate over the committee.
+                        for (address, (microcredits, is_open)) in committee.members() {
+                            // Construct the key.
+                            let key = Plaintext::from(Literal::Address(*address));
+                            // Construct the value.
+                            let value =
+                                Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}"))?;
+                            // Insert the key-value into storage.
+                            self.finalize_store().insert_key_value(&program_id, &committee_mapping, key, value)?;
+                        }
                     }
+
                     // Iterate over the public balances.
                     for (address, amount) in public_balances {
                         // Construct the key.
                         let key = Plaintext::from(Literal::Address(*address));
                         // Retrieve the current public balance.
-                        let value = self.finalize_store().get_value_speculative(&program_id, &mapping, &key)?;
+                        let value = self.finalize_store().get_value_speculative(&program_id, &account_mapping, &key)?;
                         // Compute the next public balance.
                         let next_value = Value::from(Literal::U64(U64::new(match value {
                             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
@@ -367,10 +386,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             v => bail!("Critical bug in pre-ratify - Invalid public balance type ({v:?})"),
                         })));
                         // Update the public balance in finalize storage.
-                        self.finalize_store().update_key_value(&program_id, &mapping, key, next_value)?;
+                        self.finalize_store().update_key_value(&program_id, &account_mapping, key, next_value)?;
                     }
                 }
-                Ratify::ProvingReward(..) | Ratify::StakingReward(..) => continue,
+                Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => continue,
             }
         }
         Ok(())
@@ -378,31 +397,128 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
     /// Performs the post-ratifications after finalizing transactions.
     #[inline]
-    fn atomic_post_ratify<'a>(&self, post_ratifications: impl Iterator<Item = &'a Ratify<N>>) -> Result<()> {
+    fn atomic_post_ratify<'a>(
+        &self,
+        post_ratifications: impl Iterator<Item = &'a Ratify<N>>,
+        solutions: Option<&CoinbaseSolution<N>>,
+    ) -> Result<()> {
         // Construct the program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
-        // Construct the mapping name.
-        let mapping = Identifier::from_str("account")?;
+        // Construct the committee mapping name.
+        let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the bonded mapping name.
+        let bonded_mapping = Identifier::from_str("bonded")?;
+        // Construct the account mapping name.
+        let account_mapping = Identifier::from_str("account")?;
 
         // Iterate over the ratifications.
         for ratify in post_ratifications {
             match ratify {
                 Ratify::Genesis(..) => continue,
-                Ratify::ProvingReward(address, amount) | Ratify::StakingReward(address, amount) => {
-                    // Construct the key.
-                    let key = Plaintext::from(Literal::Address(*address));
-                    // Retrieve the current public balance.
-                    let value = self.finalize_store().get_value_speculative(&program_id, &mapping, &key)?;
-                    // Compute the next public balance.
-                    let next_value = Value::from(Literal::U64(U64::new(match value {
-                        Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
-                            (*value).saturating_add(*amount)
+                Ratify::BlockReward(block_reward) => {
+                    // Retrieve the committee from storage.
+                    let committee = self.committee_store().current_committee()?;
+                    // Retrieve the committee mapping from storage.
+                    let committee_map =
+                        self.finalize_store().get_mapping_speculative(&program_id, &committee_mapping)?;
+                    // Retrieve the bonded mapping from storage.
+                    let bonded_map = self.finalize_store().get_mapping_speculative(&program_id, &bonded_mapping)?;
+
+                    // Ensure the committee and committee map match.
+                    ensure!(
+                        committee.members().len() == committee_map.len(),
+                        "Committee and committee map do not match"
+                    );
+                    // TODO (howardwu): Compare the committee.
+                    // TODO (howardwu): Update the committee map with the stake rewards.
+
+                    // Initialize a vector for the updated bonded mapping.
+                    let mut next_bonded = Vec::with_capacity(bonded_map.len());
+
+                    // Prepare the current stakers.
+                    let stakers = bonded_map
+                        .into_iter()
+                        .filter_map(|(key, value)| {
+                            // Extract the address from the key.
+                            let address = match key {
+                                Plaintext::Literal(Literal::Address(address), _) => address,
+                                _ => return None,
+                            };
+                            match value {
+                                Value::Plaintext(Plaintext::Struct(state, _)) => {
+                                    // Extract the validator from the value.
+                                    let validator = match state.get(&Identifier::from_str("validator").ok()?) {
+                                        Some(Plaintext::Literal(Literal::Address(validator), _)) => *validator,
+                                        _ => return None,
+                                    };
+                                    // Extract the stake from the value.
+                                    let stake = match state.get(&Identifier::from_str("microcredits").ok()?) {
+                                        Some(Plaintext::Literal(Literal::U64(microcredits), _)) => *microcredits,
+                                        _ => return None,
+                                    };
+                                    // If the stake is zero, return None.
+                                    if *stake == 0 {
+                                        return None;
+                                    }
+                                    // Return the staker.
+                                    Some((address, (validator, *stake)))
+                                }
+                                _ => return None,
+                            }
+                        })
+                        .collect();
+
+                    // Calculate the updated stakers.
+                    let updated_stakers = update_stakers_with_block_reward(stakers, *block_reward);
+                    // Iterate over the bonded mapping.
+                    for (staker, (validator, is_open)) in updated_stakers {
+                        // Construct the key.
+                        let key = Plaintext::from(Literal::Address(staker));
+                        // Construct the value.
+                        let value = Value::from_str(&format!("{{ validator: {validator}, is_open: {is_open} }}"))?;
+                        // Push the next bonded mapping entry.
+                        next_bonded.push((key, value));
+                    }
+
+                    // Replace the bonded mapping in storage.
+                    self.finalize_store().replace_mapping(&program_id, &bonded_mapping, next_bonded)?;
+                }
+                Ratify::PuzzleReward(puzzle_reward) => {
+                    // If the puzzle reward is zero, skip.
+                    if *puzzle_reward == 0 {
+                        continue;
+                    }
+                    // Process the solutions.
+                    if let Some(solutions) = solutions {
+                        // Compute the proof targets, with the corresponding addresses.
+                        let proof_targets = solutions
+                            .partial_solutions()
+                            .iter()
+                            .map(|s| Ok((s.address(), s.to_target()? as u128)))
+                            .collect::<Result<Vec<_>>>()?;
+                        // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
+                        let combined_proof_target = proof_targets.iter().map(|(_, t)| t).sum::<u128>();
+                        // Calculate the proving rewards.
+                        let proving_rewards = proving_rewards(proof_targets, *puzzle_reward, combined_proof_target);
+                        // Iterate over the proving rewards.
+                        for (address, amount) in proving_rewards {
+                            // Construct the key.
+                            let key = Plaintext::from(Literal::Address(address));
+                            // Retrieve the current public balance.
+                            let value =
+                                self.finalize_store().get_value_speculative(&program_id, &account_mapping, &key)?;
+                            // Compute the next public balance.
+                            let next_value = Value::from(Literal::U64(U64::new(match value {
+                                Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
+                                    (*value).saturating_add(amount)
+                                }
+                                None => amount,
+                                v => bail!("Critical bug in post-ratify puzzle reward- Invalid amount ({v:?})"),
+                            })));
+                            // Update the public balance in finalize storage.
+                            self.finalize_store().update_key_value(&program_id, &account_mapping, key, next_value)?;
                         }
-                        None => *amount,
-                        v => bail!("Critical bug in post-ratify - Invalid public balance type ({v:?})"),
-                    })));
-                    // Update the public balance in finalize storage.
-                    self.finalize_store().update_key_value(&program_id, &mapping, key, next_value)?;
+                    }
                 }
             }
         }
@@ -686,13 +802,13 @@ finalize transfer_public:
         assert!(!vm.contains_program(&program_id));
 
         // Finalize the transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &vec![], &confirmed_transactions).is_ok());
+        assert!(vm.finalize(sample_finalize_state(1), &vec![], None, &confirmed_transactions).is_ok());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &vec![], &confirmed_transactions).is_err());
+        assert!(vm.finalize(sample_finalize_state(1), &vec![], None, &confirmed_transactions).is_err());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));

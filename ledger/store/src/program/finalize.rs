@@ -339,6 +339,64 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         Ok(Some(FinalizeOperation::RemoveKeyValue(mapping_id, index)))
     }
 
+    /// Replaces the mapping for the given `program ID` and `mapping name` from storage,
+    /// with the given `key-value` pairs.
+    fn replace_mapping(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        entries: Vec<(Plaintext<N>, Value<N>)>,
+    ) -> Result<FinalizeOperation<N>> {
+        // Retrieve the mapping ID.
+        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
+            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping.")
+        };
+        // Retrieve the key-value IDs for the mapping ID.
+        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&mapping_id)? else {
+            bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping.")
+        };
+
+        // Initialize a vector for the key-value IDs.
+        let mut next_key_value_ids = IndexMap::with_capacity(entries.len());
+        // Initialize a vector for the keys and values.
+        let mut next_keys_values = Vec::with_capacity(entries.len());
+
+        // Iterate through the key-value pairs.
+        for (key, value) in entries {
+            // Compute the key ID.
+            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+            // Compute the value ID.
+            let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
+            // Insert the key-value ID.
+            next_key_value_ids.insert(key_id, value_id);
+            // Insert the key and value.
+            next_keys_values.push((key_id, key, value));
+        }
+
+        atomic_batch_scope!(self, {
+            // Remove the key IDs.
+            self.key_value_id_map().remove(&mapping_id)?;
+            // Remove the keys.
+            for key_id in key_value_ids.keys() {
+                self.key_map().remove(key_id)?;
+                self.value_map().remove(key_id)?;
+            }
+
+            // Insert the new key-value ID map.
+            self.key_value_id_map().insert(mapping_id, next_key_value_ids)?;
+            // Insert the new keys and values.
+            for (key_id, key, value) in next_keys_values {
+                self.key_map().insert(key_id, key)?;
+                self.value_map().insert(key_id, value)?;
+            }
+
+            Ok(())
+        })?;
+
+        // Return the finalize operation.
+        Ok(FinalizeOperation::ReplaceMapping(mapping_id))
+    }
+
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
     /// along with all associated key-value pairs in storage.
     fn remove_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<FinalizeOperation<N>> {
@@ -514,7 +572,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: &Identifier<N>,
     ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
         // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
+        let Some(mapping_id) = self.get_mapping_id_confirmed(program_id, mapping_name)? else {
             bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot update key-value.")
         };
         // Retrieve the key-value IDs for the mapping ID.
@@ -531,6 +589,39 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             };
             // Retrieve the value.
             let Some(value) = self.get_value_from_key_id_confirmed(key_id)? else {
+                bail!("Malformed operation: key ID '{key_id}' does not exist in storage - corruption detected.")
+            };
+            // Insert the entry, and fail if the key already exists.
+            entries.push((key, value));
+        }
+        // Return the entries.
+        Ok(entries)
+    }
+
+    /// Returns the speculative mapping entries for the given `program ID` and `mapping name`.
+    fn get_mapping_speculative(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
+        // Retrieve the mapping ID.
+        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
+            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot update key-value.")
+        };
+        // Retrieve the key-value IDs for the mapping ID.
+        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&mapping_id)? else {
+            bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot update key-value.")
+        };
+        // Initialize the entries vector.
+        let mut entries = Vec::with_capacity(key_value_ids.len());
+        // Iterate over the key IDs.
+        for key_id in key_value_ids.keys() {
+            // Retrieve the key.
+            let Some(key) = self.get_key_speculative(key_id)? else {
+                bail!("Malformed operation: key ID '{key_id}' does not exist in storage - corruption detected.")
+            };
+            // Retrieve the value.
+            let Some(value) = self.get_value_from_key_id_speculative(key_id)? else {
                 bail!("Malformed operation: key ID '{key_id}' does not exist in storage - corruption detected.")
             };
             // Insert the entry, and fail if the key already exists.
@@ -780,6 +871,17 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         self.storage.initialize_mapping(program_id, mapping_name)
     }
 
+    /// Replaces the mapping for the given `program ID` and `mapping name` from storage,
+    /// with the given `key-value` pairs.
+    pub fn replace_mapping(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        entries: Vec<(Plaintext<N>, Value<N>)>,
+    ) -> Result<FinalizeOperation<N>> {
+        self.storage.replace_mapping(program_id, mapping_name, entries)
+    }
+
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
     /// along with all associated key-value pairs in storage.
     pub fn remove_mapping(
@@ -820,10 +922,22 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         self.storage.get_mapping_names_confirmed(program_id)
     }
 
-    /// Returns the speculative mapping names for the given `program ID`.
-    #[deprecated]
-    pub fn get_mapping_names_speculative(&self, program_id: &ProgramID<N>) -> Result<Option<IndexSet<Identifier<N>>>> {
-        self.storage.get_mapping_names_speculative(program_id)
+    /// Returns the confirmed mapping entries for the given `program ID` and `mapping name`.
+    pub fn get_mapping_confirmed(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
+        self.storage.get_mapping_confirmed(program_id, mapping_name)
+    }
+
+    /// Returns the speculative mapping entries for the given `program ID` and `mapping name`.
+    pub fn get_mapping_speculative(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+    ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
+        self.storage.get_mapping_speculative(program_id, mapping_name)
     }
 
     /// Returns the confirmed value for the given `program ID`, `mapping name`, and `key`.

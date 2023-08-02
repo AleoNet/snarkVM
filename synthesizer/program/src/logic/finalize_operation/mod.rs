@@ -33,6 +33,8 @@ pub enum FinalizeOperation<N: Network> {
     /// Removes the key-value leaf at the given index in the mapping tree,
     /// as (`mapping ID`, `index`).
     RemoveKeyValue(Field<N>, u64),
+    /// Replaces a mapping from the program tree, as (`mapping ID`).
+    ReplaceMapping(Field<N>),
     /// Removes a mapping from the program tree, as (`mapping ID`).
     RemoveMapping(Field<N>),
 }
@@ -64,6 +66,11 @@ pub(crate) mod test_helpers {
         FinalizeOperation::RemoveKeyValue(Uniform::rand(rng), rng.gen())
     }
 
+    /// Samples a random `ReplaceMapping`.
+    pub(crate) fn sample_replace_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
+        FinalizeOperation::ReplaceMapping(Uniform::rand(rng))
+    }
+
     /// Samples a random `RemoveMapping`.
     pub(crate) fn sample_remove_mapping(rng: &mut TestRng) -> FinalizeOperation<CurrentNetwork> {
         FinalizeOperation::RemoveMapping(Uniform::rand(rng))
@@ -78,11 +85,13 @@ pub(crate) mod test_helpers {
             sample_insert_key_value(rng),
             sample_update_key_value(rng),
             sample_remove_key_value(rng),
+            sample_replace_mapping(rng),
             sample_remove_mapping(rng),
             sample_initialize_mapping(rng),
             sample_insert_key_value(rng),
             sample_update_key_value(rng),
             sample_remove_key_value(rng),
+            sample_replace_mapping(rng),
             sample_remove_mapping(rng),
         ]
     }

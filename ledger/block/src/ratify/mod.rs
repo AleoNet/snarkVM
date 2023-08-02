@@ -29,10 +29,10 @@ type PublicBalances<N> = IndexMap<Address<N>, u64>;
 pub enum Ratify<N: Network> {
     /// The genesis.
     Genesis(Option<Committee<N>>, PublicBalances<N>),
-    /// The proving reward.
-    ProvingReward(Address<N>, u64),
-    /// The staking reward.
-    StakingReward(Address<N>, u64),
+    /// The block reward.
+    BlockReward(u64),
+    /// The puzzle reward.
+    PuzzleReward(u64),
 }
 
 #[cfg(test)]
@@ -52,8 +52,8 @@ mod test_helpers {
         vec![
             Ratify::Genesis(None, public_balances.clone()),
             Ratify::Genesis(Some(committee), public_balances),
-            Ratify::ProvingReward(Address::new(rng.gen()), rng.gen()),
-            Ratify::StakingReward(Address::new(rng.gen()), rng.gen()),
+            Ratify::BlockReward(rng.gen()),
+            Ratify::PuzzleReward(rng.gen()),
         ]
     }
 }

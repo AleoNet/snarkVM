@@ -96,23 +96,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         candidate_transactions: Vec<Transaction<N>>,
     ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>), Error> {
         // Construct the solutions.
-        let (solutions, coinbase_accumulator_point, proof_targets, combined_proof_target) = match candidate_solutions
-            .is_empty()
-        {
-            true => (None, Field::<N>::zero(), Default::default(), 0u128),
+        let (solutions, coinbase_accumulator_point, combined_proof_target) = match candidate_solutions.is_empty() {
+            true => (None, Field::<N>::zero(), 0u128),
             false => {
                 // Accumulate the prover solutions.
                 let (coinbase, coinbase_accumulator_point) =
                     self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, &candidate_solutions)?;
-                // Compute the proof targets, with the corresponding addresses.
-                let proof_targets = candidate_solutions
-                    .iter()
-                    .map(|s| Ok((s.address(), s.to_target()? as u128)))
-                    .collect::<Result<Vec<_>>>()?;
-                // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
-                let combined_proof_target = proof_targets.iter().map(|(_, t)| t).sum::<u128>();
+                // Compute the combined proof target.
+                let combined_proof_target = coinbase.to_combined_proof_target()?;
                 // Output the solutions, coinbase accumulator point, and combined proof target.
-                (Some(coinbase), coinbase_accumulator_point, proof_targets, combined_proof_target)
+                (Some(coinbase), coinbase_accumulator_point, combined_proof_target)
             }
         };
 
@@ -181,23 +174,16 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Select the transactions from the memory pool.
         let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
 
-        // TODO (howardwu): Add in the stakers and their total stake.
-        // Retrieve the current stakers from storage.
-        let stakers = IndexMap::new();
-
-        // TODO (raychu86): Pay the provers and stakers.
-        // Calculate the staking rewards.
-        let staking_rewards = staking_rewards(stakers, coinbase_reward, transactions.iter());
-        // Calculate the proving rewards.
-        let proving_rewards = proving_rewards(proof_targets, coinbase_reward, combined_proof_target);
+        // Compute the block reward.
+        let block_reward = block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
+        // Compute the puzzle reward.
+        let puzzle_reward = coinbase_reward.saturating_div(2);
 
         // TODO (howardwu): We must first process the candidate ratifications to filter out invalid ratifications.
+        //  We must ensure Ratify::Genesis is only present in the genesis block.
         // Construct the ratifications.
         // Attention: Do not change the order of the ratifications.
-        let mut ratifications = Vec::new();
-        // First, we must append the staking rewards and proving rewards.
-        ratifications.extend_from_slice(&staking_rewards);
-        ratifications.extend_from_slice(&proving_rewards);
+        let mut ratifications = vec![Ratify::BlockReward(block_reward), Ratify::PuzzleReward(puzzle_reward)];
         // Lastly, we must append the candidate ratifications.
         ratifications.extend_from_slice(&candidate_ratifications);
 
@@ -212,8 +198,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         .root();
 
         // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits =
-            update_total_supply(previous_block.total_supply_in_microcredits(), &ratifications, &transactions)?;
+        let next_total_supply_in_microcredits = update_total_supply(
+            previous_block.total_supply_in_microcredits(),
+            block_reward,
+            puzzle_reward,
+            &transactions,
+        )?;
 
         // Determine the timestamp for the next block.
         let next_timestamp = match subdag {

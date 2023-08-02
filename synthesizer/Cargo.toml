@@ -30,6 +30,7 @@ async = [ "ledger-query/async", "synthesizer-process/async" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
+  "ledger-coinbase/serial",
   "ledger-committee/serial",
   "ledger-query/serial",
   "ledger-store/serial",
@@ -46,6 +47,7 @@ wasm = [
   "snark",
   "console/wasm",
   "ledger-block/wasm",
+  "ledger-coinbase/wasm",
   "ledger-committee/wasm",
   "ledger-query/wasm",
   "synthesizer-process/wasm",
@@ -69,6 +71,11 @@ version = "=0.14.6"
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../ledger/block"
+version = "=0.14.6"
+
+[dependencies.ledger-coinbase]
+package = "snarkvm-ledger-coinbase"
+path = "../ledger/coinbase"
 version = "=0.14.6"
 
 [dependencies.ledger-committee]

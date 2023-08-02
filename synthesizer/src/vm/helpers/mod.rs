@@ -16,3 +16,6 @@ mod cost;
 pub use cost::*;
 
 mod macros;
+
+mod rewards;
+pub use rewards::*;

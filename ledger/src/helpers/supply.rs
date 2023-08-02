@@ -45,14 +45,18 @@ pub fn mint_amount<N: Network>(transition: &Transition<N>) -> Result<u64> {
 
 /// Returns the next total supply in microcredits, given the starting total supply and newly-confirmed transactions.
 // TODO (raychu86): Include mints from the leader of each round.
-// TODO (howardwu): Include the ratifications in the total supply change.
 pub fn update_total_supply<N: Network>(
     starting_total_supply_in_microcredits: u64,
-    ratifications: &[Ratify<N>],
+    block_reward: u64,
+    puzzle_reward: u64,
     transactions: &Transactions<N>,
 ) -> Result<u64> {
     // Initialize the final total supply of microcredits.
     let mut final_total_supply = starting_total_supply_in_microcredits;
+    // Add the block reward to the total supply.
+    final_total_supply = final_total_supply.saturating_add(block_reward);
+    // Add the puzzle reward to the total supply.
+    final_total_supply = final_total_supply.saturating_add(puzzle_reward);
 
     // Iterate through the transactions to calculate the next total supply of microcredits.
     for confirmed in transactions.iter() {
