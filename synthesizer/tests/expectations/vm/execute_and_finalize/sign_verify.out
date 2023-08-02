@@ -1,0 +1,33 @@
+- execute:
+    sign_verify.aleo/verify:
+      outputs:
+      - '{"type":"private","id":"8134753499447896174507772346902113090305531975324455738757526207556835661231field","value":"ciphertext1qyq03ejhzmjr3r2ydjf70yr04vruxns7mwjqdalz2e6v97kyv03qspgm98pse"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"1502371710529337719131996876595194382908266299289385663259485527271494750824field","checksum":"6092893340354879381437899166670010308355715491483863182432578449747749924078field","value":"record1qyqsqdmmsd3eg40ss456f7m36scw6a7hgrn6768rjnn7s37dkk07k4q2qyxx66trwfhkxun9v35hguerqqpqzqxu0t309zkrcket9vj9d40g5knzj20femwvh9a60kq9mlah627rq8qyzcpwr3ka6nvakpsa8n69nh9h0r49ky7lrm6xscgktushdrrsq7m6wsa"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    sign_verify.aleo/verify:
+      outputs:
+      - '{"type":"private","id":"642110965694845623488243357415012173589071083027391409483183148824992412872field","value":"ciphertext1qyqr06qa5aqsqdrcu8xpmme2cxvlpj2qy9e9enmlcgwadrxaeztyqpqvu69wq"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"457451579860244325112290986595532438173316537541629631240605431275081168353field","checksum":"1534578263398971008733708160880153370400845646094299927162887721072929268730field","value":"record1qyqsq739x0qcs6scksvegnfjpzx0hmz40vt0fupfx4papmjff63nhdqwqyxx66trwfhkxun9v35hguerqqpqzqxwfu9jrfkun6cqcrf9gum0mtwx0vku29asxxnt6x0ms9vwysxapq3ugpw477zvfgg9lz6fee66c0s8ys5c7ae0c87qj67806gh9lks5vxqpk7"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    sign_verify.aleo/verify:
+      outputs:
+      - '{"type":"private","id":"1099942292466332679176787026975108810965701011902273798520756711105716946239field","value":"ciphertext1qyq8wq6586c449gefypdwna0rpyn2kkyrtatl96hkr87usf9nww3cpqsys7qp"}'
+      finalize: []
+    credits.aleo/fee:
+      outputs:
+      - '{"type":"record","id":"1850039197902025488326342341819090335698127694971581977111563154806870149980field","checksum":"6582435053897209782940585288430624109765295679732137758693211833219319916966field","value":"record1qyqsqjucgy2nrjqdl58sdfkx4jpnt8eav7x4099r936x43377jvryqgfqyxx66trwfhkxun9v35hguerqqpqzqpq80pze6pwlaw03edrj40sgc63j65eq054hgxurfkflzl8tj7spn426x529qt6h4ecgr8q866u0e0nm4847249neng3jfeqd993v7suwlfkkv"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.

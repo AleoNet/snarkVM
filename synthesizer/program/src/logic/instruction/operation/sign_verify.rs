@@ -96,7 +96,7 @@ impl<N: Network> SignVerify<N> {
             Literal::Address(address) => address,
             _ => bail!("Expected the second operand to be an address."),
         };
-        let message = registers.load(stack, &self.operands[1])?;
+        let message = registers.load(stack, &self.operands[2])?;
 
         // Verify the signature.
         let output = Literal::Boolean(Boolean::new(signature.verify(&address, &message.to_fields()?)));
@@ -126,7 +126,7 @@ impl<N: Network> SignVerify<N> {
             circuit::Literal::Address(address) => address,
             _ => bail!("Expected the second operand to be an address."),
         };
-        let message = registers.load_circuit(stack, &self.operands[1])?;
+        let message = registers.load_circuit(stack, &self.operands[2])?;
 
         // Verify the signature.
         let output = circuit::Literal::Boolean(signature.verify(&address, &message.to_fields()));
