@@ -19,13 +19,6 @@ mod string;
 #[cfg(any(test, feature = "prop-tests"))]
 pub mod prop_tests;
 
-/// The minimum amount of stake required for a validator to bond.
-/// TODO (howardwu): Change to 1_000_000_000_000u64.
-pub const MIN_STAKE: u64 = 1_000u64; // microcredits
-
-/// The maximum number of nodes that can be in a committee.
-pub const MAX_COMMITTEE_SIZE: u16 = 100; // members
-
 use console::{
     prelude::*,
     program::{Literal, LiteralType},
@@ -34,6 +27,9 @@ use console::{
 
 use indexmap::IndexMap;
 use std::collections::HashSet;
+
+/// The minimum amount of stake required for a validator to bond.
+pub const MIN_STAKE: u64 = 1_000_000_000_000u64; // microcredits
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Committee<N: Network> {

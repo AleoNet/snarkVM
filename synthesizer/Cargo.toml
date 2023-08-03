@@ -117,6 +117,9 @@ optional = true
 version = "0.1.18"
 default-features = false
 
+[dependencies.anyhow]
+version = "1.0"
+
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]
@@ -135,6 +138,11 @@ version = "1.0.72"
 
 [dev-dependencies.itertools]
 version = "0.11.0"
+
+[dev-dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../ledger/committee"
+features = [ "test-helpers" ]
 
 [dev-dependencies.once_cell]
 version = "1.18"

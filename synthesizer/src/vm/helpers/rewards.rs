@@ -13,29 +13,30 @@
 // limitations under the License.
 
 use console::{account::Address, network::prelude::*};
-use ledger_block::ConfirmedTransaction;
+use ledger_committee::Committee;
 
 use indexmap::IndexMap;
 
 /// A safety bound (sanity-check) for the coinbase reward.
 pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
 
-/// Updates the stakers with the given block reward.
+/// Returns the staking rewards for the given committee and block reward.
+/// The staking reward is defined as: `block_reward * stake / total_stake`.
 ///
-/// The staking reward is defined as:
-///   block_reward * stake / total_stake
-pub fn update_stakers_with_block_reward<'a, N: Network>(
+/// This method ensures that stakers who are bonded to validators with more than **25%**
+/// of the total stake will not receive a staking reward. In addition, this method
+/// ensures stakers who have less than 1 credit are not eligible for a staking reward.
+///
+/// The choice of 25% is to ensure at least 4 validators are operational at any given time,
+/// since our security model adheres to 3f+1, where f=1. As such, we tolerate Byzantine behavior
+/// up to 33% of the total stake.
+pub fn staking_rewards<'a, N: Network>(
     stakers: IndexMap<Address<N>, (Address<N>, u64)>,
+    committee: &Committee<N>,
     block_reward: u64,
 ) -> IndexMap<Address<N>, (Address<N>, u64)> {
-    // Compute the total stake for the stakers.
-    let mut total_stake = 0u64;
-    for (_, (_, stake)) in &stakers {
-        total_stake = total_stake.saturating_add(*stake);
-    }
-
     // If the list of stakers is empty or there is no stake, return an empty map.
-    if stakers.len() == 0 || total_stake == 0 {
+    if stakers.len() == 0 || committee.total_stake() == 0 {
         return Default::default();
     }
 
@@ -44,11 +45,22 @@ pub fn update_stakers_with_block_reward<'a, N: Network>(
 
     // Calculate the rewards for the individual stakers.
     for (staker, (validator, stake)) in stakers {
+        // If the validator has more than 25% of the total stake, skip the staker.
+        if committee.get_stake(validator) > committee.total_stake().saturating_div(4) {
+            trace!("Validator {validator} has more than 25% of the total stake - skipping {staker}");
+            continue;
+        }
+        // If the staker has less than 1 credit, skip the staker.
+        if stake < 1_000_000 {
+            trace!("Staker has less than 1 credit - skipping {staker}");
+            continue;
+        }
+
         // Compute the numerator.
         let numerator = (block_reward as u128).saturating_mul(stake as u128);
         // Compute the denominator.
         // Note: We guarantee this denominator cannot be 0 (as we return early if the total stake is 0).
-        let denominator = total_stake as u128;
+        let denominator = committee.total_stake() as u128;
         // Compute the quotient.
         let quotient = numerator.saturating_div(denominator);
         // Ensure the staking reward is within a safe bound.
@@ -68,9 +80,7 @@ pub fn update_stakers_with_block_reward<'a, N: Network>(
 }
 
 /// Returns the proving rewards for a given coinbase reward and list of prover solutions.
-///
-/// The prover reward is defined as:
-///   puzzle_reward * (proof_target / combined_proof_target)
+/// The prover reward is defined as: `puzzle_reward * (proof_target / combined_proof_target)`.
 pub fn proving_rewards<N: Network>(
     proof_targets: Vec<(Address<N>, u128)>,
     puzzle_reward: u64,
@@ -128,55 +138,71 @@ mod tests {
     const ITERATIONS: usize = 1000;
 
     #[test]
-    fn test_update_stakers() {
+    fn test_staking_rewards() {
         let rng = &mut TestRng::default();
-        // Sample a random address.
-        let address = Address::new(Group::rand(rng));
+        // Sample a random committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
         // Sample a random block reward.
         let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
+        // Retrieve an address.
+        let address = *committee.members().iter().next().unwrap().0;
 
-        let rewards =
-            update_stakers_with_block_reward::<CurrentNetwork>(indexmap![address => (address, 2)], block_reward);
-        assert_eq!(rewards.len(), 1);
-        let (candidate_address, (candidate_validator, candidate_amount)) = rewards.into_iter().next().unwrap();
-        assert_eq!(candidate_address, address);
-        assert_eq!(candidate_validator, address);
-        assert_eq!(candidate_amount, 2 + block_reward);
+        for _ in 0..ITERATIONS {
+            // Sample a random stake.
+            let stake = rng.gen_range(1_000_000..committee.total_stake());
+            // Construct the stakers.
+            let stakers = indexmap! {address => (address, stake)};
+            let rewards = staking_rewards::<CurrentNetwork>(stakers, &committee, block_reward);
+            assert_eq!(rewards.len(), 1);
+            let (candidate_address, (candidate_validator, candidate_stake)) = rewards.into_iter().next().unwrap();
+            assert_eq!(candidate_address, address);
+            assert_eq!(candidate_validator, address);
+            let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
+            assert_eq!(candidate_stake, stake + reward as u64);
+        }
     }
 
     #[test]
-    fn test_update_stakers_is_empty() {
+    fn test_staking_rewards_cannot_exceed_coinbase_reward() {
         let rng = &mut TestRng::default();
-        // Sample a random address.
-        let address = Address::new(Group::rand(rng));
-
-        // Compute the staking rewards (empty).
-        let rewards = update_stakers_with_block_reward::<CurrentNetwork>(indexmap![], rng.gen());
-        assert!(rewards.is_empty());
-
-        // Check that a maxed out coinbase reward, returns empty.
-        let rewards = update_stakers_with_block_reward::<CurrentNetwork>(indexmap![address => (address, 2)], u64::MAX);
-        assert!(rewards.is_empty());
+        // Sample a random committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Retrieve an address.
+        let address = *committee.members().iter().next().unwrap().0;
 
         // Ensure a staking reward that is too large, renders no rewards.
         for _ in 0..ITERATIONS {
-            // Sample a random address.
-            let address = Address::new(Group::rand(rng));
             // Sample a random overly-large block reward.
             let block_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
             // Sample a random stake.
-            let stake = rng.gen_range(0..u64::MAX);
+            let stake = rng.gen_range(1_000_000..u64::MAX);
             // Check that an overly large block reward fails.
-            let rewards = update_stakers_with_block_reward::<CurrentNetwork>(
-                indexmap![address => (address, stake)],
-                block_reward,
-            );
+            let rewards =
+                staking_rewards::<CurrentNetwork>(indexmap![address => (address, stake)], &committee, block_reward);
             assert!(rewards.is_empty());
         }
     }
 
     #[test]
-    fn test_proving_rewards_cannot_exceed_coinbase_reward() {
+    fn test_staking_rewards_is_empty() {
+        let rng = &mut TestRng::default();
+        // Sample a random committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Retrieve an address.
+        let address = *committee.members().iter().next().unwrap().0;
+
+        // Compute the staking rewards (empty).
+        let rewards = staking_rewards::<CurrentNetwork>(indexmap![], &committee, rng.gen());
+        assert!(rewards.is_empty());
+
+        // Check that a maxed out coinbase reward, returns empty.
+        let rewards =
+            staking_rewards::<CurrentNetwork>(indexmap![address => (address, 1_000_000)], &committee, u64::MAX);
+        assert!(rewards.is_empty());
+    }
+
+    #[test]
+    fn test_proving_rewards() {
         let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
@@ -191,6 +217,24 @@ mod tests {
             let (candidate_address, candidate_amount) = rewards.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
             assert!(candidate_amount <= puzzle_reward);
+        }
+    }
+
+    #[test]
+    fn test_proving_rewards_cannot_exceed_coinbase_reward() {
+        let rng = &mut TestRng::default();
+
+        // Ensure a proving reward that is too large, renders no rewards.
+        for _ in 0..ITERATIONS {
+            // Sample a random address.
+            let address = Address::new(Group::rand(rng));
+            // Sample a random overly-large puzzle reward.
+            let puzzle_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
+            // Sample a random proof target.
+            let proof_target = rng.gen_range(0..u64::MAX as u128);
+            // Check that a maxed out proof target fails.
+            let rewards = proving_rewards::<CurrentNetwork>(vec![(address, proof_target)], puzzle_reward, proof_target);
+            assert!(rewards.is_empty());
         }
     }
 
@@ -211,18 +255,5 @@ mod tests {
         // Ensure a 0 coinbase reward case is empty.
         let rewards = proving_rewards::<CurrentNetwork>(vec![(address, 2)], 0, 2);
         assert!(rewards.is_empty());
-
-        // Ensure a proving reward that is too large, renders no rewards.
-        for _ in 0..ITERATIONS {
-            // Sample a random address.
-            let address = Address::new(Group::rand(rng));
-            // Sample a random overly-large puzzle reward.
-            let puzzle_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
-            // Sample a random proof target.
-            let proof_target = rng.gen_range(0..u64::MAX as u128);
-            // Check that a maxed out proof target fails.
-            let rewards = proving_rewards::<CurrentNetwork>(vec![(address, proof_target)], puzzle_reward, proof_target);
-            assert!(rewards.is_empty());
-        }
     }
 }

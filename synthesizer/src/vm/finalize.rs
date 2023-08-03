@@ -423,59 +423,28 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         self.finalize_store().get_mapping_speculative(&program_id, &committee_mapping)?;
                     // Retrieve the bonded mapping from storage.
                     let bonded_map = self.finalize_store().get_mapping_speculative(&program_id, &bonded_mapping)?;
+                    // Convert the bonded map into stakers.
+                    let stakers = bonded_map_into_stakers(bonded_map)?;
 
-                    // Ensure the committee and committee map match.
-                    ensure!(
-                        committee.members().len() == committee_map.len(),
-                        "Committee and committee map do not match"
-                    );
-                    // TODO (howardwu): Compare the committee.
+                    // Ensure the committee matches the committee mapping.
+                    ensure_committee_matches(&committee, &committee_map)?;
+                    // Ensure the committee matches the bonded mapping.
+                    ensure_stakers_matches(&committee, &stakers)?;
+
                     // TODO (howardwu): Update the committee map with the stake rewards.
 
                     // Initialize a vector for the updated bonded mapping.
-                    let mut next_bonded = Vec::with_capacity(bonded_map.len());
-
-                    // Prepare the current stakers.
-                    let stakers = bonded_map
-                        .into_iter()
-                        .filter_map(|(key, value)| {
-                            // Extract the address from the key.
-                            let address = match key {
-                                Plaintext::Literal(Literal::Address(address), _) => address,
-                                _ => return None,
-                            };
-                            match value {
-                                Value::Plaintext(Plaintext::Struct(state, _)) => {
-                                    // Extract the validator from the value.
-                                    let validator = match state.get(&Identifier::from_str("validator").ok()?) {
-                                        Some(Plaintext::Literal(Literal::Address(validator), _)) => *validator,
-                                        _ => return None,
-                                    };
-                                    // Extract the stake from the value.
-                                    let stake = match state.get(&Identifier::from_str("microcredits").ok()?) {
-                                        Some(Plaintext::Literal(Literal::U64(microcredits), _)) => *microcredits,
-                                        _ => return None,
-                                    };
-                                    // If the stake is zero, return None.
-                                    if *stake == 0 {
-                                        return None;
-                                    }
-                                    // Return the staker.
-                                    Some((address, (validator, *stake)))
-                                }
-                                _ => return None,
-                            }
-                        })
-                        .collect();
+                    let mut next_bonded = Vec::with_capacity(stakers.len());
 
                     // Calculate the updated stakers.
-                    let updated_stakers = update_stakers_with_block_reward(stakers, *block_reward);
+                    let updated_stakers = staking_rewards(stakers, &committee, *block_reward);
                     // Iterate over the bonded mapping.
-                    for (staker, (validator, is_open)) in updated_stakers {
+                    for (staker, (validator, microcredits)) in updated_stakers {
                         // Construct the key.
                         let key = Plaintext::from(Literal::Address(staker));
                         // Construct the value.
-                        let value = Value::from_str(&format!("{{ validator: {validator}, is_open: {is_open} }}"))?;
+                        let value =
+                            Value::from_str(&format!("{{ validator: {validator}, microcredits: {microcredits} }}"))?;
                         // Push the next bonded mapping entry.
                         next_bonded.push((key, value));
                     }

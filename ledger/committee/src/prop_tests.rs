@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::{MAX_COMMITTEE_SIZE, MIN_STAKE};
+use crate::MIN_STAKE;
 
 use std::{
     collections::HashSet,
@@ -30,6 +30,9 @@ use rand::SeedableRng;
 use test_strategy::proptest;
 
 type CurrentNetwork = console::network::Testnet3;
+
+/// The maximum number of nodes that can be in a committee.
+pub const MAX_COMMITTEE_SIZE: u16 = 100; // members
 
 #[derive(Debug, Clone)]
 pub struct Validator {
@@ -145,7 +148,7 @@ impl Arbitrary for ValidatorSet {
 }
 
 pub fn any_valid_validator() -> BoxedStrategy<Validator> {
-    (MIN_STAKE..5_000_000_000, any_valid_address(), any::<bool>())
+    (MIN_STAKE..100_000_000_000_000, any_valid_address(), any::<bool>())
         .prop_map(|(stake, address, is_open)| Validator { address, stake, is_open })
         .boxed()
 }
