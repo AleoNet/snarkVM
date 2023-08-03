@@ -46,6 +46,66 @@ impl<N: Network> FromBits for Signature<N> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
 
-    // TODO
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: usize = 100;
+
+    fn check_from_bits_le() -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        for i in 0..ITERATIONS {
+            // Sample a random signature.
+            let expected = test_helpers::sample_signature(i as u64, rng);
+
+            let given_bits = expected.to_bits_le();
+            assert_eq!(Signature::<CurrentNetwork>::size_in_bits(), given_bits.len());
+
+            let candidate = Signature::<CurrentNetwork>::from_bits_le(&given_bits)?;
+            assert_eq!(expected, candidate);
+
+            // Add excess zero bits.
+            let candidate = vec![given_bits, vec![false; i]].concat();
+
+            let candidate = Signature::<CurrentNetwork>::from_bits_le(&candidate)?;
+            assert_eq!(expected, candidate);
+            assert_eq!(Signature::<CurrentNetwork>::size_in_bits(), candidate.to_bits_le().len());
+        }
+        Ok(())
+    }
+
+    fn check_from_bits_be() -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        for i in 0..ITERATIONS {
+            // Sample a random signature.
+            let expected = test_helpers::sample_signature(i as u64, rng);
+
+            let given_bits = expected.to_bits_be();
+            assert_eq!(Signature::<CurrentNetwork>::size_in_bits(), given_bits.len());
+
+            let candidate = Signature::<CurrentNetwork>::from_bits_be(&given_bits)?;
+            assert_eq!(expected, candidate);
+
+            // Add excess zero bits.
+            let candidate = vec![given_bits, vec![false; i]].concat();
+
+            let candidate = Signature::<CurrentNetwork>::from_bits_be(&candidate)?;
+            assert_eq!(expected, candidate);
+            assert_eq!(Signature::<CurrentNetwork>::size_in_bits(), candidate.to_bits_be().len());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_bits_le() -> Result<()> {
+        check_from_bits_le()
+    }
+
+    #[test]
+    fn test_from_bits_be() -> Result<()> {
+        check_from_bits_be()
+    }
 }
