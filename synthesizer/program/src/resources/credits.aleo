@@ -155,7 +155,8 @@ finalize bond_public:
     /* Start Committee */
 
     // Construct the initial committee state.
-    cast 0u64 false into r4 as committee_state;
+    // Note: We set the initial 'is_open' state to 'true'.
+    cast 0u64 true into r4 as committee_state;
     // Retrieve the committee state of the specified validator.
     get.or_use committee[r0] r4 into r5;
     // Ensure that the validator is open to stakers.
