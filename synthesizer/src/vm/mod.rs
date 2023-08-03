@@ -273,21 +273,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.previous_hash(),
         )?;
 
-        // First, insert the block.
+        // First, finalize the transactions.
+        self.finalize(state, block.ratifications(), block.coinbase(), block.transactions())?;
+        // Next, insert the block.
         self.block_store().insert(block)?;
-        // Next, finalize the transactions.
-        match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
-            Ok(_) => {
-                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
-                Ok(())
-            }
-            Err(error) => {
-                // Rollback the block.
-                self.block_store().remove_last_n(1)?;
-                // Return the error.
-                Err(error)
-            }
-        }
+        // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
+        Ok(())
     }
 }
 
