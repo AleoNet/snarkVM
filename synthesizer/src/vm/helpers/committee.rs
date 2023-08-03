@@ -84,7 +84,7 @@ pub fn ensure_committee_matches<N: Network>(
 
     // Extract the committee map.
     let committee_map = committee_map
-        .into_iter()
+        .iter()
         .map(|(key, value)| {
             // Extract the address from the key.
             let address = match key {

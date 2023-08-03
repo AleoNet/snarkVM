@@ -30,7 +30,7 @@ pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
 /// The choice of 25% is to ensure at least 4 validators are operational at any given time,
 /// since our security model adheres to 3f+1, where f=1. As such, we tolerate Byzantine behavior
 /// up to 33% of the total stake.
-pub fn staking_rewards<'a, N: Network>(
+pub fn staking_rewards<N: Network>(
     stakers: IndexMap<Address<N>, (Address<N>, u64)>,
     committee: &Committee<N>,
     block_reward: u64,
@@ -158,7 +158,7 @@ mod tests {
             assert_eq!(candidate_address, address);
             assert_eq!(candidate_validator, address);
             let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
-            assert_eq!(candidate_stake, stake + reward as u64);
+            assert_eq!(candidate_stake, stake + u64::try_from(reward).unwrap());
         }
     }
 

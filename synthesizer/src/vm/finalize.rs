@@ -771,13 +771,13 @@ finalize transfer_public:
         assert!(!vm.contains_program(&program_id));
 
         // Finalize the transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &vec![], None, &confirmed_transactions).is_ok());
+        assert!(vm.finalize(sample_finalize_state(1), &[], None, &confirmed_transactions).is_ok());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
 
         // Ensure the VM can't redeploy the same transaction.
-        assert!(vm.finalize(sample_finalize_state(1), &vec![], None, &confirmed_transactions).is_err());
+        assert!(vm.finalize(sample_finalize_state(1), &[], None, &confirmed_transactions).is_err());
 
         // Ensure the VM contains this program.
         assert!(vm.contains_program(&program_id));
