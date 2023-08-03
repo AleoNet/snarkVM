@@ -112,8 +112,13 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // Retrieve the current block height.
         let current_height = self.current_height().unwrap_or(0);
-        // Ensure the next height is greater than the current height.
-        ensure!(next_height > current_height, "Next height must be greater than current height");
+        // Check the next height.
+        match current_height == 0 {
+            // If the current height is 0, ensure the next height is 0.
+            true => ensure!(next_height == current_height, "Next height must equal the current height (0)"),
+            // Otherwise, ensure the next height is greater than the current height.
+            false => ensure!(next_height > current_height, "Next height must be greater than current height"),
+        }
 
         // If the next round already exists, then return an error.
         ensure!(
