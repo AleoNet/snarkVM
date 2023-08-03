@@ -15,7 +15,7 @@
 pub mod memory;
 #[cfg(feature = "rocks")]
 pub mod rocksdb;
-
+pub mod kafka;
 use console::network::prelude::*;
 
 use core::{borrow::Borrow, hash::Hash};
