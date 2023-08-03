@@ -14,6 +14,7 @@
 
 use super::*;
 
+#[cfg(console)]
 impl<A: Aleo> Equal<Self> for Signature<A> {
     type Output = Boolean<A>;
 
@@ -46,7 +47,7 @@ impl<A: Aleo> Equal<Self> for Signature<A> {
 impl<A: Aleo> Metrics<dyn Equal<Signature<A>, Output = Boolean<A>>> for Signature<A> {
     type Case = (Mode, Mode);
 
-    fn count(case: &Self::Case) -> Count {
+    fn count(_case: &Self::Case) -> Count {
         todo!()
         // match case.0.is_constant() && case.1.is_constant() {
         // }
@@ -64,7 +65,7 @@ impl<A: Aleo> OutputMode<dyn Equal<Signature<A>, Output = Boolean<A>>> for Signa
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
 
     // TODO
