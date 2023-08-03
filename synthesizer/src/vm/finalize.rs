@@ -345,6 +345,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
         let committee_mapping = Identifier::from_str("committee")?;
+        // Construct the bonded mapping name.
+        let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
 
@@ -355,18 +357,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Ensure this is the genesis block.
                     ensure!(state.block_height() == 0, "Ratify::Genesis(..) expected a genesis block");
 
-                    // Insert the committee into storage.
-                    self.committee_store().insert(state.block_height(), committee.clone())?;
-                    // Iterate over the committee.
-                    for (address, (microcredits, is_open)) in committee.members() {
-                        // Construct the key.
-                        let key = Plaintext::from(Literal::Address(*address));
-                        // Construct the value.
-                        let value =
-                            Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}"))?;
-                        // Insert the key-value into storage.
-                        self.finalize_store().insert_key_value(&program_id, &committee_mapping, key, value)?;
+                    // Initialize the stakers.
+                    let mut stakers = IndexMap::with_capacity(committee.members().len());
+                    // Iterate over the committee members.
+                    for (validator, (microcredits, _)) in committee.members() {
+                        // Insert the validator into the stakers.
+                        stakers.insert(*validator, (*validator, *microcredits));
                     }
+
+                    // Construct the next committee map and next bonded map.
+                    let (next_committee_map, next_bonded_map) =
+                        to_next_commitee_map_and_bonded_map(committee, &stakers);
+
+                    // Insert the next committee into storage.
+                    self.committee_store().insert(state.block_height(), committee.clone())?;
+                    // Replace the committee mapping in storage.
+                    self.finalize_store().replace_mapping(&program_id, &committee_mapping, next_committee_map)?;
+                    // Replace the bonded mapping in storage.
+                    self.finalize_store().replace_mapping(&program_id, &bonded_mapping, next_bonded_map)?;
 
                     // Iterate over the public balances.
                     for (address, amount) in public_balances {
