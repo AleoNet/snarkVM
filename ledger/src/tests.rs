@@ -34,7 +34,7 @@ fn test_load() {
     // Initialize the store.
     let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
     // Create a genesis block.
-    let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, Default::default(), rng).unwrap();
+    let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
 
     // Initialize the ledger with the genesis block.
     let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();

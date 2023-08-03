@@ -36,7 +36,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
-    let genesis = vm.genesis_beacon(private_key, Default::default(), rng).unwrap();
+    let genesis = vm.genesis_beacon(private_key, rng).unwrap();
 
     // Fetch the unspent records.
     let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();

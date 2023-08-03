@@ -191,12 +191,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new genesis block for a beacon chain.
-    pub fn genesis_beacon<R: Rng + CryptoRng>(
-        &self,
-        private_key: &PrivateKey<N>,
-        public_balances: IndexMap<Address<N>, u64>,
-        rng: &mut R,
-    ) -> Result<Block<N>> {
+    pub fn genesis_beacon<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
         // Construct the committee members.
         let members = indexmap::indexmap! {
             Address::try_from(private_key)? => (ledger_committee::MIN_STAKE, false),
@@ -206,6 +201,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         };
         // Construct the committee.
         let committee = Committee::<N>::new(1, members)?;
+        // Construct the public balances.
+        let public_balances = indexmap::indexmap! {
+            Address::try_from(private_key)? => 1_000_000_000_000_000,
+        };
         // Return the genesis block.
         self.genesis_quorum(private_key, committee, public_balances, rng)
     }
@@ -342,7 +341,7 @@ pub(crate) mod test_helpers {
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 // Return the block.
-                vm.genesis_beacon(&caller_private_key, Default::default(), rng).unwrap()
+                vm.genesis_beacon(&caller_private_key, rng).unwrap()
             })
             .clone()
     }
@@ -776,7 +775,7 @@ finalize getter:
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
-        let genesis = vm.genesis_beacon(&caller_private_key, Default::default(), rng).unwrap();
+        let genesis = vm.genesis_beacon(&caller_private_key, rng).unwrap();
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 
