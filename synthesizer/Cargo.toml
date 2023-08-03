@@ -44,6 +44,7 @@ timer = [ "aleo-std/timer" ]
 wasm = [
   "process",
   "program",
+  "rayon",
   "snark",
   "console/wasm",
   "ledger-block/wasm",
