@@ -12,17 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::redundant_closure)]
+
 use console::{
     account::Address,
     network::Network,
+    prelude::{cfg_into_iter, cfg_iter, cfg_reduce},
     program::{Identifier, Literal, Plaintext, Value},
     types::{Boolean, U64},
 };
 use ledger_committee::Committee;
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{bail, ensure, Result};
 use indexmap::{indexmap, IndexMap};
 use std::str::FromStr;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 /// Returns the stakers given the bonded map from finalize storage.
 pub fn bonded_map_into_stakers<N: Network>(
@@ -32,35 +38,35 @@ pub fn bonded_map_into_stakers<N: Network>(
     let validator_identifier = Identifier::from_str("validator")?;
     let microcredits_identifier = Identifier::from_str("microcredits")?;
 
-    // Extract the bonded map.
-    bonded_map
-        .into_iter()
-        .map(|(key, value)| {
-            // Extract the staker from the key.
-            let address = match key {
-                Plaintext::Literal(Literal::Address(address), _) => address,
-                _ => bail!("Invalid bonded key (missing staker) - {key}"),
-            };
-            // Extract the bonded state from the value.
-            match &value {
-                Value::Plaintext(Plaintext::Struct(state, _)) => {
-                    // Extract the validator from the value.
-                    let validator = match state.get(&validator_identifier) {
-                        Some(Plaintext::Literal(Literal::Address(validator), _)) => *validator,
-                        _ => bail!("Invalid bonded state (missing validator) - {value}"),
-                    };
-                    // Extract the microcredits from the value.
-                    let microcredits = match state.get(&microcredits_identifier) {
-                        Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
-                        _ => bail!("Invalid bonded state (missing microcredits) - {value}"),
-                    };
-                    // Return the bonded state.
-                    Ok((address, (validator, microcredits)))
-                }
-                _ => bail!("Invalid bonded value (missing struct) - {value}"),
+    // Convert the given key and value into a staker entry.
+    let convert = |key, value| {
+        // Extract the staker from the key.
+        let address = match key {
+            Plaintext::Literal(Literal::Address(address), _) => address,
+            _ => bail!("Invalid bonded key (missing staker) - {key}"),
+        };
+        // Extract the bonded state from the value.
+        match &value {
+            Value::Plaintext(Plaintext::Struct(state, _)) => {
+                // Extract the validator from the value.
+                let validator = match state.get(&validator_identifier) {
+                    Some(Plaintext::Literal(Literal::Address(validator), _)) => *validator,
+                    _ => bail!("Invalid bonded state (missing validator) - {value}"),
+                };
+                // Extract the microcredits from the value.
+                let microcredits = match state.get(&microcredits_identifier) {
+                    Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
+                    _ => bail!("Invalid bonded state (missing microcredits) - {value}"),
+                };
+                // Return the bonded state.
+                Ok((address, (validator, microcredits)))
             }
-        })
-        .collect::<Result<IndexMap<_, _>>>()
+            _ => bail!("Invalid bonded value (missing struct) - {value}"),
+        }
+    };
+
+    // Convert the bonded map into stakers.
+    bonded_map.into_iter().map(|(key, value)| convert(key, value)).collect::<Result<IndexMap<_, _>>>()
 }
 
 /// Checks that the given committee from committee storage matches the given committee map from finalize storage.
@@ -120,24 +126,25 @@ pub fn ensure_stakers_matches<N: Network>(
     committee: &Committee<N>,
     stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
 ) -> Result<()> {
-    // Initialize a validator map.
-    let mut validator_map = IndexMap::<_, u64>::with_capacity(committee.members().len());
-    // Initialize a tracker for the total microcredits.
-    let mut total_microcredits = 0u64;
+    // Construct the validator map.
+    let validator_map: IndexMap<_, _> = cfg_reduce!(
+        cfg_into_iter!(stakers).map(|(_, (validator, microcredits))| indexmap! {*validator => *microcredits}),
+        || IndexMap::new(),
+        |mut acc, e| {
+            for (validator, microcredits) in e {
+                let entry: &mut u64 = acc.entry(validator).or_default();
+                *entry = entry.saturating_add(microcredits);
+            }
+            acc
+        }
+    );
 
-    // Iterate over the stakers.
-    for (_, (validator, microcredits)) in stakers {
-        // Retrieve the entry for the validator.
-        let entry = validator_map.entry(*validator).or_default();
-        // Add the staker's microcredits to the validator's microcredits.
-        *entry = entry
-            .checked_add(*microcredits)
-            .ok_or_else(|| anyhow!("Overflow while adding validator microcredits from staker"))?;
-        // Add the staker's microcredits to the total microcredits.
-        total_microcredits = total_microcredits
-            .checked_add(*microcredits)
-            .ok_or_else(|| anyhow!("Overflow while adding total microcredits from staker"))?;
-    }
+    // Compute the total microcredits.
+    let total_microcredits =
+        cfg_reduce!(cfg_iter!(validator_map).map(|(_, microcredits)| *microcredits), || 0u64, |a, b| {
+            // Add the staker's microcredits to the total microcredits.
+            a.saturating_add(b)
+        });
 
     // Ensure the committee and committee map match.
     ensure!(committee.members().len() == validator_map.len(), "Committee and validator map length do not match");
@@ -146,9 +153,12 @@ pub fn ensure_stakers_matches<N: Network>(
 
     // Iterate over the committee and ensure the committee and validators match.
     for (validator, (microcredits, _)) in committee.members() {
-        ensure!(validator_map.contains_key(validator), "A validator is missing in finalize storage");
-        let candidate_microcredits = validator_map.get(validator).unwrap();
-        ensure!(*microcredits == *candidate_microcredits, "Committee contains an incorrect 'microcredits' amount");
+        let candidate_microcredits = validator_map.get(validator);
+        ensure!(candidate_microcredits.is_some(), "A validator is missing in finalize storage");
+        ensure!(
+            *microcredits == *candidate_microcredits.unwrap(),
+            "Committee contains an incorrect 'microcredits' amount"
+        );
     }
 
     Ok(())
@@ -160,22 +170,23 @@ pub fn to_next_committee<N: Network>(
     next_round: u64,
     next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
 ) -> Result<Committee<N>> {
-    // Initialize the validators.
-    let mut validators = IndexMap::<_, u64>::with_capacity(current_committee.members().len());
-
-    for (_, (validator, microcredits)) in next_stakers {
-        // Retrieve the entry for the validator.
-        let entry = validators.entry(*validator).or_default();
-        // Add the staker's microcredits to the validator's microcredits.
-        *entry = entry
-            .checked_add(*microcredits)
-            .ok_or_else(|| anyhow!("Overflow while adding validator microcredits from staker"))?;
-    }
+    // Construct the validator map.
+    let validator_map: IndexMap<_, _> = cfg_reduce!(
+        cfg_into_iter!(next_stakers).map(|(_, (validator, microcredits))| indexmap! {*validator => *microcredits}),
+        || IndexMap::new(),
+        |mut acc, e| {
+            for (validator, microcredits) in e {
+                let entry: &mut u64 = acc.entry(validator).or_default();
+                *entry = entry.saturating_add(microcredits);
+            }
+            acc
+        }
+    );
 
     // Initialize the members.
-    let mut members = IndexMap::with_capacity(validators.len());
+    let mut members = IndexMap::with_capacity(validator_map.len());
     // Iterate over the validators.
-    for (validator, microcredits) in validators {
+    for (validator, microcredits) in validator_map {
         members.insert(validator, (microcredits, current_committee.is_committee_member_open(validator)));
     }
     // Return the next committee.
@@ -192,118 +203,134 @@ pub fn to_next_commitee_map_and_bonded_map<N: Network>(
     let microcredits_identifier = Identifier::from_str("microcredits").expect("Failed to parse 'microcredits'");
     let is_open_identifier = Identifier::from_str("is_open").expect("Failed to parse 'is_open'");
 
-    // Initialize the committee map.
-    let mut committee_map = Vec::with_capacity(next_committee.members().len());
-    // Initialize the bonded map.
-    let mut bonded_map = Vec::with_capacity(next_stakers.len());
+    // Construct the committee map.
+    let committee_map = cfg_iter!(next_committee.members())
+        .map(|(validator, (microcredits, is_open))| {
+            // Construct the committee state.
+            let committee_state = indexmap! {
+                microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
+                is_open_identifier => Plaintext::from(Literal::Boolean(Boolean::new(*is_open))),
+            };
+            // Return the committee state.
+            (
+                Plaintext::from(Literal::Address(*validator)),
+                Value::Plaintext(Plaintext::Struct(committee_state, Default::default())),
+            )
+        })
+        .collect::<Vec<_>>();
 
-    for (staker, (validator, microcredits)) in next_stakers {
-        // Construct the bonded state.
-        let bonded_state = indexmap! {
-            validator_identifier => Plaintext::from(Literal::Address(*validator)),
-            microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
-        };
-        // Update the bonded map.
-        bonded_map.push((
-            Plaintext::from(Literal::Address(*staker)),
-            Value::Plaintext(Plaintext::Struct(bonded_state, Default::default())),
-        ));
-    }
-
-    for (validator, (microcredits, is_open)) in next_committee.members() {
-        // Construct the committee state.
-        let committee_state = indexmap! {
-            microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
-            is_open_identifier => Plaintext::from(Literal::Boolean(Boolean::new(*is_open))),
-        };
-        // Update the committee map.
-        committee_map.push((
-            Plaintext::from(Literal::Address(*validator)),
-            Value::Plaintext(Plaintext::Struct(committee_state, Default::default())),
-        ));
-    }
+    // Construct the bonded map.
+    let bonded_map = cfg_iter!(next_stakers)
+        .map(|(staker, (validator, microcredits))| {
+            // Construct the bonded state.
+            let bonded_state = indexmap! {
+                validator_identifier => Plaintext::from(Literal::Address(*validator)),
+                microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
+            };
+            // Return the bonded state.
+            (
+                Plaintext::from(Literal::Address(*staker)),
+                Value::Plaintext(Plaintext::Struct(bonded_state, Default::default())),
+            )
+        })
+        .collect::<Vec<_>>();
 
     (committee_map, bonded_map)
+}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use ledger_committee::MIN_STAKE;
+
+    use rand::Rng;
+
+    /// Returns the stakers, given the map of `(validator, (microcredits, is_open))` entries.
+    /// This method simulates the existence of delegators for the members.
+    pub(crate) fn to_stakers<N: Network>(
+        members: &IndexMap<Address<N>, (u64, bool)>,
+    ) -> IndexMap<Address<N>, (Address<N>, u64)> {
+        members
+            .into_iter()
+            .flat_map(|(validator, (microcredits, _))| {
+                // Keep a tally of the remaining microcredits.
+                let remaining_microcredits = microcredits.saturating_sub(MIN_STAKE);
+                // Set the staker amount to 10 credit.
+                let staker_amount = 10_000_000;
+                // Determine the number of iterations.
+                let num_iterations = (remaining_microcredits / staker_amount).saturating_sub(1);
+
+                // Construct the map of stakers.
+                let mut stakers: IndexMap<_, _> = cfg_into_iter!((0..num_iterations))
+                    .map(|_| {
+                        let rng = &mut rand::thread_rng();
+                        // Sample a random staker.
+                        let staker = Address::<N>::new(rng.gen());
+                        // Output the staker.
+                        (staker, (*validator, staker_amount))
+                    })
+                    .collect();
+
+                // Insert the validator.
+                stakers.insert(*validator, (*validator, MIN_STAKE));
+
+                // Insert the last staker.
+                let final_amount = remaining_microcredits.saturating_sub(num_iterations * staker_amount);
+                if final_amount > 0 {
+                    let rng = &mut rand::thread_rng();
+                    let staker = Address::<N>::new(rng.gen());
+                    stakers.insert(staker, (*validator, final_amount));
+                }
+                // Return the stakers.
+                stakers
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use console::prelude::TestRng;
-    use ledger_committee::MIN_STAKE;
 
-    use rand::Rng;
+    #[allow(unused_imports)]
     use rayon::prelude::*;
     use std::str::FromStr;
 
-    type CurrentNetwork = console::network::Testnet3;
-
-    const ITERATIONS: usize = 1000;
-
     /// Returns the committee map, given the map of `(validator, (microcredits, is_open))` entries.
     fn to_committee_map<N: Network>(members: &IndexMap<Address<N>, (u64, bool)>) -> Vec<(Plaintext<N>, Value<N>)> {
-        let mut committee_map = Vec::with_capacity(members.len());
-
-        for (validator, (microcredits, is_open)) in members {
-            let microcredits = U64::<N>::new(*microcredits);
-            let is_open = Boolean::<N>::new(*is_open);
-
-            committee_map.push((
-                Plaintext::from(Literal::Address(*validator)),
-                Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}")).unwrap(),
-            ));
-        }
-        committee_map
+        members
+            .par_iter()
+            .map(|(validator, (microcredits, is_open))| {
+                let microcredits = U64::<N>::new(*microcredits);
+                let is_open = Boolean::<N>::new(*is_open);
+                (
+                    Plaintext::from(Literal::Address(*validator)),
+                    Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}")).unwrap(),
+                )
+            })
+            .collect()
     }
 
     /// Returns the bonded map, given the staker, validator and microcredits.
     fn to_bonded_map<N: Network>(stakers: &IndexMap<Address<N>, (Address<N>, u64)>) -> Vec<(Plaintext<N>, Value<N>)> {
-        let mut bonded_map = Vec::with_capacity(stakers.len());
+        // Prepare the identifiers.
+        let validator_identifier = Identifier::from_str("validator").expect("Failed to parse 'validator'");
+        let microcredits_identifier = Identifier::from_str("microcredits").expect("Failed to parse 'microcredits'");
 
-        for (staker, (validator, microcredits)) in stakers {
-            let microcredits = U64::<N>::new(*microcredits);
-
-            bonded_map.push((
-                Plaintext::from(Literal::Address(*staker)),
-                Value::from_str(&format!("{{ validator: {validator}, microcredits: {microcredits} }}")).unwrap(),
-            ));
-        }
-        bonded_map
-    }
-
-    /// Returns the stakers, given the map of `(validator, (microcredits, is_open))` entries.
-    /// This method simulates the existence of delegators for the members.
-    fn to_stakers<N: Network>(members: &IndexMap<Address<N>, (u64, bool)>) -> IndexMap<Address<N>, (Address<N>, u64)> {
-        members
-            .into_par_iter()
-            .flat_map(|(validator, (microcredits, _))| {
-                let rng = &mut TestRng::default();
-
-                let mut stakers = IndexMap::new();
-
-                // Insert the validator.
-                stakers.insert(*validator, (*validator, MIN_STAKE));
-
-                // Keep a tally of the remaining microcredits.
-                let mut remaining_microcredits = microcredits.saturating_sub(MIN_STAKE);
-
-                // Set the staker amount to 1 credit.
-                let staker_amount = 1_000_000;
-
-                while remaining_microcredits > 2 * staker_amount {
-                    // Sample a random staker.
-                    let staker = Address::<N>::new(rng.gen());
-                    // Insert staker.
-                    stakers.insert(staker, (*validator, staker_amount));
-                    // Update the remaining microcredits.
-                    remaining_microcredits -= staker_amount;
-                }
-
-                // Insert the last staker.
-                let staker = Address::<N>::new(rng.gen());
-                stakers.insert(staker, (*validator, remaining_microcredits));
-
-                stakers
+        stakers
+            .par_iter()
+            .map(|(staker, (validator, microcredits))| {
+                // Construct the bonded state.
+                let bonded_state = indexmap! {
+                    validator_identifier => Plaintext::from(Literal::Address(*validator)),
+                    microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
+                };
+                // Return the bonded state.
+                (
+                    Plaintext::from(Literal::Address(*staker)),
+                    Value::Plaintext(Plaintext::Struct(bonded_state, Default::default())),
+                )
             })
             .collect()
     }
@@ -312,37 +339,37 @@ mod tests {
     fn test_bonded_map_into_stakers() {
         let rng = &mut TestRng::default();
 
-        for _ in 0..ITERATIONS {
-            let staker = Address::<CurrentNetwork>::new(rng.gen());
-            let validator = Address::<CurrentNetwork>::new(rng.gen());
-            let microcredits = U64::<CurrentNetwork>::new(rng.gen());
+        // Sample a committee.
+        let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
+        // Convert the committee into stakers.
+        let expected_stakers = crate::committee::test_helpers::to_stakers(committee.members());
+        // Initialize the bonded map.
+        let bonded_map = to_bonded_map(&expected_stakers);
 
-            // Initialize the bonded map.
-            let bonded_map = to_bonded_map(&indexmap::indexmap! {
-                staker => (validator, *microcredits),
-            });
-
-            // Convert the bonded map into stakers.
-            let stakers = bonded_map_into_stakers(bonded_map).unwrap();
-            assert_eq!(stakers.len(), 1);
-            assert_eq!(stakers.get(&staker).unwrap(), &(validator, *microcredits));
-        }
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Convert the bonded map into stakers.
+        let candidate_stakers = bonded_map_into_stakers(bonded_map).unwrap();
+        println!("bonded_map_into_stakers: {}ms", timer.elapsed().as_millis());
+        assert_eq!(candidate_stakers.len(), expected_stakers.len());
+        assert_eq!(candidate_stakers, expected_stakers);
     }
 
     #[test]
     fn test_ensure_committee_matches() {
         let rng = &mut TestRng::default();
 
-        for _ in 0..ITERATIONS {
-            // Sample a committee.
-            let committee = ledger_committee::test_helpers::sample_committee(rng);
-            // Convert the committee into a committee map.
-            let committee_map = to_committee_map(committee.members());
+        // Sample a committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Convert the committee into a committee map.
+        let committee_map = to_committee_map(committee.members());
 
-            // Ensure the committee matches.
-            let result = ensure_committee_matches(&committee, &committee_map);
-            assert!(result.is_ok());
-        }
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Ensure the committee matches.
+        let result = ensure_committee_matches(&committee, &committee_map);
+        println!("ensure_committee_matches: {}ms", timer.elapsed().as_millis());
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -350,9 +377,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a committee.
-        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
-        let stakers = to_stakers(committee.members());
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members());
 
         // Start a timer.
         let timer = std::time::Instant::now();
@@ -367,9 +394,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample a committee.
-        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        let committee = ledger_committee::test_helpers::sample_committee_for_round_and_size(1, 100, rng);
         // Convert the committee into stakers.
-        let stakers = to_stakers(committee.members());
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members());
 
         // Start a timer.
         let timer = std::time::Instant::now();
@@ -379,5 +406,24 @@ mod tests {
         println!("to_next_committee: {}ms", timer.elapsed().as_millis());
         assert_eq!(committee.starting_round() + 1, next_committee.starting_round());
         assert_eq!(committee.members(), next_committee.members());
+    }
+
+    #[test]
+    fn test_to_next_commitee_map_and_bonded_map() {
+        let rng = &mut TestRng::default();
+
+        // Sample a committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Convert the committee into stakers.
+        let stakers = crate::committee::test_helpers::to_stakers(committee.members());
+
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Ensure the next committee matches the current committee.
+        // Note: We can perform this check, in this specific case only, because we did not apply staking rewards.
+        let (committee_map, bonded_map) = to_next_commitee_map_and_bonded_map(&committee, &stakers);
+        println!("to_next_commitee_map_and_bonded_map: {}ms", timer.elapsed().as_millis());
+        assert_eq!(committee_map, to_committee_map(committee.members()));
+        assert_eq!(bonded_map, to_bonded_map(&stakers));
     }
 }

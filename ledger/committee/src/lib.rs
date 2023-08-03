@@ -228,21 +228,23 @@ pub mod test_helpers {
 
     /// Samples a random committee.
     pub fn sample_committee(rng: &mut TestRng) -> Committee<CurrentNetwork> {
-        // Sample the members.
-        let mut members = IndexMap::new();
-        for _ in 0..4 {
-            let is_open = rng.gen();
-            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_STAKE, is_open));
-        }
-        // Return the committee.
-        Committee::<CurrentNetwork>::new(1, members).unwrap()
+        sample_committee_for_round(1, rng)
     }
 
     /// Samples a random committee for a given round.
     pub fn sample_committee_for_round(round: u64, rng: &mut TestRng) -> Committee<CurrentNetwork> {
+        sample_committee_for_round_and_size(round, 4, rng)
+    }
+
+    /// Samples a random committee for a given round and number of members.
+    pub fn sample_committee_for_round_and_size(
+        round: u64,
+        num_members: u16,
+        rng: &mut TestRng,
+    ) -> Committee<CurrentNetwork> {
         // Sample the members.
         let mut members = IndexMap::new();
-        for _ in 0..4 {
+        for _ in 0..num_members {
             let is_open = rng.gen();
             members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_STAKE, is_open));
         }

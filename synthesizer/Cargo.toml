@@ -24,7 +24,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "process", "program", "snark" ]
+default = [ "process", "program", "rayon", "snark" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
 serial = [
@@ -129,6 +129,10 @@ version = "0.12"
 
 [dependencies.rand]
 version = "0.8"
+
+[dependencies.rayon]
+version = "1"
+optional = true
 
 [dependencies.tracing]
 version = "0.1"

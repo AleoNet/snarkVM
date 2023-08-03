@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod committee;
+pub mod committee;
 pub use committee::*;
 
 mod cost;
