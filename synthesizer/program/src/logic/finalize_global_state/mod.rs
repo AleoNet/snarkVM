@@ -16,6 +16,8 @@ use console::network::prelude::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FinalizeGlobalState {
+    /// The block round.
+    block_round: u64,
     /// The block height.
     block_height: u32,
     /// The block-specific random seed.
@@ -49,13 +51,19 @@ impl FinalizeGlobalState {
         let mut random_seed = [0u8; 32];
         random_seed.copy_from_slice(&seed[..32]);
 
-        Ok(Self { block_height, random_seed })
+        Ok(Self { block_round, block_height, random_seed })
     }
 
     /// Initializes a new global state.
     #[inline]
-    pub const fn from(block_height: u32, random_seed: [u8; 32]) -> Self {
-        Self { block_height, random_seed }
+    pub const fn from(block_round: u64, block_height: u32, random_seed: [u8; 32]) -> Self {
+        Self { block_round, block_height, random_seed }
+    }
+
+    /// Returns the block round.
+    #[inline]
+    pub const fn block_round(&self) -> u64 {
+        self.block_round
     }
 
     /// Returns the block height.

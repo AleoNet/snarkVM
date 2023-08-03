@@ -294,7 +294,7 @@ pub(crate) mod test_helpers {
 
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
-        FinalizeGlobalState::from(block_height, [0u8; 32])
+        FinalizeGlobalState::from(block_height as u64, block_height, [0u8; 32])
     }
 
     pub(crate) fn sample_ratifications_root() -> Field<CurrentNetwork> {

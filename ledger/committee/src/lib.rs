@@ -79,7 +79,7 @@ impl<N: Network> Committee<N> {
     }
 
     /// Returns `true` if the given address is in the committee and is open.
-    pub fn is_committee_member_locked(&self, address: Address<N>) -> bool {
+    pub fn is_committee_member_open(&self, address: Address<N>) -> bool {
         self.members.get(&address).copied().unwrap_or_default().1
     }
 

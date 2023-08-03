@@ -316,7 +316,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             /* Perform the ratifications after finalize. */
 
-            if let Err(e) = self.atomic_post_ratify(post_ratifications, solutions) {
+            if let Err(e) = self.atomic_post_ratify(state, post_ratifications, solutions) {
                 // Note: This will abort the entire atomic batch.
                 return Err(format!("Failed to post-ratify - {e}"));
             }
@@ -399,6 +399,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     #[inline]
     fn atomic_post_ratify<'a>(
         &self,
+        state: FinalizeGlobalState,
         post_ratifications: impl Iterator<Item = &'a Ratify<N>>,
         solutions: Option<&CoinbaseSolution<N>>,
     ) -> Result<()> {
@@ -417,40 +418,35 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ratify::Genesis(..) => continue,
                 Ratify::BlockReward(block_reward) => {
                     // Retrieve the committee from storage.
-                    let committee = self.committee_store().current_committee()?;
+                    let current_committee = self.committee_store().current_committee()?;
                     // Retrieve the committee mapping from storage.
-                    let committee_map =
+                    let current_committee_map =
                         self.finalize_store().get_mapping_speculative(&program_id, &committee_mapping)?;
                     // Retrieve the bonded mapping from storage.
-                    let bonded_map = self.finalize_store().get_mapping_speculative(&program_id, &bonded_mapping)?;
+                    let current_bonded_map =
+                        self.finalize_store().get_mapping_speculative(&program_id, &bonded_mapping)?;
                     // Convert the bonded map into stakers.
-                    let stakers = bonded_map_into_stakers(bonded_map)?;
+                    let current_stakers = bonded_map_into_stakers(current_bonded_map)?;
 
                     // Ensure the committee matches the committee mapping.
-                    ensure_committee_matches(&committee, &committee_map)?;
+                    ensure_committee_matches(&current_committee, &current_committee_map)?;
                     // Ensure the committee matches the bonded mapping.
-                    ensure_stakers_matches(&committee, &stakers)?;
+                    ensure_stakers_matches(&current_committee, &current_stakers)?;
 
-                    // TODO (howardwu): Update the committee map with the stake rewards.
+                    // Compute the updated stakers, using the committee and block reward.
+                    let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
+                    // Compute the updated committee, using the stakers.
+                    let next_committee = to_next_committee(&current_committee, state.block_round(), &next_stakers)?;
+                    // Construct the next committee map and next bonded map.
+                    let (next_committee_map, next_bonded_map) =
+                        to_next_commitee_map_and_bonded_map(&next_committee, &next_stakers);
 
-                    // Initialize a vector for the updated bonded mapping.
-                    let mut next_bonded = Vec::with_capacity(stakers.len());
-
-                    // Calculate the updated stakers.
-                    let updated_stakers = staking_rewards(stakers, &committee, *block_reward);
-                    // Iterate over the bonded mapping.
-                    for (staker, (validator, microcredits)) in updated_stakers {
-                        // Construct the key.
-                        let key = Plaintext::from(Literal::Address(staker));
-                        // Construct the value.
-                        let value =
-                            Value::from_str(&format!("{{ validator: {validator}, microcredits: {microcredits} }}"))?;
-                        // Push the next bonded mapping entry.
-                        next_bonded.push((key, value));
-                    }
-
+                    // Insert the next committee into storage.
+                    self.committee_store().insert(state.block_height(), next_committee)?;
+                    // Replace the committee mapping in storage.
+                    self.finalize_store().replace_mapping(&program_id, &committee_mapping, next_committee_map)?;
                     // Replace the bonded mapping in storage.
-                    self.finalize_store().replace_mapping(&program_id, &bonded_mapping, next_bonded)?;
+                    self.finalize_store().replace_mapping(&program_id, &bonded_mapping, next_bonded_map)?;
                 }
                 Ratify::PuzzleReward(puzzle_reward) => {
                     // If the puzzle reward is zero, skip.

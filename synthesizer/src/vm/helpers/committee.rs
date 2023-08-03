@@ -16,31 +16,21 @@ use console::{
     account::Address,
     network::Network,
     program::{Identifier, Literal, Plaintext, Value},
+    types::{Boolean, U64},
 };
 use ledger_committee::Committee;
 
 use anyhow::{anyhow, bail, ensure, Result};
-use indexmap::IndexMap;
+use indexmap::{indexmap, IndexMap};
 use std::str::FromStr;
-
-// fn extract_committee_map<'a, N: Network>(committee: &Committee<N>) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
-//     let mut committee_map = Vec::new();
-//     for (address, state) in committee {
-//         let mut state_map = IndexMap::new();
-//         state_map.insert(Identifier::from_str("microcredits").ok()?, Value::Plaintext(Plaintext::Literal(Literal::U64(**microcredits), None)));
-//         state_map.insert(Identifier::from_str("is_open").ok()?, Value::Plaintext(Plaintext::Literal(Literal::Boolean(**is_open), None)));
-//         committee_map.push((Plaintext::Literal(Literal::Address(*address), None), Value::Plaintext(Plaintext::Struct(state_map, None))));
-//     }
-//     Ok(committee_map)
-// }
 
 /// Returns the stakers given the bonded map from finalize storage.
 pub fn bonded_map_into_stakers<N: Network>(
     bonded_map: Vec<(Plaintext<N>, Value<N>)>,
 ) -> Result<IndexMap<Address<N>, (Address<N>, u64)>> {
     // Prepare the identifiers.
-    let microcredits_identifier = Identifier::from_str("is_open")?;
-    let is_open_identifier = Identifier::from_str("is_open")?;
+    let validator_identifier = Identifier::from_str("validator")?;
+    let microcredits_identifier = Identifier::from_str("microcredits")?;
 
     // Extract the bonded map.
     bonded_map
@@ -55,7 +45,7 @@ pub fn bonded_map_into_stakers<N: Network>(
             match &value {
                 Value::Plaintext(Plaintext::Struct(state, _)) => {
                     // Extract the validator from the value.
-                    let validator = match state.get(&is_open_identifier) {
+                    let validator = match state.get(&validator_identifier) {
                         Some(Plaintext::Literal(Literal::Address(validator), _)) => *validator,
                         _ => bail!("Invalid bonded state (missing validator) - {value}"),
                     };
@@ -79,7 +69,7 @@ pub fn ensure_committee_matches<N: Network>(
     committee_map: &[(Plaintext<N>, Value<N>)],
 ) -> Result<()> {
     // Prepare the identifiers.
-    let microcredits_identifier = Identifier::from_str("is_open")?;
+    let microcredits_identifier = Identifier::from_str("microcredits")?;
     let is_open_identifier = Identifier::from_str("is_open")?;
 
     // Extract the committee map.
@@ -162,4 +152,76 @@ pub fn ensure_stakers_matches<N: Network>(
     }
 
     Ok(())
+}
+
+/// Returns the next committee, given the current committee and stakers.
+pub fn to_next_committee<'a, N: Network>(
+    current_committee: &Committee<N>,
+    next_round: u64,
+    next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
+) -> Result<Committee<N>> {
+    // Initialize the validators.
+    let mut validators = IndexMap::<_, u64>::with_capacity(current_committee.members().len());
+
+    for (_, (validator, microcredits)) in next_stakers {
+        // Retrieve the entry for the validator.
+        let entry = validators.entry(*validator).or_default();
+        // Add the staker's microcredits to the validator's microcredits.
+        *entry = entry
+            .checked_add(*microcredits)
+            .ok_or_else(|| anyhow!("Overflow while adding validator microcredits from staker"))?;
+    }
+
+    // Initialize the members.
+    let mut members = IndexMap::with_capacity(validators.len());
+    // Iterate over the validators.
+    for (validator, microcredits) in validators {
+        members.insert(validator, (microcredits, current_committee.is_committee_member_open(validator)));
+    }
+    // Return the next committee.
+    Committee::new(next_round, members)
+}
+
+/// Returns the committee map and bonded map, given the committee and stakers.
+pub fn to_next_commitee_map_and_bonded_map<'a, N: Network>(
+    next_committee: &Committee<N>,
+    next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
+) -> (Vec<(Plaintext<N>, Value<N>)>, Vec<(Plaintext<N>, Value<N>)>) {
+    // Prepare the identifiers.
+    let validator_identifier = Identifier::from_str("validator").expect("Failed to parse 'validator'");
+    let microcredits_identifier = Identifier::from_str("microcredits").expect("Failed to parse 'microcredits'");
+    let is_open_identifier = Identifier::from_str("is_open").expect("Failed to parse 'is_open'");
+
+    // Initialize the committee map.
+    let mut committee_map = Vec::with_capacity(next_committee.members().len());
+    // Initialize the bonded map.
+    let mut bonded_map = Vec::with_capacity(next_stakers.len());
+
+    for (staker, (validator, microcredits)) in next_stakers {
+        // Construct the bonded state.
+        let bonded_state = indexmap! {
+            validator_identifier => Plaintext::from(Literal::Address(*validator)),
+            microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
+        };
+        // Update the bonded map.
+        bonded_map.push((
+            Plaintext::from(Literal::Address(*staker)),
+            Value::Plaintext(Plaintext::Struct(bonded_state, Default::default())),
+        ));
+    }
+
+    for (validator, (microcredits, is_open)) in next_committee.members() {
+        // Construct the committee state.
+        let committee_state = indexmap! {
+            microcredits_identifier => Plaintext::from(Literal::U64(U64::new(*microcredits))),
+            is_open_identifier => Plaintext::from(Literal::Boolean(Boolean::new(*is_open))),
+        };
+        // Update the committee map.
+        committee_map.push((
+            Plaintext::from(Literal::Address(*validator)),
+            Value::Plaintext(Plaintext::Struct(committee_state, Default::default())),
+        ));
+    }
+
+    (committee_map, bonded_map)
 }

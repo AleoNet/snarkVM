@@ -31,7 +31,7 @@ pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
 /// since our security model adheres to 3f+1, where f=1. As such, we tolerate Byzantine behavior
 /// up to 33% of the total stake.
 pub fn staking_rewards<N: Network>(
-    stakers: IndexMap<Address<N>, (Address<N>, u64)>,
+    stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
     committee: &Committee<N>,
     block_reward: u64,
 ) -> IndexMap<Address<N>, (Address<N>, u64)> {
@@ -46,18 +46,20 @@ pub fn staking_rewards<N: Network>(
     // Calculate the rewards for the individual stakers.
     for (staker, (validator, stake)) in stakers {
         // If the validator has more than 25% of the total stake, skip the staker.
-        if committee.get_stake(validator) > committee.total_stake().saturating_div(4) {
+        if committee.get_stake(*validator) > committee.total_stake().saturating_div(4) {
             trace!("Validator {validator} has more than 25% of the total stake - skipping {staker}");
+            next_stakers.insert(*staker, (*validator, *stake));
             continue;
         }
         // If the staker has less than 1 credit, skip the staker.
-        if stake < 1_000_000 {
+        if *stake < 1_000_000 {
             trace!("Staker has less than 1 credit - skipping {staker}");
+            next_stakers.insert(*staker, (*validator, *stake));
             continue;
         }
 
         // Compute the numerator.
-        let numerator = (block_reward as u128).saturating_mul(stake as u128);
+        let numerator = (block_reward as u128).saturating_mul(*stake as u128);
         // Compute the denominator.
         // Note: We guarantee this denominator cannot be 0 (as we return early if the total stake is 0).
         let denominator = committee.total_stake() as u128;
@@ -72,7 +74,7 @@ pub fn staking_rewards<N: Network>(
         // Note: This '.expect' is guaranteed to be safe, as we ensure the quotient is within a safe bound.
         let staking_reward = u64::try_from(quotient).expect("Staking reward is too large");
         // Add the staking reward to the map.
-        next_stakers.insert(staker, (validator, stake.saturating_add(staking_reward)));
+        next_stakers.insert(*staker, (*validator, stake.saturating_add(staking_reward)));
     }
 
     // Return the updated stakers.
@@ -152,13 +154,37 @@ mod tests {
             let stake = rng.gen_range(1_000_000..committee.total_stake());
             // Construct the stakers.
             let stakers = indexmap! {address => (address, stake)};
-            let rewards = staking_rewards::<CurrentNetwork>(stakers, &committee, block_reward);
+            let rewards = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
             assert_eq!(rewards.len(), 1);
             let (candidate_address, (candidate_validator, candidate_stake)) = rewards.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
             assert_eq!(candidate_validator, address);
             let reward = block_reward as u128 * stake as u128 / committee.total_stake() as u128;
             assert_eq!(candidate_stake, stake + u64::try_from(reward).unwrap());
+        }
+    }
+
+    #[test]
+    fn test_staking_rewards_when_staker_is_under_1_credit_yields_no_reward() {
+        let rng = &mut TestRng::default();
+        // Sample a random committee.
+        let committee = ledger_committee::test_helpers::sample_committee(rng);
+        // Sample a random block reward.
+        let block_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
+        // Retrieve an address.
+        let address = *committee.members().iter().next().unwrap().0;
+
+        for _ in 0..ITERATIONS {
+            // Sample a random stake.
+            let stake = rng.gen_range(0..1_000_000);
+            // Construct the stakers.
+            let stakers = indexmap! {address => (address, stake)};
+            let rewards = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
+            assert_eq!(rewards.len(), 1);
+            let (candidate_address, (candidate_validator, candidate_stake)) = rewards.into_iter().next().unwrap();
+            assert_eq!(candidate_address, address);
+            assert_eq!(candidate_validator, address);
+            assert_eq!(candidate_stake, stake);
         }
     }
 
@@ -178,7 +204,7 @@ mod tests {
             let stake = rng.gen_range(1_000_000..u64::MAX);
             // Check that an overly large block reward fails.
             let rewards =
-                staking_rewards::<CurrentNetwork>(indexmap![address => (address, stake)], &committee, block_reward);
+                staking_rewards::<CurrentNetwork>(&indexmap![address => (address, stake)], &committee, block_reward);
             assert!(rewards.is_empty());
         }
     }
@@ -192,12 +218,12 @@ mod tests {
         let address = *committee.members().iter().next().unwrap().0;
 
         // Compute the staking rewards (empty).
-        let rewards = staking_rewards::<CurrentNetwork>(indexmap![], &committee, rng.gen());
+        let rewards = staking_rewards::<CurrentNetwork>(&indexmap![], &committee, rng.gen());
         assert!(rewards.is_empty());
 
         // Check that a maxed out coinbase reward, returns empty.
         let rewards =
-            staking_rewards::<CurrentNetwork>(indexmap![address => (address, 1_000_000)], &committee, u64::MAX);
+            staking_rewards::<CurrentNetwork>(&indexmap![address => (address, 1_000_000)], &committee, u64::MAX);
         assert!(rewards.is_empty());
     }
 
