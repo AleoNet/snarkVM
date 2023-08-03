@@ -14,6 +14,7 @@
 
 use super::*;
 
+#[cfg(console)]
 impl<A: Aleo> ToBits for Signature<A> {
     type Boolean = Boolean<A>;
 
@@ -28,6 +29,7 @@ impl<A: Aleo> ToBits for Signature<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> ToBits for &Signature<A> {
     type Boolean = Boolean<A>;
 

@@ -14,6 +14,7 @@
 
 use super::*;
 
+#[cfg(console)]
 impl<A: Aleo> FromBits for Signature<A> {
     type Boolean = Boolean<A>;
 
@@ -46,7 +47,7 @@ impl<A: Aleo> FromBits for Signature<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
 
     // TODO

@@ -14,6 +14,7 @@
 
 use super::*;
 
+#[cfg(console)]
 impl<A: Aleo> ToFields for Signature<A> {
     type Field = Field<A>;
 
@@ -26,7 +27,7 @@ impl<A: Aleo> ToFields for Signature<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
 
     // TODO
