@@ -43,9 +43,15 @@ pub struct Committee<N: Network> {
 
 impl<N: Network> Committee<N> {
     /// Initializes a new `Committee` instance.
+    pub fn new_genesis(members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
+        // Ensure there are exactly 4 members.
+        ensure!(members.len() == 4, "Genesis committee must have 4 members");
+        // Return the new committee.
+        Self::new(0u64, members)
+    }
+
+    /// Initializes a new `Committee` instance.
     pub fn new(starting_round: u64, members: IndexMap<Address<N>, (u64, bool)>) -> Result<Self> {
-        // Ensure the starting round is nonzero.
-        ensure!(starting_round > 0, "Round must be nonzero");
         // Ensure there are at least 4 members.
         ensure!(members.len() >= 4, "Committee must have at least 4 members");
         // Ensure all members have the minimum required stake.

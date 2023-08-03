@@ -105,15 +105,18 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Ensure the next round is at least the next height.
         ensure!(next_round >= next_height as u64, "Next round must be at least the next height");
 
-        // Retrieve the current round.
-        let current_round = self.current_round().unwrap_or(0);
-        // Ensure the next round is greater than the current round.
-        ensure!(next_round > current_round, "Next round must be greater than current round");
+        // Check the next round.
+        match self.current_round() {
+            // If the current round is 0, ensure the next round is 0.
+            Err(..) => ensure!(next_round == 0, "Next round must be block round 0"),
+            // Otherwise, ensure the next round sequentially follows the current round.
+            Ok(current_round) => ensure!(next_round > current_round, "Next round must be greater than current round"),
+        }
 
         // Check the next height.
         match self.current_height() {
             // If the current height is 0, ensure the next height is 0.
-            Err(..) => ensure!(next_height == 0, "Next height must equal the current height (0)"),
+            Err(..) => ensure!(next_height == 0, "Next height must be block height 0"),
             // Otherwise, ensure the next height sequentially follows the current height.
             Ok(current_height) => ensure!(next_height == current_height + 1, "Next height must be sequential"),
         }
@@ -124,6 +127,12 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
             "Next round {next_round} already exists in committee storage"
         );
 
+        // Determine the catch up round.
+        let catch_up_round = match self.current_round() {
+            Err(..) => 0,
+            Ok(current_round) => current_round + 1,
+        };
+
         // Start an atomic batch.
         atomic_batch_scope!(self, {
             // Store the next round.
@@ -132,7 +141,7 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
             // If the current height exists, then store missing rounds up to the *next* height.
             if let Ok(current_height) = self.current_height() {
                 // Store the round to height mappings.
-                for round in (current_round + 1)..next_round {
+                for round in catch_up_round..next_round {
                     // Note: We store the 'current_height' as the *next* round starts the *next* height.
                     self.round_to_height_map().insert(round, current_height)?;
                 }
@@ -166,10 +175,13 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         // Find the earliest round to be removed (inclusive).
         let mut earliest_round = committee_round;
-        while self.get_height_for_round(earliest_round)? == Some(height) {
+        while earliest_round > 0 && self.get_height_for_round(earliest_round)? == Some(height) {
             earliest_round = earliest_round.saturating_sub(1);
         }
-        earliest_round += 1;
+        let is_multiple = earliest_round != committee_round;
+        if is_multiple {
+            earliest_round += 1;
+        }
 
         // Find the latest round to be removed (exclusive).
         let mut latest_round = committee_round;
@@ -391,7 +403,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the committee.
-        let committee_0 = ledger_committee::test_helpers::sample_committee_for_round(2, rng);
+        let committee_0 = ledger_committee::test_helpers::sample_committee_for_round(0, rng);
 
         // Initialize a new committee store.
         let store = CommitteeStore::<CurrentNetwork, CommitteeMemory<_>>::open(None).unwrap();
@@ -404,22 +416,22 @@ mod tests {
 
         // Insert the committee.
         store.insert(0, committee_0.clone()).unwrap();
-        assert_eq!(store.current_round().unwrap(), 2);
+        assert_eq!(store.current_round().unwrap(), 0);
         assert_eq!(store.current_height().unwrap(), 0);
         assert_eq!(store.current_committee().unwrap(), committee_0);
 
-        assert_eq!(store.get_height_for_round(0).unwrap(), None);
+        assert_eq!(store.get_height_for_round(0).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
-        assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(2).unwrap(), None);
         assert_eq!(store.get_height_for_round(3).unwrap(), None);
 
         assert_eq!(store.get_committee(0).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee(1).unwrap(), None);
         assert_eq!(store.get_committee(2).unwrap(), None);
 
-        assert_eq!(store.get_committee_for_round(0).unwrap(), None);
+        assert_eq!(store.get_committee_for_round(0).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
-        assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(2).unwrap(), None);
         assert_eq!(store.get_committee_for_round(3).unwrap(), None);
 
         // Sample another committee.
@@ -431,8 +443,8 @@ mod tests {
         assert_eq!(store.current_height().unwrap(), 1);
         assert_eq!(store.current_committee().unwrap(), committee_1);
 
-        assert_eq!(store.get_height_for_round(0).unwrap(), None);
-        assert_eq!(store.get_height_for_round(1).unwrap(), None);
+        assert_eq!(store.get_height_for_round(0).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(1).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(3).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(4).unwrap().unwrap(), 0);
@@ -444,8 +456,8 @@ mod tests {
         assert_eq!(store.get_committee(2).unwrap(), None);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
-        assert_eq!(store.get_committee_for_round(0).unwrap(), None);
-        assert_eq!(store.get_committee_for_round(1).unwrap(), None);
+        assert_eq!(store.get_committee_for_round(0).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(1).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(4).unwrap().unwrap(), committee_0);
@@ -460,8 +472,8 @@ mod tests {
         assert_eq!(store.current_height().unwrap(), 0);
         assert_eq!(store.current_committee().unwrap(), committee_0);
 
-        assert_eq!(store.get_height_for_round(0).unwrap(), None);
-        assert_eq!(store.get_height_for_round(1).unwrap(), None);
+        assert_eq!(store.get_height_for_round(0).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(1).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(3).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(4).unwrap().unwrap(), 0);
@@ -473,8 +485,8 @@ mod tests {
         assert_eq!(store.get_committee(2).unwrap(), None);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
-        assert_eq!(store.get_committee_for_round(0).unwrap(), None);
-        assert_eq!(store.get_committee_for_round(1).unwrap(), None);
+        assert_eq!(store.get_committee_for_round(0).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee_for_round(1).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(4).unwrap().unwrap(), committee_0);
@@ -512,7 +524,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the committee.
-        let committee_0 = ledger_committee::test_helpers::sample_committee_for_round(2, rng);
+        let committee_0 = ledger_committee::test_helpers::sample_committee_for_round(0, rng);
 
         // Initialize a new committee store.
         let store = CommitteeStore::<CurrentNetwork, CommitteeMemory<_>>::open(None).unwrap();
@@ -522,7 +534,7 @@ mod tests {
 
         // Insert the committee.
         store.insert(0, committee_0.clone()).unwrap();
-        assert_eq!(store.current_round().unwrap(), 2);
+        assert_eq!(store.current_round().unwrap(), 0);
         assert_eq!(store.current_height().unwrap(), 0);
         assert_eq!(store.current_committee().unwrap(), committee_0);
 

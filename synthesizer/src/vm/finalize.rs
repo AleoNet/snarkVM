@@ -356,6 +356,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ratify::Genesis(committee, public_balances) => {
                     // Ensure this is the genesis block.
                     ensure!(state.block_height() == 0, "Ratify::Genesis(..) expected a genesis block");
+                    // Ensure the genesis committee round is 0.
+                    ensure!(
+                        committee.starting_round() == 0,
+                        "Ratify::Genesis(..) expected a genesis committee round of 0"
+                    );
 
                     // Initialize the stakers.
                     let mut stakers = IndexMap::with_capacity(committee.members().len());

@@ -200,7 +200,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Address::new(rng.gen()) => (ledger_committee::MIN_STAKE, false),
         };
         // Construct the committee.
-        let committee = Committee::<N>::new(1, members)?;
+        let committee = Committee::<N>::new_genesis(members)?;
         // Construct the public balances.
         let public_balances = indexmap::indexmap! {
             Address::try_from(private_key)? => 1_000_000_000_000_000,
