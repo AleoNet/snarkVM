@@ -84,12 +84,11 @@ pub fn staking_rewards<N: Network>(
 /// Returns the proving rewards for a given coinbase reward and list of prover solutions.
 /// The prover reward is defined as: `puzzle_reward * (proof_target / combined_proof_target)`.
 pub fn proving_rewards<N: Network>(
-    proof_targets: Vec<(Address<N>, u128)>,
+    proof_targets: Vec<(Address<N>, u64)>,
     puzzle_reward: u64,
-    combined_proof_target: u128,
 ) -> IndexMap<Address<N>, u64> {
-    // (Debug Mode) Ensure the combined proof target is equal to the sum of the proof targets.
-    debug_assert_eq!(combined_proof_target, proof_targets.iter().map(|(_, t)| t).sum::<u128>());
+    // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
+    let combined_proof_target = proof_targets.iter().map(|(_, t)| *t as u128).sum::<u128>();
 
     // If the list of solutions is empty or the combined proof target is 0, return an empty map.
     if proof_targets.is_empty() || combined_proof_target == 0 {
@@ -102,7 +101,7 @@ pub fn proving_rewards<N: Network>(
     // Calculate the rewards for the individual provers.
     for (address, proof_target) in proof_targets {
         // Compute the numerator.
-        let numerator = (puzzle_reward as u128).saturating_mul(proof_target);
+        let numerator = (puzzle_reward as u128).saturating_mul(proof_target as u128);
         // Compute the denominator.
         // Note: We guarantee this denominator cannot be 0 (to prevent a div by 0).
         let denominator = combined_proof_target.max(1);
@@ -237,8 +236,7 @@ mod tests {
             // Sample a random puzzle reward.
             let puzzle_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
 
-            let rewards =
-                proving_rewards::<CurrentNetwork>(vec![(address, u64::MAX as u128)], puzzle_reward, u64::MAX as u128);
+            let rewards = proving_rewards::<CurrentNetwork>(vec![(address, u64::MAX)], puzzle_reward);
             assert_eq!(rewards.len(), 1);
             let (candidate_address, candidate_amount) = rewards.into_iter().next().unwrap();
             assert_eq!(candidate_address, address);
@@ -257,9 +255,9 @@ mod tests {
             // Sample a random overly-large puzzle reward.
             let puzzle_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
             // Sample a random proof target.
-            let proof_target = rng.gen_range(0..u64::MAX as u128);
+            let proof_target = rng.gen_range(0..u64::MAX);
             // Check that a maxed out proof target fails.
-            let rewards = proving_rewards::<CurrentNetwork>(vec![(address, proof_target)], puzzle_reward, proof_target);
+            let rewards = proving_rewards::<CurrentNetwork>(vec![(address, proof_target)], puzzle_reward);
             assert!(rewards.is_empty());
         }
     }
@@ -271,15 +269,15 @@ mod tests {
         let address = Address::new(Group::rand(rng));
 
         // Compute the proving rewards (empty).
-        let rewards = proving_rewards::<CurrentNetwork>(vec![], rng.gen(), 0);
+        let rewards = proving_rewards::<CurrentNetwork>(vec![], rng.gen());
         assert!(rewards.is_empty());
 
         // Check that a maxed out coinbase reward, returns empty.
-        let rewards = proving_rewards::<CurrentNetwork>(vec![(address, 2)], u64::MAX, 2);
+        let rewards = proving_rewards::<CurrentNetwork>(vec![(address, 2)], u64::MAX);
         assert!(rewards.is_empty());
 
         // Ensure a 0 coinbase reward case is empty.
-        let rewards = proving_rewards::<CurrentNetwork>(vec![(address, 2)], 0, 2);
+        let rewards = proving_rewards::<CurrentNetwork>(vec![(address, 2)], 0);
         assert!(rewards.is_empty());
     }
 }
