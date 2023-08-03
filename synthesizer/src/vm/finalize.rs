@@ -450,36 +450,36 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     if *puzzle_reward == 0 {
                         continue;
                     }
-                    // Process the solutions.
-                    if let Some(solutions) = solutions {
-                        // Compute the proof targets, with the corresponding addresses.
-                        let proof_targets = solutions
-                            .partial_solutions()
-                            .iter()
-                            .map(|s| Ok((s.address(), s.to_target()? as u128)))
-                            .collect::<Result<Vec<_>>>()?;
-                        // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
-                        let combined_proof_target = proof_targets.iter().map(|(_, t)| t).sum::<u128>();
-                        // Calculate the proving rewards.
-                        let proving_rewards = proving_rewards(proof_targets, *puzzle_reward, combined_proof_target);
-                        // Iterate over the proving rewards.
-                        for (address, amount) in proving_rewards {
-                            // Construct the key.
-                            let key = Plaintext::from(Literal::Address(address));
-                            // Retrieve the current public balance.
-                            let value =
-                                self.finalize_store().get_value_speculative(&program_id, &account_mapping, &key)?;
-                            // Compute the next public balance.
-                            let next_value = Value::from(Literal::U64(U64::new(match value {
-                                Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
-                                    (*value).saturating_add(amount)
-                                }
-                                None => amount,
-                                v => bail!("Critical bug in post-ratify puzzle reward- Invalid amount ({v:?})"),
-                            })));
-                            // Update the public balance in finalize storage.
-                            self.finalize_store().update_key_value(&program_id, &account_mapping, key, next_value)?;
-                        }
+                    // Retrieve the solutions.
+                    let Some(solutions) = solutions else {
+                        continue;
+                    };
+                    // Compute the proof targets, with the corresponding addresses.
+                    let proof_targets = solutions
+                        .partial_solutions()
+                        .iter()
+                        .map(|s| Ok((s.address(), s.to_target()? as u128)))
+                        .collect::<Result<Vec<_>>>()?;
+                    // Compute the combined proof target. Using '.sum' here is safe because we sum u64s into a u128.
+                    let combined_proof_target = proof_targets.iter().map(|(_, t)| t).sum::<u128>();
+                    // Calculate the proving rewards.
+                    let proving_rewards = proving_rewards(proof_targets, *puzzle_reward, combined_proof_target);
+                    // Iterate over the proving rewards.
+                    for (address, amount) in proving_rewards {
+                        // Construct the key.
+                        let key = Plaintext::from(Literal::Address(address));
+                        // Retrieve the current public balance.
+                        let value = self.finalize_store().get_value_speculative(&program_id, &account_mapping, &key)?;
+                        // Compute the next public balance.
+                        let next_value = Value::from(Literal::U64(U64::new(match value {
+                            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
+                                (*value).saturating_add(amount)
+                            }
+                            None => amount,
+                            v => bail!("Critical bug in post-ratify puzzle reward- Invalid amount ({v:?})"),
+                        })));
+                        // Update the public balance in finalize storage.
+                        self.finalize_store().update_key_value(&program_id, &account_mapping, key, next_value)?;
                     }
                 }
             }
