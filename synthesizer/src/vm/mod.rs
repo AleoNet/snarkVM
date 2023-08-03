@@ -273,12 +273,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.previous_hash(),
         )?;
 
-        // First, finalize the transactions.
-        self.finalize(state, block.ratifications(), block.coinbase(), block.transactions())?;
-        // Next, insert the block.
+        // Attention: The following order is crucial because if 'finalize' fails, we can rollback the block.
+        // If one first calls 'finalize', then calls 'insert(block)' and it fails, there is no way to rollback 'finalize'.
+
+        // First, insert the block.
         self.block_store().insert(block)?;
-        // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
-        Ok(())
+        // Next, finalize the transactions.
+        match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
+            Ok(_) => {
+                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
+                Ok(())
+            }
+            Err(error) => {
+                // Rollback the block.
+                self.block_store().remove_last_n(1)?;
+                // Return the error.
+                Err(error)
+            }
+        }
     }
 }
 
