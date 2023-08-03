@@ -335,7 +335,7 @@ mod tests {
         // Initialize the RNG.
         let rng = &mut TestRng::default();
         // Set the number of rounds.
-        const NUM_ROUNDS: u64 = 256 * 1_500;
+        const NUM_ROUNDS: u64 = 256 * 2_000;
         // Sample the number of members.
         let num_members = rng.gen_range(4..50);
         // Sample a committee.
