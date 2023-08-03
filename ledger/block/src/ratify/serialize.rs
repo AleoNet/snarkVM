@@ -56,8 +56,7 @@ impl<'de, N: Network> Deserialize<'de> for Ratify<N> {
                 let ratify = match object.get("type").and_then(|t| t.as_str()) {
                     Some("genesis") => {
                         // Retrieve the committee.
-                        let committee: Option<Committee<N>> =
-                            DeserializeExt::take_from_value::<D>(&mut object, "committee")?;
+                        let committee: Committee<N> = DeserializeExt::take_from_value::<D>(&mut object, "committee")?;
                         // Retrieve the public balances.
                         let public_balances: PublicBalances<N> =
                             DeserializeExt::take_from_value::<D>(&mut object, "public_balances")?;

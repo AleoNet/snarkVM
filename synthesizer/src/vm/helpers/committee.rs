@@ -155,7 +155,7 @@ pub fn ensure_stakers_matches<N: Network>(
 }
 
 /// Returns the next committee, given the current committee and stakers.
-pub fn to_next_committee<'a, N: Network>(
+pub fn to_next_committee<N: Network>(
     current_committee: &Committee<N>,
     next_round: u64,
     next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
@@ -183,7 +183,7 @@ pub fn to_next_committee<'a, N: Network>(
 }
 
 /// Returns the committee map and bonded map, given the committee and stakers.
-pub fn to_next_commitee_map_and_bonded_map<'a, N: Network>(
+pub fn to_next_commitee_map_and_bonded_map<N: Network>(
     next_committee: &Committee<N>,
     next_stakers: &IndexMap<Address<N>, (Address<N>, u64)>,
 ) -> (Vec<(Plaintext<N>, Value<N>)>, Vec<(Plaintext<N>, Value<N>)>) {

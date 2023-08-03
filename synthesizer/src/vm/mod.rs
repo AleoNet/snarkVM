@@ -190,19 +190,38 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Returns a new genesis block.
-    pub fn genesis<R: Rng + CryptoRng>(
+    /// Returns a new genesis block for a beacon chain.
+    pub fn genesis_beacon<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
-        committee: Option<Committee<N>>,
+        public_balances: IndexMap<Address<N>, u64>,
+        rng: &mut R,
+    ) -> Result<Block<N>> {
+        // Construct the committee members.
+        let members = indexmap::indexmap! {
+            Address::try_from(private_key)? => (ledger_committee::MIN_STAKE, false),
+            Address::new(rng.gen()) => (ledger_committee::MIN_STAKE, false),
+            Address::new(rng.gen()) => (ledger_committee::MIN_STAKE, false),
+            Address::new(rng.gen()) => (ledger_committee::MIN_STAKE, false),
+        };
+        // Construct the committee.
+        let committee = Committee::<N>::new(1, members)?;
+        // Return the genesis block.
+        self.genesis_quorum(private_key, committee, public_balances, rng)
+    }
+
+    /// Returns a new genesis block for a quorum chain.
+    pub fn genesis_quorum<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        committee: Committee<N>,
         public_balances: IndexMap<Address<N>, u64>,
         rng: &mut R,
     ) -> Result<Block<N>> {
         // Tabulate the current supply.
         let current_supply = {
-            let committee_amount = committee.as_ref().map_or(0, |c| c.total_stake());
             let public_amount = public_balances.values().sum::<u64>();
-            N::STARTING_SUPPLY.saturating_sub(committee_amount).saturating_sub(public_amount)
+            N::STARTING_SUPPLY.saturating_sub(committee.total_stake()).saturating_sub(public_amount)
         };
 
         // Prepare the caller.
@@ -323,7 +342,7 @@ pub(crate) mod test_helpers {
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 // Return the block.
-                vm.genesis(&caller_private_key, None, Default::default(), rng).unwrap()
+                vm.genesis_beacon(&caller_private_key, Default::default(), rng).unwrap()
             })
             .clone()
     }
@@ -757,7 +776,7 @@ finalize getter:
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
-        let genesis = vm.genesis(&caller_private_key, None, Default::default(), rng).unwrap();
+        let genesis = vm.genesis_beacon(&caller_private_key, Default::default(), rng).unwrap();
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 

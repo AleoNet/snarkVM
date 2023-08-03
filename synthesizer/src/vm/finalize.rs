@@ -355,20 +355,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Ensure this is the genesis block.
                     ensure!(state.block_height() == 0, "Ratify::Genesis(..) expected a genesis block");
 
-                    // If the committee is given, insert the committee into committee storage.
-                    if let Some(committee) = committee {
-                        // Insert the committee into storage.
-                        self.committee_store().insert(state.block_height(), committee.clone())?;
-                        // Iterate over the committee.
-                        for (address, (microcredits, is_open)) in committee.members() {
-                            // Construct the key.
-                            let key = Plaintext::from(Literal::Address(*address));
-                            // Construct the value.
-                            let value =
-                                Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}"))?;
-                            // Insert the key-value into storage.
-                            self.finalize_store().insert_key_value(&program_id, &committee_mapping, key, value)?;
-                        }
+                    // Insert the committee into storage.
+                    self.committee_store().insert(state.block_height(), committee.clone())?;
+                    // Iterate over the committee.
+                    for (address, (microcredits, is_open)) in committee.members() {
+                        // Construct the key.
+                        let key = Plaintext::from(Literal::Address(*address));
+                        // Construct the value.
+                        let value =
+                            Value::from_str(&format!("{{ microcredits: {microcredits}, is_open: {is_open} }}"))?;
+                        // Insert the key-value into storage.
+                        self.finalize_store().insert_key_value(&program_id, &committee_mapping, key, value)?;
                     }
 
                     // Iterate over the public balances.
