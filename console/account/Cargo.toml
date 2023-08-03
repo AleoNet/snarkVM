@@ -19,7 +19,7 @@ version = "=0.14.6"
 path = "../types"
 version = "=0.14.6"
 default-features = false
-features = [ "address", "field", "group", "scalar" ]
+features = [ "address", "boolean", "field", "group", "scalar" ]
 
 [dependencies.bs58]
 version = "0.5"

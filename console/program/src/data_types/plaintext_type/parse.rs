@@ -147,9 +147,10 @@ mod tests {
     #[test]
     fn test_display() -> Result<()> {
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
+        assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Signature).to_string(), "signature");
         assert_eq!(
-            PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("signature")?).to_string(),
-            "signature"
+            PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?).to_string(),
+            "foo"
         );
         Ok(())
     }
