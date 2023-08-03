@@ -46,6 +46,56 @@ impl<N: Network> ToBits for Signature<N> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
 
-    // TODO
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 1_000;
+
+    #[test]
+    fn test_to_bits_le() {
+        let rng = &mut TestRng::default();
+
+        for i in 0..ITERATIONS {
+            // Sample a random signature.
+            let signature = test_helpers::sample_signature(i, rng);
+
+            let candidate = signature.to_bits_le();
+            assert_eq!(Signature::<CurrentNetwork>::size_in_bits(), candidate.len());
+
+            // Construct the expected bits.
+            let mut expected = Vec::new();
+            expected.extend(signature.challenge.to_bits_le());
+            expected.extend(signature.response.to_bits_le());
+            expected.extend(signature.compute_key.to_bits_le());
+
+            for (expected, candidate) in expected.iter().zip_eq(&candidate) {
+                assert_eq!(expected, candidate);
+            }
+        }
+    }
+
+    #[test]
+    fn test_to_bits_be() {
+        let rng = &mut TestRng::default();
+
+        for i in 0..ITERATIONS {
+            // Sample a random signature.
+            let signature = test_helpers::sample_signature(i, rng);
+
+            let candidate = signature.to_bits_be();
+            assert_eq!(Signature::<CurrentNetwork>::size_in_bits(), candidate.len());
+
+            // Construct the expected bits.
+            let mut expected = Vec::new();
+            expected.extend(signature.challenge.to_bits_be());
+            expected.extend(signature.response.to_bits_be());
+            expected.extend(signature.compute_key.to_bits_be());
+
+            for (expected, candidate) in expected.iter().zip_eq(&candidate) {
+                assert_eq!(expected, candidate);
+            }
+        }
+    }
 }

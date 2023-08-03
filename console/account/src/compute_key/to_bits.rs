@@ -46,6 +46,56 @@ impl<N: Network> ToBits for ComputeKey<N> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
 
-    // TODO
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 1_000;
+
+    #[test]
+    fn test_to_bits_le() {
+        let rng = &mut TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample a random compute_key.
+            let compute_key = ComputeKey::<CurrentNetwork>::try_from(PrivateKey::new(rng).unwrap()).unwrap();
+
+            let candidate = compute_key.to_bits_le();
+            assert_eq!(ComputeKey::<CurrentNetwork>::size_in_bits(), candidate.len());
+
+            // Construct the expected bits.
+            let mut expected = Vec::new();
+            expected.extend(compute_key.pk_sig.to_bits_le());
+            expected.extend(compute_key.pr_sig.to_bits_le());
+            expected.extend(compute_key.sk_prf.to_bits_le());
+
+            for (expected, candidate) in expected.iter().zip_eq(&candidate) {
+                assert_eq!(expected, candidate);
+            }
+        }
+    }
+
+    #[test]
+    fn test_to_bits_be() {
+        let rng = &mut TestRng::default();
+
+        for _ in 0..ITERATIONS {
+            // Sample a random compute_key.
+            let compute_key = ComputeKey::<CurrentNetwork>::try_from(PrivateKey::new(rng).unwrap()).unwrap();
+
+            let candidate = compute_key.to_bits_be();
+            assert_eq!(ComputeKey::<CurrentNetwork>::size_in_bits(), candidate.len());
+
+            // Construct the expected bits.
+            let mut expected = Vec::new();
+            expected.extend(compute_key.pk_sig.to_bits_be());
+            expected.extend(compute_key.pr_sig.to_bits_be());
+            expected.extend(compute_key.sk_prf.to_bits_be());
+
+            for (expected, candidate) in expected.iter().zip_eq(&candidate) {
+                assert_eq!(expected, candidate);
+            }
+        }
+    }
 }
