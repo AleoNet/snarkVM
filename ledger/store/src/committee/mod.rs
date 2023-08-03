@@ -110,14 +110,12 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Ensure the next round is greater than the current round.
         ensure!(next_round > current_round, "Next round must be greater than current round");
 
-        // Retrieve the current block height.
-        let current_height = self.current_height().unwrap_or(0);
         // Check the next height.
-        match current_height == 0 {
+        match self.current_height() {
             // If the current height is 0, ensure the next height is 0.
-            true => ensure!(next_height == current_height, "Next height must equal the current height (0)"),
-            // Otherwise, ensure the next height is greater than the current height.
-            false => ensure!(next_height > current_height, "Next height must be greater than current height"),
+            Err(..) => ensure!(next_height == 0, "Next height must equal the current height (0)"),
+            // Otherwise, ensure the next height sequentially follows the current height.
+            Ok(current_height) => ensure!(next_height == current_height + 1, "Next height must be sequential"),
         }
 
         // If the next round already exists, then return an error.
@@ -131,8 +129,8 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the next round.
             self.current_round_map().insert(ROUND_KEY, next_round)?;
 
-            // If the current height is greater than 0, then store missing rounds up to the *next* height.
-            if current_height > 0 {
+            // If the current height exists, then store missing rounds up to the *next* height.
+            if let Ok(current_height) = self.current_height() {
                 // Store the round to height mappings.
                 for round in (current_round + 1)..next_round {
                     // Note: We store the 'current_height' as the *next* round starts the *next* height.
@@ -405,19 +403,21 @@ mod tests {
         assert_eq!(store.get_committee_for_round(rng.gen()).unwrap(), None);
 
         // Insert the committee.
-        store.insert(1, committee_0.clone()).unwrap();
+        store.insert(0, committee_0.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 2);
-        assert_eq!(store.current_height().unwrap(), 1);
+        assert_eq!(store.current_height().unwrap(), 0);
         assert_eq!(store.current_committee().unwrap(), committee_0);
 
+        assert_eq!(store.get_height_for_round(0).unwrap(), None);
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
-        assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 1);
+        assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(3).unwrap(), None);
 
-        assert_eq!(store.get_committee(0).unwrap(), None);
-        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee(0).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee(1).unwrap(), None);
         assert_eq!(store.get_committee(2).unwrap(), None);
 
+        assert_eq!(store.get_committee_for_round(0).unwrap(), None);
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
         assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(3).unwrap(), None);
@@ -426,23 +426,25 @@ mod tests {
         let committee_1 = ledger_committee::test_helpers::sample_committee_for_round(5, rng);
 
         // Insert the committee.
-        store.insert(2, committee_1.clone()).unwrap();
+        store.insert(1, committee_1.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
-        assert_eq!(store.current_height().unwrap(), 2);
+        assert_eq!(store.current_height().unwrap(), 1);
         assert_eq!(store.current_committee().unwrap(), committee_1);
 
+        assert_eq!(store.get_height_for_round(0).unwrap(), None);
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
-        assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 1);
-        assert_eq!(store.get_height_for_round(3).unwrap().unwrap(), 1);
-        assert_eq!(store.get_height_for_round(4).unwrap().unwrap(), 1);
-        assert_eq!(store.get_height_for_round(5).unwrap().unwrap(), 2);
+        assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(3).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(4).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(5).unwrap().unwrap(), 1);
         assert_eq!(store.get_height_for_round(6).unwrap(), None);
 
-        assert_eq!(store.get_committee(0).unwrap(), None);
-        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0);
-        assert_eq!(store.get_committee(2).unwrap().unwrap(), committee_1);
+        assert_eq!(store.get_committee(0).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_1);
+        assert_eq!(store.get_committee(2).unwrap(), None);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
+        assert_eq!(store.get_committee_for_round(0).unwrap(), None);
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
         assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0);
@@ -451,25 +453,27 @@ mod tests {
         assert_eq!(store.get_committee_for_round(6).unwrap(), None);
 
         // Remove the committee.
-        assert!(store.remove(3).is_err());
-        store.remove(2).unwrap();
         assert!(store.remove(2).is_err());
+        store.remove(1).unwrap();
+        assert!(store.remove(1).is_err());
         assert_eq!(store.current_round().unwrap(), 4);
-        assert_eq!(store.current_height().unwrap(), 1);
+        assert_eq!(store.current_height().unwrap(), 0);
         assert_eq!(store.current_committee().unwrap(), committee_0);
 
+        assert_eq!(store.get_height_for_round(0).unwrap(), None);
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
-        assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 1);
-        assert_eq!(store.get_height_for_round(3).unwrap().unwrap(), 1);
-        assert_eq!(store.get_height_for_round(4).unwrap().unwrap(), 1);
+        assert_eq!(store.get_height_for_round(2).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(3).unwrap().unwrap(), 0);
+        assert_eq!(store.get_height_for_round(4).unwrap().unwrap(), 0);
         assert_eq!(store.get_height_for_round(5).unwrap(), None);
         assert_eq!(store.get_height_for_round(6).unwrap(), None);
 
-        assert_eq!(store.get_committee(0).unwrap(), None);
-        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee(0).unwrap().unwrap(), committee_0);
+        assert_eq!(store.get_committee(1).unwrap(), None);
         assert_eq!(store.get_committee(2).unwrap(), None);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
+        assert_eq!(store.get_committee_for_round(0).unwrap(), None);
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
         assert_eq!(store.get_committee_for_round(2).unwrap().unwrap(), committee_0);
         assert_eq!(store.get_committee_for_round(3).unwrap().unwrap(), committee_0);
@@ -478,11 +482,12 @@ mod tests {
         assert_eq!(store.get_committee_for_round(6).unwrap(), None);
 
         // Remove the committee.
-        store.remove(1).unwrap();
+        store.remove(0).unwrap();
         assert!(store.current_round().is_err());
         assert!(store.current_height().is_err());
         assert!(store.current_committee().is_err());
 
+        assert_eq!(store.get_height_for_round(0).unwrap(), None);
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
         assert_eq!(store.get_height_for_round(2).unwrap(), None);
         assert_eq!(store.get_height_for_round(3).unwrap(), None);
@@ -494,6 +499,7 @@ mod tests {
         assert_eq!(store.get_committee(2).unwrap(), None);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
+        assert_eq!(store.get_committee_for_round(0).unwrap(), None);
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
         assert_eq!(store.get_committee_for_round(2).unwrap(), None);
         assert_eq!(store.get_committee_for_round(3).unwrap(), None);
@@ -515,38 +521,38 @@ mod tests {
         assert!(store.current_committee().is_err());
 
         // Insert the committee.
-        store.insert(1, committee_0.clone()).unwrap();
+        store.insert(0, committee_0.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 2);
-        assert_eq!(store.current_height().unwrap(), 1);
+        assert_eq!(store.current_height().unwrap(), 0);
         assert_eq!(store.current_committee().unwrap(), committee_0);
 
         // Sample another committee.
         let committee_1 = ledger_committee::test_helpers::sample_committee_for_round(5, rng);
 
         // Insert the committee.
-        store.insert(2, committee_1.clone()).unwrap();
+        store.insert(1, committee_1.clone()).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
-        assert_eq!(store.current_height().unwrap(), 2);
+        assert_eq!(store.current_height().unwrap(), 1);
         assert_eq!(store.current_committee().unwrap(), committee_1);
 
         // Observe: We remove the committee for round 2, but the current committee is still the one for round 5.
 
         // Remove the committee.
-        store.remove(1).unwrap();
+        store.remove(0).unwrap();
         assert_eq!(store.current_round().unwrap(), 5);
-        assert_eq!(store.current_height().unwrap(), 2);
+        assert_eq!(store.current_height().unwrap(), 1);
         assert_eq!(store.current_committee().unwrap(), committee_1);
 
         assert_eq!(store.get_height_for_round(1).unwrap(), None);
         assert_eq!(store.get_height_for_round(2).unwrap(), None);
         assert_eq!(store.get_height_for_round(3).unwrap(), None);
         assert_eq!(store.get_height_for_round(4).unwrap(), None);
-        assert_eq!(store.get_height_for_round(5).unwrap().unwrap(), 2);
+        assert_eq!(store.get_height_for_round(5).unwrap().unwrap(), 1);
         assert_eq!(store.get_height_for_round(6).unwrap(), None);
 
         assert_eq!(store.get_committee(0).unwrap(), None);
-        assert_eq!(store.get_committee(1).unwrap(), None);
-        assert_eq!(store.get_committee(2).unwrap().unwrap(), committee_1);
+        assert_eq!(store.get_committee(1).unwrap().unwrap(), committee_1);
+        assert_eq!(store.get_committee(2).unwrap(), None);
         assert_eq!(store.get_committee(3).unwrap(), None);
 
         assert_eq!(store.get_committee_for_round(1).unwrap(), None);
@@ -557,7 +563,7 @@ mod tests {
         assert_eq!(store.get_committee_for_round(6).unwrap(), None);
 
         // Remove the committee.
-        store.remove(2).unwrap();
+        store.remove(1).unwrap();
         assert!(store.current_round().is_err());
         assert!(store.current_height().is_err());
         assert!(store.current_committee().is_err());
