@@ -231,7 +231,8 @@ pub mod test_helpers {
         // Sample the members.
         let mut members = IndexMap::new();
         for _ in 0..4 {
-            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_STAKE, false));
+            let is_open = rng.gen();
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_STAKE, is_open));
         }
         // Return the committee.
         Committee::<CurrentNetwork>::new(1, members).unwrap()
@@ -242,7 +243,8 @@ pub mod test_helpers {
         // Sample the members.
         let mut members = IndexMap::new();
         for _ in 0..4 {
-            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_STAKE, false));
+            let is_open = rng.gen();
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_STAKE, is_open));
         }
         // Return the committee.
         Committee::<CurrentNetwork>::new(round, members).unwrap()
@@ -251,8 +253,6 @@ pub mod test_helpers {
     /// Samples a random committee.
     pub fn sample_committee_custom(num_members: u16, rng: &mut TestRng) -> Committee<CurrentNetwork> {
         assert!(num_members >= 4);
-        // Set the minimum amount staked in the node.
-        const MIN_STAKE: u64 = 1_000_000_000_000;
         // Set the maximum amount staked in the node.
         const MAX_STAKE: u64 = 100_000_000_000_000;
         // Initialize the Exponential distribution.
@@ -267,7 +267,8 @@ pub mod test_helpers {
             loop {
                 let stake = MIN_STAKE as f64 + range * distribution.sample(rng);
                 if stake >= MIN_STAKE as f64 && stake <= MAX_STAKE as f64 {
-                    members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake as u64, false));
+                    let is_open = rng.gen();
+                    members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake as u64, is_open));
                     break;
                 }
             }
