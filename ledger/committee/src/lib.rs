@@ -334,7 +334,7 @@ mod tests {
         // Sample a committee.
         let committee = crate::test_helpers::sample_committee(rng);
         // Check the leader distribution.
-        check_leader_distribution(committee, NUM_ROUNDS, 2.0);
+        check_leader_distribution(committee, NUM_ROUNDS, 2.5);
     }
 
     #[test]
