@@ -76,7 +76,7 @@ pub fn bonded_map_into_stakers<N: Network>(
 /// Checks that the given committee from committee storage matches the given committee map from finalize storage.
 pub fn ensure_committee_matches<N: Network>(
     committee: &Committee<N>,
-    committee_map: &Vec<(Plaintext<N>, Value<N>)>,
+    committee_map: &[(Plaintext<N>, Value<N>)],
 ) -> Result<()> {
     // Prepare the identifiers.
     let microcredits_identifier = Identifier::from_str("is_open")?;

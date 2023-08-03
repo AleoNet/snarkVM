@@ -55,18 +55,6 @@ impl<N: Network> Committee<N> {
         // Return the new committee.
         Ok(Self { starting_round, members, total_stake })
     }
-
-    /// Returns a new `Committee` instance for the next round.
-    /// TODO (howardwu): Add arguments for members (and stake) 1) to be added, 2) to be updated, and 3) to be removed.
-    #[deprecated]
-    pub fn to_next_round(&self) -> Self {
-        // Return the new committee.
-        Self {
-            starting_round: self.starting_round.saturating_add(1),
-            members: self.members.clone(),
-            total_stake: self.total_stake,
-        }
-    }
 }
 
 impl<N: Network> Committee<N> {

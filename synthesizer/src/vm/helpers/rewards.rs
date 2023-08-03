@@ -36,7 +36,7 @@ pub fn staking_rewards<N: Network>(
     block_reward: u64,
 ) -> IndexMap<Address<N>, (Address<N>, u64)> {
     // If the list of stakers is empty or there is no stake, return an empty map.
-    if stakers.len() == 0 || committee.total_stake() == 0 {
+    if stakers.is_empty() || committee.total_stake() == 0 {
         return Default::default();
     }
 

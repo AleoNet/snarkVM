@@ -170,18 +170,6 @@ pub fn any_valid_address() -> BoxedStrategy<Address<CurrentNetwork>> {
 }
 
 #[proptest]
-fn committee_advance(input: CommitteeContext) {
-    let CommitteeContext(committee, _) = input;
-
-    let current_round = committee.starting_round();
-    let current_members = committee.members();
-
-    let committee = committee.to_next_round();
-    assert_eq!(committee.starting_round(), current_round + 1);
-    assert_eq!(committee.members(), current_members);
-}
-
-#[proptest]
 fn committee_members(input: CommitteeContext) {
     let CommitteeContext(committee, ValidatorSet(validators)) = input;
 
