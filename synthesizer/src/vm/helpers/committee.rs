@@ -296,7 +296,7 @@ mod tests {
                     // Insert staker.
                     stakers.insert(staker, (*validator, staker_amount));
                     // Update the remaining microcredits.
-                    remaining_microcredits = remaining_microcredits - staker_amount;
+                    remaining_microcredits -= staker_amount;
                 }
 
                 // Insert the last staker.
