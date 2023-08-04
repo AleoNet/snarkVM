@@ -25,7 +25,7 @@ mod to_type;
 mod variant;
 
 use crate::LiteralType;
-use snarkvm_console_account::Signature;
+use snarkvm_console_account::{ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
 
