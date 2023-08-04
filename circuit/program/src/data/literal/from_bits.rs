@@ -36,7 +36,7 @@ impl<A: Aleo> Literal<A> {
             14 => Literal::Scalar(Scalar::from_bits_le(literal)),
             15 => Literal::String(StringType::from_bits_le(literal)),
             // Note: This is placed here in order to preserve (de)serializing existing variants.
-            16 => Literal::Signature(Signature::from_bits_le(literal)),
+            16 => Literal::Signature(Box::new(Signature::from_bits_le(literal))),
             17.. => A::halt(format!("Failed to initialize literal variant {} from bits (LE)", variant.eject_value())),
         }
     }
@@ -62,7 +62,7 @@ impl<A: Aleo> Literal<A> {
             14 => Literal::Scalar(Scalar::from_bits_be(literal)),
             15 => Literal::String(StringType::from_bits_be(literal)),
             // Note: This is placed here in order to preserve (de)serializing existing variants.
-            16 => Literal::Signature(Signature::from_bits_be(literal)),
+            16 => Literal::Signature(Box::new(Signature::from_bits_be(literal))),
             17.. => A::halt(format!("Failed to initialize literal variant {} from bits (BE))", variant.eject_value())),
         }
     }
@@ -132,7 +132,7 @@ mod tests {
             // Scalar
             check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, Uniform::rand(rng))));
             // Signature
-            check_serialization(Literal::<Circuit>::Signature(Signature::new(
+            check_serialization(Literal::<Circuit>::Signature(Box::new(Signature::new(
                 mode,
                 console::Signature::from((
                     Uniform::rand(rng),
@@ -140,7 +140,7 @@ mod tests {
                     snarkvm_console_account::ComputeKey::try_from((Uniform::rand(rng), Uniform::rand(rng)))
                         .expect("ComputeKey::try_from failed"),
                 )),
-            )));
+            ))));
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
             let string = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);

@@ -61,7 +61,7 @@ pub enum Literal<A: Aleo> {
     /// The scalar type (scalar field).
     Scalar(Scalar<A>),
     /// The signature type.
-    Signature(Signature<A>),
+    Signature(Box<Signature<A>>),
     /// The string type.
     String(StringType<A>),
 }
@@ -88,7 +88,7 @@ impl<A: Aleo> Inject for Literal<A> {
             Self::Primitive::U64(u64) => Self::U64(U64::new(mode, u64)),
             Self::Primitive::U128(u128) => Self::U128(U128::new(mode, u128)),
             Self::Primitive::Scalar(scalar) => Self::Scalar(Scalar::new(mode, scalar)),
-            Self::Primitive::Signature(signature) => Self::Signature(Signature::new(mode, signature)),
+            Self::Primitive::Signature(signature) => Self::Signature(Box::new(Signature::new(mode, *signature))),
             Self::Primitive::String(string) => Self::String(StringType::new(mode, string)),
         }
     }
@@ -139,7 +139,7 @@ impl<A: Aleo> Eject for Literal<A> {
             Self::U64(literal) => Self::Primitive::U64(literal.eject_value()),
             Self::U128(literal) => Self::Primitive::U128(literal.eject_value()),
             Self::Scalar(literal) => Self::Primitive::Scalar(literal.eject_value()),
-            Self::Signature(literal) => Self::Primitive::Signature(literal.eject_value()),
+            Self::Signature(literal) => Self::Primitive::Signature(Box::new(literal.eject_value())),
             Self::String(literal) => Self::Primitive::String(literal.eject_value()),
         }
     }
@@ -166,7 +166,7 @@ impl<A: Aleo> Parser for Literal<A> {
             map(U64::parse, |literal| Self::U64(literal)),
             map(U128::parse, |literal| Self::U128(literal)),
             map(Scalar::parse, |literal| Self::Scalar(literal)),
-            map(Signature::parse, |literal| Self::Signature(literal)),
+            map(Signature::parse, |literal| Self::Signature(Box::new(literal))),
             map(StringType::parse, |literal| Self::String(literal)),
         ))(string)
     }

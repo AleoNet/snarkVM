@@ -34,7 +34,7 @@ impl<N: Network> Parser for Literal<N> {
             map(U64::<N>::parse, |literal| Self::U64(literal)),
             map(U128::<N>::parse, |literal| Self::U128(literal)),
             map(Scalar::<N>::parse, |literal| Self::Scalar(literal)),
-            map(Signature::<N>::parse, |literal| Self::Signature(literal)),
+            map(Signature::<N>::parse, |literal| Self::Signature(Box::new(literal))),
             map(StringType::<N>::parse, |literal| Self::String(literal)),
         ))(string)
     }

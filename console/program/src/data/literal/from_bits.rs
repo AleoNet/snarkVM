@@ -48,7 +48,7 @@ impl<N: Network> Literal<N> {
                 }
             }
             // Note: This is placed here in order to preserve (de)serializing existing variants.
-            16 => Literal::Signature(Signature::from_bits_le(literal)?),
+            16 => Literal::Signature(Box::new(Signature::from_bits_le(literal)?)),
             17.. => bail!("Failed to initialize literal variant {} from bits (LE)", variant),
         };
         Ok(literal)
@@ -87,7 +87,7 @@ impl<N: Network> Literal<N> {
                 }
             }
             // Note: This is placed here in order to preserve (de)serializing existing variants.
-            16 => Literal::Signature(Signature::from_bits_be(literal)?),
+            16 => Literal::Signature(Box::new(Signature::from_bits_be(literal)?)),
             17.. => bail!("Failed to initialize literal variant {} from bits (BE)", variant),
         };
         Ok(literal)
