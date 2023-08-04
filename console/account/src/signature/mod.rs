@@ -19,6 +19,7 @@ mod parse;
 mod serialize;
 mod size_in_bits;
 mod to_bits;
+mod to_fields;
 mod verify;
 
 #[cfg(feature = "private_key")]
