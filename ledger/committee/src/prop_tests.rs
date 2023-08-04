@@ -68,31 +68,6 @@ fn to_committee((round, ValidatorSet(validators)): (u64, ValidatorSet)) -> Resul
     Committee::new(round, validators.iter().map(|v| (v.address, (v.stake, v.is_open))).collect())
 }
 
-fn validator_set<T: Strategy<Value = Validator>>(
-    element: T,
-    size: impl Into<SizeRange>,
-) -> impl Strategy<Value = ValidatorSet> {
-    hash_set(element, size).prop_map(ValidatorSet)
-}
-
-// TODO remove the allow(dead_code)s once there's a fix in test-strategy crate
-#[allow(dead_code)]
-fn invalid_round_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>> {
-    (Just(0), validator_set(any_valid_validator(), size_range(4..=MAX_COMMITTEE_SIZE as usize)))
-        .prop_map(to_committee)
-        .boxed()
-}
-
-#[allow(dead_code)]
-fn too_small_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>> {
-    (1u64.., validator_set(any_valid_validator(), 0..4)).prop_map(to_committee).boxed()
-}
-
-#[allow(dead_code)]
-fn too_low_stake_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>> {
-    (1u64.., validator_set(invalid_stake_validator(), 4..=4)).prop_map(to_committee).boxed()
-}
-
 #[derive(Debug, Clone)]
 pub struct CommitteeContext(pub Committee<CurrentNetwork>, pub ValidatorSet);
 
@@ -119,6 +94,13 @@ impl Arbitrary for CommitteeContext {
             .prop_map(|validators| CommitteeContext(to_committee((1, validators.clone())).unwrap(), validators))
             .boxed()
     }
+}
+
+fn validator_set<T: Strategy<Value = Validator>>(
+    element: T,
+    size: impl Into<SizeRange>,
+) -> impl Strategy<Value = ValidatorSet> {
+    hash_set(element, size).prop_map(ValidatorSet)
 }
 
 #[derive(Debug, Clone)]
@@ -153,19 +135,29 @@ pub fn any_valid_validator() -> BoxedStrategy<Validator> {
         .boxed()
 }
 
-#[allow(dead_code)]
-fn invalid_stake_validator() -> BoxedStrategy<Validator> {
-    (0..MIN_STAKE, any_valid_address(), any::<bool>())
-        .prop_map(|(stake, address, is_open)| Validator { address, stake, is_open })
-        .boxed()
-}
-
 pub fn any_valid_address() -> BoxedStrategy<Address<CurrentNetwork>> {
     any::<u64>()
         .prop_map(|seed| {
             let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(seed);
             Address::new(rng.gen())
         })
+        .boxed()
+}
+
+#[allow(dead_code)]
+fn too_small_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>> {
+    (1u64.., validator_set(any_valid_validator(), 0..4)).prop_map(to_committee).boxed()
+}
+
+#[allow(dead_code)]
+fn too_low_stake_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>> {
+    (1u64.., validator_set(invalid_stake_validator(), 4..=4)).prop_map(to_committee).boxed()
+}
+
+#[allow(dead_code)]
+fn invalid_stake_validator() -> BoxedStrategy<Validator> {
+    (0..MIN_STAKE, any_valid_address(), any::<bool>())
+        .prop_map(|(stake, address, is_open)| Validator { address, stake, is_open })
         .boxed()
 }
 
