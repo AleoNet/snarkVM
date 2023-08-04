@@ -157,7 +157,7 @@ pub fn ensure_stakers_matches<N: Network>(
         ensure!(candidate_microcredits.is_some(), "A validator is missing in finalize storage");
         ensure!(
             *microcredits == *candidate_microcredits.unwrap(),
-            "Committee contains an incorrect 'microcredits' amount"
+            "Committee contains an incorrect 'microcredits' amount from stakers"
         );
     }
 

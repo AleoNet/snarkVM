@@ -17,6 +17,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     helpers::{Map, MapRead},
+    program::{CommitteeStorage, CommitteeStore},
 };
 use console::{
     network::prelude::*,
@@ -41,6 +42,8 @@ use indexmap::{IndexMap, IndexSet};
 /// BTreeMap<ProgramID<N>, BTreeMap<Identifier<N>, BTreeMap<Key, Value>>>
 /// ```
 pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
+    /// The committee storage.
+    type CommitteeStorage: CommitteeStorage<N>;
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
     /// The mapping of `(program ID, mapping name)` to `mapping ID`.
@@ -55,6 +58,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the program state storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
+    /// Returns the committee storage.
+    fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage>;
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap;
     /// Returns the mapping ID map.
@@ -71,6 +76,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
+        self.committee_store().start_atomic();
         self.program_id_map().start_atomic();
         self.mapping_id_map().start_atomic();
         self.key_value_id_map().start_atomic();
@@ -80,7 +86,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Checks if an atomic batch is in progress.
     fn is_atomic_in_progress(&self) -> bool {
-        self.program_id_map().is_atomic_in_progress()
+        self.committee_store().is_atomic_in_progress()
+            || self.program_id_map().is_atomic_in_progress()
             || self.mapping_id_map().is_atomic_in_progress()
             || self.key_value_id_map().is_atomic_in_progress()
             || self.key_map().is_atomic_in_progress()
@@ -89,6 +96,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Checkpoints the atomic batch.
     fn atomic_checkpoint(&self) {
+        self.committee_store().atomic_checkpoint();
         self.program_id_map().atomic_checkpoint();
         self.mapping_id_map().atomic_checkpoint();
         self.key_value_id_map().atomic_checkpoint();
@@ -98,6 +106,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Clears the latest atomic batch checkpoint.
     fn clear_latest_checkpoint(&self) {
+        self.committee_store().clear_latest_checkpoint();
         self.program_id_map().clear_latest_checkpoint();
         self.mapping_id_map().clear_latest_checkpoint();
         self.key_value_id_map().clear_latest_checkpoint();
@@ -107,6 +116,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
+        self.committee_store().atomic_rewind();
         self.program_id_map().atomic_rewind();
         self.mapping_id_map().atomic_rewind();
         self.key_value_id_map().atomic_rewind();
@@ -116,6 +126,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
+        self.committee_store().abort_atomic();
         self.program_id_map().abort_atomic();
         self.mapping_id_map().abort_atomic();
         self.key_value_id_map().abort_atomic();
@@ -125,6 +136,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Finishes an atomic batch write operation.
     fn finish_atomic(&self) -> Result<()> {
+        self.committee_store().finish_atomic()?;
         self.program_id_map().finish_atomic()?;
         self.mapping_id_map().finish_atomic()?;
         self.key_value_id_map().finish_atomic()?;
@@ -793,6 +805,13 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Returns the optional development ID.
     pub fn dev(&self) -> Option<u16> {
         self.storage.dev()
+    }
+}
+
+impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
+    /// Returns the committee store.
+    pub fn committee_store(&self) -> &CommitteeStore<N, P::CommitteeStorage> {
+        self.storage.committee_store()
     }
 }
 

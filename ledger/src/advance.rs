@@ -195,7 +195,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             previous_block.hash(),
         )?;
         // Select the transactions from the memory pool.
-        let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
+        let transactions =
+            self.vm.speculate(state, &ratifications, solutions.as_ref(), candidate_transactions.iter())?;
 
         // Compute the next total supply in microcredits.
         let next_total_supply_in_microcredits = update_total_supply(

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use crate::{
-    helpers::rocksdb::{self, DataMap, Database, MapID, ProgramMap},
+    helpers::rocksdb::{self, CommitteeMap, DataMap, Database, MapID, ProgramMap},
+    CommitteeStorage,
+    CommitteeStore,
     FinalizeStorage,
 };
 use console::{
@@ -21,12 +23,15 @@ use console::{
     program::{Identifier, Plaintext, ProgramID, Value},
     types::Field,
 };
+use ledger_committee::Committee;
 
 use indexmap::{IndexMap, IndexSet};
 
 /// A RocksDB finalize storage.
 #[derive(Clone)]
 pub struct FinalizeDB<N: Network> {
+    /// The committee store.
+    committee_store: CommitteeStore<N, CommitteeDB<N>>,
     /// The program ID map.
     program_id_map: DataMap<ProgramID<N>, IndexSet<Identifier<N>>>,
     /// The mapping ID map.
@@ -43,15 +48,20 @@ pub struct FinalizeDB<N: Network> {
 
 #[rustfmt::skip]
 impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
+    type CommitteeStorage = CommitteeDB<N>;
     type ProgramIDMap = DataMap<ProgramID<N>, IndexSet<Identifier<N>>>;
     type MappingIDMap = DataMap<(ProgramID<N>, Identifier<N>), Field<N>>;
     type KeyValueIDMap = DataMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
     type KeyMap = DataMap<Field<N>, Plaintext<N>>;
     type ValueMap = DataMap<Field<N>, Value<N>>;
 
-    /// Initializes the program state storage.
+    /// Initializes the finalize storage.
     fn open(dev: Option<u16>) -> Result<Self> {
+        // Initialize the committee store.
+        let committee_store = CommitteeStore::<N, CommitteeDB<N>>::open(dev)?;
+        // Return the finalize storage.
         Ok(Self {
+            committee_store,
             program_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::ProgramID))?,
             mapping_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::MappingID))?,
             key_value_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
@@ -59,6 +69,11 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
             value_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Value))?,
             dev,
         })
+    }
+
+    /// Returns the committee store.
+    fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage> {
+        &self.committee_store
     }
 
     /// Returns the program ID map.
@@ -84,6 +99,56 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     /// Returns the value map.
     fn value_map(&self) -> &Self::ValueMap {
         &self.value_map
+    }
+
+    /// Returns the optional development ID.
+    fn dev(&self) -> Option<u16> {
+        self.dev
+    }
+}
+
+/// A RocksDB committee storage.
+#[derive(Clone)]
+pub struct CommitteeDB<N: Network> {
+    /// The current round map.
+    current_round_map: DataMap<u8, u64>,
+    /// The round to height map.
+    round_to_height_map: DataMap<u64, u32>,
+    /// The committee map.
+    committee_map: DataMap<u32, Committee<N>>,
+    /// The optional development ID.
+    dev: Option<u16>,
+}
+
+#[rustfmt::skip]
+impl<N: Network> CommitteeStorage<N> for CommitteeDB<N> {
+    type CurrentRoundMap = DataMap<u8, u64>;
+    type RoundToHeightMap = DataMap<u64, u32>;
+    type CommitteeMap = DataMap<u32, Committee<N>>;
+
+    /// Initializes the committee storage.
+    fn open(dev: Option<u16>) -> Result<Self> {
+        Ok(Self {
+            current_round_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Committee(CommitteeMap::CurrentRound))?,
+            round_to_height_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Committee(CommitteeMap::RoundToHeight))?,
+            committee_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Committee(CommitteeMap::Committee))?,
+            dev,
+        })
+    }
+
+    /// Returns the current round map.
+    fn current_round_map(&self) -> &Self::CurrentRoundMap {
+        &self.current_round_map
+    }
+
+    /// Returns the round to height map.
+    fn round_to_height_map(&self) -> &Self::RoundToHeightMap {
+        &self.round_to_height_map
+    }
+
+    /// Returns the committee map.
+    fn committee_map(&self) -> &Self::CommitteeMap {
+        &self.committee_map
     }
 
     /// Returns the optional development ID.

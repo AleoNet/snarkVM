@@ -405,7 +405,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .collect::<Result<Vec<_>>>()?;
 
         // Ensure the transactions after speculation match.
-        if block.transactions() != &self.vm.speculate(state, unconfirmed_transactions.iter())? {
+        if block.transactions()
+            != &self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?
+        {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 

@@ -207,7 +207,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
     /// Returns the latest committee.
     pub fn latest_committee(&self) -> Result<Committee<N>> {
-        self.vm.committee_store().current_committee()
+        self.vm.finalize_store().committee_store().current_committee()
     }
 
     /// Returns the latest state root.

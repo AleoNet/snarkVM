@@ -45,7 +45,6 @@ use ledger_query::Query;
 use ledger_store::{
     atomic_finalize,
     BlockStore,
-    CommitteeStore,
     ConsensusStorage,
     ConsensusStore,
     FinalizeMode,
@@ -158,12 +157,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Returns the committee store.
-    #[inline]
-    pub fn committee_store(&self) -> &CommitteeStore<N, C::CommitteeStorage> {
-        self.store.committee_store()
-    }
-
     /// Returns the finalize store.
     #[inline]
     pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
@@ -597,7 +590,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
+        let transactions = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
