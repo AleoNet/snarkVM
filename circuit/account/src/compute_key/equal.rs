@@ -47,10 +47,11 @@ impl<A: Aleo> Equal<Self> for ComputeKey<A> {
 impl<A: Aleo> Metrics<dyn Equal<ComputeKey<A>, Output = Boolean<A>>> for ComputeKey<A> {
     type Case = (Mode, Mode);
 
-    fn count(_case: &Self::Case) -> Count {
-        todo!()
-        // match case.0.is_constant() && case.1.is_constant() {
-        // }
+    fn count(case: &Self::Case) -> Count {
+        match case.0.is_constant() && case.1.is_constant() {
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, 14, 19),
+        }
     }
 }
 
@@ -67,6 +68,108 @@ impl<A: Aleo> OutputMode<dyn Equal<ComputeKey<A>, Output = Boolean<A>>> for Comp
 
 #[cfg(all(test, console))]
 mod tests {
+    use super::*;
+    use crate::Circuit;
+    use snarkvm_circuit_network::AleoV0;
+    use snarkvm_utilities::TestRng;
 
-    // TODO
+    type CurrentAleo = AleoV0;
+
+    const ITERATIONS: u64 = 10;
+
+    fn check_is_equal(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+        rng: &mut TestRng,
+    ) {
+        for i in 0..ITERATIONS {
+            // Sample two random compute keys.
+            let a = ComputeKey::<CurrentAleo>::new(
+                mode_a,
+                console::ComputeKey::try_from(console::PrivateKey::new(rng).unwrap()).unwrap(),
+            );
+            let b = ComputeKey::<CurrentAleo>::new(
+                mode_b,
+                console::ComputeKey::try_from(console::PrivateKey::new(rng).unwrap()).unwrap(),
+            );
+
+            CurrentAleo::scope(&format!("{mode_a} {mode_a} {i}"), || {
+                let equals = a.is_equal(&a);
+                assert!(equals.eject_value());
+            });
+
+            CurrentAleo::scope(&format!("{mode_a} {mode_b} {i}"), || {
+                let equals = a.is_equal(&b);
+                assert!(!equals.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+        }
+    }
+
+    fn check_is_not_equal(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+        rng: &mut TestRng,
+    ) {
+        for i in 0..ITERATIONS {
+            // Sample two random compute keys.
+            let a = ComputeKey::<CurrentAleo>::new(
+                mode_a,
+                console::ComputeKey::try_from(console::PrivateKey::new(rng).unwrap()).unwrap(),
+            );
+            let b = ComputeKey::<CurrentAleo>::new(
+                mode_b,
+                console::ComputeKey::try_from(console::PrivateKey::new(rng).unwrap()).unwrap(),
+            );
+
+            CurrentAleo::scope(&format!("{mode_a} {mode_a} {i}"), || {
+                let equals = a.is_not_equal(&a);
+                assert!(!equals.eject_value());
+            });
+
+            CurrentAleo::scope(&format!("{mode_a} {mode_b} {i}"), || {
+                let equals = a.is_not_equal(&b);
+                assert!(equals.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+        }
+    }
+
+    #[test]
+    fn test_is_equal() {
+        let mut rng = TestRng::default();
+
+        check_is_equal(Mode::Constant, Mode::Constant, 0, 0, 0, 0, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 14, 19, &mut rng);
+        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 14, 19, &mut rng);
+        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 14, 19, &mut rng);
+        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 14, 19, &mut rng);
+        check_is_equal(Mode::Public, Mode::Public, 0, 0, 14, 19, &mut rng);
+        check_is_equal(Mode::Public, Mode::Private, 0, 0, 14, 19, &mut rng);
+        check_is_equal(Mode::Private, Mode::Public, 0, 0, 14, 19, &mut rng);
+        check_is_equal(Mode::Private, Mode::Private, 0, 0, 14, 19, &mut rng);
+    }
+
+    #[test]
+    fn test_is_not_equal() {
+        let mut rng = TestRng::default();
+
+        check_is_not_equal(Mode::Constant, Mode::Constant, 0, 0, 0, 0, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 14, 19, &mut rng);
+        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 14, 19, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 14, 19, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 14, 19, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 14, 19, &mut rng);
+        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 14, 19, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 14, 19, &mut rng);
+        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 14, 19, &mut rng);
+    }
 }
