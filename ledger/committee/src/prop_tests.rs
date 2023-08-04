@@ -14,11 +14,7 @@
 
 use super::*;
 use crate::MIN_STAKE;
-
-use std::{
-    collections::HashSet,
-    hash::{Hash, Hasher},
-};
+use console::account::PrivateKey;
 
 use anyhow::Result;
 use proptest::{
@@ -27,6 +23,10 @@ use proptest::{
     sample::size_range,
 };
 use rand::SeedableRng;
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 use test_strategy::proptest;
 
 type CurrentNetwork = console::network::Testnet3;
@@ -36,6 +36,7 @@ pub const MAX_COMMITTEE_SIZE: u16 = 100; // members
 
 #[derive(Debug, Clone)]
 pub struct Validator {
+    pub private_key: PrivateKey<CurrentNetwork>,
     pub address: Address<CurrentNetwork>,
     pub stake: u64,
     pub is_open: bool,
@@ -112,7 +113,9 @@ impl Default for ValidatorSet {
             (0..4u64)
                 .map(|i| {
                     let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(i);
-                    Validator { address: Address::new(rng.gen()), stake: MIN_STAKE, is_open: false }
+                    let private_key = PrivateKey::new(rng).unwrap();
+                    let address = Address::try_from(private_key).unwrap();
+                    Validator { private_key, address, stake: MIN_STAKE, is_open: false }
                 })
                 .collect(),
         )
@@ -130,16 +133,19 @@ impl Arbitrary for ValidatorSet {
 }
 
 pub fn any_valid_validator() -> BoxedStrategy<Validator> {
-    (MIN_STAKE..100_000_000_000_000, any_valid_address(), any::<bool>())
-        .prop_map(|(stake, address, is_open)| Validator { address, stake, is_open })
+    (MIN_STAKE..100_000_000_000_000, any_valid_private_key(), any::<bool>())
+        .prop_map(|(stake, private_key, is_open)| {
+            let address = Address::try_from(private_key).unwrap();
+            Validator { private_key, address, stake, is_open }
+        })
         .boxed()
 }
 
-pub fn any_valid_address() -> BoxedStrategy<Address<CurrentNetwork>> {
+pub fn any_valid_private_key() -> BoxedStrategy<PrivateKey<CurrentNetwork>> {
     any::<u64>()
         .prop_map(|seed| {
             let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(seed);
-            Address::new(rng.gen())
+            PrivateKey::new(rng).unwrap()
         })
         .boxed()
 }
@@ -156,8 +162,11 @@ fn too_low_stake_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>>
 
 #[allow(dead_code)]
 fn invalid_stake_validator() -> BoxedStrategy<Validator> {
-    (0..MIN_STAKE, any_valid_address(), any::<bool>())
-        .prop_map(|(stake, address, is_open)| Validator { address, stake, is_open })
+    (0..MIN_STAKE, any_valid_private_key(), any::<bool>())
+        .prop_map(|(stake, private_key, is_open)| {
+            let address = Address::try_from(private_key).unwrap();
+            Validator { private_key, address, stake, is_open }
+        })
         .boxed()
 }
 
