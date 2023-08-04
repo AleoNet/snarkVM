@@ -63,7 +63,7 @@ pub enum Literal<N: Network> {
     /// The scalar type.
     Scalar(Scalar<N>),
     /// The signature type.
-    Signature(Signature<N>),
+    Signature(Box<Signature<N>>),
     /// The string type.
     String(StringType<N>),
 }
