@@ -23,7 +23,7 @@ use rayon::prelude::*;
 /// A safety bound (sanity-check) for the coinbase reward.
 pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
 
-/// Returns the staking rewards for the given committee and block reward.
+/// Returns the updated stakers reflecting the staking rewards for the given committee and block reward.
 /// The staking reward is defined as: `block_reward * stake / total_stake`.
 ///
 /// This method ensures that stakers who are bonded to validators with more than **25%**
@@ -244,8 +244,6 @@ mod tests {
         let rng = &mut TestRng::default();
         // Sample a random committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
-        // Retrieve an address.
-        let address = *committee.members().iter().next().unwrap().0;
 
         // Compute the staking rewards (empty).
         let rewards = staking_rewards::<CurrentNetwork>(&indexmap![], &committee, rng.gen());
