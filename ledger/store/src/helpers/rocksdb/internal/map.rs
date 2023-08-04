@@ -161,6 +161,8 @@ impl<
     fn finish_atomic(&self) -> Result<()> {
         // Retrieve the atomic batch belonging to the map.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
+        
+        
 
         if !operations.is_empty() {
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
@@ -183,9 +185,12 @@ impl<
 
             // Enqueue all the operations from the map in the database-wide batch.
             let mut atomic_batch = self.database.atomic_batch.lock();
+            // create kafka queue
+            //let kafkaqueue = custom struct (key,value)
             for (raw_key, raw_value) in prepared_operations {
                 match raw_value {
                     Some(raw_value) => atomic_batch.put(raw_key, raw_value),
+                    Some(raw_value) => kafkaqueue.put()
                     None => atomic_batch.delete(raw_key),
                 };
             }
@@ -210,6 +215,7 @@ impl<
             let batch = mem::take(&mut *self.database.atomic_batch.lock());
             // Execute all the operations atomically.
             self.database.rocksdb.write(batch)?;
+            // kafka.sendmessages(kafkaqueue);
             // Ensure that the database atomic batch is empty.
             assert!(self.database.atomic_batch.lock().is_empty());
         }
