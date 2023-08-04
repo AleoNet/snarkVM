@@ -20,16 +20,7 @@ use crate::{
 use circuit::ToFields as CircuitToFields;
 use console::{
     network::prelude::*,
-    program::{
-        Literal,
-        LiteralType,
-        Plaintext,
-        PlaintextType,
-        Register,
-        RegisterType,
-        ToFields as ConsoleToFields,
-        Value,
-    },
+    program::{Literal, LiteralType, PlaintextType, Register, RegisterType, ToFields as ConsoleToFields},
     types::Boolean,
 };
 
@@ -61,7 +52,7 @@ impl<N: Network> SignVerify<N> {
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
-        // Sanity check that the operands is exactly three inputs.
+        // Sanity check that there are exactly three operands.
         debug_assert!(self.operands.len() == 3, "Instruction '{}' must have three operands", Self::opcode());
         // Return the operands.
         &self.operands
@@ -102,7 +93,7 @@ impl<N: Network> SignVerify<N> {
         let output = Literal::Boolean(Boolean::new(signature.verify(&address, &message.to_fields()?)));
 
         // Store the output.
-        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
+        registers.store_literal(stack, &self.destination, output)
     }
 
     /// Executes the instruction.
@@ -131,10 +122,8 @@ impl<N: Network> SignVerify<N> {
         // Verify the signature.
         let output = circuit::Literal::Boolean(signature.verify(&address, &message.to_fields()));
 
-        // Convert the output to a stack value.
-        let output = circuit::Value::Plaintext(circuit::Plaintext::from(output));
         // Store the output.
-        registers.store_circuit(stack, &self.destination, output)
+        registers.store_literal_circuit(stack, &self.destination, output)
     }
 
     /// Finalizes the instruction.

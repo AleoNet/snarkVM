@@ -132,15 +132,7 @@ mod tests {
             // Scalar
             check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, Uniform::rand(rng))));
             // Signature
-            check_serialization(Literal::<Circuit>::Signature(Box::new(Signature::new(
-                mode,
-                console::Signature::from((
-                    Uniform::rand(rng),
-                    Uniform::rand(rng),
-                    snarkvm_console_account::ComputeKey::try_from((Uniform::rand(rng), Uniform::rand(rng)))
-                        .expect("ComputeKey::try_from failed"),
-                )),
-            ))));
+            check_serialization(Literal::new(mode, console::Literal::sample(LiteralType::Signature, rng)));
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
             let string = rng.next_string(Circuit::MAX_STRING_BYTES / 4, false);
