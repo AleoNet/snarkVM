@@ -14,6 +14,7 @@
 
 use super::*;
 
+#[cfg(console)]
 impl<A: Aleo> ToFields for Signature<A> {
     type Field = Field<A>;
 
@@ -26,7 +27,7 @@ impl<A: Aleo> ToFields for Signature<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use crate::Circuit;
@@ -64,17 +65,8 @@ mod tests {
 
                 // Ensure all integer bits match with the expected result.
                 let expected_bits = expected.to_fields().unwrap().to_bits_le();
-                for (expected_bit, candidate_bit) in expected_bits.iter().zip_eq(
-                    &candidate_bits_le[0..console::Signature::<<CurrentAleo as Environment>::Network>::size_in_bits()],
-                ) {
+                for (expected_bit, candidate_bit) in expected_bits.iter().zip_eq(&candidate_bits_le) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
-                }
-
-                // Ensure all remaining bits are 0.
-                for candidate_bit in
-                    &candidate_bits_le[console::Signature::<<CurrentAleo as Environment>::Network>::size_in_bits()..]
-                {
-                    assert!(!candidate_bit.eject_value());
                 }
             });
             CurrentAleo::reset();
@@ -86,7 +78,7 @@ mod tests {
         let mut rng = TestRng::default();
 
         check_to_fields(Mode::Constant, &mut rng, 1008, 0, 0, 0);
-        check_to_fields(Mode::Public, &mut rng, 0, 0, 0, 0);
-        check_to_fields(Mode::Private, &mut rng, 0, 0, 0, 0);
+        check_to_fields(Mode::Public, &mut rng, 0, 0, 2012, 2020);
+        check_to_fields(Mode::Private, &mut rng, 0, 0, 2012, 2020);
     }
 }
