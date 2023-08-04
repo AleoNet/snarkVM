@@ -49,6 +49,76 @@ impl<A: Aleo> FromBits for Signature<A> {
 
 #[cfg(all(test, console))]
 mod tests {
+    use super::*;
+    use crate::Circuit;
+    use snarkvm_circuit_network::AleoV0;
+    use snarkvm_utilities::TestRng;
 
-    // TODO
+    type CurrentAleo = AleoV0;
+
+    const ITERATIONS: u64 = 100;
+
+    fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let rng = &mut TestRng::default();
+
+        for i in 0..ITERATIONS {
+            // Sample a random signature.
+            let expected = crate::helpers::generate_signature(i, rng);
+            let candidate = Signature::<CurrentAleo>::new(mode, expected).to_bits_le();
+
+            CurrentAleo::scope(&format!("{mode} {i}"), || {
+                let candidate = Signature::<CurrentAleo>::from_bits_le(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            CurrentAleo::reset();
+        }
+    }
+
+    fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        let rng = &mut TestRng::default();
+
+        for i in 0..ITERATIONS {
+            // Sample a random signature.
+            let expected = crate::helpers::generate_signature(i, rng);
+            let candidate = Signature::<CurrentAleo>::new(mode, expected).to_bits_be();
+
+            CurrentAleo::scope(&format!("{mode} {i}"), || {
+                let candidate = Signature::<CurrentAleo>::from_bits_be(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            CurrentAleo::reset();
+        }
+    }
+
+    #[test]
+    fn test_from_bits_le_constant() {
+        check_from_bits_le(Mode::Constant, 22, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_from_bits_le_public() {
+        check_from_bits_le(Mode::Public, 8, 0, 1283, 1283);
+    }
+
+    #[test]
+    fn test_from_bits_le_private() {
+        check_from_bits_le(Mode::Private, 8, 0, 1283, 1283);
+    }
+
+    #[test]
+    fn test_from_bits_be_constant() {
+        check_from_bits_be(Mode::Constant, 22, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_from_bits_be_public() {
+        check_from_bits_be(Mode::Public, 8, 0, 1283, 1283);
+    }
+
+    #[test]
+    fn test_from_bits_be_private() {
+        check_from_bits_be(Mode::Private, 8, 0, 1283, 1283);
+    }
 }
