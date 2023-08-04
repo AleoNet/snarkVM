@@ -219,16 +219,23 @@ mod tests {
         // Retrieve an address.
         let address = *committee.members().iter().next().unwrap().0;
 
+        // Construct the stakers.
+        let stakers = indexmap![address => (address, 1_000_000)];
+        // Check that a maxed out coinbase reward, returns empty.
+        let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, u64::MAX);
+        assert_eq!(stakers, next_stakers);
+
         // Ensure a staking reward that is too large, renders no rewards.
         for _ in 0..ITERATIONS {
             // Sample a random overly-large block reward.
             let block_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
             // Sample a random stake.
             let stake = rng.gen_range(1_000_000..u64::MAX);
+            // Construct the stakers.
+            let stakers = indexmap![address => (address, stake)];
             // Check that an overly large block reward fails.
-            let next_stakers =
-                staking_rewards::<CurrentNetwork>(&indexmap![address => (address, stake)], &committee, block_reward);
-            assert!(next_stakers.is_empty());
+            let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
+            assert_eq!(stakers, next_stakers);
         }
     }
 
@@ -243,11 +250,6 @@ mod tests {
         // Compute the staking rewards (empty).
         let rewards = staking_rewards::<CurrentNetwork>(&indexmap![], &committee, rng.gen());
         assert!(rewards.is_empty());
-
-        // Check that a maxed out coinbase reward, returns empty.
-        let next_stakers =
-            staking_rewards::<CurrentNetwork>(&indexmap![address => (address, 1_000_000)], &committee, u64::MAX);
-        assert!(next_stakers.is_empty());
     }
 
     #[test]
