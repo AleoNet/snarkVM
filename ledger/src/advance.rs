@@ -163,17 +163,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             latest_coinbase_target,
         )?;
 
-        // Construct the finalize state.
-        let state = FinalizeGlobalState::new::<N>(
-            next_round,
-            next_height,
-            next_cumulative_weight,
-            next_cumulative_proof_target,
-            previous_block.hash(),
-        )?;
-        // Select the transactions from the memory pool.
-        let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
-
         // Compute the block reward.
         let block_reward = block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
         // Compute the puzzle reward.
@@ -196,6 +185,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 .collect::<Result<Vec<_>, _>>()?,
         )?
         .root();
+
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new::<N>(
+            next_round,
+            next_height,
+            next_cumulative_weight,
+            next_cumulative_proof_target,
+            previous_block.hash(),
+        )?;
+        // Select the transactions from the memory pool.
+        let transactions = self.vm.speculate(state, candidate_transactions.iter())?;
 
         // Compute the next total supply in microcredits.
         let next_total_supply_in_microcredits = update_total_supply(
