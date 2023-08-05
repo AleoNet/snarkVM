@@ -352,4 +352,27 @@ mod tests {
         // Check the leader distribution.
         check_leader_distribution(committee, NUM_ROUNDS, 5.0);
     }
+
+    #[test]
+    fn test_sorted_members() {
+        // Initialize the RNG.
+        let rng = &mut TestRng::default();
+        // Sample a committee.
+        let committee = crate::test_helpers::sample_committee_custom(200, rng);
+
+        // Start a timer.
+        let timer = std::time::Instant::now();
+        // Sort the members.
+        let sorted_members = committee.sorted_members().collect::<Vec<_>>();
+        println!("sorted_members: {}ms", timer.elapsed().as_millis());
+        // Check that the members are sorted based on our sorting criteria.
+        for i in 0..sorted_members.len() - 1 {
+            let (address1, (stake1, _)) = sorted_members[i];
+            let (address2, (stake2, _)) = sorted_members[i + 1];
+            assert!(stake1 >= stake2);
+            if stake1 == stake2 {
+                assert!(address1.to_x_coordinate() > address2.to_x_coordinate());
+            }
+        }
+    }
 }
