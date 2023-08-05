@@ -151,7 +151,7 @@ impl<N: Network> Committee<N> {
         // Construct the round seed.
         let seed = [self.starting_round, current_round, total_stake].map(Field::from_u64);
         // Hash the round seed.
-        let hash = Literal::Field(N::hash_to_group_psd2(&seed)?.to_x_coordinate());
+        let hash = Literal::Field(N::hash_to_group_psd4(&seed)?.to_x_coordinate());
         // Compute the stake index from the hash output.
         let stake_index = match hash.downcast_lossy(LiteralType::U64)? {
             Literal::U64(output) => (*output) % total_stake,
