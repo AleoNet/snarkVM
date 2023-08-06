@@ -42,6 +42,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("The next block timestamp is before the current timestamp")
         }
 
+        // Ensure the block type is correct.
+        match block.height() == 0 {
+            true => ensure!(block.authority().is_beacon(), "The genesis block must be a beacon block"),
+            false => {
+                #[cfg(not(test))]
+                ensure!(block.authority().is_quorum(), "The next block must be a quorum block");
+            }
+        }
+
         // Ensure the next block round and block timestamp are correct.
         match block.authority() {
             Authority::Beacon(..) => {
