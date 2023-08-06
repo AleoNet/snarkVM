@@ -409,9 +409,9 @@ impl<N: Network> Block<N> {
         self.transactions.nonces()
     }
 
-    /// Returns an iterator over the transaction fees, for all transactions.
-    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
-        self.transactions.transaction_fees()
+    /// Returns an iterator over the transaction fee amounts, for all transactions.
+    pub fn transaction_fee_amounts(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
+        self.transactions.transaction_fee_amounts()
     }
 }
 

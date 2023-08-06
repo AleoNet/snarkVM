@@ -79,7 +79,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the private key and fee record");
 
                 // Execute the call to fee.
-                let (response, _fee_transition, mut trace) = $process.execute_fee::<$aleo, _>(
+                let (response, _fee_transition, mut trace) = $process.execute_fee_private::<$aleo, _>(
                     private_key,
                     fee_record.clone(),
                     fee_in_microcredits,
@@ -95,12 +95,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Compute the proof and construct the fee.
                 let trace = cast_ref!(trace as Trace<$network>);
                 let fee = trace.prove_fee::<$aleo, _>(rng)?;
-                lap!(timer, "Compute the proof and construct the fee");
+                lap!(timer, "Compute the proof and construct the fee object");
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
                 let fee = cast_ref!(fee as Fee<N>).clone();
-                lap!(timer, "Prepare the response and fee");
+                lap!(timer, "Prepare the response and fee object");
 
                 finish!(timer);
 

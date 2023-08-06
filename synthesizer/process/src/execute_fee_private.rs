@@ -18,7 +18,7 @@ impl<N: Network> Process<N> {
     /// Executes the fee given the credits record, the fee amount (in microcredits),
     /// and the deployment or execution ID.
     #[inline]
-    pub fn execute_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn execute_fee_private<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
@@ -26,12 +26,12 @@ impl<N: Network> Process<N> {
         deployment_or_execution_id: Field<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Transition<N>, Trace<N>)> {
-        let timer = timer!("Process::execute_fee");
+        let timer = timer!("Process::execute_fee_private");
 
         // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
-        let function_name = Identifier::from_str("fee")?;
+        let function_name = Identifier::from_str("fee_private")?;
 
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();

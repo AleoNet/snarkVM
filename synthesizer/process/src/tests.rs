@@ -2210,7 +2210,7 @@ fn test_sanity_check_transfer_and_fee() {
     /* Fee */
     {
         // Declare the function name.
-        let function_name = Identifier::from_str("fee").unwrap();
+        let function_name = Identifier::from_str("fee_private").unwrap();
 
         // Declare the inputs.
         let r0 = Value::from_str(&format!(

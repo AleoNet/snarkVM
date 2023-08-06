@@ -17,7 +17,8 @@ use super::*;
 macro_rules! prepare_fee_impl {
     ($self:ident, $fee_transition:ident, $query:ident, $get_state_path_for_commitment:ident $(, $await:ident)?) => {{
         // Ensure the fee has the correct program ID and function.
-        ensure!($fee_transition.is_fee(), "Incorrect transition type for the fee, expected 'credits.aleo/fee'");
+        let is_fee_transition = $fee_transition.is_fee_private() || $fee_transition.is_fee_public();
+        ensure!(is_fee_transition, "Incorrect transition type for the fee (in trace)");
 
         // Initialize an empty transaction tree.
         let transaction_tree = N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?;

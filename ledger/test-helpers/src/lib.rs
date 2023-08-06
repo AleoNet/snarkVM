@@ -169,21 +169,21 @@ pub fn sample_execution(rng: &mut TestRng) -> Execution<CurrentNetwork> {
 
 /********************************************** Fee ***********************************************/
 
-/// Samples a random hardcoded fee.
-pub fn sample_fee_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+/// Samples a random hardcoded private fee.
+pub fn sample_fee_private_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
     static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
     INSTANCE
         .get_or_init(|| {
             // Sample a deployment or execution ID.
             let deployment_or_execution_id = Field::rand(rng);
             // Sample a fee.
-            sample_fee(deployment_or_execution_id, rng)
+            sample_fee_private(deployment_or_execution_id, rng)
         })
         .clone()
 }
 
-/// Samples a random fee.
-pub fn sample_fee(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut TestRng) -> Fee<CurrentNetwork> {
+/// Samples a random private fee.
+pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut TestRng) -> Fee<CurrentNetwork> {
     // Sample the genesis block, transaction, and private key.
     let (block, transaction, private_key) = crate::sample_genesis_block_and_components(rng);
     // Retrieve a credits record.
@@ -196,8 +196,9 @@ pub fn sample_fee(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut T
     // Initialize the process.
     let process = Process::load().unwrap();
     // Compute the fee trace.
-    let (_, _, mut trace) =
-        process.execute_fee::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+    let (_, _, mut trace) = process
+        .execute_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+        .unwrap();
 
     // Initialize a new block store.
     let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
@@ -230,7 +231,7 @@ pub fn sample_deployment_transaction(rng: &mut TestRng) -> Transaction<CurrentNe
     let owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
 
     // Sample the fee.
-    let fee = crate::sample_fee(deployment_id, rng);
+    let fee = crate::sample_fee_private(deployment_id, rng);
 
     // Construct a deployment transaction.
     Transaction::from_deployment(owner, deployment, fee).unwrap()
@@ -244,7 +245,7 @@ pub fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<C
     let execution_id = execution.to_execution_id().unwrap();
 
     // Sample the fee.
-    let fee = crate::sample_fee(execution_id, rng);
+    let fee = crate::sample_fee_private(execution_id, rng);
 
     // Construct an execution transaction.
     Transaction::from_execution(execution, Some(fee)).unwrap()
@@ -253,7 +254,7 @@ pub fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<C
 /// Samples a random fee transaction.
 pub fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
     // Sample a fee.
-    let fee = crate::sample_fee_hardcoded(rng);
+    let fee = crate::sample_fee_private_hardcoded(rng);
     // Construct a fee transaction.
     Transaction::from_fee(fee).unwrap()
 }

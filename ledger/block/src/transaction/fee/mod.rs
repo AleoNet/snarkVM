@@ -36,11 +36,30 @@ pub struct Fee<N: Network> {
 
 impl<N: Network> Fee<N> {
     /// Initializes a new `Fee` instance with the given transition, global state root, and proof.
-    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, proof: Option<Proof<N>>) -> Self {
-        // Return the new `Fee` instance.
-        Self { transition, global_state_root, proof }
+    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, proof: Option<Proof<N>>) -> Result<Self> {
+        // Check that the transition locator is correct.
+        let function_name = transition.function_name().to_string();
+        let is_credits_program = &transition.program_id().to_string() == "credits.aleo";
+        let is_fee_private = &function_name == "fee_private";
+        let is_fee_public = &function_name == "fee_public";
+        // Ensure the fee locator is correct.
+        match is_credits_program && (is_fee_private || is_fee_public) {
+            true => Ok(Self::from_unchecked(transition, global_state_root, proof)),
+            false => bail!("Invalid fee transition locator"),
+        }
     }
 
+    /// Initializes a new `Fee` instance with the given transition, global state root, and proof.
+    pub const fn from_unchecked(
+        transition: Transition<N>,
+        global_state_root: N::StateRoot,
+        proof: Option<Proof<N>>,
+    ) -> Self {
+        Self { transition, global_state_root, proof }
+    }
+}
+
+impl<N: Network> Fee<N> {
     /// Returns 'true' if the fee amount is zero.
     pub fn is_zero(&self) -> Result<bool> {
         self.amount().map(|amount| amount.is_zero())
@@ -102,21 +121,24 @@ pub mod test_helpers {
     type CurrentNetwork = console::network::Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
-    /// Samples a random hardcoded fee.
-    pub fn sample_fee_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+    /// Samples a random hardcoded private fee.
+    pub fn sample_fee_private_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
         static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Sample a deployment or execution ID.
                 let deployment_or_execution_id = Field::rand(rng);
                 // Sample a fee.
-                sample_fee(deployment_or_execution_id, rng)
+                sample_fee_private(deployment_or_execution_id, rng)
             })
             .clone()
     }
 
-    /// Samples a random fee.
-    pub fn sample_fee(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut TestRng) -> Fee<CurrentNetwork> {
+    /// Samples a random private fee.
+    pub fn sample_fee_private(
+        deployment_or_execution_id: Field<CurrentNetwork>,
+        rng: &mut TestRng,
+    ) -> Fee<CurrentNetwork> {
         // Sample the genesis block, transaction, and private key.
         let (block, transaction, private_key) = crate::test_helpers::sample_genesis_block_and_components(rng);
         // Retrieve a credits record.
@@ -129,8 +151,9 @@ pub mod test_helpers {
         // Initialize the process.
         let process = Process::load().unwrap();
         // Compute the fee trace.
-        let (_, _, mut trace) =
-            process.execute_fee::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+        let (_, _, mut trace) = process
+            .execute_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+            .unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

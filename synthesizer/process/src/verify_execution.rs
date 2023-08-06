@@ -57,7 +57,8 @@ impl<N: Network> Process<N> {
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
 
             // Ensure the transition is not a fee transition.
-            ensure!(!transition.is_fee(), "Fee transitions are not allowed in executions");
+            let is_fee_transition = transition.is_fee_private() || transition.is_fee_public();
+            ensure!(!is_fee_transition, "Fee transitions are not allowed in executions");
 
             // Ensure the transition ID is correct.
             ensure!(**transition.id() == transition.to_root()?, "The transition ID is incorrect");

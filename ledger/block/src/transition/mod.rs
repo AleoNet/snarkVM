@@ -321,14 +321,24 @@ impl<N: Network> Transition<N> {
             && self.finalize.is_none()
     }
 
-    /// Returns `true` if this is a `fee` transition.
+    /// Returns `true` if this is a `fee_private` transition.
     #[inline]
-    pub fn is_fee(&self) -> bool {
+    pub fn is_fee_private(&self) -> bool {
         self.program_id.to_string() == "credits.aleo"
-            && self.function_name.to_string() == "fee"
+            && self.function_name.to_string() == "fee_private"
             && self.inputs.len() == 3
             && self.outputs.len() == 1
             && self.finalize.is_none()
+    }
+
+    /// Returns `true` if this is a `fee_public` transition.
+    #[inline]
+    pub fn is_fee_public(&self) -> bool {
+        self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "fee_public"
+            && self.inputs.len() == 3
+            && self.outputs.is_empty()
+            && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
     }
 
     /// Returns `true` if this is a `split` transition.

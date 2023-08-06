@@ -156,7 +156,7 @@ pub trait FeeStorage<N: Network>: Clone + Send + Sync {
         };
         // Retrieve the fee transition.
         match self.transition_store().get_transition(&fee_transition_id)? {
-            Some(transition) => Ok(Some(Fee::from(transition, global_state_root, proof))),
+            Some(transition) => Ok(Some(Fee::from_unchecked(transition, global_state_root, proof))),
             None => bail!("Failed to locate the fee transition for transaction '{transaction_id}'"),
         }
     }

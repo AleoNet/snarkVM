@@ -105,10 +105,7 @@ impl<N: Network> Trace<N> {
     pub fn is_fee(&self) -> bool {
         match self.transitions.len() {
             // If there is 1 transition, check if the transition is a fee transition.
-            1 => {
-                &self.transitions[0].program_id().to_string() == "credits.aleo"
-                    && &self.transitions[0].function_name().to_string() == "fee"
-            }
+            1 => self.transitions[0].is_fee_private() || self.transitions[0].is_fee_public(),
             // Otherwise, set the indicator to 'false'.
             _ => false,
         }
@@ -152,10 +149,10 @@ impl<N: Network> Trace<N> {
         rng: &mut R,
     ) -> Result<Execution<N>> {
         // Ensure this is not a fee.
-        ensure!(!self.is_fee(), "The trace cannot prove execution for fee");
+        ensure!(!self.is_fee(), "The trace cannot call 'prove_execution' for a fee type");
         // Ensure there are no fee transitions.
         ensure!(
-            self.transitions.iter().all(|transition| !transition.is_fee()),
+            self.transitions.iter().all(|transition| !(transition.is_fee_private() || transition.is_fee_public())),
             "The trace cannot prove execution for a fee, call 'prove_fee' instead"
         );
         // Retrieve the inclusion assignments.
@@ -176,12 +173,12 @@ impl<N: Network> Trace<N> {
     /// Returns a new fee with a proof, for the current inclusion assignment and global state root.
     pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Fee<N>> {
         // Ensure this is a fee.
-        ensure!(self.is_fee(), "The trace cannot prove fee for execution");
+        ensure!(self.is_fee(), "The trace cannot call 'prove_fee' for an execution type");
         // Retrieve the inclusion assignments.
         let inclusion_assignments =
             self.inclusion_assignments.get().ok_or_else(|| anyhow!("Inclusion assignments have not been set"))?;
         // Ensure there is only 1 inclusion assignment.
-        ensure!(inclusion_assignments.len() == 1, "Expected 1 inclusion assignment for proving the fee");
+        ensure!(inclusion_assignments.len() == 1, "Expected 1 inclusion assignment for proving the fee transition");
         // Retrieve the global state root.
         let global_state_root =
             self.global_state_root.get().ok_or_else(|| anyhow!("Global state root has not been set"))?;
@@ -191,14 +188,14 @@ impl<N: Network> Trace<N> {
         let proving_tasks = self.transition_tasks.values().cloned().collect();
         // Compute the proof.
         let (global_state_root, proof) = Self::prove_batch::<A, R>(
-            "credits.aleo/fee",
+            "credits.aleo/fee (private or public)",
             proving_tasks,
             inclusion_assignments,
             *global_state_root,
             rng,
         )?;
         // Return the fee.
-        Ok(Fee::from(fee_transition.clone(), global_state_root, Some(proof)))
+        Ok(Fee::from_unchecked(fee_transition.clone(), global_state_root, Some(proof)))
     }
 
     /// Checks the proof for the execution.
@@ -236,7 +233,7 @@ impl<N: Network> Trace<N> {
         }
         // Verify the fee proof.
         match Self::verify_batch(
-            "credits.aleo/fee",
+            "credits.aleo/fee (private or public)",
             vec![verifier_inputs],
             global_state_root,
             [fee.transition()].into_iter(),

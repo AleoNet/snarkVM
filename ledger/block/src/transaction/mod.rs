@@ -180,7 +180,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the transaction fee.
-    pub fn fee(&self) -> Result<U64<N>> {
+    pub fn fee_amount(&self) -> Result<U64<N>> {
         match self {
             Self::Deploy(_, _, _, fee) => fee.amount(),
             Self::Execute(_, _, Some(fee)) => fee.amount(),
@@ -401,7 +401,7 @@ pub mod test_helpers {
         let owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
 
         // Sample the fee.
-        let fee = crate::transaction::fee::test_helpers::sample_fee(deployment_id, rng);
+        let fee = crate::transaction::fee::test_helpers::sample_fee_private(deployment_id, rng);
 
         // Construct a deployment transaction.
         Transaction::from_deployment(owner, deployment, fee).unwrap()
@@ -415,7 +415,7 @@ pub mod test_helpers {
         let execution_id = execution.to_execution_id().unwrap();
 
         // Sample the fee.
-        let fee = crate::transaction::fee::test_helpers::sample_fee(execution_id, rng);
+        let fee = crate::transaction::fee::test_helpers::sample_fee_private(execution_id, rng);
 
         // Construct an execution transaction.
         Transaction::from_execution(execution, Some(fee)).unwrap()
@@ -424,7 +424,7 @@ pub mod test_helpers {
     /// Samples a random fee transaction.
     pub fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         // Sample a fee.
-        let fee = crate::transaction::fee::test_helpers::sample_fee_hardcoded(rng);
+        let fee = crate::transaction::fee::test_helpers::sample_fee_private_hardcoded(rng);
         // Construct a fee transaction.
         Transaction::from_fee(fee).unwrap()
     }

@@ -61,7 +61,7 @@ pub fn update_total_supply<N: Network>(
     for confirmed in transactions.iter() {
         // Subtract the fee from the total supply.
         final_total_supply = final_total_supply
-            .checked_sub(*confirmed.fee()?)
+            .checked_sub(*confirmed.fee_amount()?)
             .ok_or_else(|| anyhow!("The proposed fee underflows the total supply of microcredits"))?;
 
         // If the transaction contains a mint, add the amount to the total supply.

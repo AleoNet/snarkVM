@@ -25,7 +25,8 @@ impl<N: Network> Process<N> {
         println!("Verifying fee from {}/{}...", fee.program_id(), fee.function_name());
 
         // Ensure the fee has the correct program ID and function.
-        ensure!(fee.transition().is_fee(), "Incorrect program ID or function name for fee");
+        let is_fee_transition = fee.transition().is_fee_private() || fee.transition().is_fee_public();
+        ensure!(is_fee_transition, "Incorrect program ID or function name for fee transition");
         // Ensure the transition ID of the fee is correct.
         ensure!(**fee.id() == fee.to_root()?, "Transition ID of the fee is incorrect");
         // Ensure the number of inputs is within the allowed range.
