@@ -37,13 +37,8 @@ pub struct Fee<N: Network> {
 impl<N: Network> Fee<N> {
     /// Initializes a new `Fee` instance with the given transition, global state root, and proof.
     pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, proof: Option<Proof<N>>) -> Result<Self> {
-        // Check that the transition locator is correct.
-        let function_name = transition.function_name().to_string();
-        let is_credits_program = &transition.program_id().to_string() == "credits.aleo";
-        let is_fee_private = &function_name == "fee_private";
-        let is_fee_public = &function_name == "fee_public";
-        // Ensure the fee locator is correct.
-        match is_credits_program && (is_fee_private || is_fee_public) {
+        // Ensure the transition is correct for a fee function.
+        match transition.is_fee_private() || transition.is_fee_public() {
             true => Ok(Self::from_unchecked(transition, global_state_root, proof)),
             false => bail!("Invalid fee transition locator"),
         }
