@@ -187,10 +187,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn genesis_beacon<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
         // Construct the committee members.
         let members = indexmap::indexmap! {
-            Address::try_from(private_key)? => (ledger_committee::MIN_STAKE, false),
-            Address::new(rng.gen()) => (ledger_committee::MIN_STAKE, false),
-            Address::new(rng.gen()) => (ledger_committee::MIN_STAKE, false),
-            Address::new(rng.gen()) => (ledger_committee::MIN_STAKE, false),
+            Address::try_from(private_key)? => (ledger_committee::MIN_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_STAKE, true),
         };
         // Construct the committee.
         let committee = Committee::<N>::new_genesis(members)?;
