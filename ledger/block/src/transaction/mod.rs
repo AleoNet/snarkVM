@@ -100,7 +100,7 @@ impl<N: Network> Transaction<N> {
 }
 
 impl<N: Network> Transaction<N> {
-    /// Returns `true` if this transaction contals a call to `credits.aleo/mint`.
+    /// Returns `true` if this transaction contains a call to `credits.aleo/mint`.
     #[inline]
     pub fn contains_mint(&self) -> bool {
         match self {
