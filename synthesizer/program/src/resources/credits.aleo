@@ -820,7 +820,11 @@ function join:
 
 /**********************************************************************************************************************/
 
-// The `split` function splits a record into two records.
+// The `split` function splits a record into two records. The given input amount will be stored in the first record,
+// and the remaining amount will be stored in the second record, with the fee deducted from the remaining amount.
+// If the caller executes a transaction that contains only a call to this function, then the transaction does not
+// require a fee, unless the caller wishes to provide an additional fee. Transactions that contain multiple transitions
+// (that include one or more calls to this function) will require a fee as per standard consensus rules.
 function split:
     // Input the record.
     input r0 as credits.record;
@@ -830,14 +834,18 @@ function split:
     // This `sub` operation is safe, and the proof will fail
     // if an underflow occurs.
     sub r0.microcredits r1 into r2;
+    // Checks the given record has a sufficient fee to remove.
+    // This `sub` operation is safe, and the proof will fail
+    // if an underflow occurs.
+    sub r2 10_000u64 into r3;
     // Construct the first record.
-    cast r0.owner r1 into r3 as credits.record;
+    cast r0.owner r1 into r4 as credits.record;
     // Construct the second record.
-    cast r0.owner r2 into r4 as credits.record;
+    cast r0.owner r3 into r5 as credits.record;
     // Output the first record.
-    output r3 as credits.record;
-    // Output the second record.
     output r4 as credits.record;
+    // Output the second record.
+    output r5 as credits.record;
 
 /**********************************************************************************************************************/
 

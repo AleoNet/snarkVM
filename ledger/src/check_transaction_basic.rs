@@ -51,7 +51,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Fee */
 
-        // TODO (raychu86): Remove the split check when batch executions are integrated.
+        // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
+        // TODO (howardwu): Remove support for 'mint'.
         let can_skip_fee = match transaction.execution() {
             Some(execution) => (transaction.is_mint() || transaction.is_split()) && execution.len() == 1,
             None => false,
