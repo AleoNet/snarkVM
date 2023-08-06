@@ -31,7 +31,6 @@ mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
-mod execute_fee_private;
 mod finalize;
 mod verify_deployment;
 mod verify_execution;

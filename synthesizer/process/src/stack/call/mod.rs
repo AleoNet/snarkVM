@@ -143,9 +143,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 let is_fee_private = &function_name == "fee_private";
                 let is_fee_public = &function_name == "fee_public";
 
-                // Ensure the external call is not to 'credits.aleo/fee'.
+                // Ensure the external call is not to 'credits.aleo/fee_private' or 'credits.aleo/fee_public'.
                 if is_credits_program && (is_fee_private || is_fee_public) {
-                    bail!("Cannot perform an external call to 'credits.aleo/fee'.")
+                    bail!("Cannot perform an external call to 'credits.aleo/fee_private' or 'credits.aleo/fee_public'.")
                 } else {
                     (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
                 }

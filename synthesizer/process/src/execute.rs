@@ -49,4 +49,43 @@ impl<N: Network> Process<N> {
         finish!(timer);
         Ok((response, trace))
     }
+
+    /// Executes the fee given the credits record, the fee amount (in microcredits),
+    /// and the deployment or execution ID.
+    #[inline]
+    pub fn execute_fee_private<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        credits: Record<N, Plaintext<N>>,
+        fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
+        rng: &mut R,
+    ) -> Result<(Response<N>, Transition<N>, Trace<N>)> {
+        let timer = timer!("Process::execute_fee_private");
+
+        // Initialize the authorization.
+        let authorization =
+            self.authorize_fee_private(private_key, credits, fee_in_microcredits, deployment_or_execution_id, rng)?;
+        lap!(timer, "Initialize the authorization");
+
+        #[cfg(feature = "aleo-cli")]
+        println!("{}", " • Calling 'credits.aleo/fee_private'...".to_string().dimmed());
+
+        // Initialize the trace.
+        let trace = Arc::new(RwLock::new(Trace::new()));
+        // Initialize the call stack.
+        let call_stack = CallStack::execute(authorization, trace.clone())?;
+        // Execute the circuit.
+        let response = self.get_stack("credits.aleo")?.execute_function::<A>(call_stack)?;
+        lap!(timer, "Execute the circuit");
+
+        // Extract the trace.
+        let trace = Arc::try_unwrap(trace).unwrap().into_inner();
+        // Ensure the trace contains 1 transition.
+        ensure!(trace.transitions().len() == 1, "Execution of 'credits.aleo/fee_private' must contain 1 transition");
+
+        finish!(timer);
+
+        Ok((response, trace.transitions()[0].clone(), trace))
+    }
 }
