@@ -28,7 +28,37 @@ impl<N: Network> Authorization<N> {
     pub fn new(requests: &[Request<N>]) -> Self {
         Self { requests: Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))) }
     }
+}
 
+impl<N: Network> Authorization<N> {
+    /// Returns `true` if the authorization is for call to `credits.aleo/fee_private`.
+    pub fn is_fee_private(&self) -> bool {
+        let requests = self.requests.read();
+        match requests.len() {
+            1 => {
+                let program_id = requests[0].program_id().to_string();
+                let function_name = requests[0].function_name().to_string();
+                &program_id == "credits.aleo" && &function_name == "fee_private"
+            }
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the authorization is for call to `credits.aleo/fee_public`.
+    pub fn is_fee_public(&self) -> bool {
+        let requests = self.requests.read();
+        match requests.len() {
+            1 => {
+                let program_id = requests[0].program_id().to_string();
+                let function_name = requests[0].function_name().to_string();
+                &program_id == "credits.aleo" && &function_name == "fee_public"
+            }
+            _ => false,
+        }
+    }
+}
+
+impl<N: Network> Authorization<N> {
     /// Returns a new and independent replica of the authorization.
     pub fn replicate(&self) -> Self {
         Self { requests: Arc::new(RwLock::new(self.requests.read().clone())) }

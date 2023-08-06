@@ -66,4 +66,39 @@ impl<N: Network> Process<N> {
         finish!(timer);
         Ok(authorization)
     }
+
+    /// Authorizes the fee given the the fee amount (in microcredits) and the deployment or execution ID.
+    #[inline]
+    pub fn authorize_fee_public<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
+        rng: &mut R,
+    ) -> Result<Authorization<N>> {
+        let timer = timer!("Process::authorize_fee_public");
+
+        // Ensure the fee has the correct program ID.
+        let program_id = ProgramID::from_str("credits.aleo")?;
+        // Ensure the fee has the correct function.
+        let function_name = Identifier::from_str("fee_public")?;
+        // Retrieve the input types.
+        let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
+
+        // Construct the inputs.
+        let inputs = [
+            Value::from(Literal::U64(U64::<N>::new(fee_in_microcredits))),
+            Value::from(Literal::Field(deployment_or_execution_id)),
+        ];
+        lap!(timer, "Construct the inputs");
+
+        // Compute the request.
+        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        lap!(timer, "Compute the request");
+
+        // Initialize the authorization.
+        let authorization = Authorization::new(&[request]);
+        finish!(timer);
+        Ok(authorization)
+    }
 }
