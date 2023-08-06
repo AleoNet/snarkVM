@@ -97,10 +97,12 @@ impl<N: Network> Transaction<N> {
     pub fn is_fee(&self) -> bool {
         matches!(self, Self::Fee(..))
     }
+}
 
-    /// Returns `true` if this is a `mint` transaction.
+impl<N: Network> Transaction<N> {
+    /// Returns `true` if this transaction contals a call to `credits.aleo/mint`.
     #[inline]
-    pub fn is_mint(&self) -> bool {
+    pub fn contains_mint(&self) -> bool {
         match self {
             // Case 1 - The transaction contains a transition that calls 'credits.aleo/mint'.
             Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_mint()),
@@ -109,9 +111,9 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns `true` if this is a `split` transaction.
+    /// Returns `true` if this transaction contains a call to `credits.aleo/split`.
     #[inline]
-    pub fn is_split(&self) -> bool {
+    pub fn contains_split(&self) -> bool {
         match self {
             // Case 1 - The transaction contains a transition that calls 'credits.aleo/split'.
             Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_split()),
