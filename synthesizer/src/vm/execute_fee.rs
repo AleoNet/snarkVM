@@ -16,29 +16,9 @@ use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
-    /// Returns the fee transaction.
-    #[inline]
-    pub fn execute_fee<R: Rng + CryptoRng>(
-        &self,
-        private_key: &PrivateKey<N>,
-        fee_record: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
-        deployment_or_execution_id: Field<N>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Transaction<N>> {
-        // Compute the fee.
-        let fee = self
-            .execute_fee_raw(private_key, fee_record, fee_in_microcredits, deployment_or_execution_id, query, rng)?
-            .1;
-        // Return the fee transaction.
-        Transaction::from_fee(fee)
-    }
-
-    /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
     /// Returns the response and fee.
     #[inline]
-    pub fn execute_fee_raw<R: Rng + CryptoRng>(
+    pub fn execute_fee_private<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         fee_record: Record<N, Plaintext<N>>,

@@ -528,7 +528,7 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_fee(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+    pub(crate) fn sample_fee_private(rng: &mut TestRng) -> Fee<CurrentNetwork> {
         static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
@@ -557,10 +557,10 @@ function compute:
 
                 // Execute.
                 let (_response, fee) =
-                    vm.execute_fee_raw(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
+                    vm.execute_fee_private(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee, rejected_id));
-                // Return the fee.
+                // Return the private fee.
                 fee
             })
             .clone()
@@ -570,10 +570,10 @@ function compute:
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                // Initialize a fee.
-                let fee = crate::vm::test_helpers::sample_fee(rng);
+                // Initialize a private fee.
+                let fee_private = crate::vm::test_helpers::sample_fee_private(rng);
                 // Return the fee transaction.
-                Transaction::from_fee(fee).unwrap()
+                Transaction::from_fee(fee_private).unwrap()
             })
             .clone()
     }

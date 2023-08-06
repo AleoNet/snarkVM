@@ -42,7 +42,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let deployment_id = deployment.to_deployment_id()?;
 
         // Compute the fee.
-        let (_, fee) = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, deployment_id, query, rng)?;
+        let (_, fee) = self.execute_fee_private(private_key, fee_record, fee_in_microcredits, deployment_id, query, rng)?;
 
         // Construct the owner.
         let owner = ProgramOwner::new(private_key, deployment_id, rng)?;

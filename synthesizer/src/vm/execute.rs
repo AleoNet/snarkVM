@@ -44,7 +44,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Compute the execution ID.
                 let execution_id = execution.to_execution_id()?;
                 // Compute the fee.
-                Some(self.execute_fee_raw(private_key, credits, fee_in_microcredits, execution_id, query, rng)?.1)
+                Some(self.execute_fee_private(private_key, credits, fee_in_microcredits, execution_id, query, rng)?.1)
             }
         };
         // Return the execute transaction.

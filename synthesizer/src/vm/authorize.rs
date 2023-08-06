@@ -46,8 +46,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
-                let inputs = inputs.to_vec();
-
                 // Prepare the inputs.
                 let private_key = cast_ref!(&private_key as PrivateKey<$network>);
                 let program_id = cast_ref!(program_id as ProgramID<$network>);
