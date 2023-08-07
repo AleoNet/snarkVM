@@ -242,22 +242,33 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Authority */
 
-        // Ensure the block is signed by a validator in the committee.
-        let signer = block.authority().to_address();
-        if !self.current_committee.read().contains(&signer) {
-            bail!("Block {} ({}) is signed by an unauthorized account ({signer})", block.height(), block.hash());
-        }
-
         // Verify the block authority.
         match block.authority() {
             Authority::Beacon(signature) => {
+                // Retrieve the signer.
+                let signer = signature.to_address();
+
+                // Ensure the block is signed by a validator in the committee.
+                if signer != self.genesis_block.authority().to_address() {
+                    bail!(
+                        "Block {} ({}) is signed by an unauthorized account ({signer})",
+                        block.height(),
+                        block.hash()
+                    );
+                }
                 // Check the signature.
                 if !signature.verify(&signer, &[*block.hash()]) {
                     bail!("Invalid signature for block {} ({})", block.height(), block.hash());
                 }
             }
             // TODO: Check the certificates of the quorum.
-            Authority::Quorum(_certificates) => (),
+            Authority::Quorum(_certificates) => {
+                // // Ensure the block is signed by a validator in the committee.
+                // let signer = block.authority().to_address();
+                // if !self.current_committee.read().contains(&signer) {
+                //     bail!("Block {} ({}) is signed by an unauthorized account ({signer})", block.height(), block.hash());
+                // }
+            }
         }
 
         /* Transactions */

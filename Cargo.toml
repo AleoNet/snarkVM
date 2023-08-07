@@ -65,6 +65,7 @@ members = [
   "ledger/authority",
   "ledger/block",
   "ledger/coinbase",
+  "ledger/committee",
   "ledger/narwhal",
   "ledger/narwhal/batch-certificate",
   "ledger/narwhal/batch-header",

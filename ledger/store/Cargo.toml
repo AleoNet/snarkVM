@@ -23,6 +23,7 @@ serial = [
   "console/serial",
   "ledger-block/serial",
   "ledger-coinbase/serial",
+  "ledger-committee/serial",
   "synthesizer-program/serial",
   "synthesizer-snark/serial"
 ]
@@ -45,6 +46,11 @@ version = "=0.14.6"
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "../coinbase"
+version = "=0.14.6"
+
+[dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../committee"
 version = "=0.14.6"
 
 [dependencies.synthesizer-program]
@@ -95,6 +101,11 @@ version = "1.0"
 [dependencies.tracing]
 version = "0.1"
 optional = true
+
+[dev-dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../committee"
+features = [ "test-helpers" ]
 
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
