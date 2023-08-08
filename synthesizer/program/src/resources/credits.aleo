@@ -389,7 +389,7 @@ finalize unbond_public:
     /* End Bonded */
 
     // Ends the `decrement_validator` logic.
-    branch.eq true true to finish_unbonding_validator;
+    branch.eq true true to finish_unbonding;
 
     /*** Remove Validator ***/
 
@@ -407,35 +407,7 @@ finalize unbond_public:
     remove bonded[r0];
 
     // Ends the `remove_validator` logic.
-    branch.eq true true to finish_unbonding_validator;
-
-    // Starts the `finish_unbonding_validator` logic.
-    position finish_unbonding_validator;
-
-    /*** Finish Unbonding Validator ***/
-
-    /* Start Unbond */
-
-    // Construct the initial unbond state.
-    cast 0u64 0u32 into r10 as unbond_state;
-    // Get the unbond state for the caller, or default to the initial unbond state.
-    get.or_use unbonding[r0] r10 into r11;
-
-    // Increment the microcredits in the unbond struct.
-    add r11.microcredits r1 into r12;
-    // Compute the height at which the unbonding will be complete, starting from the current block.
-    // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 720u32 into r13;
-
-    // Construct the updated unbond state.
-    cast r12 r13 into r14 as unbond_state;
-    // Update the unbond state for the caller.
-    set r14 into unbonding[r0];
-
-    /* End Unbond */
-
-    // Ends the `unbond_validator` logic.
-    branch.eq true true to end;
+    branch.eq true true to finish_unbonding;
 
     /******* Unbond Delegator *******/
 
@@ -443,14 +415,14 @@ finalize unbond_public:
     position unbond_delegator;
 
     // Get the bond state for the caller, or fail if it does not exist.
-    get bonded[r0] into r15;
+    get bonded[r0] into r10;
     // Decrement the microcredits in the bond state.
-    sub r15.microcredits r1 into r16;
+    sub r10.microcredits r1 into r11;
 
     // If the amount of bonded microcredits is now zero, jump to the `decrement_delegator` logic.
-    branch.eq r16 0u64 to decrement_delegator;
+    branch.eq r11 0u64 to decrement_delegator;
     // If the amount of bonded microcredits is now zero, jump to the `remove_bonded` logic.
-    branch.neq r16 0u64 to remove_bonded;
+    branch.neq r11 0u64 to remove_bonded;
 
     /*** Decrement Delegator ***/
 
@@ -458,10 +430,10 @@ finalize unbond_public:
     position decrement_delegator;
 
     // Construct the updated bond state.
-    cast r15.validator r16 into r17 as bond_state;
+    cast r10.validator r11 into r12 as bond_state;
     // Update the bond state for the caller.
     // This will only be executed if the microcredits in the bond state is nonzero.
-    set r17 into bonded[r0];
+    set r12 into bonded[r0];
 
     // Ends the `decrement_delegator` logic.
     branch.eq true true to finish_unbonding_delegator;
@@ -486,33 +458,38 @@ finalize unbond_public:
 
     // Get the stake for the specified validator.
     // If the validator does not exist, this finalize scope will fail.
-    get committee[r15.validator] into r18;
+    get committee[r10.validator] into r13;
     // Decrement the stake for the specified validator.
-    sub r18.microcredits r1 into r19;
+    sub r13.microcredits r1 into r14;
     // Construct the updated committee state.
-    cast r19 r18.is_open into r20 as committee_state;
+    cast r14 r13.is_open into r15 as committee_state;
     // Update the stake for the specified validator.
-    set r20 into committee[r15.validator];
+    set r15 into committee[r10.validator];
 
     /* End Committee */
+
+    /*** Finish Unbonding ***/
+
+    // Starts the `finish_unbonding` logic.
+    position finish_unbonding;
 
     /* Start Unbond */
 
     // Construct the initial unbond state.
-    cast 0u64 0u32 into r21 as unbond_state;
+    cast 0u64 0u32 into r16 as unbond_state;
     // Get the unbond state for the caller, or default to the initial unbond state.
-    get.or_use unbonding[r0] r21 into r22;
+    get.or_use unbonding[r0] r16 into r17;
 
     // Increment the microcredits in the unbond state.
-    add r22.microcredits r1 into r23;
+    add r17.microcredits r1 into r18;
     // Compute the height at which the unbonding will be complete, starting from the current block.
     // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 720u32 into r24;
+    add block.height 720u32 into r19;
 
     // Construct the updated unbond state.
-    cast r23 r24 into r25 as unbond_state;
+    cast r18 r19 into r20 as unbond_state;
     // Update the unbond state for the caller.
-    set r25 into unbonding[r0];
+    set r20 into unbonding[r0];
 
     /* End Unbond */
 
