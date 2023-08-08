@@ -3218,100 +3218,6 @@ mod staking_tests {
     }
 
     #[test]
-    fn test_set_validator_state() {
-        let rng = &mut TestRng::default();
-
-        // Construct the process.
-        let process = Process::<CurrentNetwork>::load().unwrap();
-
-        // Initialize a new finalize store.
-        let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
-
-        // Initialize the validators.
-        let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
-        let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
-
-        /* Ensure calling `set_validator_state` succeeds. */
-
-        // Perform the bond.
-        let amount = 1_000_000_000_000u64;
-        bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
-
-        // Check that the validator state is correct.
-        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
-
-        // Set the validator `is_open` state to `false`.
-        set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
-        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
-
-        // Set the validator state `is_open` to `false` again.
-        set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
-        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
-
-        // Set the validator `is_open` state back to `true`.
-        set_validator_state(&process, &finalize_store, validator_private_key, true, rng).unwrap();
-        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
-    }
-
-    #[test]
-    fn test_set_validator_state_for_non_validator_fails() {
-        let rng = &mut TestRng::default();
-
-        // Construct the process.
-        let process = Process::<CurrentNetwork>::load().unwrap();
-
-        // Initialize a new finalize store.
-        let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
-
-        /* Ensure calling `set_validator_state` as a non-validator fails. */
-
-        // Initialize a new private key.
-        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-
-        // Set the validator state to `false`.
-        assert!(set_validator_state(&process, &finalize_store, &private_key, false, rng).is_err());
-    }
-
-    #[test]
-    fn test_bonding_to_closed_fails() {
-        let rng = &mut TestRng::default();
-
-        // Construct the process.
-        let process = Process::<CurrentNetwork>::load().unwrap();
-
-        // Initialize a new finalize store.
-        let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
-
-        // Initialize the validators and delegators.
-        let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
-        let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
-        let (delegator_private_key, (_, _)) = delegators.first().unwrap();
-
-        /* Ensure bonding to a closed validator fails. */
-
-        // Perform the bond.
-        let amount = 1_000_000_000_000u64;
-        bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
-
-        // Set the validator `is_open` state to `false`.
-        set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
-
-        // Ensure that the validator can't bond additional stake.
-        let validator_amount = 1_000_000_000_000u64;
-        assert!(
-            bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng)
-                .is_err()
-        );
-
-        // Ensure that delegators can't bond to the validator.
-        let delegator_amount = 1_000_000u64;
-        assert!(
-            bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng)
-                .is_err()
-        );
-    }
-
-    #[test]
     fn test_unbond_delegator_as_validator() {
         let rng = &mut TestRng::default();
 
@@ -3407,5 +3313,99 @@ mod staking_tests {
         /* Ensure that claiming an unbond after the unlock height succeeds. */
         claim_unbond_public(&process, &finalize_store, validator_private_key, unbond_height, rng).unwrap();
         assert_eq!(account_balance(&finalize_store, validator_address).unwrap(), public_balance);
+    }
+
+    #[test]
+    fn test_set_validator_state() {
+        let rng = &mut TestRng::default();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Initialize a new finalize store.
+        let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+        // Initialize the validators.
+        let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+        let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+        /* Ensure calling `set_validator_state` succeeds. */
+
+        // Perform the bond.
+        let amount = 1_000_000_000_000u64;
+        bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+
+        // Check that the validator state is correct.
+        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
+
+        // Set the validator `is_open` state to `false`.
+        set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
+        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
+
+        // Set the validator state `is_open` to `false` again.
+        set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
+        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
+
+        // Set the validator `is_open` state back to `true`.
+        set_validator_state(&process, &finalize_store, validator_private_key, true, rng).unwrap();
+        assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
+    }
+
+    #[test]
+    fn test_set_validator_state_for_non_validator_fails() {
+        let rng = &mut TestRng::default();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Initialize a new finalize store.
+        let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+        /* Ensure calling `set_validator_state` as a non-validator fails. */
+
+        // Initialize a new private key.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+        // Set the validator state to `false`.
+        assert!(set_validator_state(&process, &finalize_store, &private_key, false, rng).is_err());
+    }
+
+    #[test]
+    fn test_bonding_to_closed_fails() {
+        let rng = &mut TestRng::default();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Initialize a new finalize store.
+        let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+        // Initialize the validators and delegators.
+        let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+        let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+        let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+
+        /* Ensure bonding to a closed validator fails. */
+
+        // Perform the bond.
+        let amount = 1_000_000_000_000u64;
+        bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+
+        // Set the validator `is_open` state to `false`.
+        set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
+
+        // Ensure that the validator can't bond additional stake.
+        let validator_amount = 1_000_000_000_000u64;
+        assert!(
+            bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng)
+                .is_err()
+        );
+
+        // Ensure that delegators can't bond to the validator.
+        let delegator_amount = 1_000_000u64;
+        assert!(
+            bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng)
+                .is_err()
+        );
     }
 }
