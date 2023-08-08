@@ -165,8 +165,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             prover_third_message.sum(batch_combiners, eta_b, eta_c) * state.max_variable_domain.size_inv;
 
         let verifier::FourthMessage { delta_a, delta_b, delta_c } = state.fourth_round_message.as_ref().unwrap();
-        let beta = state.third_round_message.unwrap().beta;
-        let gamma = state.gamma.unwrap();
+        let beta = state.third_round_message.as_ref().unwrap().beta;
+        let gamma = state.fifth_round_message.as_ref().unwrap().gamma;
 
         let mut linear_combinations = BTreeMap::new();
         let mut selectors = BTreeMap::new();

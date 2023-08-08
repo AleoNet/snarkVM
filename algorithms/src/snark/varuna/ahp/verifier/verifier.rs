@@ -19,7 +19,16 @@ use crate::{
     snark::varuna::{
         ahp::{
             indexer::{CircuitId, CircuitInfo},
-            verifier::{BatchCombiners, FirstMessage, FourthMessage, QuerySet, SecondMessage, State, ThirdMessage},
+            verifier::{
+                BatchCombiners,
+                FifthMessage,
+                FirstMessage,
+                FourthMessage,
+                QuerySet,
+                SecondMessage,
+                State,
+                ThirdMessage,
+            },
             AHPError,
             AHPForR1CS,
         },
@@ -41,7 +50,7 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
         max_variable_domain: EvaluationDomain<TargetField>,
         max_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,
-    ) -> Result<(FirstMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<State<TargetField, MM>, AHPError> {
         let mut batch_combiners = BTreeMap::new();
         let mut circuit_specific_states = BTreeMap::new();
         let mut num_circuit_combiners = vec![1; batch_sizes.len()];
@@ -114,58 +123,60 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
             max_variable_domain,
             max_non_zero_domain,
 
-            first_round_message: Some(message.clone()),
+            first_round_message: Some(message),
             second_round_message: None,
             third_round_message: None,
             fourth_round_message: None,
+            fifth_round_message: None,
 
-            gamma: None,
             mode: PhantomData,
         };
 
-        Ok((message, new_state))
+        Ok(new_state)
     }
+}
 
+impl<TargetField: PrimeField, MM: SNARKMode> State<TargetField, MM> {
     /// Output the second message and next round state.
-    pub fn verifier_second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+    pub fn second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        &mut self,
         fs_rng: &mut R,
-    ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<SecondMessage<TargetField>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(3);
         let (first, _) = elems.split_at(3);
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
 
         let check_vanish_poly_time = start_timer!(|| "Evaluating vanishing polynomial");
-        assert!(!state.max_constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
+        assert!(!self.max_constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
         end_timer!(check_vanish_poly_time);
 
         let message = SecondMessage { alpha, eta_b, eta_c };
-        state.second_round_message = Some(message);
+        self.second_round_message = Some(message);
 
-        Ok((message, state))
+        Ok(message)
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_third_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+    pub fn third_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        &mut self,
         fs_rng: &mut R,
-    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<ThirdMessage<TargetField>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
-        assert!(!state.max_variable_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        assert!(!self.max_variable_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = ThirdMessage { beta };
-        state.third_round_message = Some(message);
+        self.third_round_message = Some(message);
 
-        Ok((message, state))
+        Ok(message)
     }
 
     /// Output the fourth message and next round state.
-    pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+    pub fn fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        &mut self,
         fs_rng: &mut R,
-    ) -> Result<(FourthMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        let num_circuits = state.circuit_specific_states.len();
+    ) -> Result<FourthMessage<TargetField>, AHPError> {
+        let num_circuits = self.circuit_specific_states.len();
         let mut delta_a = Vec::with_capacity(num_circuits);
         let mut delta_b = Vec::with_capacity(num_circuits);
         let mut delta_c = Vec::with_capacity(num_circuits);
@@ -181,25 +192,26 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
         }
         let message = FourthMessage { delta_a, delta_b, delta_c };
 
-        state.fourth_round_message = Some(message.clone());
-        Ok((message, state))
+        self.fourth_round_message = Some(message.clone());
+        Ok(message)
     }
 
     /// Output the next round state.
-    pub fn verifier_fifth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+    pub fn fifth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        &mut self,
         fs_rng: &mut R,
-    ) -> Result<State<TargetField, MM>, AHPError> {
+    ) -> Result<(), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
-        assert!(!state.max_non_zero_domain.evaluate_vanishing_polynomial(gamma).is_zero());
+        assert!(!self.max_non_zero_domain.evaluate_vanishing_polynomial(gamma).is_zero());
 
-        state.gamma = Some(gamma);
-        Ok(state)
+        let message = FifthMessage { gamma };
+        self.fifth_round_message = Some(message);
+        Ok(())
     }
 
     /// Output the query state and next round state.
-    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField>, State<TargetField, MM>) {
-        (QuerySet::new(&state), state)
+    pub fn query_set(&self) -> QuerySet<TargetField> {
+        QuerySet::new(self)
     }
 }
