@@ -34,11 +34,11 @@ impl FinalizeGlobalState {
     ) -> Result<Self> {
         // Initialize the preimage.
         let mut preimage = Vec::with_capacity(605);
-        preimage.extend_from_slice(&block_round.to_bits_le());
-        preimage.extend_from_slice(&block_height.to_bits_le());
-        preimage.extend_from_slice(&block_cumulative_weight.to_bits_le());
-        preimage.extend_from_slice(&block_cumulative_proof_target.to_bits_le());
-        preimage.extend_from_slice(&(*previous_block_hash).to_bits_le());
+        block_round.write_bits_le(&mut preimage);
+        block_height.write_bits_le(&mut preimage);
+        block_cumulative_weight.write_bits_le(&mut preimage);
+        block_cumulative_proof_target.write_bits_le(&mut preimage);
+        (*previous_block_hash).write_bits_le(&mut preimage);
 
         // Hash the preimage to get the random seed.
         let seed = N::hash_bhp768(&preimage)?.to_bytes_le()?;

@@ -19,8 +19,8 @@ impl<N: Network> Record<N, Plaintext<N>> {
     pub fn to_commitment(&self, program_id: &ProgramID<N>, record_name: &Identifier<N>) -> Result<Field<N>> {
         // Construct the input as `(program_id || record_name || record)`.
         let mut input = program_id.to_bits_le();
-        input.extend(record_name.to_bits_le());
-        input.extend(self.to_bits_le());
+        record_name.write_bits_le(&mut input);
+        self.write_bits_le(&mut input);
         // Compute the BHP hash of the program record.
         N::hash_bhp1024(&input)
     }

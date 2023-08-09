@@ -77,7 +77,9 @@ impl<N: Network> Block<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Compute the block hash.
-        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        let mut preimage = previous_hash.to_bits_le();
+        header.to_root()?.write_bits_le(&mut preimage);
+        let block_hash = N::hash_bhp1024(&preimage)?;
         // Construct the beacon authority.
         let authority = Authority::new_beacon(private_key, block_hash, rng)?;
         // Construct the block.
@@ -114,7 +116,9 @@ impl<N: Network> Block<N> {
         ensure!(!transactions.is_empty(), "Cannot create a block with zero transactions");
 
         // Compute the block hash.
-        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        let mut preimage = previous_hash.to_bits_le();
+        header.to_root()?.write_bits_le(&mut preimage);
+        let block_hash = N::hash_bhp1024(&preimage)?;
 
         // Verify the authority.
         match &authority {
