@@ -81,6 +81,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
         let timer = timer!("VM::verify");
 
+        /* Transaction */
+
         // Ensure the transaction ID is unique.
         if self.transaction_store().contains_transaction_id(&transaction.id())? {
             bail!("Transaction '{}' already exists in the ledger", transaction.id())
@@ -96,6 +98,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         };
         lap!(timer, "Verify the transaction ID");
+
+        /* Transition */
 
         // Ensure the transition IDs are unique.
         ensure_is_unique!("transition ID", self, contains_transition_id, transaction.transition_ids());
