@@ -17,12 +17,12 @@ use super::*;
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Returns the committee for the given `block height`.
     pub fn get_committee(&self, block_height: u32) -> Result<Option<Committee<N>>> {
-        self.vm.committee_store().get_committee(block_height)
+        self.vm.finalize_store().committee_store().get_committee(block_height)
     }
 
     /// Returns the committee for the given `round`.
     pub fn get_committee_for_round(&self, round: u64) -> Result<Option<Committee<N>>> {
-        self.vm.committee_store().get_committee_for_round(round)
+        self.vm.finalize_store().committee_store().get_committee_for_round(round)
     }
 
     /// Returns the state root that contains the given `block height`.

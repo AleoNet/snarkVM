@@ -155,6 +155,7 @@ finalize bond_public:
     /* Start Committee */
 
     // Construct the initial committee state.
+    // Note: We set the initial 'is_open' state to 'true'.
     cast 0u64 true into r4 as committee_state;
     // Retrieve the committee state of the specified validator.
     get.or_use committee[r0] r4 into r5;
@@ -661,7 +662,7 @@ function mint:
     assert.eq r0 self.caller;
     // Check that the amount is less than the specified limit.
     // TODO: Reduce this to 256 credits.
-    lt r1 100_000_000_000_000u64 into r2;
+    lt r1 400_000_000_000_000u64 into r2;
     // Ensure the amount is less than the specified limit.
     assert.eq r2 true;
     // Construct the receiver's record.

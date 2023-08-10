@@ -207,7 +207,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
     /// Returns the latest committee.
     pub fn latest_committee(&self) -> Result<Committee<N>> {
-        self.vm.committee_store().current_committee()
+        self.vm.finalize_store().committee_store().current_committee()
     }
 
     /// Returns the latest state root.
@@ -426,7 +426,7 @@ pub(crate) mod test_helpers {
         // Initialize the store.
         let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
         // Create a genesis block.
-        let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
+        let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.
         let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
         // Ensure the genesis block is correct.

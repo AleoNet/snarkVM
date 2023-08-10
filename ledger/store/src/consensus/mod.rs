@@ -15,8 +15,6 @@
 use crate::{
     BlockStorage,
     BlockStore,
-    CommitteeStorage,
-    CommitteeStore,
     FinalizeStorage,
     FinalizeStore,
     TransactionStorage,
@@ -31,8 +29,6 @@ use core::marker::PhantomData;
 
 /// A trait for consensus storage.
 pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
-    /// The committee storage.
-    type CommitteeStorage: CommitteeStorage<N>;
     /// The finalize storage.
     type FinalizeStorage: FinalizeStorage<N>;
     /// The block storage.
@@ -45,8 +41,6 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the consensus storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
-    /// Returns the committee storage.
-    fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage>;
     /// Returns the finalize storage.
     fn finalize_store(&self) -> &FinalizeStore<N, Self::FinalizeStorage>;
     /// Returns the block storage.
@@ -68,49 +62,41 @@ pub trait ConsensusStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Starts an atomic batch write operation.
     fn start_atomic(&self) {
-        self.committee_store().start_atomic();
         self.finalize_store().start_atomic();
         self.block_store().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
     fn is_atomic_in_progress(&self) -> bool {
-        self.committee_store().is_atomic_in_progress()
-            || self.finalize_store().is_atomic_in_progress()
-            || self.block_store().is_atomic_in_progress()
+        self.finalize_store().is_atomic_in_progress() || self.block_store().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
     fn atomic_checkpoint(&self) {
-        self.committee_store().atomic_checkpoint();
         self.finalize_store().atomic_checkpoint();
         self.block_store().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
     fn clear_latest_checkpoint(&self) {
-        self.committee_store().clear_latest_checkpoint();
         self.finalize_store().clear_latest_checkpoint();
         self.block_store().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
-        self.committee_store().atomic_rewind();
         self.finalize_store().atomic_rewind();
         self.block_store().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
-        self.committee_store().abort_atomic();
         self.finalize_store().abort_atomic();
         self.block_store().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
     fn finish_atomic(&self) -> Result<()> {
-        self.committee_store().finish_atomic()?;
         self.finalize_store().finish_atomic()?;
         self.block_store().finish_atomic()
     }
@@ -137,11 +123,6 @@ impl<N: Network, C: ConsensusStorage<N>> ConsensusStore<N, C> {
     /// Initializes a consensus store from storage.
     pub fn from(storage: C) -> Self {
         Self { storage, _phantom: PhantomData }
-    }
-
-    /// Returns the committee store.
-    pub fn committee_store(&self) -> &CommitteeStore<N, C::CommitteeStorage> {
-        self.storage.committee_store()
     }
 
     /// Returns the finalize store.

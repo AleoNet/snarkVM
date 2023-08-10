@@ -42,6 +42,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("The next block timestamp is before the current timestamp")
         }
 
+        // Ensure the block type is correct.
+        match block.height() == 0 {
+            true => ensure!(block.authority().is_beacon(), "The genesis block must be a beacon block"),
+            false => {
+                #[cfg(not(test))]
+                ensure!(block.authority().is_quorum(), "The next block must be a quorum block");
+            }
+        }
+
         // Ensure the next block round and block timestamp are correct.
         match block.authority() {
             Authority::Beacon(..) => {
@@ -59,6 +68,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 if block.timestamp() != subdag.timestamp() {
                     bail!("The next block timestamp must be the median timestamp from the subdag")
                 }
+                // TODO (howardwu): Check the timestamp is after the previous timestamp.
             }
         }
 
@@ -120,17 +130,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Invalid block header: {:?}", block.header());
         }
 
-        // Retrieve the latest total supply.
-        let latest_total_supply = self.latest_total_supply_in_microcredits();
-        // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits = update_total_supply(latest_total_supply, block.transactions())?;
-        // Ensure the total supply in microcredits is correct.
-        if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
-            bail!("Invalid total supply in microcredits")
-        }
-
-        // Check the last coinbase members in the block.
-        match block.coinbase() {
+        // Check the solutions in the block.
+        let combined_proof_target = match block.coinbase() {
             Some(coinbase) => {
                 // Compute the combined proof target.
                 let combined_proof_target = coinbase.to_combined_proof_target()?;
@@ -178,6 +179,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                         bail!("The last coinbase height does not match the block height")
                     }
                 }
+                combined_proof_target
             }
             None => {
                 // Ensure the last coinbase target matches the previous block coinbase target.
@@ -196,8 +198,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 if block.cumulative_proof_target() != self.latest_cumulative_proof_target() {
                     bail!("The cumulative proof target does not match the previous cumulative proof target")
                 }
+                0
             }
-        }
+        };
 
         // Construct the next coinbase target.
         let expected_coinbase_target = coinbase_target(
@@ -218,6 +221,61 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let expected_proof_target = proof_target(expected_coinbase_target, N::GENESIS_PROOF_TARGET);
         if block.proof_target() != expected_proof_target {
             bail!("Invalid proof target: expected {expected_proof_target}, got {}", block.proof_target())
+        }
+
+        // Calculate the expected coinbase reward.
+        let expected_coinbase_reward = coinbase_reward(
+            block.height(),
+            N::STARTING_SUPPLY,
+            N::ANCHOR_HEIGHT,
+            N::BLOCK_TIME,
+            combined_proof_target,
+            u64::try_from(self.latest_cumulative_proof_target())?,
+            self.latest_coinbase_target(),
+        )?;
+        // Compute the expected block reward.
+        let expected_block_reward = block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, expected_coinbase_reward);
+        // Compute the expected puzzle reward.
+        let expected_puzzle_reward = expected_coinbase_reward.saturating_div(2);
+
+        // Ensure the block reward and puzzle reward ratifications are correct.
+        {
+            // Ensure there are at least 2 block ratifications.
+            if block.ratifications().len() < 2 {
+                bail!("There must be at least 2 block ratifications")
+            }
+            // Retrieve the block reward from the first block ratification.
+            let block_reward = match block.ratifications()[0] {
+                Ratify::BlockReward(block_reward) => block_reward,
+                _ => bail!("The first block ratification must be a block reward"),
+            };
+            // Retrieve the puzzle reward from the second block ratification.
+            let puzzle_reward = match block.ratifications()[1] {
+                Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
+                _ => bail!("The second block ratification must be a puzzle reward"),
+            };
+            // Ensure the block reward is correct.
+            if block_reward != expected_block_reward {
+                bail!("Invalid block reward: expected {expected_block_reward}, found {block_reward}")
+            }
+            // Ensure the puzzle reward is correct.
+            if puzzle_reward != expected_puzzle_reward {
+                bail!("Invalid puzzle reward: expected {expected_puzzle_reward}, found {puzzle_reward}")
+            }
+        }
+
+        // Retrieve the latest total supply.
+        let latest_total_supply = self.latest_total_supply_in_microcredits();
+        // Compute the next total supply in microcredits.
+        let next_total_supply_in_microcredits = update_total_supply(
+            latest_total_supply,
+            expected_block_reward,
+            expected_puzzle_reward,
+            block.transactions(),
+        )?;
+        // Ensure the total supply in microcredits is correct.
+        if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
+            bail!("Invalid total supply in microcredits")
         }
 
         /* Block Hash */
@@ -262,12 +320,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 }
             }
             // TODO: Check the certificates of the quorum.
-            Authority::Quorum(_certificates) => {
-                // // Ensure the block is signed by a validator in the committee.
-                // let signer = block.authority().to_address();
-                // if !self.current_committee.read().contains(&signer) {
-                //     bail!("Block {} ({}) is signed by an unauthorized account ({signer})", block.height(), block.hash());
-                // }
+            Authority::Quorum(subdag) => {
+                // Retrieve the latest committee.
+                let committee = self.latest_committee()?;
+                // Compute the expected leader.
+                let expected_leader = committee.get_leader(block.round())?;
+                // Ensure the block is authored by the expected leader.
+                if subdag.leader_address() != expected_leader {
+                    bail!(
+                        "Block {} ({}) is authored by an unexpected leader (found: {}, expected: {expected_leader})",
+                        block.height(),
+                        block.hash(),
+                        subdag.leader_address()
+                    );
+                }
             }
         }
 
@@ -348,7 +414,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .collect::<Result<Vec<_>>>()?;
 
         // Ensure the transactions after speculation match.
-        if block.transactions() != &self.vm.speculate(state, unconfirmed_transactions.iter())? {
+        if block.transactions()
+            != &self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?
+        {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 
@@ -361,6 +429,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         /* Ratifications Root */
+
+        // TODO (howardwu): Check equivalency of `committee struct` == `committee mapping` == `bonded mapping`.
+        // TODO (howardwu): Ensure there is only a Ratify::Genesis in the genesis block.
 
         // Compute the ratifications root of the block.
         let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(

@@ -73,9 +73,15 @@ impl<N: Network> FromBits for FinalizeOperation<N> {
                 // Read the mapping ID.
                 let mapping_id = Field::from_bits_le(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Return the finalize operation.
+                Ok(Self::ReplaceMapping(mapping_id))
+            }
+            5 => {
+                // Read the mapping ID.
+                let mapping_id = Field::from_bits_le(&next_bits(Field::<N>::size_in_bits())?)?;
+                // Return the finalize operation.
                 Ok(Self::RemoveMapping(mapping_id))
             }
-            5.. => bail!("Invalid finalize operation variant '{variant}'"),
+            6.. => bail!("Invalid finalize operation variant '{variant}'"),
         }
     }
 
@@ -137,9 +143,15 @@ impl<N: Network> FromBits for FinalizeOperation<N> {
                 // Read the mapping ID.
                 let mapping_id = Field::from_bits_be(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Return the finalize operation.
+                Ok(Self::ReplaceMapping(mapping_id))
+            }
+            5 => {
+                // Read the mapping ID.
+                let mapping_id = Field::from_bits_be(&next_bits(Field::<N>::size_in_bits())?)?;
+                // Return the finalize operation.
                 Ok(Self::RemoveMapping(mapping_id))
             }
-            5.. => bail!("Invalid finalize operation variant '{variant}'"),
+            6.. => bail!("Invalid finalize operation variant '{variant}'"),
         }
     }
 }
@@ -196,10 +208,19 @@ impl<N: Network> ToBits for FinalizeOperation<N> {
                 ]
                 .concat()
             }
-            Self::RemoveMapping(mapping_id) => {
+            Self::ReplaceMapping(mapping_id) => {
                 vec![
                     // Write the variant.
                     4u8.to_bits_le(),
+                    // Write the mapping ID.
+                    mapping_id.to_bits_le(),
+                ]
+                .concat()
+            }
+            Self::RemoveMapping(mapping_id) => {
+                vec![
+                    // Write the variant.
+                    5u8.to_bits_le(),
                     // Write the mapping ID.
                     mapping_id.to_bits_le(),
                 ]
@@ -259,10 +280,19 @@ impl<N: Network> ToBits for FinalizeOperation<N> {
                 ]
                 .concat()
             }
-            Self::RemoveMapping(mapping_id) => {
+            Self::ReplaceMapping(mapping_id) => {
                 vec![
                     // Write the variant.
                     4u8.to_bits_be(),
+                    // Write the mapping ID.
+                    mapping_id.to_bits_be(),
+                ]
+                .concat()
+            }
+            Self::RemoveMapping(mapping_id) => {
+                vec![
+                    // Write the variant.
+                    5u8.to_bits_be(),
                     // Write the mapping ID.
                     mapping_id.to_bits_be(),
                 ]

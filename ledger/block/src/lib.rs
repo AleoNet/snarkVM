@@ -124,8 +124,8 @@ impl<N: Network> Block<N> {
                 // Ensure the signature is valid.
                 ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
             }
-            // TODO (howardwu): Verify the certificates.
-            Authority::Quorum(_certificates) => (),
+            // TODO (howardwu): Verify the subdag.
+            Authority::Quorum(_subdag) => (),
         }
 
         // Ensure that coinbase accumulator matches the solutions.

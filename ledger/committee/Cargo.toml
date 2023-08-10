@@ -28,7 +28,7 @@ default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 prop-tests = [ "rand", "rand_chacha", "test-strategy", "proptest", "anyhow" ]
-test-helpers = [ "rand_distr" ]
+test-helpers = [ "prop-tests", "rand_distr" ]
 
 [dependencies.console]
 package = "snarkvm-console"
