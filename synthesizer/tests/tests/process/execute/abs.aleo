@@ -42,9 +42,8 @@ cases:
     inputs: [-10_000_i16]
   - function: abs_i16
     inputs: [-32_767_i16]
-# negative test:
-#  - function: abs_i16
-#    inputs: [-32_768_i16]
+  - function: abs_i16
+    inputs: [-32_768_i16]
 
   - function: abs_i32
     inputs: [0i32]
@@ -64,9 +63,8 @@ cases:
     inputs: [-10_000_000_i32]
   - function: abs_i32
     inputs: [-2_147_483_647_i32]
-# negative test:
-#  - function: abs_i32
-#    inputs: [-2_147_483_647_i32]
+  - function: abs_i32
+    inputs: [-2_147_483_647_i32]
 
   - function: abs_i64
     inputs: [0i64]
@@ -86,9 +84,8 @@ cases:
     inputs: [-10_000_000_000_i64]
   - function: abs_i64
     inputs: [-9_223_372_036_854_775_807_i64]
-# negative test:
-#  - function: abs_i64
-#    inputs: [-9_223_372_036_854_775_808_i64]
+  - function: abs_i64
+    inputs: [-9_223_372_036_854_775_808_i64]
 
   - function: abs_i128
     inputs: [0i128]
@@ -108,9 +105,8 @@ cases:
     inputs: [-10_000_000_000_000_000_000_000_000_000_i128]
   - function: abs_i128
     inputs: [-170_141_183_460_469_231_731_687_303_715_884_105_727_i128]
-# negative test:
-#  - function: abs_i128
-#    inputs: [-170_141_183_460_469_231_731_687_303_715_884_105_728_i128]
+  - function: abs_i128
+    inputs: [-170_141_183_460_469_231_731_687_303_715_884_105_728_i128]
 
 */
 
