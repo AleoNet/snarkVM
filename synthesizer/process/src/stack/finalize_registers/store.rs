@@ -37,9 +37,9 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
-                match self.last_register == 0 {
-                    true => ensure!(*locator == 0, "Out-of-order write operation at '{register}'"),
-                    false => ensure!(*locator > self.last_register, "Out-of-order write operation at '{register}'"),
+                match self.last_register {
+                    None => ensure!(*locator == 0, "Out-of-order write operation at '{register}'"),
+                    Some(last) => ensure!(*locator > last, "Out-of-order write operation at '{register}'"),
                 };
                 // Ensure the register does not already exist.
                 ensure!(!self.registers.contains_key(locator), "Cannot write to occupied register '{register}'");
@@ -59,7 +59,7 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
                     // Update the last register locator, and return on success.
                     None => {
                         // Update the last register locator.
-                        self.last_register = *locator;
+                        self.last_register = Some(*locator);
                         // Return on success.
                         Ok(())
                     }
