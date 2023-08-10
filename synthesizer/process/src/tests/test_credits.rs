@@ -39,38 +39,44 @@ fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
     FinalizeGlobalState::from(block_height, [0u8; 32])
 }
 
-/// Get the current `account` mapping balance.
-fn account_balance(
-    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
-    address: &Address<CurrentNetwork>,
-) -> Result<u64> {
-    // Initialize the program ID, mapping name, and key.
-    let program_id = ProgramID::from_str("credits.aleo")?;
-    let mapping = Identifier::from_str("account")?;
-    let key = Plaintext::from(Literal::Address(*address));
+/// Returns the `value` for the given `key` in the `mapping` for the given `program_id`.
+fn get_mapping_value<N: Network>(
+    store: &FinalizeStore<N, FinalizeMemory<N>>,
+    program_id: &str,
+    mapping: &str,
+    key: Literal<N>,
+) -> Result<Value<N>> {
+    // Prepare the program ID, mapping name, and key.
+    let program_id = ProgramID::from_str(program_id)?;
+    let mapping = Identifier::from_str(mapping)?;
+    let key = Plaintext::from(key);
+    // Retrieve the value from the finalize store.
+    match store.get_value_confirmed(&program_id, &mapping, &key) {
+        Ok(Some(value)) => Ok(value),
+        Ok(None) => bail!("Value not found for program_id: {program_id}, mapping: {mapping}, key: {key}"),
+        Err(err) => bail!("Error getting value for program_id: {program_id}, mapping: {mapping}, key: {key}: {err}"),
+    }
+}
 
+/// Get the current `account` mapping balance.
+fn account_balance<N: Network>(store: &FinalizeStore<N, FinalizeMemory<N>>, address: &Address<N>) -> Result<u64> {
     // Retrieve the balance from the finalize store.
-    match finalize_store.get_value_confirmed(&program_id, &mapping, &key)? {
-        Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => Ok(*balance),
-        _ => bail!("Account balance not found for: {address}"),
+    match get_mapping_value(store, "credits.aleo", "account", Literal::Address(*address))? {
+        Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _)) => Ok(*balance),
+        _ => bail!("Malformed account balance for {address}"),
     }
 }
 
 /// Get the current committee state from the `committee` mapping for the given validator address.
 /// Returns the `committee_state` as a tuple of `(microcredits, is_open)`.
-fn committee_state(
-    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
-    address: &Address<CurrentNetwork>,
+fn committee_state<N: Network>(
+    store: &FinalizeStore<N, FinalizeMemory<N>>,
+    address: &Address<N>,
 ) -> Result<(u64, bool)> {
-    // Initialize the program ID, mapping name, and key.
-    let program_id = ProgramID::from_str("credits.aleo")?;
-    let mapping = Identifier::from_str("committee")?;
-    let key = Plaintext::from(Literal::Address(*address));
-
     // Retrieve the committee state from the finalize store.
-    let state = match finalize_store.get_value_confirmed(&program_id, &mapping, &key)? {
-        Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
-        _ => bail!("Account balance not found for: {address}"),
+    let state = match get_mapping_value(store, "credits.aleo", "committee", Literal::Address(*address))? {
+        Value::Plaintext(Plaintext::Struct(state, _)) => state,
+        _ => bail!("Malformed committee state for {address}"),
     };
 
     // Retrieve `microcredits` from the committee state.
@@ -90,19 +96,14 @@ fn committee_state(
 
 /// Get the current bond state from the `bonding` mapping for the given staker address.
 /// Returns the `bond_state` as a tuple of `(validator address, microcredits)`.
-fn bond_state(
-    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
-    address: &Address<CurrentNetwork>,
-) -> Result<(Address<CurrentNetwork>, u64)> {
-    // Initialize the program ID, mapping name, and key.
-    let program_id = ProgramID::from_str("credits.aleo")?;
-    let mapping = Identifier::from_str("bonded")?;
-    let key = Plaintext::from(Literal::Address(*address));
-
+fn bond_state<N: Network>(
+    store: &FinalizeStore<N, FinalizeMemory<N>>,
+    address: &Address<N>,
+) -> Result<(Address<N>, u64)> {
     // Retrieve the bond state from the finalize store.
-    let state = match finalize_store.get_value_confirmed(&program_id, &mapping, &key)? {
-        Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
-        _ => bail!("Account balance not found for: {address}"),
+    let state = match get_mapping_value(store, "credits.aleo", "bonded", Literal::Address(*address))? {
+        Value::Plaintext(Plaintext::Struct(state, _)) => state,
+        _ => bail!("Malformed bond state for {address}"),
     };
 
     // Retrieve `validator` from the bond state.
@@ -122,19 +123,11 @@ fn bond_state(
 
 /// Get the current unbonding state from the `unbonding` mapping for the given staker address.
 /// Returns the `unbond_state` as a tuple of `(microcredits, unbond_height)`.
-fn unbond_state(
-    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
-    address: &Address<CurrentNetwork>,
-) -> Result<(u64, u32)> {
-    // Initialize the program ID, mapping name, and key.
-    let program_id = ProgramID::from_str("credits.aleo")?;
-    let mapping = Identifier::from_str("unbonding")?;
-    let key = Plaintext::from(Literal::Address(*address));
-
-    // Retrieve the bond state from the finalize store.
-    let state = match finalize_store.get_value_confirmed(&program_id, &mapping, &key)? {
-        Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
-        _ => bail!("Account balance not found for: {address}"),
+fn unbond_state<N: Network>(store: &FinalizeStore<N, FinalizeMemory<N>>, address: &Address<N>) -> Result<(u64, u32)> {
+    // Retrieve the unbond state from the finalize store.
+    let state = match get_mapping_value(store, "credits.aleo", "unbonding", Literal::Address(*address))? {
+        Value::Plaintext(Plaintext::Struct(state, _)) => state,
+        _ => bail!("Malformed unbond state for {address}"),
     };
 
     // Retrieve `microcredits` from the bond state.
@@ -154,17 +147,14 @@ fn unbond_state(
 
 /// Initializes the validator and delegator balances in the finalize store.
 /// Returns the private keys and balances for the validators and delegators.
-fn initialize_stakers(
-    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+fn initialize_stakers<N: Network>(
+    finalize_store: &FinalizeStore<N, FinalizeMemory<N>>,
     num_validators: u32,
     num_delegators: u32,
     rng: &mut TestRng,
-) -> Result<(
-    IndexMap<PrivateKey<CurrentNetwork>, (Address<CurrentNetwork>, u64)>,
-    IndexMap<PrivateKey<CurrentNetwork>, (Address<CurrentNetwork>, u64)>,
-)> {
+) -> Result<(IndexMap<PrivateKey<N>, (Address<N>, u64)>, IndexMap<PrivateKey<N>, (Address<N>, u64)>)> {
     // Initialize the store for 'credits.aleo'.
-    let credits = Program::<CurrentNetwork>::credits()?;
+    let credits = Program::<N>::credits()?;
     for mapping in credits.mappings().values() {
         // Ensure that all mappings are initialized.
         if !finalize_store.contains_mapping_confirmed(credits.id(), mapping.name())? {
@@ -180,7 +170,7 @@ fn initialize_stakers(
     // Initialize the balances for the validators and delegators.
     for i in 0..(num_validators + num_delegators) {
         // Initialize a new account.
-        let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+        let private_key = PrivateKey::<N>::new(rng)?;
         let address = Address::try_from(&private_key)?;
         let balance = 10_000_000_000_000u64;
 
