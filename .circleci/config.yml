@@ -497,6 +497,15 @@ jobs:
           workspace_member: ledger/coinbase
           cache_key: snarkvm-ledger-coinbase-cache
 
+  ledger-committee:
+    docker:
+      - image: cimg/rust:1.69
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/committee
+          cache_key: snarkvm-ledger-committee-cache
+
   ledger-narwhal:
     docker:
       - image: cimg/rust:1.69
@@ -777,6 +786,7 @@ workflows:
       - ledger-authority
       - ledger-block
       - ledger-coinbase
+      - ledger-committee
       - ledger-narwhal
       - ledger-narwhal-batch-certificate
       - ledger-narwhal-batch-header

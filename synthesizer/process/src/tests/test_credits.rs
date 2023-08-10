@@ -25,12 +25,14 @@ use ledger_store::{
     BlockStore,
     FinalizeStore,
 };
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait};
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 
 use indexmap::IndexMap;
 
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
+
+const NUM_BLOCKS_TO_UNLOCK: u32 = 720;
 
 /// Samples a new finalize state.
 fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
@@ -87,7 +89,7 @@ fn committee_state(
 }
 
 /// Get the current bond state from the `bonding` mapping for the given staker address.
-/// Returns the `committee_state` as a tuple of `(validator address, microcredits)`.
+/// Returns the `bond_state` as a tuple of `(validator address, microcredits)`.
 fn bond_state(
     finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
     address: &Address<CurrentNetwork>,
@@ -118,6 +120,38 @@ fn bond_state(
     Ok((validator, microcredits))
 }
 
+/// Get the current unbonding state from the `unbonding` mapping for the given staker address.
+/// Returns the `unbond_state` as a tuple of `(microcredits, unbond_height)`.
+fn unbond_state(
+    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+    address: &Address<CurrentNetwork>,
+) -> Result<(u64, u32)> {
+    // Initialize the program ID, mapping name, and key.
+    let program_id = ProgramID::from_str("credits.aleo")?;
+    let mapping = Identifier::from_str("unbonding")?;
+    let key = Plaintext::from(Literal::Address(*address));
+
+    // Retrieve the bond state from the finalize store.
+    let state = match finalize_store.get_value_confirmed(&program_id, &mapping, &key)? {
+        Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
+        _ => bail!("Account balance not found for: {address}"),
+    };
+
+    // Retrieve `microcredits` from the bond state.
+    let microcredits = match state.get(&Identifier::from_str("microcredits")?) {
+        Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
+        _ => bail!("`microcredits` not found for: {address}"),
+    };
+
+    // Retrieve `height` from the bond state.
+    let height = match state.get(&Identifier::from_str("height")?) {
+        Some(Plaintext::Literal(Literal::U32(height), _)) => **height,
+        _ => bail!("`height` not found for: {address}"),
+    };
+
+    Ok((microcredits, height))
+}
+
 /// Initializes the validator and delegator balances in the finalize store.
 /// Returns the private keys and balances for the validators and delegators.
 fn initialize_stakers(
@@ -129,7 +163,15 @@ fn initialize_stakers(
     IndexMap<PrivateKey<CurrentNetwork>, (Address<CurrentNetwork>, u64)>,
     IndexMap<PrivateKey<CurrentNetwork>, (Address<CurrentNetwork>, u64)>,
 )> {
-    let program_id = ProgramID::from_str("credits.aleo")?;
+    // Initialize the store for 'credits.aleo'.
+    let credits = Program::<CurrentNetwork>::credits()?;
+    for mapping in credits.mappings().values() {
+        // Ensure that all mappings are initialized.
+        if !finalize_store.contains_mapping_confirmed(credits.id(), mapping.name())? {
+            // Initialize the mappings for 'credits.aleo'.
+            finalize_store.initialize_mapping(credits.id(), mapping.name())?;
+        }
+    }
     let accounts_mapping = Identifier::from_str("account")?;
 
     let mut validators: IndexMap<_, _> = Default::default();
@@ -146,7 +188,7 @@ fn initialize_stakers(
         let value = Value::from_str(&format!("{balance}u64"))?;
 
         // Add the balance directly to the finalize store.
-        finalize_store.insert_key_value(&program_id, &accounts_mapping, key, value)?;
+        finalize_store.insert_key_value(credits.id(), &accounts_mapping, key, value)?;
 
         if i < num_validators {
             // Insert the validator into the list of validators.
@@ -160,21 +202,18 @@ fn initialize_stakers(
     Ok((validators, delegators))
 }
 
-/// Perform a bond public execution.
-fn bond(
+fn execute_function(
     process: &Process<CurrentNetwork>,
     finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
     caller_private_key: &PrivateKey<CurrentNetwork>,
-    validator_address: &Address<CurrentNetwork>,
-    amount: u64,
+    function: &str,
+    inputs: &[String],
+    block_height: Option<u32>,
     rng: &mut TestRng,
 ) -> Result<()> {
-    // Construct the execution.
-    let inputs = [validator_address.to_string(), format!("{amount}_u64")];
-
     // Construct the authorization.
     let authorization =
-        process.authorize::<CurrentAleo, _>(caller_private_key, "credits.aleo", "bond_public", inputs.iter(), rng)?;
+        process.authorize::<CurrentAleo, _>(caller_private_key, "credits.aleo", function, inputs.iter(), rng)?;
 
     // Construct the trace.
     let (_, mut trace) = process.execute::<CurrentAleo>(authorization)?;
@@ -186,15 +225,104 @@ fn bond(
     trace.prepare(Query::from(&block_store))?;
 
     // Prove the execution.
-    let execution = trace.prove_execution::<CurrentAleo, _>("bond_public", rng)?;
+    let execution = trace.prove_execution::<CurrentAleo, _>(function, rng)?;
 
     // Finalize the execution.
-    process.finalize_execution(sample_finalize_state(1), finalize_store, &execution)?;
+    let block_height = block_height.unwrap_or(1);
+    process.finalize_execution(sample_finalize_state(block_height), finalize_store, &execution)?;
 
     Ok(())
 }
 
-// TODO (raychu86): Separate these cases into individual tests.
+/// Perform a `bond_public`.
+fn bond_public(
+    process: &Process<CurrentNetwork>,
+    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+    caller_private_key: &PrivateKey<CurrentNetwork>,
+    validator_address: &Address<CurrentNetwork>,
+    amount: u64,
+    rng: &mut TestRng,
+) -> Result<()> {
+    execute_function(
+        process,
+        finalize_store,
+        caller_private_key,
+        "bond_public",
+        &[validator_address.to_string(), format!("{amount}_u64")],
+        None,
+        rng,
+    )
+}
+
+/// Perform an `unbond_public`.
+fn unbond_public(
+    process: &Process<CurrentNetwork>,
+    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+    caller_private_key: &PrivateKey<CurrentNetwork>,
+    amount: u64,
+    block_height: u32,
+    rng: &mut TestRng,
+) -> Result<()> {
+    execute_function(
+        process,
+        finalize_store,
+        caller_private_key,
+        "unbond_public",
+        &[format!("{amount}_u64")],
+        Some(block_height),
+        rng,
+    )
+}
+
+/// Perform a `set_validator_state`.
+fn set_validator_state(
+    process: &Process<CurrentNetwork>,
+    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+    caller_private_key: &PrivateKey<CurrentNetwork>,
+    is_open: bool,
+    rng: &mut TestRng,
+) -> Result<()> {
+    execute_function(
+        process,
+        finalize_store,
+        caller_private_key,
+        "set_validator_state",
+        &[format!("{is_open}")],
+        None,
+        rng,
+    )
+}
+
+/// Perform an `unbond_delegator_as_validator`
+fn unbond_delegator_as_validator(
+    process: &Process<CurrentNetwork>,
+    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+    caller_private_key: &PrivateKey<CurrentNetwork>,
+    delegator_address: &Address<CurrentNetwork>,
+    rng: &mut TestRng,
+) -> Result<()> {
+    execute_function(
+        process,
+        finalize_store,
+        caller_private_key,
+        "unbond_delegator_as_validator",
+        &[delegator_address.to_string()],
+        None,
+        rng,
+    )
+}
+
+/// Perform a `claim_unbond_public`.
+fn claim_unbond_public(
+    process: &Process<CurrentNetwork>,
+    finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+    caller_private_key: &PrivateKey<CurrentNetwork>,
+    block_height: u32,
+    rng: &mut TestRng,
+) -> Result<()> {
+    execute_function(process, finalize_store, caller_private_key, "claim_unbond_public", &[], Some(block_height), rng)
+}
+
 #[test]
 fn test_bond_validator() {
     let rng = &mut TestRng::default();
@@ -205,97 +333,681 @@ fn test_bond_validator() {
     // Initialize a new finalize store.
     let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
-    // Initialize the validators and delegators.
-    let (validators, _) = initialize_stakers(&finalize_store, 6, 0, rng).unwrap();
-    let mut validators = validators.into_iter();
+    // Initialize the validators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
 
-    // Ensure bonding a new validator with more than 1_000_000_000_000 microcredits succeeds.
-    {
-        let (validator_private_key, (validator_address, _)) = validators.next().unwrap();
+    /* Ensure bonding a new validator with more than 1_000_000_000_000 microcredits succeeds. */
 
-        // Fetch the account balance.
-        let public_balance = account_balance(&finalize_store, &validator_address).unwrap();
+    // Fetch the account balance.
+    let public_balance = account_balance(&finalize_store, validator_address).unwrap();
 
-        // Perform the bond.
-        let amount = 1_000_000_000_000u64;
-        bond(&process, &finalize_store, &validator_private_key, &validator_address, amount, rng).unwrap();
+    // Perform the bond.
+    let amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
 
-        // Check that the balances are correct.
-        let new_public_balance = account_balance(&finalize_store, &validator_address).unwrap();
-        assert_eq!(public_balance - amount, new_public_balance);
-        assert_eq!(committee_state(&finalize_store, &validator_address).unwrap(), (amount, true));
-        assert_eq!(bond_state(&finalize_store, &validator_address).unwrap(), (validator_address, amount));
-    }
-
-    // Ensure bonding a new validator with less than 1_000_000_000_000 microcredits fails.
-    {
-        let (validator_private_key, (validator_address, _)) = validators.next().unwrap();
-        assert!(
-            bond(
-                &process,
-                &finalize_store,
-                &validator_private_key,
-                &validator_address,
-                rng.gen_range(1..1_000_000_000_000u64),
-                rng
-            )
-            .is_err()
-        );
-    }
-
-    // Ensure bonding an amount larger than the account balance will fail.
-    {
-        let (validator_private_key, (validator_address, _)) = validators.next().unwrap();
-
-        // Fetch the account balance.
-        let public_balance = account_balance(&finalize_store, &validator_address).unwrap();
-
-        assert!(
-            bond(&process, &finalize_store, &validator_private_key, &validator_address, public_balance + 1, rng)
-                .is_err()
-        );
-    }
-
-    // Ensure that adding additional bond succeeds.
-    {
-        let (validator_private_key, (validator_address, _)) = validators.next().unwrap();
-
-        // Fetch the account balance.
-        let public_balance = account_balance(&finalize_store, &validator_address).unwrap();
-
-        // Perform the bond.
-        let amount = 1_000_000_000_000u64;
-        bond(&process, &finalize_store, &validator_private_key, &validator_address, amount, rng).unwrap();
-
-        // Perform another bond.
-        bond(&process, &finalize_store, &validator_private_key, &validator_address, amount, rng).unwrap();
-
-        // Check that the balances are correct.
-        let new_public_balance = account_balance(&finalize_store, &validator_address).unwrap();
-        assert_eq!(public_balance - amount * 2, new_public_balance);
-        assert_eq!(committee_state(&finalize_store, &validator_address).unwrap(), (amount * 2, true));
-        assert_eq!(bond_state(&finalize_store, &validator_address).unwrap(), (validator_address, amount * 2));
-    }
-
-    // Ensure that bonding to another validator fails.
-    {
-        let (validator_private_key_1, (validator_address_1, _)) = validators.next().unwrap();
-        let (validator_private_key_2, (validator_address_2, _)) = validators.next().unwrap();
-
-        // Perform the bond for validator 1.
-        let amount = 1_000_000_000_000u64;
-        bond(&process, &finalize_store, &validator_private_key_1, &validator_address_1, amount, rng).unwrap();
-
-        // Perform the bond for validator 2.
-        bond(&process, &finalize_store, &validator_private_key_2, &validator_address_2, amount, rng).unwrap();
-
-        // Ensure that bonding to another validator fails.
-        assert!(bond(&process, &finalize_store, &validator_private_key_1, &validator_address_2, amount, rng).is_err());
-    }
+    // Check that the balances are correct.
+    let new_public_balance = account_balance(&finalize_store, validator_address).unwrap();
+    assert_eq!(public_balance - amount, new_public_balance);
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
+    assert_eq!(bond_state(&finalize_store, validator_address).unwrap(), (*validator_address, amount));
 }
 
 #[test]
-fn test_bond_delegator() {}
+fn test_bond_validator_under_minimum_stake_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    /* Ensure bonding a new validator with less than 1_000_000_000_000 microcredits fails. */
+
+    let delegator_amount = rng.gen_range(1..1_000_000_000_000u64);
+    assert!(
+        bond_public(&process, &finalize_store, validator_private_key, validator_address, delegator_amount, rng)
+            .is_err()
+    );
+}
+
+#[test]
+fn test_bond_validator_insufficient_funds_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    /* Ensure bonding an amount larger than the account balance will fail. */
+
+    // Fetch the account balance.
+    let public_balance = account_balance(&finalize_store, validator_address).unwrap();
+
+    assert!(
+        bond_public(&process, &finalize_store, validator_private_key, validator_address, public_balance + 1, rng)
+            .is_err()
+    );
+}
+
+#[test]
+fn test_bond_validator_multiple_bonds() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    /*  Ensure that adding additional bond succeeds. */
+
+    // Fetch the account balance.
+    let public_balance = account_balance(&finalize_store, validator_address).unwrap();
+
+    // Perform the bond.
+    let amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+
+    // Perform another bond.
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+
+    // Check that the balances are correct.
+    let new_public_balance = account_balance(&finalize_store, validator_address).unwrap();
+    assert_eq!(public_balance - amount * 2, new_public_balance);
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount * 2, true));
+    assert_eq!(bond_state(&finalize_store, validator_address).unwrap(), (*validator_address, amount * 2));
+}
+
+#[test]
+fn test_bond_validator_to_other_validator_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators.
+    let (validators, _) = initialize_stakers(&finalize_store, 2, 0, rng).unwrap();
+    let mut validators = validators.into_iter();
+    let (validator_private_key_1, (validator_address_1, _)) = validators.next().unwrap();
+    let (validator_private_key_2, (validator_address_2, _)) = validators.next().unwrap();
+
+    /* Ensure that bonding to another validator fails. */
+
+    // Perform the bond for validator 1.
+    let amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, &validator_private_key_1, &validator_address_1, amount, rng).unwrap();
+
+    // Perform the bond for validator 2.
+    bond_public(&process, &finalize_store, &validator_private_key_2, &validator_address_2, amount, rng).unwrap();
+
+    // Ensure that bonding to another validator fails.
+    assert!(
+        bond_public(&process, &finalize_store, &validator_private_key_1, &validator_address_2, amount, rng).is_err()
+    );
+}
+
+#[test]
+fn test_bond_delegator() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    /* Ensure bonding a new delegator with more than 1_000_000 microcredits succeeds. */
+
+    // Fetch the delegator account balance.
+    let public_balance = account_balance(&finalize_store, delegator_address).unwrap();
+
+    // Bond the validator.
+    let validator_amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = 1_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+
+    // Check that the balances are correct.
+    let new_public_balance = account_balance(&finalize_store, delegator_address).unwrap();
+    assert_eq!(public_balance - delegator_amount, new_public_balance);
+    assert_eq!(
+        committee_state(&finalize_store, validator_address).unwrap(),
+        (validator_amount + delegator_amount, true)
+    );
+    assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), (*validator_address, delegator_amount));
+}
+
+#[test]
+fn teat_bond_validator_multiple_bonds() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    /* Ensure bonding a new delegator with more than 1_000_000 microcredits succeeds. */
+
+    // Fetch the delegator account balance.
+    let public_balance = account_balance(&finalize_store, delegator_address).unwrap();
+
+    // Bond the validator.
+    let validator_amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount_1 = 1_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount_1, rng).unwrap();
+
+    // Bond additional stake for the delegator.
+    let delegator_amount_2 = 1_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount_2, rng).unwrap();
+
+    // Check that the balances are correct.
+    let new_public_balance = account_balance(&finalize_store, delegator_address).unwrap();
+    assert_eq!(public_balance - (delegator_amount_1 + delegator_amount_2), new_public_balance);
+    assert_eq!(
+        committee_state(&finalize_store, validator_address).unwrap(),
+        (validator_amount + (delegator_amount_1 + delegator_amount_2), true)
+    );
+    assert_eq!(
+        bond_state(&finalize_store, delegator_address).unwrap(),
+        (*validator_address, (delegator_amount_1 + delegator_amount_2))
+    );
+}
+
+#[test]
+fn test_bond_delegator_under_minimum_stake_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+
+    /* Ensure bonding a new delegator with less than 1_000_000 microcredits fails. */
+
+    // Bond the validator.
+    let validator_amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = rng.gen_range(1..1_000_000);
+    assert!(
+        bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng)
+            .is_err()
+    );
+}
+
+#[test]
+fn test_bond_delegator_to_non_validator_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (_, delegators) = initialize_stakers(&finalize_store, 0, 1, rng).unwrap();
+    let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+
+    /* Ensure bonding a new delegator to a non-existent validator fails. */
+
+    // Generate a random address.
+    let non_validator_private_key = PrivateKey::new(rng).unwrap();
+    let non_validator_address = Address::try_from(&non_validator_private_key).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = 1_000_000u64;
+    assert!(
+        bond_public(&process, &finalize_store, delegator_private_key, &non_validator_address, delegator_amount, rng)
+            .is_err()
+    );
+}
+
+#[test]
+fn test_bond_delegator_to_multiple_validators_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 2, 1, rng).unwrap();
+    let mut validators = validators.into_iter();
+    let (validator_private_key_1, (validator_address_1, _)) = validators.next().unwrap();
+    let (validator_private_key_2, (validator_address_2, _)) = validators.next().unwrap();
+    let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+
+    /* Ensure bonding a delegator to a multiple validators fails. */
+
+    // Perform the bond for validator 1.
+    let amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, &validator_private_key_1, &validator_address_1, amount, rng).unwrap();
+
+    // Perform the bond for validator 2.
+    bond_public(&process, &finalize_store, &validator_private_key_2, &validator_address_2, amount, rng).unwrap();
+
+    // Bond the delegator to validator 1.
+    let delegator_amount = 1_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, &validator_address_1, delegator_amount, rng).unwrap();
+
+    // Bonding the delegator to validator 2 should fail.
+    let delegator_amount = 1_000_000u64;
+    assert!(
+        bond_public(&process, &finalize_store, delegator_private_key, &validator_address_2, delegator_amount, rng)
+            .is_err()
+    );
+}
+
+#[test]
+fn test_unbond_validator() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    // Perform the bond.
+    let validator_amount = 5_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    /* Ensure that the validator can unbond if the remaining balance is more than 1M credits. */
+
+    let unbond_amount_1 = rng.gen_range(1_000_000..validator_amount - 1_000_000);
+    let block_height_1 = rng.gen_range(1..100);
+    unbond_public(&process, &finalize_store, validator_private_key, unbond_amount_1, block_height_1, rng).unwrap();
+
+    assert_eq!(
+        committee_state(&finalize_store, validator_address).unwrap(),
+        (validator_amount - unbond_amount_1, true)
+    );
+    assert_eq!(
+        bond_state(&finalize_store, validator_address).unwrap(),
+        (*validator_address, validator_amount - unbond_amount_1)
+    );
+    assert_eq!(
+        unbond_state(&finalize_store, validator_address).unwrap(),
+        (unbond_amount_1, block_height_1 + NUM_BLOCKS_TO_UNLOCK)
+    );
+
+    /* Ensure that the validator can unbond its entire stake if there are no delegators. */
+
+    let unbond_amount_2 = validator_amount - unbond_amount_1;
+    let block_height_2 = rng.gen_range(block_height_1..1000);
+    unbond_public(&process, &finalize_store, validator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
+
+    assert!(committee_state(&finalize_store, validator_address).is_err());
+    assert!(bond_state(&finalize_store, validator_address).is_err());
+    assert_eq!(
+        unbond_state(&finalize_store, validator_address).unwrap(),
+        (validator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK)
+    );
+}
+
+#[test]
+fn test_unbond_validator_failed() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+
+    // Bond the validator.
+    let validator_amount = 5_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = 1_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+
+    /* Ensure that the validator can't unbond more than its stake */
+
+    assert!(unbond_public(&process, &finalize_store, validator_private_key, validator_amount + 1, 1, rng).is_err());
+
+    /* Ensure that the validator can't unbond if the remaining balance is less than 1M credits. */
+
+    let unbond_amount = rng.gen_range(validator_amount - 999_999..validator_amount);
+    assert!(unbond_public(&process, &finalize_store, validator_private_key, unbond_amount, 1, rng).is_err());
+
+    /* Ensure that the validator can't unbond entire stake if there are delegators. */
+
+    assert!(unbond_public(&process, &finalize_store, validator_private_key, validator_amount, 1, rng).is_err());
+}
+
+#[test]
+fn test_unbond_delegator() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    // Bond the validator.
+    let validator_amount = 5_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = 5_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+
+    /* Ensure that the delegator can unbond if the remaining balance is more than 1 credits. */
+
+    let unbond_amount_1 = rng.gen_range(1_000_000..delegator_amount - 1_000_000);
+    let block_height_1 = rng.gen_range(1..100);
+    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount_1, 1, rng).unwrap();
+
+    assert_eq!(
+        bond_state(&finalize_store, delegator_address).unwrap(),
+        (*validator_address, delegator_amount - unbond_amount_1)
+    );
+    assert_eq!(
+        unbond_state(&finalize_store, delegator_address).unwrap(),
+        (unbond_amount_1, block_height_1 + NUM_BLOCKS_TO_UNLOCK)
+    );
+
+    /* Ensure that the delegator can unbond its entire stake. */
+
+    let unbond_amount_2 = validator_amount - unbond_amount_1;
+    let block_height_2 = rng.gen_range(block_height_1..1000);
+    unbond_public(&process, &finalize_store, validator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
+
+    assert!(bond_state(&finalize_store, delegator_address).is_err());
+    assert_eq!(
+        unbond_state(&finalize_store, delegator_address).unwrap(),
+        (delegator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK)
+    );
+}
+
+#[test]
+fn test_unbond_delegator_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+
+    // Bond the validator.
+    let validator_amount = 5_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = 5_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+
+    /* Ensure that the delegator can't unbond if the unbond amount is less than 1 credit. */
+
+    let unbond_amount = rng.gen_range(1..1_000_000);
+    assert!(unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount, 1, rng).is_err());
+
+    /* Ensure that the delegator can't unbond if the remaining balance is less than 1 credit. */
+
+    let unbond_amount = rng.gen_range(delegator_amount - 999_999..delegator_amount);
+    assert!(unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount, 1, rng).is_err());
+
+    /* Ensure that the delegator can't unbond more than its stake */
+
+    assert!(unbond_public(&process, &finalize_store, delegator_private_key, delegator_amount + 1, 1, rng).is_err());
+}
+
+#[test]
+fn test_unbond_delegator_as_validator() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 2, 1, rng).unwrap();
+    let mut validators = validators.into_iter();
+    let (validator_private_key_1, (validator_address_1, _)) = validators.next().unwrap();
+    let (validator_private_key_2, (validator_address_2, _)) = validators.next().unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    /* Ensure unbonding a delegator as an open validator fails. */
+
+    // Bond the validators.
+    let validator_amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, &validator_private_key_1, &validator_address_1, validator_amount, rng)
+        .unwrap();
+    bond_public(&process, &finalize_store, &validator_private_key_2, &validator_address_2, validator_amount, rng)
+        .unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = 1_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, &validator_address_1, delegator_amount, rng).unwrap();
+
+    // Ensure that unbonding a delegator as an open validator fails.
+    assert!(
+        unbond_delegator_as_validator(&process, &finalize_store, &validator_private_key_1, delegator_address, rng)
+            .is_err()
+    );
+
+    // Set the validator `is_open` state to `false`.
+    set_validator_state(&process, &finalize_store, &validator_private_key_1, false, rng).unwrap();
+
+    /* Ensure unbonding a delegator for another closed validator fails. */
+
+    // Ensure that unbonding a delegator as an open validator fails.
+    assert!(
+        unbond_delegator_as_validator(&process, &finalize_store, &validator_private_key_2, delegator_address, rng)
+            .is_err()
+    );
+
+    /* Ensure unbonding a delegator as a closed validator succeeds. */
+
+    // Ensure that unbonding a delegator as a closed validator succeeds.
+    unbond_delegator_as_validator(&process, &finalize_store, &validator_private_key_1, delegator_address, rng).unwrap();
+
+    assert_eq!(committee_state(&finalize_store, &validator_address_1).unwrap(), (validator_amount, true));
+    assert!(bond_state(&finalize_store, delegator_address).is_err());
+    assert_eq!(unbond_state(&finalize_store, delegator_address).unwrap().0, delegator_amount);
+}
+
+#[test]
+fn test_claim_unbond() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    // Fetch the account balance.
+    let public_balance = account_balance(&finalize_store, validator_address).unwrap();
+
+    // Perform the bond.
+    let validator_amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    /* Ensure claiming an unbond fails when no unbond_state exists. */
+
+    assert!(claim_unbond_public(&process, &finalize_store, validator_private_key, 1, rng).is_err());
+
+    // Perform the unbond.
+    unbond_public(&process, &finalize_store, validator_private_key, validator_amount, 1, rng).unwrap();
+    let unbond_height = unbond_state(&finalize_store, validator_address).unwrap().1;
+
+    /* Ensure claiming an unbond before the unlock height fails. */
+
+    assert!(claim_unbond_public(&process, &finalize_store, validator_private_key, unbond_height - 1, rng).is_err());
+
+    /* Ensure that claiming an unbond after the unlock height succeeds. */
+    claim_unbond_public(&process, &finalize_store, validator_private_key, unbond_height, rng).unwrap();
+    assert_eq!(account_balance(&finalize_store, validator_address).unwrap(), public_balance);
+}
+
+#[test]
+fn test_set_validator_state() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    /* Ensure calling `set_validator_state` succeeds. */
+
+    // Perform the bond.
+    let amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+
+    // Check that the validator state is correct.
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
+
+    // Set the validator `is_open` state to `false`.
+    set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
+
+    // Set the validator state `is_open` to `false` again.
+    set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
+
+    // Set the validator `is_open` state back to `true`.
+    set_validator_state(&process, &finalize_store, validator_private_key, true, rng).unwrap();
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
+}
+
+#[test]
+fn test_set_validator_state_for_non_validator_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    /* Ensure calling `set_validator_state` as a non-validator fails. */
+
+    // Initialize a new private key.
+    let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+    // Set the validator state to `false`.
+    assert!(set_validator_state(&process, &finalize_store, &private_key, false, rng).is_err());
+}
+
+#[test]
+fn test_bonding_to_closed_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+
+    /* Ensure bonding to a closed validator fails. */
+
+    // Perform the bond.
+    let amount = 1_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+
+    // Set the validator `is_open` state to `false`.
+    set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
+
+    // Ensure that the validator can't bond additional stake.
+    let validator_amount = 1_000_000_000_000u64;
+    assert!(
+        bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng)
+            .is_err()
+    );
+
+    // Ensure that delegators can't bond to the validator.
+    let delegator_amount = 1_000_000u64;
+    assert!(
+        bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng)
+            .is_err()
+    );
+}
 
 // Test cases:
 
