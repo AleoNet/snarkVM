@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use crate::MIN_STAKE;
+use crate::MIN_VALIDATOR_STAKE;
 use console::account::PrivateKey;
 
 use anyhow::Result;
@@ -115,7 +115,7 @@ impl Default for ValidatorSet {
                     let rng = &mut rand_chacha::ChaChaRng::seed_from_u64(i);
                     let private_key = PrivateKey::new(rng).unwrap();
                     let address = Address::try_from(private_key).unwrap();
-                    Validator { private_key, address, stake: MIN_STAKE, is_open: false }
+                    Validator { private_key, address, stake: MIN_VALIDATOR_STAKE, is_open: false }
                 })
                 .collect(),
         )
@@ -133,7 +133,7 @@ impl Arbitrary for ValidatorSet {
 }
 
 pub fn any_valid_validator() -> BoxedStrategy<Validator> {
-    (MIN_STAKE..100_000_000_000_000, any_valid_private_key(), any::<bool>())
+    (MIN_VALIDATOR_STAKE..100_000_000_000_000, any_valid_private_key(), any::<bool>())
         .prop_map(|(stake, private_key, is_open)| {
             let address = Address::try_from(private_key).unwrap();
             Validator { private_key, address, stake, is_open }
@@ -162,7 +162,7 @@ fn too_low_stake_committee() -> BoxedStrategy<Result<Committee<CurrentNetwork>>>
 
 #[allow(dead_code)]
 fn invalid_stake_validator() -> BoxedStrategy<Validator> {
-    (0..MIN_STAKE, any_valid_private_key(), any::<bool>())
+    (0..MIN_VALIDATOR_STAKE, any_valid_private_key(), any::<bool>())
         .prop_map(|(stake, private_key, is_open)| {
             let address = Address::try_from(private_key).unwrap();
             Validator { private_key, address, stake, is_open }

@@ -20,7 +20,7 @@ use console::{
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
     types::U64,
 };
-use ledger_committee::MIN_STAKE;
+use ledger_committee::{MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
 use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
@@ -338,10 +338,10 @@ fn test_bond_validator_simple() {
     // Retrieve the account balance.
     let public_balance = account_balance(&store, validator_address).unwrap();
 
-    /* Ensure bonding as a validator with the exact MIN_STAKE succeeds. */
+    /* Ensure bonding as a validator with the exact MIN_VALIDATOR_STAKE succeeds. */
     {
         // Perform the bond.
-        let amount = MIN_STAKE;
+        let amount = MIN_VALIDATOR_STAKE;
         bond_public(&process, &store, validator_private_key, validator_address, amount, rng).unwrap();
 
         // Check that the committee, bond, and unbond state are correct.
@@ -370,9 +370,9 @@ fn test_bond_validator_below_min_stake_fails() {
     // Retrieve the account balance.
     let public_balance = account_balance(&store, validator_address).unwrap();
 
-    /* Ensure bonding as a validator below the MIN_STAKE fails. */
+    /* Ensure bonding as a validator below the MIN_VALIDATOR_STAKE fails. */
     {
-        let amount = rng.gen_range(1..MIN_STAKE);
+        let amount = rng.gen_range(1..MIN_VALIDATOR_STAKE);
         let result = bond_public(&process, &store, validator_private_key, validator_address, amount, rng);
         assert!(result.is_err());
 
@@ -488,11 +488,11 @@ fn test_bond_delegator_to_nonexistent_validator_fails() {
 
     // Retrieve the account balance.
     let public_balance = account_balance(&store, delegator_address).unwrap();
-    assert!(public_balance > MIN_STAKE);
+    assert!(public_balance > MIN_VALIDATOR_STAKE);
 
     /* Ensure bonding to a nonexistent validator fails. */
     {
-        let amount = MIN_STAKE;
+        let amount = MIN_VALIDATOR_STAKE;
         let result = bond_public(&process, &store, delegator_private_key, validator_address, amount, rng);
         assert!(result.is_err());
         assert_eq!(committee_state(&store, validator_address).unwrap(), None);
@@ -528,7 +528,7 @@ fn test_bond_validator_to_other_validator_fails() {
         let public_balance_2 = account_balance(&store, &validator_address_2).unwrap();
 
         // Perform the bond for validator 1.
-        let amount = MIN_STAKE;
+        let amount = MIN_VALIDATOR_STAKE;
         bond_public(&process, &store, &validator_private_key_1, &validator_address_1, amount, rng).unwrap();
 
         // Check that the committee, bond, and unbond state are correct.
@@ -546,7 +546,7 @@ fn test_bond_validator_to_other_validator_fails() {
         /* Validator 2 */
 
         // Perform the bond for validator 2.
-        let amount = MIN_STAKE;
+        let amount = MIN_VALIDATOR_STAKE;
         bond_public(&process, &store, &validator_private_key_2, &validator_address_2, amount, rng).unwrap();
 
         // Check that the committee, bond, and unbond state are correct.
@@ -571,7 +571,7 @@ fn test_bond_validator_to_other_validator_fails() {
 }
 
 #[test]
-fn test_bond_delegator() {
+fn test_bond_delegator_simple() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
@@ -584,24 +584,33 @@ fn test_bond_delegator() {
     let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
     let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
 
-    /* Ensure bonding a new delegator with more than 1_000_000 microcredits succeeds. */
-
-    // Retrieve the delegator account balance.
-    let public_balance = account_balance(&store, delegator_address).unwrap();
+    // Retrieve the account balances.
+    let validator_balance = account_balance(&store, validator_address).unwrap();
+    let delegator_balance = account_balance(&store, delegator_address).unwrap();
 
     // Bond the validator.
-    let validator_amount = 1_000_000_000_000u64;
+    let validator_amount = MIN_VALIDATOR_STAKE;
     bond_public(&process, &store, validator_private_key, validator_address, validator_amount, rng).unwrap();
 
-    // Bond the delegator.
-    let delegator_amount = 1_000_000u64;
-    bond_public(&process, &store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+    /* Ensure bonding a delegator with the exact MIN_DELEGATOR_STAKE succeeds. */
+    {
+        // Bond the delegator.
+        let delegator_amount = MIN_DELEGATOR_STAKE;
+        bond_public(&process, &store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
 
-    // Check that the balances are correct.
-    let new_public_balance = account_balance(&store, delegator_address).unwrap();
-    assert_eq!(public_balance - delegator_amount, new_public_balance);
-    assert_eq!(committee_state(&store, validator_address).unwrap(), Some((validator_amount + delegator_amount, true)));
-    assert_eq!(bond_state(&store, delegator_address).unwrap(), Some((*validator_address, delegator_amount)));
+        // Check that the committee, bond, and unbond state are correct.
+        let combined_amount = validator_amount + delegator_amount;
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((combined_amount, true)));
+        assert_eq!(committee_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, validator_amount)));
+        assert_eq!(bond_state(&store, delegator_address).unwrap(), Some((*validator_address, delegator_amount)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, delegator_address).unwrap(), None);
+
+        // Check that the balances are correct.
+        assert_eq!(account_balance(&store, validator_address).unwrap(), validator_balance - validator_amount);
+        assert_eq!(account_balance(&store, delegator_address).unwrap(), delegator_balance - delegator_amount);
+    }
 }
 
 #[test]
