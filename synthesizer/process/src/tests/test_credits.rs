@@ -814,6 +814,38 @@ fn test_unbond_validator() {
 }
 
 #[test]
+fn test_unbond_validator_under_minimum_stake_removes() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    // Bond the validator.
+    let validator_amount = 5_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    /* Ensure that the validator will be removed if the remaining balance is less than 1M credits. */
+
+    let unbond_amount = rng.gen_range(validator_amount - (MIN_VALIDATOR_STAKE - 1)..validator_amount);
+    let block_height = rng.gen_range(1..100);
+    unbond_public(&process, &finalize_store, validator_private_key, unbond_amount, block_height, rng).unwrap();
+
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), None);
+    assert_eq!(bond_state(&finalize_store, validator_address).unwrap(), None);
+    assert_eq!(
+        unbond_state(&finalize_store, validator_address).unwrap(),
+        Some((validator_amount, block_height + NUM_BLOCKS_TO_UNLOCK))
+    );
+}
+
+#[test]
 fn test_unbond_validator_failed() {
     let rng = &mut TestRng::default();
 
@@ -833,17 +865,12 @@ fn test_unbond_validator_failed() {
     bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
 
     // Bond the delegator.
-    let delegator_amount = 1_000_000u64;
+    let delegator_amount = MIN_DELEGATOR_STAKE;
     bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
 
     /* Ensure that the validator can't unbond more than its stake */
 
     assert!(unbond_public(&process, &finalize_store, validator_private_key, validator_amount + 1, 1, rng).is_err());
-
-    /* Ensure that the validator can't unbond if the remaining balance is less than 1M credits. */
-
-    let unbond_amount = rng.gen_range(validator_amount - 999_999..validator_amount);
-    assert!(unbond_public(&process, &finalize_store, validator_private_key, unbond_amount, 1, rng).is_err());
 
     /* Ensure that the validator can't unbond entire stake if there are delegators. */
 
@@ -870,14 +897,14 @@ fn test_unbond_delegator() {
     bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
 
     // Bond the delegator.
-    let delegator_amount = 5_000_000u64;
+    let delegator_amount = 20_000_000u64;
     bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
 
-    /* Ensure that the delegator can unbond if the remaining balance is more than 1 credits. */
+    /* Ensure that the delegator can unbond if the remaining balance is more than 10 credits. */
 
-    let unbond_amount_1 = rng.gen_range(1_000_000..delegator_amount - 1_000_000);
+    let unbond_amount_1 = rng.gen_range(1_000_000..delegator_amount - MIN_DELEGATOR_STAKE);
     let block_height_1 = rng.gen_range(1..100);
-    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount_1, 1, rng).unwrap();
+    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount_1, block_height_1, rng).unwrap();
 
     assert_eq!(
         bond_state(&finalize_store, delegator_address).unwrap(),
@@ -890,14 +917,50 @@ fn test_unbond_delegator() {
 
     /* Ensure that the delegator can unbond its entire stake. */
 
-    let unbond_amount_2 = validator_amount - unbond_amount_1;
+    let unbond_amount_2 = delegator_amount - unbond_amount_1;
     let block_height_2 = rng.gen_range(block_height_1..1000);
-    unbond_public(&process, &finalize_store, validator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
+    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
 
     assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), None);
     assert_eq!(
         unbond_state(&finalize_store, delegator_address).unwrap(),
         Some((delegator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK))
+    );
+}
+
+#[test]
+fn test_unbond_delegator_under_minimum_stake_removes() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    // Bond the validator.
+    let validator_amount = 5_000_000_000_000u64;
+    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+
+    // Bond the delegator.
+    let delegator_amount = 20_000_000u64;
+    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+
+    /* Ensure that the delegator will be removed if the remaining balance is less than 10 credits. */
+
+    let unbond_amount = rng.gen_range(delegator_amount - (MIN_DELEGATOR_STAKE - 1)..delegator_amount);
+    let block_height = rng.gen_range(1..100);
+    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount, block_height, rng).unwrap();
+
+    assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), None);
+    assert_eq!(
+        unbond_state(&finalize_store, delegator_address).unwrap(),
+        Some((delegator_amount, block_height + NUM_BLOCKS_TO_UNLOCK))
     );
 }
 
@@ -921,18 +984,8 @@ fn test_unbond_delegator_fails() {
     bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
 
     // Bond the delegator.
-    let delegator_amount = 5_000_000u64;
+    let delegator_amount = 20_000_000u64;
     bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
-
-    /* Ensure that the delegator can't unbond if the unbond amount is less than 1 credit. */
-
-    let unbond_amount = rng.gen_range(1..1_000_000);
-    assert!(unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount, 1, rng).is_err());
-
-    /* Ensure that the delegator can't unbond if the remaining balance is less than 1 credit. */
-
-    let unbond_amount = rng.gen_range(delegator_amount - 999_999..delegator_amount);
-    assert!(unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount, 1, rng).is_err());
 
     /* Ensure that the delegator can't unbond more than its stake */
 
@@ -1059,11 +1112,11 @@ fn test_set_validator_state() {
 
     // Set the validator `is_open` state to `false`.
     set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, true)));
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, false)));
 
     // Set the validator state `is_open` to `false` again.
     set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, true)));
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, false)));
 
     // Set the validator `is_open` state back to `true`.
     set_validator_state(&process, &finalize_store, validator_private_key, true, rng).unwrap();
