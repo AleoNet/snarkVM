@@ -13,6 +13,8 @@
 // limitations under the License.
 
 mod utilities;
+
+use std::panic::AssertUnwindSafe;
 use utilities::*;
 
 use console::{
@@ -93,20 +95,21 @@ fn test_process_execute() {
                         Ok(authorization) => authorization,
                         Err(err) => return serde_yaml::Value::String(err.to_string()),
                     };
-                    // Execute the authorization.
-                    let response = match process.execute::<CurrentAleo>(authorization) {
-                        Ok((response, _)) => response,
-                        Err(err) => return serde_yaml::Value::String(err.to_string()),
-                    };
-                    // Extract the output.
-                    serde_yaml::Value::Sequence(
-                        response
-                            .outputs()
-                            .iter()
-                            .cloned()
-                            .map(|output| serde_yaml::Value::String(output.to_string()))
-                            .collect_vec(),
-                    )
+                    // Execute the authorization and extract the output as YAML.
+                    std::panic::catch_unwind(AssertUnwindSafe(|| match process.execute::<CurrentAleo>(authorization) {
+                        Ok((response, _)) => serde_yaml::Value::Sequence(
+                            response
+                                .outputs()
+                                .iter()
+                                .cloned()
+                                .map(|output| serde_yaml::Value::String(output.to_string()))
+                                .collect_vec(),
+                        ),
+                        Err(err) => serde_yaml::Value::String(err.to_string()),
+                    }))
+                    .unwrap_or(serde_yaml::Value::String(
+                        "Compiler panicked when calling `Process::execute`".to_string(),
+                    ))
                 };
                 run_test()
             })
