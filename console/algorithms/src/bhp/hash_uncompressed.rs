@@ -49,8 +49,11 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                 }
                 // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
                 false => {
+                    // Record the initial length of the vector for truncation purposes
+                    // in case anything is added before this point in the future.
+                    let initial_len = preimage.len();
                     digest.to_x_coordinate().write_bits_le(&mut preimage);
-                    preimage.truncate(num_data_bits);
+                    preimage.truncate(initial_len + num_data_bits);
                     preimage.extend(input_bits);
                 }
             }
