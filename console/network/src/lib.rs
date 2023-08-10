@@ -144,7 +144,7 @@ pub trait Network:
     /// The maximum number of commands in finalize.
     const MAX_COMMANDS: usize = u16::MAX as usize;
     /// The maximum number of write commands in finalize.
-    const MAX_WRITES: u16 = 10;
+    const MAX_WRITES: u16 = 16;
 
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 16;
