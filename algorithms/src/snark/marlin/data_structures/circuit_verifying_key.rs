@@ -44,7 +44,7 @@ pub struct CircuitVerifyingKey<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> ToMinimalBits for CircuitVerifyingKey<E> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
+    fn write_minimal_bits(&self, vec: &mut Vec<bool>) {
         let constraint_domain = EvaluationDomain::<E::Fr>::new(self.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
@@ -68,17 +68,12 @@ impl<E: PairingEngine> ToMinimalBits for CircuitVerifyingKey<E> {
         let non_zero_domain_b_size = non_zero_domain_b.size() as u64;
         let non_zero_domain_c_size = non_zero_domain_c.size() as u64;
 
-        let mut bits = vec![];
-        constraint_domain_size.write_bits_le(&mut bits);
-        non_zero_domain_a_size.write_bits_le(&mut bits);
-        non_zero_domain_b_size.write_bits_le(&mut bits);
-        non_zero_domain_c_size.write_bits_le(&mut bits);
+        constraint_domain_size.write_bits_le(vec);
+        non_zero_domain_a_size.write_bits_le(vec);
+        non_zero_domain_b_size.write_bits_le(vec);
+        non_zero_domain_c_size.write_bits_le(vec);
 
-        let circuit_commitments_bits = self.circuit_commitments.to_minimal_bits();
-
-        bits.extend_from_slice(&circuit_commitments_bits);
-
-        bits
+        self.circuit_commitments.write_minimal_bits(vec);
     }
 }
 
