@@ -186,7 +186,7 @@ fn initialize_stakers<N: Network>(
         let key = Plaintext::from(Literal::Address(address));
         let value = Value::from(Literal::U64(U64::new(balance)));
         finalize_store.insert_key_value(program.id(), &mapping, key, value)?;
-        assert_eq!(balance, account_balance(&finalize_store, &address).unwrap());
+        assert_eq!(balance, account_balance(finalize_store, &address).unwrap());
 
         // Store the validator or delegator.
         if i < num_validators {
@@ -564,7 +564,7 @@ fn test_bond_validator_to_other_validator_fails() {
         /* Bond Validator 1 to Validator 2 */
 
         // Ensure that bonding to another validator fails.
-        assert!(public_balance_1 - amount > amount, "There is not enough balance to bond to another validator.");
+        assert!(public_balance_1 > 2 * amount, "There is not enough balance to bond to another validator.");
         let result = bond_public(&process, &store, &validator_private_key_1, &validator_address_2, amount, rng);
         assert!(result.is_err());
     }
