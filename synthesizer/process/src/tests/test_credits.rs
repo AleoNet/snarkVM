@@ -18,7 +18,9 @@ use console::{
     account::{Address, PrivateKey},
     network::{prelude::*, Testnet3},
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
+    types::U64,
 };
+use ledger_committee::MIN_STAKE;
 use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
@@ -45,15 +47,14 @@ fn get_mapping_value<N: Network>(
     program_id: &str,
     mapping: &str,
     key: Literal<N>,
-) -> Result<Value<N>> {
+) -> Result<Option<Value<N>>> {
     // Prepare the program ID, mapping name, and key.
     let program_id = ProgramID::from_str(program_id)?;
     let mapping = Identifier::from_str(mapping)?;
     let key = Plaintext::from(key);
     // Retrieve the value from the finalize store.
     match store.get_value_confirmed(&program_id, &mapping, &key) {
-        Ok(Some(value)) => Ok(value),
-        Ok(None) => bail!("Value not found for program_id: {program_id}, mapping: {mapping}, key: {key}"),
+        Ok(result) => Ok(result),
         Err(err) => bail!("Error getting value for program_id: {program_id}, mapping: {mapping}, key: {key}: {err}"),
     }
 }
@@ -62,8 +63,8 @@ fn get_mapping_value<N: Network>(
 fn account_balance<N: Network>(store: &FinalizeStore<N, FinalizeMemory<N>>, address: &Address<N>) -> Result<u64> {
     // Retrieve the balance from the finalize store.
     match get_mapping_value(store, "credits.aleo", "account", Literal::Address(*address))? {
-        Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _)) => Ok(*balance),
-        _ => bail!("Malformed account balance for {address}"),
+        Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => Ok(*balance),
+        _ => bail!("Missing or malformed account balance for {address}"),
     }
 }
 
@@ -72,10 +73,11 @@ fn account_balance<N: Network>(store: &FinalizeStore<N, FinalizeMemory<N>>, addr
 fn committee_state<N: Network>(
     store: &FinalizeStore<N, FinalizeMemory<N>>,
     address: &Address<N>,
-) -> Result<(u64, bool)> {
+) -> Result<Option<(u64, bool)>> {
     // Retrieve the committee state from the finalize store.
     let state = match get_mapping_value(store, "credits.aleo", "committee", Literal::Address(*address))? {
-        Value::Plaintext(Plaintext::Struct(state, _)) => state,
+        Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
+        None => return Ok(None),
         _ => bail!("Malformed committee state for {address}"),
     };
 
@@ -91,7 +93,7 @@ fn committee_state<N: Network>(
         _ => bail!("`is_open` not found for: {address}"),
     };
 
-    Ok((microcredits, is_open))
+    Ok(Some((microcredits, is_open)))
 }
 
 /// Get the current bond state from the `bonding` mapping for the given staker address.
@@ -99,10 +101,11 @@ fn committee_state<N: Network>(
 fn bond_state<N: Network>(
     store: &FinalizeStore<N, FinalizeMemory<N>>,
     address: &Address<N>,
-) -> Result<(Address<N>, u64)> {
+) -> Result<Option<(Address<N>, u64)>> {
     // Retrieve the bond state from the finalize store.
     let state = match get_mapping_value(store, "credits.aleo", "bonded", Literal::Address(*address))? {
-        Value::Plaintext(Plaintext::Struct(state, _)) => state,
+        Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
+        None => return Ok(None),
         _ => bail!("Malformed bond state for {address}"),
     };
 
@@ -118,15 +121,19 @@ fn bond_state<N: Network>(
         _ => bail!("`microcredits` not found for: {address}"),
     };
 
-    Ok((validator, microcredits))
+    Ok(Some((validator, microcredits)))
 }
 
 /// Get the current unbonding state from the `unbonding` mapping for the given staker address.
 /// Returns the `unbond_state` as a tuple of `(microcredits, unbond_height)`.
-fn unbond_state<N: Network>(store: &FinalizeStore<N, FinalizeMemory<N>>, address: &Address<N>) -> Result<(u64, u32)> {
+fn unbond_state<N: Network>(
+    store: &FinalizeStore<N, FinalizeMemory<N>>,
+    address: &Address<N>,
+) -> Result<Option<(u64, u32)>> {
     // Retrieve the unbond state from the finalize store.
     let state = match get_mapping_value(store, "credits.aleo", "unbonding", Literal::Address(*address))? {
-        Value::Plaintext(Plaintext::Struct(state, _)) => state,
+        Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
+        None => return Ok(None),
         _ => bail!("Malformed unbond state for {address}"),
     };
 
@@ -142,7 +149,7 @@ fn unbond_state<N: Network>(store: &FinalizeStore<N, FinalizeMemory<N>>, address
         _ => bail!("`height` not found for: {address}"),
     };
 
-    Ok((microcredits, height))
+    Ok(Some((microcredits, height)))
 }
 
 /// Initializes the validator and delegator balances in the finalize store.
@@ -154,15 +161,16 @@ fn initialize_stakers<N: Network>(
     rng: &mut TestRng,
 ) -> Result<(IndexMap<PrivateKey<N>, (Address<N>, u64)>, IndexMap<PrivateKey<N>, (Address<N>, u64)>)> {
     // Initialize the store for 'credits.aleo'.
-    let credits = Program::<N>::credits()?;
-    for mapping in credits.mappings().values() {
+    let program = Program::<N>::credits()?;
+    for mapping in program.mappings().values() {
         // Ensure that all mappings are initialized.
-        if !finalize_store.contains_mapping_confirmed(credits.id(), mapping.name())? {
+        if !finalize_store.contains_mapping_confirmed(program.id(), mapping.name())? {
             // Initialize the mappings for 'credits.aleo'.
-            finalize_store.initialize_mapping(credits.id(), mapping.name())?;
+            finalize_store.initialize_mapping(program.id(), mapping.name())?;
         }
     }
-    let accounts_mapping = Identifier::from_str("account")?;
+
+    let mapping = Identifier::from_str("account")?;
 
     let mut validators: IndexMap<_, _> = Default::default();
     let mut delegators: IndexMap<_, _> = Default::default();
@@ -174,12 +182,13 @@ fn initialize_stakers<N: Network>(
         let address = Address::try_from(&private_key)?;
         let balance = 10_000_000_000_000u64;
 
-        let key = Plaintext::from(Literal::Address(address));
-        let value = Value::from_str(&format!("{balance}u64"))?;
-
         // Add the balance directly to the finalize store.
-        finalize_store.insert_key_value(credits.id(), &accounts_mapping, key, value)?;
+        let key = Plaintext::from(Literal::Address(address));
+        let value = Value::from(Literal::U64(U64::new(balance)));
+        finalize_store.insert_key_value(program.id(), &mapping, key, value)?;
+        assert_eq!(balance, account_balance(&finalize_store, &address).unwrap());
 
+        // Store the validator or delegator.
         if i < num_validators {
             // Insert the validator into the list of validators.
             validators.insert(private_key, (address, balance));
@@ -314,81 +323,99 @@ fn claim_unbond_public(
 }
 
 #[test]
-fn test_bond_validator() {
+fn test_bond_validator_simple() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
     let process = Process::<CurrentNetwork>::load().unwrap();
-
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
     // Initialize the validators.
-    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
     let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
 
-    /* Ensure bonding a new validator with more than 1_000_000_000_000 microcredits succeeds. */
+    // Retrieve the account balance.
+    let public_balance = account_balance(&store, validator_address).unwrap();
 
-    // Fetch the account balance.
-    let public_balance = account_balance(&finalize_store, validator_address).unwrap();
+    /* Ensure bonding as a validator with the exact MIN_STAKE succeeds. */
+    {
+        // Perform the bond.
+        let amount = MIN_STAKE;
+        bond_public(&process, &store, validator_private_key, validator_address, amount, rng).unwrap();
 
-    // Perform the bond.
-    let amount = 1_000_000_000_000u64;
-    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((amount, true)));
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, amount)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
 
-    // Check that the balances are correct.
-    let new_public_balance = account_balance(&finalize_store, validator_address).unwrap();
-    assert_eq!(public_balance - amount, new_public_balance);
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
-    assert_eq!(bond_state(&finalize_store, validator_address).unwrap(), (*validator_address, amount));
+        // Check that the account balance is correct.
+        assert_eq!(account_balance(&store, validator_address).unwrap(), public_balance - amount);
+    }
 }
 
 #[test]
-fn test_bond_validator_under_minimum_stake_fails() {
+fn test_bond_validator_below_min_stake_fails() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
     let process = Process::<CurrentNetwork>::load().unwrap();
-
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
     // Initialize the validators.
-    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
     let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
 
-    /* Ensure bonding a new validator with less than 1_000_000_000_000 microcredits fails. */
+    // Retrieve the account balance.
+    let public_balance = account_balance(&store, validator_address).unwrap();
 
-    let delegator_amount = rng.gen_range(1..1_000_000_000_000u64);
-    assert!(
-        bond_public(&process, &finalize_store, validator_private_key, validator_address, delegator_amount, rng)
-            .is_err()
-    );
+    /* Ensure bonding as a validator below the MIN_STAKE fails. */
+    {
+        let amount = rng.gen_range(1..MIN_STAKE);
+        let result = bond_public(&process, &store, validator_private_key, validator_address, amount, rng);
+        assert!(result.is_err());
+
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, validator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+
+        // Check that the account balance is correct.
+        assert_eq!(account_balance(&store, validator_address).unwrap(), public_balance);
+    }
 }
 
 #[test]
-fn test_bond_validator_insufficient_funds_fails() {
+fn test_bond_validator_with_insufficient_funds_fails() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
     let process = Process::<CurrentNetwork>::load().unwrap();
-
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
     // Initialize the validators.
-    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
     let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
+
+    // Retrieve the account balance.
+    let public_balance = account_balance(&store, validator_address).unwrap();
 
     /* Ensure bonding an amount larger than the account balance will fail. */
+    {
+        let amount = public_balance + 1;
+        let result = bond_public(&process, &store, validator_private_key, validator_address, amount, rng);
+        assert!(result.is_err());
 
-    // Fetch the account balance.
-    let public_balance = account_balance(&finalize_store, validator_address).unwrap();
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, validator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
 
-    assert!(
-        bond_public(&process, &finalize_store, validator_private_key, validator_address, public_balance + 1, rng)
-            .is_err()
-    );
+        // Check that the account balance is correct.
+        assert_eq!(account_balance(&store, validator_address).unwrap(), public_balance);
+    }
 }
 
 #[test]
@@ -397,31 +424,84 @@ fn test_bond_validator_multiple_bonds() {
 
     // Construct the process.
     let process = Process::<CurrentNetwork>::load().unwrap();
-
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
     // Initialize the validators.
-    let (validators, _) = initialize_stakers(&finalize_store, 1, 0, rng).unwrap();
+    let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
     let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
 
-    /*  Ensure that adding additional bond succeeds. */
+    // Retrieve the account balance.
+    let public_balance = account_balance(&store, validator_address).unwrap();
 
-    // Fetch the account balance.
-    let public_balance = account_balance(&finalize_store, validator_address).unwrap();
+    /*  Ensure that bonding additional stake succeeds. */
+    {
+        /* First Bond */
 
-    // Perform the bond.
-    let amount = 1_000_000_000_000u64;
-    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+        // Perform the first bond.
+        let amount = 1_000_000_000_000u64;
+        assert!(amount < public_balance);
+        bond_public(&process, &store, validator_private_key, validator_address, amount, rng).unwrap();
 
-    // Perform another bond.
-    bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((amount, true)));
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, amount)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
 
-    // Check that the balances are correct.
-    let new_public_balance = account_balance(&finalize_store, validator_address).unwrap();
-    assert_eq!(public_balance - amount * 2, new_public_balance);
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount * 2, true));
-    assert_eq!(bond_state(&finalize_store, validator_address).unwrap(), (*validator_address, amount * 2));
+        // Retrieve the account balance.
+        let public_balance_1 = account_balance(&store, validator_address).unwrap();
+        assert_eq!(public_balance_1, public_balance - amount);
+
+        /* Second Bond */
+
+        // Perform the second bond.
+        let amount = 1_000_000_000_000u64;
+        assert!(amount < public_balance_1);
+        bond_public(&process, &store, validator_private_key, validator_address, amount, rng).unwrap();
+
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((amount * 2, true)));
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, amount * 2)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+
+        // Retrieve the account balance.
+        let public_balance_2 = account_balance(&store, validator_address).unwrap();
+        assert_eq!(public_balance_2, public_balance_1 - amount);
+    }
+}
+
+#[test]
+fn test_bond_delegator_to_nonexistent_validator_fails() {
+    let rng = &mut TestRng::default();
+
+    // Construct the process.
+    let process = Process::<CurrentNetwork>::load().unwrap();
+    // Initialize a new finalize store.
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Initialize the validators and delegators.
+    let (_, delegators) = initialize_stakers(&store, 0, 1, rng).unwrap();
+    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+
+    // Sample a random validator address.
+    let validator_address = &Address::new(rng.gen());
+
+    // Retrieve the account balance.
+    let public_balance = account_balance(&store, delegator_address).unwrap();
+    assert!(public_balance > MIN_STAKE);
+
+    /* Ensure bonding to a nonexistent validator fails. */
+    {
+        let amount = MIN_STAKE;
+        let result = bond_public(&process, &store, delegator_private_key, validator_address, amount, rng);
+        assert!(result.is_err());
+        assert_eq!(committee_state(&store, validator_address).unwrap(), None);
+        assert_eq!(committee_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, delegator_address).unwrap(), None);
+    }
 }
 
 #[test]
@@ -430,29 +510,64 @@ fn test_bond_validator_to_other_validator_fails() {
 
     // Construct the process.
     let process = Process::<CurrentNetwork>::load().unwrap();
-
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
     // Initialize the validators.
-    let (validators, _) = initialize_stakers(&finalize_store, 2, 0, rng).unwrap();
+    let (validators, _) = initialize_stakers(&store, 2, 0, rng).unwrap();
     let mut validators = validators.into_iter();
     let (validator_private_key_1, (validator_address_1, _)) = validators.next().unwrap();
     let (validator_private_key_2, (validator_address_2, _)) = validators.next().unwrap();
 
     /* Ensure that bonding to another validator fails. */
+    {
+        /* Validator 1 */
 
-    // Perform the bond for validator 1.
-    let amount = 1_000_000_000_000u64;
-    bond_public(&process, &finalize_store, &validator_private_key_1, &validator_address_1, amount, rng).unwrap();
+        // Retrieve the account balance.
+        let public_balance_1 = account_balance(&store, &validator_address_1).unwrap();
+        let public_balance_2 = account_balance(&store, &validator_address_2).unwrap();
 
-    // Perform the bond for validator 2.
-    bond_public(&process, &finalize_store, &validator_private_key_2, &validator_address_2, amount, rng).unwrap();
+        // Perform the bond for validator 1.
+        let amount = MIN_STAKE;
+        bond_public(&process, &store, &validator_private_key_1, &validator_address_1, amount, rng).unwrap();
 
-    // Ensure that bonding to another validator fails.
-    assert!(
-        bond_public(&process, &finalize_store, &validator_private_key_1, &validator_address_2, amount, rng).is_err()
-    );
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, &validator_address_1).unwrap(), Some((amount, true)));
+        assert_eq!(committee_state(&store, &validator_address_2).unwrap(), None);
+        assert_eq!(bond_state(&store, &validator_address_1).unwrap(), Some((validator_address_1, amount)));
+        assert_eq!(bond_state(&store, &validator_address_2).unwrap(), None);
+        assert_eq!(unbond_state(&store, &validator_address_1).unwrap(), None);
+        assert_eq!(unbond_state(&store, &validator_address_2).unwrap(), None);
+
+        // Retrieve the account balance.
+        assert_eq!(account_balance(&store, &validator_address_1).unwrap(), public_balance_1 - amount);
+        assert_eq!(account_balance(&store, &validator_address_2).unwrap(), public_balance_2);
+
+        /* Validator 2 */
+
+        // Perform the bond for validator 2.
+        let amount = MIN_STAKE;
+        bond_public(&process, &store, &validator_private_key_2, &validator_address_2, amount, rng).unwrap();
+
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, &validator_address_1).unwrap(), Some((amount, true)));
+        assert_eq!(committee_state(&store, &validator_address_2).unwrap(), Some((amount, true)));
+        assert_eq!(bond_state(&store, &validator_address_1).unwrap(), Some((validator_address_1, amount)));
+        assert_eq!(bond_state(&store, &validator_address_2).unwrap(), Some((validator_address_2, amount)));
+        assert_eq!(unbond_state(&store, &validator_address_1).unwrap(), None);
+        assert_eq!(unbond_state(&store, &validator_address_2).unwrap(), None);
+
+        // Retrieve the account balance.
+        assert_eq!(account_balance(&store, &validator_address_1).unwrap(), public_balance_1 - amount);
+        assert_eq!(account_balance(&store, &validator_address_2).unwrap(), public_balance_2 - amount);
+
+        /* Bond Validator 1 to Validator 2 */
+
+        // Ensure that bonding to another validator fails.
+        assert!(public_balance_1 - amount > amount, "There is not enough balance to bond to another validator.");
+        let result = bond_public(&process, &store, &validator_private_key_1, &validator_address_2, amount, rng);
+        assert!(result.is_err());
+    }
 }
 
 #[test]
@@ -461,40 +576,36 @@ fn test_bond_delegator() {
 
     // Construct the process.
     let process = Process::<CurrentNetwork>::load().unwrap();
-
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
     // Initialize the validators and delegators.
-    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
     let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
     let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
 
     /* Ensure bonding a new delegator with more than 1_000_000 microcredits succeeds. */
 
-    // Fetch the delegator account balance.
-    let public_balance = account_balance(&finalize_store, delegator_address).unwrap();
+    // Retrieve the delegator account balance.
+    let public_balance = account_balance(&store, delegator_address).unwrap();
 
     // Bond the validator.
     let validator_amount = 1_000_000_000_000u64;
-    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+    bond_public(&process, &store, validator_private_key, validator_address, validator_amount, rng).unwrap();
 
     // Bond the delegator.
     let delegator_amount = 1_000_000u64;
-    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+    bond_public(&process, &store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
 
     // Check that the balances are correct.
-    let new_public_balance = account_balance(&finalize_store, delegator_address).unwrap();
+    let new_public_balance = account_balance(&store, delegator_address).unwrap();
     assert_eq!(public_balance - delegator_amount, new_public_balance);
-    assert_eq!(
-        committee_state(&finalize_store, validator_address).unwrap(),
-        (validator_amount + delegator_amount, true)
-    );
-    assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), (*validator_address, delegator_amount));
+    assert_eq!(committee_state(&store, validator_address).unwrap(), Some((validator_amount + delegator_amount, true)));
+    assert_eq!(bond_state(&store, delegator_address).unwrap(), Some((*validator_address, delegator_amount)));
 }
 
 #[test]
-fn teat_bond_validator_multiple_bonds() {
+fn test_bond_delegator_multiple_bonds() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
@@ -510,7 +621,7 @@ fn teat_bond_validator_multiple_bonds() {
 
     /* Ensure bonding a new delegator with more than 1_000_000 microcredits succeeds. */
 
-    // Fetch the delegator account balance.
+    // Retrieve the delegator account balance.
     let public_balance = account_balance(&finalize_store, delegator_address).unwrap();
 
     // Bond the validator.
@@ -530,11 +641,11 @@ fn teat_bond_validator_multiple_bonds() {
     assert_eq!(public_balance - (delegator_amount_1 + delegator_amount_2), new_public_balance);
     assert_eq!(
         committee_state(&finalize_store, validator_address).unwrap(),
-        (validator_amount + (delegator_amount_1 + delegator_amount_2), true)
+        Some((validator_amount + (delegator_amount_1 + delegator_amount_2), true))
     );
     assert_eq!(
         bond_state(&finalize_store, delegator_address).unwrap(),
-        (*validator_address, (delegator_amount_1 + delegator_amount_2))
+        Some((*validator_address, (delegator_amount_1 + delegator_amount_2)))
     );
 }
 
@@ -659,15 +770,15 @@ fn test_unbond_validator() {
 
     assert_eq!(
         committee_state(&finalize_store, validator_address).unwrap(),
-        (validator_amount - unbond_amount_1, true)
+        Some((validator_amount - unbond_amount_1, true))
     );
     assert_eq!(
         bond_state(&finalize_store, validator_address).unwrap(),
-        (*validator_address, validator_amount - unbond_amount_1)
+        Some((*validator_address, validator_amount - unbond_amount_1))
     );
     assert_eq!(
         unbond_state(&finalize_store, validator_address).unwrap(),
-        (unbond_amount_1, block_height_1 + NUM_BLOCKS_TO_UNLOCK)
+        Some((unbond_amount_1, block_height_1 + NUM_BLOCKS_TO_UNLOCK))
     );
 
     /* Ensure that the validator can unbond its entire stake if there are no delegators. */
@@ -676,11 +787,11 @@ fn test_unbond_validator() {
     let block_height_2 = rng.gen_range(block_height_1..1000);
     unbond_public(&process, &finalize_store, validator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
 
-    assert!(committee_state(&finalize_store, validator_address).is_err());
-    assert!(bond_state(&finalize_store, validator_address).is_err());
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), None);
+    assert_eq!(bond_state(&finalize_store, validator_address).unwrap(), None);
     assert_eq!(
         unbond_state(&finalize_store, validator_address).unwrap(),
-        (validator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK)
+        Some((validator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK))
     );
 }
 
@@ -752,11 +863,11 @@ fn test_unbond_delegator() {
 
     assert_eq!(
         bond_state(&finalize_store, delegator_address).unwrap(),
-        (*validator_address, delegator_amount - unbond_amount_1)
+        Some((*validator_address, delegator_amount - unbond_amount_1))
     );
     assert_eq!(
         unbond_state(&finalize_store, delegator_address).unwrap(),
-        (unbond_amount_1, block_height_1 + NUM_BLOCKS_TO_UNLOCK)
+        Some((unbond_amount_1, block_height_1 + NUM_BLOCKS_TO_UNLOCK))
     );
 
     /* Ensure that the delegator can unbond its entire stake. */
@@ -765,10 +876,10 @@ fn test_unbond_delegator() {
     let block_height_2 = rng.gen_range(block_height_1..1000);
     unbond_public(&process, &finalize_store, validator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
 
-    assert!(bond_state(&finalize_store, delegator_address).is_err());
+    assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), None);
     assert_eq!(
         unbond_state(&finalize_store, delegator_address).unwrap(),
-        (delegator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK)
+        Some((delegator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK))
     );
 }
 
@@ -862,9 +973,9 @@ fn test_unbond_delegator_as_validator() {
     // Ensure that unbonding a delegator as a closed validator succeeds.
     unbond_delegator_as_validator(&process, &finalize_store, &validator_private_key_1, delegator_address, rng).unwrap();
 
-    assert_eq!(committee_state(&finalize_store, &validator_address_1).unwrap(), (validator_amount, true));
-    assert!(bond_state(&finalize_store, delegator_address).is_err());
-    assert_eq!(unbond_state(&finalize_store, delegator_address).unwrap().0, delegator_amount);
+    assert_eq!(committee_state(&finalize_store, &validator_address_1).unwrap(), Some((validator_amount, true)));
+    assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), None);
+    assert_eq!(unbond_state(&finalize_store, delegator_address).unwrap().unwrap().0, delegator_amount);
 }
 
 #[test]
@@ -894,7 +1005,7 @@ fn test_claim_unbond() {
 
     // Perform the unbond.
     unbond_public(&process, &finalize_store, validator_private_key, validator_amount, 1, rng).unwrap();
-    let unbond_height = unbond_state(&finalize_store, validator_address).unwrap().1;
+    let unbond_height = unbond_state(&finalize_store, validator_address).unwrap().unwrap().1;
 
     /* Ensure claiming an unbond before the unlock height fails. */
 
@@ -926,19 +1037,19 @@ fn test_set_validator_state() {
     bond_public(&process, &finalize_store, validator_private_key, validator_address, amount, rng).unwrap();
 
     // Check that the validator state is correct.
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, true)));
 
     // Set the validator `is_open` state to `false`.
     set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, true)));
 
     // Set the validator state `is_open` to `false` again.
     set_validator_state(&process, &finalize_store, validator_private_key, false, rng).unwrap();
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, false));
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, true)));
 
     // Set the validator `is_open` state back to `true`.
     set_validator_state(&process, &finalize_store, validator_private_key, true, rng).unwrap();
-    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), (amount, true));
+    assert_eq!(committee_state(&finalize_store, validator_address).unwrap(), Some((amount, true)));
 }
 
 #[test]

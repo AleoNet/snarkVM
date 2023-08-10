@@ -130,7 +130,9 @@ impl Arbitrary for CommitteeContext {
 }
 
 pub fn any_valid_validator() -> BoxedStrategy<Validator> {
-    (MIN_STAKE..5_000_000_000, any_valid_address()).prop_map(|(stake, address)| Validator { stake, address }).boxed()
+    (MIN_STAKE..100_000_000_000_000, any_valid_address())
+        .prop_map(|(stake, address)| Validator { stake, address })
+        .boxed()
 }
 
 #[allow(dead_code)]
