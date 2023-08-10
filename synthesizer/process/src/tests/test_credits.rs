@@ -23,8 +23,10 @@ use console::{
 use ledger_committee::{MIN_DELEGATOR_STAKE, MIN_VALIDATOR_STAKE};
 use ledger_query::Query;
 use ledger_store::{
+    atomic_finalize,
     helpers::memory::{BlockMemory, FinalizeMemory},
     BlockStore,
+    FinalizeMode,
     FinalizeStore,
 };
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
@@ -228,7 +230,14 @@ fn execute_function(
 
     // Finalize the execution.
     let block_height = block_height.unwrap_or(1);
-    process.finalize_execution(sample_finalize_state(block_height), finalize_store, &execution)?;
+
+    // Add an atomic finalize wrapper around the finalize function.
+    atomic_finalize!(finalize_store, FinalizeMode::RealRun, {
+        match process.finalize_execution(sample_finalize_state(block_height), finalize_store, &execution) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("Failed to finalize on transaction - {e}")),
+        }
+    })?;
 
     Ok(())
 }
@@ -982,7 +991,7 @@ fn test_unbond_delegator_as_validator() {
     // Ensure that unbonding a delegator as a closed validator succeeds.
     unbond_delegator_as_validator(&process, &finalize_store, &validator_private_key_1, delegator_address, rng).unwrap();
 
-    assert_eq!(committee_state(&finalize_store, &validator_address_1).unwrap(), Some((validator_amount, true)));
+    assert_eq!(committee_state(&finalize_store, &validator_address_1).unwrap(), Some((validator_amount, false)));
     assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), None);
     assert_eq!(unbond_state(&finalize_store, delegator_address).unwrap().unwrap().0, delegator_amount);
 }
