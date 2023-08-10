@@ -379,7 +379,7 @@ finalize unbond_public:
     /* Committee */
 
     // Construct the updated committee state.
-    cast r10 r6.is_open into r11 as committee_state;
+    cast r7 r6.is_open into r11 as committee_state;
     // Update the committee state for the validator.
     set r11 into committee[r0];
 
