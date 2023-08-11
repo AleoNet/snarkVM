@@ -46,8 +46,6 @@ use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use ledger_narwhal_subdag::Subdag;
 
-use indexmap::IndexSet;
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
     /// The hash of this block.
@@ -139,7 +137,7 @@ impl<N: Network> Block<N> {
                 subdag.check_subdag()?;
 
                 // Flatten the transmission ids from the subdag into a single vector.
-                let transmission_ids: IndexSet<_> =
+                let transmission_ids: indexmap::IndexSet<_> =
                     subdag.values().flatten().flat_map(|certificate| certificate.transmission_ids()).collect();
 
                 // Ensure that the transactions, ratifications, and coinbase matches the subdag.
