@@ -538,7 +538,7 @@ mod tests {
         types::Field,
     };
     use ledger_block::{Block, Header, Metadata, Transaction, Transition};
-    use ledger_store::helpers::memory::ConsensusMemory;
+    use ledger_store::helpers::memory::{ConsensusMemory, FinalizeMemory};
     use synthesizer_program::Program;
 
     use rand::distributions::DistString;
@@ -1216,4 +1216,301 @@ finalize compute:
         let expected = Value::<CurrentNetwork>::from_str("3u8").unwrap();
         assert_eq!(value, expected);
     }
+
+    // Generate a genesis ratify with the given additional balances.
+    fn sample_genesis_ratify(
+        rng: &mut TestRng,
+        num_members: u32,
+        additional_public_balances: &[(Address<CurrentNetwork>, u64)],
+    ) -> Ratify<CurrentNetwork> {
+        // Sample the members.
+        let mut members = IndexMap::new();
+        for _ in 0..num_members {
+            members
+                .insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * ledger_committee::MIN_VALIDATOR_STAKE, true));
+        }
+
+        // Get the committee.
+        let committee = Committee::<CurrentNetwork>::new(0, members).unwrap();
+
+        // Initialize the public balances.
+        let mut public_balances: IndexMap<_, _> = Default::default();
+        for (address, _) in committee.members().iter() {
+            public_balances.insert(*address, rng.gen());
+        }
+
+        for (address, balance) in additional_public_balances {
+            public_balances.insert(*address, *balance);
+        }
+
+        // Return the genesis ratify.
+        Ratify::Genesis(committee, public_balances)
+    }
+
+    // TODO (raychu86): Unify the following helper functions with the `test_credits.rs` ones.
+
+    type CurrentAleo = circuit::AleoV0;
+
+    /// Returns the `value` for the given `key` in the `mapping` for the given `program_id`.
+    fn get_mapping_value<N: Network>(
+        store: &FinalizeStore<N, FinalizeMemory<N>>,
+        program_id: &str,
+        mapping: &str,
+        key: Literal<N>,
+    ) -> Result<Option<Value<N>>> {
+        // Prepare the program ID, mapping name, and key.
+        let program_id = ProgramID::from_str(program_id)?;
+        let mapping = Identifier::from_str(mapping)?;
+        let key = Plaintext::from(key);
+        // Retrieve the value from the finalize store.
+        match store.get_value_confirmed(&program_id, &mapping, &key) {
+            Ok(result) => Ok(result),
+            Err(err) => {
+                bail!("Error getting value for program_id: {program_id}, mapping: {mapping}, key: {key}: {err}")
+            }
+        }
+    }
+
+    /// Get the current `account` mapping balance.
+    fn account_balance<N: Network>(store: &FinalizeStore<N, FinalizeMemory<N>>, address: &Address<N>) -> Result<u64> {
+        // Retrieve the balance from the finalize store.
+        match get_mapping_value(store, "credits.aleo", "account", Literal::Address(*address))? {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) => Ok(*balance),
+            _ => bail!("Missing or malformed account balance for {address}"),
+        }
+    }
+
+    /// Get the current committee state from the `committee` mapping for the given validator address.
+    /// Returns the `committee_state` as a tuple of `(microcredits, is_open)`.
+    fn committee_state<N: Network>(
+        store: &FinalizeStore<N, FinalizeMemory<N>>,
+        address: &Address<N>,
+    ) -> Result<Option<(u64, bool)>> {
+        // Retrieve the committee state from the finalize store.
+        let state = match get_mapping_value(store, "credits.aleo", "committee", Literal::Address(*address))? {
+            Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
+            None => return Ok(None),
+            _ => bail!("Malformed committee state for {address}"),
+        };
+
+        // Retrieve `microcredits` from the committee state.
+        let microcredits = match state.get(&Identifier::from_str("microcredits")?) {
+            Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
+            _ => bail!("`microcredits` not found for: {address}"),
+        };
+
+        // Retrieve `is_open` from the committee state.
+        let is_open = match state.get(&Identifier::from_str("is_open")?) {
+            Some(Plaintext::Literal(Literal::Boolean(is_open), _)) => **is_open,
+            _ => bail!("`is_open` not found for: {address}"),
+        };
+
+        Ok(Some((microcredits, is_open)))
+    }
+
+    /// Get the current bond state from the `bonding` mapping for the given staker address.
+    /// Returns the `bond_state` as a tuple of `(validator address, microcredits)`.
+    fn bond_state<N: Network>(
+        store: &FinalizeStore<N, FinalizeMemory<N>>,
+        address: &Address<N>,
+    ) -> Result<Option<(Address<N>, u64)>> {
+        // Retrieve the bond state from the finalize store.
+        let state = match get_mapping_value(store, "credits.aleo", "bonded", Literal::Address(*address))? {
+            Some(Value::Plaintext(Plaintext::Struct(state, _))) => state,
+            None => return Ok(None),
+            _ => bail!("Malformed bond state for {address}"),
+        };
+
+        // Retrieve `validator` from the bond state.
+        let validator = match state.get(&Identifier::from_str("validator")?) {
+            Some(Plaintext::Literal(Literal::Address(address), _)) => *address,
+            _ => bail!("`validator` not found for: {address}"),
+        };
+
+        // Retrieve `microcredits` from the bond state.
+        let microcredits = match state.get(&Identifier::from_str("microcredits")?) {
+            Some(Plaintext::Literal(Literal::U64(microcredits), _)) => **microcredits,
+            _ => bail!("`microcredits` not found for: {address}"),
+        };
+
+        Ok(Some((validator, microcredits)))
+    }
+
+    fn execute_function(
+        process: &Process<CurrentNetwork>,
+        finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+        caller_private_key: &PrivateKey<CurrentNetwork>,
+        function: &str,
+        inputs: &[String],
+        block_height: Option<u32>,
+        rng: &mut TestRng,
+    ) -> Result<()> {
+        // Construct the authorization.
+        let authorization =
+            process.authorize::<CurrentAleo, _>(caller_private_key, "credits.aleo", function, inputs.iter(), rng)?;
+
+        // Construct the trace.
+        let (_, mut trace) = process.execute::<CurrentAleo>(authorization)?;
+
+        // Construct the block store.
+        let block_store = BlockStore::<CurrentNetwork, ledger_store::helpers::memory::BlockMemory<_>>::open(None)?;
+
+        // Prepare the trace.
+        trace.prepare(Query::from(&block_store))?;
+
+        // Prove the execution.
+        let execution = trace.prove_execution::<CurrentAleo, _>(function, rng)?;
+
+        // Finalize the execution.
+        let block_height = block_height.unwrap_or(1);
+
+        // Add an atomic finalize wrapper around the finalize function.
+        atomic_finalize!(finalize_store, FinalizeMode::RealRun, {
+            match process.finalize_execution(sample_finalize_state(block_height), finalize_store, &execution) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(format!("Failed to finalize on transaction - {e}")),
+            }
+        })?;
+
+        Ok(())
+    }
+
+    /// Perform a `bond_public`.
+    fn bond_public(
+        process: &Process<CurrentNetwork>,
+        finalize_store: &FinalizeStore<CurrentNetwork, FinalizeMemory<CurrentNetwork>>,
+        caller_private_key: &PrivateKey<CurrentNetwork>,
+        validator_address: &Address<CurrentNetwork>,
+        amount: u64,
+        rng: &mut TestRng,
+    ) -> Result<()> {
+        execute_function(
+            process,
+            finalize_store,
+            caller_private_key,
+            "bond_public",
+            &[validator_address.to_string(), format!("{amount}_u64")],
+            None,
+            rng,
+        )
+    }
+
+    #[test]
+    fn test_pre_ratify() {
+        let rng = &mut TestRng::default();
+
+        // Initialize the finalize store.
+        let vm = VM::from(ConsensusStore::<_, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let store = vm.finalize_store();
+
+        // Sample the genesis ratify.
+        let genesis_ratify = sample_genesis_ratify(rng, 4, &[]);
+
+        // Extract the committee and public balances from the genesis ratify.
+        let Ratify::Genesis(committee, public_balances) = genesis_ratify.clone() else {
+            panic!("The first ratify object should be a genesis ratify.");
+        };
+
+        // Initialize the genesis state.
+        let state = FinalizeGlobalState::new::<CurrentNetwork>(0, 0, 0, 0, Default::default()).unwrap();
+        // Perform the atomic pre-ratify.
+        VM::<_, ConsensusMemory<_>>::atomic_pre_ratify(store, state, [genesis_ratify].iter()).unwrap();
+
+        // Check that the committee state is correct.
+        for (address, (stake, is_open)) in committee.members() {
+            // Assert that the committee state is correct.
+            assert_eq!(committee_state(store, address).unwrap(), Some((*stake, *is_open)));
+            assert_eq!(bond_state(store, address).unwrap(), Some((*address, *stake)));
+        }
+
+        // Check that the public balances are correct.
+        for (address, balance) in public_balances.iter() {
+            assert_eq!(account_balance(store, address).unwrap(), *balance);
+        }
+    }
+
+    #[test]
+    fn test_post_ratify() {
+        let rng = &mut TestRng::default();
+
+        // Initialize the process.
+        let process = Process::load().unwrap();
+
+        // Initialize the finalize store.
+        let vm = VM::from(ConsensusStore::<_, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap();
+        let store = vm.finalize_store();
+
+        // Declare the number of committee members.
+        let num_committee_members = 4;
+
+        // Initialize delegator public balances.
+        const DELEGATOR_BALANCE: u64 = 10_000_000u64;
+        let delegators: IndexMap<_, _> = (0..num_committee_members)
+            .map(|_| {
+                let private_key = PrivateKey::new(rng).unwrap();
+                let address = Address::try_from(&private_key).unwrap();
+                (private_key, (address, DELEGATOR_BALANCE))
+            })
+            .collect();
+
+        // Sample the genesis ratify.
+        let additional_public_balances = delegators.values().copied().collect::<Vec<_>>();
+        let genesis_ratify = sample_genesis_ratify(rng, num_committee_members, &additional_public_balances);
+
+        // Extract the committee and public balances from the genesis ratify.
+        let Ratify::Genesis(committee, _) = genesis_ratify.clone() else {
+            panic!("The first ratify object should be a genesis ratify.");
+        };
+
+        // Initialize the genesis state.
+        let state = FinalizeGlobalState::new::<CurrentNetwork>(0, 0, 0, 0, Default::default()).unwrap();
+        // Perform the atomic pre-ratify.
+        VM::<_, ConsensusMemory<_>>::atomic_pre_ratify(store, state, [genesis_ratify].iter()).unwrap();
+
+        // Check that the delegator balances are correct.
+        for (_, (address, balance)) in delegators.iter() {
+            assert_eq!(account_balance(store, address).unwrap(), *balance);
+        }
+
+        // Bond the delegators to a validator.
+        let mut updated_members = committee.members().clone();
+        for ((private_key, (_, delegator_balance)), (validator_address, (validator_balance, _))) in
+            delegators.iter().zip_eq(updated_members.iter_mut())
+        {
+            bond_public(&process, store, private_key, validator_address, *delegator_balance, rng).unwrap();
+            *validator_balance += delegator_balance;
+        }
+
+        // Update the current committee with the new committee after the bond_public operations.
+        let updated_committee = Committee::new(committee.starting_round(), updated_members).unwrap();
+        store.committee_store().remove(0).unwrap();
+        store.committee_store().insert(0, updated_committee).unwrap();
+
+        // Sample the block reward and puzzle reward ratifies.
+        let block_reward = Ratify::BlockReward(rng.gen());
+        let puzzle_reward = Ratify::PuzzleReward(rng.gen());
+
+        // Initialize the genesis state.
+        let state = FinalizeGlobalState::new::<CurrentNetwork>(1, 1, 0, 0, Default::default()).unwrap();
+        // Perform the atomic post-ratify.
+        // TODO (raychu86): Create an actual coinbase solution.
+        VM::<_, ConsensusMemory<_>>::atomic_post_ratify(store, state, [block_reward, puzzle_reward].iter(), None)
+            .unwrap();
+
+        // TODO (raychu86): Perform the actual reward calculations.
+        // Check that the block rewards are issued to committee members.
+        for (address, (stake, _)) in committee.members() {
+            // Assert that the committee state is correct.
+            assert!(committee_state(store, address).unwrap().unwrap().0 >= *stake + DELEGATOR_BALANCE);
+            // Assert that the bond state is correct.
+            assert!(bond_state(store, address).unwrap().unwrap().1 >= *stake);
+        }
+
+        // Check that the block rewards are issued to the delegators.
+        for (_, (address, balance)) in delegators.iter() {
+            assert!(bond_state(store, address).unwrap().unwrap().1 >= *balance);
+        }
+    }
+
+    // TODO (raychu86): Add unified tests for pre/post ratifications.
 }
