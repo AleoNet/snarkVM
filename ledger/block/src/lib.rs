@@ -46,6 +46,8 @@ use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use ledger_narwhal_subdag::Subdag;
 
+use indexmap::IndexSet;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
     /// The hash of this block.
@@ -125,7 +127,74 @@ impl<N: Network> Block<N> {
                 ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
             }
             // TODO (howardwu): Verify the subdag.
-            Authority::Quorum(_subdag) => (),
+            Authority::Quorum(subdag) => {
+                // Ensure that the block round is equivalent to the subdag anchor round.
+                ensure!(subdag.anchor_round() == header.round(), "Invalid round for block {}", header.height());
+
+                // Ensure that the block timestamp is equivalent to the subdag timestamp.
+                ensure!(subdag.timestamp() == header.timestamp(), "Invalid timestamp for block {}", header.height());
+
+                // TODO (raychu86): Check that the already ordered or GC'd certificates exist in the ledger?
+                // Ensure that the subdag is valid.
+                subdag.check_subdag()?;
+
+                // Flatten the transmission ids from the subdag into a single vector.
+                let transmission_ids: IndexSet<_> =
+                    subdag.values().flatten().flat_map(|certificate| certificate.transmission_ids()).collect();
+
+                // Ensure that the transactions, ratifications, and coinbase matches the subdag.
+
+                // Fetch the transactions iterator.
+                let mut transaction_ids = transactions.transaction_ids();
+                // Fetch the ratifications iterator.
+                let mut ratification_ids = ratifications.iter();
+                // Fetch the solutions iterator.
+                let mut solutions =
+                    coinbase.as_ref().map(|coinbase| coinbase.partial_solutions().iter()).unwrap_or_else(|| [].iter());
+
+                // Fetch the next transaction_id from the iterator.
+                let mut next_transaction_id = transaction_ids.next();
+
+                // Iterate through the provided transmission ids and ensure that the `Transmissions` ordering is correct.
+                for transmission_id in transmission_ids {
+                    // Check the next solution matches the expected commitment.
+                    if let Some(commitment) = transmission_id.solution() {
+                        ensure!(
+                            solutions.next().map(|solution| solution.commitment()) == Some(commitment),
+                            "Solution ordering does not match."
+                        )
+                    }
+
+                    // Check the next ratification matches the expected ratification.
+                    if let Some(transaction_id) = transmission_id.transaction() {
+                        if next_transaction_id == Some(&transaction_id) {
+                            next_transaction_id = transaction_ids.next();
+                        } else {
+                            // TODO (raychu86): Check that the transaction exists in the ledger.
+                            // ensure!(ledger.contains_transaction(transaction_id), "Transaction {transaction_id} does not exist in the ledger.");
+                        }
+                    }
+
+                    // TODO (raychu86): Perform the same check for the ratifications once they have transmission ids.
+                }
+
+                // Ensure that there are no more transactions in the block.
+                ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
+                // Ensure that there are no more solutions in the block.
+                ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
+
+                // TODO (raychu86):
+                // Check that the remaining ratifications correspond to the rewards.
+                ensure!(
+                    matches!(ratification_ids.next(), Some(Ratify::BlockReward(_))),
+                    "The block reward ratification is missing"
+                );
+                ensure!(
+                    matches!(ratification_ids.next(), Some(Ratify::PuzzleReward(_))),
+                    "There puzzle reward ratification is missing."
+                );
+                ensure!(ratification_ids.next().is_none(), "There exists more ratifications than expected.");
+            }
         }
 
         // Ensure that coinbase accumulator matches the solutions.
