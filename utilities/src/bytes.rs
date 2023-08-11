@@ -32,6 +32,7 @@ use serde::{
 macro_rules! to_bytes_le {
     ($($x:expr),*) => ({
         let mut buffer = $crate::vec![];
+        buffer.reserve(64);
         {$crate::push_bytes_to_vec!(buffer, $($x),*)}.map(|_| buffer)
     });
 }
