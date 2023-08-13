@@ -16,6 +16,17 @@ use crate::Vec;
 
 use anyhow::Result;
 
+/// Takes as input a sequence of objects, and converts them to a series of little-endian bits.
+/// All traits that implement `ToBits` can be automatically converted to bits in this manner.
+#[macro_export]
+macro_rules! to_bits_le {
+    ($($x:expr),*) => ({
+        let mut buffer = $crate::vec![];
+        $($x.write_bits_le(&mut buffer);)*
+        buffer
+    });
+}
+
 pub trait ToBits: Sized {
     /// Writes `self` into the given vector as a boolean array in little-endian order.
     fn write_bits_le(&self, vec: &mut Vec<bool>);
@@ -271,8 +282,80 @@ mod tests {
     use crate::{TestRng, Uniform};
 
     use anyhow::Result;
+    use rand::{distributions::Alphanumeric, Rng};
 
     const ITERATIONS: u64 = 10000;
+
+    fn random_string(len: u16, rng: &mut TestRng) -> String {
+        rng.sample_iter(&Alphanumeric).take(len as usize).map(char::from).collect()
+    }
+
+    #[test]
+    fn test_to_bits_le_macro() {
+        let rng = &mut TestRng::default();
+
+        // The checker.
+        macro_rules! check {
+            ($given:expr) => {{
+                let given = $given;
+
+                let mut expected = Vec::new();
+                given.iter().for_each(|elem| elem.write_bits_le(&mut expected));
+
+                let candidate = to_bits_le!(given);
+                assert_eq!(candidate, expected);
+            }};
+        }
+
+        // U8
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<u8>>());
+        // U16
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<u16>>());
+        // U32
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<u32>>());
+        // U64
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<u64>>());
+        // U128
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<u128>>());
+        // I8
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<i8>>());
+        // I16
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<i16>>());
+        // I32
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<i32>>());
+        // I64
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<i64>>());
+        // I128
+        check!((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<i128>>());
+        // String
+        check!((0..100).map(|_| random_string(rng.gen(), rng)).collect::<Vec<String>>());
+        // Vec<Vec<u8>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<u8>>()).collect::<Vec<_>>());
+        // Vec<Vec<u16>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<u16>>()).collect::<Vec<_>>());
+        // Vec<Vec<u32>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<u32>>()).collect::<Vec<_>>());
+        // Vec<Vec<u64>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<u64>>()).collect::<Vec<_>>());
+        // Vec<Vec<u128>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<u128>>()).collect::<Vec<_>>());
+        // Vec<Vec<i8>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<i8>>()).collect::<Vec<_>>());
+        // Vec<Vec<i16>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<i16>>()).collect::<Vec<_>>());
+        // Vec<Vec<i32>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<i32>>()).collect::<Vec<_>>());
+        // Vec<Vec<i64>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<i64>>()).collect::<Vec<_>>());
+        // Vec<Vec<i128>>
+        check!((0..100).map(|_| (0..128).map(|_| Uniform::rand(rng)).collect::<Vec<i128>>()).collect::<Vec<_>>());
+        // Vec<Vec<String>>
+        check!(
+            (0..100)
+                .map(|_| (0..128).map(|_| random_string(rng.gen(), rng)).collect::<Vec<String>>())
+                .collect::<Vec<_>>()
+        );
+    }
 
     #[test]
     fn test_integers() -> Result<()> {
