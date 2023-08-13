@@ -33,7 +33,7 @@ use ledger_store::{
     BlockStore,
     FinalizeStore,
 };
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program, StackProgram};
+use synthesizer_program::{FinalizeGlobalState, Program, StackProgram};
 use synthesizer_snark::UniversalSRS;
 
 use indexmap::IndexMap;

@@ -152,7 +152,7 @@ finalize bond_public:
     // Starts the `bond_validator` logic.
     position bond_validator;
 
-    /* Start Committee */
+    /* Committee */
 
     // Construct the initial committee state.
     // Note: We set the initial 'is_open' state to 'true'.
@@ -164,33 +164,29 @@ finalize bond_public:
 
     // Increment the stake for the specified validator.
     add r5.microcredits r2 into r6;
-    // Determine if the amount is at least one million credits.
-    gte r6 1_000_000_000_000u64 into r7;
-    // Enforce the amount is at least one million credits.
-    assert.eq r7 true;
-
     // Construct the updated committee state.
-    cast r6 r5.is_open into r8 as committee_state;
+    cast r6 r5.is_open into r7 as committee_state;
 
-    /* End Committee */
-
-    /* Start Bonded */
+    /* Bonded */
 
     // Construct the initial bond state.
-    cast r1 0u64 into r9 as bond_state;
+    cast r1 0u64 into r8 as bond_state;
     // Get the bond state for the caller, or default to the initial bond state.
-    get.or_use bonded[r0] r9 into r10;
+    get.or_use bonded[r0] r8 into r9;
     // Enforce the validator matches in the bond state.
-    assert.eq r10.validator r1;
+    assert.eq r9.validator r1;
 
     // Increment the microcredits in the bond state.
-    add r10.microcredits r2 into r11;
+    add r9.microcredits r2 into r10;
+    // Determine if the amount is at least one million credits.
+    gte r10 1_000_000_000_000u64 into r11;
+    // Enforce the amount is at least one million credits.
+    assert.eq r11 true;
+
     // Construct the updated bond state.
-    cast r1 r11 into r12 as bond_state;
+    cast r1 r10 into r12 as bond_state;
 
-    /* End Bonded */
-
-    /* Start Account */
+    /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
@@ -198,18 +194,14 @@ finalize bond_public:
     // Decrement the balance of the caller.
     sub r13 r2 into r14;
 
-    /* End Account */
-
-    /* Start Writes */
+    /* Writes */
 
     // Update the committee state of the specified validator.
-    set r8 into committee[r0];
+    set r7 into committee[r0];
     // Update the bond state for the caller.
     set r12 into bonded[r0];
     // Update the balance of the caller.
     set r14 into account[r0];
-
-    /* End Writes */
 
     // Ends the `bond_validator` logic.
     branch.eq true true to end;
@@ -219,7 +211,7 @@ finalize bond_public:
     // Starts the `bond_delegator` logic.
     position bond_delegator;
 
-    /* Start Committee */
+    /* Committee */
 
     // Check if the caller is a validator.
     contains committee[r0] into r15;
@@ -237,9 +229,7 @@ finalize bond_public:
     // Construct the updated committee state.
     cast r17 r16.is_open into r18 as committee_state;
 
-    /* End Committee */
-
-    /* Start Bonded */
+    /* Bonded */
 
     // Construct the initial bond state.
     cast r1 0u64 into r19 as bond_state;
@@ -250,31 +240,30 @@ finalize bond_public:
 
     // Increment the microcredits in the bond state.
     add r20.microcredits r2 into r21;
+    // Determine if the amount is at least 10 credits.
+    gte r21 10_000_000u64 into r22;
+    // Enforce the amount is at least 10 credits.
+    assert.eq r22 true;
+
     // Construct the updated bond state.
-    cast r1 r21 into r22 as bond_state;
+    cast r1 r21 into r23 as bond_state;
 
-    /* End Bonded */
-
-    /* Start Account */
+    /* Account */
 
     // Get the balance of the caller.
     // If the account does not exist, this finalize scope will fail.
-    get account[r0] into r23;
+    get account[r0] into r24;
     // Decrement the balance of the caller.
-    sub r23 r2 into r24;
+    sub r24 r2 into r25;
 
-    /* End Account */
-
-    /* Start Writes */
+    /* Writes */
 
     // Update the committee state for the specified validator.
     set r18 into committee[r1];
     // Update the bond state for the caller.
-    set r22 into bonded[r0];
+    set r23 into bonded[r0];
     // Update the balance of the caller.
-    set r24 into account[r0];
-
-    /* End Writes */
+    set r25 into account[r0];
 
     // The terminus.
     position end;
