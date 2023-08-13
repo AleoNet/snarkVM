@@ -20,50 +20,70 @@ impl<A: Aleo> ToBits for Plaintext<A> {
     /// Returns this plaintext as a list of **little-endian** bits.
     fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Literal(literal, bits_le) => vec.extend_from_slice(bits_le.get_or_init(|| {
-                let mut bits_le = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
-                literal.variant().write_bits_le(&mut bits_le);
-                literal.size_in_bits().write_bits_le(&mut bits_le);
-                literal.write_bits_le(&mut bits_le);
-                bits_le
-            })),
-            Self::Struct(members, bits_le) => vec.extend_from_slice(bits_le.get_or_init(|| {
-                let mut bits_le = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
-                U8::constant(console::U8::new(members.len() as u8)).write_bits_le(&mut bits_le);
-                for (identifier, value) in members {
-                    let value_bits = value.to_bits_le();
-                    identifier.size_in_bits().write_bits_le(&mut bits_le);
-                    identifier.write_bits_le(&mut bits_le);
-                    U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_le(&mut bits_le);
-                    bits_le.extend_from_slice(&value_bits);
-                }
-                bits_le
-            })),
-        };
+            Self::Literal(literal, bits_le) => {
+                // Compute the bits of the literal.
+                let bits = bits_le.get_or_init(|| {
+                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
+                    literal.variant().write_bits_le(&mut bits_le);
+                    literal.size_in_bits().write_bits_le(&mut bits_le);
+                    literal.write_bits_le(&mut bits_le);
+                    bits_le
+                });
+                // Extend the vector with the bits of the literal.
+                vec.extend_from_slice(bits);
+            }
+            Self::Struct(members, bits_le) => {
+                // Compute the bits of the struct.
+                let bits = bits_le.get_or_init(|| {
+                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                    U8::constant(console::U8::new(members.len() as u8)).write_bits_le(&mut bits_le);
+                    for (identifier, value) in members {
+                        let value_bits = value.to_bits_le();
+                        identifier.size_in_bits().write_bits_le(&mut bits_le);
+                        identifier.write_bits_le(&mut bits_le);
+                        U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_le(&mut bits_le);
+                        bits_le.extend_from_slice(&value_bits);
+                    }
+                    bits_le
+                });
+                // Extend the vector with the bits of the struct.
+                vec.extend_from_slice(bits);
+            }
+        }
     }
 
     /// Returns this plaintext as a list of **big-endian** bits.
     fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Literal(literal, bits_be) => vec.extend_from_slice(bits_be.get_or_init(|| {
-                let mut bits_be = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
-                literal.variant().write_bits_le(&mut bits_be);
-                literal.size_in_bits().write_bits_le(&mut bits_be);
-                literal.write_bits_le(&mut bits_be);
-                bits_be
-            })),
-            Self::Struct(members, bits_be) => vec.extend_from_slice(bits_be.get_or_init(|| {
-                let mut bits_be = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
-                U8::constant(console::U8::new(members.len() as u8)).write_bits_be(&mut bits_be);
-                for (identifier, value) in members {
-                    let value_bits = value.to_bits_be();
-                    identifier.size_in_bits().write_bits_be(&mut bits_be);
-                    identifier.write_bits_be(&mut bits_be);
-                    U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_be(&mut bits_be);
-                    bits_be.extend_from_slice(&value_bits);
-                }
-                bits_be
-            })),
-        };
+            Self::Literal(literal, bits_be) => {
+                // Compute the bits of the literal.
+                let bits = bits_be.get_or_init(|| {
+                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
+                    literal.variant().write_bits_be(&mut bits_be);
+                    literal.size_in_bits().write_bits_be(&mut bits_be);
+                    literal.write_bits_be(&mut bits_be);
+                    bits_be
+                });
+                // Extend the vector with the bits of the literal.
+                vec.extend_from_slice(bits);
+            }
+            Self::Struct(members, bits_be) => {
+                // Compute the bits of the struct.
+                let bits = bits_be.get_or_init(|| {
+                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                    U8::constant(console::U8::new(members.len() as u8)).write_bits_be(&mut bits_be);
+                    for (identifier, value) in members {
+                        let value_bits = value.to_bits_be();
+                        identifier.size_in_bits().write_bits_be(&mut bits_be);
+                        identifier.write_bits_be(&mut bits_be);
+                        U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_be(&mut bits_be);
+                        bits_be.extend_from_slice(&value_bits);
+                    }
+                    bits_be
+                });
+                // Extend the vector with the bits of the struct.
+                vec.extend_from_slice(bits)
+            }
+        }
     }
 }
