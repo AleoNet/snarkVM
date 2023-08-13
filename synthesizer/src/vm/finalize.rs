@@ -308,7 +308,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // TODO (howardwu): Ensure this fee corresponds to the deployment.
                         // Attempt to finalize the deployment, which should fail.
                         #[cfg(debug_assertions)]
-                        if let Ok(..) = process.finalize_deployment(store, deployment) {
+                        if process.finalize_deployment(store, deployment).is_ok() {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected deploy transaction".to_string());
                         }
@@ -324,7 +324,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // TODO (howardwu): Ensure this fee corresponds to the execution.
                         // Attempt to finalize the execution, which should fail.
                         #[cfg(debug_assertions)]
-                        if let Ok(..) = process.finalize_execution(state, store, execution) {
+                        if process.finalize_execution(state, store, execution).is_ok() {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected execute transaction".to_string());
                         }

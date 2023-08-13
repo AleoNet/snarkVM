@@ -14,6 +14,23 @@
 
 use super::*;
 
+/// Ensures the given iterator has no duplicate elements, and that the ledger
+/// does not already contain a given item.
+macro_rules! ensure_is_unique {
+    ($name:expr, $self:expr, $method:ident, $iter:expr) => {
+        // Ensure there are no duplicate items in the transaction.
+        if has_duplicates($iter) {
+            bail!("Found a duplicate {} in the transaction", $name);
+        }
+        // Ensure the ledger does not already contain a given item.
+        for item in $iter {
+            if $self.transition_store().$method(item)? {
+                bail!("The {} '{}' already exists in the ledger", $name, item)
+            }
+        }
+    };
+}
+
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if the transaction is valid.
     pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
@@ -64,70 +81,53 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
         let timer = timer!("VM::verify");
 
+        /* Transaction */
+
+        // Ensure the transaction ID is unique.
+        if self.transaction_store().contains_transaction_id(&transaction.id())? {
+            bail!("Transaction '{}' already exists in the ledger", transaction.id())
+        }
+
         // Compute the Merkle root of the transaction.
         match transaction.to_root() {
             // Ensure the transaction ID is correct.
-            Ok(root) => {
-                if *transaction.id() != root {
-                    bail!("Incorrect transaction ID ({})", transaction.id());
-                }
-            }
+            Ok(root) if *transaction.id() != root => bail!("Incorrect transaction ID ({})", transaction.id()),
+            Ok(_) => (),
             Err(error) => {
                 bail!("Failed to compute the Merkle root of the transaction: {error}\n{transaction}");
             }
         };
-        lap!(timer, "Verify the transaction id");
+        lap!(timer, "Verify the transaction ID");
 
-        // Ensure there are no duplicate transition IDs.
-        if has_duplicates(transaction.transition_ids()) {
-            bail!("Found duplicate transition in the transaction");
-        }
+        /* Transition */
+
+        // Ensure the transition IDs are unique.
+        ensure_is_unique!("transition ID", self, contains_transition_id, transaction.transition_ids());
 
         /* Input */
 
-        // Ensure there are no duplicate input IDs.
-        if has_duplicates(transaction.input_ids()) {
-            bail!("Found duplicate input IDs in the transaction");
-        }
-
-        // Ensure there are no duplicate serial numbers.
-        if has_duplicates(transaction.serial_numbers()) {
-            bail!("Found duplicate serial numbers in the transaction");
-        }
-
-        // Ensure there are no duplicate tags.
-        if has_duplicates(transaction.tags()) {
-            bail!("Found duplicate tags in the transaction");
-        }
+        // Ensure the input IDs are unique.
+        ensure_is_unique!("input ID", self, contains_input_id, transaction.input_ids());
+        // Ensure the serial numbers are unique.
+        ensure_is_unique!("serial number", self, contains_serial_number, transaction.serial_numbers());
+        // Ensure the tags are unique.
+        ensure_is_unique!("tag", self, contains_tag, transaction.tags());
 
         /* Output */
 
-        // Ensure there are no duplicate output IDs.
-        if has_duplicates(transaction.output_ids()) {
-            bail!("Found duplicate output IDs in the transaction");
-        }
-
-        // Ensure there are no duplicate commitments.
-        if has_duplicates(transaction.commitments()) {
-            bail!("Found duplicate commitments in the transaction");
-        }
-
-        // Ensure there are no duplicate nonces.
-        if has_duplicates(transaction.nonces()) {
-            bail!("Found duplicate nonces in the transaction");
-        }
+        // Ensure the output IDs are unique.
+        ensure_is_unique!("output ID", self, contains_output_id, transaction.output_ids());
+        // Ensure the commitments are unique.
+        ensure_is_unique!("commitment", self, contains_commitment, transaction.commitments());
+        // Ensure the nonces are unique.
+        ensure_is_unique!("nonce", self, contains_nonce, transaction.nonces());
 
         /* Metadata */
 
-        // Ensure there are no duplicate transition public keys.
-        if has_duplicates(transaction.transition_public_keys()) {
-            bail!("Found duplicate transition public keys in the transaction");
-        }
-
-        // Ensure there are no duplicate transition commitments.
-        if has_duplicates(transaction.transition_commitments()) {
-            bail!("Found duplicate transition commitments in the transaction");
-        }
+        // Ensure the transition public keys are unique.
+        ensure_is_unique!("transition public key", self, contains_tpk, transaction.transition_public_keys());
+        // Ensure the transition commitments are unique.
+        ensure_is_unique!("transition commitment", self, contains_tcm, transaction.transition_commitments());
 
         lap!(timer, "Check for duplicate elements");
 
@@ -141,6 +141,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 };
                 // Verify the signature corresponds to the transaction ID.
                 ensure!(owner.verify(deployment_id), "Invalid owner signature for deployment transaction '{id}'");
+                // Ensure the edition is correct.
+                ensure!(deployment.edition() == N::EDITION, "Invalid deployment: expected edition {}", N::EDITION);
+                // Ensure the program ID does not already exist..
+                if self.transaction_store().contains_program_id(deployment.program_id())? {
+                    bail!("Program ID '{}' is already deployed", deployment.program_id())
+                }
                 // Verify the fee.
                 self.check_fee(fee, deployment_id)?;
                 // Verify the deployment.

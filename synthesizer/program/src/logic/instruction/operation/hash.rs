@@ -212,7 +212,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
-        use circuit::{ToBits, ToFields};
+        use circuit::traits::{ToBits, ToFields};
 
         // Ensure the number of operands is correct.
         check_number_of_operands(VARIANT, Self::opcode(), self.operands.len())?;

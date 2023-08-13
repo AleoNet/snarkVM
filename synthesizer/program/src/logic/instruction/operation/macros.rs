@@ -767,7 +767,7 @@ mod tests {
                             ("ensure shifting past boundary halts") => {
                                 match *<$operation as $crate::Operation<_, _, _, 2>>::OPCODE {
                                     // Note that this case needs special handling, since the desired behavior of `checked_shl` deviates from Rust semantics.
-                                    "shl" => should_succeed &= console::prelude::traits::integers::CheckedShl::checked_shl(&*a, &(*b as u32)).is_some(),
+                                    "shl" => should_succeed &= console::prelude::CheckedShl::checked_shl(&*a, &(*b as u32)).is_some(),
                                     "shr" => should_succeed &= (*a).checked_shr(*b as u32).is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::Operation<_, _, _, 2>>::OPCODE),
                                 }

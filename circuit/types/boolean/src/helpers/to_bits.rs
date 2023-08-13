@@ -18,13 +18,13 @@ impl<E: Environment> ToBits for Boolean<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -32,13 +32,13 @@ impl<E: Environment> ToBits for &Boolean<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        vec![(*self).clone()]
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push((*self).clone());
     }
 
     /// Outputs `self` as a single-element vector.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        vec![(*self).clone()]
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.push((*self).clone());
     }
 }
 
