@@ -18,16 +18,16 @@ impl<A: Aleo> ToBits for Ciphertext<A> {
     type Boolean = Boolean<A>;
 
     /// Returns this ciphertext as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let bits_le = self.0.to_bits_le();
-        assert_eq!(self.0.len() * A::BaseField::size_in_bits(), bits_le.len());
-        bits_le
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        let initial_len = vec.len();
+        self.0.write_bits_le(vec);
+        assert_eq!(self.0.len() * A::BaseField::size_in_bits(), vec.len() - initial_len);
     }
 
     /// Returns this ciphertext as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let bits_be = self.0.to_bits_be();
-        assert_eq!(self.0.len() * A::BaseField::size_in_bits(), bits_be.len());
-        bits_be
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        let initial_len = vec.len();
+        self.0.write_bits_be(vec);
+        assert_eq!(self.0.len() * A::BaseField::size_in_bits(), vec.len() - initial_len);
     }
 }

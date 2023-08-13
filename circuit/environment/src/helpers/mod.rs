@@ -18,8 +18,8 @@ pub use assignment::*;
 pub mod circuit_type;
 pub use circuit_type::*;
 
-pub(crate) mod constraint;
-pub(crate) use constraint::*;
+pub mod constraint;
+pub use constraint::*;
 
 pub(super) mod converter;
 
@@ -38,5 +38,5 @@ pub use mode::*;
 pub mod variable;
 pub use variable::*;
 
-pub(super) mod r1cs;
+pub mod r1cs;
 pub use r1cs::*;

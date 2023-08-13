@@ -44,7 +44,7 @@ impl<N: Network> FromFields for Plaintext<N> {
 
         // Unpack the field elements into little-endian bits, and reverse the list for popping the terminus bit off.
         let mut bits_le =
-            fields.iter().flat_map(|field| field.to_bits_le()[..Field::<N>::size_in_data_bits()].to_vec()).rev();
+            fields.iter().flat_map(|field| field.to_bits_le().into_iter().take(Field::<N>::size_in_data_bits())).rev();
         // Remove the terminus bit that was added during encoding.
         for boolean in bits_le.by_ref() {
             // Drop all extraneous `0` bits, in addition to the final `1` bit.

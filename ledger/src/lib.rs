@@ -134,8 +134,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Safety check the existence of `NUM_BLOCKS` random blocks.
         const NUM_BLOCKS: usize = 1000;
-        let block_heights: Vec<u32> = (0..=latest_height)
-            .choose_multiple(&mut OsRng::default(), core::cmp::min(NUM_BLOCKS, latest_height as usize));
+        let block_heights: Vec<u32> =
+            (0..=latest_height).choose_multiple(&mut OsRng, core::cmp::min(NUM_BLOCKS, latest_height as usize));
         cfg_into_iter!(block_heights).try_for_each(|height| {
             ledger.get_block(height)?;
             Ok::<_, Error>(())

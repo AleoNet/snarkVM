@@ -88,14 +88,15 @@ impl<N: Network> RandChaCha<N> {
         let seeds: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
         // Construct the random seed.
-        let mut preimage = Vec::new();
-        preimage.extend_from_slice(&registers.state().random_seed().to_bits_le());
-        preimage.extend_from_slice(&(**registers.transition_id()).to_bits_le());
-        preimage.extend_from_slice(&stack.program_id().to_bits_le());
-        preimage.extend_from_slice(&registers.function_name().to_bits_le());
-        preimage.extend_from_slice(&self.destination.locator().to_bits_le());
-        preimage.extend_from_slice(&self.destination_type.type_id().to_bits_le());
-        preimage.extend_from_slice(&seeds.iter().flat_map(|seed| seed.to_bits_le()).collect::<Vec<_>>());
+        let preimage = to_bits_le![
+            registers.state().random_seed(),
+            **registers.transition_id(),
+            stack.program_id(),
+            registers.function_name(),
+            self.destination.locator(),
+            self.destination_type.type_id(),
+            seeds
+        ];
 
         // Hash the preimage.
         let digest = N::hash_bhp1024(&preimage)?.to_bytes_le()?;

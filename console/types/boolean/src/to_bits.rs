@@ -16,13 +16,13 @@ use super::*;
 
 impl<E: Environment> ToBits for Boolean<E> {
     /// Outputs `self` in a vector.
-    fn to_bits_le(&self) -> Vec<bool> {
-        vec![**self]
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        vec.push(**self);
     }
 
     /// Outputs `self` in a vector.
-    fn to_bits_be(&self) -> Vec<bool> {
-        vec![**self]
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        vec.push(**self);
     }
 }
 

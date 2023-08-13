@@ -154,7 +154,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
-        use circuit::ToBits;
+        use circuit::traits::ToBits;
 
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
