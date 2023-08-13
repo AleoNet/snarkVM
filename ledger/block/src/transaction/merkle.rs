@@ -110,9 +110,11 @@ impl<N: Network> Transaction<N> {
         // Prepare the leaves.
         let leaves = program.functions().values().enumerate().map(|(index, function)| {
             // Construct the transaction leaf.
-            let mut preimage = program.id().to_bits_le();
-            function.to_bytes_le()?.write_bits_le(&mut preimage);
-            Ok(TransactionLeaf::new_deployment(u16::try_from(index)?, N::hash_bhp1024(&preimage)?).to_bits_le())
+            Ok(TransactionLeaf::new_deployment(
+                u16::try_from(index)?,
+                N::hash_bhp1024(&to_bits_le![program.id(), function.to_bytes_le()?])?,
+            )
+            .to_bits_le())
         });
         // If the fee is present, add it to the leaves.
         let leaves = match fee {

@@ -33,7 +33,7 @@ pub use parse::*;
 pub mod string;
 pub use string::string_parser;
 
-pub use snarkvm_utilities::ToBits;
+pub use snarkvm_utilities::{to_bits_le, ToBits};
 
 pub mod to_field;
 pub use to_field::*;

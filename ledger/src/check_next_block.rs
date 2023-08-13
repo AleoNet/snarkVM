@@ -228,9 +228,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Check the block hash.
-        let mut preimage = block.previous_hash().to_bits_le();
-        header_root.write_bits_le(&mut preimage);
-        match N::hash_bhp1024(&preimage) {
+        match N::hash_bhp1024(&to_bits_le![block.previous_hash(), header_root; 64]) {
             Ok(candidate_hash) => {
                 // Ensure the block hash matches the one in the block.
                 if candidate_hash != *block.hash() {

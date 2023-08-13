@@ -361,7 +361,7 @@ mod tests {
                 .collect::<Vec<_>>()
         );
     }
-    
+
     #[test]
     fn test_to_bits_le_macro_with_capacity() {
         let mut expected = Vec::new();
