@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use console::{
-    prelude::*,
+    network::Network,
+    prelude::{FromBytes, Parser, ToBytes},
     program::{Identifier, Register},
 };
 

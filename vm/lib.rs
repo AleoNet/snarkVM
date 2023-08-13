@@ -46,31 +46,7 @@ pub use snarkvm_utilities as utilities;
 #[cfg(feature = "wasm")]
 pub use snarkvm_wasm as wasm;
 
-pub mod errors {
-    #[cfg(feature = "algorithms")]
-    pub use crate::algorithms::errors::*;
-    #[cfg(feature = "curves")]
-    pub use crate::curves::errors::*;
-    #[cfg(feature = "fields")]
-    pub use crate::fields::errors::*;
-    #[cfg(feature = "parameters")]
-    pub use crate::parameters::errors::*;
-    #[cfg(feature = "r1cs")]
-    pub use crate::r1cs::errors::*;
-}
-
-pub mod traits {
-    #[cfg(feature = "algorithms")]
-    pub use crate::algorithms::traits::*;
-    #[cfg(feature = "curves")]
-    pub use crate::curves::traits::*;
-    #[cfg(feature = "fields")]
-    pub use crate::fields::traits::*;
-}
-
 pub mod prelude {
-    pub use crate::{errors::*, traits::*};
-
     #[cfg(feature = "console")]
     pub use crate::console::{account::*, network::*, program::*};
     #[cfg(feature = "ledger")]
