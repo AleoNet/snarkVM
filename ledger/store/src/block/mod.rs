@@ -138,7 +138,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
     /// The mapping of `block hash` to `block ratifications`.
     type RatificationsMap: for<'a> Map<'a, N::BlockHash, Vec<Ratify<N>>>;
-    /// The mapping of `block hash` to `block coinbase solution`.
+    /// The mapping of `block hash` to `block solutions`.
     type CoinbaseSolutionMap: for<'a> Map<'a, N::BlockHash, Option<CoinbaseSolution<N>>>;
     /// The mapping of `puzzle commitment` to `block height`.
     type CoinbasePuzzleCommitmentMap: for<'a> Map<'a, PuzzleCommitment<N>, u32>;
@@ -166,7 +166,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
     /// Returns the ratifications map.
     fn ratifications_map(&self) -> &Self::RatificationsMap;
-    /// Returns the coinbase solution map.
+    /// Returns the solutions map.
     fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap;
     /// Returns the coinbase puzzle commitment map.
     fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap;
@@ -333,7 +333,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the block ratifications.
             self.ratifications_map().insert(block.hash(), block.ratifications().clone())?;
 
-            // Store the block coinbase solution.
+            // Store the block solutions.
             self.coinbase_solution_map().insert(block.hash(), block.coinbase().cloned())?;
 
             // Store the block coinbase puzzle commitment.
@@ -364,11 +364,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(transaction_ids) => transaction_ids,
             None => bail!("Failed to remove block: missing transactions for block '{block_height}' ('{block_hash}')"),
         };
-        // Retrieve the coinbase solution.
+        // Retrieve the solutions.
         let coinbase = match self.coinbase_solution_map().get_confirmed(block_hash)? {
             Some(coinbase_solution) => cow_to_cloned!(coinbase_solution),
             None => {
-                bail!("Failed to remove block: missing coinbase solution for block '{block_height}' ('{block_hash}')")
+                bail!("Failed to remove block: missing solutions for block '{block_height}' ('{block_hash}')")
             }
         };
 
@@ -402,7 +402,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Remove the block ratifications.
             self.ratifications_map().remove(block_hash)?;
 
-            // Remove the block coinbase solution.
+            // Remove the block solutions.
             self.coinbase_solution_map().remove(block_hash)?;
 
             // Remove the block coinbase puzzle commitment.
@@ -613,11 +613,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the block coinbase solution for the given `block hash`.
+    /// Returns the block solutions for the given `block hash`.
     fn get_block_coinbase(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
         match self.coinbase_solution_map().get_confirmed(block_hash)? {
-            Some(coinbase_solution) => Ok(cow_to_cloned!(coinbase_solution)),
-            None => bail!("Missing coinbase solution for block ('{block_hash}')"),
+            Some(solutions) => Ok(cow_to_cloned!(solutions)),
+            None => bail!("Missing solutions for block ('{block_hash}')"),
         }
     }
 
@@ -651,10 +651,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let Some(ratifications) = self.get_block_ratifications(block_hash)? else {
             bail!("Missing ratifications for block {height} ('{block_hash}')");
         };
-        // Retrieve the block coinbase solution.
+        // Retrieve the block solutions.
         let coinbase = match self.get_block_coinbase(block_hash) {
             Ok(coinbase_solution) => coinbase_solution,
-            Err(_) => bail!("Missing coinbase solution for block {height} ('{block_hash}')"),
+            Err(_) => bail!("Missing solutions for block {height} ('{block_hash}')"),
         };
 
         // Return the block.
@@ -889,7 +889,7 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.get_block_ratifications(block_hash)
     }
 
-    /// Returns the block coinbase solution for the given `block hash`.
+    /// Returns the block solutions for the given `block hash`.
     pub fn get_block_coinbase(&self, block_hash: &N::BlockHash) -> Result<Option<CoinbaseSolution<N>>> {
         self.storage.get_block_coinbase(block_hash)
     }

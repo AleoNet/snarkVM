@@ -34,6 +34,7 @@ use ledger_query::Query;
 use ledger_store::{
     atomic_finalize,
     BlockStore,
+    CommitteeStore,
     ConsensusStorage,
     ConsensusStore,
     FinalizeMode,
@@ -145,6 +146,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Returns the committee store.
+    #[inline]
+    pub fn committee_store(&self) -> &CommitteeStore<N, C::CommitteeStorage> {
+        self.store.committee_store()
+    }
+
     /// Returns the finalize store.
     #[inline]
     pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
@@ -197,12 +204,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
-        // Prepare the coinbase solution.
-        let coinbase_solution = None; // The genesis block does not require a coinbase solution.
+        // Prepare the solutions.
+        let solutions = None; // The genesis block does not require solutions.
 
         // Construct the block.
-        let block =
-            Block::new_beacon(private_key, previous_hash, header, transactions, vec![], coinbase_solution, rng)?;
+        let block = Block::new_beacon(private_key, previous_hash, header, vec![], solutions, transactions, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -555,7 +561,7 @@ function compute:
             Testnet3::GENESIS_COINBASE_TARGET,
             Testnet3::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_timestamp(),
+            previous_block.last_coinbase_height(),
             Testnet3::GENESIS_TIMESTAMP + 1,
         )?;
 
@@ -569,7 +575,7 @@ function compute:
         )?;
 
         // Construct the new block.
-        Block::new_beacon(private_key, previous_block.hash(), header, transactions, vec![], None, rng)
+        Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)
     }
 
     #[test]

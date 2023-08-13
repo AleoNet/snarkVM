@@ -108,14 +108,12 @@ macro_rules! sqrt_impl {
                 l_s.resize(l_s.len() + k_1 as usize, l_minus_one);
                 l_s.resize(l_s.len() + k_2 as usize, l);
 
-                let mut x_s: Vec<$Self> = Vec::with_capacity(k as usize);
                 let mut l_sum = 0;
-                l_s.iter().take((k as usize) - 1).for_each(|l| {
+                let x_s = l_s.iter().take((k as usize) - 1).map(|l| {
                     l_sum += l;
-                    let x = x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)));
-                    x_s.push(x);
+                    x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)))
                 });
-                x_s.push(x);
+                let x_s = x_s.chain(Some(x));
 
                 let find = |delta: $Self| -> u64 {
                     let mut mu = delta;
@@ -167,12 +165,12 @@ macro_rules! sqrt_impl {
                 let mut q_s = Vec::<Vec<bool>>::with_capacity(k as usize);
                 let two_to_n_minus_l = 2u64.pow((n - l) as u32);
                 let two_to_n_minus_l_minus_one = 2u64.pow((n - l_minus_one) as u32);
-                x_s.iter().enumerate().for_each(|(i, x)| {
+                x_s.enumerate().for_each(|(i, x)| {
                     // Calculate g^t.
                     // This algorithm deviates from the standard description in the paper, and is
                     // explained in detail in page 6, in section 2.1.
                     let gamma = calc_gamma(i, &q_s, false);
-                    let alpha = *x * gamma;
+                    let alpha = x * gamma;
                     q_s.push(
                         (eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l })
                             .to_bits_le(),

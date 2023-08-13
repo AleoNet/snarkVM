@@ -372,7 +372,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     // Store the (console) finalize input.
                     console_finalize_inputs.push(value.eject_value());
                     // Store the (circuit) finalize input bits.
-                    circuit_finalize_input_bits.extend(value.to_bits_le());
+                    value.write_bits_le(&mut circuit_finalize_input_bits);
                 }
 
                 // Compute the finalize inputs checksum.

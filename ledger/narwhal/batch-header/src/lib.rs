@@ -168,17 +168,27 @@ pub mod test_helpers {
 
     /// Returns a sample batch header with a given round; the rest is sampled at random.
     pub fn sample_batch_header_for_round(round: u64, rng: &mut TestRng) -> BatchHeader<CurrentNetwork> {
+        // Sample certificate IDs.
+        let certificate_ids = (0..10).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
+        // Return the batch header.
+        sample_batch_header_for_round_with_previous_certificate_ids(round, certificate_ids, rng)
+    }
+
+    /// Returns a sample batch header with a given round and set of previous certificate IDs; the rest is sampled at random.
+    pub fn sample_batch_header_for_round_with_previous_certificate_ids(
+        round: u64,
+        previous_certificate_ids: IndexSet<Field<CurrentNetwork>>,
+        rng: &mut TestRng,
+    ) -> BatchHeader<CurrentNetwork> {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample transmission IDs.
         let transmission_ids =
             narwhal_transmission_id::test_helpers::sample_transmission_ids(rng).into_iter().collect::<IndexSet<_>>();
-        // Sample certificate IDs.
-        let certificate_ids = (0..10).map(|_| Field::<CurrentNetwork>::rand(rng)).collect::<IndexSet<_>>();
         // Checkpoint the timestamp for the batch.
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
         // Return the batch header.
-        BatchHeader::new(&private_key, round, timestamp, transmission_ids, certificate_ids, rng).unwrap()
+        BatchHeader::new(&private_key, round, timestamp, transmission_ids, previous_certificate_ids, rng).unwrap()
     }
 
     /// Returns a list of sample batch headers, sampled at random.

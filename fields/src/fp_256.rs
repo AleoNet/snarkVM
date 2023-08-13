@@ -571,16 +571,16 @@ impl_add_sub_from_field_ref!(Fp256, Fp256Parameters);
 impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
 
 impl<P: Fp256Parameters> ToBits for Fp256<P> {
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_bigint().to_bits_le();
-        bits_vec.truncate(P::MODULUS_BITS as usize);
-        bits_vec
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.to_bigint().write_bits_le(vec);
+        vec.truncate(initial_len + P::MODULUS_BITS as usize);
     }
 
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_vec = self.to_bits_le();
-        bits_vec.reverse();
-        bits_vec
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.write_bits_le(vec);
+        vec[initial_len..].reverse();
     }
 }
 

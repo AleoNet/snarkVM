@@ -48,16 +48,15 @@ use console::{
     },
     types::Field,
 };
-use narwhal_batch_certificate::BatchCertificate;
+use narwhal_subdag::Subdag;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
-use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Authority<N: Network> {
     Beacon(Signature<N>),
-    Quorum(BTreeMap<u64, Vec<BatchCertificate<N>>>),
+    Quorum(Subdag<N>),
 }
 
 impl<N: Network> Authority<N> {
@@ -74,7 +73,7 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub fn new_quorum(subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>) -> Self {
+    pub fn new_quorum(subdag: Subdag<N>) -> Self {
         Self::Quorum(subdag)
     }
 }
@@ -86,7 +85,7 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub const fn from_quorum(subdag: BTreeMap<u64, Vec<BatchCertificate<N>>>) -> Self {
+    pub const fn from_quorum(subdag: Subdag<N>) -> Self {
         Self::Quorum(subdag)
     }
 }
@@ -130,15 +129,8 @@ pub mod test_helpers {
 
     /// Returns a sample quorum authority.
     pub fn sample_quorum_authority(rng: &mut TestRng) -> Authority<CurrentNetwork> {
-        // Sample a list of batch certificates.
-        let batch_certificates = narwhal_batch_certificate::test_helpers::sample_batch_certificates(rng);
-        // Group the batch certificates by round.
-        let mut subdag = BTreeMap::new();
-        for batch_certificate in batch_certificates {
-            subdag.entry(batch_certificate.round()).or_insert_with(Vec::new).push(batch_certificate);
-        }
         // Return the quorum authority.
-        Authority::new_quorum(subdag)
+        Authority::new_quorum(narwhal_subdag::test_helpers::sample_subdag(rng))
     }
 
     /// Returns a list of sample authorities.

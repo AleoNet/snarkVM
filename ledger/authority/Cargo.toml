@@ -27,16 +27,16 @@ edition = "2021"
 default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
-test-helpers = [ "narwhal-batch-certificate/test-helpers" ]
+test-helpers = [ "narwhal-subdag/test-helpers" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
 version = "=0.14.6"
 
-[dependencies.narwhal-batch-certificate]
-package = "snarkvm-ledger-narwhal-batch-certificate"
-path = "../narwhal/batch-certificate"
+[dependencies.narwhal-subdag]
+package = "snarkvm-ledger-narwhal-subdag"
+path = "../narwhal/subdag"
 version = "=0.14.6"
 
 [dependencies.anyhow]

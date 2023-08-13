@@ -436,7 +436,7 @@ mod tests {
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
-            genesis.last_coinbase_timestamp(),
+            genesis.last_coinbase_height(),
             CurrentNetwork::GENESIS_TIMESTAMP + 1,
         )
         .unwrap();
@@ -453,7 +453,7 @@ mod tests {
 
         // Construct a new block for the deploy transaction.
         let deployment_block =
-            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, transactions, vec![], None, rng)
+            Block::new_beacon(&caller_private_key, genesis.hash(), deployment_header, vec![], None, transactions, rng)
                 .unwrap();
 
         // Add the deployment block.

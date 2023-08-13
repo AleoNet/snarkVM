@@ -112,7 +112,7 @@ impl<N: Network> Transaction<N> {
             // Construct the transaction leaf.
             Ok(TransactionLeaf::new_deployment(
                 u16::try_from(index)?,
-                N::hash_bhp1024(&[program.id().to_bits_le(), function.to_bytes_le()?.to_bits_le()].concat())?,
+                N::hash_bhp1024(&to_bits_le![program.id(), function.to_bytes_le()?])?,
             )
             .to_bits_le())
         });

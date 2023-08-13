@@ -402,7 +402,7 @@ finalize transfer_public:
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_timestamp(),
+            previous_block.last_coinbase_height(),
             CurrentNetwork::GENESIS_TIMESTAMP + 1,
         )?;
 
@@ -415,7 +415,7 @@ finalize transfer_public:
             metadata,
         )?;
 
-        let block = Block::new_beacon(private_key, previous_block.hash(), header, transactions, vec![], None, rng)?;
+        let block = Block::new_beacon(private_key, previous_block.hash(), header, vec![], None, transactions, rng)?;
 
         // Track the new records.
         let new_records = block
