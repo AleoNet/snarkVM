@@ -337,7 +337,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         {
             // If this function has the finalize command, then construct the finalize inputs.
             if let Some(command) = function.finalize_command() {
-                use circuit::ToBits;
+                use circuit::traits::ToBits;
 
                 // Ensure the number of inputs is within bounds.
                 ensure!(

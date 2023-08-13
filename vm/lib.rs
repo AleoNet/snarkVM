@@ -71,16 +71,10 @@ pub mod traits {
 pub mod prelude {
     pub use crate::{errors::*, traits::*};
 
-    #[cfg(feature = "algorithms")]
-    pub use crate::algorithms::prelude::*;
     #[cfg(feature = "console")]
-    pub use crate::console::{account::*, network::*, prelude::*, program::*};
+    pub use crate::console::{account::*, network::*, program::*};
     #[cfg(feature = "ledger")]
     pub use crate::ledger::*;
-    #[cfg(feature = "parameters")]
-    pub use crate::parameters::prelude::*;
     #[cfg(feature = "synthesizer")]
     pub use crate::synthesizer::prelude::*;
-    #[cfg(feature = "utilities")]
-    pub use crate::utilities::*;
 }
