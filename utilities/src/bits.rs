@@ -17,6 +17,12 @@ use crate::Vec;
 use anyhow::Result;
 
 pub trait ToBits: Sized {
+    /// Writes `self` into the given vector as a boolean array in little-endian order.
+    fn write_bits_le(&self, vec: &mut Vec<bool>);
+
+    /// Writes `self` into the given vector as a boolean array in big-endian order.
+    fn write_bits_be(&self, vec: &mut Vec<bool>);
+
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool> {
         let mut bits = vec![];
@@ -24,20 +30,12 @@ pub trait ToBits: Sized {
         bits
     }
 
-    /// Writes `self` into the given vector as a boolean array
-    /// in little-endian order.
-    fn write_bits_le(&self, vec: &mut Vec<bool>);
-
     /// Returns `self` as a boolean array in big-endian order.
     fn to_bits_be(&self) -> Vec<bool> {
         let mut bits = vec![];
         self.write_bits_be(&mut bits);
         bits
     }
-
-    /// Writes `self` into the given vector as a boolean array
-    /// in big-endian order.
-    fn write_bits_be(&self, vec: &mut Vec<bool>);
 }
 
 pub trait FromBits: Sized {
