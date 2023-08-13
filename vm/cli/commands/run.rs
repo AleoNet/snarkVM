@@ -14,8 +14,6 @@
 
 use super::*;
 
-pub const LOCALE: &num_format::Locale = &num_format::Locale::en;
-
 /// Runs an Aleo program function
 #[derive(Debug, Parser)]
 pub struct Run {

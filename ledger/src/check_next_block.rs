@@ -311,7 +311,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
             };
 
-            self.check_transaction_basic(transaction.deref(), rejected_id)
+            self.check_transaction_basic(*transaction, rejected_id)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
