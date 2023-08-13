@@ -53,6 +53,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                     // Initialize a vector for the hash preimage.
                     let mut preimage = Vec::with_capacity(num_hasher_bits);
                     digest.to_x_coordinate().write_bits_le(&mut preimage);
+                    preimage.truncate(num_data_bits);
                     preimage.extend_from_slice(input_bits);
                     preimage
                 }
