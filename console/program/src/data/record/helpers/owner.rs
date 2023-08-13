@@ -140,59 +140,55 @@ impl<N: Network> Owner<N, Ciphertext<N>> {
 
 impl<N: Network> ToBits for Owner<N, Plaintext<N>> {
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_le = vec![self.is_private()];
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_le.extend(public.to_bits_le()),
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_le.extend(address.to_bits_le()),
+            Self::Public(public) => public.write_bits_le(vec),
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address.write_bits_le(vec),
             _ => N::halt("Internal error: plaintext to_bits_le corrupted in record owner"),
-        }
-        bits_le
+        };
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_be = vec![self.is_private()];
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_be.extend(public.to_bits_be()),
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_be.extend(address.to_bits_be()),
+            Self::Public(public) => public.write_bits_be(vec),
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address.write_bits_be(vec),
             _ => N::halt("Internal error: plaintext to_bits_be corrupted in record owner"),
-        }
-        bits_be
+        };
     }
 }
 
 impl<N: Network> ToBits for Owner<N, Ciphertext<N>> {
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_le = vec![self.is_private()];
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_le.extend(public.to_bits_le()),
+            Self::Public(public) => public.write_bits_le(vec),
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
-                    true => bits_le.extend(ciphertext[0].to_bits_le()),
+                    true => ciphertext[0].write_bits_le(vec),
                     false => N::halt("Internal error: ciphertext to_bits_le corrupted in record owner"),
                 }
             }
-        }
-        bits_le
+        };
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_be = vec![self.is_private()];
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        vec.push(self.is_private());
         match self {
-            Self::Public(public) => bits_be.extend(public.to_bits_be()),
+            Self::Public(public) => public.write_bits_be(vec),
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
-                    true => bits_be.extend(ciphertext[0].to_bits_be()),
+                    true => ciphertext[0].write_bits_be(vec),
                     false => N::halt("Internal error: ciphertext to_bits_be corrupted in record owner"),
                 }
             }
-        }
-        bits_be
+        };
     }
 }
 

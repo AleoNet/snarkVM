@@ -100,9 +100,8 @@ impl<N: Network> StatePath<N> {
                 self.block_hash
             );
             // Ensure the block hash is correct.
-            let preimage = (*self.previous_block_hash).to_bits_le().into_iter().chain(self.header_root.to_bits_le());
             ensure!(
-                *self.block_hash == N::hash_bhp1024(&preimage.collect::<Vec<_>>())?,
+                *self.block_hash == N::hash_bhp1024(&to_bits_le![(*self.previous_block_hash), self.header_root])?,
                 "Block hash '{}' is incorrect. Double-check the previous block hash and block header root.",
                 self.block_hash
             );

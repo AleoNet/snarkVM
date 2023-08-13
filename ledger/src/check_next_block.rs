@@ -228,7 +228,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Check the block hash.
-        match N::hash_bhp1024(&[block.previous_hash().to_bits_le(), header_root.to_bits_le()].concat()) {
+        match N::hash_bhp1024(&to_bits_le![block.previous_hash(), header_root]) {
             Ok(candidate_hash) => {
                 // Ensure the block hash matches the one in the block.
                 if candidate_hash != *block.hash() {
