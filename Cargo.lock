@@ -3147,6 +3147,7 @@ dependencies = [
 name = "snarkvm-ledger-coinbase"
 version = "0.14.6"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "bincode",
  "blake2",
