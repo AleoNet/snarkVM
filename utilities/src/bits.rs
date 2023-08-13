@@ -25,6 +25,11 @@ macro_rules! to_bits_le {
         $($x.write_bits_le(&mut buffer);)*
         buffer
     });
+    ($($x:expr),*; $size:expr) => ({
+        let mut buffer = $crate::Vec::with_capacity($size);
+        $($x.write_bits_le(&mut buffer);)*
+        buffer
+    });
 }
 
 pub trait ToBits: Sized {
@@ -355,6 +360,26 @@ mod tests {
                 .map(|_| (0..128).map(|_| random_string(rng.gen(), rng)).collect::<Vec<String>>())
                 .collect::<Vec<_>>()
         );
+    }
+    
+    #[test]
+    fn test_to_bits_le_macro_with_capacity() {
+        let mut expected = Vec::new();
+        1u8.write_bits_le(&mut expected);
+        2u16.write_bits_le(&mut expected);
+        3u32.write_bits_le(&mut expected);
+        4u64.write_bits_le(&mut expected);
+        5u128.write_bits_le(&mut expected);
+        6i8.write_bits_le(&mut expected);
+        7i16.write_bits_le(&mut expected);
+        8i32.write_bits_le(&mut expected);
+        9i64.write_bits_le(&mut expected);
+        10i128.write_bits_le(&mut expected);
+
+        let capacity = expected.len();
+
+        let candidate = to_bits_le![1u8, 2u16, 3u32, 4u64, 5u128, 6i8, 7i16, 8i32, 9i64, 10i128; capacity];
+        assert_eq!(candidate, expected);
     }
 
     #[test]
