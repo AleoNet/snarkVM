@@ -32,6 +32,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         // The maximum number of input bits per iteration.
         let max_input_bits_per_iteration = num_hasher_bits - num_data_bits;
 
+        debug_assert!(num_data_bits < num_hasher_bits);
+
         // Initialize a variable to store the hash from the current iteration.
         let mut digest = Group::<E>::zero();
 
