@@ -33,7 +33,8 @@ impl<E: Environment> ToBits for &Field<E> {
 
     /// Outputs the unique, minimal little-endian bit representation of `self` *without* trailing zeros.
     fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
-        vec.extend_from_slice(self.bits_le.get_or_init(|| {
+        // Compute the bits of the field value.
+        let bits = self.bits_le.get_or_init(|| {
             // Extract a non-unique little-endian bit representation of `self`.
             let bits_le = self.to_non_unique_bits_le();
 
@@ -47,7 +48,9 @@ impl<E: Environment> ToBits for &Field<E> {
             }
 
             bits_le
-        }))
+        });
+        // Extend the vector with the bits of the field value.
+        vec.extend_from_slice(bits)
     }
 
     /// Outputs the unique, minimal big-endian bit representation of `self` *without* leading zeros.

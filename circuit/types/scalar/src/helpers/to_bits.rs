@@ -33,7 +33,8 @@ impl<E: Environment> ToBits for &Scalar<E> {
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
     fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
-        vec.extend_from_slice(self.bits_le.get_or_init(|| {
+        // Compute the bits of the scalar.
+        let bits = self.bits_le.get_or_init(|| {
             // Note: We are reconstituting the scalar field into a base field.
             // This is safe as the scalar field modulus is less than the base field modulus,
             // and thus will always fit within a single base field element.
@@ -52,7 +53,9 @@ impl<E: Environment> ToBits for &Scalar<E> {
             }
 
             bits_le
-        }))
+        });
+        // Extend the vector with the bits of the scalar.
+        vec.extend_from_slice(bits)
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
