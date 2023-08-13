@@ -37,26 +37,26 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
 
         // Compute the hash of the input.
         for (i, input_bits) in input.chunks(max_input_bits_per_iteration).enumerate() {
-            // Initialize a vector for the hash preimage.
-            let mut preimage = Vec::with_capacity(num_hasher_bits);
             // Determine if this is the first iteration.
-            match i == 0 {
+            let preimage = match i == 0 {
                 // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
                 true => {
+                    // Initialize a vector for the hash preimage.
+                    let mut preimage = Vec::with_capacity(num_hasher_bits);
                     preimage.extend(self.domain.clone());
                     U64::constant(console::U64::new(input.len() as u64)).write_bits_le(&mut preimage);
                     preimage.extend_from_slice(input_bits);
+                    preimage
                 }
                 // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
                 false => {
-                    // Record the initial length of the vector for truncation purposes
-                    // in case anything is added before this point in the future.
-                    let initial_len = preimage.len();
+                    // Initialize a vector for the hash preimage.
+                    let mut preimage = Vec::with_capacity(num_hasher_bits);
                     digest.to_x_coordinate().write_bits_le(&mut preimage);
-                    preimage.truncate(initial_len + num_data_bits);
                     preimage.extend_from_slice(input_bits);
+                    preimage
                 }
-            }
+            };
             // Hash the preimage for this iteration.
             digest = self.hasher.hash_uncompressed(&preimage);
         }
