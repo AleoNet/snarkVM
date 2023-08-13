@@ -29,7 +29,7 @@ portable = [ "blst/portable" ]
 quiet = [ ]
 
 [dependencies.blst]
-version = "0.3.9"
+version = "0.3.11"
 features = [ ]
 
 [dependencies.sppark]
