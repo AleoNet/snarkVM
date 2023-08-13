@@ -74,21 +74,24 @@ impl<N: Network> StatePath<N> {
         transition_leaf: TransitionLeaf<N>,
     ) -> Result<Self> {
         // Compute an arbitrary transactions path.
-        let transactions_tree: TransactionsTree<N> = N::merkle_tree_bhp(&[local_state_root.to_bits_le()])?;
-        let transactions_path = transactions_tree.prove(0, &local_state_root.to_bits_le())?;
+        let local_state_root_bits = local_state_root.to_bits_le();
+        let transactions_tree: TransactionsTree<N> = N::merkle_tree_bhp(&[local_state_root_bits.clone()])?;
+        let transactions_path = transactions_tree.prove(0, &local_state_root_bits)?;
         let transactions_root = transactions_tree.root();
 
         // Compute an arbitrary block header path.
         let header_leaf = HeaderLeaf::<N>::new(0, *transactions_root);
-        let header_tree: HeaderTree<N> = N::merkle_tree_bhp(&[header_leaf.to_bits_le()])?;
-        let header_path = header_tree.prove(0, &header_leaf.to_bits_le())?;
+        let header_leaf_bits = header_leaf.to_bits_le();
+        let header_tree: HeaderTree<N> = N::merkle_tree_bhp(&[header_leaf_bits.clone()])?;
+        let header_path = header_tree.prove(0, &header_leaf_bits)?;
         let header_root = *header_tree.root();
 
         // Compute an arbitrary block path.
         let previous_block_hash: N::BlockHash = Field::<N>::zero().into();
         let block_hash: N::BlockHash = previous_block_hash;
-        let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[block_hash.to_bits_le()])?;
-        let block_path = block_tree.prove(0, &block_hash.to_bits_le())?;
+        let block_hash_bits = block_hash.to_bits_le();
+        let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[block_hash_bits.clone()])?;
+        let block_path = block_tree.prove(0, &block_hash_bits)?;
 
         // Return the state path.
         Ok(Self {

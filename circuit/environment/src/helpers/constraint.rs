@@ -16,7 +16,7 @@ use crate::{prelude::*, *};
 use snarkvm_fields::PrimeField;
 
 #[derive(Clone, Debug)]
-pub(crate) struct Constraint<F: PrimeField>(
+pub struct Constraint<F: PrimeField>(
     pub(crate) Scope,
     pub(crate) LinearCombination<F>,
     pub(crate) LinearCombination<F>,
@@ -47,7 +47,7 @@ impl<F: PrimeField> Constraint<F> {
     }
 
     /// Returns a reference to the terms `(a, b, c)`.
-    pub(crate) fn to_terms(&self) -> (&LinearCombination<F>, &LinearCombination<F>, &LinearCombination<F>) {
+    pub fn to_terms(&self) -> (&LinearCombination<F>, &LinearCombination<F>, &LinearCombination<F>) {
         (&self.1, &self.2, &self.3)
     }
 }

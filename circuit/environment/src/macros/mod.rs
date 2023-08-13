@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod metrics;
+mod metrics;
 pub use metrics::*;
 
-pub mod scope;
+mod scope;
 pub use scope::*;
 
-pub mod witness;
+mod witness;
 pub use witness::*;

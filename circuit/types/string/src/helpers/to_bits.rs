@@ -18,13 +18,13 @@ impl<E: Environment> ToBits for StringType<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *with* trailing zeros (to byte-alignment).
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *with* leading zeros (to byte-alignment).
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -32,13 +32,13 @@ impl<E: Environment> ToBits for &StringType<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *with* trailing zeros (to byte-alignment).
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.bytes.to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        self.bytes.write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *with* leading zeros (to byte-alignment).
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        self.bytes.to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        self.bytes.write_bits_be(vec);
     }
 }
 

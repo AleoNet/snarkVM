@@ -19,10 +19,22 @@ pub trait ToBits {
     type Boolean: BooleanTrait;
 
     /// Returns the little-endian bits of the circuit.
-    fn to_bits_le(&self) -> Vec<Self::Boolean>;
+    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        let mut bits = vec![];
+        self.write_bits_le(&mut bits);
+        bits
+    }
+
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>);
 
     /// Returns the big-endian bits of the circuit.
-    fn to_bits_be(&self) -> Vec<Self::Boolean>;
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        let mut bits = vec![];
+        self.write_bits_be(&mut bits);
+        bits
+    }
+
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>);
 }
 
 /********************/
@@ -34,16 +46,16 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait> ToBits for Vec<C> {
 
     /// A helper method to return a concatenated list of little-endian bits from the circuits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
         // The vector is order-preserving, meaning the first circuit in is the first circuit bits out.
-        self.as_slice().to_bits_le()
+        self.as_slice().write_bits_le(vec);
     }
 
     /// A helper method to return a concatenated list of big-endian bits from the circuits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
         // The vector is order-preserving, meaning the first circuit in is the first circuit bits out.
-        self.as_slice().to_bits_be()
+        self.as_slice().write_bits_be(vec);
     }
 }
 
@@ -52,16 +64,16 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait, const N: usize> ToBits for [C; N] 
 
     /// A helper method to return a concatenated list of little-endian bits from the circuits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
         // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
-        self.as_slice().to_bits_le()
+        self.as_slice().write_bits_le(vec);
     }
 
     /// A helper method to return a concatenated list of big-endian bits from the circuits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
         // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
-        self.as_slice().to_bits_be()
+        self.as_slice().write_bits_be(vec);
     }
 }
 
@@ -70,16 +82,20 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait> ToBits for &[C] {
 
     /// A helper method to return a concatenated list of little-endian bits from the circuits.
     #[inline]
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
         // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
-        self.iter().flat_map(|c| c.to_bits_le()).collect()
+        for elem in self.iter() {
+            elem.write_bits_le(vec);
+        }
     }
 
     /// A helper method to return a concatenated list of big-endian bits from the circuits.
     #[inline]
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
         // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
-        self.iter().flat_map(|c| c.to_bits_be()).collect()
+        for elem in self.iter() {
+            elem.write_bits_be(vec);
+        }
     }
 }
 
@@ -95,20 +111,16 @@ macro_rules! to_bits_tuple {
 
             /// A helper method to return a concatenated list of little-endian bits from the circuits.
             #[inline]
-            fn to_bits_le(&self) -> Vec<Self::Boolean> {
+            fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_le().into_iter()
-                    $(.chain(self.$idx.to_bits_le().into_iter()))+
-                    .collect()
+                (&self).write_bits_le(vec);
             }
 
             /// A helper method to return a concatenated list of big-endian bits from the circuits.
             #[inline]
-            fn to_bits_be(&self) -> Vec<Self::Boolean> {
+            fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_be().into_iter()
-                    $(.chain(self.$idx.to_bits_be().into_iter()))+
-                    .collect()
+                (&self).write_bits_be(vec);
             }
         }
 
@@ -117,20 +129,18 @@ macro_rules! to_bits_tuple {
 
             /// A helper method to return a concatenated list of little-endian bits from the circuits.
             #[inline]
-            fn to_bits_le(&self) -> Vec<Self::Boolean> {
+            fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_le().into_iter()
-                    $(.chain(self.$idx.to_bits_le().into_iter()))+
-                    .collect()
+                self.$i0.write_bits_le(vec);
+                $(self.$idx.write_bits_le(vec);)+
             }
 
             /// A helper method to return a concatenated list of big-endian bits from the circuits.
             #[inline]
-            fn to_bits_be(&self) -> Vec<Self::Boolean> {
+            fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
                 // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
-                self.$i0.to_bits_be().into_iter()
-                    $(.chain(self.$idx.to_bits_be().into_iter()))+
-                    .collect()
+                self.$i0.write_bits_be(vec);
+                $(self.$idx.write_bits_be(vec);)+
             }
         }
     }
