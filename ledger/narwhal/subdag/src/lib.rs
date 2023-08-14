@@ -81,28 +81,18 @@ pub struct Subdag<N: Network> {
 impl<N: Network> Subdag<N> {
     /// Initializes a new subdag.
     pub fn from(subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>) -> Result<Self> {
-        // Construct the subdag.
-        let subdag = Self { subdag };
-        // Ensure the subdag is valid.
-        subdag.check_subdag()?;
-        // Return the new `Subdag` instance.
-        Ok(subdag)
-    }
-
-    /// Verifies the subdag. On failure, returns an error.
-    pub fn check_subdag(&self) -> Result<()> {
         // Ensure the subdag is not empty.
-        ensure!(!self.subdag.is_empty(), "Subdag cannot be empty");
+        ensure!(!subdag.is_empty(), "Subdag cannot be empty");
         // Ensure the anchor round is odd.
-        ensure!(self.subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 1, "Anchor round must be odd");
+        ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 1, "Anchor round must be odd");
         // Ensure there is only one leader certificate.
-        ensure!(self.subdag.iter().next_back().map_or(0, |(_, c)| c.len()) == 1, "Subdag cannot have multiple leaders");
+        ensure!(subdag.iter().next_back().map_or(0, |(_, c)| c.len()) == 1, "Subdag cannot have multiple leaders");
         // Ensure the rounds are sequential.
-        ensure!(is_sequential(&self.subdag), "Subdag rounds must be sequential");
+        ensure!(is_sequential(&subdag), "Subdag rounds must be sequential");
         // Ensure the subdag structure matches the commit.
-        ensure!(sanity_check_subdag_with_dfs(&self.subdag), "Subdag structure does not match commit");
+        ensure!(sanity_check_subdag_with_dfs(&subdag), "Subdag structure does not match commit");
         // Ensure the leader certificate is an even round.
-        Ok(())
+        Ok(Self { subdag })
     }
 }
 

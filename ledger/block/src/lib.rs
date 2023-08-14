@@ -133,8 +133,6 @@ impl<N: Network> Block<N> {
                 ensure!(subdag.timestamp() == header.timestamp(), "Invalid timestamp for block {}", header.height());
 
                 // TODO (raychu86): Check that the already ordered or GC'd certificates exist in the ledger?
-                // Ensure that the subdag is valid.
-                subdag.check_subdag()?;
 
                 // Flatten the transmission ids from the subdag into a single vector.
                 let transmission_ids: indexmap::IndexSet<_> =
