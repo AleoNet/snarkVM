@@ -32,9 +32,11 @@ impl<N: Network> Block<N> {
     ) -> Result<()> {
         // Ensure the block hash is correct.
         self.verify_hash(previous_block)?;
+
         // Ensure the block authority is correct.
         let (expected_round, expected_height, expected_timestamp) =
             self.verify_authority(previous_block, current_committee)?;
+
         // Ensure the block solutions are correct.
         let (
             expected_cumulative_weight,
@@ -47,8 +49,30 @@ impl<N: Network> Block<N> {
             expected_puzzle_reward,
         ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_challenge)?;
 
+        // Ensure the block ratifications are correct.
+        self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
+
+        // Ensure the block transactions are correct.
+        self.verify_transactions()?;
+
+        // Set the expected previous state root.
+        let expected_previous_state_root = current_state_root;
+        // Compute the expected transactions root.
+        let expected_transactions_root = self.compute_transactions_root()?;
+        // Compute the expected finalize root.
+        let expected_finalize_root = self.compute_finalize_root()?;
+        // Compute the expected ratifications root.
+        let expected_ratifications_root = self.compute_ratifications_root()?;
+        // Compute the expected solutions root.
+        let expected_solutions_root = self.compute_solutions_root()?;
+
         // Ensure the block header is correct.
-        self.verify_header(
+        self.header.verify(
+            expected_previous_state_root,
+            expected_transactions_root,
+            expected_finalize_root,
+            expected_ratifications_root,
+            expected_solutions_root,
             expected_round,
             expected_height,
             expected_cumulative_weight,
@@ -58,16 +82,8 @@ impl<N: Network> Block<N> {
             expected_last_coinbase_target,
             expected_last_coinbase_height,
             expected_timestamp,
-            current_state_root,
             current_timestamp,
-        )?;
-
-        // Ensure the block ratifications are correct.
-        self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
-        // Ensure the block transactions are correct.
-        self.verify_transactions()?;
-        // Return success.
-        Ok(())
+        )
     }
 }
 
@@ -104,53 +120,6 @@ impl<N: Network> Block<N> {
             Into::<N::BlockHash>::into(candidate_hash)
         );
         // Return success.
-        Ok(())
-    }
-
-    /// Ensures the block header is correct.
-    fn verify_header(
-        &self,
-        expected_round: u64,
-        expected_height: u32,
-        expected_cumulative_weight: u128,
-        expected_cumulative_proof_target: u128,
-        expected_coinbase_target: u64,
-        expected_proof_target: u64,
-        expected_last_coinbase_target: u64,
-        expected_last_coinbase_height: u32,
-        expected_timestamp: i64,
-        current_state_root: N::StateRoot,
-        current_timestamp: i64,
-    ) -> Result<(), Error> {
-        // Set the expected previous state root.
-        let expected_previous_state_root = current_state_root;
-        // Compute the expected transactions root.
-        let expected_transactions_root = self.compute_transactions_root()?;
-        // Compute the expected finalize root.
-        let expected_finalize_root = self.compute_finalize_root()?;
-        // Compute the expected ratifications root.
-        let expected_ratifications_root = self.compute_ratifications_root()?;
-        // Compute the expected solutions root.
-        let expected_solutions_root = self.compute_solutions_root()?;
-
-        // Ensure the block header is correct.
-        self.header.verify(
-            expected_previous_state_root,
-            expected_transactions_root,
-            expected_finalize_root,
-            expected_ratifications_root,
-            expected_solutions_root,
-            expected_round,
-            expected_height,
-            expected_cumulative_weight,
-            expected_cumulative_proof_target,
-            expected_coinbase_target,
-            expected_proof_target,
-            expected_last_coinbase_target,
-            expected_last_coinbase_height,
-            expected_timestamp,
-            current_timestamp,
-        )?;
         Ok(())
     }
 
