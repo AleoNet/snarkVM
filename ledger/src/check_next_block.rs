@@ -29,42 +29,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Block height '{height}' already exists in the ledger")
         }
 
-        // Ensure the block is correct.
-        block.verify(
-            &self.latest_block(),
-            self.latest_state_root(),
-            &self.latest_committee()?,
-            self.coinbase_puzzle(),
-            &self.latest_epoch_challenge()?,
-            OffsetDateTime::now_utc().unix_timestamp(),
-        )?;
-
-        // Retrieve the latest total supply.
-        let latest_total_supply = self.latest_total_supply_in_microcredits();
-        // Retrieve the block reward from the first block ratification.
-        let block_reward = match block.ratifications()[0] {
-            Ratify::BlockReward(block_reward) => block_reward,
-            _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
-        };
-        // Retrieve the puzzle reward from the second block ratification.
-        let puzzle_reward = match block.ratifications()[1] {
-            Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
-            _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
-        };
-        // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits =
-            update_total_supply(latest_total_supply, block_reward, puzzle_reward, block.transactions())?;
-        // Ensure the total supply in microcredits is correct.
-        if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
-            bail!("Invalid total supply in microcredits")
+        // Ensure the solutions do not already exist.
+        if let Some(coinbase) = block.coinbase() {
+            for puzzle_commitment in coinbase.puzzle_commitments() {
+                if self.contains_puzzle_commitment(&puzzle_commitment)? {
+                    bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
+                }
+            }
         }
 
-        /* Transactions */
-
-        // FIXME: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
-        let transactions = block.transactions().iter().collect::<Vec<_>>();
-
         // Ensure each transaction is well-formed and unique.
+        // TODO: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
+        let transactions = block.transactions().iter().collect::<Vec<_>>();
         cfg_iter!(transactions).try_for_each(|transaction| {
             // Construct the rejected ID.
             let rejected_id = match transaction {
@@ -76,6 +52,39 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             self.check_transaction_basic(*transaction, rejected_id)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
+
+        // Ensure the block is correct.
+        block.verify(
+            &self.latest_block(),
+            self.latest_state_root(),
+            &self.latest_committee()?,
+            self.coinbase_puzzle(),
+            &self.latest_epoch_challenge()?,
+            OffsetDateTime::now_utc().unix_timestamp(),
+        )?;
+
+        // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
+        {
+            // Retrieve the latest total supply.
+            let latest_total_supply = self.latest_total_supply_in_microcredits();
+            // Retrieve the block reward from the first block ratification.
+            let block_reward = match block.ratifications()[0] {
+                Ratify::BlockReward(block_reward) => block_reward,
+                _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
+            };
+            // Retrieve the puzzle reward from the second block ratification.
+            let puzzle_reward = match block.ratifications()[1] {
+                Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
+                _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
+            };
+            // Compute the next total supply in microcredits.
+            let next_total_supply_in_microcredits =
+                update_total_supply(latest_total_supply, block_reward, puzzle_reward, block.transactions())?;
+            // Ensure the total supply in microcredits is correct.
+            if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
+                bail!("Invalid total supply in microcredits")
+            }
+        }
 
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
@@ -114,18 +123,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             != &self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?
         {
             bail!("The transactions after speculation do not match the transactions in the block");
-        }
-
-        /* Coinbase Proof */
-
-        // Ensure the solutions are valid, if they exist.
-        if let Some(coinbase) = block.coinbase() {
-            // Ensure the puzzle commitments are new.
-            for puzzle_commitment in coinbase.puzzle_commitments() {
-                if self.contains_puzzle_commitment(&puzzle_commitment)? {
-                    bail!("Puzzle commitment {puzzle_commitment} already exists in the ledger");
-                }
-            }
         }
 
         Ok(())
