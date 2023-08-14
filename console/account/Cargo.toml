@@ -25,7 +25,7 @@ features = [ "address", "field", "group", "scalar" ]
 version = "0.5"
 
 [dependencies.ed25519-dalek]
-version = "1.0"
+version = "2.0"
 optional = true
 
 [dev-dependencies.bincode]
