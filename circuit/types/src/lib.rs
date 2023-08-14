@@ -14,25 +14,34 @@
 
 #![forbid(unsafe_code)]
 
-pub use snarkvm_circuit_environment as environment;
-pub use snarkvm_circuit_types_address as address;
-pub use snarkvm_circuit_types_boolean as boolean;
-pub use snarkvm_circuit_types_field as field;
-pub use snarkvm_circuit_types_group as group;
-pub use snarkvm_circuit_types_integers as integers;
-pub use snarkvm_circuit_types_scalar as scalar;
-pub use snarkvm_circuit_types_string as string;
+pub use modules::*;
 
-pub use address::Address;
-pub use boolean::Boolean;
-pub use environment::prelude::*;
-pub use field::Field;
-pub use group::Group;
-pub use integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
-pub use scalar::Scalar;
-pub use string::StringType;
+pub mod modules {
+    pub use snarkvm_circuit_environment as environment;
+
+    pub use snarkvm_circuit_types_address as address;
+    pub use snarkvm_circuit_types_address::Address;
+
+    pub use snarkvm_circuit_types_boolean as boolean;
+    pub use snarkvm_circuit_types_boolean::Boolean;
+
+    pub use snarkvm_circuit_types_field as field;
+    pub use snarkvm_circuit_types_field::Field;
+
+    pub use snarkvm_circuit_types_group as group;
+    pub use snarkvm_circuit_types_group::Group;
+
+    pub use snarkvm_circuit_types_integers as integers;
+    pub use snarkvm_circuit_types_integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
+
+    pub use snarkvm_circuit_types_scalar as scalar;
+    pub use snarkvm_circuit_types_scalar::Scalar;
+
+    pub use snarkvm_circuit_types_string as string;
+    pub use snarkvm_circuit_types_string::StringType;
+}
 
 pub mod prelude {
-    pub use super::*;
-    pub use environment::prelude::*;
+    pub use crate::modules::*;
+    pub use snarkvm_circuit_environment::prelude::*;
 }

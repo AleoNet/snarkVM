@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-///!
-///! Blake2Xs function
-///!
-///! This implementation is based on the BLAKE2Xs specification in Section 2 of
-///! <https://www.blake2.net/blake2x.pdf>
-///!
+/// Blake2Xs function
+///
+/// This implementation is based on the BLAKE2Xs specification in Section 2 of
+/// <https://www.blake2.net/blake2x.pdf>
 mod hash_to_curve;
 
 pub struct Blake2Xs;

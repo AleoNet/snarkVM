@@ -14,28 +14,37 @@
 
 #![forbid(unsafe_code)]
 
-pub use snarkvm_circuit_account as account;
-pub use snarkvm_circuit_account::*;
+pub use modules::*;
 
-pub use snarkvm_circuit_algorithms as algorithms;
-pub use snarkvm_circuit_algorithms::*;
+pub mod modules {
+    pub use snarkvm_circuit_account as account;
+    pub use snarkvm_circuit_account::*;
 
-pub use snarkvm_circuit_collections as collections;
-pub use snarkvm_circuit_collections::*;
+    pub use snarkvm_circuit_algorithms as algorithms;
+    pub use snarkvm_circuit_algorithms::*;
 
-pub use snarkvm_circuit_environment as environment;
-pub use snarkvm_circuit_environment::*;
+    pub use snarkvm_circuit_collections as collections;
+    pub use snarkvm_circuit_collections::*;
 
-pub use snarkvm_circuit_network as network;
-pub use snarkvm_circuit_network::*;
+    pub use snarkvm_circuit_environment as environment;
+    pub use snarkvm_circuit_environment::{Assignment, Circuit, Eject, Environment, Inject, Mode};
 
-pub use snarkvm_circuit_program as program;
-pub use snarkvm_circuit_program::*;
+    pub use snarkvm_circuit_network as network;
+    pub use snarkvm_circuit_network::*;
 
-pub use snarkvm_circuit_types as types;
-pub use snarkvm_circuit_types::*;
+    pub use snarkvm_circuit_program as program;
+    pub use snarkvm_circuit_program::*;
+
+    pub use snarkvm_circuit_types as types;
+    pub use snarkvm_circuit_types::*;
+}
+
+pub mod traits {
+    pub use snarkvm_circuit_algorithms::traits::*;
+    pub use snarkvm_circuit_environment::traits::*;
+}
 
 pub mod prelude {
-    pub use super::*;
-    pub use snarkvm_circuit_environment::*;
+    pub use crate::modules::*;
+    pub use snarkvm_circuit_environment::prelude::*;
 }

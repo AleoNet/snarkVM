@@ -33,7 +33,7 @@ pub use function::*;
 mod import;
 pub use import::*;
 
-mod logic;
+pub mod logic;
 pub use logic::*;
 
 mod mapping;

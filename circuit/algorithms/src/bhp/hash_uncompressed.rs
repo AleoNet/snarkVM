@@ -32,27 +32,35 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         // The maximum number of input bits per iteration.
         let max_input_bits_per_iteration = num_hasher_bits - num_data_bits;
 
+        debug_assert!(num_data_bits < num_hasher_bits);
+        debug_assert_eq!(num_data_bits - 64, self.domain.len());
+
         // Initialize a variable to store the hash from the current iteration.
         let mut digest = Group::zero();
 
         // Compute the hash of the input.
         for (i, input_bits) in input.chunks(max_input_bits_per_iteration).enumerate() {
-            // Initialize a vector for the hash preimage.
-            let mut preimage = Vec::with_capacity(num_hasher_bits);
             // Determine if this is the first iteration.
-            match i == 0 {
+            let preimage = match i == 0 {
                 // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
                 true => {
+                    // Initialize a vector for the hash preimage.
+                    let mut preimage = Vec::with_capacity(num_hasher_bits);
                     preimage.extend(self.domain.clone());
-                    preimage.extend(U64::constant(console::U64::new(input.len() as u64)).to_bits_le());
+                    U64::constant(console::U64::new(input.len() as u64)).write_bits_le(&mut preimage);
                     preimage.extend_from_slice(input_bits);
+                    preimage
                 }
                 // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
                 false => {
-                    preimage.extend(digest.to_x_coordinate().to_bits_le().into_iter().take(num_data_bits));
+                    // Initialize a vector for the hash preimage.
+                    let mut preimage = Vec::with_capacity(num_hasher_bits);
+                    digest.to_x_coordinate().write_bits_le(&mut preimage);
+                    preimage.truncate(num_data_bits);
                     preimage.extend_from_slice(input_bits);
+                    preimage
                 }
-            }
+            };
             // Hash the preimage for this iteration.
             digest = self.hasher.hash_uncompressed(&preimage);
         }
