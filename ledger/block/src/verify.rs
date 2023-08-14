@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+
 use super::*;
 use console::program::RATIFICATIONS_DEPTH;
 use ledger_coinbase::{CoinbasePuzzle, EpochChallenge};
@@ -27,6 +30,11 @@ impl<N: Network> Block<N> {
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
     ) -> Result<()> {
+        // Ensure the block hash is correct.
+        self.verify_hash(previous_block)?;
+        // Ensure the block authority is correct.
+        let (expected_round, expected_height, expected_timestamp) =
+            self.verify_authority(previous_block, current_committee)?;
         // Ensure the block solutions are correct.
         let (
             expected_cumulative_weight,
@@ -39,23 +47,21 @@ impl<N: Network> Block<N> {
             expected_puzzle_reward,
         ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_challenge)?;
 
-        // Ensure the block hash is correct.
-        self.verify_hash(previous_block)?;
         // Ensure the block header is correct.
         self.verify_header(
+            expected_round,
+            expected_height,
             expected_cumulative_weight,
             expected_cumulative_proof_target,
             expected_coinbase_target,
             expected_proof_target,
             expected_last_coinbase_target,
             expected_last_coinbase_height,
-            previous_block,
+            expected_timestamp,
             current_state_root,
-            current_committee,
             current_timestamp,
         )?;
-        // Ensure the block authority is correct.
-        self.verify_authority(current_committee)?;
+
         // Ensure the block ratifications are correct.
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
         // Ensure the block transactions are correct.
@@ -104,15 +110,16 @@ impl<N: Network> Block<N> {
     /// Ensures the block header is correct.
     fn verify_header(
         &self,
+        expected_round: u64,
+        expected_height: u32,
         expected_cumulative_weight: u128,
         expected_cumulative_proof_target: u128,
         expected_coinbase_target: u64,
         expected_proof_target: u64,
         expected_last_coinbase_target: u64,
         expected_last_coinbase_height: u32,
-        previous_block: &Block<N>,
+        expected_timestamp: i64,
         current_state_root: N::StateRoot,
-        current_committee: &Committee<N>,
         current_timestamp: i64,
     ) -> Result<(), Error> {
         // Set the expected previous state root.
@@ -125,43 +132,6 @@ impl<N: Network> Block<N> {
         let expected_ratifications_root = self.compute_ratifications_root()?;
         // Compute the expected solutions root.
         let expected_solutions_root = self.compute_solutions_root()?;
-
-        // Determine the expected round.
-        let expected_round = match &self.authority {
-            // Beacon blocks increment the previous block round by 1.
-            Authority::Beacon(..) => previous_block.round().saturating_add(1),
-            // Quorum blocks use the subdag anchor round.
-            Authority::Quorum(subdag) => {
-                // Ensure the subdag anchor round is after the previous block round.
-                ensure!(
-                    subdag.anchor_round() > previous_block.round(),
-                    "Subdag anchor round is not after previous block round in block {} (found '{}', expected after '{}')",
-                    self.height(),
-                    subdag.anchor_round(),
-                    previous_block.round()
-                );
-                // Output the subdag anchor round.
-                subdag.anchor_round()
-            }
-        };
-        // Ensure the block round is at least the starting round of the committee.
-        ensure!(
-            expected_round >= current_committee.starting_round(),
-            "Block {} has an invalid round (found '{expected_round}', expected at least '{}')",
-            self.height(),
-            current_committee.starting_round()
-        );
-
-        // Determine the expected height.
-        let expected_height = previous_block.height().saturating_add(1);
-
-        // Determine the expected timestamp.
-        let expected_timestamp = match &self.authority {
-            // Beacon blocks do not have a timestamp check.
-            Authority::Beacon(..) => self.timestamp(),
-            // Quorum blocks use the median timestamp from the subdag.
-            Authority::Quorum(subdag) => subdag.timestamp(),
-        };
 
         // Ensure the block header is correct.
         self.header.verify(
@@ -185,17 +155,44 @@ impl<N: Network> Block<N> {
     }
 
     /// Ensures the block authority is correct.
-    fn verify_authority(&self, current_committee: &Committee<N>) -> Result<(), Error> {
-        let height = self.height();
-
+    fn verify_authority(&self, previous_block: &Block<N>, current_committee: &Committee<N>) -> Result<(u64, u32, i64)> {
+        // Determine the expected height.
+        let expected_height = previous_block.height().saturating_add(1);
         // Ensure the block type is correct.
-        match height == 0 {
+        match expected_height == 0 {
             true => ensure!(self.authority.is_beacon(), "The genesis block must be a beacon block"),
             false => {
                 #[cfg(not(test))]
                 ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
             }
         }
+
+        // Determine the expected round.
+        let expected_round = match &self.authority {
+            // Beacon blocks increment the previous block round by 1.
+            Authority::Beacon(..) => previous_block.round().saturating_add(1),
+            // Quorum blocks use the subdag anchor round.
+            Authority::Quorum(subdag) => {
+                // Ensure the subdag anchor round is after the previous block round.
+                ensure!(
+                    subdag.anchor_round() > previous_block.round(),
+                    "Subdag anchor round is not after previous block round in block {} (found '{}', expected after '{}')",
+                    expected_height,
+                    subdag.anchor_round(),
+                    previous_block.round()
+                );
+                // Output the subdag anchor round.
+                subdag.anchor_round()
+            }
+        };
+        // Ensure the block round is at least the starting round of the committee.
+        ensure!(
+            expected_round >= current_committee.starting_round(),
+            "Block {} has an invalid round (found '{expected_round}', expected at least '{}')",
+            expected_height,
+            current_committee.starting_round()
+        );
+
         // Ensure the block authority is correct.
         match &self.authority {
             Authority::Beacon(signature) => {
@@ -208,26 +205,37 @@ impl<N: Network> Block<N> {
                 // Ensure the block is signed by the first committee member.
                 ensure!(
                     signer == *first_member,
-                    "Beacon block {height} has an invalid signer (found '{signer}', expected '{first_member}')",
+                    "Beacon block {expected_height} has an invalid signer (found '{signer}', expected '{first_member}')",
                 );
                 // Ensure the signature is valid.
-                ensure!(signature.verify(&signer, &[*self.block_hash]), "Signature is invalid in block {height}");
+                ensure!(
+                    signature.verify(&signer, &[*self.block_hash]),
+                    "Signature is invalid in block {expected_height}"
+                );
             }
             // TODO: Check the certificates of the quorum.
             Authority::Quorum(subdag) => {
                 // Compute the expected leader.
-                let expected_leader = current_committee.get_leader(self.round())?;
+                let expected_leader = current_committee.get_leader(expected_round)?;
                 // Ensure the block is authored by the expected leader.
                 ensure!(
                     subdag.leader_address() == expected_leader,
-                    "Quorum block {height} ({}) is authored by an unexpected leader (found: {}, expected: {expected_leader})",
-                    self.hash(),
+                    "Quorum block {expected_height} is authored by an unexpected leader (found: {}, expected: {expected_leader})",
                     subdag.leader_address()
                 );
             }
         }
+
+        // Determine the expected timestamp.
+        let expected_timestamp = match &self.authority {
+            // Beacon blocks do not have a timestamp check.
+            Authority::Beacon(..) => self.timestamp(),
+            // Quorum blocks use the median timestamp from the subdag.
+            Authority::Quorum(subdag) => subdag.timestamp(),
+        };
+
         // Return success.
-        Ok(())
+        Ok((expected_round, expected_height, expected_timestamp))
     }
 
     /// Ensures the block ratifications are correct.
