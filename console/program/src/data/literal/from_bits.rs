@@ -37,7 +37,8 @@ impl<N: Network> Literal<N> {
             12 => Literal::U64(U64::from_bits_le(literal)?),
             13 => Literal::U128(U128::from_bits_le(literal)?),
             14 => Literal::Scalar(Scalar::from_bits_le(literal)?),
-            15 => {
+            15 => Literal::Signature(Box::new(Signature::from_bits_le(literal)?)),
+            16 => {
                 let buffer = Vec::<u8>::from_bits_le(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => {
@@ -47,8 +48,6 @@ impl<N: Network> Literal<N> {
                     false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
-            // Note: This is placed here in order to preserve (de)serializing existing variants.
-            16 => Literal::Signature(Box::new(Signature::from_bits_le(literal)?)),
             17.. => bail!("Failed to initialize literal variant {} from bits (LE)", variant),
         };
         Ok(literal)
@@ -76,7 +75,8 @@ impl<N: Network> Literal<N> {
             12 => Literal::U64(U64::from_bits_be(literal)?),
             13 => Literal::U128(U128::from_bits_be(literal)?),
             14 => Literal::Scalar(Scalar::from_bits_be(literal)?),
-            15 => {
+            15 => Literal::Signature(Box::new(Signature::from_bits_be(literal)?)),
+            16 => {
                 let buffer = Vec::<u8>::from_bits_be(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => {
@@ -86,8 +86,6 @@ impl<N: Network> Literal<N> {
                     false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
-            // Note: This is placed here in order to preserve (de)serializing existing variants.
-            16 => Literal::Signature(Box::new(Signature::from_bits_be(literal)?)),
             17.. => bail!("Failed to initialize literal variant {} from bits (BE)", variant),
         };
         Ok(literal)

@@ -23,8 +23,6 @@ impl<N: Network> ToBits for ComputeKey<N> {
         bits_le.extend(self.pk_sig.to_bits_le());
         // Write the `pr_sig` bits.
         bits_le.extend(self.pr_sig.to_bits_le());
-        // Write the `sk_prf` bits.
-        bits_le.extend(self.sk_prf.to_bits_le());
         // Return the `bits_le` vector.
         bits_le
     }
@@ -37,8 +35,6 @@ impl<N: Network> ToBits for ComputeKey<N> {
         bits_be.extend(self.pk_sig.to_bits_be());
         // Write the `pr_sig` bits.
         bits_be.extend(self.pr_sig.to_bits_be());
-        // Write the `sk_prf` bits.
-        bits_be.extend(self.sk_prf.to_bits_be());
         // Return the `bits_be` vector.
         bits_be
     }

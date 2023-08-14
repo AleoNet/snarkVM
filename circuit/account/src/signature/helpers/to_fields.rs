@@ -20,10 +20,9 @@ impl<A: Aleo> ToFields for Signature<A> {
 
     /// Casts a string into a list of base fields.
     fn to_fields(&self) -> Vec<Self::Field> {
-        // Convert the string bytes into bits, then chunk them into lists of size
-        // `E::BaseField::size_in_data_bits()` and recover the base field element for each chunk.
-        // (For advanced users: Chunk into CAPACITY bits and create a linear combination per chunk.)
-        self.to_bits_le().chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
+        let mut fields = vec![self.challenge.to_field(), self.response.to_field()];
+        fields.extend(self.compute_key.to_fields());
+        fields
     }
 }
 

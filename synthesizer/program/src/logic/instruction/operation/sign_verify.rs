@@ -46,7 +46,7 @@ impl<N: Network> SignVerify<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Literal("sign.verify")
+        Opcode::Sign
     }
 
     /// Returns the operands in the operation.

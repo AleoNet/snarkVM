@@ -16,3 +16,4 @@ use super::*;
 
 pub mod from_bits;
 pub mod to_bits;
+pub mod to_fields;

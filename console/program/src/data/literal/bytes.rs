@@ -34,9 +34,8 @@ impl<N: Network> FromBytes for Literal<N> {
             12 => Self::U64(U64::read_le(&mut reader)?),
             13 => Self::U128(U128::read_le(&mut reader)?),
             14 => Self::Scalar(Scalar::read_le(&mut reader)?),
-            15 => Self::String(StringType::read_le(&mut reader)?),
-            // Note: This is placed here in order to preserve (de)serializing existing variants.
-            16 => Self::Signature(Box::new(Signature::read_le(&mut reader)?)),
+            15 => Self::Signature(Box::new(Signature::read_le(&mut reader)?)),
+            16 => Self::String(StringType::read_le(&mut reader)?),
             17.. => return Err(error(format!("Failed to decode literal variant {index}"))),
         };
         Ok(literal)
@@ -108,12 +107,11 @@ impl<N: Network> ToBytes for Literal<N> {
                 (14 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            Self::String(primitive) => {
+            Self::Signature(primitive) => {
                 (15 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }
-            // Note: This is placed here in order to preserve (de)serializing existing variants.
-            Self::Signature(primitive) => {
+            Self::String(primitive) => {
                 (16 as Size).write_le(&mut writer)?;
                 primitive.write_le(&mut writer)
             }

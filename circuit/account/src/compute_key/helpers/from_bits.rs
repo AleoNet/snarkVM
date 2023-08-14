@@ -21,29 +21,23 @@ impl<A: Aleo> FromBits for ComputeKey<A> {
     /// Initializes a new compute key from a list of **little-endian** bits.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         let group_size_in_bits = console::Group::<A::Network>::size_in_bits();
-        let scalar_size_in_bits = console::Scalar::<A::Network>::size_in_bits();
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
-        let (sk_prf_start, sk_prf_end) = (pr_sig_end, pr_sig_end + scalar_size_in_bits);
-        Self {
-            pk_sig: Group::from_bits_le(&bits_le[pk_sig_start..pk_sig_end]),
-            pr_sig: Group::from_bits_le(&bits_le[pr_sig_start..pr_sig_end]),
-            sk_prf: Scalar::from_bits_le(&bits_le[sk_prf_start..sk_prf_end]),
-        }
+        Self::from_pk_sig_and_pr_sig((
+            Group::from_bits_le(&bits_le[pk_sig_start..pk_sig_end]),
+            Group::from_bits_le(&bits_le[pr_sig_start..pr_sig_end]),
+        ))
     }
 
     /// Initializes a new compute key from a list of **big-endian** bits.
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         let group_size_in_bits = console::Group::<A::Network>::size_in_bits();
-        let scalar_size_in_bits = console::Scalar::<A::Network>::size_in_bits();
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
-        let (sk_prf_start, sk_prf_end) = (pr_sig_end, pr_sig_end + scalar_size_in_bits);
-        Self {
-            pk_sig: Group::from_bits_be(&bits_be[pk_sig_start..pk_sig_end]),
-            pr_sig: Group::from_bits_be(&bits_be[pr_sig_start..pr_sig_end]),
-            sk_prf: Scalar::from_bits_be(&bits_be[sk_prf_start..sk_prf_end]),
-        }
+        Self::from_pk_sig_and_pr_sig((
+            Group::from_bits_be(&bits_be[pk_sig_start..pk_sig_end]),
+            Group::from_bits_be(&bits_be[pr_sig_start..pr_sig_end]),
+        ))
     }
 }
 

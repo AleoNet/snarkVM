@@ -14,10 +14,11 @@
 
 use super::*;
 
-impl<N: Network> SizeInBits for ComputeKey<N> {
-    /// Returns the compute key size in bits.
-    #[inline]
-    fn size_in_bits() -> usize {
-        Group::<N>::size_in_bits() + Group::<N>::size_in_bits()
+impl<A: Aleo> ToFields for ComputeKey<A> {
+    type Field = Field<A>;
+
+    /// Casts a string into a list of base fields.
+    fn to_fields(&self) -> Vec<Self::Field> {
+        vec![self.pk_sig().to_x_coordinate(), self.pr_sig().to_x_coordinate()]
     }
 }

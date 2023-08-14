@@ -18,6 +18,7 @@ mod serialize;
 mod size_in_bits;
 mod to_address;
 mod to_bits;
+mod to_fields;
 mod try_from;
 
 #[cfg(feature = "private_key")]
