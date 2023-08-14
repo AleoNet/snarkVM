@@ -1150,113 +1150,123 @@ fn test_unbond_delegator() {
 
     // Construct the process.
     let process = Process::<CurrentNetwork>::load().unwrap();
-
     // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+    let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
     // Initialize the validators and delegators.
-    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
+    let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
     let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
     let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
 
-    // Bond the validator.
-    let validator_amount = 5_000_000_000_000u64;
-    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
-
-    // Bond the delegator.
-    let delegator_amount = 20_000_000u64;
-    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
-
-    /* Ensure that the delegator can unbond if the remaining balance is more than 10 credits. */
-
-    let unbond_amount_1 = rng.gen_range(1_000_000..delegator_amount - MIN_DELEGATOR_STAKE);
-    let block_height_1 = rng.gen_range(1..100);
-    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount_1, block_height_1, rng).unwrap();
-
-    assert_eq!(
-        bond_state(&finalize_store, delegator_address).unwrap(),
-        Some((*validator_address, delegator_amount - unbond_amount_1))
-    );
-    assert_eq!(
-        unbond_state(&finalize_store, delegator_address).unwrap(),
-        Some((unbond_amount_1, block_height_1 + NUM_BLOCKS_TO_UNLOCK))
-    );
-
-    /* Ensure that the delegator can unbond its entire stake. */
-
-    let unbond_amount_2 = delegator_amount - unbond_amount_1;
-    let block_height_2 = rng.gen_range(block_height_1..1000);
-    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
-
-    assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), None);
-    assert_eq!(
-        unbond_state(&finalize_store, delegator_address).unwrap(),
-        Some((delegator_amount, block_height_2 + NUM_BLOCKS_TO_UNLOCK))
-    );
-}
-
-#[test]
-fn test_unbond_delegator_under_minimum_stake_removes() {
-    let rng = &mut TestRng::default();
-
-    // Construct the process.
-    let process = Process::<CurrentNetwork>::load().unwrap();
-
-    // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
-
-    // Initialize the validators and delegators.
-    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
-    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
-    let (delegator_private_key, (delegator_address, _)) = delegators.first().unwrap();
+    // Retrieve the account balance.
+    let validator_balance = account_balance(&store, validator_address).unwrap();
+    let delegator_balance = account_balance(&store, delegator_address).unwrap();
 
     // Bond the validator.
-    let validator_amount = 5_000_000_000_000u64;
-    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+    let validator_amount = MIN_VALIDATOR_STAKE;
+    bond_public(&process, &store, validator_private_key, validator_address, validator_amount, rng).unwrap();
 
     // Bond the delegator.
-    let delegator_amount = 20_000_000u64;
-    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+    let delegator_amount = 3 * MIN_DELEGATOR_STAKE;
+    bond_public(&process, &store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
 
-    /* Ensure that the delegator will be removed if the remaining balance is less than 10 credits. */
+    /* Ensure the delegator can unbond their entire balance. */
+    test_atomic_finalize!(store, FinalizeMode::RealRun, {
+        /* First Unbond */
 
-    let unbond_amount = rng.gen_range(delegator_amount - (MIN_DELEGATOR_STAKE - 1)..delegator_amount);
-    let block_height = rng.gen_range(1..100);
-    unbond_public(&process, &finalize_store, delegator_private_key, unbond_amount, block_height, rng).unwrap();
+        // Perform the first unbond.
+        let unbond_amount_1 = MIN_DELEGATOR_STAKE;
+        let block_height_1 = rng.gen_range(1..100);
+        unbond_public(&process, &store, delegator_private_key, unbond_amount_1, block_height_1, rng).unwrap();
 
-    assert_eq!(bond_state(&finalize_store, delegator_address).unwrap(), None);
-    assert_eq!(
-        unbond_state(&finalize_store, delegator_address).unwrap(),
-        Some((delegator_amount, block_height + NUM_BLOCKS_TO_UNLOCK))
-    );
-}
+        // Check that the committee, bond, and unbond state are correct.
+        let decremented_amount = validator_amount + delegator_amount - unbond_amount_1;
+        let decremented_delegator = delegator_amount - unbond_amount_1;
+        let unlock_height = block_height_1 + NUM_BLOCKS_TO_UNLOCK;
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((decremented_amount, true)));
+        assert_eq!(committee_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, validator_amount)));
+        assert_eq!(bond_state(&store, delegator_address).unwrap(), Some((*validator_address, decremented_delegator)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, delegator_address).unwrap(), Some((unbond_amount_1, unlock_height)));
 
-#[test]
-fn test_unbond_delegator_fails() {
-    let rng = &mut TestRng::default();
+        // Retrieve the account balance.
+        let validator_balance_1 = account_balance(&store, validator_address).unwrap();
+        let delegator_balance_1 = account_balance(&store, delegator_address).unwrap();
+        assert_eq!(validator_balance_1, validator_balance - validator_amount);
+        assert_eq!(delegator_balance_1, delegator_balance - delegator_amount);
 
-    // Construct the process.
-    let process = Process::<CurrentNetwork>::load().unwrap();
+        /* Second Unbond */
 
-    // Initialize a new finalize store.
-    let finalize_store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+        // Perform the second unbond.
+        let unbond_amount_2 = MIN_DELEGATOR_STAKE;
+        let block_height_2 = rng.gen_range(block_height_1..1000);
+        unbond_public(&process, &store, delegator_private_key, unbond_amount_2, block_height_2, rng).unwrap();
 
-    // Initialize the validators and delegators.
-    let (validators, delegators) = initialize_stakers(&finalize_store, 1, 1, rng).unwrap();
-    let (validator_private_key, (validator_address, _)) = validators.first().unwrap();
-    let (delegator_private_key, (_, _)) = delegators.first().unwrap();
+        // Check that the committee, bond, and unbond state are correct.
+        let decremented_amount = decremented_amount - unbond_amount_2;
+        let decremented_delegator = decremented_delegator - unbond_amount_2;
+        let unbond_combined_amount = unbond_amount_1 + unbond_amount_2;
+        let unlock_height = block_height_2 + NUM_BLOCKS_TO_UNLOCK;
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((decremented_amount, true)));
+        assert_eq!(committee_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, validator_amount)));
+        assert_eq!(bond_state(&store, delegator_address).unwrap(), Some((*validator_address, decremented_delegator)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, delegator_address).unwrap(), Some((unbond_combined_amount, unlock_height)));
 
-    // Bond the validator.
-    let validator_amount = 5_000_000_000_000u64;
-    bond_public(&process, &finalize_store, validator_private_key, validator_address, validator_amount, rng).unwrap();
+        // Retrieve the account balance.
+        let validator_balance_2 = account_balance(&store, validator_address).unwrap();
+        let delegator_balance_2 = account_balance(&store, delegator_address).unwrap();
+        assert_eq!(validator_balance_2, validator_balance_1);
+        assert_eq!(delegator_balance_2, delegator_balance_1);
 
-    // Bond the delegator.
-    let delegator_amount = 20_000_000u64;
-    bond_public(&process, &finalize_store, delegator_private_key, validator_address, delegator_amount, rng).unwrap();
+        /* Third Unbond */
 
-    /* Ensure that the delegator can't unbond more than its stake */
+        // Perform the third unbond, which should unbond all remaining stake.
+        let unbond_amount_3 = 1; // Notice: This is 1 credit, when the remaining is MIN_DELEGATOR_STAKE.
+        let block_height_3 = rng.gen_range(block_height_2..10000);
+        unbond_public(&process, &store, delegator_private_key, unbond_amount_3, block_height_3, rng).unwrap();
 
-    assert!(unbond_public(&process, &finalize_store, delegator_private_key, delegator_amount + 1, 1, rng).is_err());
+        // Check that the committee, bond, and unbond state are correct.
+        let unlock_height = block_height_3 + NUM_BLOCKS_TO_UNLOCK;
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((validator_amount, true)));
+        assert_eq!(committee_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, validator_amount)));
+        assert_eq!(bond_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, delegator_address).unwrap(), Some((delegator_amount, unlock_height)));
+
+        // Retrieve the account balance.
+        let validator_balance_3 = account_balance(&store, validator_address).unwrap();
+        let delegator_balance_3 = account_balance(&store, delegator_address).unwrap();
+        assert_eq!(validator_balance_3, validator_balance_2);
+        assert_eq!(delegator_balance_3, delegator_balance_2);
+
+        /* Fourth Unbond */
+
+        // Perform the fourth unbond, which should fail (as there is no stake left).
+        let unbond_amount_4 = 1;
+        let block_height_4 = rng.gen_range(block_height_3..100000);
+        let result = unbond_public(&process, &store, delegator_private_key, unbond_amount_4, block_height_4, rng);
+        assert!(result.is_err());
+
+        // Check that the committee, bond, and unbond state are correct.
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((validator_amount, true)));
+        assert_eq!(committee_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, validator_amount)));
+        assert_eq!(bond_state(&store, delegator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, delegator_address).unwrap(), Some((delegator_amount, unlock_height)));
+
+        // Retrieve the account balance.
+        let validator_balance_4 = account_balance(&store, validator_address).unwrap();
+        let delegator_balance_4 = account_balance(&store, delegator_address).unwrap();
+        assert_eq!(validator_balance_4, validator_balance_3);
+        assert_eq!(delegator_balance_4, delegator_balance_3);
+        Ok(())
+    })
+    .unwrap();
 }
 
 #[test]
@@ -1286,7 +1296,7 @@ fn test_unbond_delegator_as_validator() {
         .unwrap();
 
     // Bond the delegator.
-    let delegator_amount = 1_000_000u64;
+    let delegator_amount = MIN_DELEGATOR_STAKE;
     bond_public(&process, &finalize_store, delegator_private_key, &validator_address_1, delegator_amount, rng).unwrap();
 
     // Ensure that unbonding a delegator as an open validator fails.
@@ -1458,11 +1468,6 @@ fn test_bonding_to_closed_fails() {
 //  Validator can unbond delegator if closed.
 //  Validator can't unbond delegator that is not bonded to him.
 //  Validator can't unbond delegator if open.
-//
-//  Delegator can unbond balance if remaining is greater than 1 credit.
-//  Delegator can unbond balance if there is no remaining balance.
-//  Delegator can't unbond more than his stake.
-//  Delegator can't unbond if the remaining balance is less than 1 credit.
 
 //  Check that Validator/Delegator Unbonding updates the unbond height and updates the balance correctly.
 
