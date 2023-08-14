@@ -947,12 +947,12 @@ fn test_unbond_validator() {
         // Check that the committee, bond, and unbond state are correct.
         let decremented_amount = validator_amount - unbond_amount_1;
         let unlock_height = block_height_1 + NUM_BLOCKS_TO_UNLOCK;
-        assert_eq!(committee_state(&store, &validator_address).unwrap(), Some((decremented_amount, true)));
-        assert_eq!(bond_state(&store, &validator_address).unwrap(), Some((*validator_address, decremented_amount)));
-        assert_eq!(unbond_state(&store, &validator_address).unwrap(), Some((unbond_amount_1, unlock_height)));
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((decremented_amount, true)));
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, decremented_amount)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), Some((unbond_amount_1, unlock_height)));
 
         // Retrieve the account balance.
-        let validator_balance_1 = account_balance(&store, &validator_address).unwrap();
+        let validator_balance_1 = account_balance(&store, validator_address).unwrap();
         assert_eq!(validator_balance_1, validator_balance - validator_amount);
 
         /* Second Unbond */
@@ -966,12 +966,12 @@ fn test_unbond_validator() {
         let decremented_amount = validator_amount - unbond_amount_1 - unbond_amount_2;
         let unbond_combined_amount = unbond_amount_1 + unbond_amount_2;
         let unlock_height = block_height_2 + NUM_BLOCKS_TO_UNLOCK;
-        assert_eq!(committee_state(&store, &validator_address).unwrap(), Some((decremented_amount, true)));
-        assert_eq!(bond_state(&store, &validator_address).unwrap(), Some((*validator_address, decremented_amount)));
-        assert_eq!(unbond_state(&store, &validator_address).unwrap(), Some((unbond_combined_amount, unlock_height)));
+        assert_eq!(committee_state(&store, validator_address).unwrap(), Some((decremented_amount, true)));
+        assert_eq!(bond_state(&store, validator_address).unwrap(), Some((*validator_address, decremented_amount)));
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), Some((unbond_combined_amount, unlock_height)));
 
         // Retrieve the account balance.
-        let validator_balance_2 = account_balance(&store, &validator_address).unwrap();
+        let validator_balance_2 = account_balance(&store, validator_address).unwrap();
         assert_eq!(validator_balance_2, validator_balance_1);
 
         /* Third Unbond */
@@ -983,12 +983,12 @@ fn test_unbond_validator() {
 
         // Check that the committee, bond, and unbond state are correct.
         let unlock_height = block_height_3 + NUM_BLOCKS_TO_UNLOCK;
-        assert_eq!(committee_state(&store, &validator_address).unwrap(), None);
-        assert_eq!(bond_state(&store, &validator_address).unwrap(), None);
-        assert_eq!(unbond_state(&store, &validator_address).unwrap(), Some((validator_amount, unlock_height)));
+        assert_eq!(committee_state(&store, validator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), Some((validator_amount, unlock_height)));
 
         // Retrieve the account balance.
-        let validator_balance_3 = account_balance(&store, &validator_address).unwrap();
+        let validator_balance_3 = account_balance(&store, validator_address).unwrap();
         assert_eq!(validator_balance_3, validator_balance_2);
 
         /* Fourth Unbond */
@@ -1000,12 +1000,12 @@ fn test_unbond_validator() {
         assert!(result.is_err());
 
         // Check that the committee, bond, and unbond state are correct.
-        assert_eq!(committee_state(&store, &validator_address).unwrap(), None);
-        assert_eq!(bond_state(&store, &validator_address).unwrap(), None);
-        assert_eq!(unbond_state(&store, &validator_address).unwrap(), Some((validator_amount, unlock_height)));
+        assert_eq!(committee_state(&store, validator_address).unwrap(), None);
+        assert_eq!(bond_state(&store, validator_address).unwrap(), None);
+        assert_eq!(unbond_state(&store, validator_address).unwrap(), Some((validator_amount, unlock_height)));
 
         // Retrieve the account balance.
-        let validator_balance_4 = account_balance(&store, &validator_address).unwrap();
+        let validator_balance_4 = account_balance(&store, validator_address).unwrap();
         assert_eq!(validator_balance_4, validator_balance_3);
         Ok(())
     })
