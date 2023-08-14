@@ -116,11 +116,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 
-        /* Ratifications Root */
-
-        // TODO (howardwu): Check equivalency of `committee struct` == `committee mapping` == `bonded mapping`.
-        // TODO (howardwu): Ensure there is only a Ratify::Genesis in the genesis block.
-
         /* Coinbase Proof */
 
         // Ensure the solutions are valid, if they exist.
