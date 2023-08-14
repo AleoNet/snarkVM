@@ -2389,6 +2389,85 @@ function compute:
     assert!(process.verify_deployment::<CurrentAleo, _>(&deployment, rng).is_err());
 }
 
+#[test]
+fn test_process_zero_input_zero_output_executions() {
+    // Initialize the RNG.
+    let rng = &mut TestRng::default();
+
+    // Create a new program with a function that has no inputs or outputs.
+    let function_name = Identifier::from_str("zero_inputs_zero_outputs").unwrap();
+    let program = Program::from_str(&format!(
+        r"
+program testing.aleo;
+
+function {function_name}:
+    add 0u8 1u8 into r0;",
+    ))
+    .unwrap();
+
+    // Reset the process.
+    let mut process = Process::load().unwrap();
+
+    // Initialize a new block store.
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+    // Initialize a new finalize store.
+    let finalize_store = FinalizeStore::<_, FinalizeMemory<_>>::open(None).unwrap();
+
+    // Add the program to the process.
+    let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+    // Check that the deployment verifies.
+    process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Finalize the deployment.
+    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
+
+    // Initialize a new caller account.
+    let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+    // Create an execution for the `zero_inputs_zero_outputs` function.
+    let execution_1 = {
+        // Authorize the function call.
+        let inputs = Vec::<Value<CurrentNetwork>>::new();
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), &function_name, inputs.iter(), rng)
+            .unwrap();
+
+        // Execute the request.
+        let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        assert_eq!(response.outputs().len(), 0);
+
+        // Prepare the trace.
+        trace.prepare(Query::from(block_store.clone())).unwrap();
+        // Prove the execution.
+        trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap()
+    };
+    assert_eq!(execution_1.len(), 1);
+
+    // Create a subsequent execution for the `zero_inputs_zero_outputs` function.
+    let execution_2 = {
+        // Authorize the function call.
+        let inputs = Vec::<Value<CurrentNetwork>>::new();
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), &function_name, inputs.iter(), rng)
+            .unwrap();
+
+        // Execute the request.
+        let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+        assert_eq!(response.outputs().len(), 0);
+
+        // Prepare the trace.
+        trace.prepare(Query::from(block_store)).unwrap();
+        // Prove the execution.
+        trace.prove_execution::<CurrentAleo, _>("testing", rng).unwrap()
+    };
+    assert_eq!(execution_2.len(), 1);
+
+    // Ensure that the transitions are unique.
+    assert_ne!(execution_1.peek().unwrap().id(), execution_2.peek().unwrap().id());
+    assert_ne!(execution_1.to_execution_id().unwrap(), execution_2.to_execution_id().unwrap());
+}
+
 fn get_assignment(
     stack: &Stack<CurrentNetwork>,
     private_key: &PrivateKey<CurrentNetwork>,
