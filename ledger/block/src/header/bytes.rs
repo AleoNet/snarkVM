@@ -26,7 +26,7 @@ impl<N: Network> FromBytes for Header<N> {
         }
 
         // Read from the buffer.
-        let previous_state_root = Field::<N>::read_le(&mut reader)?;
+        let previous_state_root = N::StateRoot::read_le(&mut reader)?;
         let transactions_root = Field::<N>::read_le(&mut reader)?;
         let finalize_root = Field::<N>::read_le(&mut reader)?;
         let ratifications_root = Field::<N>::read_le(&mut reader)?;
@@ -58,7 +58,7 @@ impl<N: Network> ToBytes for Header<N> {
         self.transactions_root.write_le(&mut writer)?;
         self.finalize_root.write_le(&mut writer)?;
         self.ratifications_root.write_le(&mut writer)?;
-        self.coinbase_accumulator_point.write_le(&mut writer)?;
+        self.solutions_root.write_le(&mut writer)?;
         self.metadata.write_le(&mut writer)
     }
 }

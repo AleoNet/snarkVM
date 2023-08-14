@@ -319,7 +319,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     )?;
     // Construct the block header.
     let header = Header::from(
-        *vm.block_store().current_state_root(),
+        vm.block_store().current_state_root(),
         transactions.to_transactions_root().unwrap(),
         transactions.to_finalize_root().unwrap(),
         *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),

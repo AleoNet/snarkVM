@@ -19,6 +19,9 @@
 pub mod header;
 pub use header::*;
 
+mod helpers;
+pub use helpers::*;
+
 pub mod ratify;
 pub use ratify::*;
 
@@ -35,6 +38,7 @@ mod bytes;
 mod genesis;
 mod serialize;
 mod string;
+mod verify;
 
 use console::{
     account::PrivateKey,
@@ -44,6 +48,7 @@ use console::{
 };
 use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_committee::Committee;
 use ledger_narwhal_subdag::Subdag;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -128,7 +133,6 @@ impl<N: Network> Block<N> {
             Authority::Quorum(subdag) => {
                 // Ensure that the block round is equivalent to the subdag anchor round.
                 ensure!(subdag.anchor_round() == header.round(), "Invalid round for block {}", header.height());
-
                 // Ensure that the block timestamp is equivalent to the subdag timestamp.
                 ensure!(subdag.timestamp() == header.timestamp(), "Invalid timestamp for block {}", header.height());
 
@@ -194,12 +198,12 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure that coinbase accumulator matches the solutions.
-        let expected_accumulator_point = match &coinbase {
+        let solutions_root = match &coinbase {
             Some(coinbase_solution) => coinbase_solution.to_accumulator_point()?,
             None => Field::<N>::zero(),
         };
-        if header.coinbase_accumulator_point() != expected_accumulator_point {
-            bail!("The coinbase accumulator point in the block does not correspond to the solutions");
+        if header.solutions_root() != solutions_root {
+            bail!("The solutions root in the block does not correspond to the solutions");
         }
 
         // Construct the block.
@@ -249,7 +253,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the previous state root from the block header.
-    pub const fn previous_state_root(&self) -> Field<N> {
+    pub const fn previous_state_root(&self) -> N::StateRoot {
         self.header.previous_state_root()
     }
 
@@ -268,9 +272,9 @@ impl<N: Network> Block<N> {
         self.header.ratifications_root()
     }
 
-    /// Returns the coinbase accumulator point in the block header.
-    pub const fn coinbase_accumulator_point(&self) -> Field<N> {
-        self.header.coinbase_accumulator_point()
+    /// Returns the solutions root in the block header.
+    pub const fn solutions_root(&self) -> Field<N> {
+        self.header.solutions_root()
     }
 
     /// Returns the metadata in the block header.

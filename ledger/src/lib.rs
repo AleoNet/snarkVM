@@ -268,9 +268,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().cumulative_proof_target()
     }
 
-    /// Returns the latest block coinbase accumulator point.
-    pub fn latest_coinbase_accumulator_point(&self) -> Field<N> {
-        self.current_block.read().header().coinbase_accumulator_point()
+    /// Returns the latest block solutions root.
+    pub fn latest_solutions_root(&self) -> Field<N> {
+        self.current_block.read().header().solutions_root()
     }
 
     /// Returns the latest block coinbase target.
