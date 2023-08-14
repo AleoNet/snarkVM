@@ -29,7 +29,9 @@ use indexmap::IndexMap;
 use std::collections::HashSet;
 
 /// The minimum amount of stake required for a validator to bond.
-pub const MIN_STAKE: u64 = 1_000_000_000_000u64; // microcredits
+pub const MIN_VALIDATOR_STAKE: u64 = 1_000_000_000_000u64; // microcredits
+/// The minimum amount of stake required for a delegator to bond.
+pub const MIN_DELEGATOR_STAKE: u64 = 10_000_000u64; // microcredits
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Committee<N: Network> {
@@ -55,7 +57,10 @@ impl<N: Network> Committee<N> {
         // Ensure there are at least 4 members.
         ensure!(members.len() >= 4, "Committee must have at least 4 members");
         // Ensure all members have the minimum required stake.
-        ensure!(members.values().all(|(stake, _)| *stake >= MIN_STAKE), "All members must have sufficient stake");
+        ensure!(
+            members.values().all(|(stake, _)| *stake >= MIN_VALIDATOR_STAKE),
+            "All members must have at least {MIN_VALIDATOR_STAKE} microcredits in stake"
+        );
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
         // Return the new committee.
@@ -246,7 +251,7 @@ pub mod test_helpers {
         let mut members = IndexMap::new();
         for _ in 0..num_members {
             let is_open = rng.gen();
-            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_STAKE, is_open));
+            members.insert(Address::<CurrentNetwork>::new(rng.gen()), (2 * MIN_VALIDATOR_STAKE, is_open));
         }
         // Return the committee.
         Committee::<CurrentNetwork>::new(round, members).unwrap()
@@ -260,15 +265,15 @@ pub mod test_helpers {
         // Initialize the Exponential distribution.
         let distribution = Exp::new(2.0).unwrap();
         // Initialize an RNG for the stake.
-        let range = (MAX_STAKE - MIN_STAKE) as f64;
+        let range = (MAX_STAKE - MIN_VALIDATOR_STAKE) as f64;
         // Sample the members.
         let mut members = IndexMap::new();
         // Add in the minimum and maximum staked nodes.
-        members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_STAKE, false));
+        members.insert(Address::<CurrentNetwork>::new(rng.gen()), (MIN_VALIDATOR_STAKE, false));
         while members.len() < num_members as usize - 1 {
             loop {
-                let stake = MIN_STAKE as f64 + range * distribution.sample(rng);
-                if stake >= MIN_STAKE as f64 && stake <= MAX_STAKE as f64 {
+                let stake = MIN_VALIDATOR_STAKE as f64 + range * distribution.sample(rng);
+                if stake >= MIN_VALIDATOR_STAKE as f64 && stake <= MAX_STAKE as f64 {
                     let is_open = rng.gen();
                     members.insert(Address::<CurrentNetwork>::new(rng.gen()), (stake as u64, is_open));
                     break;

@@ -66,8 +66,11 @@ pub mod prelude {
             Zero as _,
         },
         traits::{
-            integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
             string_parser,
+            types::{
+                integer_magnitude::Magnitude,
+                integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
+            },
             Double as _,
             FromBits as _,
             Inverse as _,
@@ -79,8 +82,7 @@ pub mod prelude {
         ParserResult,
         TypeName,
     };
-    pub use snarkvm_fields::{Field as _, PrimeField, Zero as _};
-    pub use snarkvm_utilities::ToBits as _;
+    pub use snarkvm_fields::{self, Field as _, PrimeField, Zero as _};
 
     #[cfg(debug_assertions)]
     pub use snarkvm_curves::AffineCurve as _;
@@ -120,6 +122,6 @@ pub mod prelude {
         multi::{many0, many1},
         sequence::{pair, terminated},
     };
-    pub use num_traits::{Inv, One as NumOne, Pow, Unsigned};
+    pub use num_traits::{self, Inv, One as NumOne, Pow, Unsigned};
     pub use once_cell::unsync::OnceCell;
 }

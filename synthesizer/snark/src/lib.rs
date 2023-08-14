@@ -46,8 +46,11 @@ pub use verifying_key::VerifyingKey;
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use circuit::prelude::{Assignment, Circuit, Eject, Environment, Field, Inject, Mode, NumOne, One};
-    use console::network::Testnet3;
+    use circuit::{
+        environment::{Assignment, Circuit, Eject, Environment, Inject, Mode, One},
+        types::Field,
+    };
+    use console::{network::Testnet3, prelude::One as _};
 
     use once_cell::sync::OnceCell;
 
@@ -134,7 +137,7 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod test {
     use super::*;
-    use circuit::prelude::{Circuit, Environment, NumOne};
+    use circuit::environment::{Circuit, Environment};
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;

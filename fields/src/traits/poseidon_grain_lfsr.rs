@@ -39,11 +39,7 @@ impl PoseidonGrainLFSR {
         state[1] = true;
 
         // b2, ..., b5 describes the S-BOX
-        if is_sbox_an_inverse {
-            state[5] = true;
-        } else {
-            state[5] = false;
-        }
+        state[5] = is_sbox_an_inverse;
 
         // b6, ..., b17 are the binary representation of n (prime_num_bits)
         {
