@@ -19,13 +19,13 @@ impl<A: Aleo> ToBits for Signature<A> {
     type Boolean = Boolean<A>;
 
     /// Outputs the little-endian bit representation of the signature *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of the signature *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -34,31 +34,23 @@ impl<A: Aleo> ToBits for &Signature<A> {
     type Boolean = Boolean<A>;
 
     /// Outputs the little-endian bit representation of the signature *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        // Allocate the `bits_le` vector.
-        let mut bits_le = Vec::with_capacity(console::Signature::<A::Network>::size_in_bits());
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
         // Write the challenge bits.
-        bits_le.extend(self.challenge.to_bits_le());
+        vec.extend(self.challenge.to_bits_le());
         // Write the response bits.
-        bits_le.extend(self.response.to_bits_le());
+        vec.extend(self.response.to_bits_le());
         // Write the compute key bits.
-        bits_le.extend(self.compute_key.to_bits_le());
-        // Return the `bits_le` vector.
-        bits_le
+        vec.extend(self.compute_key.to_bits_le());
     }
 
     /// Outputs the big-endian bit representation of the signature *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        // Allocate the `bits_be` vector.
-        let mut bits_be = Vec::with_capacity(console::Signature::<A::Network>::size_in_bits());
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
         // Write the challenge bits.
-        bits_be.extend(self.challenge.to_bits_be());
+        vec.extend(self.challenge.to_bits_be());
         // Write the response bits.
-        bits_be.extend(self.response.to_bits_be());
+        vec.extend(self.response.to_bits_be());
         // Write the compute key bits.
-        bits_be.extend(self.compute_key.to_bits_be());
-        // Return the `bits_be` vector.
-        bits_be
+        vec.extend(self.compute_key.to_bits_be());
     }
 }
 

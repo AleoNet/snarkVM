@@ -16,31 +16,23 @@ use super::*;
 
 impl<N: Network> ToBits for Signature<N> {
     /// Returns the little-endian bits of the signature.
-    fn to_bits_le(&self) -> Vec<bool> {
-        // Allocate the `bits_le` vector.
-        let mut bits_le = Vec::with_capacity(Self::size_in_bits());
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
         // Write the challenge bits.
-        bits_le.extend(self.challenge.to_bits_le());
+        vec.extend(self.challenge.to_bits_le());
         // Write the response bits.
-        bits_le.extend(self.response.to_bits_le());
+        vec.extend(self.response.to_bits_le());
         // Write the compute key bits.
-        bits_le.extend(self.compute_key.to_bits_le());
-        // Return the `bits_le` vector.
-        bits_le
+        vec.extend(self.compute_key.to_bits_le());
     }
 
     /// Returns the big-endian bits of the signature.
-    fn to_bits_be(&self) -> Vec<bool> {
-        // Allocate the `bits_be` vector.
-        let mut bits_be = Vec::with_capacity(Self::size_in_bits());
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
         // Write the challenge bits.
-        bits_be.extend(self.challenge.to_bits_be());
+        vec.extend(self.challenge.to_bits_be());
         // Write the response bits.
-        bits_be.extend(self.response.to_bits_be());
+        vec.extend(self.response.to_bits_be());
         // Write the compute key bits.
-        bits_be.extend(self.compute_key.to_bits_be());
-        // Return the `bits_be` vector.
-        bits_be
+        vec.extend(self.compute_key.to_bits_be());
     }
 }
 

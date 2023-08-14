@@ -17,7 +17,7 @@ use crate::{
     Opcode,
     Operand,
 };
-use circuit::ToFields as CircuitToFields;
+use circuit::prelude::ToFields as CircuitToFields;
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, PlaintextType, Register, RegisterType, ToFields as ConsoleToFields},

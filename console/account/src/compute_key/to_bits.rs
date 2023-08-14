@@ -16,27 +16,19 @@ use super::*;
 
 impl<N: Network> ToBits for ComputeKey<N> {
     /// Returns the little-endian bits of the compute key.
-    fn to_bits_le(&self) -> Vec<bool> {
-        // Allocate the `bits_le` vector.
-        let mut bits_le = Vec::with_capacity(Self::size_in_bits());
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
         // Write the `pk_sig` bits.
-        bits_le.extend(self.pk_sig.to_bits_le());
+        vec.extend(self.pk_sig.to_bits_le());
         // Write the `pr_sig` bits.
-        bits_le.extend(self.pr_sig.to_bits_le());
-        // Return the `bits_le` vector.
-        bits_le
+        vec.extend(self.pr_sig.to_bits_le());
     }
 
     /// Returns the big-endian bits of the compute key.
-    fn to_bits_be(&self) -> Vec<bool> {
-        // Allocate the `bits_be` vector.
-        let mut bits_be = Vec::with_capacity(Self::size_in_bits());
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
         // Write the `pk_sig` bits.
-        bits_be.extend(self.pk_sig.to_bits_be());
+        vec.extend(self.pk_sig.to_bits_be());
         // Write the `pr_sig` bits.
-        bits_be.extend(self.pr_sig.to_bits_be());
-        // Return the `bits_be` vector.
-        bits_be
+        vec.extend(self.pr_sig.to_bits_be());
     }
 }
 
