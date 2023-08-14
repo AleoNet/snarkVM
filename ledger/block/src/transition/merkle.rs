@@ -36,7 +36,7 @@ impl<N: Network> Transition<N> {
                     // Check if the input ID matches the given ID.
                     if id == input.id() {
                         // Return the transition leaf.
-                        return Ok(input.to_transition_leaf(index as u8));
+                        return Ok(input.to_transition_leaf((index + 1) as u8));
                     }
                 }
                 // Error if the input ID was not found.
@@ -48,7 +48,7 @@ impl<N: Network> Transition<N> {
                     // Check if the output ID matches the given ID.
                     if id == output.id() {
                         // Return the transition leaf.
-                        return Ok(output.to_transition_leaf((self.inputs.len() + index) as u8));
+                        return Ok(output.to_transition_leaf((self.inputs.len() + index + 1) as u8));
                     }
                 }
                 // Error if the output ID was not found.
@@ -59,11 +59,15 @@ impl<N: Network> Transition<N> {
 
     /// The Merkle tree of input and output IDs for the transition.
     pub fn to_tree(&self) -> Result<TransitionTree<N>> {
-        Self::function_tree(&self.inputs, &self.outputs)
+        Self::function_tree(&self.tcm, &self.inputs, &self.outputs)
     }
 
-    /// Returns the Merkle tree for the given inputs and outputs.
-    pub(super) fn function_tree(inputs: &[Input<N>], outputs: &[Output<N>]) -> Result<TransitionTree<N>> {
+    /// Returns the Merkle tree for the given tcm, inputs and outputs.
+    pub(super) fn function_tree(
+        tcm: &Field<N>,
+        inputs: &[Input<N>],
+        outputs: &[Output<N>],
+    ) -> Result<TransitionTree<N>> {
         // Ensure the number of inputs is within the allowed range.
         ensure!(
             inputs.len() <= N::MAX_INPUTS,
@@ -78,19 +82,34 @@ impl<N: Network> Transition<N> {
             N::MAX_OUTPUTS,
             outputs.len()
         );
+        // Ensure the number of inputs and outputs is within the allowed range.
+        // This check is required due to the TCM taking up the first leaf of the tree.
+        ensure!(
+            inputs.len() + outputs.len() < N::MAX_INPUTS + N::MAX_OUTPUTS,
+            "Transition cannot exceed {} inputs and outputs, found {} outputs",
+            N::MAX_INPUTS + N::MAX_OUTPUTS,
+            inputs.len() + outputs.len()
+        );
 
+        // Prepare the tcm leaf.
+        let tcm_leaf = TransitionLeaf::new_with_version(0, 0, *tcm).to_bits_le();
         // Prepare the input leaves.
         let input_leaves = inputs
             .iter()
             .enumerate()
-            .map(|(index, input)| Ok::<_, Error>(input.to_transition_leaf(u8::try_from(index)?).to_bits_le()));
+            .map(|(index, input)| Ok::<_, Error>(input.to_transition_leaf(u8::try_from(index + 1)?).to_bits_le()));
         // Prepare the output leaves.
         let output_leaves = outputs
             .iter()
             .enumerate()
-            .map(|(index, output)| Ok(output.to_transition_leaf(u8::try_from(inputs.len() + index)?).to_bits_le()));
+            .map(|(index, output)| Ok(output.to_transition_leaf(u8::try_from(inputs.len() + index + 1)?).to_bits_le()));
+
+        // Prepare the leaves.
+        let input_and_output_leaves = input_leaves.chain(output_leaves).collect::<Result<Vec<_>, _>>()?;
+        let leaves = [vec![tcm_leaf], input_and_output_leaves].concat();
+
         // Compute the function tree.
-        N::merkle_tree_bhp::<TRANSITION_DEPTH>(&input_leaves.chain(output_leaves).collect::<Result<Vec<_>, _>>()?)
+        N::merkle_tree_bhp::<TRANSITION_DEPTH>(&leaves)
     }
 }
 

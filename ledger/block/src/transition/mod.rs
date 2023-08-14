@@ -78,7 +78,7 @@ impl<N: Network> Transition<N> {
         tcm: Field<N>,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let id = *Self::function_tree(&inputs, &outputs)?.root();
+        let id = *Self::function_tree(&tcm, &inputs, &outputs)?.root();
         // Return the transition.
         Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, tpk, tcm })
     }

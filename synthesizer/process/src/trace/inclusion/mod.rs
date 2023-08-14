@@ -86,7 +86,7 @@ impl<N: Network> Inclusion<N> {
             // Filter the outputs for records.
             if let Output::Record(commitment, ..) = output {
                 // Compute the output index.
-                let output_index = u8::try_from(input_ids.len().saturating_add(index))?;
+                let output_index = u8::try_from(input_ids.len().saturating_add(index).saturating_add(1))?;
                 // Compute the transaction leaf.
                 let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
                 // Compute the transition leaf.
