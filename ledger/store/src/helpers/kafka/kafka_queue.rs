@@ -12,6 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod kafka;
-pub use kafka::*;
-pub mod kafka_queue;
+use crate::helpers::kafka::KAFKA_PRODUCER;
+pub struct KafkaQueue {
+    pub messages: Vec<(Vec<u8>, Vec<u8>)>,
+}
+
+impl KafkaQueue {
+
+    pub fn new() -> Self {
+        KafkaQueue {
+            messages: Vec::new(),
+        }
+    }
+
+    pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
+        self.messages.push((key, value));
+    }
+
+    pub fn send_messages(&self, topic: &str) {
+        for (key, value) in &self.messages {
+            KAFKA_PRODUCER.emit_event(&String::from_utf8_lossy(&value), topic);
+        }
+    }
+
+    #[cfg(test)]
+    pub fn get_messages(&self) -> &Vec<(Vec<u8>, Vec<u8>)> {
+        &self.messages
+    }
+}

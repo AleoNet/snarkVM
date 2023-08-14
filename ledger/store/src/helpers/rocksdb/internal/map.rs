@@ -33,6 +33,36 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
     pub(super) checkpoints: Arc<Mutex<Vec<usize>>>,
 }
 
+use crate::helpers::kafka::kafka_queue::KafkaQueue;
+
+// struct KafkaQueue {
+//     messages: Vec<(Vec<u8>, Vec<u8>)>,
+// }
+
+// impl KafkaQueue {
+
+//     pub fn new() -> Self {
+//         KafkaQueue {
+//             messages: Vec::new(),
+//         }
+//     }
+
+//     pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
+//         self.messages.push((key, value));
+//     }
+
+//     pub fn send_messages(&self, topic: &str) {
+//         for (key, value) in &self.messages {
+//             KAFKA_PRODUCER.emit_event(&String::from_utf8_lossy(&value), topic);
+//         }
+//     }
+
+//     #[cfg(test)]
+//     pub fn get_messages(&self) -> &Vec<(Vec<u8>, Vec<u8>)> {
+//         &self.messages
+//     }
+// }
+
 impl<
     'a,
     K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
@@ -159,12 +189,16 @@ impl<
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
+
+        // Instantiate the kafka queue
+        let mut kafka_queue = KafkaQueue { messages: Vec::new() };
         // Retrieve the atomic batch belonging to the map.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
         
         
 
         if !operations.is_empty() {
+
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
             let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
 
@@ -187,12 +221,20 @@ impl<
             let mut atomic_batch = self.database.atomic_batch.lock();
             // create kafka queue
             //let kafkaqueue = custom struct (key,value)
+
             for (raw_key, raw_value) in prepared_operations {
                 match raw_value {
-                    Some(raw_value) => atomic_batch.put(raw_key, raw_value),
-                    Some(raw_value) => kafkaqueue.put()
-                    None => atomic_batch.delete(raw_key),
-                };
+                    Some(raw_value) => {
+                        atomic_batch.put(raw_key.clone(), raw_value.clone());
+                        // Add message to kafka queue
+                        kafka_queue.put(raw_key, raw_value);
+                    }
+                    None => {
+                        atomic_batch.delete(raw_key.clone());
+                        // Add delete message to kafka queue 
+                        kafka_queue.put(raw_key, Vec::new()); 
+                    }                    
+                }
             }
         }
 
@@ -219,6 +261,9 @@ impl<
             // Ensure that the database atomic batch is empty.
             assert!(self.database.atomic_batch.lock().is_empty());
         }
+
+        // Send all the messages from the kafka queue to kafka 
+        kafka_queue.send_messages("node-data");
 
         Ok(())
     }
@@ -548,6 +593,42 @@ mod tests {
         fn finish_atomic(&self) -> Result<()> {
             self.own_map.finish_atomic()
         }
+    }
+
+    struct MockKafkaProducer {
+        messages: Vec<(Vec<u8>, Vec<u8>)>,
+    }
+    
+    impl MockKafkaProducer {
+        fn new() -> Self {
+            MockKafkaProducer { messages: Vec::new() }
+        }
+        
+        fn emit_event(&mut self, key: &[u8], value: &[u8]) {
+            self.messages.push((key.to_vec(), value.to_vec()));
+        }        
+    
+        // fn get_sent_messages(&self) -> &Vec<(String, String)> {
+        //     &self.messages
+        // }
+    }
+
+    #[test]
+    fn test_add_to_kafka_queue() {
+        let mut test_kafka_queue = KafkaQueue::new();
+        test_kafka_queue.put("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec());
+        let messages = test_kafka_queue.get_messages();
+        assert!(messages.contains(&("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec())));
+    }
+
+    // // #[test]
+    // // another test using get_sent_messages to see that messages are actually sent from the queue to the producer 
+    // // fn test_send_messages_to_producer() {
+    // // }
+
+    #[test]
+    fn test_it_works() {
+        assert_eq!(2 + 2, 4);
     }
 
     #[test]
