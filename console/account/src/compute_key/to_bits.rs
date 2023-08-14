@@ -64,7 +64,6 @@ mod tests {
             let mut expected = Vec::new();
             expected.extend(compute_key.pk_sig.to_bits_le());
             expected.extend(compute_key.pr_sig.to_bits_le());
-            expected.extend(compute_key.sk_prf.to_bits_le());
 
             for (expected, candidate) in expected.iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);
@@ -87,7 +86,6 @@ mod tests {
             let mut expected = Vec::new();
             expected.extend(compute_key.pk_sig.to_bits_be());
             expected.extend(compute_key.pr_sig.to_bits_be());
-            expected.extend(compute_key.sk_prf.to_bits_be());
 
             for (expected, candidate) in expected.iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);
