@@ -618,7 +618,7 @@ finalize claim_unbond_public:
 
     // Get the unbond state for the caller, or fail if it does not exist.
     get unbonding[r0] into r1;
-    // Determine if unbonding is complete
+    // Determine if unbonding is complete.
     gte block.height r1.height into r2;
     // Enforce the unbonding is complete.
     assert.eq r2 true;
