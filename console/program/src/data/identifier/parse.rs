@@ -92,7 +92,7 @@ impl<N: Network> Display for Identifier<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::identifier::tests::sample_identifier_as_string;
+    use crate::data::identifier::tests::{sample_identifier, sample_identifier_as_string};
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -218,6 +218,23 @@ mod tests {
     fn test_display() -> Result<()> {
         let identifier = Identifier::<CurrentNetwork>::from_str("foo_bar")?;
         assert_eq!("foo_bar", format!("{identifier}"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_proxy_bits_equivalence() -> Result<()> {
+        let mut rng = TestRng::default();
+        let identifier: Identifier<CurrentNetwork> = sample_identifier(&mut rng)?;
+
+        // Direct conversion to bytes.
+        let bytes1 = identifier.0.to_bytes_le()?;
+
+        // Combined conversion via bits.
+        let bits_le = identifier.0.to_bits_le();
+        let bytes2 = bits_le.chunks(8).map(u8::from_bits_le).collect::<Result<Vec<u8>, _>>()?;
+
+        assert_eq!(bytes1, bytes2);
+
         Ok(())
     }
 }
