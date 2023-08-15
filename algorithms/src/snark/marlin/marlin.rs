@@ -387,7 +387,7 @@ where
                 universal_prover,
                 &committer_key,
                 first_round_oracles.iter().map(Into::into),
-                Some(zk_rng),
+                MM::ZK.then_some(zk_rng),
             )?
         };
         end_timer!(first_round_comm_time);
@@ -417,7 +417,7 @@ where
             universal_prover,
             &committer_key,
             second_oracles.iter().map(Into::into),
-            Some(zk_rng),
+            MM::ZK.then_some(zk_rng),
         )?;
         end_timer!(second_round_comm_time);
 
@@ -442,7 +442,7 @@ where
             universal_prover,
             &committer_key,
             third_oracles.iter().map(Into::into),
-            Some(zk_rng),
+            MM::ZK.then_some(zk_rng),
         )?;
         end_timer!(third_round_comm_time);
 
@@ -467,7 +467,7 @@ where
             universal_prover,
             &committer_key,
             fourth_oracles.iter().map(Into::into),
-            Some(zk_rng),
+            MM::ZK.then_some(zk_rng),
         )?;
         end_timer!(fourth_round_comm_time);
 
@@ -487,7 +487,7 @@ where
             universal_prover,
             &committer_key,
             fifth_oracles.iter().map(Into::into),
-            Some(zk_rng),
+            MM::ZK.then_some(zk_rng),
         )?;
         end_timer!(fifth_round_comm_time);
 

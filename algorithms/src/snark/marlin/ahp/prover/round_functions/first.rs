@@ -91,7 +91,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             circuit_specific_batches.insert(circuit.id, batches);
             end_timer!(round_time);
         }
-        let mask_poly = Self::calculate_mask_poly(state.max_variable_domain, rng);
+        let mask_poly = MM::ZK.then(|| Self::calculate_mask_poly(state.max_variable_domain, rng));
         let oracles = prover::FirstOracles { batches: circuit_specific_batches, mask_poly };
         assert!(oracles.matches_info(&Self::first_round_polynomial_info(
             state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
@@ -100,35 +100,28 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok(state)
     }
 
-    fn calculate_mask_poly<R: RngCore>(
-        variable_domain: EvaluationDomain<F>,
-        rng: &mut R,
-    ) -> Option<LabeledPolynomial<F>> {
-        MM::ZK
-            .then(|| {
-                let mask_poly_time = start_timer!(|| "Computing mask polynomial");
-                // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
-                let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.
-                let h_1_mask = SparsePolynomial::from_coefficients(h_1_mask.into_iter().enumerate())
-                    .mul(&variable_domain.vanishing_polynomial());
-                assert_eq!(h_1_mask.degree(), variable_domain.size() + 3);
-                // multiply g_1_mask by X
-                let mut g_1_mask = DensePolynomial::rand(5, rng);
-                g_1_mask.coeffs[0] = F::zero();
-                let g_1_mask = SparsePolynomial::from_coefficients(
-                    g_1_mask.coeffs.into_iter().enumerate().filter(|(_, coeff)| !coeff.is_zero()),
-                );
+    fn calculate_mask_poly<R: RngCore>(variable_domain: EvaluationDomain<F>, rng: &mut R) -> LabeledPolynomial<F> {
+        let mask_poly_time = start_timer!(|| "Computing mask polynomial");
+        // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
+        let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.
+        let h_1_mask = SparsePolynomial::from_coefficients(h_1_mask.into_iter().enumerate())
+            .mul(&variable_domain.vanishing_polynomial());
+        assert_eq!(h_1_mask.degree(), variable_domain.size() + 3);
+        // multiply g_1_mask by X
+        let mut g_1_mask = DensePolynomial::rand(5, rng);
+        g_1_mask.coeffs[0] = F::zero();
+        let g_1_mask = SparsePolynomial::from_coefficients(
+            g_1_mask.coeffs.into_iter().enumerate().filter(|(_, coeff)| !coeff.is_zero()),
+        );
 
-                let mut mask_poly = h_1_mask;
-                mask_poly += &g_1_mask;
-                debug_assert!(variable_domain.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
-                assert_eq!(mask_poly.degree(), variable_domain.size() + 3);
-                assert!(mask_poly.degree() <= 2 * variable_domain.size() + 2 * Self::zk_bound().unwrap() - 3);
+        let mut mask_poly = h_1_mask;
+        mask_poly += &g_1_mask;
+        debug_assert!(variable_domain.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
+        assert_eq!(mask_poly.degree(), variable_domain.size() + 3);
+        assert!(mask_poly.degree() <= 2 * variable_domain.size() + 2 * Self::zk_bound().unwrap() - 3);
 
-                end_timer!(mask_poly_time);
-                mask_poly
-            })
-            .map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None))
+        end_timer!(mask_poly_time);
+        LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None)
     }
 
     fn calc_w(
