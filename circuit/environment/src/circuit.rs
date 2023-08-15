@@ -271,6 +271,8 @@ impl Environment for Circuit {
     /// Returns the R1CS circuit, resetting the circuit.
     fn eject_r1cs_and_reset() -> R1CS<Self::BaseField> {
         CIRCUIT.with(|circuit| {
+            // Reset the witness mode.
+            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             // Ensure the circuit is now empty.
@@ -288,6 +290,8 @@ impl Environment for Circuit {
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         CIRCUIT.with(|circuit| {
+            // Reset the witness mode.
+            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
             assert_eq!(0, (**circuit).borrow().num_constants());
@@ -302,6 +306,8 @@ impl Environment for Circuit {
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         CIRCUIT.with(|circuit| {
+            // Reset the witness mode.
+            IN_WITNESS.with(|in_witness| *(**in_witness).borrow_mut() = false);
             *(**circuit).borrow_mut() = R1CS::<<Self as Environment>::BaseField>::new();
             assert_eq!(0, (**circuit).borrow().num_constants());
             assert_eq!(1, (**circuit).borrow().num_public());
