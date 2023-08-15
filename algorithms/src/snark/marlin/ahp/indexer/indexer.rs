@@ -23,7 +23,7 @@ use crate::{
             AHPError,
             AHPForR1CS,
         },
-        matrices::{matrix_evals, precomputation_for_matrix_evals, MatrixEvals},
+        matrices::{matrix_evals, MatrixEvals},
         num_non_zero,
         MarlinMode,
     },
@@ -47,6 +47,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>> {
         let IndexerState {
             constraint_domain,
+            variable_domain,
 
             a,
             non_zero_a_domain,
@@ -64,6 +65,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
         let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
+
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
             .map(|(label, evals)| arithmetize_matrix(&id, label, evals))
@@ -77,6 +79,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let (fft_precomputation, ifft_precomputation) = Self::fft_precomputation(
             constraint_domain.size(),
+            variable_domain.size(),
             non_zero_a_domain.size(),
             non_zero_b_domain.size(),
             non_zero_c_domain.size(),
@@ -118,8 +121,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 [
                     format!("circuit_{id}_row_{matrix}"),
                     format!("circuit_{id}_col_{matrix}"),
-                    format!("circuit_{id}_val_{matrix}"),
                     format!("circuit_{id}_row_col_{matrix}"),
+                    format!("circuit_{id}_row_col_val_{matrix}"),
                 ]
             })
         })
@@ -133,15 +136,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         c.generate_constraints(&mut ics)?;
         end_timer!(constraint_time);
 
-        let padding_time = start_timer!(|| "Padding matrices to make them square");
+        let padding_time = start_timer!(|| "Padding matrices");
+        // Given that we only use the matrix for indexing, the values we choose for assignments don't matter
+        let random_assignments = None;
+        crate::snark::marlin::ahp::matrices::add_randomizing_variables::<_, _, MM>(&mut ics, random_assignments);
+
         crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
-        ics.make_matrices_square();
 
         let a = ics.a_matrix();
         let b = ics.b_matrix();
         let c = ics.c_matrix();
 
-        // balance_matrices(&mut a, &mut b);
         end_timer!(padding_time);
 
         let num_padded_public_variables = ics.num_public_variables();
@@ -150,6 +155,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let num_non_zero_a = num_non_zero(&a);
         let num_non_zero_b = num_non_zero(&b);
         let num_non_zero_c = num_non_zero(&c);
+
         let num_variables = num_padded_public_variables + num_private_variables;
 
         if cfg!(debug_assertions) {
@@ -159,16 +165,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             println!("Number of non-zero entries in A: {num_non_zero_a}");
             println!("Number of non-zero entries in B: {num_non_zero_b}");
             println!("Number of non-zero entries in C: {num_non_zero_c}");
-        }
-
-        if num_constraints != num_variables {
-            eprintln!("Number of padded public variables: {num_padded_public_variables}");
-            eprintln!("Number of private variables: {num_private_variables}");
-            eprintln!("Number of num_constraints: {num_constraints}");
-            eprintln!("Number of non-zero entries in A: {num_non_zero_a}");
-            eprintln!("Number of non-zero entries in B: {num_non_zero_b}");
-            eprintln!("Number of non-zero entries in C: {num_non_zero_c}");
-            return Err(AHPError::NonSquareMatrix);
         }
 
         Self::num_formatted_public_inputs_is_admissible(num_padded_public_variables)?;
@@ -184,6 +180,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let constraint_domain =
             EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let variable_domain = EvaluationDomain::new(num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let input_domain =
             EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
@@ -194,27 +191,28 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let non_zero_c_domain =
             EvaluationDomain::new(num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let (constraint_domain_elements, constraint_domain_eq_poly_vals) =
-            precomputation_for_matrix_evals(&constraint_domain);
+        let constraint_domain_elements = constraint_domain.elements().collect::<Vec<_>>();
+        let variable_domain_elements = variable_domain.elements().collect::<Vec<_>>();
 
         let [a_evals, b_evals, c_evals]: [_; 3] =
-            cfg_into_iter!([(&a, &non_zero_a_domain), (&b, &non_zero_b_domain), (&c, &non_zero_c_domain),])
+            cfg_into_iter!([(&a, &non_zero_a_domain), (&b, &non_zero_b_domain), (&c, &non_zero_c_domain)])
                 .map(|(matrix, non_zero_domain)| {
                     matrix_evals(
                         matrix,
                         non_zero_domain,
-                        &constraint_domain,
+                        &variable_domain,
                         &input_domain,
                         &constraint_domain_elements,
-                        &constraint_domain_eq_poly_vals,
+                        &variable_domain_elements,
                     )
                 })
-                .collect::<Vec<_>>()
+                .collect::<Result<Vec<_>, _>>()?
                 .try_into()
                 .unwrap();
 
         let result = Ok(IndexerState {
             constraint_domain,
+            variable_domain,
 
             a,
             non_zero_a_domain,
@@ -259,6 +257,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
 struct IndexerState<F: PrimeField> {
     constraint_domain: EvaluationDomain<F>,
+    variable_domain: EvaluationDomain<F>,
 
     a: Matrix<F>,
     non_zero_a_domain: EvaluationDomain<F>,

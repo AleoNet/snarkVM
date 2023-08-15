@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable},
-    snark::marlin::ahp::matrices::make_matrices_square,
-};
+use crate::r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
 use snarkvm_fields::Field;
 
 pub(crate) struct ConstraintSystem<F: Field> {
@@ -49,12 +46,6 @@ impl<F: Field> ConstraintSystem<F> {
     /// imposed by the constraint system.
     pub(crate) fn unformat_public_input(input: &[F]) -> Vec<F> {
         input[1..].to_vec()
-    }
-
-    pub(crate) fn make_matrices_square(&mut self) {
-        let num_variables = self.num_public_variables + self.num_private_variables;
-        make_matrices_square(self, num_variables);
-        assert_eq!(self.num_public_variables + self.num_private_variables, self.num_constraints, "padding failed!");
     }
 }
 

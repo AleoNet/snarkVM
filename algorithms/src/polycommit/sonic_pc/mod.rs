@@ -291,7 +291,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     pub fn batch_open<'a>(
         universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
-        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>> + Clone,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         query_set: &QuerySet<E::Fr>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,

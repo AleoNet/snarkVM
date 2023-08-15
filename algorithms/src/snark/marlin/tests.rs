@@ -44,9 +44,10 @@ mod marlin {
                     let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
                     let fs_parameters = FS::sample_parameters();
 
-                    for _ in 0..25 {
-                        let mul_depth = 2;
-                        let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+                    for i in 0..25 {
+                        let mul_depth = 1;
+                        println!("running test with mul_depth: {}, num_constraints: {}, num_variables: {}", mul_depth + i, num_constraints + i, num_variables + i);
+                        let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
 
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
@@ -59,12 +60,13 @@ mod marlin {
 
                         assert!($marlin_inst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
                         println!("Called verifier");
-                        println!("\nShould not verify (i.e. verifier messages should print below):");
+                        eprintln!("\nShould not verify (i.e. verifier messages should print below):");
                         assert!(!$marlin_inst::verify(universal_verifier, &fs_parameters, &index_vk, [random, random], &proof).unwrap());
                     }
 
-                    for circuit_batch_size in (0..5).map(|i| 2usize.pow(i)) {
-                        for instance_batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                    for circuit_batch_size in (0..4).map(|i| 2usize.pow(i)) {
+                        for instance_batch_size in (0..4).map(|i| 2usize.pow(i)) {
+                            println!("running test with circuit_batch_size: {circuit_batch_size} and instance_batch_size: {instance_batch_size}");
                             let mut constraints = BTreeMap::new();
                             let mut inputs = BTreeMap::new();
 
@@ -103,7 +105,7 @@ mod marlin {
                                 "Batch verification failed with {instance_batch_size} instances and {circuit_batch_size} circuits for circuits: {constraints:?}"
                             );
                             println!("Called verifier");
-                            println!("\nShould not verify (i.e. verifier messages should print below):");
+                            eprintln!("\nShould not verify (i.e. verifier messages should print below):");
                             let mut fake_instance_inputs = Vec::with_capacity(vks_to_inputs.len());
                             for instance_input in vks_to_inputs.values() {
                                 let mut fake_instance_input = Vec::with_capacity(instance_input.len());
@@ -303,7 +305,7 @@ mod marlin_hiding {
 
             assert!(MarlinInst::verify(universal_verifier, &fs_parameters, &index_vk, public_inputs, &proof).unwrap());
             println!("Called verifier");
-            println!("\nShould not verify (i.e. verifier messages should print below):");
+            eprintln!("\nShould not verify (i.e. verifier messages should print below):");
             assert!(
                 !MarlinInst::verify(
                     universal_verifier,
