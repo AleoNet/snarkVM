@@ -21,7 +21,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // TODO (howardwu): DEPRECATE THIS - Remove support for `mint` altogether.
         // Ensure the mint transaction is attributed to a validator in the committee.
-        if transaction.is_mint() {
+        if transaction.contains_mint() {
             // Retrieve the execution.
             let Some(execution) = transaction.execution() else {
                 bail!("Invalid mint transaction: expected an execution");
@@ -39,9 +39,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         /* Fee */
 
-        // TODO (raychu86): Remove the split check when batch executions are integrated.
+        // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
+        // TODO (howardwu): Remove support for 'mint'.
         let can_skip_fee = match transaction.execution() {
-            Some(execution) => (transaction.is_mint() || transaction.is_split()) && execution.len() == 1,
+            Some(execution) => (transaction.contains_mint() || transaction.contains_split()) && execution.len() == 1,
             None => false,
         };
 

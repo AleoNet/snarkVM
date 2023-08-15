@@ -199,7 +199,7 @@ optional = true
 version = "1"
 
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 optional = true
 
 [dependencies.clap]

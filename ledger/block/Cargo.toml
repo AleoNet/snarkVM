@@ -34,6 +34,7 @@ wasm = [
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm"
 ]
+test = [ ]
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -58,6 +59,11 @@ version = "=0.14.6"
 [dependencies.ledger-narwhal-subdag]
 package = "snarkvm-ledger-narwhal-subdag"
 path = "../narwhal/subdag"
+version = "=0.14.6"
+
+[dependencies.ledger-narwhal-transmission-id]
+package = "snarkvm-ledger-narwhal-transmission-id"
+path = "../narwhal/transmission-id"
 version = "=0.14.6"
 
 [dependencies.synthesizer-program]

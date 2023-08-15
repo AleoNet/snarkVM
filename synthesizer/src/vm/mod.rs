@@ -607,7 +607,7 @@ function compute:
         )?;
 
         let header = Header::from(
-            *vm.block_store().current_state_root(),
+            vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),

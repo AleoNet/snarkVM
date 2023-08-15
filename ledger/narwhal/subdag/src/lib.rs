@@ -21,6 +21,7 @@ mod string;
 
 use console::{account::Address, prelude::*};
 use narwhal_batch_certificate::BatchCertificate;
+use narwhal_transmission_id::TransmissionID;
 
 use indexmap::IndexSet;
 use std::collections::BTreeMap;
@@ -118,6 +119,11 @@ impl<N: Network> Subdag<N> {
     pub fn leader_address(&self) -> Address<N> {
         // Retrieve the leader address from the leader certificate.
         self.leader_certificate().author()
+    }
+
+    /// Returns the transmission IDs of the subdag (from earliest round to latest round).
+    pub fn transmission_ids(&self) -> impl Iterator<Item = &TransmissionID<N>> {
+        self.values().flatten().flat_map(BatchCertificate::transmission_ids)
     }
 
     /// Returns the timestamp of the anchor round, defined as the median timestamp of the leader certificate.

@@ -56,7 +56,7 @@ path = "../../utilities"
 version = "=0.14.6"
 
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [dependencies.indexmap]
 version = "2"

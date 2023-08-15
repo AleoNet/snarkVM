@@ -1,36 +1,36 @@
 - execute:
     casts.aleo/test_cast:
       outputs:
-      - '{"type":"private","id":"5047413343356774099588408355353154865403532160825048280010371779611787146863field","value":"ciphertext1qgqfsdnwp83uzfyjr5t8ytva5k8fqfxewuz0kth5qpe78eksjvs5uq9qktk2ewx9nmvh7z063vxkpdy0wza7w9xthzusa3dnzz0l6rrmqumx0sm2"}'
-      - '{"type":"private","id":"1803408540707481699876120530685275133582179036291928626892717815197485346490field","value":"ciphertext1qgqw0g6xr9g5lsxs7ygdkectvzsvqal7nz6t82e8na7fet2654jjgrjjeah88d4q7uflylarxr7c06jux0v7f2vs88prhw9zlqdq9jcypgcechur"}'
+      - '{"type":"private","id":"4704167114330105235794380975753426221046757624724116263935780734187471877094field","value":"ciphertext1qgq9qflnzxez30jp70delvt30svfj9yt50r9ndzecsjq9wjtpnxz5yhhzcq3ehk0lfxw472xfzmglsrp7zmf9hfdcng92p7kyd7z27p8q5y0w065"}'
+      - '{"type":"private","id":"2286801636650886432964847077933696272674444962855460195396778687039443719145field","value":"ciphertext1qgqt3glwgf7jgqucj9nlw2vkk0drc6djgx4c5y228jxngdflnr0nkrms5m7nfc4qmcfs8x5adxy6mfzjdyrs6aztupkf0h42vp9jj9dhq5yzlg68"}'
       finalize: []
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"754644691767336698807685206324695066495947726419336802441748908253932476705field","checksum":"6356176596298770512475868126392109142504634770269076058093548265169477693148field","value":"record1qyqsqyvz6h9swr55tzllnu6z7sk4ll5k6dhz7ud7w4axztgc9z3lrtgpqyxx66trwfhkxun9v35hguerqqpqzqxzcpz08scq3rlw8k4cqh7e73gzeucyphl7x8gqk2xv9av2ykd8q35m4p7z354esn7lc5f89fkhqua4q4w7gzn9jsh4upesmk602w9qqat6zqn"}'
+      - '{"type":"record","id":"1660644415229738678227466390389978161581188512626402951828218068257918341892field","checksum":"3776759128096357399899827079105076534189862314576916321109563689801735503249field","value":"record1qyqsp7qxhs7pyj0gumcdqn5vzrxt4eja890880us47gx3j8zjrsgwgqgqyxx66trwfhkxun9v35hguerqqpqzqxja4fwl5we0mgtx8h8wnja0m3ejyyezspx4j9p5muaptv3q4z4qfq8ja3z8z09cx84sreqhj0zswxm9vcvpyc970u8d2xuv25udq6svq2q3f9"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
     casts.aleo/test_cast:
       outputs:
-      - '{"type":"private","id":"2587721200488122652082243812216383252517099801182817158480373750350369610097field","value":"ciphertext1qgqquzhxxl9tlg0rqph3xl3pr8rcfya9zf325a8w0rnvc8uumuce7qejwe4lkn0fzndh9agvs2pvc5s8qqunwkw0ge47xa2f42k4vr3aqvv3n5aq"}'
-      - '{"type":"private","id":"5608623126921726109066295785098422224312727993880778237555836263050145630751field","value":"ciphertext1qgqdha8scm42p7flz6akfvp7q2sr344n8awrj0p389q3rtjn3u32sqy8d85z5ae4p0v27w7qc68hgtk0rxqgakwjzvpvy3d665vrgaqhpqggrs4w"}'
+      - '{"type":"private","id":"7154610538041571719181884114885189639240889343979318861625273928217523797650field","value":"ciphertext1qgqtuqk27ka39af2ehh8j0uaazfutl6j5aqfdug8h8ukmqxf72t0squ0ry9u09fk7gnm9ye8vkd4mxe75r7zn6aev6nzwla90cnevmrjqyekj2h2"}'
+      - '{"type":"private","id":"8071684786987753649998803578011703240145041440730638194652435199053970286994field","value":"ciphertext1qgq9dwtv7ddpj87y4mmu9umrzpc6xphd83fjalypcrk3kh7730xkcz2g8exarjd8uw7gp5pk5canmuv8ydtlav4r3js7ze03v3078s5yqy0uy4q5"}'
       finalize: []
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"7331115683796691695180644189125032609257898665963547964825382198771376755525field","checksum":"4917677937328246145044532601477143873573501034502083385380991457884843493990field","value":"record1qyqsp6n4ndhs67xxsz807wdgr03q8yzwhggjrfxlkxkzq2xq44yes6grqyxx66trwfhkxun9v35hguerqqpqzqped7y6ddsydpqgvrvdjenc3fe4v0ufdjswydmdpfrsvhjyeevaqhv9jhd76zcwhsq0ktc096sua40kkuyf4hyq9dgch72srw4tqdgqgtqfclz"}'
+      - '{"type":"record","id":"4208957313970658232751286576443300178495669226048257811644468627931096699976field","checksum":"5211262459858930044582157126887841554888543627004815427502338286704957658905field","value":"record1qyqspkzdmh6ymjaaa2nqygux6rst22j53jx7m8cqc8dc6cst05u7facwqyxx66trwfhkxun9v35hguerqqpqzqq6mxrxdp77dg5fsccfzkawquhgrgkg3yhwnyu3z8xcwzyjvxnzp7rna9pj8d6ar4s7r2rhdxpfn6zdzdsqpcd3wcdleel00l30cg9ss5we72v"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
     casts.aleo/test_cast:
       outputs:
-      - '{"type":"private","id":"5392715671841444290606468314946804174805488788684582932951130304459999506561field","value":"ciphertext1qgqfn5qrum3gfsz3e8scwcu0a8pfsnc8tt6h3940cu7tdu749mtg6zzzrn7j6swy57wdk05cr0z06s8f5swwc2leaadlypplxzxnmywpp5uwklq3"}'
-      - '{"type":"private","id":"1902483194659707781628922542766193557738420559417707545479378590418102338167field","value":"ciphertext1qgq00dunklpaxpx2fj6x3kwggd2ymdqn9ttad06a7afrtawlhe8f5qe8wua5hpcln76cd45mw43tk84yarydv04y4775edvrh7f5ly3jqg0wl7xk"}'
+      - '{"type":"private","id":"424228150983186170367955147384206461926690791231472190802378534347504514121field","value":"ciphertext1qgqxlvj23pmp5tdyfusrx9nck2qe7yp9yh5sy4f55qjgsglx3wvnjqtz4teqpdp4guncqrnl9wwtlpzazs66sjsr36jh7033h93d3nelqyffzjnx"}'
+      - '{"type":"private","id":"3142125492811640657669519617564295480721882837791032204549667230023179101133field","value":"ciphertext1qgqypd8pns63py0an740ze5a0ectus63y9354e54hpnuewl4w46pvpgyz9wmwp7drdm626mqyh2klysreyu7nyvqw94ewlgxul6gxjjkp55hrzr5"}'
       finalize: []
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"938235262412041312561149632722265725500744765059846179361472655299811269744field","checksum":"4642586395587867922914741364117015007081427540843760219892064317936105483447field","value":"record1qyqsp0tc8pedd8hqr20a9802eur0wx292f8pp8tfhgtnt9tu44vjq0q0qyxx66trwfhkxun9v35hguerqqpqzqxc25u7cfuat85aaw9ezyp4resyenarmgh33umg9d09rv0cryxvpasvjgdd627k29mseft6e9ws3ru074hflh7674udfmnh5lwd2j9q768jjaz"}'
+      - '{"type":"record","id":"127207861039514093638548278420214551631956543355863531896170617078428247729field","checksum":"3909407781254619824651779877738946208566263981072446516606274600109477528735field","value":"record1qyqspuka98xklxc3mxqpzrp85899thmn5h82ev4qlwdq0dva6qq67ygqqyxx66trwfhkxun9v35hguerqqpqzqq3kdsfazrnrlg2j0xqjt77gaewsket9qeqpyasdxw2acrgxucwqmkspjp9er97rrgz23qkc09cy694gmu0vvdx35unv2xp93kz0m5sjya4kdl"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.

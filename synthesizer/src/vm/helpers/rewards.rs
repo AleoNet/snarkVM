@@ -21,7 +21,7 @@ use indexmap::IndexMap;
 use rayon::prelude::*;
 
 /// A safety bound (sanity-check) for the coinbase reward.
-pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
+const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase reward at block 1.
 
 /// Returns the updated stakers reflecting the staking rewards for the given committee and block reward.
 /// The staking reward is defined as: `block_reward * stake / total_stake`.

@@ -18,6 +18,7 @@ mod serialize;
 mod string;
 mod to_bits;
 mod to_hash;
+mod verify;
 
 use console::{network::prelude::*, types::Field};
 
@@ -89,7 +90,7 @@ impl<N: Network> Metadata<N> {
         }
     }
 
-    /// Returns `true` if the block header is well-formed.
+    /// Returns `true` if the block metadata is well-formed.
     pub fn is_valid(&self) -> bool {
         match self.height == 0u32 {
             true => self.is_genesis(),
@@ -100,6 +101,8 @@ impl<N: Network> Metadata<N> {
                     && self.round != 0u64
                     // Ensure the height is nonzero.
                     && self.height != 0u32
+                    // Ensure the round is at least as large as the height.
+                    && self.round >= self.height as u64
                     // Ensure the total supply is nonzero.
                     && self.total_supply_in_microcredits != 0u64
                     // Ensure the coinbase target is at or above the minimum.
