@@ -41,14 +41,14 @@ pub trait ToBits: Sized {
 
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits = vec![];
+        let mut bits = Vec::with_capacity(32);
         self.write_bits_le(&mut bits);
         bits
     }
 
     /// Returns `self` as a boolean array in big-endian order.
     fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits = vec![];
+        let mut bits = Vec::with_capacity(32);
         self.write_bits_be(&mut bits);
         bits
     }
@@ -60,21 +60,6 @@ pub trait FromBits: Sized {
 
     /// Reads `Self` from a boolean array in big-endian order.
     fn from_bits_be(bits: &[bool]) -> Result<Self>;
-}
-
-pub trait ToMinimalBits: Sized {
-    /// Returns `self` as a minimal boolean array.
-    fn to_minimal_bits(&self) -> Vec<bool>;
-}
-
-impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        let mut res_bits = vec![];
-        for elem in self.iter() {
-            res_bits.extend(elem.to_minimal_bits());
-        }
-        res_bits
-    }
 }
 
 /********************/

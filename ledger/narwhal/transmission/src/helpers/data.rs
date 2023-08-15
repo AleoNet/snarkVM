@@ -43,7 +43,7 @@ impl<T: FromBytes + ToBytes + Send + 'static> Data<T> {
 
     pub fn serialize_blocking_into<W: Write>(&self, writer: &mut W) -> Result<()> {
         match self {
-            Self::Object(x) => Ok(writer.write_all(&x.to_bytes_le()?)?),
+            Self::Object(x) => Ok(x.write_le(writer)?),
             Self::Buffer(bytes) => Ok(writer.write_all(bytes)?),
         }
     }

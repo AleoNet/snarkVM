@@ -28,7 +28,7 @@ version = "=0.14.6"
 path = "../../utilities"
 
 [dev-dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [features]
 default = [ "enable_console" ]
