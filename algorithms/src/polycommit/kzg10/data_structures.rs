@@ -289,8 +289,8 @@ impl<E: PairingEngine> ToBytes for KZGCommitment<E> {
 }
 
 impl<E: PairingEngine> ToMinimalBits for KZGCommitment<E> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        self.0.to_minimal_bits()
+    fn write_minimal_bits(&self, vec: &mut Vec<bool>) {
+        self.0.write_minimal_bits(vec);
     }
 }
 

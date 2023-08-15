@@ -256,8 +256,8 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 }
 
 impl<P: Parameters> ToMinimalBits for Affine<P> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        self.x.to_bits_le()
+    fn write_minimal_bits(&self, vec: &mut Vec<bool>) {
+        self.x.write_bits_le(vec);
     }
 }
 

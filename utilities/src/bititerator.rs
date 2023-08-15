@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::iter::ExactSizeIterator;
+
 /// Iterates over a slice of `u64` in *big-endian* order.
 #[derive(Debug)]
 pub struct BitIteratorBE<Slice> {
@@ -31,10 +33,6 @@ impl<Slice: AsRef<[u64]>> BitIteratorBE<Slice> {
     pub fn new_without_leading_zeros(s: Slice) -> impl Iterator<Item = bool> {
         Self::new(s).skip_while(|b| !b)
     }
-
-    pub fn len(&self) -> usize {
-        self.n
-    }
 }
 
 impl<Slice: AsRef<[u64]>> Iterator for BitIteratorBE<Slice> {
@@ -50,6 +48,12 @@ impl<Slice: AsRef<[u64]>> Iterator for BitIteratorBE<Slice> {
 
             Some(self.s.as_ref()[part] & (1 << bit) > 0)
         }
+    }
+}
+
+impl<Slice: AsRef<[u64]>> ExactSizeIterator for BitIteratorBE<Slice> {
+    fn len(&self) -> usize {
+        self.n
     }
 }
 
@@ -82,6 +86,12 @@ impl<Slice: AsRef<[u64]>> Iterator for BitIteratorLE<Slice> {
 
             Some(self.s.as_ref()[part] & (1 << bit) > 0)
         }
+    }
+}
+
+impl<Slice: AsRef<[u64]>> ExactSizeIterator for BitIteratorLE<Slice> {
+    fn len(&self) -> usize {
+        self.max_len
     }
 }
 
