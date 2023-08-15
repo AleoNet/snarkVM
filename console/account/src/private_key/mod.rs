@@ -20,9 +20,6 @@ mod try_from;
 #[cfg(feature = "signature")]
 mod sign;
 
-#[cfg(feature = "ed25519")]
-mod to_ed25519;
-
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
 
