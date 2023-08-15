@@ -62,26 +62,6 @@ pub trait FromBits: Sized {
     fn from_bits_be(bits: &[bool]) -> Result<Self>;
 }
 
-pub trait ToMinimalBits: Sized {
-    /// Returns `self` as a minimal boolean array.
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        let mut bits = vec![];
-        self.write_minimal_bits(&mut bits);
-        bits
-    }
-
-    /// Writes `self` as a minimal boolean array into the given vector.
-    fn write_minimal_bits(&self, vec: &mut Vec<bool>);
-}
-
-impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
-    fn write_minimal_bits(&self, vec: &mut Vec<bool>) {
-        for elem in self.iter() {
-            elem.write_minimal_bits(vec);
-        }
-    }
-}
-
 /********************/
 /****** Tuples ******/
 /********************/

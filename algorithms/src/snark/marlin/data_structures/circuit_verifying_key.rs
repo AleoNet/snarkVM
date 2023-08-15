@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{fft::EvaluationDomain, polycommit::sonic_pc, r1cs::SynthesisError, snark::marlin::ahp::indexer::*};
+use crate::{fft::EvaluationDomain, polycommit::sonic_pc, snark::marlin::ahp::indexer::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{
@@ -22,10 +22,8 @@ use snarkvm_utilities::{
     string::String,
     FromBytes,
     FromBytesDeserializer,
-    ToBits,
     ToBytes,
     ToBytesSerializer,
-    ToMinimalBits,
 };
 
 use anyhow::Result;
@@ -41,40 +39,6 @@ pub struct CircuitVerifyingKey<E: PairingEngine> {
     /// Commitments to the indexed polynomials.
     pub circuit_commitments: Vec<sonic_pc::Commitment<E>>,
     pub id: CircuitId,
-}
-
-impl<E: PairingEngine> ToMinimalBits for CircuitVerifyingKey<E> {
-    fn write_minimal_bits(&self, vec: &mut Vec<bool>) {
-        let constraint_domain = EvaluationDomain::<E::Fr>::new(self.circuit_info.num_constraints)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-        let non_zero_domain_a = EvaluationDomain::<E::Fr>::new(self.circuit_info.num_non_zero_a)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-        let non_zero_domain_b = EvaluationDomain::<E::Fr>::new(self.circuit_info.num_non_zero_b)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-        let non_zero_domain_c = EvaluationDomain::<E::Fr>::new(self.circuit_info.num_non_zero_c)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
-            .unwrap();
-
-        assert!(constraint_domain.size() < u64::MAX as usize);
-        assert!(non_zero_domain_a.size() < u64::MAX as usize);
-        assert!(non_zero_domain_b.size() < u64::MAX as usize);
-        assert!(non_zero_domain_c.size() < u64::MAX as usize);
-
-        let constraint_domain_size = constraint_domain.size() as u64;
-        let non_zero_domain_a_size = non_zero_domain_a.size() as u64;
-        let non_zero_domain_b_size = non_zero_domain_b.size() as u64;
-        let non_zero_domain_c_size = non_zero_domain_c.size() as u64;
-
-        constraint_domain_size.write_bits_le(vec);
-        non_zero_domain_a_size.write_bits_le(vec);
-        non_zero_domain_b_size.write_bits_le(vec);
-        non_zero_domain_c_size.write_bits_le(vec);
-
-        self.circuit_commitments.write_minimal_bits(vec);
-    }
 }
 
 impl<E: PairingEngine> FromBytes for CircuitVerifyingKey<E> {
