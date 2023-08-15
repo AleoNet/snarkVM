@@ -55,12 +55,12 @@ mod tests {
             CurrentAleo::scope(format!("{mode} {expected} {i}"), || {
                 // Perform the operation.
                 let candidate = candidate.to_fields();
-                assert_eq!(5, candidate.len());
+                assert_eq!(4, candidate.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Extract the bits from the base field representation.
                 let candidate_bits_le = candidate.to_bits_le();
-                assert_eq!(1265, candidate_bits_le.len());
+                assert_eq!(1012, candidate_bits_le.len());
 
                 // Ensure all integer bits match with the expected result.
                 let expected_bits = expected.to_fields().unwrap().to_bits_le();
@@ -73,11 +73,20 @@ mod tests {
     }
 
     #[test]
-    fn test_signature_to_fields() {
+    fn test_signature_to_fields_constant() {
         let mut rng = TestRng::default();
+        check_to_fields(Mode::Constant, &mut rng, 0, 0, 0, 0);
+    }
 
-        check_to_fields(Mode::Constant, &mut rng, 1008, 0, 0, 0);
-        check_to_fields(Mode::Public, &mut rng, 0, 0, 2012, 2020);
-        check_to_fields(Mode::Private, &mut rng, 0, 0, 2012, 2020);
+    #[test]
+    fn test_signature_to_fields_public() {
+        let mut rng = TestRng::default();
+        check_to_fields(Mode::Public, &mut rng, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_signature_to_fields_private() {
+        let mut rng = TestRng::default();
+        check_to_fields(Mode::Private, &mut rng, 0, 0, 0, 0);
     }
 }
