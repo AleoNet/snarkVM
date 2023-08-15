@@ -31,11 +31,11 @@ impl<N: Network> Block<N> {
         current_timestamp: i64,
     ) -> Result<()> {
         // Ensure the block hash is correct.
-        self.verify_hash(previous_block)?;
+        self.verify_hash(previous_block.height(), previous_block.hash())?;
 
         // Ensure the block authority is correct.
         let (expected_round, expected_height, expected_timestamp) =
-            self.verify_authority(previous_block, current_committee)?;
+            self.verify_authority(previous_block.round(), previous_block.height(), current_committee)?;
 
         // Ensure the block solutions are correct.
         let (
@@ -89,12 +89,10 @@ impl<N: Network> Block<N> {
 
 impl<N: Network> Block<N> {
     /// Ensures the block hash is correct.
-    fn verify_hash(&self, previous_block: &Block<N>) -> Result<(), Error> {
+    fn verify_hash(&self, previous_height: u32, previous_hash: N::BlockHash) -> Result<(), Error> {
         // Determine the expected height.
-        let expected_height = previous_block.height().saturating_add(1);
+        let expected_height = previous_height.saturating_add(1);
 
-        // Retrieve the previous block hash.
-        let previous_hash = previous_block.hash();
         // Ensure the previous block hash matches.
         ensure!(
             self.previous_hash == previous_hash,
@@ -124,9 +122,14 @@ impl<N: Network> Block<N> {
     }
 
     /// Ensures the block authority is correct.
-    fn verify_authority(&self, previous_block: &Block<N>, current_committee: &Committee<N>) -> Result<(u64, u32, i64)> {
+    fn verify_authority(
+        &self,
+        previous_round: u64,
+        previous_height: u32,
+        current_committee: &Committee<N>,
+    ) -> Result<(u64, u32, i64)> {
         // Determine the expected height.
-        let expected_height = previous_block.height().saturating_add(1);
+        let expected_height = previous_height.saturating_add(1);
         // Ensure the block type is correct.
         match expected_height == 0 {
             true => ensure!(self.authority.is_beacon(), "The genesis block must be a beacon block"),
@@ -139,16 +142,16 @@ impl<N: Network> Block<N> {
         // Determine the expected round.
         let expected_round = match &self.authority {
             // Beacon blocks increment the previous block round by 1.
-            Authority::Beacon(..) => previous_block.round().saturating_add(1),
+            Authority::Beacon(..) => previous_round.saturating_add(1),
             // Quorum blocks use the subdag anchor round.
             Authority::Quorum(subdag) => {
                 // Ensure the subdag anchor round is after the previous block round.
                 ensure!(
-                    subdag.anchor_round() > previous_block.round(),
+                    subdag.anchor_round() > previous_round,
                     "Subdag anchor round is not after previous block round in block {} (found '{}', expected after '{}')",
                     expected_height,
                     subdag.anchor_round(),
-                    previous_block.round()
+                    previous_round
                 );
                 // Output the subdag anchor round.
                 subdag.anchor_round()
@@ -182,7 +185,6 @@ impl<N: Network> Block<N> {
                     "Signature is invalid in block {expected_height}"
                 );
             }
-            // TODO: Check the certificates of the quorum.
             Authority::Quorum(subdag) => {
                 // Compute the expected leader.
                 let expected_leader = current_committee.get_leader(expected_round)?;
@@ -192,6 +194,8 @@ impl<N: Network> Block<N> {
                     "Quorum block {expected_height} is authored by an unexpected leader (found: {}, expected: {expected_leader})",
                     subdag.leader_address()
                 );
+                // Ensure the transmission IDs from the subdag correspond to the block.
+                Self::check_subdag_transmissions(subdag, &self.coinbase, &self.transactions)?;
             }
         }
 
@@ -454,5 +458,53 @@ impl<N: Network> Block<N> {
             Some(ref coinbase) => coinbase.to_accumulator_point(),
             None => Ok(Field::zero()),
         }
+    }
+
+    /// Checks that the transmission IDs in the given subdag matches the solutions and transactions in the block.
+    pub(super) fn check_subdag_transmissions(
+        subdag: &Subdag<N>,
+        solutions: &Option<CoinbaseSolution<N>>,
+        transactions: &Transactions<N>,
+    ) -> Result<()> {
+        // Prepare an iterator over the solution IDs.
+        let mut solutions = solutions.as_ref().map(CoinbaseSolution::partial_solutions).into_iter().flatten();
+        // Prepare an iterator over the transaction IDs.
+        let mut transaction_ids = transactions.transaction_ids();
+
+        // Initialize a list of rejected transmission IDs.
+        let mut rejected_transmission_ids = Vec::new();
+
+        // Iterate over the transmission IDs.
+        for transmission_id in subdag.transmission_ids() {
+            // Process the transmission ID.
+            match transmission_id {
+                TransmissionID::Ratification => {}
+                TransmissionID::Solution(commitment) => {
+                    match solutions.next() {
+                        // Check the next solution matches the expected commitment.
+                        Some(solution) if solution.commitment() == *commitment => {}
+                        // Otherwise, add the transmission ID to the rejected list.
+                        _ => rejected_transmission_ids.push(transmission_id),
+                    }
+                }
+                TransmissionID::Transaction(transaction_id) => {
+                    match transaction_ids.next() {
+                        // Check the next transaction matches the expected transaction.
+                        Some(expected_id) if transaction_id == expected_id => {}
+                        // Otherwise, add the transmission ID to the rejected list.
+                        _ => rejected_transmission_ids.push(transmission_id),
+                    }
+                }
+            }
+        }
+
+        // Ensure there are no more solutions in the block.
+        ensure!(solutions.next().is_none(), "There exists more solutions than expected.");
+        // Ensure there are no more transactions in the block.
+        ensure!(transaction_ids.next().is_none(), "There exists more transactions than expected.");
+
+        // TODO (howardwu): Check that the rejected transmission IDs matches in Ratify::RejectedTransmissions.
+
+        Ok(())
     }
 }

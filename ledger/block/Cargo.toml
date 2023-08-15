@@ -61,6 +61,11 @@ package = "snarkvm-ledger-narwhal-subdag"
 path = "../narwhal/subdag"
 version = "=0.14.6"
 
+[dependencies.ledger-narwhal-transmission-id]
+package = "snarkvm-ledger-narwhal-transmission-id"
+path = "../narwhal/transmission-id"
+version = "=0.14.6"
+
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"

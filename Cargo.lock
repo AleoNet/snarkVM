@@ -3137,6 +3137,7 @@ dependencies = [
  "snarkvm-ledger-coinbase",
  "snarkvm-ledger-committee",
  "snarkvm-ledger-narwhal-subdag",
+ "snarkvm-ledger-narwhal-transmission-id",
  "snarkvm-ledger-query",
  "snarkvm-ledger-store",
  "snarkvm-synthesizer-process",
@@ -3233,6 +3234,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-subdag",
+ "snarkvm-ledger-narwhal-transmission-id",
 ]
 
 [[package]]
