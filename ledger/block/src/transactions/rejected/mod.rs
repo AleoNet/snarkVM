@@ -18,7 +18,7 @@ mod string;
 
 use super::*;
 
-use crate::{Deployment, Execution};
+use crate::{Deployment, Execution, Fee};
 
 /// A wrapper around the rejected deployment or execution.
 #[derive(Clone, PartialEq, Eq)]
@@ -77,6 +77,14 @@ impl<N: Network> Rejected<N> {
         match self {
             Self::Deployment(_, deployment) => deployment.to_deployment_id(),
             Self::Execution(execution) => execution.to_execution_id(),
+        }
+    }
+
+    /// Returns the transaction id of the transaction before it was rejected.
+    pub fn to_unconfirmed_id(&self, fee: &Option<Fee<N>>) -> Result<Field<N>> {
+        match self {
+            Self::Deployment(_, deployment) => Ok(*Transaction::deployment_tree(deployment, fee.as_ref())?.root()),
+            Self::Execution(execution) => Ok(*Transaction::execution_tree(execution, fee)?.root()),
         }
     }
 }
