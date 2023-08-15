@@ -114,6 +114,43 @@ impl<N: Network> ConfirmedTransaction<N> {
             false => bail!("Transaction '{}' is not a fee transaction", transaction.id()),
         }
     }
+
+    /// Returns the transaction id of the transaction before it was confirmed.
+    pub fn unconfirmed_transaction_id(&self) -> Result<N::TransactionID> {
+        match self {
+            Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.id()),
+            Self::AcceptedExecute(_, transaction, _) => Ok(transaction.id()),
+            Self::RejectedDeploy(_, fee_transaction, rejected_deployment) => {
+                ensure!(fee_transaction.is_fee(), "Rejected deploy transaction is not a fee transaction");
+
+                // Extract the deployment.
+                let Rejected::Deployment(_, deployment) = rejected_deployment else {
+                    bail!("Rejected deploy transaction is not a deployment");
+                };
+
+                // Compute the deployment tree.
+                let deployment_tree =
+                    Transaction::deployment_tree(deployment, fee_transaction.fee_transition().as_ref())?;
+
+                // Return the transaction ID.
+                Ok((*deployment_tree.root()).into())
+            }
+            Self::RejectedExecute(_, fee_transaction, rejected_execution) => {
+                ensure!(fee_transaction.is_fee(), "Rejected execute transaction is not a fee transaction");
+
+                // Extract the execution.
+                let Rejected::Execution(execution) = rejected_execution else {
+                    bail!("Rejected execute transaction is not an execution");
+                };
+
+                // Compute the execution tree.
+                let execution_tree = Transaction::execution_tree(execution, &fee_transaction.fee_transition())?;
+
+                // Return the transaction ID.
+                Ok((*execution_tree.root()).into())
+            }
+        }
+    }
 }
 
 impl<N: Network> ConfirmedTransaction<N> {
