@@ -110,7 +110,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Retrieve the latest state root.
-        let latest_state_root = *self.latest_state_root();
+        let latest_state_root = self.latest_state_root();
         // Retrieve the latest cumulative proof target.
         let latest_cumulative_proof_target = previous_block.cumulative_proof_target();
         // Retrieve the latest coinbase target.
@@ -153,7 +153,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
 
         // Calculate the coinbase reward.
-        let coinbase_reward = coinbase_reward(
+        let coinbase_reward = ledger_block::coinbase_reward(
             next_height,
             N::STARTING_SUPPLY,
             N::ANCHOR_HEIGHT,
@@ -164,7 +164,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Compute the block reward.
-        let block_reward = block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
+        let block_reward = ledger_block::block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
         // Compute the puzzle reward.
         let puzzle_reward = coinbase_reward.saturating_div(2);
 

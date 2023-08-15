@@ -12,7 +12,7 @@
       - 10field
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"4830964786461254688115435467800302388252324366954317687799514753782549830043field","checksum":"4110899723246764092392490581322334753278967144771153348733671285586866557004field","value":"record1qyqspt2w6hvlfv39kyta0yqxt34sgnmryxzw4nvjf6emxkzy3mxevhcdqyxx66trwfhkxun9v35hguerqqpqzqyzq9vd67j4utelh4a807rqmpdxd4cefcxjg4weyrnmxxjrnxx3p6zgch0wkmz9qevx4kjkexdadw7l2559ahhh7r9f4tkhdv5egsuqzz8dq8t"}'
+      - '{"type":"record","id":"4690434529858372297216218602724220752843133729074654073042743228011368536476field","checksum":"4934664862398260205374211142263468485259197348289565825488838729190272874320field","value":"record1qyqspdtuas7xpngj4z7rzq3vutjmzxx8kwfpw0l8sd5mttw52rxd5rg9qyxx66trwfhkxun9v35hguerqqpqzqxfjsyz2xljnzed0u24gfqaf356mk3x2gsrjy36g2nxqs20p2tnpf0j6cnqrysxxf7mdh2jhe4fgpeud7dw5j9dagp03ayggazlvw0sstjmljw"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -30,7 +30,7 @@
         }
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"5149608399818292430711097880016507938956216783716507103485231190880201704382field","checksum":"8306798313569367580815443480411774668270457105584927528748755011464102348330field","value":"record1qyqsqrrjwj5ugs9xla8ky6k6j3ncxu6nr9wf53fsrujjnh28r4dwg0s0qyxx66trwfhkxun9v35hguerqqpqzqykgne3u57qld2kuampjlp95j3tx3c26gvnjh0nqprgrme4hyz3q27ttsxtvqj38rqvp79j8etps2fypflxvzgymf3uq7l9xxr79yyqxu5wj64"}'
+      - '{"type":"record","id":"6294175323881659340061588133757308662003146844588299742660330033996430320537field","checksum":"4357057780490763043327404179788523841530149852564125532546444012284388702202field","value":"record1qyqsqu02lgu06kat3uq6ajmtffhn0gst4j80ahrt7zjrrq0cgpkpedgrqyxx66trwfhkxun9v35hguerqqpqzqykcg2pd86nmxlamal3nk2qeu98r6etavtrj52l9m64up0vp0j2q8wl4hap6f0zpcyau6cv5z3a7jv7wxcqr5mrs43jufnlmn7kpc6pzf5agsr"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -42,7 +42,7 @@
       - 'true'
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"6986617178407763771392881758610101524118492405511848727698604245053071823864field","checksum":"8080722695830641700289401396191178278643249787534077526788241545475717181698field","value":"record1qyqsqqyd2dp6hk0dmuzwfelmushu7u7ra5df0cmxu7qd7hcf7s6g68gxqyxx66trwfhkxun9v35hguerqqpqzqzk0yz2kac07us5fp80fxt6vxn2nuz8th32dsjdnauejgcf62hhp4yela6867rkhpqnsua0h3p9c6snw5xnxc6fln6c6x4sj5s3994suc44syy"}'
+      - '{"type":"record","id":"1930807833239891597558266244843806315757365370192277018045211893099287451025field","checksum":"806673872190416061168942650433027586905022070636283233373521919115959133547field","value":"record1qyqsqy26dhdkfuj8n70v8wv7uyr6m4dg0zkjhd26cevcjm2vrsjkwwc2qyxx66trwfhkxun9v35hguerqqpqzqphltxgzyjxk8m0h6per29vyvf0lsz8djj2rakmpwcnt9qjz8phpvwtrqx3epu3hk4f56e7dnxyjz6cagmkgty6gpgvwtpm3a620unqxxueg7k"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -54,7 +54,7 @@
       - 'false'
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"4346598115908312627997519247805441883576930597038876853223179514669023148695field","checksum":"5259278259380182963128547779640672909562891847893125285150282569159097415604field","value":"record1qyqsqj8n0a5nprlspdr97x3nqxhgvvcd0rscc9uanrt2zv72ermw47gwqyxx66trwfhkxun9v35hguerqqpqzqpzuup2crnaa6qtwxapnuk6f29zrd6cntk6hk56v80q25q57qjepj99n3ygtny8h62edpg7cxv9928v2j2nc7zugeulrcp6rcxdkxusu2uwqth"}'
+      - '{"type":"record","id":"7393075560667462932228445526523815064117532456259901391879320918363476371812field","checksum":"694815795049196892664847520235186663696181395447757923101700704468232929818field","value":"record1qyqsp249v9rv3g6re8d0apfr8vfrmmm00kwt68nn7pzvvj0ugnv38zcsqyxx66trwfhkxun9v35hguerqqpqzqzv54s2s8t0a4efe0ar3nd0s97yc3f3lmcyuhl97ltc79slp2n8z29lzdgzcg4mwzsc7dtr64t57rpyvgswpvq0xdeeznxy7tzz7a9pzh9j54h"}'
       finalize: []
-  speculate: the execution was accepted
+  speculate: the execution was rejected
   add_next_block: succeeded.
