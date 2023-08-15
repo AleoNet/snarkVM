@@ -35,34 +35,6 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
 
 use crate::helpers::kafka::kafka_queue::KafkaQueue;
 
-// struct KafkaQueue {
-//     messages: Vec<(Vec<u8>, Vec<u8>)>,
-// }
-
-// impl KafkaQueue {
-
-//     pub fn new() -> Self {
-//         KafkaQueue {
-//             messages: Vec::new(),
-//         }
-//     }
-
-//     pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
-//         self.messages.push((key, value));
-//     }
-
-//     pub fn send_messages(&self, topic: &str) {
-//         for (key, value) in &self.messages {
-//             KAFKA_PRODUCER.emit_event(&String::from_utf8_lossy(&value), topic);
-//         }
-//     }
-
-//     #[cfg(test)]
-//     pub fn get_messages(&self) -> &Vec<(Vec<u8>, Vec<u8>)> {
-//         &self.messages
-//     }
-// }
-
 impl<
     'a,
     K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
