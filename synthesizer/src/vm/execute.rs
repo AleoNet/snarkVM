@@ -153,9 +153,6 @@ mod tests {
         // Fetch the unspent records.
         let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
 
-        // Initialize the genesis block.
-        let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Update the VM.
@@ -198,7 +195,41 @@ mod tests {
     }
 
     #[test]
-    fn test_transfer_transaction_size() {
+    fn test_transfer_public_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, _) = prepare_vm(rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction =
+            vm.execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, None, None, rng).unwrap();
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(1299, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the execution.
+        assert!(matches!(transaction, Transaction::Execute(_, _, _)));
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
+            assert_eq!(1264, execution_size_in_bytes, "Update me if serialization has changed");
+        }
+    }
+
+    #[test]
+    fn test_transfer_private_transaction_size() {
         let rng = &mut TestRng::default();
 
         // Initialize a new caller.
@@ -233,6 +264,81 @@ mod tests {
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
             assert_eq!(2187, execution_size_in_bytes, "Update me if serialization has changed");
+        }
+    }
+
+    #[test]
+    fn test_transfer_private_to_public_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, records) = prepare_vm(rng).unwrap();
+
+        // Fetch the unspent record.
+        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::Record(record),
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction = vm
+            .execute(&caller_private_key, ("credits.aleo", "transfer_private_to_public"), inputs, None, None, rng)
+            .unwrap();
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(2043, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the execution.
+        assert!(matches!(transaction, Transaction::Execute(_, _, _)));
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
+            assert_eq!(2008, execution_size_in_bytes, "Update me if serialization has changed");
+        }
+    }
+
+    #[test]
+    fn test_transfer_public_to_private_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let address = Address::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, _) = prepare_vm(rng).unwrap();
+
+        // Prepare the inputs.
+        let inputs = [
+            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+        ]
+        .into_iter();
+
+        // Execute.
+        let transaction = vm
+            .execute(&caller_private_key, ("credits.aleo", "transfer_public_to_private"), inputs, None, None, rng)
+            .unwrap();
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(1458, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the execution.
+        assert!(matches!(transaction, Transaction::Execute(_, _, _)));
+        if let Transaction::Execute(_, execution, _) = &transaction {
+            let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
+            assert_eq!(1423, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -301,5 +407,37 @@ mod tests {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
             assert_eq!(2076, execution_size_in_bytes, "Update me if serialization has changed");
         }
+    }
+
+    #[test]
+    fn test_fee_transaction_size() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller.
+        let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+        let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+        // Prepare the VM and records.
+        let (vm, records) = prepare_vm(rng).unwrap();
+
+        // Fetch the unspent record.
+        let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+
+        // Sample a random rejected ID.
+        let rejected_id = Field::rand(rng);
+
+        // Execute the fee.
+        let (_response, fee) = vm.execute_fee_raw(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
+
+        // Create the fee transaction.
+        let transaction = Transaction::from_fee(fee.clone()).unwrap();
+
+        // Assert the size of the transaction.
+        let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
+        assert_eq!(1969, transaction_size_in_bytes, "Update me if serialization has changed");
+
+        // Assert the size of the fee.
+        let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
+        assert_eq!(1935, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }
