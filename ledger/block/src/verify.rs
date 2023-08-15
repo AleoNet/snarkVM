@@ -131,7 +131,7 @@ impl<N: Network> Block<N> {
         match expected_height == 0 {
             true => ensure!(self.authority.is_beacon(), "The genesis block must be a beacon block"),
             false => {
-                #[cfg(not(test))]
+                #[cfg(not(any(test, feature = "test")))]
                 ensure!(self.authority.is_quorum(), "The next block must be a quorum block");
             }
         }

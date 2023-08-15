@@ -41,6 +41,7 @@ serial = [
   "ledger-store/serial",
   "synthesizer/serial"
 ]
+test = [ "ledger-block/test" ]
 test-helpers = [ "ledger-committee/test-helpers", "ledger-narwhal/test-helpers" ]
 timer = [ "aleo-std/timer" ]
 
@@ -122,6 +123,11 @@ version = "1.3"
 
 [dev-dependencies.criterion]
 version = "0.5"
+
+[dev-dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "./block"
+features = [ "test" ]
 
 [dev-dependencies.serde_json]
 version = "1.0"
