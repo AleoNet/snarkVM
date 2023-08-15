@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::convert::TryInto;
-use std::collections::BTreeMap;
-
 use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
@@ -35,8 +32,11 @@ use crate::{
 use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
+use anyhow::Result;
+use core::convert::TryInto;
 use itertools::Itertools;
 use rand_core::RngCore;
+use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -157,7 +157,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         max_non_zero_domain: EvaluationDomain<F>,
         fft_precomputation: &FFTPrecomputation<F>,
         ifft_precomputation: &IFFTPrecomputation<F>,
-    ) -> Result<(Sum<F>, Lhs<F>, Gpoly<F>), anyhow::Error> {
+    ) -> Result<(Sum<F>, Lhs<F>, Gpoly<F>)> {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| format!("Computing a poly for {label}"));

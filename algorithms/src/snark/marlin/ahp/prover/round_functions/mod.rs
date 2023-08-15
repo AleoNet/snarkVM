@@ -21,10 +21,12 @@ use crate::{
         MarlinMode,
     },
 };
+use snarkvm_fields::PrimeField;
+
+use anyhow::Result;
 use itertools::Itertools;
 use rand::Rng;
 use rand_core::CryptoRng;
-use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "std"))]
@@ -173,7 +175,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         target_domain: &EvaluationDomain<F>,
         src_domain: &EvaluationDomain<F>,
         remainder_witness: bool,
-    ) -> Result<(DensePolynomial<F>, Option<DensePolynomial<F>>), anyhow::Error> {
+    ) -> Result<(DensePolynomial<F>, Option<DensePolynomial<F>>)> {
         // Let H = target_domain;
         // Let H_i = src_domain;
         // Let v_H := H.vanishing_polynomial();

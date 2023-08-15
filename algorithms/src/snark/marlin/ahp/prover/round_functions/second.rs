@@ -26,7 +26,7 @@ use crate::{
         MarlinMode,
     },
 };
-use anyhow::ensure;
+use anyhow::{ensure, Result};
 use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, cfg_reduce, ExecutionPool};
@@ -50,7 +50,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         verifier_message: &verifier::FirstMessage<F>,
         mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::SecondOracles<F>, prover::State<'a, F, MM>), anyhow::Error> {
+    ) -> Result<(prover::SecondOracles<F>, prover::State<'a, F, MM>)> {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let zk_bound = Self::zk_bound();
@@ -75,7 +75,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calc_rowcheck_witness(
         state: &mut prover::State<F, MM>,
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
-    ) -> Result<DensePolynomial<F>, anyhow::Error> {
+    ) -> Result<DensePolynomial<F>> {
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len());
         let max_constraint_domain = state.max_constraint_domain;
 

@@ -39,7 +39,7 @@ use snarkvm_utilities::{execute_with_max_available_threads, serialize::*};
 use rand::Rng;
 use std::{borrow::Cow, fmt};
 
-use anyhow::ensure;
+use anyhow::{ensure, Result};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -318,7 +318,7 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Given an index in the `other` subdomain, return an index into this domain `self`
     /// This assumes the `other`'s elements are also `self`'s first elements
-    pub fn reindex_by_subdomain(&self, other: &Self, index: usize) -> Result<usize, anyhow::Error> {
+    pub fn reindex_by_subdomain(&self, other: &Self, index: usize) -> Result<usize> {
         ensure!(self.size() >= other.size(), "self.size() must be smaller than other.size()");
 
         // Let this subgroup be G, and the subgroup we're re-indexing by be S.

@@ -24,9 +24,11 @@ use crate::{
         MarlinMode,
     },
 };
-use itertools::Itertools;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
+
+use anyhow::Result;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
@@ -135,7 +137,7 @@ pub(crate) fn matrix_evals<F: PrimeField>(
     input_domain: &EvaluationDomain<F>,
     constraint_domain_elems: &[F],
     variable_domain_elems: &[F],
-) -> Result<MatrixEvals<F>, anyhow::Error> {
+) -> Result<MatrixEvals<F>> {
     let lde_evals_time = start_timer!(|| "Computing row, col and val evals");
 
     // We are computing the arithmetization of M,
@@ -223,7 +225,7 @@ pub(crate) fn transpose<F: PrimeField>(
     matrix: &Matrix<F>,
     variable_domain: &EvaluationDomain<F>,
     input_domain: &EvaluationDomain<F>,
-) -> Result<Matrix<F>, anyhow::Error> {
+) -> Result<Matrix<F>> {
     let mut transpose = vec![vec![]; variable_domain.size()];
     for (row_index, row) in matrix.iter().enumerate() {
         for (val, input_var_index) in row {

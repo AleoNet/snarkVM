@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeMap;
-
 use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
@@ -32,12 +30,13 @@ use crate::{
         Matrix,
     },
 };
-
-use anyhow::ensure;
-use itertools::Itertools;
-use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, ExecutionPool};
+
+use anyhow::{ensure, Result};
+use itertools::Itertools;
+use rand_core::RngCore;
+use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -130,7 +129,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         alpha: &F,
         eta_b: &F,
         eta_c: &F,
-    ) -> Result<(DensePolynomial<F>, DensePolynomial<F>, ThirdMessage<F>), anyhow::Error> {
+    ) -> Result<(DensePolynomial<F>, DensePolynomial<F>, ThirdMessage<F>)> {
         let num_instances = batch_combiners.values().map(|c| c.instance_combiners.len()).collect_vec();
         let total_instances = num_instances.iter().sum::<usize>();
         let max_variable_domain = &state.max_variable_domain;
@@ -218,9 +217,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok((h_1_sum, xg_1_sum, msg))
     }
 
-    fn calc_assignments(
-        state: &mut prover::State<F, MM>,
-    ) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>, anyhow::Error> {
+    fn calc_assignments(state: &mut prover::State<F, MM>) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
         let assignments_time = start_timer!(|| "Calculate assignments");
         let assignments: BTreeMap<_, _> = state
             .circuit_specific_states
@@ -251,7 +248,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     fn calc_matrix_transpose(
         state: &mut prover::State<F, MM>,
-    ) -> Result<BTreeMap<CircuitId, BTreeMap<String, Matrix<F>>>, anyhow::Error> {
+    ) -> Result<BTreeMap<CircuitId, BTreeMap<String, Matrix<F>>>> {
         let transpose_time = start_timer!(|| "Transpose of matrices");
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len() * 3);
         state.circuit_specific_states.iter().for_each(|(circuit, circuit_specific_state)| {
@@ -289,7 +286,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         matrix_transpose: &Matrix<F>,
         alpha: F,
         combiner: F,
-    ) -> Result<LinevalInstance<F>, anyhow::Error> {
+    ) -> Result<LinevalInstance<F>> {
         let sumcheck_time = start_timer!(|| format!("Compute LHS of sumcheck for {_label}"));
 
         // Let C = variable_domain
