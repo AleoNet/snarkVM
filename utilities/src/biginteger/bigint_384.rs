@@ -271,7 +271,7 @@ impl ToBytes for BigInteger384 {
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
         let mut arr = [0u8; 8 * 6];
         for (i, num) in self.0.iter().enumerate() {
-            arr[i * 8..][..8].copy_from_slice(&num.to_le_bytes());
+            arr[i * 8..(i + 1) * 8].copy_from_slice(&num.to_le_bytes());
         }
         arr.write_le(writer)
     }
