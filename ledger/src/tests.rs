@@ -247,6 +247,7 @@ finalize failed_assert:
             rng,
         )
         .unwrap();
+    let failed_assert_transaction_id = failed_assert_transaction.id();
 
     // Construct the next block containing the new transaction.
     let next_block = ledger
@@ -264,6 +265,9 @@ finalize failed_assert:
 
         assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
     }
+
+    // Check that the unconfirmed transaction id of the rejected execution is correct.
+    assert_eq!(confirmed_transaction.unconfirmed_id().unwrap(), failed_assert_transaction_id);
 
     // Check that the next block is valid.
     ledger.check_next_block(&next_block).unwrap();

@@ -116,7 +116,7 @@ impl<N: Network> ConfirmedTransaction<N> {
     }
 
     /// Returns the transaction id of the transaction before it was confirmed.
-    pub fn unconfirmed_transaction_id(&self) -> Result<N::TransactionID> {
+    pub fn unconfirmed_id(&self) -> Result<N::TransactionID> {
         match self {
             Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.id()),
             Self::AcceptedExecute(_, transaction, _) => Ok(transaction.id()),
@@ -280,6 +280,7 @@ pub mod test_helpers {
 mod test {
 
     use super::*;
+    use crate::transactions::confirmed::test_helpers;
 
     #[test]
     fn test_accepted_execute() {
@@ -314,5 +315,26 @@ mod test {
         let finalize_operations = vec![FinalizeOperation::RemoveMapping(Uniform::rand(rng))];
         let confirmed = ConfirmedTransaction::accepted_execute(index, tx, finalize_operations);
         assert!(confirmed.is_err());
+    }
+
+    #[test]
+    fn test_unconfirmed_transaction_ids() {
+        let rng = &mut TestRng::default();
+
+        // Ensure that the unconfirmed transaction id of an accepted deployment is equivalent to its id.
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), rng);
+        assert_eq!(accepted_deploy.unconfirmed_id().unwrap(), accepted_deploy.id());
+
+        // Ensure that the unconfirmed transaction id of an accepted execute is equivalent to its id.
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), rng);
+        assert_eq!(accepted_execution.unconfirmed_id().unwrap(), accepted_execution.id());
+
+        // Ensure that the unconfirmed transaction id of a rejected deployment is not equivalent to its id.
+        let rejected_deploy = test_helpers::sample_rejected_deploy(Uniform::rand(rng), rng);
+        assert_ne!(rejected_deploy.unconfirmed_id().unwrap(), rejected_deploy.id());
+
+        // Ensure that the unconfirmed transaction id of a rejected execute is not equivalent to its id.
+        let rejected_execution = test_helpers::sample_rejected_execute(Uniform::rand(rng), rng);
+        assert_ne!(rejected_execution.unconfirmed_id().unwrap(), rejected_execution.id());
     }
 }
