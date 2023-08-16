@@ -18,7 +18,6 @@ pub use helpers::*;
 mod authorize;
 mod deploy;
 mod execute;
-mod execute_fee;
 mod finalize;
 mod verify;
 
@@ -565,7 +564,7 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    pub(crate) fn sample_fee_private_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {

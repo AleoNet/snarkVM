@@ -67,6 +67,72 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
+    /// Returns the response and fee.
+    #[deprecated]
+    pub fn execute_fee_private<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        fee_record: Record<N, Plaintext<N>>,
+        fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Fee<N>> {
+        let timer = timer!("VM::execute_fee_raw");
+
+        // Prepare the query.
+        let query = match query {
+            Some(query) => query,
+            None => Query::VM(self.block_store().clone()),
+        };
+        lap!(timer, "Prepare the query");
+
+        // TODO (raychu86): Ensure that the fee record is associated with the `credits.aleo` program
+        // Ensure that the record has enough balance to pay the fee.
+        match fee_record.find(&[Identifier::from_str("microcredits")?]) {
+            Ok(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => {
+                if *amount < fee_in_microcredits {
+                    bail!("Fee record does not have enough balance to pay the fee")
+                }
+            }
+            _ => bail!("Fee record does not have microcredits"),
+        }
+
+        // Authorize the call to fee.
+        let authorization = self.process.read().authorize_fee_private(
+            private_key,
+            fee_record,
+            fee_in_microcredits,
+            deployment_or_execution_id,
+            rng,
+        )?;
+        lap!(timer, "Authorize the call to fee");
+
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Execute the call to fee.
+                let authorization = cast_ref!(authorization as Authorization<$network>).clone();
+                let (_, mut trace) = $process.execute::<$aleo>(authorization)?;
+                lap!(timer, "Execute the call to fee");
+
+                // Prepare the assignments.
+                cast_mut_ref!(trace as Trace<N>).prepare(query)?;
+                lap!(timer, "Prepare the assignments");
+
+                // Compute the proof and construct the fee.
+                let fee = trace.prove_fee::<$aleo, _>(rng)?;
+                finish!(timer, "Compute the proof and construct the fee object");
+
+                // Return the fee.
+                Ok(cast_ref!(fee as Fee<N>).clone())
+            }};
+        }
+        // Process the logic.
+        process!(self, logic)
+    }
+
     /// Executes a call to the program function for the given authorization.
     /// Returns the response and execution.
     #[inline]
@@ -292,5 +358,21 @@ mod tests {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
             assert_eq!(2076, execution_size_in_bytes, "Update me if serialization has changed");
         }
+    }
+
+    #[test]
+    fn test_fee_private_transition_size() {
+        let rng = &mut TestRng::default();
+
+        // Retrieve a fee transaction.
+        let transaction = crate::vm::test_helpers::sample_fee_private_transaction(rng);
+        // Retrieve the fee.
+        let fee = match transaction {
+            Transaction::Fee(_, fee) => fee,
+            _ => panic!("Expected a fee transaction"),
+        };
+        // Assert the size of the transition.
+        let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
+        assert_eq!(1935, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }
