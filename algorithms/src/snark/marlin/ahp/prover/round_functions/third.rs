@@ -105,7 +105,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1_sum.coeffs[1..]);
 
-        drop(x_g_1_sum);
+        drop(x_g_1_sum); // Be assured we don't use x_g_1_sum anymore
 
         assert!(g_1.degree() <= max_variable_domain.size() - 2);
         assert!(h_1.degree() <= 2 * max_variable_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
