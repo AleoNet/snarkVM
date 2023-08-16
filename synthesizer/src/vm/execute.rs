@@ -373,6 +373,6 @@ mod tests {
         };
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
-        assert_eq!(1935, fee_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1943, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }
