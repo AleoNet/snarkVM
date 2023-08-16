@@ -187,13 +187,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(1420, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(1468, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(1385, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(1433, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -226,13 +226,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2231, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2279, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2196, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2244, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -260,13 +260,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2076, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2124, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2041, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2089, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 
@@ -293,13 +293,13 @@ mod tests {
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
-        assert_eq!(2120, transaction_size_in_bytes, "Update me if serialization has changed");
+        assert_eq!(2168, transaction_size_in_bytes, "Update me if serialization has changed");
 
         // Assert the size of the execution.
         assert!(matches!(transaction, Transaction::Execute(_, _, _)));
         if let Transaction::Execute(_, execution, _) = &transaction {
             let execution_size_in_bytes = execution.to_bytes_le().unwrap().len();
-            assert_eq!(2085, execution_size_in_bytes, "Update me if serialization has changed");
+            assert_eq!(2133, execution_size_in_bytes, "Update me if serialization has changed");
         }
     }
 }
