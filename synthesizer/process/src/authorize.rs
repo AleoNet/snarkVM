@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use console::program::{LiteralType, ValueType};
 
 impl<N: Network> Process<N> {
     /// Authorizes a call to the program function for the given inputs.
