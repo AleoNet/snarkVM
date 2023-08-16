@@ -94,8 +94,8 @@ impl<N: Network> Process<N> {
 
         // Ensure the number of outputs is correct.
         ensure!(
-            fee.outputs().len() == 2,
-            "The number of outputs in the fee transition should be 2, found {}",
+            fee.outputs().len() == 1,
+            "The number of outputs in the fee transition should be 1, found {}",
             fee.outputs().len()
         );
         // Ensure each output is valid.
