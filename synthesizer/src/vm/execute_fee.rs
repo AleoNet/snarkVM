@@ -26,7 +26,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         deployment_or_execution_id: Field<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Fee<N>)> {
+    ) -> Result<Fee<N>> {
         let timer = timer!("VM::execute_fee_raw");
 
         // Prepare the query.
@@ -52,18 +52,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             ($process:expr, $network:path, $aleo:path) => {{
                 type RecordPlaintext<NetworkMacro> = Record<NetworkMacro, Plaintext<NetworkMacro>>;
 
-                // Prepare the private key and fee record.
-                let private_key = cast_ref!(&private_key as PrivateKey<$network>);
-                let fee_record = cast_ref!(fee_record as RecordPlaintext<$network>);
-                let deployment_or_execution_id = cast_ref!(deployment_or_execution_id as Field<$network>);
-                lap!(timer, "Prepare the private key and fee record");
-
                 // Execute the call to fee.
-                let (response, _fee_transition, mut trace) = $process.execute_fee_private::<$aleo, _>(
-                    private_key,
-                    fee_record.clone(),
+                let (_, _, mut trace) = $process.execute_fee_private::<$aleo, _>(
+                    cast_ref!(&private_key as PrivateKey<$network>),
+                    cast_ref!(fee_record as RecordPlaintext<$network>).clone(),
                     fee_in_microcredits,
-                    *deployment_or_execution_id,
+                    *cast_ref!(deployment_or_execution_id as Field<$network>),
                     rng,
                 )?;
                 lap!(timer, "Execute the call to fee");
@@ -73,19 +67,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the assignments");
 
                 // Compute the proof and construct the fee.
-                let trace = cast_ref!(trace as Trace<$network>);
                 let fee = trace.prove_fee::<$aleo, _>(rng)?;
-                lap!(timer, "Compute the proof and construct the fee object");
+                finish!(timer, "Compute the proof and construct the fee object");
 
-                // Prepare the return.
-                let response = cast_ref!(response as Response<N>).clone();
-                let fee = cast_ref!(fee as Fee<N>).clone();
-                lap!(timer, "Prepare the response and fee object");
-
-                finish!(timer);
-
-                // Return the response and fee.
-                Ok((response, fee))
+                // Return the fee.
+                Ok(cast_ref!(fee as Fee<N>).clone())
             }};
         }
         // Process the logic.

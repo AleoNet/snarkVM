@@ -30,7 +30,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the authorization.
         let authorization = self.authorize(private_key, program_id, function_name, inputs, rng)?;
         // Compute the execution.
-        let (_response, execution) = self.execute_authorization_raw(authorization, query.clone(), rng)?;
+        let execution = self.execute_authorization_raw(authorization, query.clone(), rng)?;
         // Compute the fee.
         let fee = match fee {
             None => None,
@@ -38,13 +38,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // Compute the minimum execution cost.
                 let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
                 // Determine the fee.
-                let fee_in_microcredits = minimum_execution_cost
-                    .checked_add(priority_fee_in_microcredits)
-                    .ok_or_else(|| anyhow!("Fee overflowed for an execution transaction"))?;
+                let Some(fee_in_microcredits) = minimum_execution_cost.checked_add(priority_fee_in_microcredits) else {
+                    bail!("Fee overflowed for an execution transaction")
+                };
                 // Compute the execution ID.
                 let execution_id = execution.to_execution_id()?;
                 // Compute the fee.
-                Some(self.execute_fee_private(private_key, credits, fee_in_microcredits, execution_id, query, rng)?.1)
+                Some(self.execute_fee_private(private_key, credits, fee_in_microcredits, execution_id, query, rng)?)
             }
         };
         // Return the execute transaction.
@@ -60,7 +60,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the execution.
-        let (_, execution) = self.execute_authorization_raw(authorization, query, rng)?;
+        let execution = self.execute_authorization_raw(authorization, query, rng)?;
         // Return the execute transaction.
         Transaction::from_execution(execution, fee)
     }
@@ -75,15 +75,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>)> {
-        let timer = timer!("VM::execute_authorization");
+    ) -> Result<Execution<N>> {
+        let timer = timer!("VM::execute_authorization_raw");
 
         // Construct the locator of the main function.
         let locator = {
             let request = authorization.peek_next()?;
             Locator::new(*request.program_id(), *request.function_name()).to_string()
         };
-
         // Prepare the query.
         let query = match query {
             Some(query) => query,
@@ -96,10 +95,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the authorization.
                 let authorization = cast_ref!(authorization as Authorization<$network>);
-                lap!(timer, "Prepare the authorization");
-
                 // Execute the call.
-                let (response, mut trace) = $process.execute::<$aleo>(authorization.clone())?;
+                let (_, mut trace) = $process.execute::<$aleo>(authorization.clone())?;
                 lap!(timer, "Execute the call");
 
                 // Prepare the assignments.
@@ -107,19 +104,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 lap!(timer, "Prepare the assignments");
 
                 // Compute the proof and construct the execution.
-                let trace = cast_ref!(trace as Trace<$network>);
                 let execution = trace.prove_execution::<$aleo, _>(&locator, rng)?;
-                lap!(timer, "Compute the proof");
-
-                // Prepare the return.
-                let response = cast_ref!(response as Response<N>).clone();
-                let execution = cast_ref!(execution as Execution<N>).clone();
-                lap!(timer, "Prepare the response and execution");
-
-                finish!(timer);
+                finish!(timer, "Compute the proof");
 
                 // Return the response and execution.
-                Ok((response, execution))
+                Ok(cast_ref!(execution as Execution<N>).clone())
             }};
         }
         // Process the logic.

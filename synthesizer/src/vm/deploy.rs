@@ -34,16 +34,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the minimum deployment cost.
         let (minimum_deployment_cost, (_, _)) = deployment_cost(&deployment)?;
         // Determine the fee.
-        let fee_in_microcredits = minimum_deployment_cost
-            .checked_add(priority_fee_in_microcredits)
-            .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
+        let Some(fee_in_microcredits) = minimum_deployment_cost.checked_add(priority_fee_in_microcredits) else {
+            bail!("Fee overflowed for a deployment transaction")
+        };
 
         // Compute the deployment ID.
         let deployment_id = deployment.to_deployment_id()?;
 
         // Compute the fee.
-        let (_, fee) =
-            self.execute_fee_private(private_key, fee_record, fee_in_microcredits, deployment_id, query, rng)?;
+        let fee = self.execute_fee_private(private_key, fee_record, fee_in_microcredits, deployment_id, query, rng)?;
 
         // Construct the owner.
         let owner = ProgramOwner::new(private_key, deployment_id, rng)?;

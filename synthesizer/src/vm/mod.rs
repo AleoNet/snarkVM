@@ -26,7 +26,7 @@ use crate::{cast_mut_ref, cast_ref, process};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
+    program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
     types::{Field, U64},
 };
 use ledger_block::{
@@ -556,8 +556,7 @@ function compute:
                 let rejected_id = Field::rand(rng);
 
                 // Execute.
-                let (_response, fee) =
-                    vm.execute_fee_private(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
+                let fee = vm.execute_fee_private(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_fee(&fee, rejected_id));
                 // Return the private fee.
