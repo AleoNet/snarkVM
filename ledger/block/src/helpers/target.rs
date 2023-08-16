@@ -109,16 +109,17 @@ pub const fn block_height_at_year(block_time: u16, num_years: u32) -> u32 {
 /// Calculate the coinbase target for the given block height.
 pub fn coinbase_target(
     previous_target: u64,
-    previous_height: u32,
-    next_height: u32,
-    anchor_height: u32,
+    previous_block_timestamp: i64,
+    block_timestamp: i64,
+    anchor_time: u16,
     num_blocks_per_epoch: u32,
     genesis_target: u64,
 ) -> Result<u64> {
     // Compute the half life.
-    let half_life = num_blocks_per_epoch.saturating_div(2);
+    let half_life = num_blocks_per_epoch.saturating_div(2).saturating_mul(anchor_time as u32);
     // Compute the new coinbase target.
-    let candidate_target = retarget(previous_target, previous_height, next_height, anchor_height, half_life, true)?;
+    let candidate_target =
+        retarget(previous_target, previous_block_timestamp, block_timestamp, anchor_time, half_life, true)?;
     // Return the new coinbase target, floored at the genesis target.
     Ok(candidate_target.max(genesis_target))
 }
@@ -132,22 +133,22 @@ pub fn proof_target(coinbase_target: u64, genesis_proof_target: u64) -> u64 {
 ///     T_{i+1} = T_i * 2^(INV * (D - A) / TAU).
 ///     T_i = Current target.
 ///     D = Drift, defined as the number of blocks elapsed.
-///     A = Anchor height, defined as expected number of blocks elapsed.
+///     A = Anchor timestamp, defined as expected number of seconds elapsed.
 ///     TAU = Rate of doubling (or half-life) in seconds.
 ///     INV = {-1, 1} depending on whether the target is increasing or decreasing.
 fn retarget(
     previous_target: u64,
-    previous_height: u32,
-    next_height: u32,
-    anchor_height: u32,
+    previous_block_timestamp: i64,
+    block_timestamp: i64,
+    anchor_time: u16,
     half_life: u32,
     is_inverse: bool,
 ) -> Result<u64> {
     // Determine the number of blocks elapsed since the previous block height.
     // Note: This operation includes a safety check for a repeat block height.
-    let block_height_elapsed = next_height.saturating_sub(previous_height).max(1) as i32;
+    let block_time_elapsed = block_timestamp.saturating_sub(previous_block_timestamp).max(1);
     // Compute the drift.
-    let mut drift = block_height_elapsed.saturating_sub(anchor_height as i32);
+    let mut drift = block_time_elapsed.saturating_sub(anchor_time as i64);
 
     // If the drift is zero, return the previous target.
     if drift == 0 {
@@ -537,15 +538,15 @@ mod tests {
             let previous_coinbase_target: u64 = rng.gen_range(minimum_coinbase_target..u64::MAX);
             let previous_prover_target = proof_target(previous_coinbase_target, CurrentNetwork::GENESIS_PROOF_TARGET);
 
-            let previous_height = rng.gen();
+            let previous_timestamp = rng.gen();
 
             // Targets stay the same when the drift is as expected.
-            let next_height = previous_height + CurrentNetwork::ANCHOR_HEIGHT;
+            let next_timestamp = previous_timestamp + CurrentNetwork::ANCHOR_TIME as i64;
             let new_coinbase_target = coinbase_target(
                 previous_coinbase_target,
-                previous_height,
-                next_height,
-                CurrentNetwork::ANCHOR_HEIGHT,
+                previous_timestamp,
+                next_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
                 CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
@@ -555,12 +556,12 @@ mod tests {
             assert_eq!(new_prover_target, previous_prover_target);
 
             // Targets decrease (easier) when the drift is greater than expected.
-            let next_height = previous_height + 2 * CurrentNetwork::ANCHOR_HEIGHT;
+            let new_timestamp = previous_timestamp + 2 * CurrentNetwork::ANCHOR_TIME as i64;
             let new_coinbase_target = coinbase_target(
                 previous_coinbase_target,
-                previous_height,
-                next_height,
-                CurrentNetwork::ANCHOR_HEIGHT,
+                previous_timestamp,
+                new_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
                 CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
@@ -570,12 +571,12 @@ mod tests {
             assert!(new_prover_target < previous_prover_target);
 
             // Targets increase (harder) when the drift is less than expected.
-            let next_height = previous_height + CurrentNetwork::ANCHOR_HEIGHT / 2;
+            let next_timestamp = previous_timestamp + (CurrentNetwork::ANCHOR_TIME / 2) as i64;
             let new_coinbase_target = coinbase_target(
                 previous_coinbase_target,
-                previous_height,
-                next_height,
-                CurrentNetwork::ANCHOR_HEIGHT,
+                previous_timestamp,
+                next_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
                 CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
@@ -599,17 +600,19 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             let previous_coinbase_target: u64 = rng.gen_range(minimum_coinbase_target..u64::MAX);
-            let previous_height = rng.gen();
+            let previous_timestamp = rng.gen();
 
-            let half_life = CurrentNetwork::NUM_BLOCKS_PER_EPOCH.saturating_div(2);
+            let half_life = CurrentNetwork::NUM_BLOCKS_PER_EPOCH
+                .saturating_div(2)
+                .saturating_mul(CurrentNetwork::ANCHOR_TIME as u32) as i64;
 
             // New coinbase target is greater than half if the drift equals the half life.
-            let next_height = previous_height + half_life;
+            let next_timestamp = previous_timestamp + half_life;
             let next_coinbase_target = coinbase_target(
                 previous_coinbase_target,
-                previous_height,
-                next_height,
-                CurrentNetwork::ANCHOR_HEIGHT,
+                previous_timestamp,
+                next_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
                 CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
@@ -618,12 +621,12 @@ mod tests {
             assert!(next_coinbase_target > previous_coinbase_target / 2);
 
             // New coinbase target is halved if the drift is 1 anchor height past the half life.
-            let next_height = previous_height + half_life + CurrentNetwork::ANCHOR_HEIGHT;
+            let next_timestamp = previous_timestamp + half_life + CurrentNetwork::ANCHOR_TIME as i64;
             let next_coinbase_target = coinbase_target(
                 previous_coinbase_target,
-                previous_height,
-                next_height,
-                CurrentNetwork::ANCHOR_HEIGHT,
+                previous_timestamp,
+                next_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
                 CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
@@ -632,12 +635,12 @@ mod tests {
             assert_eq!(next_coinbase_target, previous_coinbase_target / 2);
 
             // New coinbase target is less than half if the drift is more than 1 anchor height past the half life.
-            let next_height = previous_height + half_life + 2 * CurrentNetwork::ANCHOR_HEIGHT;
+            let next_timestamp = previous_timestamp + half_life + 2 * CurrentNetwork::ANCHOR_TIME as i64;
             let next_coinbase_target = coinbase_target(
                 previous_coinbase_target,
-                previous_height,
-                next_height,
-                CurrentNetwork::ANCHOR_HEIGHT,
+                previous_timestamp,
+                next_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
                 CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
@@ -651,27 +654,28 @@ mod tests {
     fn test_target_doubling() {
         let mut rng = TestRng::default();
 
-        // The custom block height drift that is faster than the anchor height.
-        const BLOCK_HEIGHT_DELTA: u32 = 3;
+        // The custom block height drift that is faster than the anchor time.
+        const ANCHOR_TIME_DELTA: i64 = 15;
         // The expected number of blocks before the coinbase target is doubled.
-        const EXPECTED_NUM_BLOCKS_TO_DOUBLE: u32 = 540;
+        const EXPECTED_NUM_BLOCKS_TO_DOUBLE: u32 = 909;
 
         let minimum_coinbase_target: u64 = 2u64.pow(10) - 1;
 
         let initial_coinbase_target: u64 = rng.gen_range(minimum_coinbase_target..u64::MAX / 2);
-        let initial_height: u32 = rng.gen();
+        let initial_timestamp: i64 = rng.gen();
 
         let mut previous_coinbase_target: u64 = initial_coinbase_target;
-        let mut previous_height = initial_height;
+        let mut previous_timestamp = initial_timestamp;
+        let mut num_blocks = 0;
 
         while previous_coinbase_target < initial_coinbase_target * 2 {
             // Targets increase (harder) when the timestamp is less than expected.
-            let next_height = previous_height + BLOCK_HEIGHT_DELTA;
+            let next_timestamp = previous_timestamp + ANCHOR_TIME_DELTA;
             let next_coinbase_target = coinbase_target(
                 previous_coinbase_target,
-                previous_height,
-                next_height,
-                CurrentNetwork::ANCHOR_HEIGHT,
+                previous_timestamp,
+                next_timestamp,
+                CurrentNetwork::ANCHOR_TIME,
                 CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
                 CurrentNetwork::GENESIS_COINBASE_TARGET,
             )
@@ -680,13 +684,13 @@ mod tests {
             assert!(next_coinbase_target > previous_coinbase_target);
 
             previous_coinbase_target = next_coinbase_target;
-            previous_height = next_height;
+            previous_timestamp = next_timestamp;
+            num_blocks += 1;
         }
 
-        let num_blocks = previous_height - initial_height;
-        let seconds = num_blocks * CurrentNetwork::BLOCK_TIME as u32;
+        let seconds = previous_timestamp - initial_timestamp;
         println!(
-            "For drifts of {BLOCK_HEIGHT_DELTA} blocks and epochs of {} blocks, doubling the coinbase target took {num_blocks} blocks. ({seconds} seconds)",
+            "For drifts of {ANCHOR_TIME_DELTA} seconds and epochs of {} blocks, doubling the coinbase target took {num_blocks} blocks. ({seconds} seconds)",
             CurrentNetwork::NUM_BLOCKS_PER_EPOCH,
         );
 
