@@ -316,7 +316,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     lineval.add(sum_b_fourth * eta_b * v_X_at_beta[id], w_j.clone());
 
                     lineval.add(sum_c_fourth * eta_c * x_at_betas[id][j], LCTerm::One);
-                    lineval.add(sum_c_fourth * eta_c * v_X_at_beta[id], w_j.clone());
+                    lineval.add(sum_c_fourth * eta_c * v_X_at_beta[id], w_j);
 
                     circuit_term += (*instance_combiner, &lineval);
                 }
