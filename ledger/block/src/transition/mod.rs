@@ -296,6 +296,20 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
+    /// Returns `true` if this is a `bond` transition.
+    #[inline]
+    pub fn is_bond(&self) -> bool {
+        // The transition is a `bond` transition if it:
+        self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "bond"
+    }
+
+    /// Returns `true` if this is an `unbond` transition.
+    #[inline]
+    pub fn is_unbond(&self) -> bool {
+        // The transition is a `bond` transition if it:
+        self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "unbond"
+    }
+
     /// Returns `true` if this is a `mint` transition.
     #[inline]
     pub fn is_mint(&self) -> bool {

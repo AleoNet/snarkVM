@@ -152,13 +152,13 @@ impl<N: Network> BatchCertificate<N> {
     pub fn compute_certificate_id(batch_id: Field<N>, signatures: &IndexMap<Signature<N>, i64>) -> Result<Field<N>> {
         let mut preimage = Vec::new();
         // Insert the batch ID.
-        preimage.extend_from_slice(&batch_id.to_bytes_le()?);
+        batch_id.write_le(&mut preimage)?;
         // Insert the signatures.
         for (signature, timestamp) in signatures {
             // Insert the signature.
-            preimage.extend_from_slice(&signature.to_bytes_le()?);
+            signature.write_le(&mut preimage)?;
             // Insert the timestamp.
-            preimage.extend_from_slice(&timestamp.to_bytes_le()?);
+            timestamp.write_le(&mut preimage)?;
         }
         // Hash the preimage.
         N::hash_bhp1024(&preimage.to_bits_le())

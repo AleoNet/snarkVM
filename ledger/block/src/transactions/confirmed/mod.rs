@@ -81,7 +81,9 @@ impl<N: Network> ConfirmedTransaction<N> {
                 FinalizeOperation::InsertKeyValue(..)
                 | FinalizeOperation::UpdateKeyValue(..)
                 | FinalizeOperation::RemoveKeyValue(..) => (),
-                FinalizeOperation::InitializeMapping(..) | FinalizeOperation::RemoveMapping(..) => {
+                FinalizeOperation::InitializeMapping(..)
+                | FinalizeOperation::ReplaceMapping(..)
+                | FinalizeOperation::RemoveMapping(..) => {
                     bail!("Transaction '{}' (execute) contains an invalid finalize operation type", transaction.id())
                 }
             }
@@ -188,6 +190,20 @@ impl<N: Network> ConfirmedTransaction<N> {
             Self::RejectedDeploy(..) | Self::RejectedExecute(..) => None,
         }
     }
+
+    /// Returns the unconfirmed transaction ID, which is defined as the transaction ID prior to confirmation.
+    /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction ID,
+    /// changing the original transaction ID.
+    pub fn unconfirmed_id(&self) -> Result<N::TransactionID> {
+        match self {
+            Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.id()),
+            Self::AcceptedExecute(_, transaction, _) => Ok(transaction.id()),
+            Self::RejectedDeploy(_, fee_transaction, rejected)
+            | Self::RejectedExecute(_, fee_transaction, rejected) => {
+                Ok(rejected.to_unconfirmed_id(&fee_transaction.fee_transition())?.into())
+            }
+        }
+    }
 }
 
 impl<N: Network> Deref for ConfirmedTransaction<N> {
@@ -268,6 +284,7 @@ pub mod test_helpers {
 mod test {
 
     use super::*;
+    use crate::transactions::confirmed::test_helpers;
 
     #[test]
     fn test_accepted_execute() {
@@ -302,5 +319,26 @@ mod test {
         let finalize_operations = vec![FinalizeOperation::RemoveMapping(Uniform::rand(rng))];
         let confirmed = ConfirmedTransaction::accepted_execute(index, tx, finalize_operations);
         assert!(confirmed.is_err());
+    }
+
+    #[test]
+    fn test_unconfirmed_transaction_ids() {
+        let rng = &mut TestRng::default();
+
+        // Ensure that the unconfirmed transaction ID of an accepted deployment is equivalent to its confirmed transaction ID.
+        let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), rng);
+        assert_eq!(accepted_deploy.unconfirmed_id().unwrap(), accepted_deploy.id());
+
+        // Ensure that the unconfirmed transaction ID of an accepted execute is equivalent to its confirmed transaction ID.
+        let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), rng);
+        assert_eq!(accepted_execution.unconfirmed_id().unwrap(), accepted_execution.id());
+
+        // Ensure that the unconfirmed transaction ID of a rejected deployment is not equivalent to its confirmed transaction ID.
+        let rejected_deploy = test_helpers::sample_rejected_deploy(Uniform::rand(rng), rng);
+        assert_ne!(rejected_deploy.unconfirmed_id().unwrap(), rejected_deploy.id());
+
+        // Ensure that the unconfirmed transaction ID of a rejected execute is not equivalent to its confirmed transaction ID.
+        let rejected_execution = test_helpers::sample_rejected_execute(Uniform::rand(rng), rng);
+        assert_ne!(rejected_execution.unconfirmed_id().unwrap(), rejected_execution.id());
     }
 }
