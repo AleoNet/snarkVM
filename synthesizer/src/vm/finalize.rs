@@ -792,6 +792,7 @@ finalize transfer_public:
 
         // Fetch a deployment transaction.
         let deployment_transaction = crate::vm::test_helpers::sample_deployment_transaction(rng);
+        let deployment_transaction_id = deployment_transaction.id();
 
         // Construct the program name.
         let program_id = ProgramID::from_str("testing.aleo").unwrap();
@@ -820,6 +821,9 @@ finalize transfer_public:
             vm.atomic_speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
         assert_eq!(candidate_transactions.len(), 1);
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
+
+        // Check that the unconfirmed transaction id of the rejected deployment is correct.
+        assert_eq!(candidate_transactions[0].unconfirmed_id().unwrap(), deployment_transaction_id);
     }
 
     #[test]
