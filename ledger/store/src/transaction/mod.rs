@@ -37,6 +37,8 @@ use synthesizer_program::Program;
 use synthesizer_snark::{Certificate, VerifyingKey};
 
 use anyhow::Result;
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -444,6 +446,12 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
     pub fn deployment_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
         self.storage.deployment_store().deployment_transaction_ids()
+    }
+
+    /// Returns a parallel iterator over the deployment transaction IDs, for all deployments.
+    #[cfg(not(feature = "serial"))]
+    pub fn par_deployment_transaction_ids(&self) -> impl '_ + ParallelIterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.deployment_store().par_deployment_transaction_ids()
     }
 
     /// Returns an iterator over the execution transaction IDs, for all executions.

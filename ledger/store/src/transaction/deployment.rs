@@ -30,6 +30,8 @@ use synthesizer_snark::{Certificate, VerifyingKey};
 
 use anyhow::Result;
 use core::marker::PhantomData;
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 use std::borrow::Cow;
 
 /// A trait for deployment storage.
@@ -629,6 +631,12 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns an iterator over the deployment transaction IDs, for all deployments.
     pub fn deployment_transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
         self.storage.id_map().keys_confirmed()
+    }
+
+    /// Returns a parallel iterator over the deployment transaction IDs, for all deployments.
+    #[cfg(not(feature = "serial"))]
+    pub fn par_deployment_transaction_ids(&self) -> impl '_ + ParallelIterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.id_map().keys_confirmed().collect::<Vec<_>>().into_par_iter()
     }
 
     /// Returns an iterator over the program IDs, for all deployments.
