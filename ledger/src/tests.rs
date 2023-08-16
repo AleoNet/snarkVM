@@ -266,7 +266,7 @@ finalize failed_assert:
         assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
     }
 
-    // Check that the unconfirmed transaction id of the rejected execution is correct.
+    // Check that the unconfirmed transaction ID of the rejected execution is correct.
     assert_eq!(confirmed_transaction.unconfirmed_id().unwrap(), failed_assert_transaction_id);
 
     // Check that the next block is valid.

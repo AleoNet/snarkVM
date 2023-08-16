@@ -115,7 +115,9 @@ impl<N: Network> ConfirmedTransaction<N> {
         }
     }
 
-    /// Returns the transaction id of the transaction before it was confirmed.
+    /// Returns the unconfirmed transaction ID, which is defined as the transaction ID prior to confirmation.
+    /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction ID,
+    /// changing the original transaction ID.
     pub fn unconfirmed_id(&self) -> Result<N::TransactionID> {
         match self {
             Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.id()),
@@ -321,19 +323,19 @@ mod test {
     fn test_unconfirmed_transaction_ids() {
         let rng = &mut TestRng::default();
 
-        // Ensure that the unconfirmed transaction id of an accepted deployment is equivalent to its id.
+        // Ensure that the unconfirmed transaction ID of an accepted deployment is equivalent to its confirmed transaction ID.
         let accepted_deploy = test_helpers::sample_accepted_deploy(Uniform::rand(rng), rng);
         assert_eq!(accepted_deploy.unconfirmed_id().unwrap(), accepted_deploy.id());
 
-        // Ensure that the unconfirmed transaction id of an accepted execute is equivalent to its id.
+        // Ensure that the unconfirmed transaction ID of an accepted execute is equivalent to its confirmed transaction ID.
         let accepted_execution = test_helpers::sample_accepted_execute(Uniform::rand(rng), rng);
         assert_eq!(accepted_execution.unconfirmed_id().unwrap(), accepted_execution.id());
 
-        // Ensure that the unconfirmed transaction id of a rejected deployment is not equivalent to its id.
+        // Ensure that the unconfirmed transaction ID of a rejected deployment is not equivalent to its confirmed transaction ID.
         let rejected_deploy = test_helpers::sample_rejected_deploy(Uniform::rand(rng), rng);
         assert_ne!(rejected_deploy.unconfirmed_id().unwrap(), rejected_deploy.id());
 
-        // Ensure that the unconfirmed transaction id of a rejected execute is not equivalent to its id.
+        // Ensure that the unconfirmed transaction ID of a rejected execute is not equivalent to its confirmed transaction ID.
         let rejected_execution = test_helpers::sample_rejected_execute(Uniform::rand(rng), rng);
         assert_ne!(rejected_execution.unconfirmed_id().unwrap(), rejected_execution.id());
     }
