@@ -43,7 +43,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             .collect::<Result<Vec<_>>>()?;
         lap!(timer, "Prepare inputs");
 
-        // Compute the core logic.
+        // Authorize the call.
+        let result = self.authorize_raw(private_key, program_id, function_name, inputs, rng);
+        finish!(timer, "Authorize the call");
+        result
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Authorizes a call to the program function for the given inputs.
+    #[inline]
+    fn authorize_raw<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        program_id: ProgramID<N>,
+        function_name: Identifier<N>,
+        inputs: Vec<Value<N>>,
+        rng: &mut R,
+    ) -> Result<Authorization<N>> {
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the inputs.
@@ -51,19 +68,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let program_id = cast_ref!(program_id as ProgramID<$network>);
                 let function_name = cast_ref!(function_name as Identifier<$network>);
                 let inputs = cast_ref!(inputs as Vec<Value<$network>>);
-
                 // Compute the authorization.
                 let authorization =
                     $process.authorize::<$aleo, _>(private_key, program_id, function_name, inputs.iter(), rng)?;
-                lap!(timer, "Compute authorization");
-
-                finish!(timer);
-
-                // Return the authorization.
+                // Prepare the authorization.
                 Ok(cast_ref!(authorization as Authorization<N>).clone())
             }};
         }
-        // Process the logic.
-        process!(self, logic)
+
+        // Compute the authorization.
+        let timer = timer!("VM::authorize");
+        let result = process!(self, logic);
+        finish!(timer, "Compute the authorization");
+        result
     }
 }

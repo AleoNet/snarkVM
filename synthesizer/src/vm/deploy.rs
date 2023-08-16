@@ -57,28 +57,21 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a deployment for the given program.
     #[inline]
     pub(super) fn deploy_raw<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
-        let timer = timer!("VM::deploy_raw");
-
-        // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the program.
                 let program = cast_ref!(&program as Program<$network>);
-
                 // Compute the deployment.
                 let deployment = $process.deploy::<$aleo, _>(program, rng)?;
-                lap!(timer, "Compute the deployment");
-
-                // Prepare the return.
-                let deployment = cast_ref!(deployment as Deployment<N>).clone();
-                lap!(timer, "Prepare the deployment");
-
-                finish!(timer);
-                // Return the deployment.
-                Ok(deployment)
+                // Prepare the deployment.
+                Ok(cast_ref!(deployment as Deployment<N>).clone())
             }};
         }
-        // Process the logic.
-        process!(self, logic)
+
+        // Compute the deployment.
+        let timer = timer!("VM::deploy_raw");
+        let result = process!(self, logic);
+        finish!(timer, "Compute the deployment");
+        result
     }
 }
