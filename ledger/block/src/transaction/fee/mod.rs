@@ -19,8 +19,8 @@ mod string;
 use crate::{Input, Transition};
 use console::{
     network::prelude::*,
-    program::{Literal, Plaintext},
-    types::U64,
+    program::{Literal, Plaintext, Value},
+    types::{Address, U64},
 };
 use synthesizer_snark::Proof;
 
@@ -55,9 +55,32 @@ impl<N: Network> Fee<N> {
 }
 
 impl<N: Network> Fee<N> {
+    /// Returns `true` if this is a `fee_private` transition.
+    #[inline]
+    pub fn is_fee_private(&self) -> bool {
+        self.transition.is_fee_private()
+    }
+
+    /// Returns `true` if this is a `fee_public` transition.
+    #[inline]
+    pub fn is_fee_public(&self) -> bool {
+        self.transition.is_fee_public()
+    }
+}
+
+impl<N: Network> Fee<N> {
     /// Returns 'true' if the fee amount is zero.
     pub fn is_zero(&self) -> Result<bool> {
         self.amount().map(|amount| amount.is_zero())
+    }
+
+    /// Returns the payer, if the fee is public.
+    pub fn payer(&self) -> Option<Address<N>> {
+        // Retrieve the payer.
+        match self.transition.finalize().and_then(|f| f.get(0)) {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::Address(address), _))) => Some(*address),
+            _ => None,
+        }
     }
 
     /// Returns the amount (in microcredits).

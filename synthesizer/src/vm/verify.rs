@@ -263,17 +263,41 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Verify the fee.
         let verification = self.process.read().verify_fee(fee, deployment_or_execution_id);
-        finish!(timer);
+        lap!(timer, "Verify the fee");
 
-        match verification {
-            // Ensure the global state root exists in the block store.
+        // TODO (howardwu): This check is technically insufficient. Consider moving this upstream
+        //  to the speculation layer.
+        // If the fee is public, speculatively check the account balance.
+        if fee.is_fee_public() {
+            // Retrieve the payer.
+            let Some(payer) = fee.payer() else {
+                bail!("Fee verification failed: fee is public, but the payer is missing");
+            };
+            // Retrieve the account balance of the payer.
+            let Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) =
+                self.finalize_store().get_value_speculative(
+                    &ProgramID::from_str("credits.aleo")?,
+                    &Identifier::from_str("account")?,
+                    &Plaintext::from(Literal::Address(payer)),
+                )?
+            else {
+                bail!("Fee verification failed: fee is public, but the payer account balance is missing");
+            };
+            // Ensure the balance is sufficient.
+            ensure!(balance >= fee.amount()?, "Fee verification failed: insufficient balance");
+        }
+
+        // Ensure the global state root exists in the block store.
+        let result = match verification {
             Ok(()) => match self.block_store().contains_state_root(&fee.global_state_root()) {
                 Ok(true) => Ok(()),
                 Ok(false) => bail!("Fee verification failed: global state root not found"),
                 Err(error) => bail!("Fee verification failed: {error}"),
             },
             Err(error) => bail!("Fee verification failed: {error}"),
-        }
+        };
+        finish!(timer, "Check the global state root");
+        result
     }
 }
 
