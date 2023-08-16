@@ -18,17 +18,17 @@ impl<N: Network> ToBits for ComputeKey<N> {
     /// Returns the little-endian bits of the compute key.
     fn write_bits_le(&self, vec: &mut Vec<bool>) {
         // Write the `pk_sig` bits.
-        vec.extend(self.pk_sig.to_bits_le());
+        self.pk_sig.write_bits_le(vec);
         // Write the `pr_sig` bits.
-        vec.extend(self.pr_sig.to_bits_le());
+        self.pr_sig.write_bits_le(vec);
     }
 
     /// Returns the big-endian bits of the compute key.
     fn write_bits_be(&self, vec: &mut Vec<bool>) {
         // Write the `pk_sig` bits.
-        vec.extend(self.pk_sig.to_bits_be());
+        self.pk_sig.write_bits_be(vec);
         // Write the `pr_sig` bits.
-        vec.extend(self.pr_sig.to_bits_be());
+        self.pr_sig.write_bits_be(vec);
     }
 }
 

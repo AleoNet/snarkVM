@@ -36,17 +36,17 @@ impl<A: Aleo> ToBits for &ComputeKey<A> {
     /// Outputs the little-endian bit representation of the compute key *without* trailing zeros.
     fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
         // Write the `pk_sig` bits.
-        vec.extend(self.pk_sig.to_bits_le());
+        self.pk_sig.write_bits_le(vec);
         // Write the `pr_sig` bits.
-        vec.extend(self.pr_sig.to_bits_le());
+        self.pr_sig.write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of the compute key *without* leading zeros.
     fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
         // Write the `pk_sig` bits.
-        vec.extend(self.pk_sig.to_bits_be());
+        self.pk_sig.write_bits_be(vec);
         // Write the `pr_sig` bits.
-        vec.extend(self.pr_sig.to_bits_be());
+        self.pr_sig.write_bits_be(vec);
     }
 }
 

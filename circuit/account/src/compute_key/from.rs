@@ -14,9 +14,9 @@
 
 use super::*;
 
-impl<A: Aleo> ComputeKey<A> {
+impl<A: Aleo> From<(Group<A>, Group<A>)> for ComputeKey<A> {
     /// Derives the account compute key from a tuple `(pk_sig, pr_sig)`.
-    pub fn from_pk_sig_and_pr_sig((pk_sig, pr_sig): (Group<A>, Group<A>)) -> Self {
+    fn from((pk_sig, pr_sig): (Group<A>, Group<A>)) -> Self {
         // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
         let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
         // Output the compute key.
@@ -50,7 +50,7 @@ mod tests {
             let pr_sig = Group::new(mode, compute_key.pr_sig());
 
             Circuit::scope(&format!("{mode} {i}"), || {
-                let candidate = ComputeKey::<AleoV0>::from_pk_sig_and_pr_sig((pk_sig, pr_sig));
+                let candidate = ComputeKey::<AleoV0>::from((pk_sig, pr_sig));
                 assert_eq!(compute_key, candidate.eject_value());
                 if i > 0 {
                     assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -62,17 +62,17 @@ mod tests {
     }
 
     #[test]
-    fn test_from_private_key_constant() -> Result<()> {
+    fn test_from_pk_sig_and_pr_sig_constant() -> Result<()> {
         check_from_pk_sig_and_pr_sig(Mode::Constant, 254, 0, 0, 0)
     }
 
     #[test]
-    fn test_from_private_key_public() -> Result<()> {
+    fn test_from_pk_sig_and_pr_sig_public() -> Result<()> {
         check_from_pk_sig_and_pr_sig(Mode::Public, 1, 0, 845, 847)
     }
 
     #[test]
-    fn test_from_private_key_private() -> Result<()> {
+    fn test_from_pk_sig_and_pr_sig_private() -> Result<()> {
         check_from_pk_sig_and_pr_sig(Mode::Private, 1, 0, 845, 847)
     }
 }

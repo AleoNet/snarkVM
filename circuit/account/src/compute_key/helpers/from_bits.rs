@@ -23,7 +23,7 @@ impl<A: Aleo> FromBits for ComputeKey<A> {
         let group_size_in_bits = console::Group::<A::Network>::size_in_bits();
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
-        Self::from_pk_sig_and_pr_sig((
+        Self::from((
             Group::from_bits_le(&bits_le[pk_sig_start..pk_sig_end]),
             Group::from_bits_le(&bits_le[pr_sig_start..pr_sig_end]),
         ))
@@ -34,7 +34,7 @@ impl<A: Aleo> FromBits for ComputeKey<A> {
         let group_size_in_bits = console::Group::<A::Network>::size_in_bits();
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
-        Self::from_pk_sig_and_pr_sig((
+        Self::from((
             Group::from_bits_be(&bits_be[pk_sig_start..pk_sig_end]),
             Group::from_bits_be(&bits_be[pr_sig_start..pr_sig_end]),
         ))

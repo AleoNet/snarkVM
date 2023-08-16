@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod equal;
-mod from_pk_sig_and_pr_sig;
+mod from;
 mod from_private_key;
 mod helpers;
 mod to_address;
@@ -45,10 +45,8 @@ impl<A: Aleo> Inject for ComputeKey<A> {
         let pk_sig = Group::new(mode, compute_key.pk_sig());
         // Inject `pr_sig`.
         let pr_sig = Group::new(mode, compute_key.pr_sig());
-        // Compute `sk_prf` := HashToScalar(G^sk_sig || G^r_sig).
-        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
         // Output the compute key.
-        Self { pk_sig, pr_sig, sk_prf }
+        Self::from((pk_sig, pr_sig))
     }
 }
 

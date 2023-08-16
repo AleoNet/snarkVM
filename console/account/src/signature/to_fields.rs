@@ -17,7 +17,7 @@ use super::*;
 impl<N: Network> ToFields for Signature<N> {
     type Field = Field<N>;
 
-    /// Casts a string into a list of base fields.
+    /// Casts a signature into a list of base fields.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
         let mut fields = vec![self.challenge.to_field()?, self.response.to_field()?];
         fields.extend(self.compute_key.to_fields()?);

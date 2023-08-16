@@ -18,21 +18,21 @@ impl<N: Network> ToBits for Signature<N> {
     /// Returns the little-endian bits of the signature.
     fn write_bits_le(&self, vec: &mut Vec<bool>) {
         // Write the challenge bits.
-        vec.extend(self.challenge.to_bits_le());
+        self.challenge.write_bits_le(vec);
         // Write the response bits.
-        vec.extend(self.response.to_bits_le());
+        self.response.write_bits_le(vec);
         // Write the compute key bits.
-        vec.extend(self.compute_key.to_bits_le());
+        self.compute_key.write_bits_le(vec);
     }
 
     /// Returns the big-endian bits of the signature.
     fn write_bits_be(&self, vec: &mut Vec<bool>) {
         // Write the challenge bits.
-        vec.extend(self.challenge.to_bits_be());
+        self.challenge.write_bits_be(vec);
         // Write the response bits.
-        vec.extend(self.response.to_bits_be());
+        self.response.write_bits_be(vec);
         // Write the compute key bits.
-        vec.extend(self.compute_key.to_bits_be());
+        self.compute_key.write_bits_be(vec);
     }
 }
 

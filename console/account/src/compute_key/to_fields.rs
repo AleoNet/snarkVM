@@ -17,7 +17,7 @@ use super::*;
 impl<N: Network> ToFields for ComputeKey<N> {
     type Field = Field<N>;
 
-    /// Casts a string into a list of base fields.
+    /// Casts a compute key into a list of base fields.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
         Ok(vec![self.pk_sig.to_field()?, self.pr_sig.to_field()?])
     }

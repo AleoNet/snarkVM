@@ -18,7 +18,7 @@ use super::*;
 impl<A: Aleo> ToFields for Signature<A> {
     type Field = Field<A>;
 
-    /// Casts a string into a list of base fields.
+    /// Casts a compute key into a list of base fields.
     fn to_fields(&self) -> Vec<Self::Field> {
         let mut fields = vec![self.challenge.to_field(), self.response.to_field()];
         fields.extend(self.compute_key.to_fields());

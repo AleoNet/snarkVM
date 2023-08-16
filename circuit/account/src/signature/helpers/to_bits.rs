@@ -36,21 +36,21 @@ impl<A: Aleo> ToBits for &Signature<A> {
     /// Outputs the little-endian bit representation of the signature *without* trailing zeros.
     fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
         // Write the challenge bits.
-        vec.extend(self.challenge.to_bits_le());
+        self.challenge.write_bits_le(vec);
         // Write the response bits.
-        vec.extend(self.response.to_bits_le());
+        self.response.write_bits_le(vec);
         // Write the compute key bits.
-        vec.extend(self.compute_key.to_bits_le());
+        self.compute_key.write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of the signature *without* leading zeros.
     fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
         // Write the challenge bits.
-        vec.extend(self.challenge.to_bits_be());
+        self.challenge.write_bits_be(vec);
         // Write the response bits.
-        vec.extend(self.response.to_bits_be());
+        self.response.write_bits_be(vec);
         // Write the compute key bits.
-        vec.extend(self.compute_key.to_bits_be());
+        self.compute_key.write_bits_be(vec);
     }
 }
 
