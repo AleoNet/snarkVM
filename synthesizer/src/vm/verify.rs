@@ -34,52 +34,28 @@ macro_rules! ensure_is_unique {
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if the transaction is valid.
     pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
-        match self.check_transaction(transaction, rejected_id) {
-            Ok(_) => true,
-            Err(error) => {
-                warn!("{error}");
-                false
-            }
-        }
+        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{}", error)).is_ok()
     }
 
     /// Returns `true` if the deployment is valid.
     pub fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
-        match self.check_deployment(deployment) {
-            Ok(_) => true,
-            Err(error) => {
-                warn!("{error}");
-                false
-            }
-        }
+        self.check_deployment(deployment).map_err(|error| warn!("{error}")).is_ok()
     }
 
     /// Returns `true` if the execution is valid.
     pub fn verify_execution(&self, execution: &Execution<N>) -> bool {
-        match self.check_execution(execution) {
-            Ok(_) => true,
-            Err(error) => {
-                warn!("{error}");
-                false
-            }
-        }
+        self.check_execution(execution).map_err(|error| warn!("{error}")).is_ok()
     }
 
     /// Returns `true` if the fee is valid.
     pub fn verify_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> bool {
-        match self.check_fee(fee, deployment_or_execution_id) {
-            Ok(_) => true,
-            Err(error) => {
-                warn!("{error}");
-                false
-            }
-        }
+        self.check_fee(fee, deployment_or_execution_id).map_err(|error| warn!("{error}")).is_ok()
     }
 
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
-        let timer = timer!("VM::verify");
+        let timer = timer!("VM::check_transaction");
 
         /* Transaction */
 
@@ -193,19 +169,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         };
 
-        lap!(timer, "Verify the transaction");
-
-        finish!(timer);
-
+        finish!(timer, "Verify the transaction");
         Ok(())
     }
 
     /// Verifies the given deployment. On failure, returns an error.
     #[inline]
     fn check_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
-        let timer = timer!("VM::verify_deployment");
-
-        // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 let task = || {
@@ -221,22 +191,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         // Process the logic.
-        match process!(self, logic) {
-            Ok(()) => {
-                finish!(timer);
-                Ok(())
-            }
-            Err(error) => {
-                finish!(timer);
-                bail!("Deployment verification failed: {error}");
-            }
-        }
+        let timer = timer!("VM::check_deployment");
+        let result = process!(self, logic).map_err(|error| anyhow!("Deployment verification failed - {error}"));
+        finish!(timer);
+        result
     }
 
     /// Verifies the given execution. On failure, returns an error.
     #[inline]
     fn check_execution(&self, execution: &Execution<N>) -> Result<()> {
-        let timer = timer!("VM::verify_execution");
+        let timer = timer!("VM::check_execution");
 
         // Verify the execution.
         let verification = self.process.read().verify_execution(execution);
@@ -256,7 +220,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Verifies the given fee. On failure, returns an error.
     #[inline]
     fn check_fee(&self, fee: &Fee<N>, deployment_or_execution_id: Field<N>) -> Result<()> {
-        let timer = timer!("VM::verify_fee");
+        let timer = timer!("VM::check_fee");
 
         // Ensure the fee does not exceed the limit.
         ensure!(*fee.amount()? < N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
