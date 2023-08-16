@@ -202,7 +202,7 @@ impl<'a, 'b, F: Field> Add<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
             // Zip safety: `result` and `other` could have different lengths.
             cfg_iter_mut!(result.coeffs).zip(&self.coeffs).for_each(|(a, b)| *a += b);
             // If the leading coefficient ends up being zero, pop it off.
-            while result.coeffs.last().map(|c| c.is_zero()) == Some(true) {
+            while let Some(true) = self.coeffs.last().map(|c| c.is_zero()) {
                 result.coeffs.pop();
             }
             result
