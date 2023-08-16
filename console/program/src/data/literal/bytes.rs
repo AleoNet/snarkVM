@@ -174,10 +174,10 @@ mod tests {
             check_bytes(Literal::<CurrentNetwork>::U128(U128::new(Uniform::rand(rng))))?;
             // Scalar
             check_bytes(Literal::<CurrentNetwork>::Scalar(Uniform::rand(rng)))?;
-            // String
-            check_bytes(Literal::<CurrentNetwork>::String(StringType::rand(rng)))?;
             // Signature
             check_bytes(Literal::sample(LiteralType::Signature, rng))?;
+            // String
+            check_bytes(Literal::<CurrentNetwork>::String(StringType::rand(rng)))?;
         }
         Ok(())
     }
