@@ -85,7 +85,7 @@ impl<N: Network> Metadata<N> {
         // Ensure the last coinbase timestamp is correct.
         ensure!(
             self.last_coinbase_timestamp == expected_last_coinbase_timestamp,
-            "Last coinbase height is incorrect in block {expected_height} (found '{}', expected '{}')",
+            "Last coinbase timestamp is incorrect in block {expected_height} (found '{}', expected '{}')",
             self.last_coinbase_timestamp,
             expected_last_coinbase_timestamp
         );
