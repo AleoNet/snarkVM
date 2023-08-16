@@ -602,7 +602,7 @@ function compute:
             Testnet3::GENESIS_COINBASE_TARGET,
             Testnet3::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_height(),
+            previous_block.last_coinbase_timestamp(),
             Testnet3::GENESIS_TIMESTAMP + 1,
         )?;
 
