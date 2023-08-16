@@ -136,11 +136,6 @@ impl<N: Network> Header<N> {
         self.metadata.height()
     }
 
-    /// Returns the total supply of microcredits at this block.
-    pub const fn total_supply_in_microcredits(&self) -> u64 {
-        self.metadata.total_supply_in_microcredits()
-    }
-
     /// Returns the cumulative weight for this block.
     pub const fn cumulative_weight(&self) -> u128 {
         self.metadata.cumulative_weight()
