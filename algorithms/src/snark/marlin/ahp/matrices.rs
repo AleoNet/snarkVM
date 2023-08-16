@@ -226,6 +226,7 @@ pub(crate) fn transpose<F: PrimeField>(
     variable_domain: &EvaluationDomain<F>,
     input_domain: &EvaluationDomain<F>,
 ) -> Result<Matrix<F>> {
+    // NOTE: we cannot preallocate the inner Vec because we don't know ahead of time how many rows are used by which variables
     let mut transpose = vec![vec![]; variable_domain.size()];
     for (row_index, row) in matrix.iter().enumerate() {
         for (val, input_var_index) in row {
