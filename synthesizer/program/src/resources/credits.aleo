@@ -792,7 +792,7 @@ finalize transfer_private_to_public:
 // it publicly reveals the sender and the specified amount.
 function transfer_public_to_private:
     // Input the receiver.
-    input r0 as address.public;
+    input r0 as address.private;
     // Input the amount.
     input r1 as u64.public;
     // Construct a record for the receiver.
