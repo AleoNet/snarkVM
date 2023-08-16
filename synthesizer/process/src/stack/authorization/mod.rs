@@ -23,10 +23,24 @@ pub struct Authorization<N: Network> {
     requests: Arc<RwLock<VecDeque<Request<N>>>>,
 }
 
-impl<N: Network> Authorization<N> {
-    /// Initialize a new `Authorization` instance, with the given requests.
-    pub fn new(requests: &[Request<N>]) -> Self {
-        Self { requests: Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))) }
+impl<N: Network> From<Vec<Request<N>>> for Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given request.
+    fn from(requests: Vec<Request<N>>) -> Self {
+        Self { requests: Arc::new(RwLock::new(VecDeque::from(requests))) }
+    }
+}
+
+impl<N: Network> From<Request<N>> for Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given request.
+    fn from(request: Request<N>) -> Self {
+        Self::from(vec![request])
+    }
+}
+
+impl<N: Network> From<&Request<N>> for Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given request.
+    fn from(request: &Request<N>) -> Self {
+        Self::from(request.clone())
     }
 }
 

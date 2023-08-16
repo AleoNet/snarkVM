@@ -60,6 +60,8 @@ mapping account:
     // The value represents the amount of public microcredits that belong to the specified owner.
     value microcredits as u64.public;
 
+/**********************************************************************************************************************/
+
 // The `credits` record is used to store credits privately.
 record credits:
     // The address of the owner.

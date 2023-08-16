@@ -50,7 +50,7 @@ impl<N: Network> Stack<N> {
         let request = Request::sign(private_key, *self.program.id(), function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
-        let authorization = Authorization::new(&[request.clone()]);
+        let authorization = Authorization::from(request.clone());
         // Construct the call stack.
         let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.

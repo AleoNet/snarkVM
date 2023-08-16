@@ -59,12 +59,10 @@ impl<N: Network> Process<N> {
 
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
-        lap!(timer, "Compute the request");
+        finish!(timer, "Compute the request");
 
-        // Initialize the authorization.
-        let authorization = Authorization::new(&[request]);
-        finish!(timer);
-        Ok(authorization)
+        // Return the authorization.
+        Ok(Authorization::from(request))
     }
 
     /// Authorizes the fee given the the fee amount (in microcredits) and the deployment or execution ID.
@@ -93,11 +91,9 @@ impl<N: Network> Process<N> {
 
         // Compute the request.
         let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
-        lap!(timer, "Compute the request");
+        finish!(timer, "Compute the request");
 
-        // Initialize the authorization.
-        let authorization = Authorization::new(&[request]);
-        finish!(timer);
-        Ok(authorization)
+        // Return the authorization.
+        Ok(Authorization::from(request))
     }
 }

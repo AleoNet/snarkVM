@@ -336,7 +336,7 @@ impl<N: Network> Transition<N> {
     pub fn is_fee_public(&self) -> bool {
         self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_public"
-            && self.inputs.len() == 3
+            && self.inputs.len() == 2
             && self.outputs.is_empty()
             && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
     }

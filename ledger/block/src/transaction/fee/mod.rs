@@ -145,10 +145,11 @@ pub mod test_helpers {
 
         // Initialize the process.
         let process = Process::load().unwrap();
-        // Compute the fee trace.
-        let (_, _, mut trace) = process
-            .execute_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
-            .unwrap();
+        // Authorize the fee.
+        let authorization =
+            process.authorize_fee_private(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+        // Construct the fee trace.
+        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

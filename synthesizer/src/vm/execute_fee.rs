@@ -17,7 +17,7 @@ use super::*;
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
     /// Returns the response and fee.
-    #[inline]
+    #[deprecated]
     pub fn execute_fee_private<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
@@ -47,19 +47,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             _ => bail!("Fee record does not have microcredits"),
         }
 
+        // Authorize the call to fee.
+        let authorization = self.process.read().authorize_fee_private(
+            private_key,
+            fee_record,
+            fee_in_microcredits,
+            deployment_or_execution_id,
+            rng,
+        )?;
+        lap!(timer, "Authorize the call to fee");
+
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
-                type RecordPlaintext<NetworkMacro> = Record<NetworkMacro, Plaintext<NetworkMacro>>;
-
                 // Execute the call to fee.
-                let (_, _, mut trace) = $process.execute_fee_private::<$aleo, _>(
-                    cast_ref!(&private_key as PrivateKey<$network>),
-                    cast_ref!(fee_record as RecordPlaintext<$network>).clone(),
-                    fee_in_microcredits,
-                    *cast_ref!(deployment_or_execution_id as Field<$network>),
-                    rng,
-                )?;
+                let authorization = cast_ref!(authorization as Authorization<$network>).clone();
+                let (_, mut trace) = $process.execute::<$aleo>(authorization)?;
                 lap!(timer, "Execute the call to fee");
 
                 // Prepare the assignments.
