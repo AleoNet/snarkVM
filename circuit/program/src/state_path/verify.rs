@@ -45,17 +45,21 @@ impl<A: Aleo> StatePath<A> {
     ///                                                               |
     ///                                                       transaction_leaf
     ///                                                              |
-    ///                                                      transition_path
-    ///                                                             |
-    ///                                                    transition_leaf
+    ///                                                      transition_id := Hash( transition_root || tcm )
+    ///                                                                                  |
+    ///                                                                           transition_path
+    ///                                                                                 |
+    ///                                                                          transition_leaf
     /// ```
     pub fn verify(&self, is_global: &Boolean<A>, local_state_root: &Field<A>) -> Boolean<A> {
         // Ensure the transition path is valid.
-        let check_transition_path = A::verify_merkle_path_bhp(
-            &self.transition_path,
-            self.transaction_leaf.id(),
-            &self.transition_leaf.to_bits_le(),
-        ) & self.transition_leaf.variant().is_equal(&U8::constant(console::U8::new(3))); // Variant = 3 (Input::Record)
+        let check_transition_path =
+            A::verify_merkle_path_bhp(&self.transition_path, &self.transition_root, &self.transition_leaf.to_bits_le())
+                & self.transition_leaf.variant().is_equal(&U8::constant(console::U8::new(3))); // Variant = 3 (Input::Record)
+
+        // Ensure the transaction leaf is valid.
+        let check_transaction_leaf =
+            A::hash_bhp512(&(&self.transition_root, &self.tcm).to_bits_le()).is_equal(self.transaction_leaf.id());
 
         // Ensure the transaction path is valid.
         let check_transaction_path = A::verify_merkle_path_bhp(
@@ -88,7 +92,8 @@ impl<A: Aleo> StatePath<A> {
             A::verify_merkle_path_bhp(&self.block_path, &self.global_state_root, &self.block_hash.to_bits_le());
 
         // Combine the transition and transaction path checks.
-        let check_transition_and_transaction_path = check_transition_path & check_transaction_path;
+        let check_transition_and_transaction_path =
+            check_transition_path & check_transaction_path & check_transaction_leaf;
 
         // Check the state path.
         let check_local = &check_transition_and_transaction_path & local_state_root.is_equal(&self.transaction_id);
