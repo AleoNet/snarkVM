@@ -19,8 +19,9 @@ mod bytes;
 mod serialize;
 mod string;
 
-use console::prelude::*;
+use console::{account::Address, prelude::*};
 use narwhal_batch_certificate::BatchCertificate;
+use narwhal_transmission_id::TransmissionID;
 
 use indexmap::IndexSet;
 use std::collections::BTreeMap;
@@ -102,14 +103,33 @@ impl<N: Network> Subdag<N> {
         self.subdag.iter().next_back().map_or(0, |(round, _)| *round)
     }
 
+    /// Returns the leader certificate.
+    pub fn leader_certificate(&self) -> &BatchCertificate<N> {
+        // Retrieve entry for the anchor round.
+        let entry = self.subdag.iter().next_back();
+        debug_assert!(entry.is_some(), "There must be at least one round of certificates");
+        // Retrieve the certificates from the anchor round.
+        let certificates = entry.expect("There must be one round in the subdag").1;
+        debug_assert!(certificates.len() == 1, "There must be only one leader certificate, by definition");
+        // Note: There is guaranteed to be only one leader certificate.
+        certificates.iter().next().expect("There must be a leader certificate")
+    }
+
+    /// Returns the address of the leader.
+    pub fn leader_address(&self) -> Address<N> {
+        // Retrieve the leader address from the leader certificate.
+        self.leader_certificate().author()
+    }
+
+    /// Returns the transmission IDs of the subdag (from earliest round to latest round).
+    pub fn transmission_ids(&self) -> impl Iterator<Item = &TransmissionID<N>> {
+        self.values().flatten().flat_map(BatchCertificate::transmission_ids)
+    }
+
     /// Returns the timestamp of the anchor round, defined as the median timestamp of the leader certificate.
     pub fn timestamp(&self) -> i64 {
-        // Retrieve the median timestamp from the subdag.
-        self.subdag.iter().next_back().map_or(0, |(_, certificates)| {
-            debug_assert!(certificates.len() == 1, "There must be only one leader certificate, by definition");
-            // Note: There is guaranteed to be only one leader certificate.
-            certificates.iter().next().map_or(0, |certificate| certificate.median_timestamp())
-        })
+        // Retrieve the median timestamp from the leader certificate.
+        self.leader_certificate().median_timestamp()
     }
 }
 

@@ -27,14 +27,24 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Response, Value},
-    types::Field,
+    types::{Field, U64},
 };
-use ledger_block::{Block, ConfirmedTransaction, Deployment, Execution, Fee, Header, Transaction, Transactions};
+use ledger_block::{
+    Block,
+    ConfirmedTransaction,
+    Deployment,
+    Execution,
+    Fee,
+    Header,
+    Ratify,
+    Transaction,
+    Transactions,
+};
+use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
     atomic_finalize,
     BlockStore,
-    CommitteeStore,
     ConsensusStorage,
     ConsensusStore,
     FinalizeMode,
@@ -47,6 +57,7 @@ use synthesizer_process::{Authorization, Process, Trace};
 use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 
 use aleo_std::prelude::{finish, lap, timer};
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -146,12 +157,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Returns the committee store.
-    #[inline]
-    pub fn committee_store(&self) -> &CommitteeStore<N, C::CommitteeStorage> {
-        self.store.committee_store()
-    }
-
     /// Returns the finalize store.
     #[inline]
     pub fn finalize_store(&self) -> &FinalizeStore<N, C::FinalizeStorage> {
@@ -178,14 +183,45 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Returns a new genesis block.
-    pub fn genesis<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+    /// Returns a new genesis block for a beacon chain.
+    pub fn genesis_beacon<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+        // Construct the committee members.
+        let members = indexmap::indexmap! {
+            Address::try_from(private_key)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+        };
+        // Construct the committee.
+        let committee = Committee::<N>::new_genesis(members)?;
+        // Construct the public balances.
+        let public_balances = indexmap::indexmap! {
+            Address::try_from(private_key)? => 1_000_000_000_000_000,
+        };
+        // Return the genesis block.
+        self.genesis_quorum(private_key, committee, public_balances, rng)
+    }
+
+    /// Returns a new genesis block for a quorum chain.
+    pub fn genesis_quorum<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        committee: Committee<N>,
+        public_balances: IndexMap<Address<N>, u64>,
+        rng: &mut R,
+    ) -> Result<Block<N>> {
+        // Tabulate the current supply.
+        let current_supply = {
+            let public_amount = public_balances.values().sum::<u64>();
+            N::STARTING_SUPPLY.saturating_sub(committee.total_stake()).saturating_sub(public_amount)
+        };
+
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
         // Prepare the locator.
         let locator = ("credits.aleo", "mint");
         // Prepare the amount for each call to the mint function.
-        let amount = N::STARTING_SUPPLY.saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS as u64);
+        let amount = current_supply.saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS as u64);
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
@@ -206,9 +242,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Prepare the solutions.
         let solutions = None; // The genesis block does not require solutions.
+        // Prepare the ratifications.
+        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
 
         // Construct the block.
-        let block = Block::new_beacon(private_key, previous_hash, header, vec![], solutions, transactions, rng)?;
+        let block = Block::new_beacon(private_key, previous_hash, header, ratifications, solutions, transactions, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
@@ -228,10 +266,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             block.previous_hash(),
         )?;
 
+        // Attention: The following order is crucial because if 'finalize' fails, we can rollback the block.
+        // If one first calls 'finalize', then calls 'insert(block)' and it fails, there is no way to rollback 'finalize'.
+
         // First, insert the block.
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
-        match self.finalize(state, block.transactions()) {
+        match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
             Ok(_) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
@@ -267,7 +308,7 @@ pub(crate) mod test_helpers {
 
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
-        FinalizeGlobalState::from(block_height, [0u8; 32])
+        FinalizeGlobalState::from(block_height as u64, block_height, [0u8; 32])
     }
 
     pub(crate) fn sample_ratifications_root() -> Field<CurrentNetwork> {
@@ -296,7 +337,7 @@ pub(crate) mod test_helpers {
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 // Return the block.
-                vm.genesis(&caller_private_key, rng).unwrap()
+                vm.genesis_beacon(&caller_private_key, rng).unwrap()
             })
             .clone()
     }
@@ -549,7 +590,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(sample_finalize_state(1), transactions.iter())?;
+        let transactions = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
@@ -566,7 +607,7 @@ function compute:
         )?;
 
         let header = Header::from(
-            *vm.block_store().current_state_root(),
+            vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
@@ -730,7 +771,7 @@ finalize getter:
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
         // Initialize the genesis block.
-        let genesis = vm.genesis(&caller_private_key, rng).unwrap();
+        let genesis = vm.genesis_beacon(&caller_private_key, rng).unwrap();
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 

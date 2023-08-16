@@ -56,7 +56,7 @@ fn test_vm_execute_and_finalize() {
         // Deploy the program.
         let transaction =
             vm.deploy(&genesis_private_key, test.program(), (fee_records.pop().unwrap().0, 0), None, rng).unwrap();
-        let transactions = vm.speculate(construct_finalize_global_state(&vm), [transaction].iter()).unwrap();
+        let transactions = vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
         let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
 
@@ -158,34 +158,35 @@ fn test_vm_execute_and_finalize() {
                     output
                         .insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
                     // Speculate on the transaction.
-                    let transactions = match vm.speculate(construct_finalize_global_state(&vm), [transaction].iter()) {
-                        Ok(transactions) => {
-                            output.insert(
-                                serde_yaml::Value::String("speculate".to_string()),
-                                serde_yaml::Value::String(match transactions.iter().next().unwrap() {
-                                    ConfirmedTransaction::AcceptedExecute(_, _, _) => {
-                                        "the execution was accepted".to_string()
-                                    }
-                                    ConfirmedTransaction::RejectedExecute(_, _, _) => {
-                                        "the execution was rejected".to_string()
-                                    }
-                                    ConfirmedTransaction::AcceptedDeploy(_, _, _)
-                                    | ConfirmedTransaction::RejectedDeploy(_, _, _) => {
-                                        unreachable!("unexpected deployment transaction")
-                                    }
-                                }),
-                            );
+                    let transactions =
+                        match vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()) {
+                            Ok(transactions) => {
+                                output.insert(
+                                    serde_yaml::Value::String("speculate".to_string()),
+                                    serde_yaml::Value::String(match transactions.iter().next().unwrap() {
+                                        ConfirmedTransaction::AcceptedExecute(_, _, _) => {
+                                            "the execution was accepted".to_string()
+                                        }
+                                        ConfirmedTransaction::RejectedExecute(_, _, _) => {
+                                            "the execution was rejected".to_string()
+                                        }
+                                        ConfirmedTransaction::AcceptedDeploy(_, _, _)
+                                        | ConfirmedTransaction::RejectedDeploy(_, _, _) => {
+                                            unreachable!("unexpected deployment transaction")
+                                        }
+                                    }),
+                                );
 
-                            transactions
-                        }
-                        Err(err) => {
-                            output.insert(
-                                serde_yaml::Value::String("speculate".to_string()),
-                                serde_yaml::Value::String(err.to_string()),
-                            );
-                            return serde_yaml::Value::Mapping(output);
-                        }
-                    };
+                                transactions
+                            }
+                            Err(err) => {
+                                output.insert(
+                                    serde_yaml::Value::String("speculate".to_string()),
+                                    serde_yaml::Value::String(err.to_string()),
+                                );
+                                return serde_yaml::Value::Mapping(output);
+                            }
+                        };
                     // Construct the next block.
                     let block = construct_next_block(&vm, &private_key, transactions, rng).unwrap();
                     // Add the next block.
@@ -221,7 +222,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
         VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
-    let genesis = vm.genesis(private_key, rng).unwrap();
+    let genesis = vm.genesis_beacon(private_key, rng).unwrap();
 
     // Select a record to spend.
     let view_key = ViewKey::try_from(private_key).unwrap();
@@ -280,7 +281,7 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let transactions = vm.speculate(construct_finalize_global_state(vm), transactions.iter()).unwrap();
+        let transactions = vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
         let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
@@ -318,7 +319,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     )?;
     // Construct the block header.
     let header = Header::from(
-        *vm.block_store().current_state_root(),
+        vm.block_store().current_state_root(),
         transactions.to_transactions_root().unwrap(),
         transactions.to_finalize_root().unwrap(),
         *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),

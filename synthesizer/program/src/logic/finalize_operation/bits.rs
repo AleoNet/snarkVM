@@ -73,9 +73,15 @@ impl<N: Network> FromBits for FinalizeOperation<N> {
                 // Read the mapping ID.
                 let mapping_id = Field::from_bits_le(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Return the finalize operation.
+                Ok(Self::ReplaceMapping(mapping_id))
+            }
+            5 => {
+                // Read the mapping ID.
+                let mapping_id = Field::from_bits_le(&next_bits(Field::<N>::size_in_bits())?)?;
+                // Return the finalize operation.
                 Ok(Self::RemoveMapping(mapping_id))
             }
-            5.. => bail!("Invalid finalize operation variant '{variant}'"),
+            6.. => bail!("Invalid finalize operation variant '{variant}'"),
         }
     }
 
@@ -137,9 +143,15 @@ impl<N: Network> FromBits for FinalizeOperation<N> {
                 // Read the mapping ID.
                 let mapping_id = Field::from_bits_be(&next_bits(Field::<N>::size_in_bits())?)?;
                 // Return the finalize operation.
+                Ok(Self::ReplaceMapping(mapping_id))
+            }
+            5 => {
+                // Read the mapping ID.
+                let mapping_id = Field::from_bits_be(&next_bits(Field::<N>::size_in_bits())?)?;
+                // Return the finalize operation.
                 Ok(Self::RemoveMapping(mapping_id))
             }
-            5.. => bail!("Invalid finalize operation variant '{variant}'"),
+            6.. => bail!("Invalid finalize operation variant '{variant}'"),
         }
     }
 }
@@ -184,9 +196,15 @@ impl<N: Network> ToBits for FinalizeOperation<N> {
                 // Write the index.
                 index.write_bits_le(vec);
             }
-            Self::RemoveMapping(mapping_id) => {
+            Self::ReplaceMapping(mapping_id) => {
                 // Write the variant.
                 4u8.write_bits_le(vec);
+                // Write the mapping ID.
+                mapping_id.write_bits_le(vec);
+            }
+            Self::RemoveMapping(mapping_id) => {
+                // Write the variant.
+                5u8.write_bits_le(vec);
                 // Write the mapping ID.
                 mapping_id.write_bits_le(vec);
             }
@@ -232,9 +250,15 @@ impl<N: Network> ToBits for FinalizeOperation<N> {
                 // Write the index.
                 index.write_bits_be(vec);
             }
-            Self::RemoveMapping(mapping_id) => {
+            Self::ReplaceMapping(mapping_id) => {
                 // Write the variant.
                 4u8.write_bits_be(vec);
+                // Write the mapping ID.
+                mapping_id.write_bits_be(vec);
+            }
+            Self::RemoveMapping(mapping_id) => {
+                // Write the variant.
+                5u8.write_bits_be(vec);
                 // Write the mapping ID.
                 mapping_id.write_bits_be(vec);
             }

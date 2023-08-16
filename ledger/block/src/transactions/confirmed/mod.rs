@@ -81,7 +81,9 @@ impl<N: Network> ConfirmedTransaction<N> {
                 FinalizeOperation::InsertKeyValue(..)
                 | FinalizeOperation::UpdateKeyValue(..)
                 | FinalizeOperation::RemoveKeyValue(..) => (),
-                FinalizeOperation::InitializeMapping(..) | FinalizeOperation::RemoveMapping(..) => {
+                FinalizeOperation::InitializeMapping(..)
+                | FinalizeOperation::ReplaceMapping(..)
+                | FinalizeOperation::RemoveMapping(..) => {
                     bail!("Transaction '{}' (execute) contains an invalid finalize operation type", transaction.id())
                 }
             }

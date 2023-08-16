@@ -22,6 +22,7 @@ serial = [
   "console/serial",
   "ledger-authority/serial",
   "ledger-coinbase/serial",
+  "ledger-committee/serial",
   "synthesizer-program/serial",
   "synthesizer-snark/serial"
 ]
@@ -29,9 +30,11 @@ wasm = [
   "console/wasm",
   "ledger-authority/wasm",
   "ledger-coinbase/wasm",
+  "ledger-committee/wasm",
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm"
 ]
+test = [ ]
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -48,9 +51,19 @@ package = "snarkvm-ledger-coinbase"
 path = "../../ledger/coinbase"
 version = "=0.14.6"
 
+[dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../../ledger/committee"
+version = "=0.14.6"
+
 [dependencies.ledger-narwhal-subdag]
 package = "snarkvm-ledger-narwhal-subdag"
 path = "../narwhal/subdag"
+version = "=0.14.6"
+
+[dependencies.ledger-narwhal-transmission-id]
+package = "snarkvm-ledger-narwhal-transmission-id"
+path = "../narwhal/transmission-id"
 version = "=0.14.6"
 
 [dependencies.synthesizer-program]
@@ -81,6 +94,11 @@ version = "1.3"
 [dev-dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
+
+[dev-dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../../ledger/committee"
+features = [ "test-helpers" ]
 
 [dev-dependencies.ledger-query]
 package = "snarkvm-ledger-query"
