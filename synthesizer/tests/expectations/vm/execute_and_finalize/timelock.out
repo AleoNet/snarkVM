@@ -4,7 +4,7 @@
       finalize: []
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"3809193940173820551905550423519974574563861436355973849842908924746025689351field","checksum":"7833759502198744772852243701120031633094204791568191875972995876886247552545field","value":"record1qyqspm9urycv2yvxp7zzwp3hs32r6etpql8g5f0xtujxeg3wv2aqyuszqyxx66trwfhkxun9v35hguerqqpqzqy3dqua4wn5lg7ac3q9kw5pdvv7rsq9rhlztkkfde4c643fqe45pkf5j2usz8uysxwmw376ny0qzkk3e65kqykz3ujq37jhyg4fdxpqzdngl3q"}'
+      - '{"type":"record","id":"4491561189808098883093845015891842095976293434608571154990439009109435428001field","checksum":"4996771749119914888139738238079865985617042485162388697891351596113337523102field","value":"record1qyqsq9jtjxwleyp4wwzc3xfghucfy4whxwr3ftkrssyeaftwzfvyzrg9qyxx66trwfhkxun9v35hguerqqpqzqr3wrwdvzvs43tjqph9r65rj3nswa4uwljfrjy49tfgzljatwzwqmqez49x9lz30gxa7mqy2hzf6hwrp4rhr8yxmw3n7rju7sjfwd4q6n2ckm4"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -14,7 +14,7 @@
       finalize: []
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"5315462812857636230534552565612075124964957520523204067032176432075836814181field","checksum":"3207829156905077957152505758588862796533806124640495773404775748108281105940field","value":"record1qyqspn52xhtrpynxnwqf6lp5hvuq96wvmrp5jkdd0fwjhqrnjd022zswqyxx66trwfhkxun9v35hguerqqpqzqxjjhdag7m7sul8v7t5ww862zyyunxjujja8nlrypfwseqhgqlmpdxafh2y4sm0wt2lflwud8g7pnxlrgjhxs96v4z7dm6zaaxqqutqcxuysjr"}'
+      - '{"type":"record","id":"2129739391819769390433616069357061840013631118346688863179042550350464327166field","checksum":"696070081700349486650863375683711312904296313991413705970562224287411084937field","value":"record1qyqsp9anhcxt3arvt40dcksqw2qw9w37nax0fgs5ag2cccgu2yvy8jcrqyxx66trwfhkxun9v35hguerqqpqzqrjp8qzhlwzdzrnkmxtnuwje4n786t5830zx3fn5mlr9u6x6ucupqc993weknewlk2td3nsjfnlf52y9tch298228xlqcycgqaylkdqy2nhxuw"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
