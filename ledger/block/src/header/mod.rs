@@ -166,9 +166,9 @@ impl<N: Network> Header<N> {
         self.metadata.last_coinbase_target()
     }
 
-    /// Returns the block height of the last coinbase.
-    pub const fn last_coinbase_height(&self) -> u32 {
-        self.metadata.last_coinbase_height()
+    /// Returns the block timestamp of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.metadata.last_coinbase_timestamp()
     }
 
     /// Returns the Unix timestamp (UTC) for this block.

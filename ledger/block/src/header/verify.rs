@@ -32,7 +32,7 @@ impl<N: Network> Header<N> {
         expected_coinbase_target: u64,
         expected_proof_target: u64,
         expected_last_coinbase_target: u64,
-        expected_last_coinbase_height: u32,
+        expected_last_coinbase_timestamp: i64,
         expected_timestamp: i64,
         current_timestamp: i64,
     ) -> Result<()> {
@@ -82,7 +82,7 @@ impl<N: Network> Header<N> {
             expected_coinbase_target,
             expected_proof_target,
             expected_last_coinbase_target,
-            expected_last_coinbase_height,
+            expected_last_coinbase_timestamp,
             expected_timestamp,
             current_timestamp,
         )

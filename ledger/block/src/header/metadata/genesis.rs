@@ -27,7 +27,7 @@ impl<N: Network> Metadata<N> {
         let coinbase_target = N::GENESIS_COINBASE_TARGET;
         let proof_target = N::GENESIS_PROOF_TARGET;
         let last_coinbase_target = N::GENESIS_COINBASE_TARGET;
-        let last_coinbase_height = 0;
+        let last_coinbase_timestamp = N::GENESIS_TIMESTAMP;
         let timestamp = N::GENESIS_TIMESTAMP;
 
         // Return the genesis metadata.
@@ -41,7 +41,7 @@ impl<N: Network> Metadata<N> {
             coinbase_target,
             proof_target,
             last_coinbase_target,
-            last_coinbase_height,
+            last_coinbase_timestamp,
             timestamp,
         )
     }
@@ -66,8 +66,8 @@ impl<N: Network> Metadata<N> {
             && self.proof_target == N::GENESIS_PROOF_TARGET
             // Ensure the last coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
             && self.last_coinbase_target == N::GENESIS_COINBASE_TARGET
-            // Ensure the last coinbase height in the genesis block is 0.
-            && self.last_coinbase_height == 0u32
+            // Ensure the last coinbase timestamp in the genesis block is `GENESIS_TIMESTAMP`.
+            && self.last_coinbase_timestamp == N::GENESIS_TIMESTAMP
             // Ensure the timestamp in the genesis block is `GENESIS_TIMESTAMP`.
             && self.timestamp == N::GENESIS_TIMESTAMP
     }
@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(metadata.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
-        assert_eq!(metadata.last_coinbase_height(), 0);
+        assert_eq!(metadata.last_coinbase_timestamp(), 0);
         assert_eq!(metadata.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
     }
 }
