@@ -68,7 +68,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .into_iter()
                 .map(|info| (info.label().into(), info))
             })
-            .collect::<BTreeMap<PolynomialLabel, PolynomialInfo>>()
+            .collect()
     }
 
     /// Output the fourth round message and the next state.
