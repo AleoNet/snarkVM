@@ -162,7 +162,7 @@ pub(crate) fn matrix_evals<F: PrimeField>(
 
     let non_zero_entries = row_indices.len();
 
-    // Zip safety: we intentionally only
+    // Zip safety: we intentionally only multiply the first non_zero_entries
     let col_indices_iter = cfg_iter!(col_indices);
     cfg_iter_mut!(row_col_indices).zip(col_indices_iter).for_each(|(rc, &col)| *rc *= col);
     let row_col_indices_iter = cfg_iter!(row_col_indices);
