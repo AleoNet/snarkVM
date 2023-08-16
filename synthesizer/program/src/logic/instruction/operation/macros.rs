@@ -355,6 +355,11 @@ mod tests {
                 console::program::Literal::U64(console::types::U64::rand($rng)),
                 console::program::Literal::U128(console::types::U128::rand($rng)),
                 console::program::Literal::Scalar(console::types::Scalar::rand($rng)),
+                console::program::Literal::Signature(Box::new(console::account::Signature::from((
+                    console::types::Scalar::rand($rng),
+                    console::types::Scalar::rand($rng),
+                    console::account::ComputeKey::try_from(console::account::PrivateKey::new($rng).unwrap()).unwrap(),
+                )))),
                 console::program::Literal::String(console::types::StringType::rand($rng)),
             ]
         };
