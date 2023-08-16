@@ -19,6 +19,11 @@ use rdkafka::{
 };
 use std::{thread, time::Duration};
 
+// implementing a KafkaProducerTrait to allow for mocking
+pub trait KafkaProducerTrait {
+    fn emit_event(&self, key: &str, value: &str, topic: &str);
+}
+
 pub struct KafkaProducer {
     producer: BaseProducer,
 }
@@ -27,18 +32,17 @@ impl KafkaProducer {
     pub fn new() -> Self {
         let producer: BaseProducer =
             ClientConfig::new().set("bootstrap.servers", "localhost:9092").create().expect("Producer creation error");
-
         KafkaProducer { producer }
     }
+}
 
-    pub fn emit_event(&self, event_data: &str, topic: &str) {
+impl KafkaProducerTrait for KafkaProducer {
+    fn emit_event(&self, key: &str, value: &str, topic: &str) {
         for i in 1..100 {
             println!("sending message");
-
             self.producer
-                .send(BaseRecord::to(topic).key(&format!("key-{}", event_data)).payload(&format!("value-{}", i)))
-                .expect("failed to send message");
-
+            .send(BaseRecord::to(topic).key(key).payload(&format!("{}-{}", value, i)))
+            .expect("failed to send message");
             thread::sleep(Duration::from_secs(3));
         }
     }

@@ -21,6 +21,11 @@ use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
 use std::{borrow::Cow, sync::atomic::Ordering};
 
+#[cfg(test)]
+use crate::helpers::kafka::KafkaProducerTrait;
+
+use crate::helpers::kafka::KAFKA_PRODUCER;
+
 #[derive(Clone)]
 pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
     pub(super) database: RocksDB,
@@ -235,7 +240,8 @@ impl<
         }
 
         // Send all the messages from the kafka queue to kafka 
-        kafka_queue.send_messages("node-data");
+        
+        kafka_queue.send_messages(&*KAFKA_PRODUCER, "node-data");
 
         Ok(())
     }
@@ -568,21 +574,23 @@ mod tests {
     }
 
     struct MockKafkaProducer {
-        messages: Vec<(Vec<u8>, Vec<u8>)>,
+        messages: std::sync::Mutex<Vec<(String, String, String)>>,
     }
-    
+
     impl MockKafkaProducer {
         fn new() -> Self {
-            MockKafkaProducer { messages: Vec::new() }
+            MockKafkaProducer {
+                messages: std::sync::Mutex::new(Vec::new()),
+            }
         }
-        
-        fn emit_event(&mut self, key: &[u8], value: &[u8]) {
-            self.messages.push((key.to_vec(), value.to_vec()));
-        }        
-    
-        // fn get_sent_messages(&self) -> &Vec<(String, String)> {
-        //     &self.messages
-        // }
+    }
+
+    impl KafkaProducerTrait for MockKafkaProducer {
+        fn emit_event(&self, key: &str, value: &str, topic: &str) {
+            println!("This is the MOCK KafkaProducer");
+            println!("Storing message: (Topic: {}, Data: {})", topic, value);
+            self.messages.lock().unwrap().push((topic.to_string(), key.to_string(), value.to_string()));
+        }
     }
 
     #[test]
@@ -593,10 +601,31 @@ mod tests {
         assert!(messages.contains(&("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec())));
     }
 
-    // // #[test]
-    // // another test using get_sent_messages to see that messages are actually sent from the queue to the producer 
-    // // fn test_send_messages_to_producer() {
-    // // }
+    #[test]
+    fn test_send_messages_to_producer() {
+        println!("Starting test_send_messages_to_producer");
+
+        // 1. Create an instance of MockKafkaProducer.
+        let mock_producer = MockKafkaProducer::new();
+    
+        // 2. Initialize the KafkaQueue.
+        let mut test_kafka_queue = KafkaQueue::new();
+    
+        // 3. Add a message to the KafkaQueue.
+        test_kafka_queue.put("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec());
+        println!("i put stuff in the queue");
+        // 4. Send the message from the queue to the mock producer.
+        test_kafka_queue.send_messages(&mock_producer, "test_topic");
+        println!("i sent stuff to the producer");
+        // 5. Use the mock producer to verify that it received the message.
+        {
+            let messages_guard = mock_producer.messages.lock().unwrap();
+            assert_eq!(messages_guard.len(), 1);
+            assert!(messages_guard.contains(&("test_topic".to_string(), "test_key".to_string(), "test_value".to_string())));
+        }
+        
+        
+    }
 
     #[test]
     fn test_it_works() {

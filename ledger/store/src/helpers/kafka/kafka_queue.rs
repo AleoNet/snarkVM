@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::helpers::kafka::KAFKA_PRODUCER;
+use crate::helpers::kafka::KafkaProducerTrait;
 pub struct KafkaQueue {
     pub messages: Vec<(Vec<u8>, Vec<u8>)>,
 }
@@ -29,12 +29,14 @@ impl KafkaQueue {
         self.messages.push((key, value));
     }
 
-    pub fn send_messages(&self, topic: &str) {
+    pub fn send_messages(&self, producer: &impl KafkaProducerTrait, topic: &str) {
         for (key, value) in &self.messages {
-            KAFKA_PRODUCER.emit_event(&String::from_utf8_lossy(&value), topic);
+            let key_str = String::from_utf8_lossy(key);
+            let value_str = String::from_utf8_lossy(value);
+            producer.emit_event(&key_str, &value_str, topic);
         }
     }
-
+    
     #[cfg(test)]
     pub fn get_messages(&self) -> &Vec<(Vec<u8>, Vec<u8>)> {
         &self.messages
