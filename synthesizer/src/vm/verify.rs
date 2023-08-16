@@ -135,24 +135,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let Ok(execution_id) = execution.to_execution_id() else {
                     bail!("Failed to compute the Merkle root for execution transaction '{id}'")
                 };
-                // Ensure the fee is present, if required.
-                {
-                    // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    // TODO (howardwu): Remove support for 'mint'.
-                    let can_skip_fee = match transaction.execution() {
-                        Some(execution) => {
-                            (transaction.contains_mint() || transaction.contains_split()) && execution.len() == 1
-                        }
-                        None => false,
-                    };
-                    // If the transaction requires a fee, ensure a fee is present.
-                    if !can_skip_fee && fee.is_none() {
-                        bail!("Transaction is missing a fee (execution)");
-                    }
-                }
                 // Verify the fee.
                 if let Some(fee) = fee {
                     self.check_fee(fee, execution_id)?;
+                } else {
+                    // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
+                    // TODO (howardwu): Remove support for 'mint'.
+                    let can_skip_fee =
+                        (transaction.contains_mint() || transaction.contains_split()) && execution.len() == 1;
+                    ensure!(can_skip_fee, "Transaction is missing a fee (execution)");
                 }
                 // Verify the execution.
                 self.check_execution(execution)?;
