@@ -2237,9 +2237,9 @@ fn test_sanity_check_transfer_and_fee() {
         // Compute the assignment.
         let assignment = get_assignment(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(10, assignment.num_public());
-        assert_eq!(41218, assignment.num_private());
-        assert_eq!(41265, assignment.num_constraints());
-        assert_eq!((64422, 92898, 62357), assignment.num_nonzeros());
+        assert_eq!(41220, assignment.num_private());
+        assert_eq!(41269, assignment.num_constraints());
+        assert_eq!((64427, 92903, 62359), assignment.num_nonzeros());
     }
 }
 
