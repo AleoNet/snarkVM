@@ -3,7 +3,7 @@
       outputs:
       - '{"type":"record","id":"6798870324509454244889747913155652074230983649490264906298965812874457453320field","checksum":"529929875542982039096535673348389015373664732252371606600475317354226875454field","value":"record1qyqsq4xmpx82trf0hc3xmrgn7uu4p9tpnldxuwqjkwtxe48j6pvgztssqyxx66trwfhkxun9v35hguerqqpqzqyjjvqjckdq482e2uv348kthzrt4603myclkhcyhh0e3enxslnypqrx0tft7rrrr3er5ry42m84xrgy70peqwna5ep4wav8zcxch3hqk8dnlgq"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"4786601307955281656394443437255302938840126576083152363641245664637334033252field","checksum":"6895791286448785213129716567466089936293950604029951839374797665126774348675field","value":"record1qyqspsntq9lyrn2603ehf82uglnfp6390jhs0zjrqezkf2z8xyzk58qgqyxx66trwfhkxun9v35hguerqqpqzq89e2h24eu2k8l2tj48ustgznta22lkhkmt42kpzvpyj9lfwpwkqushlg633z9rt7ygwxkygacnjdq8wvutqfcjeu43et30jahzl88pq7azyp5"}'
       finalize: []

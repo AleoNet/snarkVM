@@ -4,7 +4,7 @@
       finalize:
       - 1u8
       - 1u8
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"1346464398209713165654761534305985645682307198576521650402066385988195470799field","checksum":"3176310545909011841983843153963301756967520422018688027928146202841213417584field","value":"record1qyqsq4sqewu3hlsuelz97zhqyqs0g377nhe6ydmusam6y3kd0nqax8qfqyxx66trwfhkxun9v35hguerqqpqzqxq3nu96ramg96ufxy03xk6eegdf4e4a7fygyflt3ac5tgd9jteq7w5l76q0c7ut0872a9js2c57c9cnyfhlsxff4tgtr3pvp6xtuksk6eudyg"}'
       finalize: []
@@ -16,7 +16,7 @@
       finalize:
       - 0u8
       - 1u8
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"4704101631390412665790524724158720672525252492397024065358547005422743377053field","checksum":"2940342066465125874064168219804097131466303006475060250634535164159320327540field","value":"record1qyqspxtau3e3nfuvz3njfhr2ug28hn7vqwh2gqfx3z5wum4kqh283xgjqyxx66trwfhkxun9v35hguerqqpqzq8ky3nppzs6wx9mfwajxfk5h43lv79e6hn4sqxwf7xgjyftvqxtplusf2ksgs0cmgzjgcnax37mg9x0alpe7ppcmumhkl9wtnf2kt9pqgnrkl7"}'
       finalize: []
@@ -28,7 +28,7 @@
       finalize:
       - 0u8
       - 0u8
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"2326873402391414215061725081043048215807422181880265694799730347157188403968field","checksum":"1480224330425280044595584566320107604913818773397174470818545345995990621768field","value":"record1qyqsq2plhrz437zq7sje3v5zhgedajmjvwvzp6nscqgwxg7g3gld8pgzqyxx66trwfhkxun9v35hguerqqpqzq9lgjgdcstcsu3ja9mj2yt53kqu73xmyz7vt8h8sj5yu76dkgrmp5qghj3dyyzdy5d6tzpldm2q4samd48enc7rxu85ufvrcxa6mt9pz0402jh"}'
       finalize: []

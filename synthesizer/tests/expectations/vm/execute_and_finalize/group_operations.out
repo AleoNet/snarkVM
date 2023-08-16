@@ -5,7 +5,7 @@
       - '{"type":"private","id":"130011913337036531507057545989025157938730532600161205136269455017273886269field","value":"ciphertext1qgqduyd27ym3hurgekxeldc09aa8tv8ag44u7r78ypjcl37uvpm2yp23fdvc4ts0wusu3tsk78hl2s248ta8jhuxk368zsu2xym245wnqv7aaxqy"}'
       - '{"type":"private","id":"2580406900089419851149842424414929160122547843095402286319948258752255469434field","value":"ciphertext1qgqp6g7d7x6wvtmaz4xd2ef9ufzx4jmfwleuey85xvmv8m82vjq2xzqdsau5wnf8792fwl965tjycx2w85hkelm583q9twlxsytptm9epskql243"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"8328247454141615892764694171155666086879806792226312025828092848394224958542field","checksum":"8420003866193920429743888300282550173852930053207925947467477213073142673327field","value":"record1qyqsp56e8u03xu2x4uc0h2rzkczxnwcrg6lswd8dvg5wtaaxjw2ddmg0qyxx66trwfhkxun9v35hguerqqpqzq8fkvjadnp39dqyen2su3quvzg9sr7kgyt6ly8dre0z6ldlvqugqljj5r8chg8aa5r0sz665k7c6gmh7zzv3z8wlqln4ddreqjgavgqvnztpv5"}'
       finalize: []
@@ -18,7 +18,7 @@
       - '{"type":"private","id":"1981542668246391085569756825148273609261910502864531152114526028845518584911field","value":"ciphertext1qgqrk443t4ycs5v5uzf3qk3el058g5fenu7f6n8j9nuya64e2lyyuy8e6mz3hgtluzegtgtklgztrnp02x5zlre87acw36uh8vjwur87pcqf97wm"}'
       - '{"type":"private","id":"1376673970255476266544683161739276602711436970538756281351708741922237386397field","value":"ciphertext1qgqvvm07v7aa40uspxfeglmew455yv4rf6r4dhwjt36mg80swzcjczkzxg5c2n2yjl4fyuu95629fnf9yuz55q9lfqtq79f3snfv5r6rqg6cc7cv"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"709263097694128133623943568152334633627964196208379830644814894323292024863field","checksum":"7113731241929196344298930427201545684645920331538617981504037005227234673501field","value":"record1qyqspr65uq96d37vpk2c6h44pkn2swtwfk76u6lxshp4jhd4ntedpjqvqyxx66trwfhkxun9v35hguerqqpqzqpjmmm7zc8nynnus9ghhs3qn78kzxyu9yhgx8nuu8jaguesjxdmq464x2sfu893d4pr9tfnewdtlp2307s694zv8684psnt9njq7j3qwsewtpe"}'
       finalize: []
@@ -31,7 +31,7 @@
       - '{"type":"private","id":"6611099665567236691764971471547698672121723738730236001795499260897550379676field","value":"ciphertext1qgq0e4u3crqjp2f4e5vwdfgqqj7zzpjynjp4pf2n7ej5slfv0eckzrg5utu000l2kxge22mw56mkctqhp3ep4j0rg0nqhqn3new52f6fqgvqjl72"}'
       - '{"type":"private","id":"2474042060868180484366225358029473451507776385250541099984652747475935067161field","value":"ciphertext1qgqzy8m35xfqelkkcnfnumsqjg342tw37xga7wcs6fswrj449wwu5yvydudtsfthgh3cpwr6lhmdpk39ssfpjdjjddw0rv5mzh5ns49qpu40hlwq"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"6762584010357599362973141873893567128817930983870109553294915935806534296763field","checksum":"7399718939049028270412660284092856650283607127794449119265055961680027825374field","value":"record1qyqspjff98qtcwm5ge4ydvv4pskwjyarv648vpxe6lels5pwwshz7lqsqyxx66trwfhkxun9v35hguerqqpqzq9my9wfw45fp5tp3acga8w37qd3lkkj5hytph2x5jala2z7eq4spahamlps8r2lw8f4l9hx0rxr3m5ysq8vkelfa8qpjfswwqufpuy3yt98k37"}'
       finalize: []
@@ -43,7 +43,7 @@
       - '{"type":"private","id":"8317680951135420431132303936849325393255464530597081762706956157092086754299field","value":"ciphertext1qgqzv3dzt97gm000ac92eaxncyjtxnvyw3pk2zuejkgcqc508fqjvpksuapw0fsyx8zwlkejvyz5jj2yj9crml6q5rq6yjwu6unne68rqqpyg283"}'
       - '{"type":"private","id":"5615591732865982300295021084428069188049293318562030974874081137484444316377field","value":"ciphertext1qgqd06x2e55lfcjh4k24zlffjm7wtz7rclwgldk2yy0pdln3z03xzqalg6fs4lgmmzaddungffpdsa60unt3f8jdjejasx6r47dnvfvvzqj0yj6m"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"3997241049183296963780973881742210664022490916585940727777823895424618748613field","checksum":"757273817563352158569975174964633069846723680048046242305023830388919768151field","value":"record1qyqsphr2svkw32g65kwz2q6aa73f5yja3l5ms0a3nuv60gqqjaf535s3qyxx66trwfhkxun9v35hguerqqpqzq9zgppvrh04wppm5zxya8fnage68q7dhkxsqzvdg5vkrqrfeudep3py9jty4gcrql90srnwmsqjfrlt7umerc7a8sfr8nnh88zz2grszukmw9m"}'
       finalize: []
