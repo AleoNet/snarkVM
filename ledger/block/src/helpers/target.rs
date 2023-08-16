@@ -106,7 +106,7 @@ pub const fn block_height_at_year(block_time: u16, num_years: u32) -> u32 {
     block_height_at_year_1 * num_years
 }
 
-/// Calculate the coinbase target for the given block height.
+/// Calculate the coinbase target for the given block timestamps and target.
 pub fn coinbase_target(
     previous_target: u64,
     previous_block_timestamp: i64,
@@ -144,8 +144,8 @@ fn retarget(
     half_life: u32,
     is_inverse: bool,
 ) -> Result<u64> {
-    // Determine the number of blocks elapsed since the previous block height.
-    // Note: This operation includes a safety check for a repeat block height.
+    // Determine the block time elapsed (in seconds) since the previous block.
+    // Note: This operation includes a safety check for a repeat block timestamp.
     let block_time_elapsed = block_timestamp.saturating_sub(previous_block_timestamp).max(1);
     // Compute the drift.
     let mut drift = block_time_elapsed.saturating_sub(anchor_time as i64);
