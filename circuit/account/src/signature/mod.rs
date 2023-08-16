@@ -14,10 +14,11 @@
 
 mod equal;
 mod helpers;
+mod ternary;
 mod verify;
 
 #[cfg(test)]
-use snarkvm_circuit_types::environment::assert_scope;
+use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::ComputeKey;
 use snarkvm_circuit_network::Aleo;

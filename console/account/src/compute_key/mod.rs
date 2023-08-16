@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod bitwise;
 mod bytes;
 mod from_bits;
 mod serialize;
@@ -25,7 +26,7 @@ mod try_from;
 use crate::PrivateKey;
 
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Address, Field, Group, Scalar};
+use snarkvm_console_types::{Address, Boolean, Field, Group, Scalar};
 
 static _COMPUTE_KEY_PREFIX: [u8; 10] = [109, 249, 98, 224, 36, 15, 213, 187, 79, 190]; // AComputeKey1
 

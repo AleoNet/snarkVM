@@ -751,6 +751,7 @@ crate::operation!(
         (Boolean, U64, U64) => U64,
         (Boolean, U128, U128) => U128,
         (Boolean, Scalar, Scalar) => Scalar,
+        // (Boolean, Signature, Signature) => Signature,
         // (Boolean, StringType, StringType) => StringType,
     }
 );

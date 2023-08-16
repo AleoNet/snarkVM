@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<N: Network> Equal for Signature<N> {
+impl<N: Network> Equal for ComputeKey<N> {
     type Output = Boolean<N>;
 
     /// Returns `true` if `self` and `other` are equal.
@@ -25,5 +25,18 @@ impl<N: Network> Equal for Signature<N> {
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         Boolean::new(self != other)
+    }
+}
+
+impl<N: Network> Ternary for ComputeKey<N> {
+    type Boolean = Boolean<N>;
+    type Output = Self;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        match **condition {
+            true => *first,
+            false => *second,
+        }
     }
 }

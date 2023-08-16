@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod bitwise;
 mod bytes;
-mod equal;
 mod from_bits;
 mod parse;
 mod serialize;
