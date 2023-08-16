@@ -47,7 +47,7 @@ type Gpoly<F> = LabeledPolynomial<F>;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the fourth round.
-    pub fn num_fourth_round_oracles(circuits: usize) -> usize {
+    pub const fn num_fourth_round_oracles(circuits: usize) -> usize {
         circuits * 3
     }
 
