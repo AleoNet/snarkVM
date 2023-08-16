@@ -22,7 +22,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         &self,
         private_key: &PrivateKey<N>,
         (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
-        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
+        inputs: impl ExactSizeIterator<Item=impl TryInto<Value<N>>>,
         fee: Option<(Record<N, Plaintext<N>>, u64)>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
@@ -60,11 +60,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the execution.
-        let (_response, execution) = self.execute_authorization_raw(authorization, query, rng)?;
+        let (_, execution) = self.execute_authorization_raw(authorization, query, rng)?;
         // Return the execute transaction.
         Transaction::from_execution(execution, fee)
     }
+}
 
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a call to the program function for the given authorization.
     /// Returns the response and execution.
     #[inline]

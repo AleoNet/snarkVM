@@ -74,11 +74,11 @@ function hello:
     )
     .unwrap();
 
-    c.bench_function("Transaction - deploy", |b| {
+    c.bench_function("Transaction::Deploy", |b| {
         b.iter(|| vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap())
     });
 
-    c.bench_function("Transaction verify - deployment", |b| {
+    c.bench_function("Transaction::Deploy - verify", |b| {
         let transaction = vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
@@ -107,10 +107,10 @@ fn execute(c: &mut Criterion) {
 
     let (_, fee) = vm.execute_fee_private(&private_key, records[1].clone(), 100000, Field::zero(), None, rng).unwrap();
 
-    c.bench_function("Transaction - execution (transfer)", |b| {
+    c.bench_function("Transaction::Execute(transfer)", |b| {
         b.iter(|| {
             vm.execute_authorization(
-                Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
+                authorization.replicate(),
                 Some(fee.clone()),
                 None,
                 rng,
@@ -119,10 +119,10 @@ fn execute(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("Transaction verify - execution (transfer)", |b| {
+    c.bench_function("Transaction::Execute(transfer) - verify", |b| {
         let transaction = vm
             .execute_authorization(
-                Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
+                authorization.replicate(),
                 Some(fee.clone()),
                 None,
                 rng,

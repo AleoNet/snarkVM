@@ -51,10 +51,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Return the deploy transaction.
         Transaction::from_deployment(owner, deployment, fee)
     }
+}
 
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a deployment for the given program.
     #[inline]
-    pub fn deploy_raw<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
+    pub(super) fn deploy_raw<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
         let timer = timer!("VM::deploy_raw");
 
         // Compute the core logic.
