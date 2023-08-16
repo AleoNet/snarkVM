@@ -34,7 +34,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_from_pk_sig_and_pr_sig(
+    fn check_from(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -62,17 +62,17 @@ mod tests {
     }
 
     #[test]
-    fn test_from_pk_sig_and_pr_sig_constant() -> Result<()> {
-        check_from_pk_sig_and_pr_sig(Mode::Constant, 254, 0, 0, 0)
+    fn test_from_constant() -> Result<()> {
+        check_from(Mode::Constant, 254, 0, 0, 0)
     }
 
     #[test]
-    fn test_from_pk_sig_and_pr_sig_public() -> Result<()> {
-        check_from_pk_sig_and_pr_sig(Mode::Public, 1, 0, 845, 847)
+    fn test_from_public() -> Result<()> {
+        check_from(Mode::Public, 1, 0, 845, 847)
     }
 
     #[test]
-    fn test_from_pk_sig_and_pr_sig_private() -> Result<()> {
-        check_from_pk_sig_and_pr_sig(Mode::Private, 1, 0, 845, 847)
+    fn test_from_private() -> Result<()> {
+        check_from(Mode::Private, 1, 0, 845, 847)
     }
 }
