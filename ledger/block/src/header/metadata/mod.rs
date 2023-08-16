@@ -44,7 +44,7 @@ pub struct Metadata<N: Network> {
     proof_target: u64,
     /// The coinbase target for the last coinbase - 8 bytes.
     last_coinbase_target: u64,
-    /// The block timestamp for the last coinbase - 8 bytes.
+    /// The Unix timestamp (UTC) for the last coinbase - 8 bytes.
     last_coinbase_timestamp: i64,
     /// The Unix timestamp (UTC) for this block - 8 bytes.
     timestamp: i64,
