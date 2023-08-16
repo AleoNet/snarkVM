@@ -77,11 +77,8 @@ impl PoseidonGrainLFSR {
             }
         }
 
-        #[allow(clippy::needless_range_loop)]
         // b50, ..., b79 are set to 1
-        for i in 50..=79 {
-            state[i] = true;
-        }
+        state[50..=79].copy_from_slice(&[true; 30]);
 
         // Initialize.
         let mut res = Self { field_size_in_bits, state, head: 0 };
