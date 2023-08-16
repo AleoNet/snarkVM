@@ -489,7 +489,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("The global state root '{global_state_root}' for commitment '{commitment}' is missing in storage");
         }
 
-        // Construct the transition path and transaction leaf.
+        // Construct the transition root, transition path and transaction leaf.
+        let transition_root = transition.to_root()?;
         let transition_leaf = transition.to_leaf(commitment, false)?;
         let transition_path = transition.to_path(&transition_leaf)?;
 
@@ -526,6 +527,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             transaction.id(),
             transaction_path,
             transaction_leaf,
+            transition_root,
+            *transition.tcm(),
             transition_path,
             transition_leaf,
         ))

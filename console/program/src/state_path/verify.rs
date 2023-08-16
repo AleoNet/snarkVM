@@ -45,22 +45,27 @@ impl<N: Network> StatePath<N> {
     ///                                                               |
     ///                                                       transaction_leaf
     ///                                                              |
-    ///                                                      transition_path
-    ///                                                             |
-    ///                                                    transition_leaf
+    ///                                                      transition_id := Hash( transition_root || tcm )
+    ///                                                                                  |
+    ///                                                                           transition_path
+    ///                                                                                 |
+    ///                                                                          transition_leaf
     /// ```
     pub fn verify(&self, is_global: bool, local_state_root: Field<N>) -> Result<()> {
         // Ensure the transition leaf variant is 3 (Input::Record).
         ensure!(self.transition_leaf.variant() == 3, "Transition leaf variant must be 3 (Input::Record)");
         // Ensure the transition path is valid.
         ensure!(
-            N::verify_merkle_path_bhp(
-                &self.transition_path,
-                &self.transaction_leaf.id(),
-                &self.transition_leaf.to_bits_le()
-            ),
+            N::verify_merkle_path_bhp(&self.transition_path, &self.transition_root, &self.transition_leaf.to_bits_le()),
             "'{}' (an input or output ID) does not belong to '{}' (a function or transition)",
             self.transition_leaf.id(),
+            self.transaction_leaf.id()
+        );
+
+        // Ensure the transaction leaf is correct.
+        ensure!(
+            *self.transaction_leaf.id() == *N::hash_bhp1024(&to_bits_le![(*self.transition_root), self.tcm])?,
+            "Transaction leaf id '{}' is incorrect. Double-check the tcm and transition root.",
             self.transaction_leaf.id()
         );
 
@@ -189,6 +194,8 @@ mod tests {
                 *state_path.transaction_id(),
                 state_path.transaction_path().clone(),
                 *state_path.transaction_leaf(),
+                *state_path.transition_root(),
+                *state_path.tcm(),
                 state_path.transition_path().clone(),
                 *state_path.transition_leaf(),
             )

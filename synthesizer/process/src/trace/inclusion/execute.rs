@@ -58,6 +58,8 @@ macro_rules! prepare_execution_impl {
                                     local_state_root,
                                     transaction_path,
                                     *transaction_leaf,
+                                    transition.to_root()?,
+                                    *transition.tcm(),
                                     transition_path.clone(),
                                     *transition_leaf,
                                 )?
