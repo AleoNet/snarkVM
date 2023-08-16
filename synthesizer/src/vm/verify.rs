@@ -178,15 +178,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     fn check_deployment(&self, deployment: &Deployment<N>) -> Result<()> {
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
-                let task = || {
-                    // Prepare the deployment.
-                    let deployment = cast_ref!(&deployment as Deployment<$network>);
-                    // Initialize an RNG.
-                    let rng = &mut rand::thread_rng();
-                    // Verify the deployment.
-                    $process.verify_deployment::<$aleo, _>(&deployment, rng)
-                };
-                task()
+                // Prepare the deployment.
+                let deployment = cast_ref!(&deployment as Deployment<$network>);
+                // Verify the deployment.
+                $process.verify_deployment::<$aleo, _>(&deployment, &mut rand::thread_rng())
             }};
         }
 
