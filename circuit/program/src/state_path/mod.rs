@@ -191,16 +191,16 @@ mod tests {
 
     #[test]
     fn test_state_path_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 444, 1, 0, 0)
+        check_new(Mode::Constant, 446, 1, 0, 0)
     }
 
     #[test]
     fn test_state_path_new_public() -> Result<()> {
-        check_new(Mode::Public, 0, 445, 0, 376)
+        check_new(Mode::Public, 0, 447, 0, 376)
     }
 
     #[test]
     fn test_state_path_new_private() -> Result<()> {
-        check_new(Mode::Private, 0, 1, 444, 376)
+        check_new(Mode::Private, 0, 1, 446, 376)
     }
 }
