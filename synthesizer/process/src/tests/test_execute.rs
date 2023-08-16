@@ -12,20 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+use crate::{
+    traits::{StackEvaluate, StackExecute},
+    Assignments,
+    CallStack,
+    Process,
+    Stack,
+    Trace,
+};
 use circuit::{network::AleoV0, Assignment};
 use console::{
     account::{Address, PrivateKey, ViewKey},
-    network::Testnet3,
-    program::{Identifier, Literal, Value},
+    network::{prelude::*, Testnet3},
+    program::{Identifier, Literal, Plaintext, ProgramID, Record, Request, Value},
     types::Field,
 };
 use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
     BlockStore,
+    FinalizeStore,
 };
-use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait};
+use synthesizer_program::{FinalizeGlobalState, Program, StackProgram};
+use synthesizer_snark::UniversalSRS;
+
+use indexmap::IndexMap;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
@@ -508,7 +521,7 @@ function hello_world:
     let function_name = Identifier::from_str("hello_world").unwrap();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut TestRng::default()).unwrap();
 }
@@ -551,7 +564,7 @@ fn test_process_multirecords() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -660,7 +673,7 @@ fn test_process_self_caller() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -733,7 +746,7 @@ fn test_process_program_id() {
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -778,7 +791,7 @@ fn test_process_output_operand() {
         rng: &mut TestRng,
     ) {
         // Construct the process.
-        let process = super::test_helpers::sample_process(program);
+        let process = crate::test_helpers::sample_process(program);
 
         // Authorize the function call.
         let inputs: &[Value<CurrentNetwork>] = &[];
@@ -907,12 +920,12 @@ function compute:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -1021,7 +1034,7 @@ function transfer:
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
     // Construct the process.
-    let mut process = super::test_helpers::sample_process(&program0);
+    let mut process = crate::test_helpers::sample_process(&program0);
     // Initialize another program.
     let (string, program1) = Program::<CurrentNetwork>::parse(
         r"
@@ -1174,7 +1187,7 @@ finalize compute:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
@@ -1284,7 +1297,7 @@ finalize compute:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
@@ -1408,7 +1421,7 @@ finalize mint_public:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
@@ -1534,7 +1547,7 @@ finalize mint_public:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program0);
+    let process = crate::test_helpers::sample_process(&program0);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program0.id(), &function_name, rng).unwrap();
 
@@ -1673,7 +1686,7 @@ finalize compute:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
@@ -1759,7 +1772,7 @@ function c:
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
     // Construct the process.
-    let mut process = test_helpers::sample_process(&program0);
+    let mut process = crate::test_helpers::sample_process(&program0);
 
     // Initialize another program.
     let (string, program1) = Program::<CurrentNetwork>::parse(
@@ -1897,7 +1910,7 @@ fn test_complex_execution_order() {
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
     // Construct the process.
-    let mut process = super::test_helpers::sample_process(&program0);
+    let mut process = crate::test_helpers::sample_process(&program0);
 
     // Initialize another program.
     let (string, program1) = Program::<CurrentNetwork>::parse(
@@ -2099,7 +2112,7 @@ finalize compute:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
@@ -2272,12 +2285,12 @@ function compute:
     let rng = &mut TestRng::default();
 
     // Construct the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
     // Check that the circuit key can be synthesized.
     process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
     // Reset the process.
-    let process = super::test_helpers::sample_process(&program);
+    let process = crate::test_helpers::sample_process(&program);
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();

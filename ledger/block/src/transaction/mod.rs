@@ -97,10 +97,12 @@ impl<N: Network> Transaction<N> {
     pub fn is_fee(&self) -> bool {
         matches!(self, Self::Fee(..))
     }
+}
 
-    /// Returns `true` if this is a `mint` transaction.
+impl<N: Network> Transaction<N> {
+    /// Returns `true` if this transaction contains a call to `credits.aleo/mint`.
     #[inline]
-    pub fn is_mint(&self) -> bool {
+    pub fn contains_mint(&self) -> bool {
         match self {
             // Case 1 - The transaction contains a transition that calls 'credits.aleo/mint'.
             Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_mint()),
@@ -109,9 +111,9 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns `true` if this is a `split` transaction.
+    /// Returns `true` if this transaction contains a call to `credits.aleo/split`.
     #[inline]
-    pub fn is_split(&self) -> bool {
+    pub fn contains_split(&self) -> bool {
         match self {
             // Case 1 - The transaction contains a transition that calls 'credits.aleo/split'.
             Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_split()),
@@ -165,6 +167,18 @@ impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>, I3: Iterator<Item = T>> 
             Self::Deploy(iter) => iter.next(),
             Self::Execute(iter) => iter.next(),
             Self::Fee(iter) => iter.next(),
+        }
+    }
+}
+
+impl<T, I1: DoubleEndedIterator<Item = T>, I2: DoubleEndedIterator<Item = T>, I3: DoubleEndedIterator<Item = T>>
+    DoubleEndedIterator for IterWrap<T, I1, I2, I3>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Deploy(iter) => iter.next_back(),
+            Self::Execute(iter) => iter.next_back(),
+            Self::Fee(iter) => iter.next_back(),
         }
     }
 }
@@ -268,12 +282,12 @@ impl<N: Network> Transaction<N> {
 
 impl<N: Network> Transaction<N> {
     /// Returns an iterator over the transition IDs, for all transitions.
-    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
+    pub fn transition_ids(&self) -> impl '_ + DoubleEndedIterator<Item = &N::TransitionID> {
         self.transitions().map(Transition::id)
     }
 
     /// Returns an iterator over all transitions.
-    pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
+    pub fn transitions(&self) -> impl '_ + DoubleEndedIterator<Item = &Transition<N>> {
         match self {
             Self::Deploy(_, _, _, fee) => IterWrap::Deploy(Some(fee.transition()).into_iter()),
             Self::Execute(_, execution, fee) => {
@@ -323,12 +337,12 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns an iterator over the transition public keys, for all transitions.
-    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
+    pub fn transition_public_keys(&self) -> impl '_ + DoubleEndedIterator<Item = &Group<N>> {
         self.transitions().map(Transition::tpk)
     }
 
     /// Returns an iterator over the transition commitments, for all transitions.
-    pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn transition_commitments(&self) -> impl '_ + DoubleEndedIterator<Item = &Field<N>> {
         self.transitions().map(Transition::tcm)
     }
 }
@@ -340,7 +354,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns a consuming iterator over all transitions.
-    pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
+    pub fn into_transitions(self) -> impl DoubleEndedIterator<Item = Transition<N>> {
         match self {
             Self::Deploy(_, _, _, fee) => IterWrap::Deploy(Some(fee.into_transition()).into_iter()),
             Self::Execute(_, execution, fee) => {
@@ -351,7 +365,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns a consuming iterator over the transition public keys, for all transitions.
-    pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
+    pub fn into_transition_public_keys(self) -> impl DoubleEndedIterator<Item = Group<N>> {
         self.into_transitions().map(Transition::into_tpk)
     }
 

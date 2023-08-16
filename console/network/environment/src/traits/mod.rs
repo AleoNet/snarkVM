@@ -30,11 +30,10 @@ pub use from_field::*;
 pub mod parse;
 pub use parse::*;
 
-pub mod string;
-pub use string::string_parser;
+pub mod parse_string;
+pub use parse_string::string_parser;
 
-pub mod to_bits;
-pub use to_bits::*;
+pub use snarkvm_utilities::{to_bits_le, ToBits};
 
 pub mod to_field;
 pub use to_field::*;
@@ -43,14 +42,11 @@ pub mod type_name;
 pub use type_name::*;
 
 pub mod types;
-pub use types::*;
+pub use types::{
+    integer_magnitude::Magnitude,
+    integer_type::{CheckedPow, CheckedShl, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
+    *,
+};
 
 pub mod visibility;
 pub use visibility::*;
-
-pub mod integers {
-    pub use super::{
-        integer_type::{CheckedPow, CheckedShl, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
-        magnitude::Magnitude,
-    };
-}

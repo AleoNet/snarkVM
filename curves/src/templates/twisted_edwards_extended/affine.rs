@@ -24,9 +24,7 @@ use snarkvm_utilities::{
     rand::Uniform,
     serialize::*,
     FromBytes,
-    ToBits,
     ToBytes,
-    ToMinimalBits,
 };
 
 use core::{
@@ -252,12 +250,6 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             *inversion_tmp *= &b.x;
             a.t = a.x * a.y;
         }
-    }
-}
-
-impl<P: Parameters> ToMinimalBits for Affine<P> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        self.x.to_bits_le()
     }
 }
 

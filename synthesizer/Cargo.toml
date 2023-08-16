@@ -139,7 +139,7 @@ optional = true
 version = "0.1"
 
 [dev-dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [dev-dependencies.itertools]
 version = "0.11.0"

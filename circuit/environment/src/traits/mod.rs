@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod eject;
+mod eject;
 pub use eject::*;
 
-pub mod from;
+mod from;
 pub use from::*;
 
-pub mod inject;
+mod inject;
 pub use inject::*;
 
-pub mod metrics;
+mod metrics;
 pub use metrics::*;
 
-pub mod operators;
+mod operators;
 pub use operators::*;
 
-pub mod to;
+mod to;
 pub use to::*;
 
-pub mod to_bits;
+mod to_bits;
 pub use to_bits::*;
 
-pub mod types;
+mod types;
 pub use types::*;

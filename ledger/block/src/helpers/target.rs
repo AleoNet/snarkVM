@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use synthesizer::MAX_COINBASE_REWARD;
+use console::prelude::{ensure, Result};
 
-use anyhow::{ensure, Result};
+/// A safety bound (sanity-check) for the coinbase reward.
+pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
 
 /// Calculate the block reward, given the total supply, block time, and coinbase reward.
 ///     R_staking = floor((0.05 * S) / H_Y1) + CR / 2

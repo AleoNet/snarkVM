@@ -968,6 +968,16 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     ) -> Result<Option<Value<N>>> {
         self.storage.get_value_confirmed(program_id, mapping_name, key)
     }
+
+    /// Returns the speculative value for the given `program ID`, `mapping name`, and `key`.
+    pub fn get_value_speculative(
+        &self,
+        program_id: &ProgramID<N>,
+        mapping_name: &Identifier<N>,
+        key: &Plaintext<N>,
+    ) -> Result<Option<Value<N>>> {
+        self.storage.get_value_speculative(program_id, mapping_name, key)
+    }
 }
 
 #[cfg(test)]

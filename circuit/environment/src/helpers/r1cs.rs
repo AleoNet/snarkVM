@@ -156,17 +156,17 @@ impl<F: PrimeField> R1CS<F> {
     }
 
     /// Returns the public variables in the constraint system.
-    pub(crate) fn to_public_variables(&self) -> &Vec<Variable<F>> {
+    pub fn to_public_variables(&self) -> &Vec<Variable<F>> {
         &self.public
     }
 
     /// Returns the private variables in the constraint system.
-    pub(crate) fn to_private_variables(&self) -> &Vec<Variable<F>> {
+    pub fn to_private_variables(&self) -> &Vec<Variable<F>> {
         &self.private
     }
 
     /// Returns the constraints in the constraint system.
-    pub(crate) fn to_constraints(&self) -> &Vec<Constraint<F>> {
+    pub fn to_constraints(&self) -> &Vec<Constraint<F>> {
         &self.constraints
     }
 }

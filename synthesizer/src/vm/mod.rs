@@ -187,10 +187,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     pub fn genesis_beacon<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
         // Construct the committee members.
         let members = indexmap::indexmap! {
-            Address::try_from(private_key)? => (ledger_committee::MIN_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_STAKE, true),
-            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_STAKE, true),
+            Address::try_from(private_key)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
+            Address::try_from(PrivateKey::new(rng)?)? => (ledger_committee::MIN_VALIDATOR_STAKE, true),
         };
         // Construct the committee.
         let committee = Committee::<N>::new_genesis(members)?;
@@ -607,7 +607,7 @@ function compute:
         )?;
 
         let header = Header::from(
-            *vm.block_store().current_state_root(),
+            vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),

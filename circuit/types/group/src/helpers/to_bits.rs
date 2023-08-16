@@ -18,13 +18,13 @@ impl<E: Environment> ToBits for Group<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -32,13 +32,13 @@ impl<E: Environment> ToBits for &Group<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.x.to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        self.x.write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        self.x.to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        self.x.write_bits_be(vec);
     }
 }
 

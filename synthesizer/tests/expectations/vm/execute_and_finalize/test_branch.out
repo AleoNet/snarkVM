@@ -6,7 +6,7 @@
       - 1u8
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"1010834376209895072574054842045923317825016696017851841367420060090722466929field","checksum":"3862737969913193977214447772129705724419091158848270310286003183487270670084field","value":"record1qyqsqdpsjf4r9gk2rztraa84szqj8r99fq6r4sn8clw6vyn33zz6huqrqyxx66trwfhkxun9v35hguerqqpqzqqghgr89xgcchs6c3v3k449vjvy0hafh8xxgyn6a9p7hh5h2gh5qertatwzaw3c9fxypcxdr428kjdna3dv5xf2pmysr635wjf2qx4sz26csae"}'
+      - '{"type":"record","id":"1346464398209713165654761534305985645682307198576521650402066385988195470799field","checksum":"3176310545909011841983843153963301756967520422018688027928146202841213417584field","value":"record1qyqsq4sqewu3hlsuelz97zhqyqs0g377nhe6ydmusam6y3kd0nqax8qfqyxx66trwfhkxun9v35hguerqqpqzqxq3nu96ramg96ufxy03xk6eegdf4e4a7fygyflt3ac5tgd9jteq7w5l76q0c7ut0872a9js2c57c9cnyfhlsxff4tgtr3pvp6xtuksk6eudyg"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -18,7 +18,7 @@
       - 1u8
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"4484967648905011906646809522613529406117283500098321795745835158491557862749field","checksum":"801141641089867251938424432782097046222049426853424169696770881325239595334field","value":"record1qyqsqfak0p3mq8uc02552gm9lygk6a9y643mfu4vvfyvf5n0ujv030cwqyxx66trwfhkxun9v35hguerqqpqzq9puxtyyrgcrumanwgmfhrdqlxy2yk588d0hre0cwa9prd6hmypq29ykztxk8kv2yhejvydj7s0r27luswt93qdkaekdfs0yg0r706qj8edam9"}'
+      - '{"type":"record","id":"4704101631390412665790524724158720672525252492397024065358547005422743377053field","checksum":"2940342066465125874064168219804097131466303006475060250634535164159320327540field","value":"record1qyqspxtau3e3nfuvz3njfhr2ug28hn7vqwh2gqfx3z5wum4kqh283xgjqyxx66trwfhkxun9v35hguerqqpqzq8ky3nppzs6wx9mfwajxfk5h43lv79e6hn4sqxwf7xgjyftvqxtplusf2ksgs0cmgzjgcnax37mg9x0alpe7ppcmumhkl9wtnf2kt9pqgnrkl7"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -30,7 +30,7 @@
       - 0u8
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"7662697480961731049710948996504123188738043696395009063295292452546011208250field","checksum":"8309164902630769105259094791958315591216857242040333016777148119852265527715field","value":"record1qyqsp62ddl0yf6ae9cww5cs2p22wqqszx789kjmsz8asjumcfz8gxncwqyxx66trwfhkxun9v35hguerqqpqzqzvyejhmsd2llj4uduh2lc4244nmhv64hh4s0k3nc0zwxpm446dqsdzxum2dc2sns82xwgp95csquaxxndq26zay0ddtuk4rugk09jqvrwsg0y"}'
+      - '{"type":"record","id":"2326873402391414215061725081043048215807422181880265694799730347157188403968field","checksum":"1480224330425280044595584566320107604913818773397174470818545345995990621768field","value":"record1qyqsq2plhrz437zq7sje3v5zhgedajmjvwvzp6nscqgwxg7g3gld8pgzqyxx66trwfhkxun9v35hguerqqpqzq9lgjgdcstcsu3ja9mj2yt53kqu73xmyz7vt8h8sj5yu76dkgrmp5qghj3dyyzdy5d6tzpldm2q4samd48enc7rxu85ufvrcxa6mt9pz0402jh"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.

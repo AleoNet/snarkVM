@@ -15,7 +15,10 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_circuit::prelude::*;
+use snarkvm_circuit::{
+    environment::{prelude::num_traits::One as _, Circuit, Eject, Environment, Inject, LinearCombination, Mode, One},
+    types::Field,
+};
 
 use criterion::Criterion;
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use console::{account::Address, network::prelude::*};
-use ledger_committee::Committee;
+use ledger_committee::{Committee, MIN_DELEGATOR_STAKE};
 
 use indexmap::IndexMap;
 
@@ -21,14 +21,14 @@ use indexmap::IndexMap;
 use rayon::prelude::*;
 
 /// A safety bound (sanity-check) for the coinbase reward.
-pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
+const MAX_COINBASE_REWARD: u64 = ledger_block::MAX_COINBASE_REWARD; // Coinbase reward at block 1.
 
 /// Returns the updated stakers reflecting the staking rewards for the given committee and block reward.
 /// The staking reward is defined as: `block_reward * stake / total_stake`.
 ///
 /// This method ensures that stakers who are bonded to validators with more than **25%**
 /// of the total stake will not receive a staking reward. In addition, this method
-/// ensures stakers who have less than 1 credit are not eligible for a staking reward.
+/// ensures stakers who have less than 10 credit are not eligible for a staking reward.
 ///
 /// The choice of 25% is to ensure at least 4 validators are operational at any given time,
 /// since our security model adheres to 3f+1, where f=1. As such, we tolerate Byzantine behavior
@@ -51,9 +51,9 @@ pub fn staking_rewards<N: Network>(
                 trace!("Validator {validator} has more than 25% of the total stake - skipping {staker}");
                 return (*staker, (*validator, *stake));
             }
-            // If the staker has less than 1 credit, skip the staker.
-            if *stake < 1_000_000 {
-                trace!("Staker has less than 1 credit - skipping {staker}");
+            // If the staker has less than the minimum required stake, skip the staker.
+            if *stake < MIN_DELEGATOR_STAKE {
+                trace!("Staker has less than {MIN_DELEGATOR_STAKE} microcredits - skipping {staker}");
                 return (*staker, (*validator, *stake));
             }
 
@@ -147,7 +147,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random stake.
-            let stake = rng.gen_range(1_000_000..committee.total_stake());
+            let stake = rng.gen_range(MIN_DELEGATOR_STAKE..committee.total_stake());
             // Construct the stakers.
             let stakers = indexmap! {address => (address, stake)};
             let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
@@ -188,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    fn test_staking_rewards_when_staker_is_under_1_credit_yields_no_reward() {
+    fn test_staking_rewards_when_staker_is_under_min_yields_no_reward() {
         let rng = &mut TestRng::default();
         // Sample a random committee.
         let committee = ledger_committee::test_helpers::sample_committee(rng);
@@ -199,7 +199,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random stake.
-            let stake = rng.gen_range(0..1_000_000);
+            let stake = rng.gen_range(0..MIN_DELEGATOR_STAKE);
             // Construct the stakers.
             let stakers = indexmap! {address => (address, stake)};
             let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, block_reward);
@@ -220,7 +220,7 @@ mod tests {
         let address = *committee.members().iter().next().unwrap().0;
 
         // Construct the stakers.
-        let stakers = indexmap![address => (address, 1_000_000)];
+        let stakers = indexmap![address => (address, MIN_DELEGATOR_STAKE)];
         // Check that a maxed out coinbase reward, returns empty.
         let next_stakers = staking_rewards::<CurrentNetwork>(&stakers, &committee, u64::MAX);
         assert_eq!(stakers, next_stakers);
@@ -230,7 +230,7 @@ mod tests {
             // Sample a random overly-large block reward.
             let block_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
             // Sample a random stake.
-            let stake = rng.gen_range(1_000_000..u64::MAX);
+            let stake = rng.gen_range(MIN_DELEGATOR_STAKE..u64::MAX);
             // Construct the stakers.
             let stakers = indexmap![address => (address, stake)];
             // Check that an overly large block reward fails.

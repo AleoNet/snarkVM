@@ -34,12 +34,11 @@ pub fn mint_address<N: Network>(transition: &Transition<N>) -> Result<&Address<N
 
 /// Returns the amount minted in microcredits, given a mint transition.
 pub fn mint_amount<N: Network>(transition: &Transition<N>) -> Result<u64> {
-    // Ensure this is a mint transition.
-    ensure!(transition.is_mint(), "Invalid mint transaction: expected a mint");
+    debug_assert!(transition.is_mint(), "Invalid mint transition: expected a mint");
     // Extract the amount from the input.
     match transition.inputs().get(1) {
         Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(amount), _)))) => Ok(**amount),
-        _ => bail!("Invalid mint transaction: Missing public input (amount) in 'credits.aleo/mint'"),
+        _ => bail!("Invalid mint transition: Missing public input (amount) in 'credits.aleo/mint'"),
     }
 }
 
@@ -50,35 +49,39 @@ pub fn update_total_supply<N: Network>(
     puzzle_reward: u64,
     transactions: &Transactions<N>,
 ) -> Result<u64> {
-    // Initialize the final total supply of microcredits.
-    let mut final_total_supply = starting_total_supply_in_microcredits;
+    // Initialize the next total supply of microcredits.
+    let mut next_total_supply = starting_total_supply_in_microcredits;
     // Add the block reward to the total supply.
-    final_total_supply = final_total_supply.saturating_add(block_reward);
+    next_total_supply = next_total_supply.saturating_add(block_reward);
     // Add the puzzle reward to the total supply.
-    final_total_supply = final_total_supply.saturating_add(puzzle_reward);
+    next_total_supply = next_total_supply.saturating_add(puzzle_reward);
 
     // Iterate through the transactions to calculate the next total supply of microcredits.
     for confirmed in transactions.iter() {
         // Subtract the fee from the total supply.
-        final_total_supply = final_total_supply
+        next_total_supply = next_total_supply
             .checked_sub(*confirmed.fee_amount()?)
             .ok_or_else(|| anyhow!("The proposed fee underflows the total supply of microcredits"))?;
 
-        // If the transaction contains a mint, add the amount to the total supply.
-        if confirmed.is_mint() {
-            // Retrieve the execution.
-            let Some(execution) = confirmed.transaction().execution() else {
-                bail!("Invalid mint transaction: expected an execution");
-            };
-            // Loop over the mint transitions to accumulate the amount minted.
-            for transition in execution.transitions().filter(|t| t.is_mint()) {
+        // Iterate over the transitions in the transaction.
+        for transition in confirmed.transaction().transitions() {
+            // If the transition contains a mint, add the amount to the total supply.
+            if transition.is_mint() {
                 // Add the amount minted to the total supply.
-                final_total_supply = final_total_supply
+                next_total_supply = next_total_supply
                     .checked_add(mint_amount(transition)?)
                     .ok_or_else(|| anyhow!("The proposed mint overflows the total supply of microcredits"))?;
+            }
+            // If the transition contains a split, subtract the amount from the total supply.
+            if transition.is_split() {
+                // TODO (howardwu): Add a test that calls `split`, checks the output records - input records == 10_000u64.
+                // Subtract the amount split from the total supply.
+                next_total_supply = next_total_supply
+                    .checked_sub(10_000u64)
+                    .ok_or_else(|| anyhow!("The proposed split underflows the total supply of microcredits"))?;
             }
         }
     }
     // Return the final total supply in microcredits.
-    Ok(final_total_supply)
+    Ok(next_total_supply)
 }

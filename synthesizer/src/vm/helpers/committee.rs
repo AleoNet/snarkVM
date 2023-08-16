@@ -241,7 +241,7 @@ pub fn to_next_commitee_map_and_bonded_map<N: Network>(
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use ledger_committee::MIN_STAKE;
+    use ledger_committee::MIN_VALIDATOR_STAKE;
 
     use rand::Rng;
 
@@ -254,7 +254,7 @@ pub(crate) mod test_helpers {
             .into_iter()
             .flat_map(|(validator, (microcredits, _))| {
                 // Keep a tally of the remaining microcredits.
-                let remaining_microcredits = microcredits.saturating_sub(MIN_STAKE);
+                let remaining_microcredits = microcredits.saturating_sub(MIN_VALIDATOR_STAKE);
                 // Set the staker amount to 10 credit.
                 let staker_amount = 10_000_000;
                 // Determine the number of iterations.
@@ -272,7 +272,7 @@ pub(crate) mod test_helpers {
                     .collect();
 
                 // Insert the validator.
-                stakers.insert(*validator, (*validator, MIN_STAKE));
+                stakers.insert(*validator, (*validator, MIN_VALIDATOR_STAKE));
 
                 // Insert the last staker.
                 let final_amount = remaining_microcredits.saturating_sub(num_iterations * staker_amount);
