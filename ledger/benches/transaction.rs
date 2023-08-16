@@ -105,7 +105,7 @@ fn execute(c: &mut Criterion) {
     // Authorize.
     let authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
 
-    let fee = vm.execute_fee_private(&private_key, records[1].clone(), 100000, Field::zero(), None, rng).unwrap();
+    let fee = vm.execute_fee_private(&private_key, records[1].clone(), 100000, Field::one(), None, rng).unwrap();
 
     c.bench_function("Transaction::Execute(transfer)", |b| {
         b.iter(|| {
