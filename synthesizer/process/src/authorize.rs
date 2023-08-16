@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::{LiteralType, ValueType};
 
 impl<N: Network> Process<N> {
     /// Authorizes a call to the program function for the given inputs.
@@ -82,9 +83,8 @@ impl<N: Network> Process<N> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
         let function_name = Identifier::from_str("fee_public")?;
-        // Retrieve the input types.
-        let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
-
+        // Construct the input types.
+        let input_types = [ValueType::Public(LiteralType::U64.into()), ValueType::Public(LiteralType::Field.into())];
         // Construct the inputs.
         let inputs = [
             Value::from(Literal::U64(U64::<N>::new(fee_in_microcredits))),
