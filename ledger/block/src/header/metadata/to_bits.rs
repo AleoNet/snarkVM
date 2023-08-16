@@ -28,7 +28,7 @@ impl<N: Network> ToBits for Metadata<N> {
         self.coinbase_target.write_bits_le(vec);              // 8 bytes
         self.proof_target.write_bits_le(vec);                 // 8 bytes
         self.last_coinbase_target.write_bits_le(vec);         // 8 bytes
-        self.last_coinbase_timestamp.write_bits_le(vec);         // 4 bytes
+        self.last_coinbase_timestamp.write_bits_le(vec);      // 8 bytes
         self.timestamp.write_bits_le(vec);                    // 8 bytes
     }
 
@@ -45,7 +45,7 @@ impl<N: Network> ToBits for Metadata<N> {
         self.coinbase_target.write_bits_be(vec);              // 8 bytes
         self.proof_target.write_bits_be(vec);                 // 8 bytes
         self.last_coinbase_target.write_bits_be(vec);         // 8 bytes
-        self.last_coinbase_timestamp.write_bits_be(vec);         // 4 bytes
+        self.last_coinbase_timestamp.write_bits_be(vec);      // 8 bytes
         self.timestamp.write_bits_be(vec);                    // 8 bytes
     }
 }
