@@ -24,7 +24,7 @@ use console::{
 };
 use ledger_block::Transition;
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use synthesizer::{process::Authorization, program::Program, VM};
+use synthesizer::{program::Program, VM};
 
 use criterion::Criterion;
 use indexmap::IndexMap;
@@ -109,25 +109,12 @@ fn execute(c: &mut Criterion) {
 
     c.bench_function("Transaction::Execute(transfer)", |b| {
         b.iter(|| {
-            vm.execute_authorization(
-                authorization.replicate(),
-                Some(fee.clone()),
-                None,
-                rng,
-            )
-            .unwrap();
+            vm.execute_authorization(authorization.replicate(), Some(fee.clone()), None, rng).unwrap();
         })
     });
 
     c.bench_function("Transaction::Execute(transfer) - verify", |b| {
-        let transaction = vm
-            .execute_authorization(
-                authorization.replicate(),
-                Some(fee.clone()),
-                None,
-                rng,
-            )
-            .unwrap();
+        let transaction = vm.execute_authorization(authorization.replicate(), Some(fee.clone()), None, rng).unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }

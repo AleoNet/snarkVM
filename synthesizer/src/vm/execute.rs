@@ -22,7 +22,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         &self,
         private_key: &PrivateKey<N>,
         (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
-        inputs: impl ExactSizeIterator<Item=impl TryInto<Value<N>>>,
+        inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
         fee: Option<(Record<N, Plaintext<N>>, u64)>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
