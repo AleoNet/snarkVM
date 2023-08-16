@@ -60,7 +60,10 @@ impl<N: Network> Process<N> {
             ensure!(!transition.is_fee(), "Fee transitions are not allowed in executions");
 
             // Ensure the transition ID is correct.
-            ensure!(**transition.id() == transition.to_root()?, "The transition ID is incorrect");
+            ensure!(
+                **transition.id() == N::hash_bhp512(&(transition.to_root()?, *transition.tcm()).to_bits_le())?,
+                "The transition ID is incorrect"
+            );
             // Ensure the number of inputs is within the allowed range.
             ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
             // Ensure the number of outputs is within the allowed range.

@@ -64,7 +64,7 @@ impl<N: Network> StatePath<N> {
 
         // Ensure the transaction leaf is correct.
         ensure!(
-            *self.transaction_leaf.id() == *N::hash_bhp512(&to_bits_le![(*self.transition_root), self.tcm])?,
+            *self.transaction_leaf.id() == *N::hash_bhp512(&(*self.transition_root, self.tcm).to_bits_le())?,
             "Transaction leaf id '{}' is incorrect. Double-check the tcm and transition root.",
             self.transaction_leaf.id()
         );
