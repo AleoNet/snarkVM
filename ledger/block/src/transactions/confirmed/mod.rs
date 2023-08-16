@@ -114,20 +114,6 @@ impl<N: Network> ConfirmedTransaction<N> {
             false => bail!("Transaction '{}' is not a fee transaction", transaction.id()),
         }
     }
-
-    /// Returns the unconfirmed transaction ID, which is defined as the transaction ID prior to confirmation.
-    /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction ID,
-    /// changing the original transaction ID.
-    pub fn unconfirmed_id(&self) -> Result<N::TransactionID> {
-        match self {
-            Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.id()),
-            Self::AcceptedExecute(_, transaction, _) => Ok(transaction.id()),
-            Self::RejectedDeploy(_, fee_transaction, rejected)
-            | Self::RejectedExecute(_, fee_transaction, rejected) => {
-                Ok(rejected.to_unconfirmed_id(&fee_transaction.fee_transition())?.into())
-            }
-        }
-    }
 }
 
 impl<N: Network> ConfirmedTransaction<N> {
@@ -200,6 +186,20 @@ impl<N: Network> ConfirmedTransaction<N> {
             Self::AcceptedDeploy(_, _, finalize) => Some(finalize),
             Self::AcceptedExecute(_, _, finalize) => Some(finalize),
             Self::RejectedDeploy(..) | Self::RejectedExecute(..) => None,
+        }
+    }
+
+    /// Returns the unconfirmed transaction ID, which is defined as the transaction ID prior to confirmation.
+    /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction ID,
+    /// changing the original transaction ID.
+    pub fn unconfirmed_id(&self) -> Result<N::TransactionID> {
+        match self {
+            Self::AcceptedDeploy(_, transaction, _) => Ok(transaction.id()),
+            Self::AcceptedExecute(_, transaction, _) => Ok(transaction.id()),
+            Self::RejectedDeploy(_, fee_transaction, rejected)
+            | Self::RejectedExecute(_, fee_transaction, rejected) => {
+                Ok(rejected.to_unconfirmed_id(&fee_transaction.fee_transition())?.into())
+            }
         }
     }
 }
