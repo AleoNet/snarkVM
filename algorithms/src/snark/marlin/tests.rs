@@ -54,6 +54,7 @@ mod marlin {
 
                         let certificate = $marlin_inst::prove_vk(universal_prover, &fs_parameters, &index_vk, &index_pk).unwrap();
                         assert!($marlin_inst::verify_vk(universal_verifier, &fs_parameters, &circ, &index_vk, &certificate).unwrap());
+                        println!("verified vk");
 
                         let proof = $marlin_inst::prove(universal_prover, &fs_parameters, &index_pk, &circ, rng).unwrap();
                         println!("Called prover");
@@ -78,7 +79,7 @@ mod marlin {
                                     (circ, inputs)
                                 })
                                 .unzip();
-                                let circuit_id = AHPForR1CS::<Fr, MarlinHidingMode>::index(&circuit_batch[0]).unwrap().id;
+                                let circuit_id = AHPForR1CS::<Fr, $marlin_mode>::index(&circuit_batch[0]).unwrap().id;
                                 constraints.insert(circuit_id, circuit_batch);
                                 inputs.insert(circuit_id, input_batch);
                             }
@@ -92,9 +93,13 @@ mod marlin {
                             let mut vks_to_inputs = BTreeMap::new();
 
                             for (index_pk, index_vk) in index_keys.iter() {
-                                pks_to_constraints.insert(index_pk, constraints[&index_pk.circuit.id].as_slice());
+                                let certificate = $marlin_inst::prove_vk(universal_prover, &fs_parameters, &index_vk, &index_pk).unwrap();
+                                let circuits = constraints[&index_pk.circuit.id].as_slice();
+                                assert!($marlin_inst::verify_vk(universal_verifier, &fs_parameters, &circuits[0], &index_vk, &certificate).unwrap());
+                                pks_to_constraints.insert(index_pk, circuits);
                                 vks_to_inputs.insert(index_vk, inputs[&index_pk.circuit.id].as_slice());
                             }
+                            println!("verified vks");
 
                             let proof =
                                 $marlin_inst::prove_batch(universal_prover, &fs_parameters, &pks_to_constraints, rng).unwrap();

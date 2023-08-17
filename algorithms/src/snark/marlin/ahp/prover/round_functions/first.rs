@@ -27,10 +27,9 @@ use crate::{
     },
 };
 use itertools::Itertools;
+use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
-
-use rand_core::RngCore;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -101,6 +100,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_mask_poly<R: RngCore>(variable_domain: EvaluationDomain<F>, rng: &mut R) -> LabeledPolynomial<F> {
+        assert!(MM::ZK);
         let mask_poly_time = start_timer!(|| "Computing mask polynomial");
         // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
         let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.

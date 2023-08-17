@@ -89,10 +89,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         let padding_time =
                             start_timer!(|| format!("Padding matrices for {:?} and index {_i}", circuit.id));
 
-                        crate::snark::marlin::ahp::matrices::add_randomizing_variables::<_, _, MM>(
-                            &mut pcs,
-                            rand_assignments,
-                        );
+                        MM::ZK.then(|| {
+                            crate::snark::marlin::ahp::matrices::add_randomizing_variables::<_, _, MM>(
+                                &mut pcs,
+                                rand_assignments,
+                            )
+                        });
                         crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
 
                         end_timer!(padding_time);

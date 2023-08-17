@@ -61,10 +61,8 @@ pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>, 
     rand_assignments: Option<[F; 3]>,
 ) {
     let mut assignments = [F::one(); 3];
-    if MM::ZK {
-        if let Some(r) = rand_assignments {
-            assignments = r;
-        }
+    if let Some(r) = rand_assignments {
+        assignments = r;
     }
 
     let zk_vars = assignments
