@@ -119,8 +119,10 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for expected in [
-            crate::transaction::test_helpers::sample_deployment_transaction(rng),
-            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng),
+            crate::transaction::test_helpers::sample_deployment_transaction(true, rng),
+            crate::transaction::test_helpers::sample_deployment_transaction(false, rng),
+            crate::transaction::test_helpers::sample_execution_transaction_with_fee(true, rng),
+            crate::transaction::test_helpers::sample_execution_transaction_with_fee(false, rng),
         ]
         .into_iter()
         {
@@ -140,8 +142,10 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for expected in [
-            crate::transaction::test_helpers::sample_deployment_transaction(rng),
-            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng),
+            crate::transaction::test_helpers::sample_deployment_transaction(true, rng),
+            crate::transaction::test_helpers::sample_deployment_transaction(false, rng),
+            crate::transaction::test_helpers::sample_execution_transaction_with_fee(true, rng),
+            crate::transaction::test_helpers::sample_execution_transaction_with_fee(false, rng),
         ]
         .into_iter()
         {
