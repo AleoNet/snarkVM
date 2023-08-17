@@ -300,13 +300,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let m_at_alpha_evals_time = start_timer!(|| format!("Compute m_at_alpha_evals parallel for {_label}"));
         let l_at_alpha = constraint_domain.evaluate_all_lagrange_coefficients(alpha);
         let m_at_alpha_evals: Vec<_> = cfg_iter!(matrix_transpose)
-            .map(|col| {
-                let mut sum_for_col = F::zero();
-                for (val, row_index) in col {
-                    sum_for_col += *val * l_at_alpha[*row_index]
-                }
-                sum_for_col
-            })
+            .map(|col| col.iter().map(|(val, row_index)| *val * l_at_alpha[*row_index]).sum::<F>())
             .collect();
         end_timer!(m_at_alpha_evals_time);
 
