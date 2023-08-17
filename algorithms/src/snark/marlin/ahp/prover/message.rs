@@ -37,19 +37,13 @@ impl<F: PrimeField> ThirdMessage<F> {
             .iter()
             .zip(batch_combiners.values())
             .map(|(circuit_sums, combiners)| {
-                (
-                    combiners.circuit_combiner,
-                    circuit_sums
+                combiners.circuit_combiner
+                    * circuit_sums
                         .iter()
-                        .map(|instance_sums| {
-                            instance_sums.sum_a + eta_b * instance_sums.sum_b + eta_c * instance_sums.sum_c
-                        })
-                        .zip(combiners.instance_combiners.iter())
-                        .map(|(instance_sum, instance_combiner)| instance_sum * instance_combiner)
-                        .sum::<F>(),
-                )
+                        .zip(&combiners.instance_combiners)
+                        .map(|(sums, combiner)| (sums.sum_a + eta_b * sums.sum_b + eta_c * sums.sum_c) * combiner)
+                        .sum::<F>()
             })
-            .map(|(circuit_combiner, circuit_sum)| circuit_combiner * circuit_sum)
             .sum()
     }
 }
