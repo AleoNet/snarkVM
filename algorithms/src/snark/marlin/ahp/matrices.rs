@@ -161,10 +161,8 @@ pub(crate) fn matrix_evals<F: PrimeField>(
     let non_zero_entries = row_indices.len();
 
     // Zip safety: we intentionally only multiply the first non_zero_entries
-    let col_indices_iter = cfg_iter!(col_indices);
-    cfg_iter_mut!(row_col_indices).zip(col_indices_iter).for_each(|(rc, &col)| *rc *= col);
-    let row_col_indices_iter = cfg_iter!(row_col_indices);
-    cfg_iter_mut!(row_col_vals).zip(row_col_indices_iter).for_each(|(v, rc)| *v *= rc);
+    cfg_iter_mut!(row_col_indices).zip(&col_indices).for_each(|(rc, &col)| *rc *= col);
+    cfg_iter_mut!(row_col_vals).zip(&row_col_indices).for_each(|(v, rc)| *v *= rc);
 
     // Fill up the evaluations to the next power of two
     let padding = non_zero_domain.size() - non_zero_entries;
