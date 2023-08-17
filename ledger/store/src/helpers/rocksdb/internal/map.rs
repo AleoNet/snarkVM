@@ -17,6 +17,8 @@
 use super::*;
 use crate::helpers::{Map, MapRead};
 
+use log::trace;
+
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
 use std::{borrow::Cow, sync::atomic::Ordering};
@@ -185,25 +187,25 @@ impl<
             // Enqueue all the operations from the map in the database-wide batch.
             let mut atomic_batch = self.database.atomic_batch.lock();
             // Print to check if there's anything in the atomic batch.
-            println!("Is atomic_batch empty? {}", atomic_batch.is_empty());
+            trace!("Is atomic_batch empty? {}", atomic_batch.is_empty());
             for (raw_key, raw_value) in prepared_operations {
                 // Print the raw_key and raw_value to see their content.
-                println!("raw_key: {:?}", raw_key);
-                println!("raw_value: {:?}", raw_value);
+                trace!("raw_key: {:?}", raw_key);
+                trace!("raw_value: {:?}", raw_value);
                 match raw_value {
                     Some(raw_value) => {
                         atomic_batch.put(raw_key.clone(), raw_value.clone());
                         // Add message to kafka queue
                         kafka_queue.put(raw_key, raw_value);
                         // Print kafka_queue content.
-                        println!("kafka_queue after put: {:?}", kafka_queue);
+                        trace!("kafka_queue after put: {:?}", kafka_queue);
                     }
                     None => {
                         atomic_batch.delete(raw_key.clone());
                         // Add delete message to kafka queue
                         kafka_queue.put(raw_key, Vec::new());
                         // Print kafka_queue content.
-                        println!("kafka_queue after delete: {:?}", kafka_queue);
+                        trace!("kafka_queue after delete: {:?}", kafka_queue);
                     }
                 }
             }
@@ -575,8 +577,7 @@ mod tests {
 
     impl KafkaProducerTrait for MockKafkaProducer {
         fn emit_event(&self, key: &str, value: &str, topic: &str) {
-            println!("This is the MOCK KafkaProducer");
-            println!("Storing message: (Topic: {}, Data: {})", topic, value);
+            trace!("Storing message: (Topic: {}, Data: {})", topic, value);
             self.messages.lock().unwrap().push((topic.to_string(), key.to_string(), value.to_string()));
         }
     }
