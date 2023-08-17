@@ -21,6 +21,11 @@ use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
 use std::{borrow::Cow, sync::atomic::Ordering};
 
+#[cfg(test)]
+use crate::helpers::kafka::KafkaProducerTrait;
+
+use crate::helpers::kafka::KAFKA_PRODUCER;
+
 #[derive(Clone)]
 pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
     pub(super) database: RocksDB,
@@ -32,6 +37,8 @@ pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOw
     /// The checkpoint stack for the batched operations within the map.
     pub(super) checkpoints: Arc<Mutex<Vec<usize>>>,
 }
+
+use crate::helpers::kafka::kafka_queue::KafkaQueue;
 
 impl<
     'a,
@@ -159,20 +166,15 @@ impl<
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
+        // Instantiate the kafka queue
+        let mut kafka_queue = KafkaQueue { messages: Vec::new() };
         // Retrieve the atomic batch belonging to the map.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
         if !operations.is_empty() {
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
             let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
-
             // Prepare the key and value for each queued operation.
-            //
-            // Note: This step is taken to ensure (with 100% certainty) that there will be
-            // no chance to fail partway through committing the queued operations.
-            //
-            // The expected behavior is that either all the operations will be committed
-            // or none of them will be.
             let prepared_operations = operations
                 .into_iter()
                 .map(|(key, value)| match value {
@@ -180,17 +182,32 @@ impl<
                     None => Ok((self.create_prefixed_key(&key)?, None)),
                 })
                 .collect::<Result<Vec<_>>>()?;
-
             // Enqueue all the operations from the map in the database-wide batch.
             let mut atomic_batch = self.database.atomic_batch.lock();
+            // Print to check if there's anything in the atomic batch.
+            println!("Is atomic_batch empty? {}", atomic_batch.is_empty());
             for (raw_key, raw_value) in prepared_operations {
+                // Print the raw_key and raw_value to see their content.
+                println!("raw_key: {:?}", raw_key);
+                println!("raw_value: {:?}", raw_value);
                 match raw_value {
-                    Some(raw_value) => atomic_batch.put(raw_key, raw_value),
-                    None => atomic_batch.delete(raw_key),
-                };
+                    Some(raw_value) => {
+                        atomic_batch.put(raw_key.clone(), raw_value.clone());
+                        // Add message to kafka queue
+                        kafka_queue.put(raw_key, raw_value);
+                        // Print kafka_queue content.
+                        println!("kafka_queue after put: {:?}", kafka_queue);
+                    }
+                    None => {
+                        atomic_batch.delete(raw_key.clone());
+                        // Add delete message to kafka queue
+                        kafka_queue.put(raw_key, Vec::new());
+                        // Print kafka_queue content.
+                        println!("kafka_queue after delete: {:?}", kafka_queue);
+                    }
+                }
             }
         }
-
         // Clear the checkpoint stack.
         self.checkpoints.lock().clear();
         // Set the atomic batch flag to `false`.
@@ -210,10 +227,12 @@ impl<
             let batch = mem::take(&mut *self.database.atomic_batch.lock());
             // Execute all the operations atomically.
             self.database.rocksdb.write(batch)?;
+            // Send all the messages from the kafka queue to kafka
+            kafka_queue.send_messages(&*KAFKA_PRODUCER, "node-data");
             // Ensure that the database atomic batch is empty.
             assert!(self.database.atomic_batch.lock().is_empty());
         }
-
+        // Dereference the lazy_static instance of the kafka producer
         Ok(())
     }
 }
@@ -541,6 +560,60 @@ mod tests {
 
         fn finish_atomic(&self) -> Result<()> {
             self.own_map.finish_atomic()
+        }
+    }
+
+    struct MockKafkaProducer {
+        messages: std::sync::Mutex<Vec<(String, String, String)>>,
+    }
+
+    impl MockKafkaProducer {
+        fn new() -> Self {
+            MockKafkaProducer { messages: std::sync::Mutex::new(Vec::new()) }
+        }
+    }
+
+    impl KafkaProducerTrait for MockKafkaProducer {
+        fn emit_event(&self, key: &str, value: &str, topic: &str) {
+            println!("This is the MOCK KafkaProducer");
+            println!("Storing message: (Topic: {}, Data: {})", topic, value);
+            self.messages.lock().unwrap().push((topic.to_string(), key.to_string(), value.to_string()));
+        }
+    }
+
+    #[test]
+    fn test_add_to_kafka_queue() {
+        let mut test_kafka_queue = KafkaQueue::new();
+        test_kafka_queue.put("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec());
+        let messages = test_kafka_queue.get_messages();
+        assert!(messages.contains(&("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec())));
+    }
+
+    #[test]
+    fn test_send_messages_to_producer() {
+        println!("Starting test_send_messages_to_producer");
+
+        // 1. Create an instance of MockKafkaProducer.
+        let mock_producer = MockKafkaProducer::new();
+
+        // 2. Initialize the KafkaQueue.
+        let mut test_kafka_queue = KafkaQueue::new();
+
+        // 3. Add a message to the KafkaQueue.
+        test_kafka_queue.put("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec());
+        println!("i put stuff in the queue");
+        // 4. Send the message from the queue to the mock producer.
+        test_kafka_queue.send_messages(&mock_producer, "test_topic");
+        println!("i sent stuff to the producer");
+        // 5. Use the mock producer to verify that it received the message.
+        {
+            let messages_guard = mock_producer.messages.lock().unwrap();
+            assert_eq!(messages_guard.len(), 1);
+            assert!(messages_guard.contains(&(
+                "test_topic".to_string(),
+                "test_key".to_string(),
+                "test_value".to_string()
+            )));
         }
     }
 

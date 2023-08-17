@@ -119,3 +119,9 @@ version = "3.7"
 
 [dev-dependencies.tracing-test]
 version = "0.2"
+
+[dependencies.rdkafka]
+version = "0.33.2"
+
+[dependencies.lazy_static]
+version = "1.4.0"

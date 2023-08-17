@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod kafka;
 pub mod memory;
 #[cfg(feature = "rocks")]
 pub mod rocksdb;
-
 use console::network::prelude::*;
 
 use core::{borrow::Borrow, hash::Hash};

@@ -252,6 +252,9 @@ optional = true
 version = "2.7"
 features = [ "json" ]
 
+[dependencies.rdkafka]
+version = "0.33.2"
+
 [dev-dependencies.bincode]
 version = "1.3"
 
