@@ -3060,6 +3060,7 @@ dependencies = [
  "snarkvm-ledger-narwhal",
  "snarkvm-ledger-narwhal-batch-certificate",
  "snarkvm-ledger-narwhal-batch-header",
+ "snarkvm-ledger-narwhal-data",
  "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-transmission",
  "snarkvm-ledger-narwhal-transmission-id",
@@ -3093,6 +3094,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-ledger-narwhal-data"
+version = "0.14.6"
+dependencies = [
+ "bytes",
+ "serde_json",
+ "snarkvm-console",
+ "tokio",
+]
+
+[[package]]
 name = "snarkvm-ledger-narwhal-subdag"
 version = "0.14.6"
 dependencies = [
@@ -3115,6 +3126,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-block",
  "snarkvm-ledger-coinbase",
+ "snarkvm-ledger-narwhal-data",
 ]
 
 [[package]]
