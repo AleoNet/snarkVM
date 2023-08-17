@@ -17,12 +17,15 @@ pub struct KafkaQueue {
     pub messages: Vec<(Vec<u8>, Vec<u8>)>,
 }
 
-impl KafkaQueue {
+impl Default for KafkaQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
+impl KafkaQueue {
     pub fn new() -> Self {
-        KafkaQueue {
-            messages: Vec::new(),
-        }
+        KafkaQueue { messages: Vec::new() }
     }
 
     pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
@@ -30,13 +33,14 @@ impl KafkaQueue {
     }
 
     pub fn send_messages(&self, producer: &impl KafkaProducerTrait, topic: &str) {
+        // pass a producer argument in here so that we can use a mock producer for testing rather than always using the global instance
         for (key, value) in &self.messages {
             let key_str = String::from_utf8_lossy(key);
             let value_str = String::from_utf8_lossy(value);
             producer.emit_event(&key_str, &value_str, topic);
         }
     }
-    
+
     #[cfg(test)]
     pub fn get_messages(&self) -> &Vec<(Vec<u8>, Vec<u8>)> {
         &self.messages

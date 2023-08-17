@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod kafka;
-pub use kafka::*;
+pub mod config;
+pub use config::*;
 pub mod kafka_queue;

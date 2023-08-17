@@ -28,6 +28,12 @@ pub struct KafkaProducer {
     producer: BaseProducer,
 }
 
+impl Default for KafkaProducer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KafkaProducer {
     pub fn new() -> Self {
         let producer: BaseProducer =
@@ -41,8 +47,8 @@ impl KafkaProducerTrait for KafkaProducer {
         for i in 1..100 {
             println!("sending message");
             self.producer
-            .send(BaseRecord::to(topic).key(key).payload(&format!("{}-{}", value, i)))
-            .expect("failed to send message");
+                .send(BaseRecord::to(topic).key(key).payload(&format!("{}-{}", value, i)))
+                .expect("failed to send message");
             thread::sleep(Duration::from_secs(3));
         }
     }

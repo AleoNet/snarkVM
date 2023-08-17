@@ -166,16 +166,12 @@ impl<
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
-
         // Instantiate the kafka queue
         let mut kafka_queue = KafkaQueue { messages: Vec::new() };
         // Retrieve the atomic batch belonging to the map.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
-        
-        
 
         if !operations.is_empty() {
-
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
             let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
 
@@ -203,14 +199,15 @@ impl<
                 match raw_value {
                     Some(raw_value) => {
                         atomic_batch.put(raw_key.clone(), raw_value.clone());
+                        // Had to clone here because of Rust's ownership rules.
                         // Add message to kafka queue
                         kafka_queue.put(raw_key, raw_value);
                     }
                     None => {
                         atomic_batch.delete(raw_key.clone());
-                        // Add delete message to kafka queue 
-                        kafka_queue.put(raw_key, Vec::new()); 
-                    }                    
+                        // Add delete message to kafka queue
+                        kafka_queue.put(raw_key, Vec::new());
+                    }
                 }
             }
         }
@@ -239,10 +236,10 @@ impl<
             assert!(self.database.atomic_batch.lock().is_empty());
         }
 
-        // Send all the messages from the kafka queue to kafka 
-        
-        kafka_queue.send_messages(&*KAFKA_PRODUCER, "node-data");
+        // Send all the messages from the kafka queue to kafka
 
+        kafka_queue.send_messages(&*KAFKA_PRODUCER, "node-data");
+        // Dereference the lazy_static instance of the kafka producer
         Ok(())
     }
 }
@@ -579,9 +576,7 @@ mod tests {
 
     impl MockKafkaProducer {
         fn new() -> Self {
-            MockKafkaProducer {
-                messages: std::sync::Mutex::new(Vec::new()),
-            }
+            MockKafkaProducer { messages: std::sync::Mutex::new(Vec::new()) }
         }
     }
 
@@ -607,10 +602,10 @@ mod tests {
 
         // 1. Create an instance of MockKafkaProducer.
         let mock_producer = MockKafkaProducer::new();
-    
+
         // 2. Initialize the KafkaQueue.
         let mut test_kafka_queue = KafkaQueue::new();
-    
+
         // 3. Add a message to the KafkaQueue.
         test_kafka_queue.put("test_key".as_bytes().to_vec(), "test_value".as_bytes().to_vec());
         println!("i put stuff in the queue");
@@ -621,10 +616,12 @@ mod tests {
         {
             let messages_guard = mock_producer.messages.lock().unwrap();
             assert_eq!(messages_guard.len(), 1);
-            assert!(messages_guard.contains(&("test_topic".to_string(), "test_key".to_string(), "test_value".to_string())));
+            assert!(messages_guard.contains(&(
+                "test_topic".to_string(),
+                "test_key".to_string(),
+                "test_value".to_string()
+            )));
         }
-        
-        
     }
 
     #[test]
