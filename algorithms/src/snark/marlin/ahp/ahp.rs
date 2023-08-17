@@ -253,13 +253,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
-        let v_C_at_beta_time = start_timer!(|| "v_C_at_beta");
         let v_C_at_beta = max_variable_domain.evaluate_vanishing_polynomial(beta);
-        end_timer!(v_C_at_beta_time);
-
-        let v_K_at_gamma_time = start_timer!(|| "v_K_at_gamma");
         let v_K_at_gamma = max_non_zero_domain.evaluate_vanishing_polynomial(gamma);
-        end_timer!(v_K_at_gamma_time);
 
         let v_X_at_beta_time = start_timer!(|| "v_X_at_beta");
         let v_X_at_beta = state
