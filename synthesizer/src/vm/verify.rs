@@ -280,6 +280,12 @@ mod tests {
         // Ensure the transaction verifies.
         assert!(vm.check_transaction(&execution_transaction, None).is_ok());
         assert!(vm.verify_transaction(&execution_transaction, None));
+
+        // Fetch an execution transaction.
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
+        // Ensure the transaction verifies.
+        assert!(vm.check_transaction(&execution_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&execution_transaction, None));
     }
 
     #[test]
@@ -309,25 +315,30 @@ mod tests {
         let rng = &mut TestRng::default();
         let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
-        // Fetch a execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        // Fetch execution transactions.
+        let transactions = [
+            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng),
+        ];
 
-        match transaction {
-            Transaction::Execute(_, execution, _) => {
-                // Ensure the proof exists.
-                assert!(execution.proof().is_some());
-                // Verify the execution.
-                assert!(vm.check_execution(&execution).is_ok());
-                assert!(vm.verify_execution(&execution));
+        for transaction in transactions {
+            match transaction {
+                Transaction::Execute(_, execution, _) => {
+                    // Ensure the proof exists.
+                    assert!(execution.proof().is_some());
+                    // Verify the execution.
+                    assert!(vm.check_execution(&execution).is_ok());
+                    assert!(vm.verify_execution(&execution));
 
-                // Ensure that deserialization doesn't break the transaction verification.
-                let serialized_execution = execution.to_string();
-                let recovered_execution: Execution<CurrentNetwork> =
-                    serde_json::from_str(&serialized_execution).unwrap();
-                assert!(vm.check_execution(&recovered_execution).is_ok());
-                assert!(vm.verify_execution(&recovered_execution));
+                    // Ensure that deserialization doesn't break the transaction verification.
+                    let serialized_execution = execution.to_string();
+                    let recovered_execution: Execution<CurrentNetwork> =
+                        serde_json::from_str(&serialized_execution).unwrap();
+                    assert!(vm.check_execution(&recovered_execution).is_ok());
+                    assert!(vm.verify_execution(&recovered_execution));
+                }
+                _ => panic!("Expected an execution transaction"),
             }
-            _ => panic!("Expected an execution transaction"),
         }
     }
 
@@ -336,26 +347,31 @@ mod tests {
         let rng = &mut TestRng::default();
         let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
-        // Fetch a execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        // Fetch execution transactions.
+        let transactions = [
+            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng),
+        ];
 
-        match transaction {
-            Transaction::Execute(_, execution, Some(fee)) => {
-                let execution_id = execution.to_execution_id().unwrap();
+        for transaction in transactions {
+            match transaction {
+                Transaction::Execute(_, execution, Some(fee)) => {
+                    let execution_id = execution.to_execution_id().unwrap();
 
-                // Ensure the proof exists.
-                assert!(fee.proof().is_some());
-                // Verify the fee.
-                assert!(vm.check_fee(&fee, execution_id).is_ok());
-                assert!(vm.verify_fee(&fee, execution_id));
+                    // Ensure the proof exists.
+                    assert!(fee.proof().is_some());
+                    // Verify the fee.
+                    assert!(vm.check_fee(&fee, execution_id).is_ok());
+                    assert!(vm.verify_fee(&fee, execution_id));
 
-                // Ensure that deserialization doesn't break the transaction verification.
-                let serialized_fee = fee.to_string();
-                let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
-                assert!(vm.check_fee(&recovered_fee, execution_id).is_ok());
-                assert!(vm.verify_fee(&recovered_fee, execution_id));
+                    // Ensure that deserialization doesn't break the transaction verification.
+                    let serialized_fee = fee.to_string();
+                    let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
+                    assert!(vm.check_fee(&recovered_fee, execution_id).is_ok());
+                    assert!(vm.verify_fee(&recovered_fee, execution_id));
+                }
+                _ => panic!("Expected an execution with a fee"),
             }
-            _ => panic!("Expected an execution with a fee"),
         }
     }
 

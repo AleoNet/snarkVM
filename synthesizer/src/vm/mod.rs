@@ -289,6 +289,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
+    use circuit::AleoV0;
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
@@ -304,6 +305,7 @@ pub(crate) mod test_helpers {
     use std::borrow::Borrow;
 
     pub(crate) type CurrentNetwork = Testnet3;
+    pub(crate) type CurrentAleo = AleoV0;
 
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
@@ -519,6 +521,64 @@ function compute:
                 // Execute.
                 let transaction =
                     vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, fee, None, rng).unwrap();
+                // Verify.
+                assert!(vm.verify_transaction(&transaction, None));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_execution_transaction_with_public_fee(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new caller.
+                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
+                let address = Address::try_from(&caller_private_key).unwrap();
+
+                // Initialize the genesis block.
+                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
+
+                // Initialize the VM.
+                let vm = sample_vm();
+                // Update the VM.
+                vm.add_next_block(&genesis).unwrap();
+
+                // Prepare the inputs.
+                let inputs = [
+                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                    Value::<CurrentNetwork>::from_str("1u64").unwrap(),
+                ]
+                .into_iter();
+
+                // TODO (raychu86): Add better interface for generating transaction with public fee.
+
+                // Execute.
+                let transaction_without_fee =
+                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+                let execution = transaction_without_fee.execution().unwrap().clone();
+
+                // Prepare the fee.
+                let fee = {
+                    // Fetch the process.
+                    let process = vm.process().read().clone();
+
+                    // Authorize the fee.
+                    let authorization = process
+                        .authorize_fee_public(&caller_private_key, 100, execution.to_execution_id().unwrap(), rng)
+                        .unwrap();
+                    // Construct the fee trace.
+                    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+
+                    // Prepare the assignments.
+                    trace.prepare(Query::from(vm.block_store())).unwrap();
+                    // Compute the proof and construct the fee.
+                    trace.prove_fee::<CurrentAleo, _>(rng).unwrap()
+                };
+
+                let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
+
                 // Verify.
                 assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
