@@ -44,6 +44,9 @@ impl KafkaProducer {
 
 impl KafkaProducerTrait for KafkaProducer {
     fn emit_event(&self, key: &str, value: &str, topic: &str) {
+        //  for i in 1..length of kafka queue iterate thru the kafka queue and insert that as parameter
+        // jk no for loop here cuz we iterate in the finish_atomic function
+        // self.producer send @mia
         for i in 1..100 {
             println!("sending message");
             self.producer

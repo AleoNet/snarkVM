@@ -13,9 +13,11 @@
 // limitations under the License.
 
 use crate::helpers::kafka::KafkaProducerTrait;
+#[derive(Debug)]
 pub struct KafkaQueue {
     pub messages: Vec<(Vec<u8>, Vec<u8>)>,
 }
+// make messages the same datatype as atomic batch
 
 impl Default for KafkaQueue {
     fn default() -> Self {

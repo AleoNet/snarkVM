@@ -174,14 +174,7 @@ impl<
         if !operations.is_empty() {
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
             let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
-
             // Prepare the key and value for each queued operation.
-            //
-            // Note: This step is taken to ensure (with 100% certainty) that there will be
-            // no chance to fail partway through committing the queued operations.
-            //
-            // The expected behavior is that either all the operations will be committed
-            // or none of them will be.
             let prepared_operations = operations
                 .into_iter()
                 .map(|(key, value)| match value {
@@ -189,29 +182,32 @@ impl<
                     None => Ok((self.create_prefixed_key(&key)?, None)),
                 })
                 .collect::<Result<Vec<_>>>()?;
-
             // Enqueue all the operations from the map in the database-wide batch.
             let mut atomic_batch = self.database.atomic_batch.lock();
-            // create kafka queue
-            //let kafkaqueue = custom struct (key,value)
-
+            // Print to check if there's anything in the atomic batch.
+            println!("Is atomic_batch empty? {}", atomic_batch.is_empty());
             for (raw_key, raw_value) in prepared_operations {
+                // Print the raw_key and raw_value to see their content.
+                println!("raw_key: {:?}", raw_key);
+                println!("raw_value: {:?}", raw_value);
                 match raw_value {
                     Some(raw_value) => {
                         atomic_batch.put(raw_key.clone(), raw_value.clone());
-                        // Had to clone here because of Rust's ownership rules.
                         // Add message to kafka queue
                         kafka_queue.put(raw_key, raw_value);
+                        // Print kafka_queue content.
+                        println!("kafka_queue after put: {:?}", kafka_queue);
                     }
                     None => {
                         atomic_batch.delete(raw_key.clone());
                         // Add delete message to kafka queue
                         kafka_queue.put(raw_key, Vec::new());
+                        // Print kafka_queue content.
+                        println!("kafka_queue after delete: {:?}", kafka_queue);
                     }
                 }
             }
         }
-
         // Clear the checkpoint stack.
         self.checkpoints.lock().clear();
         // Set the atomic batch flag to `false`.
@@ -231,14 +227,11 @@ impl<
             let batch = mem::take(&mut *self.database.atomic_batch.lock());
             // Execute all the operations atomically.
             self.database.rocksdb.write(batch)?;
-            // kafka.sendmessages(kafkaqueue);
+            // Send all the messages from the kafka queue to kafka
+            kafka_queue.send_messages(&*KAFKA_PRODUCER, "node-data");
             // Ensure that the database atomic batch is empty.
             assert!(self.database.atomic_batch.lock().is_empty());
         }
-
-        // Send all the messages from the kafka queue to kafka
-
-        kafka_queue.send_messages(&*KAFKA_PRODUCER, "node-data");
         // Dereference the lazy_static instance of the kafka producer
         Ok(())
     }
@@ -622,11 +615,6 @@ mod tests {
                 "test_value".to_string()
             )));
         }
-    }
-
-    #[test]
-    fn test_it_works() {
-        assert_eq!(2 + 2, 4);
     }
 
     #[test]
