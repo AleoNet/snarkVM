@@ -62,7 +62,7 @@ impl<A: Aleo> OutputMode<dyn Ternary<Boolean = Boolean<A>, Output = Self>> for C
 mod tests {
     use super::*;
     use crate::Circuit;
-    use console::{TestRng};
+    use console::TestRng;
 
     fn check_ternary(
         name: &str,
