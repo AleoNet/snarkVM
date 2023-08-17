@@ -60,7 +60,6 @@ pub(crate) struct NonZeroDomains<F: PrimeField> {
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// The linear combinations that are statically known to evaluate to zero.
     /// These correspond to the virtual commitments as noted in the Aleo marlin protocol docs
-    #[rustfmt::skip]
     pub const LC_WITH_ZERO_EVAL: [&'static str; 3] = ["matrix_sumcheck", "lineval_sumcheck", "rowcheck_zerocheck"];
 
     pub fn zk_bound() -> Option<usize> {
@@ -219,7 +218,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_R_at_alpha = max_constraint_domain.evaluate_vanishing_polynomial(alpha);
         end_timer!(v_R_at_alpha_time);
 
-        #[rustfmt::skip]
         let rowcheck_zerocheck = {
             let mut rowcheck_zerocheck = LinearCombination::empty("rowcheck_zerocheck");
             for (i, (id, c)) in batch_combiners.iter().enumerate() {
@@ -233,7 +231,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let sum_b_third = third_sums_i[j].sum_b;
                     let sum_c_third = third_sums_i[j].sum_c;
 
-                    rowcheck.add(sum_a_third*sum_b_third - sum_c_third, LCTerm::One);
+                    rowcheck.add(sum_a_third * sum_b_third - sum_c_third, LCTerm::One);
 
                     circuit_term += (*instance_combiner, &rowcheck);
                 }
@@ -291,7 +289,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         // We're now going to calculate the lineval_sumcheck
-        #[rustfmt::skip]
         let lineval_sumcheck = {
             let mut lineval_sumcheck = LinearCombination::empty("lineval_sumcheck");
             if MM::ZK {
