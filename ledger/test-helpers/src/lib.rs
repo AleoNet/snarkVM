@@ -233,7 +233,7 @@ pub fn sample_fee_public_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
 /// Samples a random public fee.
 pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut TestRng) -> Fee<CurrentNetwork> {
     // Sample the genesis block, transaction, and private key.
-    let (block, transaction, private_key) = crate::sample_genesis_block_and_components(rng);
+    let (block, _, private_key) = crate::sample_genesis_block_and_components(rng);
     // Set the fee amount.
     let fee = 10_000_000;
 
@@ -299,6 +299,14 @@ pub fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<C
 pub fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
     // Sample a fee.
     let fee = crate::sample_fee_private_hardcoded(rng);
+    // Construct a fee transaction.
+    Transaction::from_fee(fee).unwrap()
+}
+
+/// Samples a random public fee transaction.
+pub fn sample_public_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    // Sample a fee.
+    let fee = crate::sample_fee_public_hardcoded(rng);
     // Construct a fee transaction.
     Transaction::from_fee(fee).unwrap()
 }
