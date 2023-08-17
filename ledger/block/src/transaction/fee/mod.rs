@@ -189,4 +189,50 @@ pub mod test_helpers {
         // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
         Fee::from_str(&fee.to_string()).unwrap()
     }
+
+    /// Samples a random hardcoded public fee.
+    pub fn sample_fee_public_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+        static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Sample a deployment or execution ID.
+                let deployment_or_execution_id = Field::rand(rng);
+                // Sample a fee.
+                sample_fee_public(deployment_or_execution_id, rng)
+            })
+            .clone()
+    }
+
+    /// Samples a random public fee.
+    pub fn sample_fee_public(
+        deployment_or_execution_id: Field<CurrentNetwork>,
+        rng: &mut TestRng,
+    ) -> Fee<CurrentNetwork> {
+        // Sample the genesis block and private key.
+        let (block, _, private_key) = crate::test_helpers::sample_genesis_block_and_components(rng);
+        // Set the fee amount.
+        let fee = 10_000_000;
+
+        // Initialize the process.
+        let process = Process::load().unwrap();
+        // Authorize the fee.
+        let authorization = process.authorize_fee_public(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+        // Construct the fee trace.
+        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        // Insert the block into the block store.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+        block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
+
+        // Prepare the assignments.
+        trace.prepare(Query::from(block_store)).unwrap();
+        // Compute the proof and construct the fee.
+        let fee = trace.prove_fee::<CurrentAleo, _>(rng).unwrap();
+
+        // Convert the fee.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+        Fee::from_str(&fee.to_string()).unwrap()
+    }
 }

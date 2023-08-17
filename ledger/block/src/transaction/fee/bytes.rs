@@ -72,13 +72,22 @@ mod tests {
     fn test_bytes() -> Result<()> {
         let rng = &mut TestRng::default();
 
-        // Construct a new fee.
+        // Construct a new private fee.
         let expected = crate::transaction::fee::test_helpers::sample_fee_private_hardcoded(rng);
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, Fee::read_le(&expected_bytes[..])?);
         assert!(Fee::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+
+        // Construct a new public fee.
+        let expected = crate::transaction::fee::test_helpers::sample_fee_public_hardcoded(rng);
+
+        // Check the byte representation.
+        let expected_bytes = expected.to_bytes_le()?;
+        assert_eq!(expected, Fee::read_le(&expected_bytes[..])?);
+        assert!(Fee::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+
         Ok(())
     }
 }
