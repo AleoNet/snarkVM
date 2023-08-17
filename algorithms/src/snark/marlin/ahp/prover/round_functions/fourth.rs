@@ -97,7 +97,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             for (matrix_label, non_zero_domain, arith) in itertools::izip!(matrix_labels, k_domains, ariths) {
                 let label = witness_label(circuit.id, matrix_label, 0);
                 pool.add_job(move || {
-                    let result = Self::calc_matrix_sumcheck_witness(
+                    let result = Self::calculate_matrix_sumcheck_witness(
                         label,
                         state_i.constraint_domain,
                         state_i.variable_domain,
@@ -145,7 +145,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn calc_matrix_sumcheck_witness(
+    fn calculate_matrix_sumcheck_witness(
         label: String,
         constraint_domain: EvaluationDomain<F>,
         variable_domain: EvaluationDomain<F>,

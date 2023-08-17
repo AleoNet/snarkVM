@@ -80,10 +80,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let verifier::FirstMessage { batch_combiners } = verifier_message;
         let verifier::SecondMessage { alpha, eta_b, eta_c } = verifier_second_message;
 
-        let assignments = Self::calc_assignments(&mut state)?;
-        let matrix_transposes = Self::calc_matrix_transpose(&mut state)?;
+        let assignments = Self::calculate_assignments(&mut state)?;
+        let matrix_transposes = Self::calculate_matrix_transpose(&mut state)?;
 
-        let (h_1, x_g_1_sum, msg) = Self::calc_lineval_sumcheck_witness(
+        let (h_1, x_g_1_sum, msg) = Self::calculate_lineval_sumcheck_witness(
             &mut state,
             batch_combiners,
             assignments,
@@ -121,7 +121,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok((msg, oracles, state))
     }
 
-    fn calc_lineval_sumcheck_witness(
+    fn calculate_lineval_sumcheck_witness(
         state: &mut prover::State<F, MM>,
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
         assignments: BTreeMap<CircuitId, Vec<DensePolynomial<F>>>,
@@ -159,7 +159,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let matrix_transpose = &matrix_transposes_i[label];
                     let combiner = circuit_combiner * instance_combiner * matrix_combiner;
                     job_pool.add_job(move || {
-                        Self::calc_lineval_sumcheck_instance_witness(
+                        Self::calculate_lineval_sumcheck_instance_witness(
                             label,
                             constraint_domain,
                             variable_domain,
@@ -217,7 +217,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok((h_1_sum, xg_1_sum, msg))
     }
 
-    fn calc_assignments(state: &mut prover::State<F, MM>) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
+    fn calculate_assignments(state: &mut prover::State<F, MM>) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
         let assignments_time = start_timer!(|| "Calculate assignments");
         let assignments: BTreeMap<_, _> = state
             .circuit_specific_states
@@ -246,7 +246,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok(assignments)
     }
 
-    fn calc_matrix_transpose(
+    fn calculate_matrix_transpose(
         state: &mut prover::State<F, MM>,
     ) -> Result<BTreeMap<CircuitId, BTreeMap<String, Matrix<F>>>> {
         let transpose_time = start_timer!(|| "Transpose of matrices");
@@ -275,7 +275,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn calc_lineval_sumcheck_instance_witness(
+    fn calculate_lineval_sumcheck_instance_witness(
         _label: &str,
         constraint_domain: &EvaluationDomain<F>,
         variable_domain: &EvaluationDomain<F>,

@@ -77,7 +77,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
             for (j, (private_vars, x_poly)) in itertools::izip!(private_variables, x_polys).enumerate() {
                 let w_label = witness_label(circuit.id, "w", j);
-                job_pool.add_job(move || Self::calc_w(w_label, private_vars, x_poly, v_domain, i_domain, circuit));
+                job_pool.add_job(move || Self::calculate_w(w_label, private_vars, x_poly, v_domain, i_domain, circuit));
             }
         }
         let mut batches =
@@ -124,7 +124,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None)
     }
 
-    fn calc_w(
+    fn calculate_w(
         label: String,
         private_variables: Vec<F>,
         x_poly: DensePolynomial<F>,

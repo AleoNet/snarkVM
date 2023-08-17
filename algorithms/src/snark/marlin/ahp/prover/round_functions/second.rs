@@ -59,7 +59,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let verifier::FirstMessage { batch_combiners, .. } = verifier_message;
 
-        let h_0 = Self::calc_rowcheck_witness(&mut state, batch_combiners)?;
+        let h_0 = Self::calculate_rowcheck_witness(&mut state, batch_combiners)?;
 
         ensure!(h_0.degree() > 1);
         assert!(h_0.degree() <= 2 * max_constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
@@ -72,7 +72,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok((oracles, state))
     }
 
-    fn calc_rowcheck_witness(
+    fn calculate_rowcheck_witness(
         state: &mut prover::State<F, MM>,
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
     ) -> Result<DensePolynomial<F>> {
@@ -100,9 +100,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let za_label = witness_label(circuit.id, "z_a", j);
                     let zb_label = witness_label(circuit.id, "z_b", j);
                     let zc_label = witness_label(circuit.id, "z_c", j);
-                    let z_a = Self::calc_z_m(za_label, z_a, constraint_domain, circuit);
-                    let z_b = Self::calc_z_m(zb_label, z_b, constraint_domain, circuit);
-                    let z_c = Self::calc_z_m(zc_label, z_c, constraint_domain, circuit);
+                    let z_a = Self::calculate_z_m(za_label, z_a, constraint_domain, circuit);
+                    let z_b = Self::calculate_z_m(zb_label, z_b, constraint_domain, circuit);
+                    let z_c = Self::calculate_z_m(zc_label, z_c, constraint_domain, circuit);
                     let mut multiplier_2 = PolyMultiplier::new();
                     multiplier_2.add_precomputation(fft_precomputation, ifft_precomputation);
                     multiplier_2.add_polynomial(z_a, "z_a");
@@ -140,7 +140,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok(h_sum)
     }
 
-    fn calc_z_m(
+    fn calculate_z_m(
         label: impl ToString,
         evaluations: Vec<F>,
         constraint_domain: EvaluationDomain<F>,
