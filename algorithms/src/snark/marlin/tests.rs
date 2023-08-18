@@ -20,7 +20,14 @@ use std::collections::BTreeMap;
 
 mod marlin {
     use super::*;
-    use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, mode::MarlinMode, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
+    use crate::snark::marlin::{
+        mode::MarlinMode,
+        AHPForR1CS,
+        CircuitVerifyingKey,
+        MarlinHidingMode,
+        MarlinNonHidingMode,
+        MarlinSNARK,
+    };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
