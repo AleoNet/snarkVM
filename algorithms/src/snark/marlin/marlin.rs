@@ -79,7 +79,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
         let mut circuit_keys = Vec::with_capacity(circuits.len());
         for circuit in circuits {
-            let indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
+            let mut indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
             // Ensure the universal SRS supports the circuit size.
             universal_srs
@@ -108,15 +108,16 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
             let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
+            indexed_circuit.prune_row_col_evals();
             let circuit_verifying_key = CircuitVerifyingKey {
                 circuit_info: indexed_circuit.index_info,
                 circuit_commitments,
                 id: indexed_circuit.id,
             };
             let circuit_proving_key = CircuitProvingKey {
-                circuit: Arc::new(indexed_circuit),
-                circuit_commitment_randomness,
                 circuit_verifying_key: circuit_verifying_key.clone(),
+                circuit_commitment_randomness,
+                circuit: Arc::new(indexed_circuit),
                 committer_key: Arc::new(committer_key),
             };
             circuit_keys.push((circuit_proving_key, circuit_verifying_key));

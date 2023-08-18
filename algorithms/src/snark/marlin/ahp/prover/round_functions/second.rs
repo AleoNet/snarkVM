@@ -26,7 +26,7 @@ use crate::{
         MarlinMode,
     },
 };
-use anyhow::{ensure, Result};
+use anyhow::Result;
 use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, cfg_reduce, ExecutionPool};

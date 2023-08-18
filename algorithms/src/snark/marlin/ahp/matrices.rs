@@ -27,7 +27,7 @@ use crate::{
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 
@@ -96,19 +96,21 @@ pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the `col` polynomial.
     pub col: EvaluationsOnDomain<F>,
     /// Evaluations of the `row_col` polynomial.
-    pub row_col: EvaluationsOnDomain<F>,
+    /// After indexing, we drop these evaluations to save space in the ProvingKey
+    pub row_col: Option<EvaluationsOnDomain<F>>,
     /// Evaluations of the `row_col_val` polynomial.
     pub row_col_val: EvaluationsOnDomain<F>,
 }
 
 impl<F: PrimeField> MatrixEvals<F> {
-    pub(crate) fn evaluate(&self, lagrange_coefficients_at_point: &[F]) -> [F; 4] {
-        [
+    pub(crate) fn evaluate(&self, lagrange_coefficients_at_point: &[F]) -> Result<[F; 4]> {
+        ensure!(self.row_col.is_some(), "row_col evaluations are not available");
+        Ok([
             self.row.evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.col.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.row_col.evaluate_with_coeffs(lagrange_coefficients_at_point),
+            self.row_col.as_ref().unwrap().evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.row_col_val.evaluate_with_coeffs(lagrange_coefficients_at_point),
-        ]
+        ])
     }
 }
 
@@ -124,7 +126,7 @@ pub struct MatrixArithmetization<F: PrimeField> {
     /// LDE of the vector containing entry-wise products of `row`, `col` and the non-zero entries of M.
     pub row_col_val: LabeledPolynomial<F>,
 
-    /// Evaluation of `self.row_a`, `self.col_a`, and `self.val_a` on the domain `K`.
+    /// Evaluation of the above polynomials on the domain `K`.
     pub evals_on_K: MatrixEvals<F>,
 }
 
@@ -182,7 +184,7 @@ pub(crate) fn matrix_evals<F: PrimeField>(
     Ok(MatrixEvals {
         row: row_evals_on_K,
         col: col_evals_on_K,
-        row_col: row_col_evals_on_K,
+        row_col: Some(row_col_evals_on_K),
         row_col_val: row_col_val_evals_on_K,
     })
 }
@@ -192,28 +194,26 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     id: &CircuitId,
     label: &str,
     matrix_evals: MatrixEvals<F>,
-) -> MatrixArithmetization<F> {
-    let matrix_time = start_timer!(|| "Computing row, col, and val LDEs");
+) -> Result<MatrixArithmetization<F>> {
+    ensure!(matrix_evals.row_col.is_some(), "row_col evaluations are not available");
 
     let interpolate_time = start_timer!(|| "Interpolating on K");
     let row = matrix_evals.row.clone().interpolate();
     let col = matrix_evals.col.clone().interpolate();
-    let row_col = matrix_evals.row_col.clone().interpolate();
+    let row_col = matrix_evals.row_col.as_ref().unwrap().clone().interpolate();
     let row_col_val = matrix_evals.row_col_val.clone().interpolate();
     end_timer!(interpolate_time);
-
-    end_timer!(matrix_time);
 
     let label = &[label];
     let mut labels = AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(label, std::iter::once(id));
 
-    MatrixArithmetization {
+    Ok(MatrixArithmetization {
         row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
         col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
         row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
         row_col_val: LabeledPolynomial::new(labels.next().unwrap(), row_col_val, None, None),
         evals_on_K: matrix_evals,
-    }
+    })
 }
 
 /// Compute the transpose of a sparse matrix
@@ -302,7 +302,7 @@ mod tests {
             )
             .unwrap();
             let dummy_id = CircuitId([0; 32]);
-            let arith = arithmetize_matrix(&dummy_id, label, evals);
+            let arith = arithmetize_matrix(&dummy_id, label, evals).unwrap();
 
             for (k_index, k) in interpolation_domain.elements().enumerate() {
                 let row_val = arith.row.evaluate(k);

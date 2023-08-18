@@ -145,6 +145,13 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
         ]
         .into_iter()
     }
+
+    /// After indexing, we drop these evaluations to save space in the ProvingKey.
+    pub fn prune_row_col_evals(&mut self) {
+        self.a_arith.evals_on_K.row_col = None;
+        self.b_arith.evals_on_K.row_col = None;
+        self.c_arith.evals_on_K.row_col = None;
+    }
 }
 
 impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {

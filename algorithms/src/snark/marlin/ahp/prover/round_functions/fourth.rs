@@ -171,8 +171,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             a_poly
         });
 
-        let (row_on_K, col_on_K, row_col_on_K) =
-            (&arithmetization.evals_on_K.row, &arithmetization.evals_on_K.col, &arithmetization.evals_on_K.row_col);
+        let (row_on_K, col_on_K) = (&arithmetization.evals_on_K.row, &arithmetization.evals_on_K.col);
         let R_size = constraint_domain.size_as_field_element;
         let C_size = variable_domain.size_as_field_element;
 
@@ -182,8 +181,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let b_poly = {
                 let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
                     .zip_eq(&col_on_K.evaluations)
-                    .zip_eq(&row_col_on_K.evaluations)
-                    .map(|((r, c), r_c)| R_size * C_size * (alpha_beta - beta * r - alpha * c + r_c))
+                    .map(|(&r, &c)| R_size * C_size * (alpha_beta - beta * r - alpha * c + r * c))
                     .collect();
                 EvaluationsOnDomain::from_vec_and_domain(evals, non_zero_domain)
                     .interpolate_with_pc(ifft_precomputation)

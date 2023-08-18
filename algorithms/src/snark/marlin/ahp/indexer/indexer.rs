@@ -69,7 +69,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
             .into_iter()
             .map(|(label, evals)| arithmetize_matrix(&id, label, evals))
-            .collect::<Vec<_>>()
+            .collect::<Result<Vec<_>, _>>()?
             .try_into()
             .unwrap();
 
@@ -249,7 +249,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .flat_map(move |(evals, domain)| {
             let labels = Self::index_polynomial_labels(&["a", "b", "c"], std::iter::once(id));
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
-            labels.zip(evals.evaluate(&lagrange_coefficients_at_point))
+            labels.zip(evals.evaluate(&lagrange_coefficients_at_point).unwrap())
         })
         .collect::<Vec<_>>();
         evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
