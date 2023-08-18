@@ -18,6 +18,7 @@ use crate::{
     SNARKError,
 };
 
+use ahp::prover::{FourthMessage, ThirdMessage};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
@@ -234,10 +235,10 @@ pub struct Proof<E: PairingEngine> {
     pub evaluations: Evaluations<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c for each instance
-    pub third_msg: ahp::prover::ThirdMessage<E::Fr>,
+    pub third_msg: ThirdMessage<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c for each circuit
-    pub fourth_msg: ahp::prover::FourthMessage<E::Fr>,
+    pub fourth_msg: FourthMessage<E::Fr>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: sonic_pc::BatchLCProof<E>,
@@ -249,8 +250,8 @@ impl<E: PairingEngine> Proof<E> {
         batch_sizes: BTreeMap<CircuitId, usize>,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
-        third_msg: ahp::prover::ThirdMessage<E::Fr>,
-        fourth_msg: ahp::prover::FourthMessage<E::Fr>,
+        third_msg: ThirdMessage<E::Fr>,
+        fourth_msg: FourthMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         let batch_sizes: Vec<usize> = batch_sizes.into_values().collect();
@@ -276,8 +277,10 @@ impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
         CanonicalSerialize::serialize_with_mode(&batch_sizes, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
         Evaluations::serialize_with_mode(&self.evaluations, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.third_msg, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.fourth_msg, &mut writer, compress)?;
+        for third_sums in self.third_msg.sums.iter().rev() {
+            serialize_vec_without_len(third_sums.iter(), &mut writer, compress)?;
+        }
+        serialize_vec_without_len(self.fourth_msg.sums.iter(), &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.pc_proof, &mut writer, compress)?;
         Ok(())
     }
@@ -287,8 +290,10 @@ impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
         size += CanonicalSerialize::serialized_size(&self.batch_sizes, mode);
         size += Commitments::serialized_size(&self.commitments, mode);
         size += Evaluations::serialized_size(&self.evaluations, mode);
-        size += CanonicalSerialize::serialized_size(&self.third_msg, mode);
-        size += CanonicalSerialize::serialized_size(&self.fourth_msg, mode);
+        for third_sums in self.third_msg.sums.iter().rev() {
+            size += serialized_vec_size_without_len(third_sums, mode);
+        }
+        size += serialized_vec_size_without_len(&self.fourth_msg.sums, mode);
         size += CanonicalSerialize::serialized_size(&self.pc_proof, mode);
         size
     }
@@ -313,11 +318,21 @@ impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
     ) -> Result<Self, SerializationError> {
         let batch_sizes: Vec<u64> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let batch_sizes: Vec<usize> = batch_sizes.into_iter().map(|x| x as usize).collect();
+        let commitments = Commitments::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?;
+        let evaluations = Evaluations::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?;
+        let third_msg_sums = batch_sizes
+            .iter()
+            .map(|&batch_size| {
+                let res = deserialize_vec_without_len(&mut reader, compress, validate, batch_size);
+                res
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let fourth_msg_sums = deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?;
         Ok(Proof {
-            commitments: Commitments::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?,
-            evaluations: Evaluations::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?,
-            third_msg: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            fourth_msg: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            commitments,
+            evaluations,
+            third_msg: ThirdMessage { sums: third_msg_sums },
+            fourth_msg: FourthMessage { sums: fourth_msg_sums },
             pc_proof: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             batch_sizes,
         })
@@ -369,7 +384,7 @@ mod test {
         FromBytes::read_le(buf.as_slice()).unwrap()
     }
 
-    fn rand_commitments(i: usize, j: usize, test_with_none: bool) -> Commitments<Bls12_377> {
+    fn rand_commitments(j: usize, i: usize, test_with_none: bool) -> Commitments<Bls12_377> {
         assert!(i > 0);
         assert!(j > 0);
         let sample_commit = sample_commit();
@@ -380,19 +395,19 @@ mod test {
             h_0: sample_commit,
             g_1: sample_commit,
             h_1: sample_commit,
-            g_a_commitments: vec![sample_commit; j],
-            g_b_commitments: vec![sample_commit; j],
-            g_c_commitments: vec![sample_commit; j],
+            g_a_commitments: vec![sample_commit; i],
+            g_b_commitments: vec![sample_commit; i],
+            g_c_commitments: vec![sample_commit; i],
             h_2: sample_commit,
         }
     }
 
-    fn rand_evaluations<F: PrimeField>(rng: &mut TestRng, j: usize) -> Evaluations<F> {
+    fn rand_evaluations<F: PrimeField>(rng: &mut TestRng, i: usize) -> Evaluations<F> {
         Evaluations {
             g_1_eval: F::rand(rng),
-            g_a_evals: vec![F::rand(rng); j],
-            g_b_evals: vec![F::rand(rng); j],
-            g_c_evals: vec![F::rand(rng); j],
+            g_a_evals: vec![F::rand(rng); i],
+            g_b_evals: vec![F::rand(rng); i],
+            g_c_evals: vec![F::rand(rng); i],
         }
     }
 
@@ -410,8 +425,8 @@ mod test {
         for i in 1..11 {
             for j in 1..11 {
                 let test_with_none = i * j % 2 == 0;
-                let commitments = rand_commitments(i, j, test_with_none);
-                let batch_sizes = vec![i; j];
+                let commitments = rand_commitments(j, i, test_with_none);
+                let batch_sizes = vec![j; i];
                 let combinations = modes();
                 for (compress, validate) in combinations {
                     let size = Commitments::serialized_size(&commitments, compress);
@@ -431,8 +446,8 @@ mod test {
 
         for i in 1..11 {
             for j in 1..11 {
-                let evaluations: Evaluations<Fr> = rand_evaluations(rng, j);
-                let batch_sizes = vec![i; j];
+                let evaluations: Evaluations<Fr> = rand_evaluations(rng, i);
+                let batch_sizes = vec![j; i];
                 let combinations = modes();
                 for (compress, validate) in combinations {
                     let size = Evaluations::serialized_size(&evaluations, compress);
@@ -453,14 +468,14 @@ mod test {
         for i in 1..11 {
             for j in 1..11 {
                 let test_with_none = i * j % 2 == 0;
-                let batch_sizes = vec![i; j];
-                let commitments = rand_commitments(i, j, test_with_none);
-                let evaluations: Evaluations<Fr> = rand_evaluations(rng, j);
-                let third_msg = ahp::prover::ThirdMessage::<Fr> { sums: vec![vec![rand_sums(rng); j]] };
-                let fourth_msg = ahp::prover::FourthMessage::<Fr> { sums: vec![rand_sums(rng); j] };
+                let batch_sizes = vec![j; i];
+                let commitments = rand_commitments(j, i, test_with_none);
+                let evaluations: Evaluations<Fr> = rand_evaluations(rng, i);
+                let third_msg = ThirdMessage::<Fr> { sums: vec![vec![rand_sums(rng); j]; i] };
+                let fourth_msg = FourthMessage::<Fr> { sums: vec![rand_sums(rng); i] };
                 let mut proof_evaluations = None;
                 if !test_with_none {
-                    proof_evaluations = Some(vec![Fr::rand(rng); j]);
+                    proof_evaluations = Some(vec![Fr::rand(rng); i]);
                 }
                 let pc_proof = sonic_pc::BatchLCProof {
                     proof: BatchProof(vec![rand_kzg_proof(rng, test_with_none); j]),
