@@ -61,7 +61,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let h_0 = Self::calculate_rowcheck_witness(&mut state, batch_combiners)?;
 
-        ensure!(h_0.degree() > 1);
         assert!(h_0.degree() <= 2 * max_constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
 
         let oracles = prover::SecondOracles { h_0: LabeledPolynomial::new("h_0", h_0, None, None) };

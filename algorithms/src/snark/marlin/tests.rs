@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 
 mod marlin {
     use super::*;
-    use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
+    use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, mode::MarlinMode, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{TestRng, Uniform};
 
@@ -46,7 +46,7 @@ mod marlin {
 
                     for i in 0..25 {
                         let mul_depth = 1;
-                        println!("running test with mul_depth: {}, num_constraints: {}, num_variables: {}", mul_depth + i, num_constraints + i, num_variables + i);
+                        println!("running test with MM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $marlin_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
                         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
 
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
