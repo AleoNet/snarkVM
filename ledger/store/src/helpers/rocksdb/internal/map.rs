@@ -28,6 +28,8 @@ use crate::helpers::kafka::KafkaProducerTrait;
 
 use crate::helpers::kafka::KAFKA_PRODUCER;
 
+extern crate hex;
+
 #[derive(Clone)]
 pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
     pub(super) database: RocksDB,
@@ -172,7 +174,6 @@ impl<
         let mut kafka_queue = KafkaQueue { messages: Vec::new() };
         // Retrieve the atomic batch belonging to the map.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
-
         if !operations.is_empty() {
             // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
             let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
@@ -186,25 +187,29 @@ impl<
                 .collect::<Result<Vec<_>>>()?;
             // Enqueue all the operations from the map in the database-wide batch.
             let mut atomic_batch = self.database.atomic_batch.lock();
-            // Print to check if there's anything in the atomic batch.
             trace!("Is atomic_batch empty? {}", atomic_batch.is_empty());
             for (raw_key, raw_value) in prepared_operations {
-                // Print the raw_key and raw_value to see their content.
                 trace!("raw_key: {:?}", raw_key);
                 trace!("raw_value: {:?}", raw_value);
+                trace!("Database raw key (hex): {}", hex::encode(&raw_key));
+                if let Some(rv) = &raw_value {
+                    trace!("Database raw value (hex): {}", hex::encode(rv));
+                }
+
                 match raw_value {
                     Some(raw_value) => {
                         atomic_batch.put(raw_key.clone(), raw_value.clone());
-                        // Add message to kafka queue
-                        kafka_queue.put(raw_key, raw_value);
-                        // Print kafka_queue content.
+                        kafka_queue.put(raw_key.clone(), raw_value.clone());
+                        trace!(
+                            "Adding to atomic batch: key = {}, value = {}",
+                            hex::encode(&raw_key),
+                            hex::encode(&raw_value)
+                        );
                         trace!("kafka_queue after put: {:?}", kafka_queue);
                     }
                     None => {
                         atomic_batch.delete(raw_key.clone());
-                        // Add delete message to kafka queue
                         kafka_queue.put(raw_key, Vec::new());
-                        // Print kafka_queue content.
                         trace!("kafka_queue after delete: {:?}", kafka_queue);
                     }
                 }
