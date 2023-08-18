@@ -322,10 +322,7 @@ impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
         let evaluations = Evaluations::deserialize_with_mode(&batch_sizes, &mut reader, compress, validate)?;
         let third_msg_sums = batch_sizes
             .iter()
-            .map(|&batch_size| {
-                let res = deserialize_vec_without_len(&mut reader, compress, validate, batch_size);
-                res
-            })
+            .map(|&batch_size| deserialize_vec_without_len(&mut reader, compress, validate, batch_size))
             .collect::<Result<Vec<_>, _>>()?;
         let fourth_msg_sums = deserialize_vec_without_len(&mut reader, compress, validate, batch_sizes.len())?;
         Ok(Proof {

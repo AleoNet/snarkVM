@@ -90,7 +90,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                             start_timer!(|| format!("Padding matrices for {:?} and index {_i}", circuit.id));
 
                         MM::ZK.then(|| {
-                            crate::snark::marlin::ahp::matrices::add_randomizing_variables::<_, _, MM>(
+                            crate::snark::marlin::ahp::matrices::add_randomizing_variables::<_, _>(
                                 &mut pcs,
                                 rand_assignments,
                             )

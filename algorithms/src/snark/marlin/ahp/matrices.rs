@@ -21,7 +21,6 @@ use crate::{
     snark::marlin::{
         ahp::{indexer::Matrix, AHPForR1CS, CircuitId},
         MarlinHidingMode,
-        MarlinMode,
     },
 };
 use snarkvm_fields::{Field, PrimeField};
@@ -56,7 +55,7 @@ pub(crate) fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_inpu
 
 /// Adds variables to randomize each z_M and preserve zero-knowledge
 /// When no random assignments are passed, we use F::one()
-pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>, MM: MarlinMode>(
+pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     rand_assignments: Option<[F; 3]>,
 ) {

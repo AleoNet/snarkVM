@@ -140,7 +140,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // Given that we only use the matrix for indexing, the values we choose for assignments don't matter
         let random_assignments = None;
         MM::ZK.then(|| {
-            crate::snark::marlin::ahp::matrices::add_randomizing_variables::<_, _, MM>(&mut ics, random_assignments)
+            crate::snark::marlin::ahp::matrices::add_randomizing_variables::<_, _>(&mut ics, random_assignments)
         });
 
         crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
