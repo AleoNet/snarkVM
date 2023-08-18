@@ -277,7 +277,7 @@ impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
         CanonicalSerialize::serialize_with_mode(&batch_sizes, &mut writer, compress)?;
         Commitments::serialize_with_mode(&self.commitments, &mut writer, compress)?;
         Evaluations::serialize_with_mode(&self.evaluations, &mut writer, compress)?;
-        for third_sums in self.third_msg.sums.iter().rev() {
+        for third_sums in self.third_msg.sums.iter() {
             serialize_vec_without_len(third_sums.iter(), &mut writer, compress)?;
         }
         serialize_vec_without_len(self.fourth_msg.sums.iter(), &mut writer, compress)?;
@@ -290,7 +290,7 @@ impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
         size += CanonicalSerialize::serialized_size(&self.batch_sizes, mode);
         size += Commitments::serialized_size(&self.commitments, mode);
         size += Evaluations::serialized_size(&self.evaluations, mode);
-        for third_sums in self.third_msg.sums.iter().rev() {
+        for third_sums in self.third_msg.sums.iter() {
             size += serialized_vec_size_without_len(third_sums, mode);
         }
         size += serialized_vec_size_without_len(&self.fourth_msg.sums, mode);
