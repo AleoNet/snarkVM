@@ -298,14 +298,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedDeploy(_, _fee_transaction, rejected) => {
+                    ConfirmedTransaction::RejectedDeploy(_, Transaction::Fee(_, fee), rejected) => {
                         // Extract the rejected deployment.
-                        #[allow(unused_variables)]
                         let Some(deployment) = rejected.deployment() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected deployment".to_string());
                         };
-                        // TODO (howardwu): Ensure this fee corresponds to the deployment.
+                        // Compute the expected deployment ID.
+                        let Ok(expected_deployment_id) = deployment.to_deployment_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to compute the deployment ID for a rejected deployment".to_string());
+                        };
+                        // Retrieve the candidate deployment ID.
+                        let Ok(candidate_deployment_id) = fee.deployment_or_execution_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to retrieve the deployment ID from the fee".to_string());
+                        };
+                        // Ensure this fee corresponds to the deployment.
+                        if candidate_deployment_id != expected_deployment_id {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in fee for a rejected deploy transaction".to_string());
+                        }
                         // Attempt to finalize the deployment, which should fail.
                         #[cfg(debug_assertions)]
                         if process.finalize_deployment(store, deployment).is_ok() {
@@ -314,14 +327,27 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedExecute(_, _fee_transaction, rejected) => {
+                    ConfirmedTransaction::RejectedExecute(_, Transaction::Fee(_, fee), rejected) => {
                         // Extract the rejected execution.
-                        #[allow(unused_variables)]
                         let Some(execution) = rejected.execution() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected execution".to_string());
                         };
-                        // TODO (howardwu): Ensure this fee corresponds to the execution.
+                        // Compute the expected execution ID.
+                        let Ok(expected_execution_id) = execution.to_execution_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to compute the execution ID for a rejected execution".to_string());
+                        };
+                        // Retrieve the candidate execution ID.
+                        let Ok(candidate_execution_id) = fee.deployment_or_execution_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to retrieve the execution ID from the fee".to_string());
+                        };
+                        // Ensure this fee corresponds to the execution.
+                        if candidate_execution_id != expected_execution_id {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in fee for a rejected execution transaction".to_string());
+                        }
                         // Attempt to finalize the execution, which should fail.
                         #[cfg(debug_assertions)]
                         if process.finalize_execution(state, store, execution).is_ok() {
@@ -330,6 +356,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
+                    // Note: This will abort the entire atomic batch.
+                    _ => return Err("Invalid confirmed transaction type".to_string()),
                 };
                 lap!(timer, "Finalizing transaction {}", transaction.id());
 

@@ -20,7 +20,7 @@ use crate::{Input, Transition};
 use console::{
     network::prelude::*,
     program::{Literal, Plaintext, Value},
-    types::{Address, U64},
+    types::{Address, Field, U64},
 };
 use synthesizer_snark::Proof;
 
@@ -92,6 +92,18 @@ impl<N: Network> Fee<N> {
         match self.transition.inputs().get(input_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
             _ => bail!("Failed to retrieve the fee (in microcredits) from the fee transition"),
+        }
+    }
+
+    /// Returns the deployment or execution ID.
+    pub fn deployment_or_execution_id(&self) -> Result<Field<N>> {
+        // Determine the input index for the deployment or execution ID.
+        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
+        let input_index = if self.transition.finalize().is_none() { 2 } else { 1 };
+        // Retrieve the deployment or execution ID as a plaintext value.
+        match self.transition.inputs().get(input_index) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(id), _)))) => Ok(*id),
+            _ => bail!("Failed to retrieve the deployment or execution ID from the fee transition"),
         }
     }
 
