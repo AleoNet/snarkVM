@@ -492,6 +492,7 @@ mod tests {
             ledger_test_helpers::sample_execution_transaction_with_fee(true, rng),
             ledger_test_helpers::sample_execution_transaction_with_fee(false, rng),
             ledger_test_helpers::sample_fee_private_transaction(rng),
+            ledger_test_helpers::sample_fee_public_transaction(rng),
         ] {
             let transaction_id = transaction.id();
 
