@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_circuit_types::environment::{Eject, GroupTrait, Inject, ScalarTrait, Ternary, ToBits};
+use snarkvm_circuit_types::environment::{Eject, GroupTrait, Inject, ScalarTrait, ToBits};
 
 /// A trait for a commitment scheme.
 pub trait Commit {

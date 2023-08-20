@@ -186,7 +186,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          */
         let mut c = Vec::with_capacity(WEIGHT);
         for x in 0..MODULO {
-            c.push(&a[x + 0] ^ &a[x + MODULO] ^ &a[x + (2 * MODULO)] ^ &a[x + (3 * MODULO)] ^ &a[x + (4 * MODULO)]);
+            c.push(&a[x] ^ &a[x + MODULO] ^ &a[x + (2 * MODULO)] ^ &a[x + (3 * MODULO)] ^ &a[x + (4 * MODULO)]);
         }
 
         /* The second part of Algorithm 3, θ:
@@ -275,99 +275,19 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
+    use console::Rng;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{bits_from_bytes_le, bytes_from_bits_le};
-
-    use tiny_keccak::{Hasher, Keccak as TinyKeccak, Sha3 as TinySha3};
 
     const ITERATIONS: usize = 3;
 
-    /// Computes the Keccak-224 hash of the given preimage as bytes.
-    fn keccak_224_native(preimage: &[u8]) -> [u8; 28] {
-        let mut keccak = TinyKeccak::v224();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 28];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
-    /// Computes the Keccak-256 hash of the given preimage as bytes.
-    fn keccak_256_native(preimage: &[u8]) -> [u8; 32] {
-        let mut keccak = TinyKeccak::v256();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 32];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
-    /// Computes the Keccak-384 hash of the given preimage as bytes.
-    fn keccak_384_native(preimage: &[u8]) -> [u8; 48] {
-        let mut keccak = TinyKeccak::v384();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 48];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
-    /// Computes the Keccak-512 hash of the given preimage as bytes.
-    fn keccak_512_native(preimage: &[u8]) -> [u8; 64] {
-        let mut keccak = TinyKeccak::v512();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 64];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
-    /// Computes the SHA3-224 hash of the given preimage as bytes.
-    fn sha3_224_native(preimage: &[u8]) -> [u8; 28] {
-        let mut keccak = TinySha3::v224();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 28];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
-    /// Computes the SHA3-256 hash of the given preimage as bytes.
-    fn sha3_256_native(preimage: &[u8]) -> [u8; 32] {
-        let mut keccak = TinySha3::v256();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 32];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
-    /// Computes the SHA3-384 hash of the given preimage as bytes.
-    fn sha3_384_native(preimage: &[u8]) -> [u8; 48] {
-        let mut keccak = TinySha3::v384();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 48];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
-    /// Computes the SHA3-512 hash of the given preimage as bytes.
-    fn sha3_512_native(preimage: &[u8]) -> [u8; 64] {
-        let mut keccak = TinySha3::v512();
-        keccak.update(preimage);
-
-        let mut hash = [0u8; 64];
-        keccak.finalize(&mut hash);
-        hash
-    }
-
     macro_rules! check_equivalence {
-        ($circuit:expr, $native:expr) => {
+        ($console:expr, $circuit:expr) => {
+            use console::Hash as H;
+
             let rng = &mut TestRng::default();
 
             let mut input_sizes = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 32, 64, 128, 256, 512, 1024];
-            input_sizes.extend((0..5).map(|_| u8::rand(rng) as usize));
+            input_sizes.extend((0..5).map(|_| rng.gen_range(1..1024)));
 
             for num_inputs in input_sizes {
                 println!("Checking equivalence for {num_inputs} inputs");
@@ -376,9 +296,8 @@ mod tests {
                 let native_input = (0..num_inputs).map(|_| Uniform::rand(rng)).collect::<Vec<bool>>();
                 let input = native_input.iter().map(|v| Boolean::<Circuit>::new(Mode::Private, *v)).collect::<Vec<_>>();
 
-                // Compute the native hash.
-                let expected = $native(&bytes_from_bits_le(&native_input));
-                let expected = bits_from_bytes_le(&expected).collect::<Vec<_>>();
+                // Compute the console hash.
+                let expected = $console.hash(&native_input).expect("Failed to hash console input");
 
                 // Compute the circuit hash.
                 let candidate = $circuit.hash(&input);
@@ -399,7 +318,7 @@ mod tests {
     ) {
         use console::Hash as H;
 
-        // let native = console::Poseidon::<<Circuit as Environment>::Network, RATE>::setup(DOMAIN)?;
+        let native = console::Keccak256::default();
         let keccak = Keccak256::<Circuit>::new();
 
         for i in 0..ITERATIONS {
@@ -408,9 +327,7 @@ mod tests {
             let input = native_input.iter().map(|v| Boolean::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
-            // let expected = native.hash(&native_input).expect("Failed to hash native input");
-            let expected = keccak_256_native(&bytes_from_bits_le(&native_input));
-            let expected = bits_from_bytes_le(&expected).collect::<Vec<_>>();
+            let expected = native.hash(&native_input).expect("Failed to hash native input");
 
             // Compute the circuit hash.
             Circuit::scope(format!("Keccak {mode} {i}"), || {
@@ -492,71 +409,41 @@ mod tests {
 
     #[test]
     fn test_keccak_224_equivalence() {
-        check_equivalence!(Keccak224::<Circuit>::new(), keccak_224_native);
+        check_equivalence!(console::Keccak224::default(), Keccak224::<Circuit>::new());
     }
 
     #[test]
     fn test_keccak_256_equivalence() {
-        check_equivalence!(Keccak256::<Circuit>::new(), keccak_256_native);
+        check_equivalence!(console::Keccak256::default(), Keccak256::<Circuit>::new());
     }
 
     #[test]
     fn test_keccak_384_equivalence() {
-        check_equivalence!(Keccak384::<Circuit>::new(), keccak_384_native);
+        check_equivalence!(console::Keccak384::default(), Keccak384::<Circuit>::new());
     }
 
     #[test]
     fn test_keccak_512_equivalence() {
-        check_equivalence!(Keccak512::<Circuit>::new(), keccak_512_native);
+        check_equivalence!(console::Keccak512::default(), Keccak512::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_224_equivalence() {
-        check_equivalence!(Sha3_224::<Circuit>::new(), sha3_224_native);
+        check_equivalence!(console::Sha3_224::default(), Sha3_224::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_256_equivalence() {
-        check_equivalence!(Sha3_256::<Circuit>::new(), sha3_256_native);
+        check_equivalence!(console::Sha3_256::default(), Sha3_256::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_384_equivalence() {
-        check_equivalence!(Sha3_384::<Circuit>::new(), sha3_384_native);
+        check_equivalence!(console::Sha3_384::default(), Sha3_384::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_512_equivalence() {
-        check_equivalence!(Sha3_512::<Circuit>::new(), sha3_512_native);
-    }
-
-    #[test]
-    fn test_keccak_256_simple() {
-        let input = [
-            91, 7, 224, 119, 168, 31, 252, 107, 71, 67, 95, 101, 168, 114, 123, 204, 84, 43, 198, 252, 15, 37, 165, 98,
-            16, 239, 177, 167, 75, 136, 165, 174, 94, 93, 131, 178, 76, 70, 67, 50, 228, 244, 192, 226, 95, 102, 35,
-            138, 63, 100, 209, 199, 71, 209, 21, 102, 164, 189, 160, 179, 187, 246, 232, 176,
-        ];
-        let output = [
-            107, 59, 106, 234, 176, 69, 94, 6, 174, 161, 74, 60, 246, 41, 201, 195, 133, 117, 2, 65, 58, 246, 33, 201,
-            230, 106, 98, 171, 43, 238, 105, 82,
-        ];
-        assert_eq!(output, keccak_256_native(&input));
-
-        let input_circuit =
-            input.to_bits_le().iter().map(|b| Boolean::<Circuit>::new(Mode::Public, *b)).collect::<Vec<_>>();
-
-        let keccak = Keccak256::<Circuit>::new();
-
-        let output_circuit = keccak.hash(&input_circuit);
-
-        let output_bits_le = output.to_bits_le();
-
-        println!("{:?}", output_bits_le);
-        println!("{:?}", output_circuit);
-
-        for (i, bit) in output_circuit.iter().enumerate() {
-            assert_eq!(output_bits_le[i], bit.eject_value());
-        }
+        check_equivalence!(console::Sha3_512::default(), Sha3_512::<Circuit>::new());
     }
 }
