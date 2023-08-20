@@ -224,6 +224,10 @@ impl<N: Network> Trace<N> {
     ) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
+        // Ensure the global state root is not zero.
+        if global_state_root == N::StateRoot::default() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
         // Retrieve the proof.
         let Some(proof) = execution.proof() else { bail!("Expected the execution to contain a proof") };
         // Verify the execution proof.
