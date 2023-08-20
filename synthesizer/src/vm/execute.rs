@@ -64,6 +64,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Return the execute transaction.
         Transaction::from_execution(execution, fee)
     }
+
+    /// Returns a new fee for the given authorization.
+    pub fn execute_fee_authorization<R: Rng + CryptoRng>(
+        &self,
+        authorization: Authorization<N>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Fee<N>> {
+        self.execute_fee_authorization_raw(authorization, query, rng)
+    }
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
@@ -134,7 +144,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     }
 
     /// Executes a call to the program function for the given authorization.
-    /// Returns the response and execution.
+    /// Returns the execution.
     #[inline]
     fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
@@ -173,8 +183,51 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let execution = trace.prove_execution::<$aleo, _>(&locator, rng)?;
                 finish!(timer, "Compute the proof");
 
-                // Return the response and execution.
+                // Return the execution.
                 Ok(cast_ref!(execution as Execution<N>).clone())
+            }};
+        }
+        // Process the logic.
+        process!(self, logic)
+    }
+
+    /// Executes a call to the program function for the given fee authorization.
+    /// Returns the fee.
+    #[inline]
+    fn execute_fee_authorization_raw<R: Rng + CryptoRng>(
+        &self,
+        authorization: Authorization<N>,
+        query: Option<Query<N, C::BlockStorage>>,
+        rng: &mut R,
+    ) -> Result<Fee<N>> {
+        let timer = timer!("VM::execute_fee_authorization_raw");
+
+        // Prepare the query.
+        let query = match query {
+            Some(query) => query,
+            None => Query::VM(self.block_store().clone()),
+        };
+        lap!(timer, "Prepare the query");
+
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Prepare the authorization.
+                let authorization = cast_ref!(authorization as Authorization<$network>);
+                // Execute the call.
+                let (_, mut trace) = $process.execute::<$aleo>(authorization.clone())?;
+                lap!(timer, "Execute the call");
+
+                // Prepare the assignments.
+                cast_mut_ref!(trace as Trace<N>).prepare(query)?;
+                lap!(timer, "Prepare the assignments");
+
+                // Compute the proof and construct the execution.
+                let fee = trace.prove_fee::<$aleo, _>(rng)?;
+                finish!(timer, "Compute the proof");
+
+                // Return the fee.
+                Ok(cast_ref!(fee as Fee<N>).clone())
             }};
         }
         // Process the logic.

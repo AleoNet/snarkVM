@@ -415,7 +415,6 @@ mod tests {
 
         // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let fee = (credits, 10);
 
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
@@ -424,7 +423,7 @@ mod tests {
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
-        let deployment_transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
+        let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
         let transactions = vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();

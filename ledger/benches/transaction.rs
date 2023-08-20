@@ -75,11 +75,11 @@ function hello:
     .unwrap();
 
     c.bench_function("Transaction::Deploy", |b| {
-        b.iter(|| vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap())
+        b.iter(|| vm.deploy(&private_key, &program, Some(records[0].clone()), 600000, None, rng).unwrap())
     });
 
     c.bench_function("Transaction::Deploy - verify", |b| {
-        let transaction = vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap();
+        let transaction = vm.deploy(&private_key, &program, Some(records[0].clone()), 600000, None, rng).unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }

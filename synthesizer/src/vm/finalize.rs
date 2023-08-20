@@ -675,11 +675,10 @@ finalize transfer_public:
 
         // Prepare the additional fee.
         let view_key = ViewKey::<CurrentNetwork>::try_from(private_key)?;
-        let credits = unspent_records.pop().unwrap().decrypt(&view_key)?;
-        let additional_fee = (credits, 10);
+        let credits = Some(unspent_records.pop().unwrap().decrypt(&view_key)?);
 
         // Deploy.
-        let transaction = vm.deploy(private_key, &program, additional_fee, None, rng)?;
+        let transaction = vm.deploy(private_key, &program, credits, 10, None, rng)?;
 
         // Construct the new block.
         let next_block = sample_next_block(vm, private_key, &[transaction], previous_block, unspent_records, rng)?;
@@ -1119,11 +1118,10 @@ function ped_hash:
             ))
             .unwrap();
 
-            let credits = unspent_records.pop().unwrap().decrypt(&caller_view_key).unwrap();
-            let additional_fee = (credits, 10);
+            let credits = Some(unspent_records.pop().unwrap().decrypt(&caller_view_key).unwrap());
 
             // Deploy the program.
-            let deployment_transaction = vm.deploy(&caller_private_key, &program, additional_fee, None, rng).unwrap();
+            let deployment_transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
 
             // Construct the deployment block.
             let deployment_block = sample_next_block(
@@ -1220,11 +1218,10 @@ finalize compute:
 
             // Prepare the additional fee.
             let view_key = ViewKey::<CurrentNetwork>::try_from(private_key).unwrap();
-            let credits = unspent_records.pop().unwrap().decrypt(&view_key).unwrap();
-            let additional_fee = (credits, 10);
+            let credits = Some(unspent_records.pop().unwrap().decrypt(&view_key).unwrap());
 
             // Deploy.
-            let transaction = vm.deploy(&private_key, &program, additional_fee, None, rng).unwrap();
+            let transaction = vm.deploy(&private_key, &program, credits, 10, None, rng).unwrap();
 
             // Construct the new block.
             sample_next_block(&vm, &private_key, &[transaction], &splits_block, &mut unspent_records, rng).unwrap()

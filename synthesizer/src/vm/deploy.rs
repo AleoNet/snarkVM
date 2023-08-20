@@ -17,12 +17,16 @@ use super::*;
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new deploy transaction.
     ///
+    /// If a `fee_record` is provided, then a private fee will be included in the transaction;
+    /// otherwise, a public fee will be included in the transaction.
+    ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn deploy<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
-        (fee_record, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+        fee_record: Option<Record<N, Plaintext<N>>>,
+        priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
@@ -41,8 +45,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Compute the deployment ID.
         let deployment_id = deployment.to_deployment_id()?;
 
+        // Authorize the fee.
+        let fee_authorization = match fee_record {
+            Some(fee_record) => {
+                self.authorize_fee_private(private_key, fee_record, fee_in_microcredits, deployment_id, rng)?
+            }
+            None => self.authorize_fee_public(private_key, fee_in_microcredits, deployment_id, rng)?,
+        };
         // Compute the fee.
-        let fee = self.execute_fee_private(private_key, fee_record, fee_in_microcredits, deployment_id, query, rng)?;
+        let fee = self.execute_fee_authorization(fee_authorization, query, rng)?;
 
         // Construct the owner.
         let owner = ProgramOwner::new(private_key, deployment_id, rng)?;

@@ -417,8 +417,7 @@ function compute:
                 trace!("Unspent Records:\n{:#?}", records);
 
                 // Prepare the fee.
-                let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-                let fee = (credits, 10);
+                let credits = Some(records.values().next().unwrap().decrypt(&caller_view_key).unwrap());
 
                 // Initialize the VM.
                 let vm = sample_vm();
@@ -426,7 +425,7 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Deploy.
-                let transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
+                let transaction = vm.deploy(&caller_private_key, &program, credits, 10, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
@@ -782,10 +781,10 @@ finalize getter:
     get map_0[0field] into r0;
         ";
         let first_deployment = vm
-            .deploy(&caller_private_key, &Program::from_str(first_program).unwrap(), (first_record, 1), None, rng)
+            .deploy(&caller_private_key, &Program::from_str(first_program).unwrap(), Some(first_record), 1, None, rng)
             .unwrap();
         let second_deployment = vm
-            .deploy(&caller_private_key, &Program::from_str(second_program).unwrap(), (second_record, 1), None, rng)
+            .deploy(&caller_private_key, &Program::from_str(second_program).unwrap(), Some(second_record), 1, None, rng)
             .unwrap();
         let deployment_block =
             sample_next_block(&vm, &caller_private_key, &[first_deployment, second_deployment], rng).unwrap();
@@ -851,8 +850,9 @@ function c:
     add r0 r1 into r2;
     output r2 as u8.private;
         ";
-        let deployment_1 =
-            vm.deploy(&caller_private_key, &Program::from_str(program_1).unwrap(), (record_0, 0), None, rng).unwrap();
+        let deployment_1 = vm
+            .deploy(&caller_private_key, &Program::from_str(program_1).unwrap(), Some(record_0), 0, None, rng)
+            .unwrap();
 
         // Deploy the first program.
         let deployment_block = sample_next_block(&vm, &caller_private_key, &[deployment_1.clone()], rng).unwrap();
@@ -870,8 +870,9 @@ function b:
     call first_program.aleo/c r0 r1 into r2;
     output r2 as u8.private;
         ";
-        let deployment_2 =
-            vm.deploy(&caller_private_key, &Program::from_str(program_2).unwrap(), (record_1, 0), None, rng).unwrap();
+        let deployment_2 = vm
+            .deploy(&caller_private_key, &Program::from_str(program_2).unwrap(), Some(record_1), 0, None, rng)
+            .unwrap();
 
         // Deploy the second program.
         let deployment_block = sample_next_block(&vm, &caller_private_key, &[deployment_2.clone()], rng).unwrap();
@@ -889,8 +890,9 @@ function a:
     call second_program.aleo/b r0 r1 into r2;
     output r2 as u8.private;
         ";
-        let deployment_3 =
-            vm.deploy(&caller_private_key, &Program::from_str(program_3).unwrap(), (record_2, 0), None, rng).unwrap();
+        let deployment_3 = vm
+            .deploy(&caller_private_key, &Program::from_str(program_3).unwrap(), Some(record_2), 0, None, rng)
+            .unwrap();
 
         // Create the deployment for the fourth program.
         let program_4 = r"
@@ -905,8 +907,9 @@ function a:
     call second_program.aleo/b r0 r1 into r2;
     output r2 as u8.private;
         ";
-        let deployment_4 =
-            vm.deploy(&caller_private_key, &Program::from_str(program_4).unwrap(), (record_3, 0), None, rng).unwrap();
+        let deployment_4 = vm
+            .deploy(&caller_private_key, &Program::from_str(program_4).unwrap(), Some(record_3), 0, None, rng)
+            .unwrap();
 
         // Deploy the third and fourth program together.
         let deployment_block =
@@ -973,7 +976,7 @@ function multitransfer:
     ",
         )
         .unwrap();
-        let deployment = vm.deploy(&caller_private_key, &program, (record_0, 1), None, rng).unwrap();
+        let deployment = vm.deploy(&caller_private_key, &program, Some(record_0), 1, None, rng).unwrap();
         vm.add_next_block(&sample_next_block(&vm, &caller_private_key, &[deployment], rng).unwrap()).unwrap();
 
         // Execute the programs.

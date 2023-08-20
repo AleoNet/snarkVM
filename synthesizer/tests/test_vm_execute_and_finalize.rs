@@ -55,7 +55,7 @@ fn test_vm_execute_and_finalize() {
 
         // Deploy the program.
         let transaction =
-            vm.deploy(&genesis_private_key, test.program(), (fee_records.pop().unwrap().0, 0), None, rng).unwrap();
+            vm.deploy(&genesis_private_key, test.program(), Some(fee_records.pop().unwrap().0), 0, None, rng).unwrap();
         let transactions = vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
         let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();

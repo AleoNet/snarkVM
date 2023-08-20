@@ -117,11 +117,10 @@ finalize foo:
     // Fetch the unspent records.
     let records = find_records();
     // Prepare the additional fee.
-    let credits = records.values().next().unwrap().clone();
-    let additional_fee = (credits, 0);
+    let credits = Some(records.values().next().unwrap().clone());
 
     // Deploy.
-    let transaction = ledger.vm.deploy(&private_key, &program, additional_fee, None, rng).unwrap();
+    let transaction = ledger.vm.deploy(&private_key, &program, credits, 0, None, rng).unwrap();
     // Verify.
     assert!(ledger.vm().verify_transaction(&transaction, None));
 
@@ -224,7 +223,7 @@ finalize failed_assert:
     let record_2 = records[1].clone();
 
     // Deploy the program.
-    let deployment_transaction = ledger.vm().deploy(&private_key, &program, (record_1, 0), None, rng).unwrap();
+    let deployment_transaction = ledger.vm().deploy(&private_key, &program, Some(record_1), 0, None, rng).unwrap();
 
     // Construct the deployment block.
     let deployment_block = ledger

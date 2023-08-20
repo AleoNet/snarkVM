@@ -338,12 +338,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Initialize an RNG.
         let rng = &mut ::rand::thread_rng();
 
-        // Prepare the fee.
-        let fee_record = records.next().unwrap().clone();
-        let fee = (fee_record, priority_fee_in_microcredits);
+        // Prepare the fee record.
+        let fee_record = Some(records.next().unwrap().clone());
 
         // Create a new deploy transaction.
-        self.vm.deploy(private_key, program, fee, query, rng)
+        self.vm.deploy(private_key, program, fee_record, priority_fee_in_microcredits, query, rng)
     }
 
     /// Creates a transfer transaction.
