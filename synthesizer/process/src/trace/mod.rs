@@ -103,14 +103,31 @@ impl<N: Network> Trace<N> {
 impl<N: Network> Trace<N> {
     /// Returns `true` if the trace is for a fee transition.
     pub fn is_fee(&self) -> bool {
+        self.is_fee_private() || self.is_fee_public()
+    }
+
+    /// Returns `true` if the trace is for a private fee transition.
+    pub fn is_fee_private(&self) -> bool {
         match self.transitions.len() {
             // If there is 1 transition, check if the transition is a fee transition.
-            1 => self.transitions[0].is_fee_private() || self.transitions[0].is_fee_public(),
+            1 => self.transitions[0].is_fee_private(),
             // Otherwise, set the indicator to 'false'.
             _ => false,
         }
     }
 
+    /// Returns `true` if the trace is for a public fee transition.
+    pub fn is_fee_public(&self) -> bool {
+        match self.transitions.len() {
+            // If there is 1 transition, check if the transition is a fee transition.
+            1 => self.transitions[0].is_fee_public(),
+            // Otherwise, set the indicator to 'false'.
+            _ => false,
+        }
+    }
+}
+
+impl<N: Network> Trace<N> {
     /// Returns the inclusion assignments and global state root for the current transition(s).
     pub fn prepare(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
@@ -168,12 +185,17 @@ impl<N: Network> Trace<N> {
     /// Returns a new fee with a proof, for the current inclusion assignment and global state root.
     pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Fee<N>> {
         // Ensure this is a fee.
-        ensure!(self.is_fee(), "The trace cannot call 'prove_fee' for an execution type");
+        let is_fee_public = self.is_fee_public();
+        let is_fee_private = self.is_fee_private();
+        ensure!(is_fee_public || is_fee_private, "The trace cannot call 'prove_fee' for an execution type");
         // Retrieve the inclusion assignments.
         let inclusion_assignments =
             self.inclusion_assignments.get().ok_or_else(|| anyhow!("Inclusion assignments have not been set"))?;
-        // Ensure there is only 1 inclusion assignment.
-        ensure!(inclusion_assignments.len() == 1, "Expected 1 inclusion assignment for proving the fee transition");
+        // Ensure the correct number of inclusion assignments are provided.
+        match is_fee_public {
+            true => ensure!(inclusion_assignments.is_empty(), "Expected 0 inclusion assignments for proving the fee"),
+            false => ensure!(inclusion_assignments.len() == 1, "Expected 1 inclusion assignment for proving the fee"),
+        }
         // Retrieve the global state root.
         let global_state_root =
             self.global_state_root.get().ok_or_else(|| anyhow!("Global state root has not been set"))?;

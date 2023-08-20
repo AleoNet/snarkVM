@@ -34,7 +34,7 @@ macro_rules! ensure_is_unique {
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if the transaction is valid.
     pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
-        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{}", error)).is_ok()
+        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{error}")).is_ok()
     }
 
     /// Returns `true` if the deployment is valid.
@@ -376,7 +376,7 @@ mod tests {
     }
 
     #[test]
-    fn test_check_transaction_execution() -> Result<()> {
+    fn test_check_transaction_execution() {
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
@@ -395,8 +395,6 @@ mod tests {
         let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
         assert!(vm.check_transaction(&invalid_transaction, None).is_err());
         assert!(!vm.verify_transaction(&invalid_transaction, None));
-
-        Ok(())
     }
 
     #[test]
