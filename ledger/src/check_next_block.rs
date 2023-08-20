@@ -65,25 +65,25 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {
-            // Retrieve the latest total supply.
-            let latest_total_supply = self.latest_total_supply_in_microcredits();
-            // Retrieve the block reward from the first block ratification.
-            let block_reward = match block.ratifications()[0] {
-                Ratify::BlockReward(block_reward) => block_reward,
-                _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
-            };
-            // Retrieve the puzzle reward from the second block ratification.
-            let puzzle_reward = match block.ratifications()[1] {
-                Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
-                _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
-            };
-            // Compute the next total supply in microcredits.
-            let next_total_supply_in_microcredits =
-                update_total_supply(latest_total_supply, block_reward, puzzle_reward, block.transactions())?;
-            // Ensure the total supply in microcredits is correct.
-            if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
-                bail!("Invalid total supply in microcredits")
-            }
+            // // Retrieve the latest total supply.
+            // let latest_total_supply = self.latest_total_supply_in_microcredits();
+            // // Retrieve the block reward from the first block ratification.
+            // let block_reward = match block.ratifications()[0] {
+            //     Ratify::BlockReward(block_reward) => block_reward,
+            //     _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
+            // };
+            // // Retrieve the puzzle reward from the second block ratification.
+            // let puzzle_reward = match block.ratifications()[1] {
+            //     Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
+            //     _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
+            // };
+            // // Compute the next total supply in microcredits.
+            // let next_total_supply_in_microcredits =
+            //     update_total_supply(latest_total_supply, block_reward, puzzle_reward, block.transactions())?;
+            // // Ensure the total supply in microcredits is correct.
+            // if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
+            //     bail!("Invalid total supply in microcredits")
+            // }
         }
 
         // Construct the finalize state.

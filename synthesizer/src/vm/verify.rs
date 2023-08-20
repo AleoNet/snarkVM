@@ -396,7 +396,6 @@ mod tests {
             CurrentNetwork::ID,
             1,
             1,
-            CurrentNetwork::STARTING_SUPPLY,
             0,
             0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
