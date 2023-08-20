@@ -272,14 +272,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
                 let outcome: Result<(), String> = match transaction {
                     ConfirmedTransaction::AcceptedDeploy(_, transaction, finalize) => {
-                        // Extract the deployment from the transaction.
-                        let deployment = match transaction {
-                            Transaction::Deploy(_, _, deployment, _) => deployment,
+                        // Extract the deployment and fee from the transaction.
+                        let (deployment, fee) = match transaction {
+                            Transaction::Deploy(_, _, deployment, fee) => (deployment, fee),
                             // Note: This will abort the entire atomic batch.
                             _ => return Err("Expected deploy transaction".to_string()),
                         };
-                        // The finalize operation here involves appending the 'stack',
-                        // and adding the program to the finalize tree.
+                        // First, finalize the fee.
+                        if let Err(_error) = process.finalize_fee(state, store, fee) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to finalize the fee in an accepted deploy transaction".to_string());
+                        }
+                        // Next, finalize the deployment.
+                        // The finalize operation here involves appending the 'stack', and adding the program to the finalize tree.
                         match process.finalize_deployment(store, deployment) {
                             // Ensure the finalize operations match the expected.
                             Ok((stack, finalize_operations)) => match finalize == &finalize_operations {
@@ -298,12 +303,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         Ok(())
                     }
                     ConfirmedTransaction::AcceptedExecute(_, transaction, finalize) => {
-                        // Extract the execution from the transaction.
-                        let execution = match transaction {
-                            Transaction::Execute(_, execution, _) => execution,
+                        // Extract the execution and fee from the transaction.
+                        let (execution, fee) = match transaction {
+                            Transaction::Execute(_, execution, fee) => (execution, fee),
                             // Note: This will abort the entire atomic batch.
                             _ => return Err("Expected execute transaction".to_string()),
                         };
+                        // First, finalize the fee, if one is given.
+                        if let Some(fee) = fee {
+                            if let Err(_error) = process.finalize_fee(state, store, fee) {
+                                // Note: This will abort the entire atomic batch.
+                                return Err("Failed to finalize the fee in an accepted execute transaction".to_string());
+                            }
+                        }
+                        // Next, finalize the execution.
                         // The finalize operation here involves calling 'update_key_value',
                         // and update the respective leaves of the finalize tree.
                         match process.finalize_execution(state, store, execution) {
@@ -348,6 +361,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected deploy transaction".to_string());
                         }
+                        // Lastly, finalize the fee.
+                        if let Err(_error) = process.finalize_fee(state, store, fee) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to finalize the fee in a rejected deploy transaction".to_string());
+                        }
                         Ok(())
                     }
                     ConfirmedTransaction::RejectedExecute(_, Transaction::Fee(_, fee), rejected) => {
@@ -369,13 +387,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Ensure this fee corresponds to the execution.
                         if candidate_execution_id != expected_execution_id {
                             // Note: This will abort the entire atomic batch.
-                            return Err("Mismatch in fee for a rejected execution transaction".to_string());
+                            return Err("Mismatch in fee for a rejected execute transaction".to_string());
                         }
                         // Attempt to finalize the execution, which should fail.
                         #[cfg(debug_assertions)]
                         if process.finalize_execution(state, store, execution).is_ok() {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected execute transaction".to_string());
+                        }
+                        // Lastly, finalize the fee.
+                        if let Err(_error) = process.finalize_fee(state, store, fee) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to finalize the fee in a rejected execute transaction".to_string());
                         }
                         Ok(())
                     }
