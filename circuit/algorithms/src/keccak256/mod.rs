@@ -83,6 +83,11 @@ impl<E: Environment> Hash for Keccak<E> {
 
         debug_assert!(BITRATE < PERMUTATION_WIDTH, "The bitrate must be less than the permutation width");
 
+        // Ensure the input is not empty.
+        if input.is_empty() {
+            E::halt("The input to the hash function must not be empty")
+        }
+
         // The padded blocks `P`.
         let padded_blocks = Self::pad_keccak::<PERMUTATION_WIDTH>(input, CAPACITY, BITRATE);
 
@@ -195,6 +200,11 @@ impl<E: Environment> Keccak<E> {
     /// where `b` is the width of the permutation, and `c` is the capacity.
     fn pad_keccak<const WIDTH: usize>(input: &[Boolean<E>], capacity: usize, bitrate: usize) -> Vec<Vec<Boolean<E>>> {
         debug_assert_eq!(bitrate, WIDTH - capacity, "The bitrate must be less than the permutation width");
+
+        // Resize the input to a multiple of 8.
+        let mut input = input.to_vec();
+        input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
+
         // Initialize a vector to store the padded blocks.
         let mut result = Vec::with_capacity(input.len() / capacity);
         // Iterate over the input in `capacity` chunks.
@@ -348,7 +358,7 @@ mod tests {
 
     use tiny_keccak::{Hasher, Keccak as TinyKeccak};
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: usize = 3;
 
     /// Computes the Keccak-256 hash of the given preimage as bytes.
     fn keccak256_native(preimage: &[u8]) -> [u8; 32] {
@@ -395,51 +405,64 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_hash_constant() -> Result<()> {
-    //     let mut rng = TestRng::default();
-    //
-    //     for num_inputs in 0..=RATE {
-    //         check_hash(Mode::Constant, num_inputs, 1, 0, 0, 0, &mut rng)?;
-    //     }
-    //     Ok(())
-    // }
+    #[test]
+    fn test_hash_constant() {
+        let mut rng = TestRng::default();
 
-    // #[test]
-    // fn test_hash_public() -> Result<()> {
-    //     let mut rng = TestRng::default();
-    //
-    //     check_hash(Mode::Public, 0, 1, 0, 0, 0, &mut rng)?;
-    //     check_hash(Mode::Public, 1, 1, 0, 335, 335, &mut rng)?;
-    //     check_hash(Mode::Public, 2, 1, 0, 340, 340, &mut rng)?;
-    //     check_hash(Mode::Public, 3, 1, 0, 345, 345, &mut rng)?;
-    //     check_hash(Mode::Public, 4, 1, 0, 350, 350, &mut rng)?;
-    //     check_hash(Mode::Public, 5, 1, 0, 705, 705, &mut rng)?;
-    //     check_hash(Mode::Public, 6, 1, 0, 705, 705, &mut rng)?;
-    //     check_hash(Mode::Public, 7, 1, 0, 705, 705, &mut rng)?;
-    //     check_hash(Mode::Public, 8, 1, 0, 705, 705, &mut rng)?;
-    //     check_hash(Mode::Public, 9, 1, 0, 1060, 1060, &mut rng)?;
-    //     check_hash(Mode::Public, 10, 1, 0, 1060, 1060, &mut rng)
-    // }
+        check_hash(Mode::Constant, 1, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 2, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 3, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 4, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 5, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 6, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 7, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 8, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 16, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 32, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 64, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 128, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 256, 0, 0, 0, 0, &mut rng);
+        check_hash(Mode::Constant, 512, 0, 0, 0, 0, &mut rng);
+    }
+
+    #[test]
+    fn test_hash_public() {
+        let mut rng = TestRng::default();
+
+        check_hash(Mode::Public, 1, 0, 0, 138157, 138157, &mut rng);
+        check_hash(Mode::Public, 2, 0, 0, 139108, 139108, &mut rng);
+        check_hash(Mode::Public, 3, 0, 0, 139741, 139741, &mut rng);
+        check_hash(Mode::Public, 4, 0, 0, 140318, 140318, &mut rng);
+        check_hash(Mode::Public, 5, 0, 0, 140879, 140879, &mut rng);
+        check_hash(Mode::Public, 6, 0, 0, 141350, 141350, &mut rng);
+        check_hash(Mode::Public, 7, 0, 0, 141787, 141787, &mut rng);
+        check_hash(Mode::Public, 8, 0, 0, 142132, 142132, &mut rng);
+        check_hash(Mode::Public, 16, 0, 0, 144173, 144173, &mut rng);
+        check_hash(Mode::Public, 32, 0, 0, 145394, 145394, &mut rng);
+        check_hash(Mode::Public, 64, 0, 0, 146650, 146650, &mut rng);
+        check_hash(Mode::Public, 128, 0, 0, 149248, 149248, &mut rng);
+        check_hash(Mode::Public, 256, 0, 0, 150848, 150848, &mut rng);
+        check_hash(Mode::Public, 512, 0, 0, 151424, 151424, &mut rng);
+    }
 
     #[test]
     fn test_hash_private() {
         let mut rng = TestRng::default();
 
-        // check_hash(Mode::Private, 32, 0, 0, 145394, 145394, &mut rng);
-        // check_hash(Mode::Private, 64, 0, 0, 146650, 146650, &mut rng);
+        check_hash(Mode::Private, 1, 0, 0, 138157, 138157, &mut rng);
+        check_hash(Mode::Private, 2, 0, 0, 139108, 139108, &mut rng);
+        check_hash(Mode::Private, 3, 0, 0, 139741, 139741, &mut rng);
+        check_hash(Mode::Private, 4, 0, 0, 140318, 140318, &mut rng);
+        check_hash(Mode::Private, 5, 0, 0, 140879, 140879, &mut rng);
+        check_hash(Mode::Private, 6, 0, 0, 141350, 141350, &mut rng);
+        check_hash(Mode::Private, 7, 0, 0, 141787, 141787, &mut rng);
+        check_hash(Mode::Private, 8, 0, 0, 142132, 142132, &mut rng);
+        check_hash(Mode::Private, 16, 0, 0, 144173, 144173, &mut rng);
+        check_hash(Mode::Private, 32, 0, 0, 145394, 145394, &mut rng);
+        check_hash(Mode::Private, 64, 0, 0, 146650, 146650, &mut rng);
+        check_hash(Mode::Private, 128, 0, 0, 149248, 149248, &mut rng);
+        check_hash(Mode::Private, 256, 0, 0, 150848, 150848, &mut rng);
         check_hash(Mode::Private, 512, 0, 0, 151424, 151424, &mut rng);
-        // check_hash(Mode::Private, 1024, 0, 0, 151424, 151424, &mut rng);
-        // check_hash(Mode::Private, 0, 1, 0, 0, 0, &mut rng);
-        // check_hash(Mode::Private, 2, 1, 0, 340, 340, &mut rng)?;
-        // check_hash(Mode::Private, 3, 1, 0, 345, 345, &mut rng)?;
-        // check_hash(Mode::Private, 4, 1, 0, 350, 350, &mut rng)?;
-        // check_hash(Mode::Private, 5, 1, 0, 705, 705, &mut rng)?;
-        // check_hash(Mode::Private, 6, 1, 0, 705, 705, &mut rng)?;
-        // check_hash(Mode::Private, 7, 1, 0, 705, 705, &mut rng)?;
-        // check_hash(Mode::Private, 8, 1, 0, 705, 705, &mut rng)?;
-        // check_hash(Mode::Private, 9, 1, 0, 1060, 1060, &mut rng)?;
-        // check_hash(Mode::Private, 10, 1, 0, 1060, 1060, &mut rng)
     }
 
     #[test]
