@@ -402,8 +402,8 @@ pub mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    /// Samples a random deployment transaction with private or public fee.
-    pub fn sample_deployment_transaction(private_fee: bool, rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    /// Samples a random deployment transaction with a private or public fee.
+    pub fn sample_deployment_transaction(is_fee_private: bool, rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample a deployment.
@@ -415,7 +415,7 @@ pub mod test_helpers {
         let owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
 
         // Sample the fee.
-        let fee = match private_fee {
+        let fee = match is_fee_private {
             true => crate::transaction::fee::test_helpers::sample_fee_private(deployment_id, rng),
             false => crate::transaction::fee::test_helpers::sample_fee_public(deployment_id, rng),
         };
@@ -424,15 +424,18 @@ pub mod test_helpers {
         Transaction::from_deployment(owner, deployment, fee).unwrap()
     }
 
-    /// Samples a random execution transaction with private or public fee.
-    pub fn sample_execution_transaction_with_fee(private_fee: bool, rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    /// Samples a random execution transaction with a private or public fee.
+    pub fn sample_execution_transaction_with_fee(
+        is_fee_private: bool,
+        rng: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
         // Sample an execution.
         let execution = crate::transaction::execution::test_helpers::sample_execution(rng);
         // Compute the execution ID.
         let execution_id = execution.to_execution_id().unwrap();
 
         // Sample the fee.
-        let fee = match private_fee {
+        let fee = match is_fee_private {
             true => crate::transaction::fee::test_helpers::sample_fee_private(execution_id, rng),
             false => crate::transaction::fee::test_helpers::sample_fee_public(execution_id, rng),
         };
