@@ -276,7 +276,7 @@ mod tests {
         assert!(vm.verify_transaction(&deployment_transaction, None));
 
         // Fetch an execution transaction.
-        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         // Ensure the transaction verifies.
         assert!(vm.check_transaction(&execution_transaction, None).is_ok());
         assert!(vm.verify_transaction(&execution_transaction, None));
@@ -317,7 +317,7 @@ mod tests {
 
         // Fetch execution transactions.
         let transactions = [
-            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng),
             crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng),
         ];
 
@@ -349,7 +349,7 @@ mod tests {
 
         // Fetch execution transactions.
         let transactions = [
-            crate::vm::test_helpers::sample_execution_transaction_with_fee(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng),
             crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng),
         ];
 
@@ -387,7 +387,7 @@ mod tests {
         vm.add_next_block(&genesis).unwrap();
 
         // Fetch a valid execution transaction.
-        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         assert!(vm.check_transaction(&valid_transaction, None).is_ok());
         assert!(vm.verify_transaction(&valid_transaction, None));
 
