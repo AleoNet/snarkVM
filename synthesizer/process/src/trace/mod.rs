@@ -114,10 +114,7 @@ impl<N: Network> Trace<N> {
     /// Returns the inclusion assignments and global state root for the current transition(s).
     pub fn prepare(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
-        let (inclusion_assignments, global_state_root) = match self.is_fee() {
-            true => self.inclusion_tasks.prepare_fee(&self.transitions[0], query)?,
-            false => self.inclusion_tasks.prepare_execution(&self.transitions, query)?,
-        };
+        let (inclusion_assignments, global_state_root) = self.inclusion_tasks.prepare(&self.transitions, query)?;
         // Store the inclusion assignments and global state root.
         self.inclusion_assignments
             .set(inclusion_assignments)
@@ -130,10 +127,8 @@ impl<N: Network> Trace<N> {
     #[cfg(feature = "async")]
     pub async fn prepare_async(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
-        let (inclusion_assignments, global_state_root) = match self.is_fee() {
-            true => self.inclusion_tasks.prepare_fee_async(&self.transitions[0], query).await?,
-            false => self.inclusion_tasks.prepare_execution_async(&self.transitions, query).await?,
-        };
+        let (inclusion_assignments, global_state_root) =
+            self.inclusion_tasks.prepare_async(&self.transitions, query).await?;
         // Store the inclusion assignments and global state root.
         self.inclusion_assignments
             .set(inclusion_assignments)
