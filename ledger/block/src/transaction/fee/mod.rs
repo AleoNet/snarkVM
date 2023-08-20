@@ -86,7 +86,8 @@ impl<N: Network> Fee<N> {
     /// Returns the amount (in microcredits).
     pub fn amount(&self) -> Result<U64<N>> {
         // Determine the input index for the amount.
-        let input_index = if self.is_fee_private() { 1 } else { 0 };
+        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
+        let input_index = if self.transition.finalize().is_none() { 1 } else { 0 };
         // Retrieve the amount (in microcredits) as a plaintext value.
         match self.transition.inputs().get(input_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
