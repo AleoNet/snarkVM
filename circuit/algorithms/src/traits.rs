@@ -37,7 +37,7 @@ pub trait CommitUncompressed {
 /// A trait for a hash function.
 pub trait Hash {
     type Input: Inject + Eject + Clone;
-    type Output: Inject + Eject + Ternary<Output = Self::Output> + ToBits + Clone;
+    type Output: Inject + Eject + ToBits + Clone;
 
     /// Returns the hash of the given input.
     fn hash(&self, input: &[Self::Input]) -> Self::Output;

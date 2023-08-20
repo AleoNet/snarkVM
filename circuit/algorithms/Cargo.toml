@@ -21,6 +21,9 @@ path = "../../fields"
 version = "=0.14.6"
 default-features = false
 
+[dev-dependencies.anyhow]
+version = "1.0.73"
+
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
 default-features = false
@@ -29,8 +32,9 @@ default-features = false
 path = "../../utilities"
 default-features = false
 
-[dev-dependencies.anyhow]
-version = "1.0.73"
+[dev-dependencies.tiny-keccak]
+version = "2"
+features = [ "keccak", "sha3" ]
 
 [features]
 default = [ "enable_console" ]

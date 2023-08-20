@@ -39,6 +39,10 @@ version = "1.11"
 default-features = false
 features = [ "const_generics", "const_new" ]
 
+[dependencies.tiny-keccak]
+version = "2"
+features = [ "keccak", "sha3" ]
+
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
 default-features = false
