@@ -309,7 +309,6 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         CurrentNetwork::ID,
         previous_block.round() + 1,
         previous_block.height() + 1,
-        CurrentNetwork::STARTING_SUPPLY,
         0,
         0,
         CurrentNetwork::GENESIS_COINBASE_TARGET,

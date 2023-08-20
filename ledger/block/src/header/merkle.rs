@@ -121,7 +121,6 @@ mod tests {
                     CurrentNetwork::ID,
                     u64::rand(rng),
                     u32::rand(rng),
-                    u64::rand(rng),
                     u128::rand(rng),
                     u128::rand(rng),
                     coinbase_target,
