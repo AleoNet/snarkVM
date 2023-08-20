@@ -244,10 +244,6 @@ impl<N: Network> Trace<N> {
         }
         // Retrieve the proof.
         let Some(proof) = fee.proof() else { bail!("Expected the fee to contain a proof") };
-        // Ensure the transition contains an input record.
-        if fee.transition().inputs().iter().filter(|i| matches!(i, Input::Record(..))).count() != 1 {
-            bail!("Inclusion expected the fee to contain an input record")
-        }
         // Verify the fee proof.
         match Self::verify_batch(
             "credits.aleo/fee (private or public)",
