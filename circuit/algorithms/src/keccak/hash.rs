@@ -154,12 +154,17 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
         rotl: &[usize],
     ) -> Vec<Boolean<E>> {
         debug_assert_eq!(input.len(), WIDTH, "The input vector must have {WIDTH} bits");
+        debug_assert_eq!(
+            round_constants.len(),
+            NUM_ROUNDS,
+            "The round constants vector must have {NUM_ROUNDS} elements"
+        );
 
         // Partition the input into 64-bit chunks.
-        let mut a = input.chunks(64).map(|e| U64::from_bits_le(e)).collect::<Vec<_>>();
+        let mut a = input.chunks(64).map(U64::from_bits_le).collect::<Vec<_>>();
         // Permute the input.
-        for i in 0..NUM_ROUNDS {
-            a = Self::round(a, &round_constants[i], rotl);
+        for round_constant in round_constants.iter().take(NUM_ROUNDS) {
+            a = Self::round(a, round_constant, rotl);
         }
         // Return the permuted input.
         a.into_iter().flat_map(|e| e.to_bits_le()).collect()

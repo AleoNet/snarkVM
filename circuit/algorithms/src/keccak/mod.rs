@@ -73,6 +73,7 @@ const PERMUTATION_WIDTH: usize = 1600;
 /// of the absorbing phase.
 ///
 /// In addition, the capacity is defined as `c := b - r`.
+#[derive(Clone, Debug, Default)]
 pub struct Keccak<E: Environment, const TYPE: u8, const VARIANT: usize> {
     /// The round constants `RC[t] ∈ GF(2)` are defined as the
     /// output of a linear feedback shift register (LFSR).
