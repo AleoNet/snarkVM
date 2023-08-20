@@ -13,9 +13,8 @@
 // limitations under the License.
 
 use crate::{
-    helpers::rocksdb::{BlockDB, CommitteeDB, FinalizeDB, TransactionDB, TransitionDB},
+    helpers::rocksdb::{BlockDB, FinalizeDB, TransactionDB, TransitionDB},
     BlockStore,
-    CommitteeStore,
     ConsensusStorage,
     FinalizeStore,
 };
@@ -24,8 +23,6 @@ use console::prelude::*;
 /// An RocksDB consensus storage.
 #[derive(Clone)]
 pub struct ConsensusDB<N: Network> {
-    /// The committee store.
-    committee_store: CommitteeStore<N, CommitteeDB<N>>,
     /// The finalize store.
     finalize_store: FinalizeStore<N, FinalizeDB<N>>,
     /// The block store.
@@ -34,7 +31,6 @@ pub struct ConsensusDB<N: Network> {
 
 #[rustfmt::skip]
 impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
-    type CommitteeStorage = CommitteeDB<N>;
     type FinalizeStorage = FinalizeDB<N>;
     type BlockStorage = BlockDB<N>;
     type TransactionStorage = TransactionDB<N>;
@@ -42,23 +38,15 @@ impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
 
     /// Initializes the consensus storage.
     fn open(dev: Option<u16>) -> Result<Self> {
-        // Initialize the committee store.
-        let committee_store = CommitteeStore::<N, CommitteeDB<N>>::open(dev)?;
         // Initialize the finalize store.
         let finalize_store = FinalizeStore::<N, FinalizeDB<N>>::open(dev)?;
         // Initialize the block store.
         let block_store = BlockStore::<N, BlockDB<N>>::open(dev)?;
         // Return the consensus storage.
         Ok(Self {
-            committee_store,
             finalize_store,
             block_store,
         })
-    }
-
-    /// Returns the committee store.
-    fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage> {
-        &self.committee_store
     }
 
     /// Returns the finalize store.

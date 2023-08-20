@@ -207,7 +207,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
     /// Returns the latest committee.
     pub fn latest_committee(&self) -> Result<Committee<N>> {
-        self.vm.committee_store().current_committee()
+        self.vm.finalize_store().committee_store().current_committee()
     }
 
     /// Returns the latest state root.
@@ -253,11 +253,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         *self.current_block.read().header()
     }
 
-    /// Returns the latest total supply in microcredits.
-    pub fn latest_total_supply_in_microcredits(&self) -> u64 {
-        self.current_block.read().header().total_supply_in_microcredits()
-    }
-
     /// Returns the latest block cumulative weight.
     pub fn latest_cumulative_weight(&self) -> u128 {
         self.current_block.read().cumulative_weight()
@@ -268,9 +263,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().cumulative_proof_target()
     }
 
-    /// Returns the latest block coinbase accumulator point.
-    pub fn latest_coinbase_accumulator_point(&self) -> Field<N> {
-        self.current_block.read().header().coinbase_accumulator_point()
+    /// Returns the latest block solutions root.
+    pub fn latest_solutions_root(&self) -> Field<N> {
+        self.current_block.read().header().solutions_root()
     }
 
     /// Returns the latest block coinbase target.
@@ -426,7 +421,7 @@ pub(crate) mod test_helpers {
         // Initialize the store.
         let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
         // Create a genesis block.
-        let genesis = VM::from(store).unwrap().genesis(&private_key, rng).unwrap();
+        let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
         // Initialize the ledger with the genesis block.
         let ledger = CurrentLedger::load(genesis.clone(), None).unwrap();
         // Ensure the genesis block is correct.

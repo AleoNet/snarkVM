@@ -12,7 +12,7 @@
       - 10field
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"5865068608011418422224730089943255935039885360767033482275064406660086318188field","checksum":"8400348966800217039000824247188431750176049151601750346245538966386787937430field","value":"record1qyqsq8pz8r6zxnt7ww90fqgd49p9cfk0cf4eyt0dqupx82xd0l4t3kgrqyxx66trwfhkxun9v35hguerqqpqzq888a6mpm5zg69zrym5gudpadqqk3yfqdytnzu92x850erspzmhp2pz74qg8actaw3pqpj5pjh5z3n25nxfsy50k0m6hq0jvr7z0ftsj7gta0u"}'
+      - '{"type":"record","id":"4690434529858372297216218602724220752843133729074654073042743228011368536476field","checksum":"4934664862398260205374211142263468485259197348289565825488838729190272874320field","value":"record1qyqspdtuas7xpngj4z7rzq3vutjmzxx8kwfpw0l8sd5mttw52rxd5rg9qyxx66trwfhkxun9v35hguerqqpqzqxfjsyz2xljnzed0u24gfqaf356mk3x2gsrjy36g2nxqs20p2tnpf0j6cnqrysxxf7mdh2jhe4fgpeud7dw5j9dagp03ayggazlvw0sstjmljw"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -30,7 +30,7 @@
         }
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"2293251090459887378210035899140530750798786499127472787362677257453095812893field","checksum":"7061011202293438949112945145198563560210541895235470633931544643605320316026field","value":"record1qyqsqm608z05c93fzttldfjvqx4atpssxjf3cdxxk7vp05j20nxs5fqtqyxx66trwfhkxun9v35hguerqqpqzqzp59vuv9j5k2d2flwavsz97wpq5h7hqwluwqgl4csup47t3g4sp229u7eyzh83z09ukunr0hp6xndrdc5e53xcpdzrxfhaalqfqg3sqwk32dw"}'
+      - '{"type":"record","id":"6294175323881659340061588133757308662003146844588299742660330033996430320537field","checksum":"4357057780490763043327404179788523841530149852564125532546444012284388702202field","value":"record1qyqsqu02lgu06kat3uq6ajmtffhn0gst4j80ahrt7zjrrq0cgpkpedgrqyxx66trwfhkxun9v35hguerqqpqzqykcg2pd86nmxlamal3nk2qeu98r6etavtrj52l9m64up0vp0j2q8wl4hap6f0zpcyau6cv5z3a7jv7wxcqr5mrs43jufnlmn7kpc6pzf5agsr"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -42,9 +42,9 @@
       - 'true'
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"5216707314162666819658864166080212229069833984785523754508327005403425230470field","checksum":"3965820071902907720805562745631564911263659226136970268433202181759029154540field","value":"record1qyqsq7hwqhhqzt4fxak4gzpug973s7aaalqelkdu8zhpc9n6cccvtqs8qyxx66trwfhkxun9v35hguerqqpqzqpsg3avztzaz08y60yh7dnyw89m6rfqky8pk7g9w2fz5vhtpca0q35phy06vml4nfxr5zf4007mhcnuxn3mlcllnjuts5yftmx9jh0ssh60v83"}'
+      - '{"type":"record","id":"1930807833239891597558266244843806315757365370192277018045211893099287451025field","checksum":"806673872190416061168942650433027586905022070636283233373521919115959133547field","value":"record1qyqsqy26dhdkfuj8n70v8wv7uyr6m4dg0zkjhd26cevcjm2vrsjkwwc2qyxx66trwfhkxun9v35hguerqqpqzqphltxgzyjxk8m0h6per29vyvf0lsz8djj2rakmpwcnt9qjz8phpvwtrqx3epu3hk4f56e7dnxyjz6cagmkgty6gpgvwtpm3a620unqxxueg7k"}'
       finalize: []
-  speculate: the execution was accepted
+  speculate: the execution was rejected
   add_next_block: succeeded.
 - execute:
     test_rand.aleo/rand_chacha_check:
@@ -54,7 +54,7 @@
       - 'false'
     credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"7641163446557867747168745630825878755263152802153347768342157855416636029463field","checksum":"4961376082638078312618884917735244450752671055344688672716389709119261721174field","value":"record1qyqsqu86kvyj3ea49ymqn28z7ehkcpmht26e8qzc2d5cp87hrphnfzcvqyxx66trwfhkxun9v35hguerqqpqzq8nzdyqdcmchrwp3qthkt7y4690kwv73p60azr7pvlexk9g6reszpupkq8zm0askjnj8vw4s5k9rtsfch9h0u4mc5rv979vgkj2sn0svw0e9y4"}'
+      - '{"type":"record","id":"7393075560667462932228445526523815064117532456259901391879320918363476371812field","checksum":"694815795049196892664847520235186663696181395447757923101700704468232929818field","value":"record1qyqsp249v9rv3g6re8d0apfr8vfrmmm00kwt68nn7pzvvj0ugnv38zcsqyxx66trwfhkxun9v35hguerqqpqzqzv54s2s8t0a4efe0ar3nd0s97yc3f3lmcyuhl97ltc79slp2n8z29lzdgzcg4mwzsc7dtr64t57rpyvgswpvq0xdeeznxy7tzz7a9pzh9j54h"}'
       finalize: []
-  speculate: the execution was accepted
+  speculate: the execution was rejected
   add_next_block: succeeded.

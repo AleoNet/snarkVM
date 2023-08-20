@@ -232,12 +232,11 @@ macro_rules! atomic_finalize {
         // Start the atomic batch.
         $self.start_atomic();
 
+        // Run the atomic operations.
+        //
         // Wrap the operations that should be batched in a closure to be able to abort the entire
         // write batch if any of them fails.
-        let run_atomic_ops = || -> Result<_, String> { $ops };
-
-        // Run the atomic operations.
-        match ($finalize_mode, run_atomic_ops()) {
+        match ($finalize_mode, || -> Result<_, String> { $ops }()) {
             // If this is a successful real run, commit the atomic batch.
             (FinalizeMode::RealRun, Ok(result)) => {
                 $self.finish_atomic()?;

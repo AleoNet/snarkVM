@@ -15,11 +15,5 @@
 mod bft;
 pub use bft::*;
 
-mod rewards;
-pub use rewards::*;
-
 mod supply;
 pub use supply::*;
-
-mod target;
-pub use target::*;
