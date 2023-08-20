@@ -103,21 +103,35 @@ impl<N: Network> Trace<N> {
 impl<N: Network> Trace<N> {
     /// Returns `true` if the trace is for a fee transition.
     pub fn is_fee(&self) -> bool {
+        self.is_fee_private() || self.is_fee_public()
+    }
+
+    /// Returns `true` if the trace is for a private fee transition.
+    pub fn is_fee_private(&self) -> bool {
         match self.transitions.len() {
             // If there is 1 transition, check if the transition is a fee transition.
-            1 => self.transitions[0].is_fee_private() || self.transitions[0].is_fee_public(),
+            1 => self.transitions[0].is_fee_private(),
             // Otherwise, set the indicator to 'false'.
             _ => false,
         }
     }
 
+    /// Returns `true` if the trace is for a public fee transition.
+    pub fn is_fee_public(&self) -> bool {
+        match self.transitions.len() {
+            // If there is 1 transition, check if the transition is a fee transition.
+            1 => self.transitions[0].is_fee_public(),
+            // Otherwise, set the indicator to 'false'.
+            _ => false,
+        }
+    }
+}
+
+impl<N: Network> Trace<N> {
     /// Returns the inclusion assignments and global state root for the current transition(s).
     pub fn prepare(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
-        let (inclusion_assignments, global_state_root) = match self.is_fee() {
-            true => self.inclusion_tasks.prepare_fee(&self.transitions[0], query)?,
-            false => self.inclusion_tasks.prepare_execution(&self.transitions, query)?,
-        };
+        let (inclusion_assignments, global_state_root) = self.inclusion_tasks.prepare(&self.transitions, query)?;
         // Store the inclusion assignments and global state root.
         self.inclusion_assignments
             .set(inclusion_assignments)
@@ -130,10 +144,8 @@ impl<N: Network> Trace<N> {
     #[cfg(feature = "async")]
     pub async fn prepare_async(&mut self, query: impl QueryTrait<N>) -> Result<()> {
         // Compute the inclusion assignments.
-        let (inclusion_assignments, global_state_root) = match self.is_fee() {
-            true => self.inclusion_tasks.prepare_fee_async(&self.transitions[0], query).await?,
-            false => self.inclusion_tasks.prepare_execution_async(&self.transitions, query).await?,
-        };
+        let (inclusion_assignments, global_state_root) =
+            self.inclusion_tasks.prepare_async(&self.transitions, query).await?;
         // Store the inclusion assignments and global state root.
         self.inclusion_assignments
             .set(inclusion_assignments)
@@ -173,12 +185,17 @@ impl<N: Network> Trace<N> {
     /// Returns a new fee with a proof, for the current inclusion assignment and global state root.
     pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Fee<N>> {
         // Ensure this is a fee.
-        ensure!(self.is_fee(), "The trace cannot call 'prove_fee' for an execution type");
+        let is_fee_public = self.is_fee_public();
+        let is_fee_private = self.is_fee_private();
+        ensure!(is_fee_public || is_fee_private, "The trace cannot call 'prove_fee' for an execution type");
         // Retrieve the inclusion assignments.
         let inclusion_assignments =
             self.inclusion_assignments.get().ok_or_else(|| anyhow!("Inclusion assignments have not been set"))?;
-        // Ensure there is only 1 inclusion assignment.
-        ensure!(inclusion_assignments.len() == 1, "Expected 1 inclusion assignment for proving the fee transition");
+        // Ensure the correct number of inclusion assignments are provided.
+        match is_fee_public {
+            true => ensure!(inclusion_assignments.is_empty(), "Expected 0 inclusion assignments for proving the fee"),
+            false => ensure!(inclusion_assignments.len() == 1, "Expected 1 inclusion assignment for proving the fee"),
+        }
         // Retrieve the global state root.
         let global_state_root =
             self.global_state_root.get().ok_or_else(|| anyhow!("Global state root has not been set"))?;
@@ -207,6 +224,10 @@ impl<N: Network> Trace<N> {
     ) -> Result<()> {
         // Retrieve the global state root.
         let global_state_root = execution.global_state_root();
+        // Ensure the global state root is not zero.
+        if global_state_root == N::StateRoot::default() {
+            bail!("Inclusion expected the global state root in the execution to *not* be zero")
+        }
         // Retrieve the proof.
         let Some(proof) = execution.proof() else { bail!("Expected the execution to contain a proof") };
         // Verify the execution proof.
@@ -227,10 +248,6 @@ impl<N: Network> Trace<N> {
         }
         // Retrieve the proof.
         let Some(proof) = fee.proof() else { bail!("Expected the fee to contain a proof") };
-        // Ensure the transition contains an input record.
-        if fee.transition().inputs().iter().filter(|i| matches!(i, Input::Record(..))).count() != 1 {
-            bail!("Inclusion expected the fee to contain an input record")
-        }
         // Verify the fee proof.
         match Self::verify_batch(
             "credits.aleo/fee (private or public)",

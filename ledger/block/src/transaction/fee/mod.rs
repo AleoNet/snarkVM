@@ -20,7 +20,7 @@ use crate::{Input, Transition};
 use console::{
     network::prelude::*,
     program::{Literal, Plaintext, Value},
-    types::{Address, U64},
+    types::{Address, Field, U64},
 };
 use synthesizer_snark::Proof;
 
@@ -85,10 +85,25 @@ impl<N: Network> Fee<N> {
 
     /// Returns the amount (in microcredits).
     pub fn amount(&self) -> Result<U64<N>> {
+        // Determine the input index for the amount.
+        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
+        let input_index = if self.transition.finalize().is_none() { 1 } else { 0 };
         // Retrieve the amount (in microcredits) as a plaintext value.
-        match self.transition.inputs().get(1) {
+        match self.transition.inputs().get(input_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
             _ => bail!("Failed to retrieve the fee (in microcredits) from the fee transition"),
+        }
+    }
+
+    /// Returns the deployment or execution ID.
+    pub fn deployment_or_execution_id(&self) -> Result<Field<N>> {
+        // Determine the input index for the deployment or execution ID.
+        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
+        let input_index = if self.transition.finalize().is_none() { 2 } else { 1 };
+        // Retrieve the deployment or execution ID as a plaintext value.
+        match self.transition.inputs().get(input_index) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(id), _)))) => Ok(*id),
+            _ => bail!("Failed to retrieve the deployment or execution ID from the fee transition"),
         }
     }
 
@@ -171,6 +186,52 @@ pub mod test_helpers {
         // Authorize the fee.
         let authorization =
             process.authorize_fee_private(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+        // Construct the fee trace.
+        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        // Insert the block into the block store.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+        block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
+
+        // Prepare the assignments.
+        trace.prepare(Query::from(block_store)).unwrap();
+        // Compute the proof and construct the fee.
+        let fee = trace.prove_fee::<CurrentAleo, _>(rng).unwrap();
+
+        // Convert the fee.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+        Fee::from_str(&fee.to_string()).unwrap()
+    }
+
+    /// Samples a random hardcoded public fee.
+    pub fn sample_fee_public_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+        static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Sample a deployment or execution ID.
+                let deployment_or_execution_id = Field::rand(rng);
+                // Sample a fee.
+                sample_fee_public(deployment_or_execution_id, rng)
+            })
+            .clone()
+    }
+
+    /// Samples a random public fee.
+    pub fn sample_fee_public(
+        deployment_or_execution_id: Field<CurrentNetwork>,
+        rng: &mut TestRng,
+    ) -> Fee<CurrentNetwork> {
+        // Sample the genesis block and private key.
+        let (block, _, private_key) = crate::test_helpers::sample_genesis_block_and_components(rng);
+        // Set the fee amount.
+        let fee = 10_000_000;
+
+        // Initialize the process.
+        let process = Process::load().unwrap();
+        // Authorize the fee.
+        let authorization = process.authorize_fee_public(&private_key, fee, deployment_or_execution_id, rng).unwrap();
         // Construct the fee trace.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 

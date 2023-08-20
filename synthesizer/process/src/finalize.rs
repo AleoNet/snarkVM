@@ -97,76 +97,20 @@ impl<N: Network> Process<N> {
             //  Currently this loop assumes a linearly execution stack.
             // Finalize each transition, starting from the last one.
             for transition in execution.transitions() {
-                #[cfg(debug_assertions)]
-                println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
-
-                // Retrieve the stack.
-                let stack = self.get_stack(transition.program_id())?;
+                // Retrieve the program ID.
+                let program_id = transition.program_id();
                 // Retrieve the function name.
                 let function_name = transition.function_name();
-
-                // If there is a finalize scope, finalize the function.
-                if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
-                    // Retrieve the finalize inputs.
-                    let inputs = match transition.finalize() {
-                        Some(inputs) => inputs,
-                        // Ensure the transition contains finalize inputs.
-                        None => bail!("The transition is missing inputs for 'finalize'"),
-                    };
-
-                    // Initialize the registers.
-                    let mut registers = FinalizeRegisters::<N>::new(
-                        state,
-                        *transition.id(),
-                        *function_name,
-                        stack.get_finalize_types(finalize.name())?.clone(),
-                    );
-
-                    // Store the inputs.
-                    finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(
-                        |(register, input)| {
-                            // Assign the input value to the register.
-                            registers.store(stack, register, input.clone())
-                        },
-                    )?;
-
-                    // Initialize a counter for the index of the commands.
-                    let mut counter = 0;
-
-                    // Evaluate the commands.
-                    while counter < finalize.commands().len() {
-                        // Retrieve the command.
-                        let command = &finalize.commands()[counter];
-                        // Finalize the command.
-                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match &command {
-                            Command::BranchEq(branch_eq) => {
-                                counter = branch_to(counter, branch_eq, finalize, stack, &registers)?;
-                                Ok(None)
-                            }
-                            Command::BranchNeq(branch_neq) => {
-                                counter = branch_to(counter, branch_neq, finalize, stack, &registers)?;
-                                Ok(None)
-                            }
-                            _ => {
-                                let operations = command.finalize(stack, store, &mut registers);
-                                counter += 1;
-                                operations
-                            }
-                        }));
-
-                        match result {
-                            // If the evaluation succeeds with an operation, add it to the list.
-                            Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
-                            // If the evaluation succeeds with no operation, continue.
-                            Ok(Ok(None)) => (),
-                            // If the evaluation fails, bail and return the error.
-                            Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
-                            // If the evaluation fails, bail and return the error.
-                            Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
-                        }
-                    }
-                    lap!(timer, "Finalize transition for {function_name}");
+                // Retrieve the stack.
+                let stack = self.get_stack(program_id)?;
+                // Finalize the transition.
+                match finalize_transition(state, store, stack, transition) {
+                    // If the evaluation succeeds with an operation, add it to the list.
+                    Ok(operations) => finalize_operations.extend(operations),
+                    // If the evaluation fails, bail and return the error.
+                    Err(error) => bail!("'finalize' failed on '{program_id}/{function_name}' - {error}"),
                 }
+                lap!(timer, "Finalize transition for '{program_id}/{function_name}'");
             }
             finish!(timer);
 
@@ -174,6 +118,118 @@ impl<N: Network> Process<N> {
             Ok(finalize_operations)
         })
     }
+
+    /// Finalizes the fee.
+    /// This method assumes the given fee **is valid**.
+    /// This method should **only** be called by `VM::finalize()`.
+    #[inline]
+    pub fn finalize_fee<P: FinalizeStorage<N>>(
+        &self,
+        state: FinalizeGlobalState,
+        store: &FinalizeStore<N, P>,
+        fee: &Fee<N>,
+    ) -> Result<Vec<FinalizeOperation<N>>> {
+        let timer = timer!("Program::finalize_fee");
+
+        atomic_batch_scope!(store, {
+            // Retrieve the program ID.
+            let program_id = fee.program_id();
+            // Retrieve the function name.
+            let function_name = fee.function_name();
+            // Retrieve the stack.
+            let stack = self.get_stack(program_id)?;
+            // Finalize the transition.
+            let result = match finalize_transition(state, store, stack, fee) {
+                // If the evaluation succeeds, return the finalize operations.
+                Ok(finalize_operations) => Ok(finalize_operations),
+                // If the evaluation fails, bail and return the error.
+                Err(error) => bail!("'finalize' failed on '{program_id}/{function_name}' - {error}"),
+            };
+            finish!(timer, "Finalize transition for '{program_id}/{function_name}'");
+            // Return the result.
+            result
+        })
+    }
+}
+
+/// Finalizes the given transition.
+fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
+    state: FinalizeGlobalState,
+    store: &FinalizeStore<N, P>,
+    stack: &Stack<N>,
+    transition: &Transition<N>,
+) -> Result<Vec<FinalizeOperation<N>>> {
+    // Retrieve the function name.
+    let function_name = transition.function_name();
+
+    #[cfg(debug_assertions)]
+    println!("Finalizing transition for {}/{function_name}...", transition.program_id());
+    debug_assert_eq!(stack.program_id(), transition.program_id());
+
+    // Initialize a list for finalize operations.
+    let mut finalize_operations = Vec::new();
+
+    // If there is a finalize scope, finalize the function.
+    if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
+        // Retrieve the finalize inputs.
+        let inputs = match transition.finalize() {
+            Some(inputs) => inputs,
+            // Ensure the transition contains finalize inputs.
+            None => bail!("The transition is missing inputs for 'finalize'"),
+        };
+
+        // Initialize the registers.
+        let mut registers = FinalizeRegisters::<N>::new(
+            state,
+            *transition.id(),
+            *function_name,
+            stack.get_finalize_types(finalize.name())?.clone(),
+        );
+
+        // Store the inputs.
+        finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
+            // Assign the input value to the register.
+            registers.store(stack, register, input.clone())
+        })?;
+
+        // Initialize a counter for the index of the commands.
+        let mut counter = 0;
+
+        // Evaluate the commands.
+        while counter < finalize.commands().len() {
+            // Retrieve the command.
+            let command = &finalize.commands()[counter];
+            // Finalize the command.
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match &command {
+                Command::BranchEq(branch_eq) => {
+                    counter = branch_to(counter, branch_eq, finalize, stack, &registers)?;
+                    Ok(None)
+                }
+                Command::BranchNeq(branch_neq) => {
+                    counter = branch_to(counter, branch_neq, finalize, stack, &registers)?;
+                    Ok(None)
+                }
+                _ => {
+                    let operations = command.finalize(stack, store, &mut registers);
+                    counter += 1;
+                    operations
+                }
+            }));
+
+            match result {
+                // If the evaluation succeeds with an operation, add it to the list.
+                Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
+                // If the evaluation succeeds with no operation, continue.
+                Ok(Ok(None)) => (),
+                // If the evaluation fails, bail and return the error.
+                Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                // If the evaluation fails, bail and return the error.
+                Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
+            }
+        }
+    }
+    // Return the finalize operations.
+    Ok(finalize_operations)
 }
 
 // A helper function that returns the index to branch to.

@@ -216,20 +216,39 @@ mod tests {
     #[test]
     fn test_verify_fee() {
         let rng = &mut TestRng::default();
-        // Fetch a deployment transaction.
-        let deployment_transaction = ledger_test_helpers::sample_deployment_transaction(rng);
+
+        // Fetch transactions.
+        let transactions = [
+            ledger_test_helpers::sample_deployment_transaction(true, rng),
+            ledger_test_helpers::sample_deployment_transaction(false, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(true, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(false, rng),
+            ledger_test_helpers::sample_fee_private_transaction(rng),
+            ledger_test_helpers::sample_fee_public_transaction(rng),
+        ];
 
         // Construct a new process.
         let process = Process::load().unwrap();
 
-        match deployment_transaction {
-            Transaction::Deploy(_, _, deployment, fee) => {
-                // Compute the deployment ID.
-                let deployment_id = deployment.to_deployment_id().unwrap();
+        for transaction in transactions {
+            match transaction {
+                Transaction::Deploy(_, _, deployment, fee) => {
+                    // Compute the deployment ID.
+                    let deployment_id = deployment.to_deployment_id().unwrap();
 
-                assert!(process.verify_fee(&fee, deployment_id).is_ok());
+                    assert!(process.verify_fee(&fee, deployment_id).is_ok());
+                }
+                Transaction::Execute(_, execution, fee) => {
+                    // Compute the execution ID.
+                    let execution_id = execution.to_execution_id().unwrap();
+
+                    assert!(process.verify_fee(&fee.unwrap(), execution_id).is_ok());
+                }
+                Transaction::Fee(_, fee) => match fee.is_fee_private() {
+                    true => assert!(process.verify_fee_private(&&fee).is_ok()),
+                    false => assert!(process.verify_fee_public(&&fee).is_ok()),
+                },
             }
-            _ => panic!("Expected a deployment transaction"),
         }
     }
 }

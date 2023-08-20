@@ -59,7 +59,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Performs atomic speculation over a list of transactions, and returns the confirmed transactions.
     #[inline]
-    #[rustfmt::skip]
     fn atomic_speculate<'a>(
         &self,
         state: FinalizeGlobalState,
@@ -117,40 +116,64 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 let outcome = match transaction {
                     // The finalize operation here involves appending the 'stack',
                     // and adding the program to the finalize tree.
-                    Transaction::Deploy(_, program_owner, deployment, fee) => match process.finalize_deployment(store, deployment) {
-                        // Construct the accepted deploy transaction.
-                        Ok((_, finalize)) => ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
-                        // Construct the rejected deploy transaction.
-                        Err(_error) => {
-                            // Construct the fee transaction.
-                            // Note: On failure, this will abort the entire atomic batch.
-                            let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
-                            // Construct the rejected deployment.
-                            let rejected = Rejected::new_deployment(*program_owner, *deployment.clone());
+                    Transaction::Deploy(_, program_owner, deployment, fee) => {
+                        // First, finalize the fee.
+                        if let Err(_error) = process.finalize_fee(state, store, fee) {
+                            return Err("Invalid fee in deployment transaction".to_string());
+                        }
+                        // Next, finalize the deployment.
+                        match process.finalize_deployment(store, deployment) {
+                            // Construct the accepted deploy transaction.
+                            Ok((_, finalize)) => {
+                                ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize)
+                                    .map_err(|e| e.to_string())
+                            }
                             // Construct the rejected deploy transaction.
-                            ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected).map_err(|e| e.to_string())
+                            Err(_error) => {
+                                // Construct the fee transaction.
+                                // Note: On failure, this will abort the entire atomic batch.
+                                let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
+                                // Construct the rejected deployment.
+                                let rejected = Rejected::new_deployment(*program_owner, *deployment.clone());
+                                // Construct the rejected deploy transaction.
+                                ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected)
+                                    .map_err(|e| e.to_string())
+                            }
                         }
                     }
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
-                    Transaction::Execute(_, execution, fee) => match process.finalize_execution(state, store, execution) {
-                        // Construct the accepted execute transaction.
-                        Ok(finalize) => ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize).map_err(|e| e.to_string()),
-                        // Construct the rejected execute transaction.
-                        Err(_error) => match fee {
-                            Some(fee) => {
-                                // Construct the fee transaction.
-                                // Note: On failure, this will abort the entire atomic batch.
-                                let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
-                                // Construct the rejected execution.
-                                let rejected = Rejected::new_execution(execution.clone());
-                                // Construct the rejected execute transaction.
-                                ConfirmedTransaction::rejected_execute(index, fee_tx, rejected).map_err(|e| e.to_string())
+                    Transaction::Execute(_, execution, fee) => {
+                        // First, finalize the fee, if one is given.
+                        if let Some(fee) = fee {
+                            if let Err(_error) = process.finalize_fee(state, store, fee) {
+                                return Err("Invalid fee in deployment transaction".to_string());
+                            }
+                        }
+                        // Next, finalize the execution.
+                        match process.finalize_execution(state, store, execution) {
+                            // Construct the accepted execute transaction.
+                            Ok(finalize) => {
+                                ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize)
+                                    .map_err(|e| e.to_string())
+                            }
+                            // Construct the rejected execute transaction.
+                            Err(_error) => match fee {
+                                Some(fee) => {
+                                    // Construct the fee transaction.
+                                    // Note: On failure, this will abort the entire atomic batch.
+                                    let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
+                                    // Construct the rejected execution.
+                                    let rejected = Rejected::new_execution(execution.clone());
+                                    // Construct the rejected execute transaction.
+                                    ConfirmedTransaction::rejected_execute(index, fee_tx, rejected)
+                                        .map_err(|e| e.to_string())
+                                }
+                                // This is a foundational bug - the caller is violating protocol rules.
+                                // Note: This will abort the entire atomic batch.
+                                None => Err("Rejected execute transaction has no fee".to_string()),
                             },
-                            // This is a foundational bug - the caller is violating protocol rules.
-                            // Note: This will abort the entire atomic batch.
-                            None => Err("Rejected execute transaction has no fee".to_string()),
-                        },
+                        }
                     }
                     // There are no finalize operations here.
                     // Note: This will abort the entire atomic batch.
@@ -249,14 +272,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 // - If the transaction fails, the atomic batch is aborted and no finalize operations are stored.
                 let outcome: Result<(), String> = match transaction {
                     ConfirmedTransaction::AcceptedDeploy(_, transaction, finalize) => {
-                        // Extract the deployment from the transaction.
-                        let deployment = match transaction {
-                            Transaction::Deploy(_, _, deployment, _) => deployment,
+                        // Extract the deployment and fee from the transaction.
+                        let (deployment, fee) = match transaction {
+                            Transaction::Deploy(_, _, deployment, fee) => (deployment, fee),
                             // Note: This will abort the entire atomic batch.
                             _ => return Err("Expected deploy transaction".to_string()),
                         };
-                        // The finalize operation here involves appending the 'stack',
-                        // and adding the program to the finalize tree.
+                        // First, finalize the fee.
+                        if let Err(_error) = process.finalize_fee(state, store, fee) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to finalize the fee in an accepted deploy transaction".to_string());
+                        }
+                        // Next, finalize the deployment.
+                        // The finalize operation here involves appending the 'stack', and adding the program to the finalize tree.
                         match process.finalize_deployment(store, deployment) {
                             // Ensure the finalize operations match the expected.
                             Ok((stack, finalize_operations)) => match finalize == &finalize_operations {
@@ -275,12 +303,20 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         Ok(())
                     }
                     ConfirmedTransaction::AcceptedExecute(_, transaction, finalize) => {
-                        // Extract the execution from the transaction.
-                        let execution = match transaction {
-                            Transaction::Execute(_, execution, _) => execution,
+                        // Extract the execution and fee from the transaction.
+                        let (execution, fee) = match transaction {
+                            Transaction::Execute(_, execution, fee) => (execution, fee),
                             // Note: This will abort the entire atomic batch.
                             _ => return Err("Expected execute transaction".to_string()),
                         };
+                        // First, finalize the fee, if one is given.
+                        if let Some(fee) = fee {
+                            if let Err(_error) = process.finalize_fee(state, store, fee) {
+                                // Note: This will abort the entire atomic batch.
+                                return Err("Failed to finalize the fee in an accepted execute transaction".to_string());
+                            }
+                        }
+                        // Next, finalize the execution.
                         // The finalize operation here involves calling 'update_key_value',
                         // and update the respective leaves of the finalize tree.
                         match process.finalize_execution(state, store, execution) {
@@ -298,38 +334,76 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedDeploy(_, _fee_transaction, rejected) => {
+                    ConfirmedTransaction::RejectedDeploy(_, Transaction::Fee(_, fee), rejected) => {
                         // Extract the rejected deployment.
-                        #[allow(unused_variables)]
                         let Some(deployment) = rejected.deployment() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected deployment".to_string());
                         };
-                        // TODO (howardwu): Ensure this fee corresponds to the deployment.
+                        // Compute the expected deployment ID.
+                        let Ok(expected_deployment_id) = deployment.to_deployment_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to compute the deployment ID for a rejected deployment".to_string());
+                        };
+                        // Retrieve the candidate deployment ID.
+                        let Ok(candidate_deployment_id) = fee.deployment_or_execution_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to retrieve the deployment ID from the fee".to_string());
+                        };
+                        // Ensure this fee corresponds to the deployment.
+                        if candidate_deployment_id != expected_deployment_id {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in fee for a rejected deploy transaction".to_string());
+                        }
                         // Attempt to finalize the deployment, which should fail.
                         #[cfg(debug_assertions)]
                         if process.finalize_deployment(store, deployment).is_ok() {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected deploy transaction".to_string());
                         }
+                        // Lastly, finalize the fee.
+                        if let Err(_error) = process.finalize_fee(state, store, fee) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to finalize the fee in a rejected deploy transaction".to_string());
+                        }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedExecute(_, _fee_transaction, rejected) => {
+                    ConfirmedTransaction::RejectedExecute(_, Transaction::Fee(_, fee), rejected) => {
                         // Extract the rejected execution.
-                        #[allow(unused_variables)]
                         let Some(execution) = rejected.execution() else {
                             // Note: This will abort the entire atomic batch.
                             return Err("Expected rejected execution".to_string());
                         };
-                        // TODO (howardwu): Ensure this fee corresponds to the execution.
+                        // Compute the expected execution ID.
+                        let Ok(expected_execution_id) = execution.to_execution_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to compute the execution ID for a rejected execution".to_string());
+                        };
+                        // Retrieve the candidate execution ID.
+                        let Ok(candidate_execution_id) = fee.deployment_or_execution_id() else {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to retrieve the execution ID from the fee".to_string());
+                        };
+                        // Ensure this fee corresponds to the execution.
+                        if candidate_execution_id != expected_execution_id {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Mismatch in fee for a rejected execute transaction".to_string());
+                        }
                         // Attempt to finalize the execution, which should fail.
                         #[cfg(debug_assertions)]
                         if process.finalize_execution(state, store, execution).is_ok() {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected execute transaction".to_string());
                         }
+                        // Lastly, finalize the fee.
+                        if let Err(_error) = process.finalize_fee(state, store, fee) {
+                            // Note: This will abort the entire atomic batch.
+                            return Err("Failed to finalize the fee in a rejected execute transaction".to_string());
+                        }
                         Ok(())
                     }
+                    // Note: This will abort the entire atomic batch.
+                    _ => return Err("Invalid confirmed transaction type".to_string()),
                 };
                 lap!(timer, "Finalizing transaction {}", transaction.id());
 
