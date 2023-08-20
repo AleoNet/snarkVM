@@ -256,7 +256,7 @@ pub mod test_helpers {
         // Sample a fee transaction.
         let fee_transaction = match is_fee_private {
             true => crate::transaction::test_helpers::sample_private_fee_transaction(rng),
-            false => crate::transaction::test_helpers::sample_public_fee_transaction(rng),
+            false => crate::transaction::test_helpers::sample_fee_public_transaction(rng),
         };
 
         // Extract the rejected deployment.
@@ -275,7 +275,7 @@ pub mod test_helpers {
         // Sample a fee transaction.
         let fee_transaction = match is_fee_private {
             true => crate::transaction::test_helpers::sample_private_fee_transaction(rng),
-            false => crate::transaction::test_helpers::sample_public_fee_transaction(rng),
+            false => crate::transaction::test_helpers::sample_fee_public_transaction(rng),
         };
 
         // Extract the rejected execution.

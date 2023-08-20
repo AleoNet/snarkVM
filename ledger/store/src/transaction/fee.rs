@@ -269,10 +269,10 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the fee transaction.
-        let transaction = ledger_test_helpers::sample_fee_transaction(rng);
+        let transaction = ledger_test_helpers::sample_fee_private_transaction(rng);
         let (transaction_id, fee) = match transaction {
             Transaction::Fee(id, fee) => (id, fee),
-            _ => unreachable!("sample_fee_transaction should only return fee transactions"),
+            _ => unreachable!("sample_fee_private_transaction should only return fee transactions"),
         };
 
         // Initialize a new transition store.
@@ -304,10 +304,10 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the fee transaction.
-        let transaction = ledger_test_helpers::sample_fee_transaction(rng);
+        let transaction = ledger_test_helpers::sample_fee_private_transaction(rng);
         let (transaction_id, fee) = match transaction {
             Transaction::Fee(id, fee) => (id, fee),
-            _ => unreachable!("sample_fee_transaction should only return fee transactions"),
+            _ => unreachable!("sample_fee_private_transaction should only return fee transactions"),
         };
         let fee_transition_id = fee.id();
 

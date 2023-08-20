@@ -453,7 +453,7 @@ pub mod test_helpers {
     }
 
     /// Samples a random fee transaction.
-    pub fn sample_public_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    pub fn sample_fee_public_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         // Sample a fee.
         let fee = crate::transaction::fee::test_helpers::sample_fee_public_hardcoded(rng);
         // Construct a fee transaction.
