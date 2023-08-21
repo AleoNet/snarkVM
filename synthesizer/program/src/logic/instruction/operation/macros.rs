@@ -92,7 +92,6 @@ macro_rules! operation {
             #[cfg(test)]
             mod [<test _ $operate>] {
                 use super::*;
-                // use super::$name;
                 use console::{types::*};
 
                 // Prepare the environment.
@@ -148,7 +147,6 @@ macro_rules! operation {
             #[cfg(test)]
             mod [<test _ $operate>] {
                 use super::*;
-                // use super::$name;
                 use console::{types::*};
 
                 // Prepare the environment.
