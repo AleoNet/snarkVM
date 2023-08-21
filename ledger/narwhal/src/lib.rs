@@ -25,6 +25,11 @@ pub use narwhal_batch_header as batch_header;
 #[cfg(feature = "batch-header")]
 pub use narwhal_batch_header::BatchHeader;
 
+#[cfg(feature = "data")]
+pub use narwhal_data as data;
+#[cfg(feature = "data")]
+pub use narwhal_data::Data;
+
 #[cfg(feature = "subdag")]
 pub use narwhal_subdag as subdag;
 #[cfg(feature = "subdag")]
@@ -33,7 +38,7 @@ pub use narwhal_subdag::Subdag;
 #[cfg(feature = "transmission")]
 pub use narwhal_transmission as transmission;
 #[cfg(feature = "transmission")]
-pub use narwhal_transmission::{Data, Transmission};
+pub use narwhal_transmission::Transmission;
 
 #[cfg(feature = "transmission-id")]
 pub use narwhal_transmission_id as transmission_id;
