@@ -49,6 +49,9 @@ impl<N: Network> Process<N> {
         // Retrieve the input types.
         let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
 
+        // Ensure the record contains a sufficient balance to pay the fee.
+        ensure_record_balance(&credits, fee_in_microcredits)?;
+
         // Construct the inputs.
         let inputs = [
             Value::Record(credits),
@@ -96,4 +99,16 @@ impl<N: Network> Process<N> {
         // Return the authorization.
         Ok(Authorization::from(request))
     }
+}
+
+/// Ensures the record contains a sufficient balance to pay the fee.
+fn ensure_record_balance<N: Network>(record: &Record<N, Plaintext<N>>, fee_in_microcredits: u64) -> Result<()> {
+    // Retrieve the balance from the record.
+    let balance = match record.find(&[Identifier::from_str("microcredits")?]) {
+        Ok(console::program::Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => *amount,
+        _ => bail!("The fee record does not contain a 'microcredits' entry"),
+    };
+    // Ensure the balance is sufficient to pay the fee.
+    ensure!(balance >= fee_in_microcredits, "Credits record balance is insufficient to pay the fee");
+    Ok(())
 }
