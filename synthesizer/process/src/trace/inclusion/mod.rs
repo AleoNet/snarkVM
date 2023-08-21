@@ -82,25 +82,30 @@ impl<N: Network> Inclusion<N> {
             }
         }
 
-        // Process the outputs.
-        for (index, output) in transition.outputs().iter().enumerate() {
-            // Filter the outputs for records.
-            if let Output::Record(commitment, ..) = output {
-                // Compute the output index.
-                let output_index = u8::try_from(input_ids.len().saturating_add(index))?;
-                // Compute the transaction leaf.
-                let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
-                // Compute the transition root.
-                let transition_root = transition.to_root()?;
-                // Fetch the tcm.
-                let tcm = *transition.tcm();
-                // Compute the transition leaf.
-                let transition_leaf = output.to_transition_leaf(output_index);
-                // Compute the transition path.
-                let transition_path = transition.to_path(&transition_leaf)?;
-                // Add the record's local Merklization to the output commitments.
-                self.output_commitments
-                    .insert(*commitment, (transaction_leaf, transition_root, tcm, transition_path, transition_leaf));
+        if !transition.outputs().is_empty() {
+            // Compute the transaction leaf.
+            let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
+            // Compute the transition root.
+            let transition_root = transition.to_root()?;
+            // Fetch the tcm.
+            let tcm = *transition.tcm();
+
+            // Process the outputs.
+            for (index, output) in transition.outputs().iter().enumerate() {
+                // Filter the outputs for records.
+                if let Output::Record(commitment, ..) = output {
+                    // Compute the output index.
+                    let output_index = u8::try_from(input_ids.len().saturating_add(index))?;
+                    // Compute the transition leaf.
+                    let transition_leaf = output.to_transition_leaf(output_index);
+                    // Compute the transition path.
+                    let transition_path = transition.to_path(&transition_leaf)?;
+                    // Add the record's local Merklization to the output commitments.
+                    self.output_commitments.insert(
+                        *commitment,
+                        (transaction_leaf, transition_root, tcm, transition_path, transition_leaf),
+                    );
+                }
             }
         }
 
