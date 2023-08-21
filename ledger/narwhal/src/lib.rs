@@ -25,6 +25,9 @@ pub use narwhal_batch_header as batch_header;
 #[cfg(feature = "batch-header")]
 pub use narwhal_batch_header::BatchHeader;
 
+#[cfg(feature = "data")]
+pub use narwhal_data as data;
+#[cfg(feature = "data")]
 pub use narwhal_data::Data;
 
 #[cfg(feature = "subdag")]
