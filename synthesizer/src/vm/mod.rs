@@ -432,7 +432,6 @@ function compute:
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-                let address = Address::try_from(&caller_private_key).unwrap();
 
                 // Initialize the genesis block.
                 let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
@@ -451,24 +450,18 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Prepare the inputs.
-                let inputs = [
-                    Value::<CurrentNetwork>::Record(record),
-                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                    Value::<CurrentNetwork>::from_str("1u64").unwrap(),
-                ]
-                .into_iter();
+                let inputs =
+                    [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("1u64").unwrap()]
+                        .into_iter();
 
                 // Authorize.
-                let authorization =
-                    vm.authorize(&caller_private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "split", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
-                // Compute the execution.
-                let execution = vm.execute_authorization_raw(authorization, None, rng).unwrap();
                 // Construct the execute transaction.
-                let transaction = Transaction::from_execution(execution, None).unwrap();
+                let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(!vm.verify_transaction(&transaction, None));
+                assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })

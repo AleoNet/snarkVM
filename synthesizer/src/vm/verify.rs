@@ -387,20 +387,20 @@ mod tests {
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 
-        // Fetch a valid execution transaction.
+        // Fetch a valid execution transaction with a private fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         assert!(vm.check_transaction(&valid_transaction, None).is_ok());
         assert!(vm.verify_transaction(&valid_transaction, None));
 
-        // Fetch a valid execution transaction.
+        // Fetch a valid execution transaction with a public fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
         assert!(vm.check_transaction(&valid_transaction, None).is_ok());
         assert!(vm.verify_transaction(&valid_transaction, None));
 
-        // Fetch an invalid execution transaction.
-        let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
-        assert!(vm.check_transaction(&invalid_transaction, None).is_err());
-        assert!(!vm.verify_transaction(&invalid_transaction, None));
+        // Fetch an valid execution transaction with no fee.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
+        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction, None));
     }
 
     #[test]
@@ -482,9 +482,8 @@ mod tests {
         let credits = Some(records.values().next().unwrap().decrypt(&caller_view_key).unwrap());
 
         // Execute.
-        let transaction = vm
-            .execute(&caller_private_key, ("testing.aleo", "transfer_public"), inputs, credits, 10, None, rng)
-            .unwrap();
+        let transaction =
+            vm.execute(&caller_private_key, ("testing.aleo", "initialize"), inputs, credits, 10, None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());

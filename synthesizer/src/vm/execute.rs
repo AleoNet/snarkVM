@@ -101,7 +101,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a call to the program function for the given authorization.
     /// Returns the execution.
     #[inline]
-    pub(super) fn execute_authorization_raw<R: Rng + CryptoRng>(
+    fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,
