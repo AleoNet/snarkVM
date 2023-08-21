@@ -209,7 +209,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::check_fee");
 
         // Ensure the fee does not exceed the limit.
-        ensure!(*fee.amount()? < N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
+        let fee_amount = fee.amount()?;
+        ensure!(*fee_amount < N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
 
         // Verify the fee.
         let verification = self.process.read().verify_fee(fee, deployment_or_execution_id);
@@ -234,7 +235,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 bail!("Fee verification failed: fee is public, but the payer account balance is missing");
             };
             // Ensure the balance is sufficient.
-            ensure!(balance >= fee.amount()?, "Fee verification failed: insufficient balance");
+            ensure!(balance >= fee_amount, "Fee verification failed: insufficient balance");
         }
 
         // Ensure the global state root exists in the block store.

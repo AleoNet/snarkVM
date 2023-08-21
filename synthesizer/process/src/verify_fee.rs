@@ -51,12 +51,9 @@ impl<N: Network> Process<N> {
         // Ensure the number of outputs is within the allowed range.
         ensure!(fee.outputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of outputs");
 
-        // Determine the index for the deployment or execution ID.
-        let id_index = if is_fee_private { 2 } else { 1 };
-        // Retrieve the deployment or execution ID.
-        let candidate_id = match fee.inputs().get(id_index) {
-            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(candidate_id), _)))) => *candidate_id,
-            _ => bail!("Failed to get the deployment or execution ID in the fee transition"),
+        // Retrieve the candidate deployment or execution ID.
+        let Ok(candidate_id) = fee.deployment_or_execution_id() else {
+            bail!("Failed to get the deployment or execution ID in the fee transition")
         };
         // Ensure the candidate ID is the deployment or execution ID.
         if candidate_id != deployment_or_execution_id {
