@@ -151,14 +151,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Transaction::Fee(_, fee) => {
                 // Ensure the fee is nonzero.
                 ensure!(!fee.is_zero()?, "Invalid fee (zero)");
-                // Retrieve the rejected ID.
-                let Some(rejected_id) = rejected_id else {
-                    bail!("Transaction is missing a rejected ID (fee)");
-                };
                 // Verify the fee.
-                self.check_fee(fee, rejected_id)?;
+                match rejected_id {
+                    Some(rejected_id) => self.check_fee(fee, rejected_id)?,
+                    None => bail!("Transaction is missing a rejected ID (fee)"),
+                }
             }
-        };
+        }
 
         finish!(timer, "Verify the transaction");
         Ok(())
@@ -190,9 +189,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Verify the execution.
         let verification = self.process.read().verify_execution(execution);
-        finish!(timer);
+        lap!(timer, "Verify the execution");
 
-        match verification {
+        // Ensure the global state root exists in the block store.
+        let result = match verification {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
                 Ok(true) => Ok(()),
@@ -200,7 +200,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Err(error) => bail!("Execution verification failed: {error}"),
             },
             Err(error) => bail!("Execution verification failed: {error}"),
-        }
+        };
+        finish!(timer, "Check the global state root");
+        result
     }
 
     /// Verifies the given fee. On failure, returns an error.
