@@ -434,7 +434,8 @@ mod tests {
         let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
+        let (transactions, _) =
+            vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
 
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(

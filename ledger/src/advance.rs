@@ -200,7 +200,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             previous_block.hash(),
         )?;
         // Select the transactions from the memory pool.
-        let transactions =
+        let (transactions, _aborted) =
             self.vm.speculate(state, &ratifications, solutions.as_ref(), candidate_transactions.iter())?;
 
         // Construct the metadata.

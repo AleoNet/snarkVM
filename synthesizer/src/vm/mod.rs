@@ -584,7 +584,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        let (transactions, _) = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
