@@ -126,9 +126,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Construct the rejected deploy transaction.
                             Err(_error) => {
                                 // Finalize the fee, to ensure it is valid.
-                                if let Err(_error) = process.finalize_fee(state, store, fee) {
-                                    // Note: On failure, this will abort the entire atomic batch.
-                                    return Err("Invalid fee in a deploy transaction".to_string());
+                                if let Err(error) = process.finalize_fee(state, store, fee) {
+                                    // Note: On failure, skip this transaction, and continue speculation.
+                                    #[cfg(debug_assertions)]
+                                    eprintln!("Failed to finalize the fee in a rejected deploy - {error}");
+                                    continue;
                                 }
                                 // Construct the fee transaction.
                                 // Note: On failure, this will abort the entire atomic batch.
@@ -154,9 +156,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             Err(_error) => match fee {
                                 Some(fee) => {
                                     // Finalize the fee, to ensure it is valid.
-                                    if let Err(_error) = process.finalize_fee(state, store, fee) {
-                                        // Note: On failure, this will abort the entire atomic batch.
-                                        return Err("Invalid fee in an execute transaction".to_string());
+                                    if let Err(error) = process.finalize_fee(state, store, fee) {
+                                        // Note: On failure, skip this transaction, and continue speculation.
+                                        #[cfg(debug_assertions)]
+                                        eprintln!("Failed to finalize the fee in a rejected execute - {error}");
+                                        continue;
                                     }
                                     // Construct the fee transaction.
                                     // Note: On failure, this will abort the entire atomic batch.
