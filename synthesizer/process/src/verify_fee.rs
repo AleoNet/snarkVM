@@ -23,11 +23,15 @@ impl<N: Network> Process<N> {
 
         #[cfg(debug_assertions)]
         println!("Verifying fee from {}/{}...", fee.program_id(), fee.function_name());
+        // Debug-mode only, as the `Transition` constructor recomputes the transition ID at initialization.
+        debug_assert_eq!(
+            **fee.id(),
+            N::hash_bhp512(&(fee.to_root()?, *fee.tcm()).to_bits_le())?,
+            "Transition ID of the fee is incorrect"
+        );
 
         // Ensure the fee has the correct program ID and function.
         ensure!(fee.transition().is_fee(), "Incorrect program ID or function name for fee");
-        // Ensure the transition ID of the fee is correct.
-        ensure!(**fee.id() == fee.to_root()?, "Transition ID of the fee is incorrect");
         // Ensure the number of inputs is within the allowed range.
         ensure!(fee.inputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of inputs");
         // Ensure the number of outputs is within the allowed range.
