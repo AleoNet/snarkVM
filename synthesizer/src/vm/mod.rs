@@ -28,17 +28,7 @@ use console::{
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::{
-    Block,
-    ConfirmedTransaction,
-    Deployment,
-    Execution,
-    Fee,
-    Header,
-    Ratify,
-    Transaction,
-    Transactions,
-};
+use ledger_block::{Block, Deployment, Execution, Fee, Header, Ratify, Transaction};
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -195,7 +185,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let committee = Committee::<N>::new_genesis(members)?;
         // Construct the public balances.
         let public_balances = indexmap::indexmap! {
-            Address::try_from(private_key)? => 1_000_000_000_000_000,
+            Address::try_from(private_key)? => N::STARTING_SUPPLY - (ledger_committee::MIN_VALIDATOR_STAKE * 4),
         };
         // Return the genesis block.
         self.genesis_quorum(private_key, committee, public_balances, rng)
@@ -209,40 +199,43 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         public_balances: IndexMap<Address<N>, u64>,
         rng: &mut R,
     ) -> Result<Block<N>> {
-        // Tabulate the current supply.
-        let current_supply = {
-            let public_amount = public_balances.values().sum::<u64>();
-            N::STARTING_SUPPLY.saturating_sub(committee.total_stake()).saturating_sub(public_amount)
-        };
+        // Retrieve the total stake.
+        let total_stake = committee.total_stake();
+        // Compute the account supply.
+        let account_supply = public_balances.values().fold(0u64, |acc, x| acc.saturating_add(*x));
+        // Compute the total supply.
+        let total_supply = total_stake.checked_add(account_supply).ok_or_else(|| anyhow!("Invalid total supply"))?;
+        // Ensure the total supply matches.
+        ensure!(total_supply == N::STARTING_SUPPLY, "Invalid total supply");
 
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
         // Prepare the locator.
-        let locator = ("credits.aleo", "mint");
-        // Prepare the amount for each call to the mint function.
-        let amount = current_supply.saturating_div(Block::<N>::NUM_GENESIS_TRANSACTIONS as u64);
+        let locator = ("credits.aleo", "transfer_public_to_private");
+        // Prepare the amount for each call to the function.
+        let amount = ledger_committee::MIN_VALIDATOR_STAKE;
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
-        // Prepare the mint transactions.
-        let transactions = (0u32..u32::try_from(Block::<N>::NUM_GENESIS_TRANSACTIONS)?)
-            .map(|index| {
-                // Execute the mint function.
-                let transaction = self.execute(private_key, locator, inputs.iter(), None, 0, None, rng)?;
-                // Prepare the confirmed transaction.
-                ConfirmedTransaction::accepted_execute(index, transaction, vec![])
-            })
-            .collect::<Result<Transactions<_>>>()?;
+        // Prepare the ratifications.
+        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
+        // Prepare the solutions.
+        let solutions = None; // The genesis block does not require solutions.
+        // Prepare the transactions.
+        let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
+            .map(|_| self.execute(private_key, locator, inputs.iter(), None, 0, None, rng))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new_genesis::<N>()?;
+        // Speculate the transactions.
+        let (transactions, aborted) = self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
+        ensure!(aborted.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
 
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
-
-        // Prepare the solutions.
-        let solutions = None; // The genesis block does not require solutions.
-        // Prepare the ratifications.
-        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
 
         // Construct the block.
         let block = Block::new_beacon(private_key, previous_hash, header, ratifications, solutions, transactions, rng)?;
@@ -374,7 +367,7 @@ record token:
     owner as address.private;
     amount as u64.private;
 
-function mint:
+function initialize:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
@@ -439,7 +432,6 @@ function compute:
                 // Initialize a new caller.
                 let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
                 let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-                let address = Address::try_from(&caller_private_key).unwrap();
 
                 // Initialize the genesis block.
                 let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
@@ -458,24 +450,18 @@ function compute:
                 vm.add_next_block(&genesis).unwrap();
 
                 // Prepare the inputs.
-                let inputs = [
-                    Value::<CurrentNetwork>::Record(record),
-                    Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                    Value::<CurrentNetwork>::from_str("1u64").unwrap(),
-                ]
-                .into_iter();
+                let inputs =
+                    [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("1u64").unwrap()]
+                        .into_iter();
 
                 // Authorize.
-                let authorization =
-                    vm.authorize(&caller_private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+                let authorization = vm.authorize(&caller_private_key, "credits.aleo", "split", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
-                // Compute the execution.
-                let execution = vm.execute_authorization_raw(authorization, None, rng).unwrap();
                 // Construct the execute transaction.
-                let transaction = Transaction::from_execution(execution, None).unwrap();
+                let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
                 // Verify.
-                assert!(!vm.verify_transaction(&transaction, None));
+                assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
             })

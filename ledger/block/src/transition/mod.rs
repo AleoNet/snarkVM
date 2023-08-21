@@ -309,17 +309,6 @@ impl<N: Network> Transition<N> {
         self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "unbond"
     }
 
-    /// Returns `true` if this is a `mint` transition.
-    #[inline]
-    pub fn is_mint(&self) -> bool {
-        // The transition is a `mint` transition if it:
-        self.program_id.to_string() == "credits.aleo"
-            && self.function_name.to_string() == "mint"
-            && self.inputs.len() == 2
-            && self.outputs.len() == 1
-            && self.finalize.is_none()
-    }
-
     /// Returns `true` if this is a `fee_private` transition.
     #[inline]
     pub fn is_fee_private(&self) -> bool {

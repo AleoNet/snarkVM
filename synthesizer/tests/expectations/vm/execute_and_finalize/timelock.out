@@ -4,7 +4,7 @@
       finalize: []
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"6166644679975263695210653792855909332697188206238800854893933099803137632432field","checksum":"4157355834731390440698766864378174403397651813403906324523348762710718943089field","value":"record1qyqspc2ky55mt0cm6h8m8eradywu0vuf7t2kumnxu3u9q4qklm5sktq9qyxx66trwfhkxun9v35hguerqqpqzqyjy72zcg6fcyefmrgej2qn73ka56y922fcrsyrdu7m2t9zxqxeqfvdlues5r0dhytzdgqmu6m279jrdqlujemergldqsual8ekswmszna02p7"}'
+      - '{"type":"record","id":"4052473634506423659304918785144138480620399463053996365175936797089509462321field","checksum":"5365818025609575444734172293486047283959260860537195449090993710021547709717field","value":"record1qyqsq9etzs74c8tcl6zvu874r6rcsu36t8frmhg53suku4kejmzf48g8qyxx66trwfhkxun9v35hguerqqpqzqyys55xznkkvqxpfeky86sayp6g00mgknv6jjlxz8fgthhfsmgqpm587kkc7s5hgw6cffx0z7pkjr27agdevt6jtmau88sys75dyg6q58qxa7l"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -14,7 +14,7 @@
       finalize: []
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"7860810414393668373098467458551508178302206873898761016244733790999078597866field","checksum":"4302874993966122192347170064651020580485230771962066228897705874720172040763field","value":"record1qyqsp8p78fw4wg9wzhzjscsvzq2aykccvxldd74gr9jgfn86ukzmppq2qyxx66trwfhkxun9v35hguerqqpqzqr3x306smapapszxad0g6vuvhyemq3cf3payq0ht0kh07vt3k5upqqdk826vy7f5ym35exku2whldjlf5c6va8jv9cynftcgap73xeq5dqaw4x"}'
+      - '{"type":"record","id":"3399727729674360949123413151398582103408490783162587305375232440740175239844field","checksum":"8046110954603880302627505529444050650510093440445138783814969223435550274686field","value":"record1qyqsplycw9nkzse928z0dd553hxvnjss8u7fgqaakag8qw5v62yd3fgqqyxx66trwfhkxun9v35hguerqqpqzqysllarxjf0h9rvvnjfculqd882cmnzj575lqlf5mnp4738rs9ezqh4xkevuep8exnj4vng0fhj62xy2f8plxtmyptueklhy8frdtksqal63wg"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
