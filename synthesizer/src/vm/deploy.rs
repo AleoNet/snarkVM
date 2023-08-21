@@ -34,29 +34,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let deployment = self.deploy_raw(program, rng)?;
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
+        // Compute the deployment ID.
+        let deployment_id = deployment.to_deployment_id()?;
+        // Construct the owner.
+        let owner = ProgramOwner::new(private_key, deployment_id, rng)?;
 
         // Compute the minimum deployment cost.
         let (minimum_deployment_cost, (_, _)) = deployment_cost(&deployment)?;
         // Determine the fee.
-        let Some(fee_in_microcredits) = minimum_deployment_cost.checked_add(priority_fee_in_microcredits) else {
+        let Some(fee_amount) = minimum_deployment_cost.checked_add(priority_fee_in_microcredits) else {
             bail!("Fee overflowed for a deployment transaction")
         };
-
-        // Compute the deployment ID.
-        let deployment_id = deployment.to_deployment_id()?;
-
         // Authorize the fee.
         let fee_authorization = match fee_record {
-            Some(fee_record) => {
-                self.authorize_fee_private(private_key, fee_record, fee_in_microcredits, deployment_id, rng)?
-            }
-            None => self.authorize_fee_public(private_key, fee_in_microcredits, deployment_id, rng)?,
+            Some(record) => self.authorize_fee_private(private_key, record, fee_amount, deployment_id, rng)?,
+            None => self.authorize_fee_public(private_key, fee_amount, deployment_id, rng)?,
         };
         // Compute the fee.
         let fee = self.execute_fee_authorization(fee_authorization, query, rng)?;
-
-        // Construct the owner.
-        let owner = ProgramOwner::new(private_key, deployment_id, rng)?;
 
         // Return the deploy transaction.
         Transaction::from_deployment(owner, deployment, fee)

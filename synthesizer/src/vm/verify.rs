@@ -480,12 +480,11 @@ mod tests {
         .into_iter();
 
         // Prepare the fee.
-        let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let fee_in_microcredits = 10;
-        let fee = Some((credits, fee_in_microcredits));
+        let credits = Some(records.values().next().unwrap().decrypt(&caller_view_key).unwrap());
 
         // Execute.
-        let transaction = vm.execute(&caller_private_key, ("testing.aleo", "mint"), inputs, fee, None, rng).unwrap();
+        let transaction =
+            vm.execute(&caller_private_key, ("testing.aleo", "mint"), inputs, credits, 10, None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());

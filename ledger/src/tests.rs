@@ -167,16 +167,14 @@ finalize foo:
     assert!(
         ledger
             .vm
-            .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some((insufficient_record, 0)), None, rng)
+            .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some(insufficient_record), 0, None, rng)
             .is_err()
     );
 
     let sufficient_record = records[1].clone();
     // Execute with enough fees.
-    let transaction = ledger
-        .vm
-        .execute(&private_key, ("dummy.aleo", "foo"), inputs, Some((sufficient_record, 0)), None, rng)
-        .unwrap();
+    let transaction =
+        ledger.vm.execute(&private_key, ("dummy.aleo", "foo"), inputs, Some(sufficient_record), 0, None, rng).unwrap();
     // Verify.
     assert!(ledger.vm.verify_transaction(&transaction, None));
     // Ensure that the ledger deems the transaction valid.
@@ -243,7 +241,8 @@ finalize failed_assert:
             &private_key,
             (program_id, "failed_assert"),
             Vec::<Value<_>>::new().into_iter(),
-            Some((record_2, 0)),
+            Some(record_2),
+            0,
             None,
             rng,
         )

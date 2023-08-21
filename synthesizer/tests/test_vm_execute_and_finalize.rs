@@ -109,7 +109,8 @@ fn test_vm_execute_and_finalize() {
                         &private_key,
                         (test.program().id(), function_name),
                         inputs.iter(),
-                        Some((fee_records.pop().unwrap().0, 0u64)),
+                        Some(fee_records.pop().unwrap().0),
+                        0u64,
                         None,
                         rng,
                     ) {
@@ -341,7 +342,7 @@ fn split<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>, Vec<Transaction<CurrentNetwork>>) {
     let inputs = vec![Value::Record(record), Value::Plaintext(Plaintext::from(Literal::U64(U64::new(amount))))];
-    let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, None, rng).unwrap();
+    let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, 0, None, rng).unwrap();
     let records = transaction
         .records()
         .map(|(_, record)| record.decrypt(&ViewKey::try_from(private_key).unwrap()).unwrap())

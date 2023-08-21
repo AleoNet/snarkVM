@@ -17,35 +17,47 @@ use super::*;
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new execute transaction.
     ///
-    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
+    /// If a `fee_record` is provided, then a private fee will be included in the transaction;
+    /// otherwise, a public fee will be included in the transaction.
+    ///
+    /// The `priority_fee_in_microcredits` is an additional fee **on top** of the execution fee.
     pub fn execute<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         (program_id, function_name): (impl TryInto<ProgramID<N>>, impl TryInto<Identifier<N>>),
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
-        fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        fee_record: Option<Record<N, Plaintext<N>>>,
+        priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the authorization.
         let authorization = self.authorize(private_key, program_id, function_name, inputs, rng)?;
+        // Determine if a fee is required.
+        // TODO (howardwu): Remove 'is_mint' as this is deprecated.
+        let is_fee_required = authorization.is_split() || authorization.is_mint();
         // Compute the execution.
         let execution = self.execute_authorization_raw(authorization, query.clone(), rng)?;
         // Compute the fee.
-        let fee = match fee {
-            None => None,
-            Some((credits, priority_fee_in_microcredits)) => {
+        let fee = match is_fee_required {
+            true => {
                 // Compute the minimum execution cost.
                 let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
                 // Determine the fee.
-                let Some(fee_in_microcredits) = minimum_execution_cost.checked_add(priority_fee_in_microcredits) else {
+                let Some(fee_amount) = minimum_execution_cost.checked_add(priority_fee_in_microcredits) else {
                     bail!("Fee overflowed for an execution transaction")
                 };
                 // Compute the execution ID.
                 let execution_id = execution.to_execution_id()?;
-                // Compute the fee.
-                Some(self.execute_fee_private(private_key, credits, fee_in_microcredits, execution_id, query, rng)?)
+                // Authorize the fee.
+                let authorization = match fee_record {
+                    Some(record) => self.authorize_fee_private(private_key, record, fee_amount, execution_id, rng)?,
+                    None => self.authorize_fee_public(private_key, fee_amount, execution_id, rng)?,
+                };
+                // Execute the fee.
+                Some(self.execute_fee_authorization_raw(authorization, query, rng)?)
             }
+            false => None,
         };
         // Return the execute transaction.
         Transaction::from_execution(execution, fee)
@@ -77,72 +89,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Executes a fee for the given private key, fee record, and fee amount (in microcredits).
-    /// Returns the response and fee.
-    #[deprecated]
-    pub fn execute_fee_private<R: Rng + CryptoRng>(
-        &self,
-        private_key: &PrivateKey<N>,
-        fee_record: Record<N, Plaintext<N>>,
-        fee_in_microcredits: u64,
-        deployment_or_execution_id: Field<N>,
-        query: Option<Query<N, C::BlockStorage>>,
-        rng: &mut R,
-    ) -> Result<Fee<N>> {
-        let timer = timer!("VM::execute_fee_raw");
-
-        // Prepare the query.
-        let query = match query {
-            Some(query) => query,
-            None => Query::VM(self.block_store().clone()),
-        };
-        lap!(timer, "Prepare the query");
-
-        // TODO (raychu86): Ensure that the fee record is associated with the `credits.aleo` program
-        // Ensure that the record has enough balance to pay the fee.
-        match fee_record.find(&[Identifier::from_str("microcredits")?]) {
-            Ok(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => {
-                if *amount < fee_in_microcredits {
-                    bail!("Fee record does not have enough balance to pay the fee")
-                }
-            }
-            _ => bail!("Fee record does not have microcredits"),
-        }
-
-        // Authorize the call to fee.
-        let authorization = self.process.read().authorize_fee_private(
-            private_key,
-            fee_record,
-            fee_in_microcredits,
-            deployment_or_execution_id,
-            rng,
-        )?;
-        lap!(timer, "Authorize the call to fee");
-
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                // Execute the call to fee.
-                let authorization = cast_ref!(authorization as Authorization<$network>).clone();
-                let (_, mut trace) = $process.execute::<$aleo>(authorization)?;
-                lap!(timer, "Execute the call to fee");
-
-                // Prepare the assignments.
-                cast_mut_ref!(trace as Trace<N>).prepare(query)?;
-                lap!(timer, "Prepare the assignments");
-
-                // Compute the proof and construct the fee.
-                let fee = trace.prove_fee::<$aleo, _>(rng)?;
-                finish!(timer, "Compute the proof and construct the fee object");
-
-                // Return the fee.
-                Ok(cast_ref!(fee as Fee<N>).clone())
-            }};
-        }
-        // Process the logic.
-        process!(self, logic)
-    }
-
     /// Executes a call to the program function for the given authorization.
     /// Returns the execution.
     #[inline]
@@ -166,7 +112,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         };
         lap!(timer, "Prepare the query");
 
-        // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the authorization.
@@ -181,14 +126,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                 // Compute the proof and construct the execution.
                 let execution = trace.prove_execution::<$aleo, _>(&locator, rng)?;
-                finish!(timer, "Compute the proof");
+                lap!(timer, "Compute the proof");
 
                 // Return the execution.
                 Ok(cast_ref!(execution as Execution<N>).clone())
             }};
         }
-        // Process the logic.
-        process!(self, logic)
+
+        // Execute the authorization.
+        let result = process!(self, logic);
+        finish!(timer, "Execute the authorization");
+        result
     }
 
     /// Executes a call to the program function for the given fee authorization.
@@ -209,7 +157,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         };
         lap!(timer, "Prepare the query");
 
-        // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the authorization.
@@ -222,16 +169,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 cast_mut_ref!(trace as Trace<N>).prepare(query)?;
                 lap!(timer, "Prepare the assignments");
 
-                // Compute the proof and construct the execution.
+                // Compute the proof and construct the fee.
                 let fee = trace.prove_fee::<$aleo, _>(rng)?;
-                finish!(timer, "Compute the proof");
+                lap!(timer, "Compute the proof");
 
                 // Return the fee.
                 Ok(cast_ref!(fee as Fee<N>).clone())
             }};
         }
-        // Process the logic.
-        process!(self, logic)
+
+        // Execute the authorization.
+        let result = process!(self, logic);
+        finish!(timer, "Execute the authorization");
+        result
     }
 }
 
@@ -293,7 +243,8 @@ mod tests {
         .into_iter();
 
         // Execute.
-        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+        let transaction =
+            vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, 0, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
@@ -332,7 +283,7 @@ mod tests {
 
         // Execute.
         let transaction =
-            vm.execute(&caller_private_key, ("credits.aleo", "transfer_private"), inputs, None, None, rng).unwrap();
+            vm.execute(&caller_private_key, ("credits.aleo", "transfer_private"), inputs, None, 0, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
@@ -366,7 +317,8 @@ mod tests {
         let inputs = [Value::<CurrentNetwork>::Record(record_1), Value::<CurrentNetwork>::Record(record_2)].into_iter();
 
         // Execute.
-        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "join"), inputs, None, None, rng).unwrap();
+        let transaction =
+            vm.execute(&caller_private_key, ("credits.aleo", "join"), inputs, None, 0, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();
@@ -399,7 +351,8 @@ mod tests {
             [Value::<CurrentNetwork>::Record(record), Value::<CurrentNetwork>::from_str("1u64").unwrap()].into_iter();
 
         // Execute.
-        let transaction = vm.execute(&caller_private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+        let transaction =
+            vm.execute(&caller_private_key, ("credits.aleo", "split"), inputs, None, 0, None, rng).unwrap();
 
         // Assert the size of the transaction.
         let transaction_size_in_bytes = transaction.to_bytes_le().unwrap().len();

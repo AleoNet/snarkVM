@@ -228,7 +228,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let transactions = (0u32..u32::try_from(Block::<N>::NUM_GENESIS_TRANSACTIONS)?)
             .map(|index| {
                 // Execute the mint function.
-                let transaction = self.execute(private_key, locator, inputs.iter(), None, None, rng)?;
+                let transaction = self.execute(private_key, locator, inputs.iter(), None, 0, None, rng)?;
                 // Prepare the confirmed transaction.
                 ConfirmedTransaction::accepted_execute(index, transaction, vec![])
             })
@@ -498,7 +498,7 @@ function compute:
                 trace!("Unspent Records:\n{:#?}", records);
 
                 // Select a record to spend.
-                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
+                let record = Some(records.values().next().unwrap().decrypt(&caller_view_key).unwrap());
 
                 // Initialize the VM.
                 let vm = sample_vm();
@@ -512,12 +512,9 @@ function compute:
                 ]
                 .into_iter();
 
-                // Prepare the fee.
-                let fee = Some((record, 100));
-
                 // Execute.
                 let transaction =
-                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, fee, None, rng).unwrap();
+                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, record, 0, None, rng).unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
@@ -551,7 +548,7 @@ function compute:
 
                 // Execute.
                 let transaction_without_fee =
-                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
+                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, 0, None, rng).unwrap();
                 let execution = transaction_without_fee.execution().unwrap().clone();
 
                 // Authorize the fee.
@@ -641,6 +638,7 @@ function compute:
                 ("credits.aleo", "split"),
                 [Value::Record(record), Value::from_str("1000000000u64").unwrap()].iter(), // 1000 credits
                 None,
+                0,
                 None,
                 rng,
             )
@@ -659,6 +657,7 @@ function compute:
                 ("credits.aleo", "split"),
                 [Value::Record(first_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
                 None,
+                0,
                 None,
                 rng,
             )
@@ -674,6 +673,7 @@ function compute:
                 ("credits.aleo", "split"),
                 [Value::Record(second_record), Value::from_str("100000000u64").unwrap()].iter(), // 100 credits
                 None,
+                0,
                 None,
                 rng,
             )
@@ -731,7 +731,8 @@ finalize getter:
                 &caller_private_key,
                 ("test_program_1.aleo", "init"),
                 Vec::<Value<Testnet3>>::new().iter(),
-                Some((third_record, 1)),
+                Some(third_record),
+                1,
                 None,
                 rng,
             )
@@ -741,7 +742,8 @@ finalize getter:
                 &caller_private_key,
                 ("test_program_2.aleo", "init"),
                 Vec::<Value<Testnet3>>::new().iter(),
-                Some((fourth_record, 1)),
+                Some(fourth_record),
+                1,
                 None,
                 rng,
             )
@@ -925,7 +927,8 @@ function multitransfer:
                 &caller_private_key,
                 ("test_multiple_external_calls.aleo", "multitransfer"),
                 inputs.into_iter(),
-                Some((record_2, 1)),
+                Some(record_2),
+                1,
                 None,
                 rng,
             )

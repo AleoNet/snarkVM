@@ -764,7 +764,7 @@ finalize transfer_public:
             .into_iter();
 
             // Execute.
-            let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs, None, None, rng).unwrap();
+            let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs, None, 0, None, rng).unwrap();
 
             transactions.push(transaction);
         }
@@ -787,19 +787,11 @@ finalize transfer_public:
 
         // Prepare the additional fee.
         let view_key = ViewKey::<CurrentNetwork>::try_from(caller_private_key).unwrap();
-        let credits = unspent_records.pop().unwrap().decrypt(&view_key).unwrap();
-        let additional_fee = (credits, 1);
+        let credits = Some(unspent_records.pop().unwrap().decrypt(&view_key).unwrap());
 
         // Execute.
         let transaction = vm
-            .execute(
-                &caller_private_key,
-                (program_id, function_name),
-                inputs.into_iter(),
-                Some(additional_fee),
-                None,
-                rng,
-            )
+            .execute(&caller_private_key, (program_id, function_name), inputs.into_iter(), credits, 1, None, rng)
             .unwrap();
         // Verify.
         assert!(vm.verify_transaction(&transaction, None));

@@ -367,11 +367,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         ];
 
         // Prepare the fee.
-        let fee_record = records.next().unwrap().clone();
-        let fee = Some((fee_record, priority_fee_in_microcredits));
+        let fee_record = Some(records.next().unwrap().clone());
 
         // Create a new execute transaction.
-        self.vm.execute(private_key, ("credits.aleo", "transfer_private"), inputs.iter(), fee, query, rng)
+        self.vm.execute(
+            private_key,
+            ("credits.aleo", "transfer_private"),
+            inputs.iter(),
+            fee_record,
+            priority_fee_in_microcredits,
+            query,
+            rng,
+        )
     }
 }
 
