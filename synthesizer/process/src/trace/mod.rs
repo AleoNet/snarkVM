@@ -108,22 +108,14 @@ impl<N: Network> Trace<N> {
 
     /// Returns `true` if the trace is for a private fee transition.
     pub fn is_fee_private(&self) -> bool {
-        match self.transitions.len() {
-            // If there is 1 transition, check if the transition is a fee transition.
-            1 => self.transitions[0].is_fee_private(),
-            // Otherwise, set the indicator to 'false'.
-            _ => false,
-        }
+        // If there is 1 transition, check if the transition is a fee transition.
+        self.transitions.len() == 1 && self.transitions[0].is_fee_private()
     }
 
     /// Returns `true` if the trace is for a public fee transition.
     pub fn is_fee_public(&self) -> bool {
-        match self.transitions.len() {
-            // If there is 1 transition, check if the transition is a fee transition.
-            1 => self.transitions[0].is_fee_public(),
-            // Otherwise, set the indicator to 'false'.
-            _ => false,
-        }
+        // If there is 1 transition, check if the transition is a fee transition.
+        self.transitions.len() == 1 && self.transitions[0].is_fee_public()
     }
 }
 
