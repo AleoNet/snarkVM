@@ -140,8 +140,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     self.check_fee(fee, execution_id)?;
                 } else {
                     // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    let is_fee_required = execution.len() == 1 && transaction.contains_split();
-                    ensure!(!is_fee_required, "Transaction is missing a fee (execution)");
+                    let can_skip_fee = execution.len() == 1 && transaction.contains_split();
+                    ensure!(can_skip_fee, "Transaction is missing a fee (execution)");
                 }
                 // Verify the execution.
                 self.check_execution(execution)?;
