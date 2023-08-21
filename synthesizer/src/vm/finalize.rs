@@ -117,12 +117,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // The finalize operation here involves appending the 'stack',
                     // and adding the program to the finalize tree.
                     Transaction::Deploy(_, program_owner, deployment, fee) => {
-                        // First, finalize the fee.
-                        if let Err(_error) = process.finalize_fee(state, store, fee) {
-                            return Err("Invalid fee in deployment transaction".to_string());
-                        }
-                        // Next, finalize the deployment.
-                        match process.finalize_deployment(store, deployment) {
+                        match process.finalize_deployment(state, store, deployment, fee) {
                             // Construct the accepted deploy transaction.
                             Ok((_, finalize)) => {
                                 ConfirmedTransaction::accepted_deploy(index, transaction.clone(), finalize)
@@ -130,6 +125,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             }
                             // Construct the rejected deploy transaction.
                             Err(_error) => {
+                                // Finalize the fee, to ensure it is valid.
+                                if let Err(_error) = process.finalize_fee(state, store, fee) {
+                                    // Note: On failure, this will abort the entire atomic batch.
+                                    return Err("Invalid fee in a deploy transaction".to_string());
+                                }
                                 // Construct the fee transaction.
                                 // Note: On failure, this will abort the entire atomic batch.
                                 let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
@@ -144,14 +144,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // The finalize operation here involves calling 'update_key_value',
                     // and update the respective leaves of the finalize tree.
                     Transaction::Execute(_, execution, fee) => {
-                        // First, finalize the fee, if one is given.
-                        if let Some(fee) = fee {
-                            if let Err(_error) = process.finalize_fee(state, store, fee) {
-                                return Err("Invalid fee in deployment transaction".to_string());
-                            }
-                        }
-                        // Next, finalize the execution.
-                        match process.finalize_execution(state, store, execution) {
+                        match process.finalize_execution(state, store, execution, fee.as_ref()) {
                             // Construct the accepted execute transaction.
                             Ok(finalize) => {
                                 ConfirmedTransaction::accepted_execute(index, transaction.clone(), finalize)
@@ -160,6 +153,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Construct the rejected execute transaction.
                             Err(_error) => match fee {
                                 Some(fee) => {
+                                    // Finalize the fee, to ensure it is valid.
+                                    if let Err(_error) = process.finalize_fee(state, store, fee) {
+                                        // Note: On failure, this will abort the entire atomic batch.
+                                        return Err("Invalid fee in an execute transaction".to_string());
+                                    }
                                     // Construct the fee transaction.
                                     // Note: On failure, this will abort the entire atomic batch.
                                     let fee_tx = Transaction::from_fee(fee.clone()).map_err(|e| e.to_string())?;
@@ -278,14 +276,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Note: This will abort the entire atomic batch.
                             _ => return Err("Expected deploy transaction".to_string()),
                         };
-                        // First, finalize the fee.
-                        if let Err(_error) = process.finalize_fee(state, store, fee) {
-                            // Note: This will abort the entire atomic batch.
-                            return Err("Failed to finalize the fee in an accepted deploy transaction".to_string());
-                        }
-                        // Next, finalize the deployment.
                         // The finalize operation here involves appending the 'stack', and adding the program to the finalize tree.
-                        match process.finalize_deployment(store, deployment) {
+                        match process.finalize_deployment(state, store, deployment, fee) {
                             // Ensure the finalize operations match the expected.
                             Ok((stack, finalize_operations)) => match finalize == &finalize_operations {
                                 // Store the stack.
@@ -309,17 +301,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Note: This will abort the entire atomic batch.
                             _ => return Err("Expected execute transaction".to_string()),
                         };
-                        // First, finalize the fee, if one is given.
-                        if let Some(fee) = fee {
-                            if let Err(_error) = process.finalize_fee(state, store, fee) {
-                                // Note: This will abort the entire atomic batch.
-                                return Err("Failed to finalize the fee in an accepted execute transaction".to_string());
-                            }
-                        }
-                        // Next, finalize the execution.
                         // The finalize operation here involves calling 'update_key_value',
                         // and update the respective leaves of the finalize tree.
-                        match process.finalize_execution(state, store, execution) {
+                        match process.finalize_execution(state, store, execution, fee.as_ref()) {
                             // Ensure the finalize operations match the expected.
                             Ok(finalize_operations) => {
                                 if finalize != &finalize_operations {
@@ -357,7 +341,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         // Attempt to finalize the deployment, which should fail.
                         #[cfg(debug_assertions)]
-                        if process.finalize_deployment(store, deployment).is_ok() {
+                        if process.finalize_deployment(state, store, deployment, fee).is_ok() {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected deploy transaction".to_string());
                         }
@@ -391,7 +375,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         // Attempt to finalize the execution, which should fail.
                         #[cfg(debug_assertions)]
-                        if process.finalize_execution(state, store, execution).is_ok() {
+                        if process.finalize_execution(state, store, execution, Some(fee)).is_ok() {
                             // Note: This will abort the entire atomic batch.
                             return Err("Failed to reject a rejected execute transaction".to_string());
                         }

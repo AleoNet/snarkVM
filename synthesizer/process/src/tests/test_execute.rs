@@ -18,20 +18,23 @@ use crate::{
     Process,
     Trace,
 };
-use circuit::network::AleoV0;
+use circuit::{network::AleoV0, Aleo};
 use console::{
     account::{Address, PrivateKey, ViewKey},
     network::{prelude::*, Testnet3},
     program::{Identifier, Literal, Plaintext, ProgramID, Record, Value},
-    types::Field,
+    types::{Field, U64},
 };
+use ledger_block::Fee;
 use ledger_query::Query;
 use ledger_store::{
     helpers::memory::{BlockMemory, FinalizeMemory},
+    BlockStorage,
     BlockStore,
+    FinalizeStorage,
     FinalizeStore,
 };
-use synthesizer_program::{FinalizeGlobalState, Program};
+use synthesizer_program::{FinalizeGlobalState, FinalizeStoreTrait, Program};
 use synthesizer_snark::UniversalSRS;
 
 use indexmap::IndexMap;
@@ -42,8 +45,42 @@ type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
 
 /// Samples a new finalize state.
-fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
+pub fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
     FinalizeGlobalState::from(block_height as u64, block_height, [0u8; 32])
+}
+
+/// Samples a valid fee for the given process, block store, and finalize store.
+pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: FinalizeStorage<N>>(
+    process: &Process<N>,
+    block_store: &BlockStore<N, B>,
+    finalize_store: &FinalizeStore<N, P>,
+    rng: &mut TestRng,
+) -> Fee<N> {
+    let program_id = ProgramID::from_str("credits.aleo").unwrap();
+    let account_mapping = Identifier::from_str("account").unwrap();
+
+    // Sample a random private key.
+    let private_key = PrivateKey::<N>::new(rng).unwrap();
+    let address = Address::try_from(private_key).unwrap();
+
+    // Construct the key.
+    let key = Plaintext::from(Literal::Address(address));
+    // Construct the public balance.
+    let value = Value::from(Literal::U64(U64::new(100)));
+    // Update the public balance in finalize storage.
+    finalize_store.update_key_value(&program_id, &account_mapping, key, value).unwrap();
+
+    // Sample a dummy ID.
+    let id = Field::rand(rng);
+
+    // Authorize the fee.
+    let authorization = process.authorize_fee_public(&private_key, 100, id, rng).unwrap();
+    // Execute the fee.
+    let (_, mut trace) = process.execute::<A>(authorization).unwrap();
+    // Prepare the assignments.
+    trace.prepare(Query::from(block_store)).unwrap();
+    // Compute the proof and construct the fee.
+    trace.prove_fee::<A, _>(rng).unwrap()
 }
 
 #[test]
@@ -1201,8 +1238,10 @@ finalize compute:
     let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1244,7 +1283,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution, None).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
@@ -1311,8 +1350,10 @@ finalize compute:
     let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1354,7 +1395,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution, None).unwrap();
 
     // Check that the account balance is now 0.
     let candidate = finalize_store
@@ -1435,8 +1476,10 @@ finalize mint_public:
     let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1482,7 +1525,7 @@ finalize mint_public:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution, None).unwrap();
 
     // Check the account balance.
     let candidate = finalize_store
@@ -1561,8 +1604,10 @@ finalize mint_public:
     let deployment = process.deploy::<CurrentAleo, _>(&program0, rng).unwrap();
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1631,7 +1676,7 @@ function mint:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution, None).unwrap();
 
     // Check the account balance.
     let candidate = finalize_store
@@ -1700,8 +1745,10 @@ finalize compute:
     let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -1743,7 +1790,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution, None).unwrap();
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
@@ -2126,8 +2173,10 @@ finalize compute:
     let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
@@ -2168,7 +2217,7 @@ finalize compute:
     process.verify_execution(&execution).unwrap();
 
     // Now, finalize the execution.
-    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution).unwrap();
+    process.finalize_execution(sample_finalize_state(1), &finalize_store, &execution, None).unwrap();
 
     // Check that the struct is stored as expected.
     let candidate = finalize_store
@@ -2351,8 +2400,10 @@ function {function_name}:
     let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
     // Check that the deployment verifies.
     process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
     // Finalize the deployment.
-    let (stack, _) = process.finalize_deployment(&finalize_store, &deployment).unwrap();
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(1), &finalize_store, &deployment, &fee).unwrap();
     // Add the stack *manually* to the process.
     process.add_stack(stack);
 
