@@ -12,7 +12,7 @@
       - 10field
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"86538720323026504971008114072875911518906603242217456046325769140042179469field","checksum":"3518467992563283587707290545013653254796639591698236185353025222045932258548field","value":"record1qyqsqfn4tfr67as928lu7j7n26rjynf3whpa7057thnfq8499agvqugjqyxx66trwfhkxun9v35hguerqqpqzqxu68shwkr9vstvalmemv7uurnvtpkaezr8zlj9cgqmglwcuar3pduj9am0s098j8xe7nzcpmlm7sfzd5rd5ykj4tcg4av3k29d20ysv6ljprg"}'
+      - '{"type":"record","id":"5614750638973565193441469515228713726748960794537604905077233003358118762543field","checksum":"4523550740627614592894526591573763836417808016131138535945999579112411112497field","value":"record1qyqspqgrj0f99jd9hc24k4tlye4e50ggza7vezwng4jg5upfrfrm79q9qyxx66trwfhkxun9v35hguerqqpqzq9zq3mcequ27fhc0lp3py9f5xhkysmaqwj2dgesz9352ccnnglkprqa5c8wld49ey9l9wjkv0uuuwtzuzlamswyj9udt8y86c07kdzsj95mft3"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -30,7 +30,7 @@
         }
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"1170087684717337706578956897386293333130555337199812533540492776161485980901field","checksum":"5614940510170369474154663646937494759217568816035311313056250941909964521718field","value":"record1qyqsqhv793hhh9xdphtahcmac224psygzp8rnvvhp4wykxaw2sq7kyq0qyxx66trwfhkxun9v35hguerqqpqzqxmy3zzuusne2xz2qquqr4zphvadket7zyqrhu57hptwhf9tyczqkqsy86xuddzgsadugl8ym4v3kzyd8f0atpuxv6my5rmkrjpr45q2370slx"}'
+      - '{"type":"record","id":"4298623534642079413885054141087186450738164385535851298200835905134222458860field","checksum":"7193360662221612301961158754598753828829882050256402781998658078366241498654field","value":"record1qyqsqve6es35jjn7njhp60aeqrn2vy044pk4yrjpantynxrngmhxckc9qyxx66trwfhkxun9v35hguerqqpqzqxfrsxspy6a78e2h8ey6xwaqpfj7ugq85ysh4ym5h7lshlkmkfxqtr7p928u97ctwzrvatugnflesmz0ype7uqstkgz48l3t4vkd3ks6dgkpw8"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -42,9 +42,9 @@
       - 'true'
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"192223954813007429490332893817513651951075996223520600538884608743489124970field","checksum":"7479251024998751866640528656461283396675182429867568721197767621865728528628field","value":"record1qyqsplp4c7aa3c08rzryp6l3yhs0a8ckemgta4lv5d0meyh9ltdvvzcrqyxx66trwfhkxun9v35hguerqqpqzqyfyys3fdk6h5c0tmdxn8s9znclw8d8pd3lqgyhljlr3y458ndfzzssfeke9frzr8k92g9whcv20m3m4sqh3qdk0mj8skwm3ekank4qcv8wjm9"}'
+      - '{"type":"record","id":"5104161477859429074928700484398344121188237941390622218138001142121405536747field","checksum":"5401060537431327595740976983644033584356445014708376489412140132539165606922field","value":"record1qyqsqm608z05c93fzttldfjvqx4atpssxjf3cdxxk7vp05j20nxs5fqtqyxx66trwfhkxun9v35hguerqqpqzqzp59vm9txnm4w9rlxavsz97wpq5h7hqwluwqgl4csup47t3g4sp229u7eyzh83z09ukunr0hp6xndrdc5e53xcpdzrxfhaalqfqg3sqgu3csk"}'
       finalize: []
-  speculate: the execution was accepted
+  speculate: the execution was rejected
   add_next_block: succeeded.
 - execute:
     test_rand.aleo/rand_chacha_check:
@@ -54,7 +54,7 @@
       - 'false'
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"940299300865266475053500758165805009734762327966123404576280412140939254771field","checksum":"4526876288373206812041533509538465531741214738768936384192939412440817873379field","value":"record1qyqsq48sdwes5r8pz4j93842ghqguc00kkn0nucweshncxg6ura5zmsyqyxx66trwfhkxun9v35hguerqqpqzqqy0hgk880cg6v2n9nqqrg0x9907y3urt7klr3ath7hfupmhdu6qx64s4fn8sxcjnn5dawn6dx00dpkscmnwq2j2aeup228544376usqh0wyjx"}'
+      - '{"type":"record","id":"1832044792884028111229739482478401842725766903473248998519826796848394571469field","checksum":"6614700812131631988781051603435150808980869683736224629852581281570619306123field","value":"record1qyqsq7hwqhhqzt4fxak4gzpug973s7aaalqelkdu8zhpc9n6cccvtqs8qyxx66trwfhkxun9v35hguerqqpqzqpsg3agzsxu86g05w5h7dnyw89m6rfqky8pk7g9w2fz5vhtpca0q35phy06vml4nfxr5zf4007mhcnuxn3mlcllnjuts5yftmx9jh0sst59430"}'
       finalize: []
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
