@@ -126,7 +126,7 @@ mod tests {
                     coinbase_target,
                     proof_target,
                     u64::rand(rng),
-                    rng.gen_range(0..u32::MAX),
+                    rng.gen_range(0..i64::MAX),
                     rng.gen_range(0..i64::MAX),
                 )?,
             )?;
@@ -160,7 +160,7 @@ mod tests {
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 7th leaf.
-            let leaf = header.to_leaf(&CurrentNetwork::hash_bhp512(&header.metadata().to_bits_le())?)?;
+            let leaf = header.to_leaf(&CurrentNetwork::hash_bhp1024(&header.metadata().to_bits_le())?)?;
             assert_eq!(leaf.index(), 7);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
         }

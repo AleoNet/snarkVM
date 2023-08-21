@@ -44,7 +44,7 @@
       outputs:
       - '{"type":"record","id":"1930807833239891597558266244843806315757365370192277018045211893099287451025field","checksum":"806673872190416061168942650433027586905022070636283233373521919115959133547field","value":"record1qyqsqy26dhdkfuj8n70v8wv7uyr6m4dg0zkjhd26cevcjm2vrsjkwwc2qyxx66trwfhkxun9v35hguerqqpqzqphltxgzyjxk8m0h6per29vyvf0lsz8djj2rakmpwcnt9qjz8phpvwtrqx3epu3hk4f56e7dnxyjz6cagmkgty6gpgvwtpm3a620unqxxueg7k"}'
       finalize: []
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
     test_rand.aleo/rand_chacha_check:
@@ -56,5 +56,5 @@
       outputs:
       - '{"type":"record","id":"7393075560667462932228445526523815064117532456259901391879320918363476371812field","checksum":"694815795049196892664847520235186663696181395447757923101700704468232929818field","value":"record1qyqsp249v9rv3g6re8d0apfr8vfrmmm00kwt68nn7pzvvj0ugnv38zcsqyxx66trwfhkxun9v35hguerqqpqzqzv54s2s8t0a4efe0ar3nd0s97yc3f3lmcyuhl97ltc79slp2n8z29lzdgzcg4mwzsc7dtr64t57rpyvgswpvq0xdeeznxy7tzz7a9pzh9j54h"}'
       finalize: []
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
