@@ -42,6 +42,8 @@ mod sign_verify;
 pub use sign_verify::*;
 
 use crate::Opcode;
+#[allow(unused)]
+use console::account::Signature;
 use console::network::prelude::*;
 
 pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
@@ -751,7 +753,7 @@ crate::operation!(
         (Boolean, U64, U64) => U64,
         (Boolean, U128, U128) => U128,
         (Boolean, Scalar, Scalar) => Scalar,
-        // (Boolean, Signature, Signature) => Signature,
+        (Boolean, Signature, Signature) => Signature,
         // (Boolean, StringType, StringType) => StringType,
     }
 );

@@ -88,6 +88,28 @@ impl<N: Network> TypeName for Signature<N> {
     }
 }
 
+impl<N: Network> Signature<N> {
+    /// Initializes a `zero` signature.
+    #[deprecated(since = "0.14.6", note = "This is used for **testing** purposes")]
+    pub fn zero() -> Self {
+        Self::from((
+            Scalar::zero(),
+            Scalar::zero(),
+            ComputeKey::try_from((crate::Group::zero(), crate::Group::zero())).unwrap(),
+        ))
+    }
+
+    /// Initializes a "random" signature.
+    #[deprecated(since = "0.14.6", note = "This is used for **testing** purposes")]
+    pub fn rand<R: Rng>(rng: &mut R) -> Self {
+        Self::from((
+            Scalar::rand(rng),
+            Scalar::rand(rng),
+            ComputeKey::try_from((crate::Group::rand(rng), crate::Group::rand(rng))).unwrap(),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod test_helpers {
     use super::*;
