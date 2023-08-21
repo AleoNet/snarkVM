@@ -28,17 +28,7 @@ use console::{
     program::{Identifier, Literal, Locator, Plaintext, ProgramID, ProgramOwner, Record, Value},
     types::{Field, U64},
 };
-use ledger_block::{
-    Block,
-    ConfirmedTransaction,
-    Deployment,
-    Execution,
-    Fee,
-    Header,
-    Ratify,
-    Transaction,
-    Transactions,
-};
+use ledger_block::{Block, Deployment, Execution, Fee, Header, Ratify, Transaction};
 use ledger_committee::Committee;
 use ledger_query::Query;
 use ledger_store::{
@@ -227,25 +217,25 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Prepare the function inputs.
         let inputs = [caller.to_string(), format!("{amount}_u64")];
 
+        // Prepare the ratifications.
+        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
+        // Prepare the solutions.
+        let solutions = None; // The genesis block does not require solutions.
         // Prepare the transactions.
-        let transactions = (0u32..u32::try_from(Block::<N>::NUM_GENESIS_TRANSACTIONS)?)
-            .map(|index| {
-                // Execute the function.
-                let transaction = self.execute(private_key, locator, inputs.iter(), None, 0, None, rng)?;
-                // Prepare the confirmed transaction.
-                ConfirmedTransaction::accepted_execute(index, transaction, vec![])
-            })
-            .collect::<Result<Transactions<_>>>()?;
+        let transactions = (0..Block::<N>::NUM_GENESIS_TRANSACTIONS)
+            .map(|_| self.execute(private_key, locator, inputs.iter(), None, 0, None, rng))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Construct the finalize state.
+        let state = FinalizeGlobalState::new_genesis::<N>()?;
+        // Speculate the transactions.
+        let (transactions, aborted) = self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
+        ensure!(aborted.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
 
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
-
-        // Prepare the solutions.
-        let solutions = None; // The genesis block does not require solutions.
-        // Prepare the ratifications.
-        let ratifications = vec![Ratify::Genesis(committee, public_balances)];
 
         // Construct the block.
         let block = Block::new_beacon(private_key, previous_hash, header, ratifications, solutions, transactions, rng)?;
