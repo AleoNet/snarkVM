@@ -38,10 +38,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Determine if a fee is required.
         // TODO (howardwu): Remove 'is_mint' as this is deprecated.
         let is_fee_required = !(authorization.is_split() || authorization.is_mint());
+        // Determine if a priority fee is declared.
+        let is_priority_fee_declared = priority_fee_in_microcredits > 0;
         // Compute the execution.
         let execution = self.execute_authorization_raw(authorization, query.clone(), rng)?;
         // Compute the fee.
-        let fee = match is_fee_required {
+        let fee = match is_fee_required || is_priority_fee_declared {
             true => {
                 // Compute the minimum execution cost.
                 let (minimum_execution_cost, (_, _)) = execution_cost(self, &execution)?;
@@ -68,13 +70,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new execute transaction for the given authorization.
     pub fn execute_authorization<R: Rng + CryptoRng>(
         &self,
-        authorization: Authorization<N>,
-        fee: Option<Fee<N>>,
+        execute_authorization: Authorization<N>,
+        fee_authorization: Option<Authorization<N>>,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
         // Compute the execution.
-        let execution = self.execute_authorization_raw(authorization, query, rng)?;
+        let execution = self.execute_authorization_raw(execute_authorization, query.clone(), rng)?;
+        // Compute the fee.
+        let fee = match fee_authorization {
+            Some(authorization) => Some(self.execute_fee_authorization_raw(authorization, query, rng)?),
+            None => None,
+        };
         // Return the execute transaction.
         Transaction::from_execution(execution, fee)
     }
@@ -86,6 +93,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Fee<N>> {
+        debug_assert!(authorization.is_fee_private() || authorization.is_fee_public(), "Expected a fee authorization");
         self.execute_fee_authorization_raw(authorization, query, rng)
     }
 }
@@ -94,7 +102,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Executes a call to the program function for the given authorization.
     /// Returns the execution.
     #[inline]
-    fn execute_authorization_raw<R: Rng + CryptoRng>(
+    pub(super) fn execute_authorization_raw<R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         query: Option<Query<N, C::BlockStorage>>,

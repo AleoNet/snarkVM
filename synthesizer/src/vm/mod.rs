@@ -470,8 +470,10 @@ function compute:
                     vm.authorize(&caller_private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
                 assert_eq!(authorization.len(), 1);
 
-                // Execute.
-                let transaction = vm.execute_authorization(authorization, None, None, rng).unwrap();
+                // Compute the execution.
+                let execution = vm.execute_authorization_raw(authorization, None, rng).unwrap();
+                // Construct the execute transaction.
+                let transaction = Transaction::from_execution(execution, None).unwrap();
                 // Verify.
                 assert!(!vm.verify_transaction(&transaction, None));
                 // Return the transaction.

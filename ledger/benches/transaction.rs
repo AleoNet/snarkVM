@@ -102,23 +102,22 @@ fn execute(c: &mut Criterion) {
     ]
     .into_iter();
 
-    // Compute the fee.
-    let fee = {
-        let authorization = vm.authorize_fee_public(&private_key, 100000, Field::one(), rng).unwrap();
-        vm.execute_fee_authorization(authorization, None, rng).unwrap()
-    };
-
-    // Authorize.
-    let authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+    // Authorize the execution.
+    let execute_authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+    // Authorize the fee.
+    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, Field::one(), rng).unwrap();
 
     c.bench_function("Transaction::Execute(transfer)", |b| {
         b.iter(|| {
-            vm.execute_authorization(authorization.replicate(), Some(fee.clone()), None, rng).unwrap();
+            vm.execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
+                .unwrap();
         })
     });
 
     c.bench_function("Transaction::Execute(transfer) - verify", |b| {
-        let transaction = vm.execute_authorization(authorization.replicate(), Some(fee.clone()), None, rng).unwrap();
+        let transaction = vm
+            .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
+            .unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
