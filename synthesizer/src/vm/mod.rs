@@ -551,33 +551,20 @@ function compute:
                 ]
                 .into_iter();
 
-                // TODO (raychu86): Add better interface for generating transaction with public fee.
-
                 // Execute.
                 let transaction_without_fee =
                     vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, None, rng).unwrap();
                 let execution = transaction_without_fee.execution().unwrap().clone();
 
-                // Prepare the fee.
-                let fee = {
-                    // Fetch the process.
-                    let process = vm.process().read().clone();
+                // Authorize the fee.
+                let authorization = vm
+                    .authorize_fee_public(&caller_private_key, 100, execution.to_execution_id().unwrap(), rng)
+                    .unwrap();
+                // Compute the fee.
+                let fee = vm.execute_fee_authorization(authorization, None, rng).unwrap();
 
-                    // Authorize the fee.
-                    let authorization = process
-                        .authorize_fee_public(&caller_private_key, 100, execution.to_execution_id().unwrap(), rng)
-                        .unwrap();
-                    // Construct the fee trace.
-                    let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
-
-                    // Prepare the assignments.
-                    trace.prepare(Query::from(vm.block_store())).unwrap();
-                    // Compute the proof and construct the fee.
-                    trace.prove_fee::<CurrentAleo, _>(rng).unwrap()
-                };
-
+                // Construct the transaction.
                 let transaction = Transaction::from_execution(execution, Some(fee)).unwrap();
-
                 // Verify.
                 assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
