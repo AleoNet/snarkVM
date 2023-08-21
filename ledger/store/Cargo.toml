@@ -30,6 +30,7 @@ serial = [
 
 [dependencies]
 log = "0.4"
+hex = "0.4"
 
 [dependencies.console]
 package = "snarkvm-console"
