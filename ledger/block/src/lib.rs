@@ -248,11 +248,6 @@ impl<N: Network> Block<N> {
         self.height() / N::NUM_BLOCKS_PER_EPOCH
     }
 
-    /// Returns the total supply of microcredits at this block.
-    pub const fn total_supply_in_microcredits(&self) -> u64 {
-        self.header.total_supply_in_microcredits()
-    }
-
     /// Returns the cumulative weight for this block.
     pub const fn cumulative_weight(&self) -> u128 {
         self.header.cumulative_weight()
@@ -278,9 +273,9 @@ impl<N: Network> Block<N> {
         self.header.last_coinbase_target()
     }
 
-    /// Returns the block height of the last coinbase.
-    pub const fn last_coinbase_height(&self) -> u32 {
-        self.header.last_coinbase_height()
+    /// Returns the block timestamp of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.header.last_coinbase_timestamp()
     }
 
     /// Returns the Unix timestamp (UTC) for this block.

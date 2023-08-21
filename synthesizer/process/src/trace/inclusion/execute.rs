@@ -48,7 +48,7 @@ macro_rules! prepare_execution_impl {
 
                         // Construct the state path.
                         let state_path = match &task.local {
-                            Some((transaction_leaf, transition_path, transition_leaf)) => {
+                            Some((transaction_leaf, transition_root, tcm, transition_path, transition_leaf)) => {
                                 // Compute the transaction path.
                                 let transaction_path =
                                     transaction_tree.prove(transaction_leaf.index() as usize, &transaction_leaf.to_bits_le())?;
@@ -58,6 +58,8 @@ macro_rules! prepare_execution_impl {
                                     local_state_root,
                                     transaction_path,
                                     *transaction_leaf,
+                                    *transition_root,
+                                    *tcm,
                                     transition_path.clone(),
                                     *transition_leaf,
                                 )?

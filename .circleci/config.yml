@@ -632,6 +632,17 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
+          flags: --lib --bins
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --test '*'
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
@@ -801,6 +812,7 @@ workflows:
       - synthesizer-integration
       - synthesizer-process
       - synthesizer-program
+      - synthesizer-program-integration
       - synthesizer-snark
       - utilities
       - utilities-derives

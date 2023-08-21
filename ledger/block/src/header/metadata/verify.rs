@@ -27,7 +27,7 @@ impl<N: Network> Metadata<N> {
         expected_coinbase_target: u64,
         expected_proof_target: u64,
         expected_last_coinbase_target: u64,
-        expected_last_coinbase_height: u32,
+        expected_last_coinbase_timestamp: i64,
         expected_timestamp: i64,
         current_timestamp: i64,
     ) -> Result<()> {
@@ -82,12 +82,12 @@ impl<N: Network> Metadata<N> {
             self.last_coinbase_target,
             expected_last_coinbase_target
         );
-        // Ensure the last coinbase height is correct.
+        // Ensure the last coinbase timestamp is correct.
         ensure!(
-            self.last_coinbase_height == expected_last_coinbase_height,
-            "Last coinbase height is incorrect in block {expected_height} (found '{}', expected '{}')",
-            self.last_coinbase_height,
-            expected_last_coinbase_height
+            self.last_coinbase_timestamp == expected_last_coinbase_timestamp,
+            "Last coinbase timestamp is incorrect in block {expected_height} (found '{}', expected '{}')",
+            self.last_coinbase_timestamp,
+            expected_last_coinbase_timestamp
         );
         // Ensure the timestamp is correct.
         ensure!(

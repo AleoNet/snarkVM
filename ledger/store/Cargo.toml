@@ -115,7 +115,7 @@ path = "../../ledger/test-helpers"
 version = "2"
 
 [dev-dependencies.tempfile]
-version = "3.7"
+version = "3.8"
 
 [dev-dependencies.tracing-test]
 version = "0.2"

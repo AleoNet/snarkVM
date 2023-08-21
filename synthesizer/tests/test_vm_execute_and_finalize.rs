@@ -33,7 +33,8 @@ use synthesizer_program::FinalizeGlobalState;
 #[test]
 fn test_vm_execute_and_finalize() {
     // Load the tests.
-    let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/vm/execute_and_finalize");
+    let tests =
+        load_tests::<_, ProgramTest>("./tests/vm/execute_and_finalize", "./expectations/vm/execute_and_finalize");
 
     // Run each test and compare it against its corresponding expectation.
     tests.par_iter().for_each(|test| {
@@ -308,13 +309,12 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         CurrentNetwork::ID,
         previous_block.round() + 1,
         previous_block.height() + 1,
-        CurrentNetwork::STARTING_SUPPLY,
         0,
         0,
         CurrentNetwork::GENESIS_COINBASE_TARGET,
         CurrentNetwork::GENESIS_PROOF_TARGET,
         previous_block.last_coinbase_target(),
-        previous_block.last_coinbase_height(),
+        previous_block.last_coinbase_timestamp(),
         CurrentNetwork::GENESIS_TIMESTAMP + 1,
     )?;
     // Construct the block header.
