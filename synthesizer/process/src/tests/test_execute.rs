@@ -502,7 +502,7 @@ fn test_process_execute_transfer_public() {
     let request = authorization.peek_next().unwrap();
 
     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-    let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(3)]).unwrap();
+    let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(2)]).unwrap();
     let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
 
     // Declare the expected output value.
