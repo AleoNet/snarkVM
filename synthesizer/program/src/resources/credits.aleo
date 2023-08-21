@@ -60,6 +60,8 @@ mapping account:
     // The value represents the amount of public microcredits that belong to the specified owner.
     value microcredits as u64.public;
 
+/**********************************************************************************************************************/
+
 // The `credits` record is used to store credits privately.
 record credits:
     // The address of the owner.
@@ -864,8 +866,8 @@ function split:
 
 /**********************************************************************************************************************/
 
-// The `fee` function charges the specified amount from the sender's record.
-function fee:
+// The `fee_private` function charges the specified amount from the sender's record.
+function fee_private:
     // Input the sender's record.
     input r0 as credits.record;
     // Input the amount.
@@ -874,6 +876,8 @@ function fee:
     input r2 as field.public;
     // Ensure the amount is nonzero.
     assert.neq r1 0u64;
+    // Ensure the deployment or execution root is nonzero.
+    assert.neq r2 0field;
     // Checks the given record has a sufficient amount.
     // This `sub` operation is safe, and the proof will fail
     // if an underflow occurs. The destination register `r3` holds
@@ -883,5 +887,34 @@ function fee:
     cast r0.owner r3 into r4 as credits.record;
     // Output the sender's change record.
     output r4 as credits.record;
+
+/**********************************************************************************************************************/
+
+// The `fee_public` function charges the specified amount from the sender's account.
+function fee_public:
+    // Input the amount.
+    input r0 as u64.public;
+    // Input the deployment or execution root.
+    input r1 as field.public;
+    // Ensure the amount is nonzero.
+    assert.neq r0 0u64;
+    // Ensure the deployment or execution root is nonzero.
+    assert.neq r1 0field;
+    // Decrement the balance of the sender publicly.
+    finalize self.caller r0;
+
+finalize fee_public:
+    // Input the sender's address.
+    input r0 as address.public;
+    // Input the amount.
+    input r1 as u64.public;
+    // Retrieve the balance of the sender.
+    // If `account[r0]` does not exist, `fee_public` is reverted.
+    get account[r0] into r2;
+    // Decrements `account[r0]` by `r1`.
+    // If `r2 - r1` underflows, `fee_public` is reverted.
+    sub r2 r1 into r3;
+    // Updates the balance of the sender.
+    set r3 into account[r0];
 
 /**********************************************************************************************************************/

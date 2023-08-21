@@ -232,7 +232,7 @@ fn execute_function(
     let block_height = block_height.unwrap_or(1);
 
     // Add an atomic finalize wrapper around the finalize function.
-    process.finalize_execution(sample_finalize_state(block_height), finalize_store, &execution)?;
+    process.finalize_execution(sample_finalize_state(block_height), finalize_store, &execution, None)?;
 
     Ok(())
 }
@@ -1474,3 +1474,157 @@ fn test_bonding_to_closed_fails() {
 // claim_unbond:
 // Staker can claim unbond if the unbonding period has passed.
 // Staker can't claim unbond if the unbonding period has not passed.
+
+mod sanity_checks {
+    use super::*;
+    use crate::{Assignments, CallStack, Stack, StackExecute};
+    use circuit::Assignment;
+    use console::{program::Request, types::Field};
+    use synthesizer_program::StackProgram;
+
+    fn get_assignment<N: Network, A: circuit::Aleo<Network = N>>(
+        stack: &Stack<N>,
+        private_key: &PrivateKey<N>,
+        function_name: Identifier<N>,
+        inputs: &[Value<N>],
+        rng: &mut TestRng,
+    ) -> Assignment<<N as Environment>::Field> {
+        // Retrieve the program.
+        let program = stack.program();
+        // Retrieve the input types.
+        let input_types = program.get_function(&function_name).unwrap().input_types();
+        // Compute the request.
+        let request =
+            Request::sign(private_key, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
+        // Initialize the assignments.
+        let assignments = Assignments::<N>::default();
+        // Initialize the call stack.
+        let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
+        // Synthesize the circuit.
+        let _response = stack.execute_function::<A>(call_stack).unwrap();
+        // Retrieve the assignment.
+        let assignment = assignments.read().last().unwrap().0.clone();
+        assignment
+    }
+
+    #[test]
+    fn test_sanity_check_transfer_private() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller account.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&private_key).unwrap();
+
+        // Construct a new process.
+        let process = Process::load().unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("transfer_private").unwrap();
+
+        // Declare the inputs.
+        let r0 = Value::from_str(&format!(
+            "{{ owner: {caller}.private, microcredits: 1_500_000_000_000_000_u64.private, _nonce: {}.public }}",
+            console::types::Group::<CurrentNetwork>::zero()
+        ))
+        .unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+
+        // Compute the assignment.
+        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        assert_eq!(12, assignment.num_public());
+        assert_eq!(54672, assignment.num_private());
+        assert_eq!(54730, assignment.num_constraints());
+        assert_eq!((88496, 130675, 83625), assignment.num_nonzeros());
+    }
+
+    #[test]
+    fn test_sanity_check_transfer_public() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller account.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&private_key).unwrap();
+
+        // Construct a new process.
+        let process = Process::load().unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("transfer_public").unwrap();
+
+        // Declare the inputs.
+        let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+
+        // Compute the assignment.
+        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
+        assert_eq!(7, assignment.num_public());
+        assert_eq!(17563, assignment.num_private());
+        assert_eq!(17581, assignment.num_constraints());
+        assert_eq!((29996, 43774, 25901), assignment.num_nonzeros());
+    }
+
+    #[test]
+    fn test_sanity_check_fee_private() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller account.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&private_key).unwrap();
+
+        // Construct a new process.
+        let process = Process::load().unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("fee_private").unwrap();
+
+        // Declare the inputs.
+        let r0 = Value::from_str(&format!(
+            "{{ owner: {caller}.private, microcredits: 1_500_000_000_000_000_u64.private, _nonce: {}.public }}",
+            console::types::Group::<CurrentNetwork>::zero()
+        ))
+        .unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
+
+        // Compute the assignment.
+        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
+        assert_eq!(10, assignment.num_public());
+        assert_eq!(41220, assignment.num_private());
+        assert_eq!(41269, assignment.num_constraints());
+        assert_eq!((64427, 92903, 62359), assignment.num_nonzeros());
+    }
+
+    #[test]
+    fn test_sanity_check_fee_public() {
+        let rng = &mut TestRng::default();
+
+        // Initialize a new caller account.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+        // Construct a new process.
+        let process = Process::load().unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(ProgramID::from_str("credits.aleo").unwrap()).unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("fee_public").unwrap();
+
+        // Declare the inputs.
+        let r0 = Value::<CurrentNetwork>::from_str("1_500_000_000_000_000_u64").unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str(&Field::<CurrentNetwork>::rand(rng).to_string()).unwrap();
+
+        // Compute the assignment.
+        let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
+        assert_eq!(7, assignment.num_public());
+        assert_eq!(17117, assignment.num_private());
+        assert_eq!(17139, assignment.num_constraints());
+        assert_eq!((29595, 42646, 24858), assignment.num_nonzeros());
+    }
+}

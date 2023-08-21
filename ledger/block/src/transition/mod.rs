@@ -300,14 +300,12 @@ impl<N: Network> Transition<N> {
     /// Returns `true` if this is a `bond` transition.
     #[inline]
     pub fn is_bond(&self) -> bool {
-        // The transition is a `bond` transition if it:
         self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "bond"
     }
 
     /// Returns `true` if this is an `unbond` transition.
     #[inline]
     pub fn is_unbond(&self) -> bool {
-        // The transition is a `bond` transition if it:
         self.program_id.to_string() == "credits.aleo" && self.function_name.to_string() == "unbond"
     }
 
@@ -322,24 +320,34 @@ impl<N: Network> Transition<N> {
             && self.finalize.is_none()
     }
 
-    /// Returns `true` if this is a `fee` transition.
+    /// Returns `true` if this is a `fee_private` transition.
     #[inline]
-    pub fn is_fee(&self) -> bool {
-        self.program_id.to_string() == "credits.aleo"
-            && self.function_name.to_string() == "fee"
-            && self.inputs.len() == 3
+    pub fn is_fee_private(&self) -> bool {
+        self.inputs.len() == 3
             && self.outputs.len() == 1
             && self.finalize.is_none()
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "fee_private"
+    }
+
+    /// Returns `true` if this is a `fee_public` transition.
+    #[inline]
+    pub fn is_fee_public(&self) -> bool {
+        self.inputs.len() == 2
+            && self.outputs.is_empty()
+            && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "fee_public"
     }
 
     /// Returns `true` if this is a `split` transition.
     #[inline]
     pub fn is_split(&self) -> bool {
-        self.program_id.to_string() == "credits.aleo"
-            && self.function_name.to_string() == "split"
-            && self.inputs.len() == 2
+        self.inputs.len() == 2
             && self.outputs.len() == 2
             && self.finalize.is_none()
+            && self.program_id.to_string() == "credits.aleo"
+            && self.function_name.to_string() == "split"
     }
 }
 
@@ -487,7 +495,7 @@ pub mod test_helpers {
     /// Samples a random transition.
     pub(crate) fn sample_transition(rng: &mut TestRng) -> Transition<CurrentNetwork> {
         if let Transaction::Execute(_, execution, _) =
-            crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng)
+            crate::transaction::test_helpers::sample_execution_transaction_with_fee(true, rng)
         {
             execution.into_transitions().next().unwrap()
         } else {

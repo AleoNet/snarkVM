@@ -117,11 +117,10 @@ finalize foo:
     // Fetch the unspent records.
     let records = find_records();
     // Prepare the additional fee.
-    let credits = records.values().next().unwrap().clone();
-    let additional_fee = (credits, 0);
+    let credits = Some(records.values().next().unwrap().clone());
 
     // Deploy.
-    let transaction = ledger.vm.deploy(&private_key, &program, additional_fee, None, rng).unwrap();
+    let transaction = ledger.vm.deploy(&private_key, &program, credits, 0, None, rng).unwrap();
     // Verify.
     assert!(ledger.vm().verify_transaction(&transaction, None));
 
@@ -168,16 +167,14 @@ finalize foo:
     assert!(
         ledger
             .vm
-            .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some((insufficient_record, 0)), None, rng)
+            .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some(insufficient_record), 0, None, rng)
             .is_err()
     );
 
     let sufficient_record = records[1].clone();
     // Execute with enough fees.
-    let transaction = ledger
-        .vm
-        .execute(&private_key, ("dummy.aleo", "foo"), inputs, Some((sufficient_record, 0)), None, rng)
-        .unwrap();
+    let transaction =
+        ledger.vm.execute(&private_key, ("dummy.aleo", "foo"), inputs, Some(sufficient_record), 0, None, rng).unwrap();
     // Verify.
     assert!(ledger.vm.verify_transaction(&transaction, None));
     // Ensure that the ledger deems the transaction valid.
@@ -224,7 +221,7 @@ finalize failed_assert:
     let record_2 = records[1].clone();
 
     // Deploy the program.
-    let deployment_transaction = ledger.vm().deploy(&private_key, &program, (record_1, 0), None, rng).unwrap();
+    let deployment_transaction = ledger.vm().deploy(&private_key, &program, Some(record_1), 0, None, rng).unwrap();
 
     // Construct the deployment block.
     let deployment_block = ledger
@@ -244,7 +241,8 @@ finalize failed_assert:
             &private_key,
             (program_id, "failed_assert"),
             Vec::<Value<_>>::new().into_iter(),
-            Some((record_2, 0)),
+            Some(record_2),
+            0,
             None,
             rng,
         )

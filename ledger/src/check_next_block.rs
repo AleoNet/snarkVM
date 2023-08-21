@@ -108,7 +108,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
                     rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
                     rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
-                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee"))?,
+                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee transition"))?,
                 ),
                 // Reconstruct the unconfirmed execution transaction.
                 ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
@@ -118,10 +118,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        // Speculate over the unconfirmed transactions.
+        let (confirmed_transactions, _) =
+            self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?;
+
         // Ensure the transactions after speculation match.
-        if block.transactions()
-            != &self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?
-        {
+        if block.transactions() != &confirmed_transactions {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 

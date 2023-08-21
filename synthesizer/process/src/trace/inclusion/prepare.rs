@@ -14,7 +14,7 @@
 
 use super::*;
 
-macro_rules! prepare_execution_impl {
+macro_rules! prepare_impl {
     ($self:ident, $transitions:ident, $query:ident, $current_state_root:ident, $get_state_path_for_commitment:ident $(, $await:ident)?) => {{
         // Ensure the number of leaves is within the Merkle tree size.
         Transaction::<N>::check_execution_size($transitions.len())?;
@@ -102,21 +102,21 @@ macro_rules! prepare_execution_impl {
 
 impl<N: Network> Inclusion<N> {
     /// Returns the inclusion assignments for the given transitions.
-    pub fn prepare_execution(
+    pub fn prepare(
         &self,
         transitions: &[Transition<N>],
         query: impl QueryTrait<N>,
     ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
-        prepare_execution_impl!(self, transitions, query, current_state_root, get_state_path_for_commitment)
+        prepare_impl!(self, transitions, query, current_state_root, get_state_path_for_commitment)
     }
 
     /// Returns the inclusion assignments for the given transitions.
     #[cfg(feature = "async")]
-    pub async fn prepare_execution_async(
+    pub async fn prepare_async(
         &self,
         transitions: &[Transition<N>],
         query: impl QueryTrait<N>,
     ) -> Result<(Vec<InclusionAssignment<N>>, N::StateRoot)> {
-        prepare_execution_impl!(self, transitions, query, current_state_root_async, get_state_path_for_commitment_async, await)
+        prepare_impl!(self, transitions, query, current_state_root_async, get_state_path_for_commitment_async, await)
     }
 }

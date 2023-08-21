@@ -63,7 +63,8 @@ impl<N: Network> Process<N> {
             );
 
             // Ensure the transition is not a fee transition.
-            ensure!(!transition.is_fee(), "Fee transitions are not allowed in executions");
+            let is_fee_transition = transition.is_fee_private() || transition.is_fee_public();
+            ensure!(!is_fee_transition, "Fee transitions are not allowed in executions");
             // Ensure the number of inputs is within the allowed range.
             ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
             // Ensure the number of outputs is within the allowed range.

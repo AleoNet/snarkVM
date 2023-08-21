@@ -17,12 +17,16 @@ use super::*;
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a new deploy transaction.
     ///
+    /// If a `fee_record` is provided, then a private fee will be included in the transaction;
+    /// otherwise, a public fee will be included in the transaction.
+    ///
     /// The `priority_fee_in_microcredits` is an additional fee **on top** of the deployment fee.
     pub fn deploy<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
-        (fee_record, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+        fee_record: Option<Record<N, Plaintext<N>>>,
+        priority_fee_in_microcredits: u64,
         query: Option<Query<N, C::BlockStorage>>,
         rng: &mut R,
     ) -> Result<Transaction<N>> {
@@ -30,52 +34,49 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let deployment = self.deploy_raw(program, rng)?;
         // Ensure the transaction is not empty.
         ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
+        // Compute the deployment ID.
+        let deployment_id = deployment.to_deployment_id()?;
+        // Construct the owner.
+        let owner = ProgramOwner::new(private_key, deployment_id, rng)?;
 
         // Compute the minimum deployment cost.
         let (minimum_deployment_cost, (_, _)) = deployment_cost(&deployment)?;
         // Determine the fee.
-        let fee_in_microcredits = minimum_deployment_cost
-            .checked_add(priority_fee_in_microcredits)
-            .ok_or_else(|| anyhow!("Fee overflowed for a deployment transaction"))?;
-
-        // Compute the deployment ID.
-        let deployment_id = deployment.to_deployment_id()?;
-
+        let Some(fee_amount) = minimum_deployment_cost.checked_add(priority_fee_in_microcredits) else {
+            bail!("Fee overflowed for a deployment transaction")
+        };
+        // Authorize the fee.
+        let fee_authorization = match fee_record {
+            Some(record) => self.authorize_fee_private(private_key, record, fee_amount, deployment_id, rng)?,
+            None => self.authorize_fee_public(private_key, fee_amount, deployment_id, rng)?,
+        };
         // Compute the fee.
-        let (_, fee) = self.execute_fee_raw(private_key, fee_record, fee_in_microcredits, deployment_id, query, rng)?;
-
-        // Construct the owner.
-        let owner = ProgramOwner::new(private_key, deployment_id, rng)?;
+        let fee = self.execute_fee_authorization(fee_authorization, query, rng)?;
 
         // Return the deploy transaction.
         Transaction::from_deployment(owner, deployment, fee)
     }
+}
 
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns a deployment for the given program.
     #[inline]
-    pub fn deploy_raw<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
-        let timer = timer!("VM::deploy_raw");
-
-        // Compute the core logic.
+    pub(super) fn deploy_raw<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the program.
                 let program = cast_ref!(&program as Program<$network>);
-
                 // Compute the deployment.
                 let deployment = $process.deploy::<$aleo, _>(program, rng)?;
-                lap!(timer, "Compute the deployment");
-
-                // Prepare the return.
-                let deployment = cast_ref!(deployment as Deployment<N>).clone();
-                lap!(timer, "Prepare the deployment");
-
-                finish!(timer);
-                // Return the deployment.
-                Ok(deployment)
+                // Prepare the deployment.
+                Ok(cast_ref!(deployment as Deployment<N>).clone())
             }};
         }
-        // Process the logic.
-        process!(self, logic)
+
+        // Compute the deployment.
+        let timer = timer!("VM::deploy_raw");
+        let result = process!(self, logic);
+        finish!(timer, "Compute the deployment");
+        result
     }
 }

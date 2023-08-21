@@ -473,19 +473,12 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
-        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
-
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(true, rng);
         insert_get_remove(transaction).unwrap();
-    }
 
-    #[test]
-    fn test_insert_get_remove_with_fee() {
-        let rng = &mut TestRng::default();
-
-        // Sample the execution transaction with a fee.
-        let transaction_with_fee = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
-
-        insert_get_remove(transaction_with_fee).unwrap();
+        // Sample the execution transaction.
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(false, rng);
+        insert_get_remove(transaction).unwrap();
     }
 
     #[test]
@@ -493,18 +486,11 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Sample the execution transaction.
-        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
-
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(true, rng);
         find_transaction_id(transaction).unwrap();
-    }
 
-    #[test]
-    fn test_find_transaction_id_with_fee() {
-        let rng = &mut TestRng::default();
-
-        // Sample the execution transaction with a fee.
-        let transaction_with_fee = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
-
-        find_transaction_id(transaction_with_fee).unwrap();
+        // Sample the execution transaction.
+        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(false, rng);
+        find_transaction_id(transaction).unwrap();
     }
 }

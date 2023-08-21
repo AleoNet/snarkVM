@@ -60,7 +60,7 @@ pub fn update_total_supply<N: Network>(
     for confirmed in transactions.iter() {
         // Subtract the fee from the total supply.
         next_total_supply = next_total_supply
-            .checked_sub(*confirmed.fee()?)
+            .checked_sub(*confirmed.fee_amount()?)
             .ok_or_else(|| anyhow!("The proposed fee underflows the total supply of microcredits"))?;
 
         // Iterate over the transitions in the transaction.

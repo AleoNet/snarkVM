@@ -94,9 +94,12 @@ impl_remote!(JoinVerifier, REMOTE_URL, "resources/", "join", "verifier");
 // Split
 impl_remote!(SplitProver, REMOTE_URL, "resources/", "split", "prover");
 impl_remote!(SplitVerifier, REMOTE_URL, "resources/", "split", "verifier");
-// Fee
-impl_remote!(FeeProver, REMOTE_URL, "resources/", "fee", "prover");
-impl_remote!(FeeVerifier, REMOTE_URL, "resources/", "fee", "verifier");
+// FeePrivate
+impl_remote!(FeePrivateProver, REMOTE_URL, "resources/", "fee_private", "prover");
+impl_remote!(FeePrivateVerifier, REMOTE_URL, "resources/", "fee_private", "verifier");
+// FeePublic
+impl_remote!(FeePublicProver, REMOTE_URL, "resources/", "fee_public", "prover");
+impl_remote!(FeePublicVerifier, REMOTE_URL, "resources/", "fee_public", "verifier");
 
 #[macro_export]
 macro_rules! insert_credit_keys {
@@ -115,7 +118,8 @@ macro_rules! insert_credit_keys {
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public_to_private", $crate::testnet3::[<TransferPublicToPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("join", $crate::testnet3::[<Join $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("split", $crate::testnet3::[<Split $variant>]::load_bytes()));
-            $crate::insert_key!($map, string, $type<$network>, ("fee", $crate::testnet3::[<Fee $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("fee_private", $crate::testnet3::[<FeePrivate $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("fee_public", $crate::testnet3::[<FeePublic $variant>]::load_bytes()));
         }
     }};
 }
@@ -169,8 +173,10 @@ mod tests {
         TransferPublicVerifier::load_bytes().expect("Failed to load transfer_public verifier");
         TransferPrivateToPublicVerifier::load_bytes().expect("Failed to load transfer_private_to_public verifier");
         TransferPublicToPrivateVerifier::load_bytes().expect("Failed to load transfer_public_to_private verifier");
-        FeeProver::load_bytes().expect("Failed to load fee prover");
-        FeeVerifier::load_bytes().expect("Failed to load fee verifier");
+        FeePrivateProver::load_bytes().expect("Failed to load fee_private prover");
+        FeePrivateVerifier::load_bytes().expect("Failed to load fee_private verifier");
+        FeePublicProver::load_bytes().expect("Failed to load fee_public prover");
+        FeePublicVerifier::load_bytes().expect("Failed to load fee_public verifier");
         InclusionProver::load_bytes().expect("Failed to load inclusion prover");
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifier");
     }

@@ -99,9 +99,9 @@ pub mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Samples a rejected deployment.
-    pub(crate) fn sample_rejected_deployment(rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    pub(crate) fn sample_rejected_deployment(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
         // Sample a deploy transaction.
-        let deployment = match crate::transaction::test_helpers::sample_deployment_transaction(rng) {
+        let deployment = match crate::transaction::test_helpers::sample_deployment_transaction(is_fee_private, rng) {
             Transaction::Deploy(_, _, deployment, _) => (*deployment).clone(),
             _ => unreachable!(),
         };
@@ -116,12 +116,13 @@ pub mod test_helpers {
     }
 
     /// Samples a rejected execution.
-    pub(crate) fn sample_rejected_execution(rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    pub(crate) fn sample_rejected_execution(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
         // Sample an execute transaction.
-        let execution = match crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng) {
-            Transaction::Execute(_, execution, _) => execution,
-            _ => unreachable!(),
-        };
+        let execution =
+            match crate::transaction::test_helpers::sample_execution_transaction_with_fee(is_fee_private, rng) {
+                Transaction::Execute(_, execution, _) => execution,
+                _ => unreachable!(),
+            };
 
         // Return the rejected execution.
         Rejected::new_execution(execution)
@@ -131,6 +132,11 @@ pub mod test_helpers {
     pub(crate) fn sample_rejected_transactions() -> Vec<Rejected<CurrentNetwork>> {
         let rng = &mut TestRng::default();
 
-        vec![sample_rejected_deployment(rng), sample_rejected_execution(rng)]
+        vec![
+            sample_rejected_deployment(true, rng),
+            sample_rejected_deployment(false, rng),
+            sample_rejected_execution(true, rng),
+            sample_rejected_execution(false, rng),
+        ]
     }
 }
