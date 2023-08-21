@@ -56,8 +56,9 @@ fn test_vm_execute_and_finalize() {
 
         // Deploy the program.
         let transaction =
-            vm.deploy(&genesis_private_key, test.program(), (fee_records.pop().unwrap().0, 0), None, rng).unwrap();
-        let transactions = vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
+            vm.deploy(&genesis_private_key, test.program(), Some(fee_records.pop().unwrap().0), 0, None, rng).unwrap();
+        let (transactions, _) =
+            vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
         let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
 
@@ -109,7 +110,8 @@ fn test_vm_execute_and_finalize() {
                         &private_key,
                         (test.program().id(), function_name),
                         inputs.iter(),
-                        Some((fee_records.pop().unwrap().0, 0u64)),
+                        Some(fee_records.pop().unwrap().0),
+                        0u64,
                         None,
                         rng,
                     ) {
@@ -161,7 +163,7 @@ fn test_vm_execute_and_finalize() {
                     // Speculate on the transaction.
                     let transactions =
                         match vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()) {
-                            Ok(transactions) => {
+                            Ok((transactions, _)) => {
                                 output.insert(
                                     serde_yaml::Value::String("speculate".to_string()),
                                     serde_yaml::Value::String(match transactions.iter().next().unwrap() {
@@ -282,7 +284,8 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let transactions = vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
+        let (transactions, _) =
+            vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
         let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
@@ -314,7 +317,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         CurrentNetwork::GENESIS_COINBASE_TARGET,
         CurrentNetwork::GENESIS_PROOF_TARGET,
         previous_block.last_coinbase_target(),
-        previous_block.last_coinbase_height(),
+        previous_block.last_coinbase_timestamp(),
         CurrentNetwork::GENESIS_TIMESTAMP + 1,
     )?;
     // Construct the block header.
@@ -341,7 +344,7 @@ fn split<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>, Vec<Transaction<CurrentNetwork>>) {
     let inputs = vec![Value::Record(record), Value::Plaintext(Plaintext::from(Literal::U64(U64::new(amount))))];
-    let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, None, rng).unwrap();
+    let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, 0, None, rng).unwrap();
     let records = transaction
         .records()
         .map(|(_, record)| record.decrypt(&ViewKey::try_from(private_key).unwrap()).unwrap())

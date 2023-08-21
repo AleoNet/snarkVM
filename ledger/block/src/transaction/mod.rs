@@ -100,17 +100,6 @@ impl<N: Network> Transaction<N> {
 }
 
 impl<N: Network> Transaction<N> {
-    /// Returns `true` if this transaction contains a call to `credits.aleo/mint`.
-    #[inline]
-    pub fn contains_mint(&self) -> bool {
-        match self {
-            // Case 1 - The transaction contains a transition that calls 'credits.aleo/mint'.
-            Transaction::Execute(_, execution, _) => execution.transitions().any(|transition| transition.is_mint()),
-            // Otherwise, return 'false'.
-            _ => false,
-        }
-    }
-
     /// Returns `true` if this transaction contains a call to `credits.aleo/split`.
     #[inline]
     pub fn contains_split(&self) -> bool {
@@ -194,7 +183,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns the transaction fee.
-    pub fn fee(&self) -> Result<U64<N>> {
+    pub fn fee_amount(&self) -> Result<U64<N>> {
         match self {
             Self::Deploy(_, _, _, fee) => fee.amount(),
             Self::Execute(_, _, Some(fee)) => fee.amount(),
@@ -402,8 +391,8 @@ pub mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    /// Samples a random deployment transaction.
-    pub fn sample_deployment_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    /// Samples a random deployment transaction with a private or public fee.
+    pub fn sample_deployment_transaction(is_fee_private: bool, rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         // Sample a private key.
         let private_key = PrivateKey::new(rng).unwrap();
         // Sample a deployment.
@@ -415,30 +404,47 @@ pub mod test_helpers {
         let owner = ProgramOwner::new(&private_key, deployment_id, rng).unwrap();
 
         // Sample the fee.
-        let fee = crate::transaction::fee::test_helpers::sample_fee(deployment_id, rng);
+        let fee = match is_fee_private {
+            true => crate::transaction::fee::test_helpers::sample_fee_private(deployment_id, rng),
+            false => crate::transaction::fee::test_helpers::sample_fee_public(deployment_id, rng),
+        };
 
         // Construct a deployment transaction.
         Transaction::from_deployment(owner, deployment, fee).unwrap()
     }
 
-    /// Samples a random execution transaction with fee.
-    pub fn sample_execution_transaction_with_fee(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    /// Samples a random execution transaction with a private or public fee.
+    pub fn sample_execution_transaction_with_fee(
+        is_fee_private: bool,
+        rng: &mut TestRng,
+    ) -> Transaction<CurrentNetwork> {
         // Sample an execution.
         let execution = crate::transaction::execution::test_helpers::sample_execution(rng);
         // Compute the execution ID.
         let execution_id = execution.to_execution_id().unwrap();
 
         // Sample the fee.
-        let fee = crate::transaction::fee::test_helpers::sample_fee(execution_id, rng);
+        let fee = match is_fee_private {
+            true => crate::transaction::fee::test_helpers::sample_fee_private(execution_id, rng),
+            false => crate::transaction::fee::test_helpers::sample_fee_public(execution_id, rng),
+        };
 
         // Construct an execution transaction.
         Transaction::from_execution(execution, Some(fee)).unwrap()
     }
 
     /// Samples a random fee transaction.
-    pub fn sample_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+    pub fn sample_private_fee_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
         // Sample a fee.
-        let fee = crate::transaction::fee::test_helpers::sample_fee_hardcoded(rng);
+        let fee = crate::transaction::fee::test_helpers::sample_fee_private_hardcoded(rng);
+        // Construct a fee transaction.
+        Transaction::from_fee(fee).unwrap()
+    }
+
+    /// Samples a random fee transaction.
+    pub fn sample_fee_public_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
+        // Sample a fee.
+        let fee = crate::transaction::fee::test_helpers::sample_fee_public_hardcoded(rng);
         // Construct a fee transaction.
         Transaction::from_fee(fee).unwrap()
     }

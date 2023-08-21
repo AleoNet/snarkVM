@@ -19,36 +19,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn check_transaction_basic(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
         let transaction_id = transaction.id();
 
-        // TODO (howardwu): DEPRECATE THIS - Remove support for `mint` altogether.
-        // Ensure the mint transaction is attributed to a validator in the committee.
-        if transaction.contains_mint() {
-            // Retrieve the execution.
-            let Some(execution) = transaction.execution() else {
-                bail!("Invalid mint transaction: expected an execution");
-            };
-            // Loop over the mint transitions and ensure the address is authorized.
-            for transition in execution.transitions().filter(|t| t.is_mint()) {
-                // Retrieve the address that minted.
-                let address = mint_address(transition)?;
-                // Check if the address is in the current committee.
-                if *address != self.genesis_block.authority().to_address() {
-                    bail!("Mint transaction ({transaction_id}) is from an unauthorized account ({address})")
-                }
-            }
-        }
-
         /* Fee */
 
         // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-        // TODO (howardwu): Remove support for 'mint'.
-        let can_skip_fee = match transaction.execution() {
-            Some(execution) => (transaction.contains_mint() || transaction.contains_split()) && execution.len() == 1,
+        let is_fee_required = match transaction.execution() {
+            Some(execution) => execution.len() == 1 && transaction.contains_split(),
             None => false,
         };
 
-        if !can_skip_fee {
+        if is_fee_required {
             // Retrieve the transaction fee.
-            let fee = *transaction.fee()?;
+            let fee_amount = *transaction.fee_amount()?;
             // Retrieve the minimum cost of the transaction.
             let (cost, _) = match transaction {
                 // Compute the deployment cost.
@@ -59,7 +40,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 Transaction::Fee(_, _) => (0, (0, 0)),
             };
             // Ensure the transaction has a sufficient fee.
-            if cost > fee {
+            if cost > fee_amount {
                 bail!("Transaction '{transaction_id}' has an insufficient fee - expected at least {cost} microcredits")
             }
         }

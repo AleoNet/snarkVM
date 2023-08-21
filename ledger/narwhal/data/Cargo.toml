@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-ledger-narwhal-transmission"
+name = "snarkvm-ledger-narwhal-data"
 version = "0.14.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "A transmission for a Narwhal-style memory pool in a decentralized virtual machine"
+description = "A batch certificate for a Narwhal-style memory pool in a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -24,29 +24,11 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ ]
-serial = [ "console/serial" ]
-wasm = [ "console/wasm" ]
-test-helpers = [ ]
+async = [ "tokio" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../../console"
-version = "=0.14.6"
-
-[dependencies.ledger-block]
-package = "snarkvm-ledger-block"
-path = "../../block"
-version = "=0.14.6"
-
-[dependencies.ledger-coinbase]
-package = "snarkvm-ledger-coinbase"
-path = "../../coinbase"
-version = "=0.14.6"
-
-[dependencies.ledger-narwhal-data]
-package = "snarkvm-ledger-narwhal-data"
-path = "../data"
 version = "=0.14.6"
 
 [dependencies.bytes]
@@ -56,5 +38,7 @@ version = "1"
 version = "1.0"
 features = [ "preserve_order" ]
 
-[dev-dependencies.bincode]
-version = "1.3"
+[dependencies.tokio]
+optional = true
+version = "1"
+features = [ "rt" ]

@@ -273,9 +273,9 @@ impl<N: Network> Block<N> {
         self.header.last_coinbase_target()
     }
 
-    /// Returns the block height of the last coinbase.
-    pub const fn last_coinbase_height(&self) -> u32 {
-        self.header.last_coinbase_height()
+    /// Returns the block timestamp of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.header.last_coinbase_timestamp()
     }
 
     /// Returns the Unix timestamp (UTC) for this block.
@@ -419,9 +419,9 @@ impl<N: Network> Block<N> {
         self.transactions.nonces()
     }
 
-    /// Returns an iterator over the transaction fees, for all transactions.
-    pub fn transaction_fees(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
-        self.transactions.transaction_fees()
+    /// Returns an iterator over the transaction fee amounts, for all transactions.
+    pub fn transaction_fee_amounts(&self) -> impl '_ + Iterator<Item = Result<U64<N>>> {
+        self.transactions.transaction_fee_amounts()
     }
 }
 
@@ -531,18 +531,18 @@ pub mod test_helpers {
         let address = Address::<CurrentNetwork>::try_from(private_key).unwrap();
 
         // Prepare the locator.
-        let locator = ("credits.aleo", "mint");
-        // Prepare the amount for each call to the mint function.
+        let locator = ("credits.aleo", "transfer_public_to_private");
+        // Prepare the amount for each call to the function.
         let amount = 100_000_000u64;
         // Prepare the function inputs.
         let inputs = [address.to_string(), format!("{amount}_u64")];
 
         // Initialize the process.
         let process = Process::load().unwrap();
-        // Authorize the mint function.
+        // Authorize the function.
         let authorization =
             process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
-        // Execute the mint function.
+        // Execute the function.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
         // Initialize a new block store.

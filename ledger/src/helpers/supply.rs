@@ -12,35 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::{
-    network::Network,
-    program::{Literal, Plaintext},
-    types::Address,
-};
-use ledger_block::{Input, Transactions, Transition};
+use console::network::Network;
+use ledger_block::Transactions;
 
-use anyhow::{anyhow, bail, ensure, Result};
-
-/// Returns the address that minted microcredits, given a mint transition.
-pub fn mint_address<N: Network>(transition: &Transition<N>) -> Result<&Address<N>> {
-    // Ensure this is a mint transition.
-    ensure!(transition.is_mint(), "Invalid mint transaction: expected a mint");
-    // Extract the address from the input.
-    match transition.inputs().get(0) {
-        Some(Input::Public(_, Some(Plaintext::Literal(Literal::Address(address), _)))) => Ok(address),
-        _ => bail!("Invalid mint transaction: Missing public input (address) in 'credits.aleo/mint'"),
-    }
-}
-
-/// Returns the amount minted in microcredits, given a mint transition.
-pub fn mint_amount<N: Network>(transition: &Transition<N>) -> Result<u64> {
-    debug_assert!(transition.is_mint(), "Invalid mint transition: expected a mint");
-    // Extract the amount from the input.
-    match transition.inputs().get(1) {
-        Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(amount), _)))) => Ok(**amount),
-        _ => bail!("Invalid mint transition: Missing public input (amount) in 'credits.aleo/mint'"),
-    }
-}
+use anyhow::{anyhow, Result};
 
 /// Returns the next total supply in microcredits, given the starting total supply and newly-confirmed transactions.
 pub fn update_total_supply<N: Network>(
@@ -60,18 +35,11 @@ pub fn update_total_supply<N: Network>(
     for confirmed in transactions.iter() {
         // Subtract the fee from the total supply.
         next_total_supply = next_total_supply
-            .checked_sub(*confirmed.fee()?)
+            .checked_sub(*confirmed.fee_amount()?)
             .ok_or_else(|| anyhow!("The proposed fee underflows the total supply of microcredits"))?;
 
         // Iterate over the transitions in the transaction.
         for transition in confirmed.transaction().transitions() {
-            // If the transition contains a mint, add the amount to the total supply.
-            if transition.is_mint() {
-                // Add the amount minted to the total supply.
-                next_total_supply = next_total_supply
-                    .checked_add(mint_amount(transition)?)
-                    .ok_or_else(|| anyhow!("The proposed mint overflows the total supply of microcredits"))?;
-            }
             // If the transition contains a split, subtract the amount from the total supply.
             if transition.is_split() {
                 // TODO (howardwu): Add a test that calls `split`, checks the output records - input records == 10_000u64.

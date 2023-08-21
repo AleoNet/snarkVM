@@ -31,7 +31,7 @@ impl<N: Network> Block<N> {
             // Ensure there is the correct number of rejected transaction in the genesis block.
             && self.transactions.num_rejected() == 0
             // Ensure there is the correct number of finalize operations in the genesis block.
-            && self.transactions.num_finalize() == 0
+            && self.transactions.num_finalize() == 2 * Self::NUM_GENESIS_TRANSACTIONS
             // Ensure there is the correct number of ratification operations in the genesis block.
             && self.ratifications.len() == 1
             // Ensure there are no solutions in the genesis block.

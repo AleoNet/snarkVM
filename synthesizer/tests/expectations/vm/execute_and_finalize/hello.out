@@ -1,48 +1,48 @@
 - execute:
     hello.aleo/hello:
       outputs:
-      - '{"type":"private","id":"4167682766385489223304387245576837851782989912520780547853125136196508515528field","value":"ciphertext1qyqvv2zmh96lmfzk82hyalyv4yckl52737cwla76wy803tr6jx3v5ygts6wdw"}'
+      - '{"type":"private","id":"5459874949540656339896424601837550318790266188426988935724859367920207931028field","value":"ciphertext1qyqxp56yz9fx2hc8qd9dmss6npcd5h8r582ccfmakh2jcf0pvujdwrqq83wxy"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"3251454182870026685970775705147159896486232580642584613511276844961582643997field","checksum":"6782097661968904344006945568512942940514411712015047839174359510939278544485field","value":"record1qyqsql0npdjfwmgf39h07ejt4dcel9mkf6mm972ghfthpmh08f8cxmgjqyxx66trwfhkxun9v35hguerqqpqzq9pnstf885rs44g8t5dmscugfw4nxayrk6249yaeptyr324xr33pchaszj6k6vshqep8yf5n92g2vvz0w9am2ph3e4jfxnqscqavtasu6yerga"}'
+      - '{"type":"record","id":"7791353003394394118641879083394349638390172842410188049547657559236944788631field","checksum":"2131495033973867989393784363608568032568195425013734862036701493589755037702field","value":"record1qyqspnrul0jw2u0a7jgxh8ftaequacdjhldqhdr8e8yc8uhg0q2ppxc2qyxx66trwfhkxun9v35hguerqqpqzqq5wftj0jmg0wudaj09t3nu8snvxtqrr84edf7k43gg0xn400muqky26l0cv6k8l7lxapusheeham2ufvcrr2uj07qrh9cjkqt8qkrs2s6zess"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
     hello.aleo/hello:
       outputs:
-      - '{"type":"private","id":"4265566869002543335054583665862709164981601219088361670943653268252657400173field","value":"ciphertext1qyqgykx3n3537g5cqx0mavtgtpq0ytzq7wpa8ydhc8uvu7092uyryrq0ddu0x"}'
+      - '{"type":"private","id":"4190523942746941151788535679482167833023294290248250731893857652327309412596field","value":"ciphertext1qyqg0dpeew6mjk7zgcw423k99k74k5nnqpshnjsjvjezfqsfel7q6pq9k0ny2"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"6884396657264342952708351729391467053885131175378169152111198935277824111839field","checksum":"3237864884337371591371905318729797169598184257117643886797184905992590388047field","value":"record1qyqsq6aa534u37d6mfeh2ajruftcy93fg8ps87v566qu4kz58vlakxcjqyxx66trwfhkxun9v35hguerqqpqzqz9kglzn8q9jtgmlccc75wup0z0ahyzyc5tuv6dqvggsnwgy50apaecvyrvd75xtf92ptu333ucfag94n6npx90ktvqfjnq5kntqrdpqvgu0fe"}'
+      - '{"type":"record","id":"4191198613729680952611824740459035306739472570630958374911956816307655241786field","checksum":"4946561893144535184225125000190846294429186134636334975807905728162736154280field","value":"record1qyqsprjmrxemlnkjn5v5tvsxjtdnwndqc40jv2g9ks4dnknu6ucu4mcxqyxx66trwfhkxun9v35hguerqqpqzqyjern5gguzywy658yjenl6r4a68pxtxm3mdgw2kur3zl8kkx8aqwczwm99vr3qxfd7cvv2263tg8yuuxanc0ppupg582cel0e5hjfqqral3uk"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
     hello.aleo/goodbye:
       outputs:
-      - '{"type":"public","id":"2241654104473759523426348001063073321240410290071740441341482006617536331362field","value":"1u32"}'
+      - '{"type":"public","id":"4422606574863156036341614972238442892823066996724079227085638046305964917879field","value":"1u32"}'
       finalize:
       - 1u32
       - 1u32
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"1387264522117543082663369467533847909982452604201038209450359125158958856552field","checksum":"4981023845446913761301484504937053942976331888288673762087992705008600606564field","value":"record1qyqsqgq0vpatkdze4fssydaqkgjc483jyc0h9y64el3yc2fmffgk60g9qyxx66trwfhkxun9v35hguerqqpqzqq0x2yqf302v9z0394j97es2ml0c08urfyhg3upy2zus0dzlwxyq3lueq0le7jlcnp9mvfufvnmxklrwmzv54c0ds4vv5kyaxgqdq6sudpknhg"}'
+      - '{"type":"record","id":"6668886706894714013313860607473481824533547991772788157276830799512707935582field","checksum":"2901589187633951402527250258610323611689439122872738485414884973359309068311field","value":"record1qyqsq52hsee66mw23znlfmc88tdgjnh7a0uuxeqrh56zysyr9t4ky8stqyxx66trwfhkxun9v35hguerqqpqzq9z2pq4vxpv43den6kktrc8ufm5kjrm84f4eprczc3su95w5tvzpd8s2e60s2ra7myyru67tnfh86wtr2vrr8f84xw5ux8k7xfg3ahpz6pesvk"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
 - execute:
     hello.aleo/goodbye:
       outputs:
-      - '{"type":"public","id":"6590134283029517394818393021250071553012611141922540488685016300989807772487field","value":"1u32"}'
+      - '{"type":"public","id":"626299501033028507774181248923989773544577830656010087029558433445349806993field","value":"1u32"}'
       finalize:
       - 0u32
       - 1u32
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"3483796735888560020298697045072161358473702318267031091070161722987378565315field","checksum":"5080468967094491228543269894657939369979677622620215761136130697156822407355field","value":"record1qyqsqvf7hv0vf9648dy2acph5azgwpsk546na05a05n5grp76a5g29gsqyxx66trwfhkxun9v35hguerqqpqzqq2wl09yjr4yjaytljevtnqvmwd3n4vmjhgkvnp9zalnf8jhek5qrgyrp3wtfyq9a0p7xarh67k0d5063pjew3mmujsmfqlec2gjunswzczd67"}'
+      - '{"type":"record","id":"6464844260854015147296612989521509745308934803774183371183084153503795251789field","checksum":"2486059173640159754955350817838107946088153031071282949747691382202100184469field","value":"record1qyqspga64uulzny350adkf3l886mcjdcx70lru5hpl8z6y95l90ga3qrqyxx66trwfhkxun9v35hguerqqpqzqqhxexg0fny2r7kqvye0j9r6jmc5sypyt0r59nvt2cavq548stkqk6lh8he0vr9jwx3c5nlxua7k3w26tz225pryza82dxnyev8udysqwvakj9"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.

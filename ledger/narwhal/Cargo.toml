@@ -24,7 +24,8 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "batch-certificate", "batch-header", "subdag", "transmission", "transmission-id" ]
+default = [ "batch-certificate", "batch-header", "data", "subdag", "transmission", "transmission-id" ]
+async = [ "narwhal-data/async" ]
 serial = [
     "narwhal-batch-certificate/serial",
     "narwhal-batch-header/serial",
@@ -49,6 +50,7 @@ test-helpers = [
 
 batch-certificate = [ "narwhal-batch-certificate" ]
 batch-header = [ "narwhal-batch-header" ]
+data = [ "narwhal-data" ]
 subdag = [ "narwhal-subdag" ]
 transmission = [ "narwhal-transmission" ]
 transmission-id = [ "narwhal-transmission-id" ]
@@ -62,6 +64,12 @@ optional = true
 [dependencies.narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "./batch-header"
+version = "=0.14.6"
+optional = true
+
+[dependencies.narwhal-data]
+package = "snarkvm-ledger-narwhal-data"
+path = "./data"
 version = "=0.14.6"
 optional = true
 

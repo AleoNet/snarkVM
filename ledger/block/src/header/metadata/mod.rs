@@ -42,8 +42,8 @@ pub struct Metadata<N: Network> {
     proof_target: u64,
     /// The coinbase target for the last coinbase - 8 bytes.
     last_coinbase_target: u64,
-    /// The block height for the last coinbase - 8 bytes.
-    last_coinbase_height: u32,
+    /// The Unix timestamp (UTC) for the last coinbase - 8 bytes.
+    last_coinbase_timestamp: i64,
     /// The Unix timestamp (UTC) for this block - 8 bytes.
     timestamp: i64,
     /// PhantomData.
@@ -62,7 +62,7 @@ impl<N: Network> Metadata<N> {
         coinbase_target: u64,
         proof_target: u64,
         last_coinbase_target: u64,
-        last_coinbase_height: u32,
+        last_coinbase_timestamp: i64,
         timestamp: i64,
     ) -> Result<Self> {
         // Construct a new metadata.
@@ -75,7 +75,7 @@ impl<N: Network> Metadata<N> {
             coinbase_target,
             proof_target,
             last_coinbase_target,
-            last_coinbase_height,
+            last_coinbase_timestamp,
             timestamp,
             _phantom: PhantomData,
         };
@@ -107,6 +107,8 @@ impl<N: Network> Metadata<N> {
                     && self.coinbase_target > self.proof_target
                     // Ensure the last coinbase target is at or above the minimum.
                     && self.last_coinbase_target >= N::GENESIS_COINBASE_TARGET
+                    // Ensure the last coinbase timestamp is after the genesis timestamp.
+                    && self.last_coinbase_timestamp >= N::GENESIS_TIMESTAMP
                     // Ensure the timestamp in the block is after the genesis timestamp.
                     && self.timestamp > N::GENESIS_TIMESTAMP
             }
@@ -155,9 +157,9 @@ impl<N: Network> Metadata<N> {
         self.last_coinbase_target
     }
 
-    /// Returns the block height of the last coinbase.
-    pub const fn last_coinbase_height(&self) -> u32 {
-        self.last_coinbase_height
+    /// Returns the block timestamp of the last coinbase.
+    pub const fn last_coinbase_timestamp(&self) -> i64 {
+        self.last_coinbase_timestamp
     }
 
     /// Returns the Unix timestamp (UTC) for this block.
