@@ -59,6 +59,9 @@ pub fn sample_fee<N: Network, A: Aleo<Network = N>, B: BlockStorage<N>, P: Final
     let program_id = ProgramID::from_str("credits.aleo").unwrap();
     let account_mapping = Identifier::from_str("account").unwrap();
 
+    // Initialize the account mapping, even if it already has been (we silence the result for testing).
+    let _ = finalize_store.initialize_mapping(&program_id, &account_mapping);
+
     // Sample a random private key.
     let private_key = PrivateKey::<N>::new(rng).unwrap();
     let address = Address::try_from(private_key).unwrap();
