@@ -22,7 +22,6 @@ impl<N: Network> ToBits for Metadata<N> {
         self.network.write_bits_le(vec);                      // 2 bytes
         self.round.write_bits_le(vec);                        // 8 bytes
         self.height.write_bits_le(vec);                       // 4 bytes
-        self.total_supply_in_microcredits.write_bits_le(vec); // 8 bytes
         self.cumulative_weight.write_bits_le(vec);            // 16 bytes
         self.cumulative_proof_target.write_bits_le(vec);      // 16 bytes
         self.coinbase_target.write_bits_le(vec);              // 8 bytes
@@ -39,7 +38,6 @@ impl<N: Network> ToBits for Metadata<N> {
         self.network.write_bits_be(vec);                      // 2 bytes
         self.round.write_bits_be(vec);                        // 8 bytes
         self.height.write_bits_be(vec);                       // 4 bytes
-        self.total_supply_in_microcredits.write_bits_be(vec); // 8 bytes
         self.cumulative_weight.write_bits_be(vec);            // 16 bytes
         self.cumulative_proof_target.write_bits_be(vec);      // 16 bytes
         self.coinbase_target.write_bits_be(vec);              // 8 bytes

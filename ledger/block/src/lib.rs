@@ -248,11 +248,6 @@ impl<N: Network> Block<N> {
         self.height() / N::NUM_BLOCKS_PER_EPOCH
     }
 
-    /// Returns the total supply of microcredits at this block.
-    pub const fn total_supply_in_microcredits(&self) -> u64 {
-        self.header.total_supply_in_microcredits()
-    }
-
     /// Returns the cumulative weight for this block.
     pub const fn cumulative_weight(&self) -> u128 {
         self.header.cumulative_weight()

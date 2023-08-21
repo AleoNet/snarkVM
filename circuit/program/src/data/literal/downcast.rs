@@ -40,6 +40,7 @@ impl<A: Aleo> Literal<A> {
             Self::U64(..) => bail!("Cannot downcast a u64 literal to another type (yet)."),
             Self::U128(..) => bail!("Cannot downcast a u128 literal to another type (yet)."),
             Self::Scalar(..) => bail!("Cannot downcast a scalar literal to another type (yet)."),
+            Self::Signature(..) => bail!("Cannot downcast a signature literal to another type."),
             Self::String(..) => bail!("Cannot downcast a string literal to another type."),
         }
     }
@@ -69,6 +70,7 @@ impl<A: Aleo> Literal<A> {
             Self::U64(..) => bail!("Cannot downcast a u64 literal to another type (yet)."),
             Self::U128(..) => bail!("Cannot downcast a u128 literal to another type (yet)."),
             Self::Scalar(..) => bail!("Cannot downcast a scalar literal to another type (yet)."),
+            Self::Signature(..) => bail!("Cannot downcast a signature literal to another type."),
             Self::String(..) => bail!("Cannot downcast a string literal to another type."),
         }
     }
@@ -92,6 +94,7 @@ fn downcast_field_to_type<A: Aleo>(field: Field<A>, to_type: LiteralType) -> Res
         LiteralType::U64 => Ok(Literal::U64(U64::from_field(field))),
         LiteralType::U128 => Ok(Literal::U128(U128::from_field(field))),
         LiteralType::Scalar => Ok(Literal::Scalar(Scalar::from_field(field))),
+        LiteralType::Signature => bail!("Cannot downcast a field literal to a signature type."),
         LiteralType::String => bail!("Cannot downcast a field literal to a string type."),
     }
 }
@@ -114,6 +117,7 @@ fn downcast_lossy_field_to_type<A: Aleo>(field: Field<A>, to_type: LiteralType) 
         LiteralType::U64 => Ok(Literal::U64(U64::from_field_lossy(field))),
         LiteralType::U128 => Ok(Literal::U128(U128::from_field_lossy(field))),
         LiteralType::Scalar => Ok(Literal::Scalar(Scalar::from_field_lossy(field))),
+        LiteralType::Signature => bail!("Cannot downcast a field literal to a signature type."),
         LiteralType::String => bail!("Cannot downcast a field literal to a string type."),
     }
 }

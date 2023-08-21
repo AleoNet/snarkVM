@@ -203,20 +203,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let transactions =
             self.vm.speculate(state, &ratifications, solutions.as_ref(), candidate_transactions.iter())?;
 
-        // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits = update_total_supply(
-            previous_block.total_supply_in_microcredits(),
-            block_reward,
-            puzzle_reward,
-            &transactions,
-        )?;
-
         // Construct the metadata.
         let metadata = Metadata::new(
             N::ID,
             next_round,
             next_height,
-            next_total_supply_in_microcredits,
             next_cumulative_weight,
             next_cumulative_proof_target,
             next_coinbase_target,
