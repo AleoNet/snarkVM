@@ -296,7 +296,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                 true => stacks.push(stack),
                                 // Note: This will abort the entire atomic batch.
                                 false => {
-                                    return Err("Mismatch in finalize operations for an accepted deploy".to_string());
+                                    return Err(format!(
+                                        "Mismatch in finalize operations for an accepted deploy - (found: {finalize_operations:?}, expected: {finalize:?})"
+                                    ));
                                 }
                             },
                             // Note: This will abort the entire atomic batch.
