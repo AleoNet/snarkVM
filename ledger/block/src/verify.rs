@@ -44,7 +44,7 @@ impl<N: Network> Block<N> {
             expected_coinbase_target,
             expected_proof_target,
             expected_last_coinbase_target,
-            expected_last_coinbase_height,
+            expected_last_coinbase_timestamp,
             expected_block_reward,
             expected_puzzle_reward,
         ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_challenge)?;
@@ -80,7 +80,7 @@ impl<N: Network> Block<N> {
             expected_coinbase_target,
             expected_proof_target,
             expected_last_coinbase_target,
-            expected_last_coinbase_height,
+            expected_last_coinbase_timestamp,
             expected_timestamp,
             current_timestamp,
         )
@@ -248,8 +248,9 @@ impl<N: Network> Block<N> {
         previous_block: &Block<N>,
         current_puzzle: &CoinbasePuzzle<N>,
         current_epoch_challenge: &EpochChallenge<N>,
-    ) -> Result<(u128, u128, u64, u64, u64, u32, u64, u64)> {
+    ) -> Result<(u128, u128, u64, u64, u64, i64, u64, u64)> {
         let height = self.height();
+        let timestamp = self.timestamp();
 
         let (combined_proof_target, expected_cumulative_proof_target, is_coinbase_target_reached) = match &self.coinbase
         {
@@ -312,9 +313,9 @@ impl<N: Network> Block<N> {
         // Construct the next coinbase target.
         let expected_coinbase_target = coinbase_target(
             previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_height(),
-            height,
-            N::ANCHOR_HEIGHT,
+            previous_block.last_coinbase_timestamp(),
+            timestamp,
+            N::ANCHOR_TIME,
             N::NUM_BLOCKS_PER_EPOCH,
             N::GENESIS_COINBASE_TARGET,
         )?;
@@ -326,10 +327,10 @@ impl<N: Network> Block<N> {
             true => expected_coinbase_target,
             false => previous_block.last_coinbase_target(),
         };
-        // Determine the expected last coinbase height.
-        let expected_last_coinbase_height = match is_coinbase_target_reached {
-            true => height,
-            false => previous_block.last_coinbase_height(),
+        // Determine the expected last coinbase timestamp.
+        let expected_last_coinbase_timestamp = match is_coinbase_target_reached {
+            true => timestamp,
+            false => previous_block.last_coinbase_timestamp(),
         };
 
         // Calculate the expected coinbase reward.
@@ -353,7 +354,7 @@ impl<N: Network> Block<N> {
             expected_coinbase_target,
             expected_proof_target,
             expected_last_coinbase_target,
-            expected_last_coinbase_height,
+            expected_last_coinbase_timestamp,
             expected_block_reward,
             expected_puzzle_reward,
         ))

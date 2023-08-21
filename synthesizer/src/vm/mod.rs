@@ -596,13 +596,12 @@ function compute:
             Testnet3::ID,
             previous_block.round() + 1,
             previous_block.height() + 1,
-            Testnet3::STARTING_SUPPLY,
             0,
             0,
             Testnet3::GENESIS_COINBASE_TARGET,
             Testnet3::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_height(),
+            previous_block.last_coinbase_timestamp(),
             Testnet3::GENESIS_TIMESTAMP + 1,
         )?;
 

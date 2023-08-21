@@ -40,8 +40,23 @@ mod tests {
 
     /// Add test cases here to be checked for serialization.
     const TEST_CASES: &[&str] = &[
-        "address", "boolean", "field", "group", "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128",
-        "scalar", "string",
+        "address",
+        "boolean",
+        "field",
+        "group",
+        "i8",
+        "i16",
+        "i32",
+        "i64",
+        "i128",
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "u128",
+        "scalar",
+        "signature",
+        "string",
     ];
 
     fn check_serde_json<

@@ -63,10 +63,10 @@ mod tests {
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
-        // Previous state root, transactions root, finalize root, ratifications root, and accumulator point size.
+        // Previous state root, transactions root, finalize root, ratifications root, and solutions root size.
         (Field::<N>::size_in_bytes() * 5)
             // Metadata size.
-            + 1 + 8 + 4 + 8 + 16 + 16 + 8 + 8 + 8 + 4 + 8
+            + 1 + 8 + 4 + 16 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 3 bytes for versioning.
             + 1 + 2
     }
@@ -98,12 +98,11 @@ mod tests {
         assert_eq!(header.network(), CurrentNetwork::ID);
         assert_eq!(header.round(), 0);
         assert_eq!(header.height(), 0);
-        assert_eq!(header.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
         assert_eq!(header.cumulative_weight(), 0);
         assert_eq!(header.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(header.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(header.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
-        assert_eq!(header.last_coinbase_height(), 0);
+        assert_eq!(header.last_coinbase_timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
         assert_eq!(header.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
 
         // Ensure the genesis block does *not* contain the following.

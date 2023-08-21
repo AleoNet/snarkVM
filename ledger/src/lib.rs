@@ -253,11 +253,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         *self.current_block.read().header()
     }
 
-    /// Returns the latest total supply in microcredits.
-    pub fn latest_total_supply_in_microcredits(&self) -> u64 {
-        self.current_block.read().header().total_supply_in_microcredits()
-    }
-
     /// Returns the latest block cumulative weight.
     pub fn latest_cumulative_weight(&self) -> u128 {
         self.current_block.read().cumulative_weight()
@@ -288,9 +283,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().last_coinbase_target()
     }
 
-    /// Returns the last coinbase height.
-    pub fn last_coinbase_height(&self) -> u32 {
-        self.current_block.read().last_coinbase_height()
+    /// Returns the last coinbase timestamp.
+    pub fn last_coinbase_timestamp(&self) -> i64 {
+        self.current_block.read().last_coinbase_timestamp()
     }
 
     /// Returns the latest block timestamp.

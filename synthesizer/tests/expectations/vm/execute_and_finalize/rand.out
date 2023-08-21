@@ -56,5 +56,5 @@
       outputs:
       - '{"type":"record","id":"7393075560667462932228445526523815064117532456259901391879320918363476371812field","checksum":"694815795049196892664847520235186663696181395447757923101700704468232929818field","value":"record1qyqsp249v9rv3g6re8d0apfr8vfrmmm00kwt68nn7pzvvj0ugnv38zcsqyxx66trwfhkxun9v35hguerqqpqzqzv54s2s8t0a4efe0ar3nd0s97yc3f3lmcyuhl97ltc79slp2n8z29lzdgzcg4mwzsc7dtr64t57rpyvgswpvq0xdeeznxy7tzz7a9pzh9j54h"}'
       finalize: []
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
