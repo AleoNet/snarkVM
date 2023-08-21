@@ -668,28 +668,6 @@ finalize set_validator_state:
 
 /**********************************************************************************************************************/
 
-// The `mint` function generates the specified amount
-// into a record for the specified receiver.
-// Note: Additional rules are enforced in consensus.
-function mint:
-    // Input the receiver.
-    input r0 as address.public;
-    // Input the amount.
-    input r1 as u64.public;
-    // Ensure the receiver is the caller.
-    assert.eq r0 self.caller;
-    // Check that the amount is less than the specified limit.
-    // TODO: Reduce this to 256 credits.
-    lt r1 400_000_000_000_000u64 into r2;
-    // Ensure the amount is less than the specified limit.
-    assert.eq r2 true;
-    // Construct the receiver's record.
-    cast r0 r1 into r3 as credits.record;
-    // Output the receiver's record.
-    output r3 as credits.record;
-
-/**********************************************************************************************************************/
-
 // The `transfer_public` function sends the specified amount
 // from the sender's `account` to the receiver's `account`.
 function transfer_public:

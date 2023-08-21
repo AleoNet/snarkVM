@@ -531,18 +531,18 @@ pub mod test_helpers {
         let address = Address::<CurrentNetwork>::try_from(private_key).unwrap();
 
         // Prepare the locator.
-        let locator = ("credits.aleo", "mint");
-        // Prepare the amount for each call to the mint function.
+        let locator = ("credits.aleo", "transfer_public_to_private");
+        // Prepare the amount for each call to the function.
         let amount = 100_000_000u64;
         // Prepare the function inputs.
         let inputs = [address.to_string(), format!("{amount}_u64")];
 
         // Initialize the process.
         let process = Process::load().unwrap();
-        // Authorize the mint function.
+        // Authorize the function.
         let authorization =
             process.authorize::<CurrentAleo, _>(&private_key, locator.0, locator.1, inputs.iter(), rng).unwrap();
-        // Execute the mint function.
+        // Execute the function.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
         // Initialize a new block store.

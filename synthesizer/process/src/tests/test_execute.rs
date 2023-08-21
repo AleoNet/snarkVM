@@ -471,7 +471,7 @@ output r1 as token.record;",
 }
 
 #[test]
-fn test_process_execute_mint() {
+fn test_process_execute_transfer_public() {
     // Initialize a new program.
     let program = Program::<CurrentNetwork>::credits().unwrap();
 
@@ -493,7 +493,7 @@ fn test_process_execute_mint() {
         .authorize::<CurrentAleo, _>(
             &caller_private_key,
             program.id(),
-            Identifier::from_str("mint").unwrap(),
+            Identifier::from_str("transfer_public_to_private").unwrap(),
             [r0, r1].iter(),
             rng,
         )
@@ -506,7 +506,7 @@ fn test_process_execute_mint() {
     let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
 
     // Declare the expected output value.
-    let r3 = Value::from_str(&format!(
+    let r2 = Value::from_str(&format!(
         "{{ owner: {caller}.private, microcredits: 99_000_000_000_000_u64.private, _nonce: {nonce}.public }}"
     ))
     .unwrap();
@@ -518,7 +518,7 @@ fn test_process_execute_mint() {
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
-    assert_eq!(r3, candidate[0]);
+    assert_eq!(r2, candidate[0]);
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -527,7 +527,7 @@ fn test_process_execute_mint() {
     let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
-    assert_eq!(r3, candidate[0]);
+    assert_eq!(r2, candidate[0]);
 
     // process.verify_execution::<true>(&execution).unwrap();
 
@@ -1626,7 +1626,7 @@ import token.aleo;
 
 program public_wallet.aleo;
 
-function mint:
+function init:
     input r0 as address.public;
     input r1 as u64.public;
     call token.aleo/mint_public r0 r1;",
@@ -1645,7 +1645,7 @@ function mint:
     let caller = Address::try_from(&caller_private_key).unwrap();
 
     // Declare the function name.
-    let function_name = Identifier::from_str("mint").unwrap();
+    let function_name = Identifier::from_str("init").unwrap();
 
     // Declare the input value.
     let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();

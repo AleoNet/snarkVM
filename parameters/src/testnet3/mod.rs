@@ -73,9 +73,6 @@ impl_remote!(ClaimUnbondPublicVerifier, REMOTE_URL, "resources/", "claim_unbond_
 // SetValidatorState
 impl_remote!(SetValidatorStateProver, REMOTE_URL, "resources/", "set_validator_state", "prover");
 impl_remote!(SetValidatorStateVerifier, REMOTE_URL, "resources/", "set_validator_state", "verifier");
-// Mint
-impl_remote!(MintProver, REMOTE_URL, "resources/", "mint", "prover");
-impl_remote!(MintVerifier, REMOTE_URL, "resources/", "mint", "verifier");
 // TransferPrivate
 impl_remote!(TransferPrivateProver, REMOTE_URL, "resources/", "transfer_private", "prover");
 impl_remote!(TransferPrivateVerifier, REMOTE_URL, "resources/", "transfer_private", "verifier");
@@ -111,7 +108,6 @@ macro_rules! insert_credit_keys {
             $crate::insert_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::testnet3::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::testnet3::[<ClaimUnbondPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("set_validator_state", $crate::testnet3::[<SetValidatorState $variant>]::load_bytes()));
-            $crate::insert_key!($map, string, $type<$network>, ("mint", $crate::testnet3::[<Mint $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::testnet3::[<TransferPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::testnet3::[<TransferPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::testnet3::[<TransferPrivateToPublic $variant>]::load_bytes()));

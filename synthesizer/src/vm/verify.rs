@@ -140,10 +140,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     self.check_fee(fee, execution_id)?;
                 } else {
                     // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    // TODO (howardwu): Remove support for 'mint'.
-                    let can_skip_fee =
-                        (transaction.contains_mint() || transaction.contains_split()) && execution.len() == 1;
-                    ensure!(can_skip_fee, "Transaction is missing a fee (execution)");
+                    let is_fee_required = execution.len() == 1 && transaction.contains_split();
+                    ensure!(!is_fee_required, "Transaction is missing a fee (execution)");
                 }
                 // Verify the execution.
                 self.check_execution(execution)?;
@@ -484,8 +482,9 @@ mod tests {
         let credits = Some(records.values().next().unwrap().decrypt(&caller_view_key).unwrap());
 
         // Execute.
-        let transaction =
-            vm.execute(&caller_private_key, ("testing.aleo", "mint"), inputs, credits, 10, None, rng).unwrap();
+        let transaction = vm
+            .execute(&caller_private_key, ("testing.aleo", "transfer_public"), inputs, credits, 10, None, rng)
+            .unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());
