@@ -33,6 +33,7 @@ impl<A: Aleo> Literal<A> {
             Self::U64(..) => console::U64::<A::Network>::size_in_bits() as u16,
             Self::U128(..) => console::U128::<A::Network>::size_in_bits() as u16,
             Self::Scalar(..) => console::Scalar::<A::Network>::size_in_bits() as u16,
+            Self::Signature(..) => console::Signature::<A::Network>::size_in_bits() as u16,
             Self::String(string) => string.to_bits_le().len() as u16,
         }))
     }

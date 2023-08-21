@@ -31,6 +31,7 @@ macro_rules! sample_literals {
             console::program::Literal::U64(console::types::U64::rand($rng)),
             console::program::Literal::U128(console::types::U128::rand($rng)),
             console::program::Literal::Scalar(console::types::Scalar::rand($rng)),
+            console::program::Literal::sample(console::program::LiteralType::Signature, $rng),
             console::program::Literal::String(console::types::StringType::rand($rng)),
         ]
     };

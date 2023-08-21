@@ -171,6 +171,8 @@ pub enum Instruction<N: Network> {
     Shr(Shr<N>),
     /// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
     ShrWrapped(ShrWrapped<N>),
+    /// Computes whether `signature` is valid for the given `address` and `message`.
+    SignVerify(SignVerify<N>),
     /// Squares 'first', storing the outcome in `destination`.
     Square(Square<N>),
     /// Compute the square root of 'first', storing the outcome in `destination`.
@@ -267,6 +269,7 @@ macro_rules! instruction {
             ShlWrapped,
             Shr,
             ShrWrapped,
+            SignVerify,
             Square,
             SquareRoot,
             Sub,
@@ -442,7 +445,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            59,
+            60,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

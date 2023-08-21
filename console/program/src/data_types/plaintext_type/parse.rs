@@ -77,7 +77,11 @@ mod tests {
         );
         assert_eq!(
             PlaintextType::parse("signature"),
-            Ok(("", PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("signature")?)))
+            Ok(("", PlaintextType::<CurrentNetwork>::Literal(LiteralType::Signature)))
+        );
+        assert_eq!(
+            PlaintextType::parse("foo"),
+            Ok(("", PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?)))
         );
         Ok(())
     }
@@ -100,16 +104,16 @@ mod tests {
 
         // Struct type must not contain visibility.
         assert_eq!(
-            Ok((".constant", Identifier::<CurrentNetwork>::from_str("signature")?)),
-            Identifier::<CurrentNetwork>::parse("signature.constant")
+            Ok((".constant", Identifier::<CurrentNetwork>::from_str("foo")?)),
+            Identifier::<CurrentNetwork>::parse("foo.constant")
         );
         assert_eq!(
-            Ok((".public", Identifier::<CurrentNetwork>::from_str("signature")?)),
-            Identifier::<CurrentNetwork>::parse("signature.public")
+            Ok((".public", Identifier::<CurrentNetwork>::from_str("foo")?)),
+            Identifier::<CurrentNetwork>::parse("foo.public")
         );
         assert_eq!(
-            Ok((".private", Identifier::<CurrentNetwork>::from_str("signature")?)),
-            Identifier::<CurrentNetwork>::parse("signature.private")
+            Ok((".private", Identifier::<CurrentNetwork>::from_str("foo")?)),
+            Identifier::<CurrentNetwork>::parse("foo.private")
         );
 
         // Must be non-empty.
@@ -147,10 +151,8 @@ mod tests {
     #[test]
     fn test_display() -> Result<()> {
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
-        assert_eq!(
-            PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("signature")?).to_string(),
-            "signature"
-        );
+        assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Signature).to_string(), "signature");
+        assert_eq!(PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?).to_string(), "foo");
         Ok(())
     }
 }
