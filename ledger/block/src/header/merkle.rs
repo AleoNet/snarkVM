@@ -160,7 +160,7 @@ mod tests {
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 7th leaf.
-            let leaf = header.to_leaf(&CurrentNetwork::hash_bhp512(&header.metadata().to_bits_le())?)?;
+            let leaf = header.to_leaf(&CurrentNetwork::hash_bhp1024(&header.metadata().to_bits_le())?)?;
             assert_eq!(leaf.index(), 7);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
         }
