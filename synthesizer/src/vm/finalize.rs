@@ -105,7 +105,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             let mut confirmed = Vec::with_capacity(num_transactions);
 
             // Finalize the transactions.
-            for (index, transaction) in transactions.enumerate() {
+            'outer: for (index, transaction) in transactions.enumerate() {
                 // Convert the transaction index to a u32.
                 // Note: On failure, this will abort the entire atomic batch.
                 let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
@@ -130,7 +130,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                     // Note: On failure, skip this transaction, and continue speculation.
                                     #[cfg(debug_assertions)]
                                     eprintln!("Failed to finalize the fee in a rejected deploy - {error}");
-                                    continue;
+                                    continue 'outer;
                                 }
                                 // Construct the fee transaction.
                                 // Note: On failure, this will abort the entire atomic batch.
@@ -160,7 +160,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                                         // Note: On failure, skip this transaction, and continue speculation.
                                         #[cfg(debug_assertions)]
                                         eprintln!("Failed to finalize the fee in a rejected execute - {error}");
-                                        continue;
+                                        continue 'outer;
                                     }
                                     // Construct the fee transaction.
                                     // Note: On failure, this will abort the entire atomic batch.
