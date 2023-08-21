@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod equal;
+mod helpers;
+mod ternary;
 mod verify;
 
 #[cfg(test)]
-use snarkvm_circuit_types::environment::assert_scope;
+use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::ComputeKey;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar};
 
+#[derive(Clone)]
 pub struct Signature<A: Aleo> {
     /// The verifier challenge to check against.
     challenge: Scalar<A>,
@@ -73,6 +77,65 @@ impl<A: Aleo> Eject for Signature<A> {
     /// Ejects the signature.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from((&self.challenge, &self.response, &self.compute_key).eject_value())
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Parser for Signature<A> {
+    /// Parses a string into a signature circuit.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the signature from the string.
+        let (string, signature) = console::Signature::parse(string)?;
+        // Parse the mode from the string.
+        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+
+        match mode {
+            Some((_, mode)) => Ok((string, Signature::new(mode, signature))),
+            None => Ok((string, Signature::new(Mode::Constant, signature))),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> FromStr for Signature<A> {
+    type Err = Error;
+
+    /// Parses a string into a signature.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> TypeName for Signature<A> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        console::Signature::<A::Network>::type_name()
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Debug for Signature<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Display for Signature<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
 

@@ -33,7 +33,8 @@ use synthesizer_program::FinalizeGlobalState;
 #[test]
 fn test_vm_execute_and_finalize() {
     // Load the tests.
-    let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/vm/execute_and_finalize");
+    let tests =
+        load_tests::<_, ProgramTest>("./tests/vm/execute_and_finalize", "./expectations/vm/execute_and_finalize");
 
     // Run each test and compare it against its corresponding expectation.
     tests.par_iter().for_each(|test| {

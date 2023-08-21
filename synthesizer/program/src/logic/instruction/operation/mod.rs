@@ -38,6 +38,9 @@ pub use literals::*;
 
 mod macros;
 
+mod sign_verify;
+pub use sign_verify::*;
+
 use crate::Opcode;
 use console::network::prelude::*;
 
@@ -748,6 +751,7 @@ crate::operation!(
         (Boolean, U64, U64) => U64,
         (Boolean, U128, U128) => U128,
         (Boolean, Scalar, Scalar) => Scalar,
+        // (Boolean, Signature, Signature) => Signature,
         // (Boolean, StringType, StringType) => StringType,
     }
 );
