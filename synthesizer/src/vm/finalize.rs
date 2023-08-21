@@ -608,7 +608,7 @@ mod tests {
     use crate::vm::{test_helpers, test_helpers::sample_finalize_state};
     use console::{
         account::{Address, PrivateKey, ViewKey},
-        program::{Ciphertext, Record},
+        program::{Ciphertext, Entry, Record},
         types::Field,
     };
     use ledger_block::{Block, Header, Metadata, Transaction, Transition};
