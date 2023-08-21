@@ -322,7 +322,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             Ok(finalize_operations) => {
                                 if finalize != &finalize_operations {
                                     // Note: This will abort the entire atomic batch.
-                                    return Err("Mismatch in finalize operations for an accepted execute".to_string());
+                                    return Err(format!(
+                                        "Mismatch in finalize operations for an accepted execute - (found: {finalize_operations:?}, expected: {finalize:?})"
+                                    ));
                                 }
                             }
                             // Note: This will abort the entire atomic batch.
