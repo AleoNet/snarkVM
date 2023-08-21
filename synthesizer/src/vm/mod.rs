@@ -515,8 +515,9 @@ function compute:
                 .into_iter();
 
                 // Execute.
-                let transaction =
-                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, record, 0, None, rng).unwrap();
+                let transaction = vm
+                    .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, record, 0, None, rng)
+                    .unwrap();
                 // Verify.
                 assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
@@ -549,8 +550,9 @@ function compute:
                 .into_iter();
 
                 // Execute.
-                let transaction_without_fee =
-                    vm.execute(&caller_private_key, ("credits.aleo", "mint"), inputs, None, 0, None, rng).unwrap();
+                let transaction_without_fee = vm
+                    .execute(&caller_private_key, ("credits.aleo", "transfer_public"), inputs, None, 0, None, rng)
+                    .unwrap();
                 let execution = transaction_without_fee.execution().unwrap().clone();
 
                 // Authorize the fee.
