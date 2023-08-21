@@ -45,6 +45,7 @@ impl<N: Network> ToBits for &Literal<N> {
             Literal::U64(literal) => literal.write_bits_le(vec),
             Literal::U128(literal) => literal.write_bits_le(vec),
             Literal::Scalar(literal) => literal.write_bits_le(vec),
+            Literal::Signature(literal) => literal.write_bits_le(vec),
             Literal::String(literal) => literal.as_bytes().write_bits_le(vec),
         }
     }
@@ -67,6 +68,7 @@ impl<N: Network> ToBits for &Literal<N> {
             Literal::U64(literal) => literal.write_bits_be(vec),
             Literal::U128(literal) => literal.write_bits_be(vec),
             Literal::Scalar(literal) => literal.write_bits_be(vec),
+            Literal::Signature(literal) => literal.write_bits_be(vec),
             Literal::String(literal) => literal.as_bytes().write_bits_be(vec),
         }
     }

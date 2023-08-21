@@ -127,6 +127,7 @@ impl<N: Network> RandChaCha<N> {
             LiteralType::U64 => Literal::U64(U64::rand(&mut rng)),
             LiteralType::U128 => Literal::U128(U128::rand(&mut rng)),
             LiteralType::Scalar => Literal::Scalar(Scalar::rand(&mut rng)),
+            LiteralType::Signature => bail!("Cannot 'rand.chacha' into a 'signature'"),
             LiteralType::String => bail!("Cannot 'rand.chacha' into a 'string'"),
         };
 

@@ -44,6 +44,7 @@ pow r0 r1 into r2;
 pow.w r0 r1 into r2;
 rem r0 r1 into r2;
 rem.w r0 r1 into r2;
+sign.verify r0 r1 r2 into r3;
 shl r0 r1 into r2;
 shl.w r0 r1 into r2;
 shr r0 r1 into r2;

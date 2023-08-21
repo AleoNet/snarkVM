@@ -32,17 +32,24 @@ impl<N: Network> Process<N> {
             if stack.get_number_of_calls(function.name())? != 1 {
                 bail!("The number of function calls in '{}/{}' should be 1", stack.program_id(), function.name())
             }
+            // Debug-mode only, as the `Transition` constructor recomputes the transition ID at initialization.
+            debug_assert_eq!(
+                **fee.id(),
+                N::hash_bhp512(&(fee.to_root()?, *fee.tcm()).to_bits_le())?,
+                "Transition ID of the fee is incorrect"
+            );
         }
 
         // Determine if the fee is private.
         let is_fee_private = fee.is_fee_private();
         // Determine if the fee is public.
         let is_fee_public = fee.is_fee_public();
-
         // Ensure the fee has the correct program ID and function.
         ensure!(is_fee_private || is_fee_public, "Incorrect program ID or function name for fee transition");
-        // Ensure the transition ID of the fee is correct.
-        ensure!(**fee.id() == fee.to_root()?, "Transition ID of the fee is incorrect");
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(fee.inputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of inputs");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(fee.outputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of outputs");
 
         // Determine the index for the deployment or execution ID.
         let id_index = if is_fee_private { 2 } else { 1 };

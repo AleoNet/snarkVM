@@ -78,7 +78,8 @@ impl<N: Network> Transition<N> {
         tcm: Field<N>,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let id = *Self::function_tree(&inputs, &outputs)?.root();
+        let function_tree = Self::function_tree(&inputs, &outputs)?;
+        let id = N::hash_bhp512(&(*function_tree.root(), tcm).to_bits_le())?;
         // Return the transition.
         Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, finalize, tpk, tcm })
     }

@@ -438,13 +438,12 @@ mod tests {
             CurrentNetwork::ID,
             1,
             1,
-            CurrentNetwork::STARTING_SUPPLY,
             0,
             0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
-            genesis.last_coinbase_height(),
+            genesis.last_coinbase_timestamp(),
             CurrentNetwork::GENESIS_TIMESTAMP + 1,
         )
         .unwrap();

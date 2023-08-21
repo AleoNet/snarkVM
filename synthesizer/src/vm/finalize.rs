@@ -702,13 +702,12 @@ finalize transfer_public:
             CurrentNetwork::ID,
             previous_block.round() + 1,
             previous_block.height() + 1,
-            CurrentNetwork::STARTING_SUPPLY,
             0,
             0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_height(),
+            previous_block.last_coinbase_timestamp(),
             CurrentNetwork::GENESIS_TIMESTAMP + 1,
         )?;
 

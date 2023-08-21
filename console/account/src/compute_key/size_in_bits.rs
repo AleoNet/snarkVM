@@ -12,5 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod data;
-pub use data::*;
+use super::*;
+
+impl<N: Network> SizeInBits for ComputeKey<N> {
+    /// Returns the compute key size in bits.
+    #[inline]
+    fn size_in_bits() -> usize {
+        Group::<N>::size_in_bits() + Group::<N>::size_in_bits()
+    }
+}

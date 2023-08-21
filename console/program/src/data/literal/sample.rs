@@ -33,6 +33,12 @@ impl<N: Network> Literal<N> {
             LiteralType::U64 => Literal::U64(U64::rand(rng)),
             LiteralType::U128 => Literal::U128(U128::rand(rng)),
             LiteralType::Scalar => Literal::Scalar(Scalar::rand(rng)),
+            LiteralType::Signature => Literal::Signature(Box::new(Signature::from((
+                Scalar::rand(rng),
+                Scalar::rand(rng),
+                ComputeKey::try_from(PrivateKey::new(rng).expect("Failed to sample a PrivateKey."))
+                    .expect("ComputeKey::try_from failed."),
+            )))),
             LiteralType::String => Literal::String(StringType::rand(rng)),
         }
     }
