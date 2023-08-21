@@ -289,14 +289,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use circuit::AleoV0;
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
         program::{Value, RATIFICATIONS_DEPTH},
         types::Field,
     };
-    use ledger_block::{Block, Fee, Header, Metadata, Transition};
+    use ledger_block::{Block, Header, Metadata, Transition};
     use ledger_store::helpers::memory::ConsensusMemory;
     use synthesizer_program::Program;
 
@@ -305,7 +304,6 @@ pub(crate) mod test_helpers {
     use std::borrow::Borrow;
 
     pub(crate) type CurrentNetwork = Testnet3;
-    pub(crate) type CurrentAleo = AleoV0;
 
     /// Samples a new finalize state.
     pub(crate) fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
@@ -569,55 +567,6 @@ function compute:
                 assert!(vm.verify_transaction(&transaction, None));
                 // Return the transaction.
                 transaction
-            })
-            .clone()
-    }
-
-    pub(crate) fn sample_fee_private(rng: &mut TestRng) -> Fee<CurrentNetwork> {
-        static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Initialize a new caller.
-                let caller_private_key = crate::vm::test_helpers::sample_genesis_private_key(rng);
-                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-
-                // Initialize the genesis block.
-                let genesis = crate::vm::test_helpers::sample_genesis_block(rng);
-
-                // Fetch the unspent records.
-                let records =
-                    genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
-                trace!("Unspent Records:\n{:#?}", records);
-
-                // Select a record to spend.
-                let record = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-
-                // Initialize the VM.
-                let vm = sample_vm();
-                // Update the VM.
-                vm.add_next_block(&genesis).unwrap();
-
-                // Sample a random rejected ID.
-                let rejected_id = Field::rand(rng);
-
-                // Execute.
-                let fee = vm.execute_fee_private(&caller_private_key, record, 1u64, rejected_id, None, rng).unwrap();
-                // Verify.
-                assert!(vm.verify_fee(&fee, rejected_id));
-                // Return the private fee.
-                fee
-            })
-            .clone()
-    }
-
-    pub(crate) fn sample_fee_private_transaction(rng: &mut TestRng) -> Transaction<CurrentNetwork> {
-        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Initialize a private fee.
-                let fee_private = crate::vm::test_helpers::sample_fee_private(rng);
-                // Return the fee transaction.
-                Transaction::from_fee(fee_private).unwrap()
             })
             .clone()
     }

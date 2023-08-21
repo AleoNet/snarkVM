@@ -149,6 +149,10 @@ package = "snarkvm-ledger-committee"
 path = "../ledger/committee"
 features = [ "test-helpers" ]
 
+[dev-dependencies.ledger-test-helpers]
+package = "snarkvm-ledger-test-helpers"
+path = "../ledger/test-helpers"
+
 [dev-dependencies.once_cell]
 version = "1.18"
 

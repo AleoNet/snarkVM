@@ -23,7 +23,7 @@ use console::{
     network::prelude::*,
     program::{InputID, Locator},
 };
-use ledger_block::{Execution, Fee, Input, Transition};
+use ledger_block::{Execution, Fee, Transition};
 use ledger_query::QueryTrait;
 use synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 

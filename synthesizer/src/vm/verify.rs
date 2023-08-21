@@ -391,6 +391,11 @@ mod tests {
         assert!(vm.check_transaction(&valid_transaction, None).is_ok());
         assert!(vm.verify_transaction(&valid_transaction, None));
 
+        // Fetch a valid execution transaction.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
+        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction, None));
+
         // Fetch an invalid execution transaction.
         let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
         assert!(vm.check_transaction(&invalid_transaction, None).is_err());

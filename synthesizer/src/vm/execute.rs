@@ -418,7 +418,7 @@ mod tests {
         let rng = &mut TestRng::default();
 
         // Retrieve a fee transaction.
-        let transaction = crate::vm::test_helpers::sample_fee_private_transaction(rng);
+        let transaction = ledger_test_helpers::sample_fee_private_transaction(rng);
         // Retrieve the fee.
         let fee = match transaction {
             Transaction::Fee(_, fee) => fee,
@@ -427,5 +427,21 @@ mod tests {
         // Assert the size of the transition.
         let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
         assert_eq!(1943, fee_size_in_bytes, "Update me if serialization has changed");
+    }
+
+    #[test]
+    fn test_fee_public_transition_size() {
+        let rng = &mut TestRng::default();
+
+        // Retrieve a fee transaction.
+        let transaction = ledger_test_helpers::sample_fee_public_transaction(rng);
+        // Retrieve the fee.
+        let fee = match transaction {
+            Transaction::Fee(_, fee) => fee,
+            _ => panic!("Expected a fee transaction"),
+        };
+        // Assert the size of the transition.
+        let fee_size_in_bytes = fee.to_bytes_le().unwrap().len();
+        assert_eq!(1222, fee_size_in_bytes, "Update me if serialization has changed");
     }
 }
