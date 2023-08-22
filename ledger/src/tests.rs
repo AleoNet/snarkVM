@@ -81,6 +81,114 @@ fn test_state_path() {
 }
 
 #[test]
+fn test_insufficient_fees() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, view_key, address, .. } =
+        crate::test_helpers::sample_test_env(rng);
+
+    // A helper function to find records.
+    let find_records = || {
+        let microcredits = Identifier::from_str("microcredits").unwrap();
+        ledger
+            .find_records(&view_key, RecordsFilter::SlowUnspent(private_key))
+            .unwrap()
+            .filter(|(_, record)| match record.data().get(&microcredits) {
+                Some(Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => !amount.is_zero(),
+                _ => false,
+            })
+            .collect::<indexmap::IndexMap<_, _>>()
+    };
+
+    // Fetch the unspent records.
+    let records = find_records();
+    let record_1 = records[0].clone();
+    let record_2 = records[1].clone();
+
+    // Check fee amount requirements for `split` calls.
+    {
+        // Prepare a `split` execution without a fee.
+        let inputs = [Value::Record(record_1.clone()), Value::from_str("100u64").unwrap()];
+        let authorization =
+            ledger.vm.authorize(&private_key, "credits.aleo", "split", inputs.into_iter(), rng).unwrap();
+        let split_transaction_without_fee = ledger.vm.execute_authorization(authorization, None, None, rng).unwrap();
+        assert!(ledger.check_transaction_basic(&split_transaction_without_fee, None).is_ok());
+    }
+
+    // Check fee amount requirements for executions.
+    {
+        // Prepare an execution without a fee.
+        let inputs = [
+            Value::Record(record_1.clone()),
+            Value::from_str(&format!("{address}")).unwrap(),
+            Value::from_str("100u64").unwrap(),
+        ];
+        let authorization =
+            ledger.vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs.into_iter(), rng).unwrap();
+        let transaction_without_fee = ledger.vm.execute_authorization(authorization, None, None, rng).unwrap();
+        let execution = transaction_without_fee.execution().unwrap();
+
+        // Check that a transaction with sufficient fee will succeed.
+        let fee_authorization = ledger
+            .vm
+            .authorize_fee_private(
+                &private_key,
+                record_2.clone(),
+                10_000_000,
+                execution.to_execution_id().unwrap(),
+                rng,
+            )
+            .unwrap();
+        let fee = ledger.vm.execute_fee_authorization(fee_authorization, None, rng).unwrap();
+        let sufficient_fee_transaction = Transaction::from_execution(execution.clone(), Some(fee)).unwrap();
+        assert!(ledger.check_transaction_basic(&sufficient_fee_transaction, None).is_ok());
+
+        // Check that a transaction with insufficient fee will fail.
+        let insufficient_fee_authorization = ledger
+            .vm
+            .authorize_fee_private(&private_key, record_2.clone(), 1, execution.to_execution_id().unwrap(), rng)
+            .unwrap();
+        let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
+        let insufficient_fee_transaction =
+            Transaction::from_execution(execution.clone(), Some(insufficient_fee)).unwrap();
+        assert!(ledger.check_transaction_basic(&insufficient_fee_transaction, None).is_err());
+    }
+
+    // Check fee amount requirements for deployment.
+
+    {
+        // Deploy a test program to the ledger.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"
+program dummy.aleo;
+function foo:
+    input r0 as u8.private;
+    finalize r0;
+finalize foo:
+    input r0 as u8.public;
+    add r0 r0 into r1;",
+        )
+        .unwrap();
+
+        // Check that a deployment transaction with sufficient fee will succeed.
+        let transaction = ledger.vm.deploy(&private_key, &program, Some(record_2.clone()), 0, None, rng).unwrap();
+        assert!(ledger.check_transaction_basic(&transaction, None).is_ok());
+
+        // Check that a deployment transaction with insufficient fee will fail.
+        let deployment = transaction.deployment().unwrap();
+        let insufficient_fee_authorization = ledger
+            .vm
+            .authorize_fee_private(&private_key, record_2, 1, deployment.to_deployment_id().unwrap(), rng)
+            .unwrap();
+        let insufficient_fee = ledger.vm.execute_fee_authorization(insufficient_fee_authorization, None, rng).unwrap();
+        let insufficient_fee_transaction =
+            Transaction::from_deployment(*transaction.owner().unwrap(), deployment.clone(), insufficient_fee).unwrap();
+        assert!(ledger.check_transaction_basic(&insufficient_fee_transaction, None).is_err());
+    }
+}
+
+#[test]
 fn test_insufficient_finalize_fees() {
     let rng = &mut TestRng::default();
 
