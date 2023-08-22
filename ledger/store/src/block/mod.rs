@@ -128,6 +128,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
     /// The mapping of `block hash` to `block authority`.
     type AuthorityMap: for<'a> Map<'a, N::BlockHash, Authority<N>>;
+    /// The mapping of `certificate id` to the `block height`. // TODO (raychu86) Consider storing the certificate itself.
+    type CertificateMap: for<'a> Map<'a, Field<N>, u32>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
@@ -158,6 +160,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn header_map(&self) -> &Self::HeaderMap;
     /// Returns the authority map.
     fn authority_map(&self) -> &Self::AuthorityMap;
+    /// Returns the certificate map.
+    fn certificate_map(&self) -> &Self::CertificateMap;
     /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
     /// Returns the confirmed transactions map.
@@ -189,6 +193,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().start_atomic();
         self.header_map().start_atomic();
         self.authority_map().start_atomic();
+        self.certificate_map().start_atomic();
         self.transactions_map().start_atomic();
         self.confirmed_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
@@ -205,6 +210,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.reverse_id_map().is_atomic_in_progress()
             || self.header_map().is_atomic_in_progress()
             || self.authority_map().is_atomic_in_progress()
+            || self.certificate_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
             || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
@@ -221,6 +227,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().atomic_checkpoint();
         self.header_map().atomic_checkpoint();
         self.authority_map().atomic_checkpoint();
+        self.certificate_map().atomic_checkpoint();
         self.transactions_map().atomic_checkpoint();
         self.confirmed_transactions_map().atomic_checkpoint();
         self.transaction_store().atomic_checkpoint();
@@ -237,6 +244,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().clear_latest_checkpoint();
         self.header_map().clear_latest_checkpoint();
         self.authority_map().clear_latest_checkpoint();
+        self.certificate_map().clear_latest_checkpoint();
         self.transactions_map().clear_latest_checkpoint();
         self.confirmed_transactions_map().clear_latest_checkpoint();
         self.transaction_store().clear_latest_checkpoint();
@@ -253,6 +261,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().atomic_rewind();
         self.header_map().atomic_rewind();
         self.authority_map().atomic_rewind();
+        self.certificate_map().atomic_rewind();
         self.transactions_map().atomic_rewind();
         self.confirmed_transactions_map().atomic_rewind();
         self.transaction_store().atomic_rewind();
@@ -269,6 +278,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().abort_atomic();
         self.header_map().abort_atomic();
         self.authority_map().abort_atomic();
+        self.certificate_map().abort_atomic();
         self.transactions_map().abort_atomic();
         self.confirmed_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
@@ -285,6 +295,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().finish_atomic()?;
         self.header_map().finish_atomic()?;
         self.authority_map().finish_atomic()?;
+        self.certificate_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
         self.confirmed_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()?;
@@ -930,6 +941,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> Result<bool> {
         self.storage.reverse_id_map().contains_key_confirmed(block_hash)
+    }
+
+    /// Returns `true` if the given certificate ID exists.
+    pub fn contains_certificate(&self, certificate_id: &Field<N>) -> Result<bool> {
+        self.storage.certificate_map().contains_key_confirmed(certificate_id)
     }
 
     /// Returns `true` if the given puzzle commitment exists.
