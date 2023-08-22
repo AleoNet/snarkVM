@@ -314,6 +314,21 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             .map(|confirmed| to_confirmed_tuple(confirmed))
             .collect::<Result<Vec<_>, anyhow::Error>>()?;
 
+        // Determine which certificates to store.
+        let mut certificates_to_store = Vec::new();
+        if let Authority::Quorum(subdag) = block.authority() {
+            // Store each committed certificate for the round.
+            for (round, certificates) in subdag.iter() {
+                // Store each certificate if it does not already exist.
+                for certificate in certificates
+                    .iter()
+                    .filter(|c| !self.certificate_map().contains_key_confirmed(&c.certificate_id()).unwrap_or(true))
+                {
+                    certificates_to_store.push((certificate.certificate_id(), *round));
+                }
+            }
+        }
+
         atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.
             self.state_root_map().insert(block.height(), state_root)?;
@@ -331,17 +346,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.authority_map().insert(block.hash(), block.authority().clone())?;
 
             // Store the block certificates.
-            if let Authority::Quorum(subdag) = block.authority() {
-                // Store each committed certificate for the round.
-                for (round, certificates) in subdag.iter() {
-                    // Store each certificate if it does not already exist.
-                    for certificate in certificates
-                        .iter()
-                        .filter(|c| !self.certificate_map().contains_key_confirmed(&c.certificate_id()).unwrap_or(true))
-                    {
-                        self.certificate_map().insert(certificate.certificate_id(), (block.height(), *round))?;
-                    }
-                }
+            for (certificate_id, round) in certificates_to_store {
+                self.certificate_map().insert(certificate_id, (block.height(), round))?;
             }
 
             // Store the transaction IDs.
@@ -402,6 +408,31 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
         };
 
+        // Determine the certificate ids to remove.
+        let mut certificate_ids_to_remove = Vec::new();
+        if let Authority::Quorum(subdag) = block_authority {
+            // Determine which certificates to remove.
+            for (_, certificates) in subdag.iter() {
+                for certificate in certificates.iter() {
+                    // Retrieve the committed height.
+                    let (committed_height, _) = match self
+                        .certificate_map()
+                        .get_confirmed(&certificate.certificate_id())?
+                    {
+                        Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
+                        None => bail!(
+                            "Failed to remove block: missing certificates for block '{block_height}' ('{block_hash}')"
+                        ),
+                    };
+
+                    // Remove the certificate if it was committed in this block.
+                    if committed_height == block_height {
+                        certificate_ids_to_remove.push(certificate.certificate_id());
+                    }
+                }
+            }
+        };
+
         atomic_batch_scope!(self, {
             // Remove the (block height, state root) pair.
             self.state_root_map().remove(&block_height)?;
@@ -419,27 +450,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             self.authority_map().remove(block_hash)?;
 
             // Remove the block certificates.
-            if let Authority::Quorum(subdag) = block_authority {
-                // Remove each committed certificate for the round.
-                for (_, certificates) in subdag.iter() {
-                    for certificate in certificates.iter() {
-                        // Retrieve the committed height.
-                        let (committed_height, _) = match self
-                            .certificate_map()
-                            .get_confirmed(&certificate.certificate_id())?
-                        {
-                            Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
-                            None => bail!(
-                                "Failed to remove block: missing certificates for block '{block_height}' ('{block_hash}')"
-                            ),
-                        };
-
-                        // Remove the certificate if it was committed in this block.
-                        if committed_height == block_height {
-                            self.certificate_map().remove(&certificate.certificate_id())?;
-                        }
-                    }
-                }
+            for certificate_id in certificate_ids_to_remove.iter() {
+                self.certificate_map().remove(certificate_id)?;
             }
 
             // Remove the transaction IDs.
