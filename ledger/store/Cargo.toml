@@ -53,6 +53,11 @@ package = "snarkvm-ledger-committee"
 path = "../committee"
 version = "=0.14.6"
 
+[dependencies.ledger-narwhal]
+package = "snarkvm-ledger-narwhal"
+path = "../narwhal"
+version = "=0.14.6"
+
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
