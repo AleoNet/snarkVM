@@ -30,6 +30,7 @@ use console::{
 use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_narwhal::BatchCertificate;
 use synthesizer_program::Program;
 
 use anyhow::Result;
@@ -643,9 +644,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    // TODO (raychu86): Return the batch certificate type directly instead of the bytes.
     /// Returns the certificate for the given `certificate ID`.
-    fn get_certificate(&self, certificate_id: &Field<N>) -> Result<Option<Vec<u8>>> {
+    fn get_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
         // Retrieve the height and round for the given certificate ID.
         let (block_height, round) = match self.certificate_map().get_confirmed(certificate_id)? {
             Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
@@ -674,8 +674,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
                 // Retrieve the certificate for the given ID.
                 match round_certificates.iter().find(|&certificate| certificate.certificate_id() == *certificate_id) {
-                    // TODO (raychu86): Return the batch certificate type directly instead of the bytes.
-                    Some(certificate) => Ok(Some(certificate.to_bytes_le()?)),
+                    Some(certificate) => Ok(Some(certificate.clone())),
                     None => bail!("The certificate '{certificate_id}' is missing in storage"),
                 }
             }
