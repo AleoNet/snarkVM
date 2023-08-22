@@ -15,6 +15,9 @@
 use super::*;
 
 impl<N: Network> Request<N> {
+    // TODO @matt -- try implementing this on sign first to get logic right -- then once figure it out with sign -- go back and just add a whole new function
+    // Search TODOs to find what's left
+
     /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
     ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     ///     response := r - challenge * sk_sig
@@ -29,17 +32,24 @@ impl<N: Network> Request<N> {
         // Ensure the number of inputs matches the number of input types.
         if input_types.len() != inputs.len() {
             bail!(
-                "'{program_id}/{function_name}' expects {} inputs, but {} were provided.",
+                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                function_name,
+                program_id,
                 input_types.len(),
                 inputs.len()
             )
         }
 
         // Retrieve `sk_sig`.
+        // TODO @matt -- swap with seed phrase for a view key
         let sk_sig = private_key.sk_sig();
 
         // Derive the compute key.
         let compute_key = ComputeKey::try_from(private_key)?;
+
+        // TODO @matt -- test derive a compute key from a seed phrase for view key
+        // let compute_key_two = ComputeKey::try_from();
+
         // Retrieve `pk_sig`.
         let pk_sig = compute_key.pk_sig();
         // Retrieve `pr_sig`.
@@ -53,11 +63,13 @@ impl<N: Network> Request<N> {
         // Sample a random nonce.
         let nonce = Field::<N>::rand(rng);
         // Compute a `r` as `HashToScalar(sk_sig || nonce)`. Note: This is the transition secret key `tsk`.
+        // TODO @matt -- use seed phrase from MS view key
         let r = N::hash_to_scalar_psd4(&[N::serial_number_domain(), sk_sig.to_field()?, nonce])?;
         // Compute `g_r` as `r * G`. Note: This is the transition public key `tpk`.
         let g_r = N::g_scalar_multiply(&r);
 
         // Derive the caller from the compute key.
+        // TODO -- make sure  Address here is computed from view key instead of compute key but it also needs to match owner of record
         let caller = Address::try_from(compute_key)?;
         // Compute the transition view key `tvk` as `r * caller`.
         let tvk = (*caller * r).to_x_coordinate();
@@ -136,7 +148,8 @@ impl<N: Network> Request<N> {
 
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
-                    // Compute the input view key as `Hash(function ID || tvk || index)`.
+                    // Compute the input view key as `Hash(function ID || tvk || index)`. --
+                    // TODO @matt -- make sure this works with new tvk
                     let input_view_key = N::hash_psd4(&[function_id, tvk, index])?;
                     // Compute the ciphertext.
                     let ciphertext = match &input {
@@ -163,19 +176,22 @@ impl<N: Network> Request<N> {
                     // Ensure the record belongs to the caller.
                     ensure!(**record.owner() == caller, "Input record for '{program_id}' must belong to the signer");
 
-                    // Compute the record commitment.
+                    // Compute the record commitment. --
+                    // TODO @matt -- dig through the to_commitment function and see what needs to change
                     let commitment = record.to_commitment(&program_id, record_name)?;
 
                     // Compute the generator `H` as `HashToGroup(commitment)`.
                     let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
                     // Compute `h_r` as `r * H`.
                     let h_r = h * r;
-                    // Compute `gamma` as `sk_sig * H`.
+                    // Compute `gamma` as `sk_sig * H`. --
+                    // TODO @matt -- replace sk_sig with seed phrase for view key
                     let gamma = h * sk_sig;
 
                     // Compute the `serial_number` from `gamma`.
                     let serial_number = Record::<N, Plaintext<N>>::serial_number_from_gamma(&gamma, commitment)?;
                     // Compute the tag.
+                    // TODO @matt -- this sk_tag also needs to be replaces smh
                     let tag = Record::<N, Plaintext<N>>::tag(sk_tag, commitment)?;
 
                     // Add (`H`, `r * H`, `gamma`, `tag`) to the preimage.
@@ -209,8 +225,10 @@ impl<N: Network> Request<N> {
         }
 
         // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
+        // TODO -- @matt -- make sure this maps correctly
         let challenge = N::hash_to_scalar_psd8(&message)?;
         // Compute `response` as `r - challenge * sk_sig`.
+        // TODO -- @matt -- need to replace sk_sig here as well
         let response = r - challenge * sk_sig;
 
         Ok(Self {
