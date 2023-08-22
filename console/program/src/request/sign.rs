@@ -40,6 +40,8 @@ impl<N: Network> Request<N> {
             )
         }
 
+        println!("Inside sign...");
+
         // Retrieve `sk_sig`.
         // TODO @matt -- swap with seed phrase for a view key
         let sk_sig = private_key.sk_sig();
@@ -224,9 +226,14 @@ impl<N: Network> Request<N> {
             }
         }
 
+        println!("{:?} before hash to scalar.....", message);
+        println!("--------------------------------");
+
         // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
         // TODO -- @matt -- make sure this maps correctly
         let challenge = N::hash_to_scalar_psd8(&message)?;
+
+        println!("{:?} after hash to scalar", message);
         // Compute `response` as `r - challenge * sk_sig`.
         // TODO -- @matt -- need to replace sk_sig here as well
         let response = r - challenge * sk_sig;

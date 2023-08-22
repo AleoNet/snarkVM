@@ -48,6 +48,8 @@ impl<N: Network> Package<N> {
         // Construct the process.
         let process = self.get_process()?;
         // Authorize the function call.
+
+        println!("Authorizing...");
         let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs.iter(), rng)?;
 
         // Retrieve the program.
@@ -108,6 +110,8 @@ impl<N: Network> Package<N> {
         // Return the response, execution, and call metrics.
         Ok((response, execution, call_metrics))
     }
+
+    // todo: frost_execute impl here
 }
 
 #[cfg(test)]

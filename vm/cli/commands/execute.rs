@@ -36,6 +36,8 @@ impl Execute {
         // Derive the program directory path.
         let path = std::env::current_dir()?;
 
+        println!("Executing....");
+
         // Load the package.
         let package = Package::open(&path)?;
         // Load the private key.
