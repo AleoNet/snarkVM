@@ -40,7 +40,7 @@ pub struct BlockMemory<N: Network> {
     /// The authority map.
     authority_map: MemoryMap<N::BlockHash, Authority<N>>,
     /// The certificate map.
-    certificate_map: MemoryMap<Field<N>, u32>,
+    certificate_map: MemoryMap<Field<N>, (u32, u64)>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The confirmed transactions map.
@@ -63,7 +63,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
     type AuthorityMap = MemoryMap<N::BlockHash, Authority<N>>;
-    type CertificateMap = MemoryMap<Field<N>, u32>;
+    type CertificateMap = MemoryMap<Field<N>, (u32, u64)>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;

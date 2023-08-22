@@ -128,8 +128,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
     /// The mapping of `block hash` to `block authority`.
     type AuthorityMap: for<'a> Map<'a, N::BlockHash, Authority<N>>;
-    /// The mapping of `certificate id` to the `block height`. // TODO (raychu86) Consider storing the certificate itself.
-    type CertificateMap: for<'a> Map<'a, Field<N>, u32>;
+    /// The mapping of `certificate id` to (`block height`, `round height`). // TODO (raychu86): Store the round height only. And then use the `RoundToHeightMap`.
+    type CertificateMap: for<'a> Map<'a, Field<N>, (u32, u64)>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
@@ -330,6 +330,20 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             // Store the block authority.
             self.authority_map().insert(block.hash(), block.authority().clone())?;
 
+            // Store the block certificates.
+            if let Authority::Quorum(subdag) = block.authority() {
+                // Store each committed certificate for the round.
+                for (round, certificates) in subdag.iter() {
+                    // Store each certificate if it does not already exist.
+                    for certificate in certificates
+                        .iter()
+                        .filter(|c| !self.certificate_map().contains_key_confirmed(&c.certificate_id()).unwrap_or(true))
+                    {
+                        self.certificate_map().insert(certificate.certificate_id(), (block.height(), *round))?;
+                    }
+                }
+            }
+
             // Store the transaction IDs.
             self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
 
@@ -382,6 +396,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 bail!("Failed to remove block: missing solutions for block '{block_height}' ('{block_hash}')")
             }
         };
+        // Retrieve the block authority.
+        let block_authority = match self.authority_map().get_confirmed(block_hash)? {
+            Some(authority) => cow_to_cloned!(authority),
+            None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
+        };
 
         atomic_batch_scope!(self, {
             // Remove the (block height, state root) pair.
@@ -398,6 +417,30 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Remove the block authority.
             self.authority_map().remove(block_hash)?;
+
+            // Remove the block certificates.
+            if let Authority::Quorum(subdag) = block_authority {
+                // Remove each committed certificate for the round.
+                for (_, certificates) in subdag.iter() {
+                    for certificate in certificates.iter() {
+                        // Retrieve the committed height.
+                        let (committed_height, _) = match self
+                            .certificate_map()
+                            .get_confirmed(&certificate.certificate_id())?
+                        {
+                            Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
+                            None => bail!(
+                                "Failed to remove block: missing certificates for block '{block_height}' ('{block_hash}')"
+                            ),
+                        };
+
+                        // Remove the certificate if it was committed in this block.
+                        if committed_height == block_height {
+                            self.certificate_map().remove(&certificate.certificate_id())?;
+                        }
+                    }
+                }
+            }
 
             // Remove the transaction IDs.
             self.transactions_map().remove(block_hash)?;
@@ -585,6 +628,46 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         match self.authority_map().get_confirmed(block_hash)? {
             Some(authority) => Ok(Some(cow_to_cloned!(authority))),
             None => Ok(None),
+        }
+    }
+
+    // TODO (raychu86): Return the batch certificate type directly instead of the bytes.
+    /// Returns the certificate for the given `certificate ID`.
+    fn get_certificate(&self, certificate_id: &Field<N>) -> Result<Option<Vec<u8>>> {
+        // Retrieve the height and round for the given certificate ID.
+        let (block_height, round) = match self.certificate_map().get_confirmed(certificate_id)? {
+            Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
+            None => return Ok(None),
+        };
+
+        // Retrieve the block hash.
+        let block_hash = match self.get_block_hash(block_height)? {
+            Some(block_hash) => block_hash,
+            None => bail!("The block hash for height '{block_height}' is missing in storage"),
+        };
+
+        // Retrieve the authority for the given block hash.
+        let authority = match self.authority_map().get_confirmed(&block_hash)? {
+            Some(authority) => cow_to_cloned!(authority),
+            None => bail!("The authority for '{block_hash}' is missing in storage"),
+        };
+
+        match authority {
+            Authority::Quorum(subdag) => {
+                // Retrieve the certificates for the given round.
+                let round_certificates = match subdag.get(&round) {
+                    Some(certificates) => certificates,
+                    None => bail!("The certificates for round '{round}' is missing in storage"),
+                };
+
+                // Retrieve the certificate for the given ID.
+                match round_certificates.iter().find(|&certificate| certificate.certificate_id() == *certificate_id) {
+                    // TODO (raychu86): Return the batch certificate type directly instead of the bytes.
+                    Some(certificate) => Ok(Some(certificate.to_bytes_le()?)),
+                    None => bail!("The certificate '{certificate_id}' is missing in storage"),
+                }
+            }
+            _ => bail!("The authority for '{block_hash}' is not a subdag"),
         }
     }
 

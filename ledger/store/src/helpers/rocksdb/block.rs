@@ -46,7 +46,7 @@ pub struct BlockDB<N: Network> {
     /// The authority map.
     authority_map: DataMap<N::BlockHash, Authority<N>>,
     /// The certificate map.
-    certificate_map: DataMap<Field<N>, u32>,
+    certificate_map: DataMap<Field<N>, (u32, u64)>,
     /// The transactions map.
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The confirmed transactions map.
@@ -69,7 +69,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type ReverseIDMap = DataMap<N::BlockHash, u32>;
     type HeaderMap = DataMap<N::BlockHash, Header<N>>;
     type AuthorityMap = DataMap<N::BlockHash, Authority<N>>;
-    type CertificateMap = DataMap<Field<N>, u32>;
+    type CertificateMap = DataMap<Field<N>, (u32, u64)>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionDB<N>;
