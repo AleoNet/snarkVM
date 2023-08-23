@@ -225,7 +225,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                 // Evaluate the instruction.
                 let result = match instruction {
                     // If the instruction is a `call` instruction, we need to handle it separately.
-                    Instruction::Call(call) => CallTrait::evaluate(call, self, &mut registers),
+                    Instruction::CallClosure(call) => CallTrait::evaluate(call, self, &mut registers),
+                    Instruction::CallFunction(call) => CallTrait::evaluate(call, self, &mut registers),
                     // Otherwise, evaluate the instruction normally.
                     _ => instruction.evaluate(self, &mut registers),
                 };
@@ -238,7 +239,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             // Execute the instruction.
             let result = match instruction {
                 // If the instruction is a `call` instruction, we need to handle it separately.
-                Instruction::Call(call) => CallTrait::execute(call, self, &mut registers),
+                Instruction::CallClosure(call) => CallTrait::execute(call, self, &mut registers),
+                Instruction::CallFunction(call) => CallTrait::execute(call, self, &mut registers),
                 // Otherwise, execute the instruction normally.
                 _ => instruction.execute(self, &mut registers),
             };
@@ -248,11 +250,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             }
 
             // If the instruction was a function call, then set the tracker to `true`.
-            if let Instruction::Call(call) = instruction {
-                // Check if the call is a function call.
-                if call.is_function_call(self)? {
-                    contains_function_call = true;
-                }
+            if let Instruction::CallFunction(_) = instruction {
+                contains_function_call = true;
             }
         }
         lap!(timer, "Execute the instructions");

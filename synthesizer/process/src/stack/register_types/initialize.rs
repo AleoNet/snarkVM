@@ -35,7 +35,10 @@ impl<N: Network> RegisterTypes<N> {
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
             // Ensure the closure contains no call instructions.
-            ensure!(instruction.opcode() != Opcode::Call, "A 'call' instruction is not allowed in closures");
+            ensure!(
+                !matches!(instruction.opcode(), Opcode::Call(_)),
+                "A 'call' instruction is not allowed in closures"
+            );
             // Check the instruction opcode, operands, and destinations.
             register_types.check_instruction(stack, closure.name(), instruction)?;
         }
@@ -341,15 +344,16 @@ impl<N: Network> RegisterTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
-            Opcode::Call => {
-                // Retrieve the call operation.
-                let call = match instruction {
-                    Instruction::Call(call) => call,
+            Opcode::Call(_) => {
+                // Retrieve the call operator.
+                let operator = match instruction {
+                    Instruction::CallClosure(call) => call.operator(),
+                    Instruction::CallFunction(call) => call.operator(),
                     _ => bail!("Instruction '{instruction}' is not a call operation."),
                 };
 
-                // Retrieve the operator.
-                match call.operator() {
+                // Check that the call is well-formed.
+                match operator {
                     CallOperator::Locator(locator) => {
                         // Retrieve the program ID.
                         let program_id = locator.program_id();
@@ -367,9 +371,13 @@ impl<N: Network> RegisterTypes<N> {
 
                         // Retrieve the program.
                         let external = stack.get_external_program(program_id)?;
-                        // Ensure the function or closure exists in the program.
-                        if !external.contains_function(resource) && !external.contains_closure(resource) {
-                            bail!("'{resource}' is not defined in '{}'.", external.id())
+                        // Ensure the closure exists in the program.
+                        if matches!(instruction, Instruction::CallClosure(..)) && !external.contains_closure(resource) {
+                            bail!("Closure '{resource}' is not defined in '{}'.", external.id())
+                        } else if matches!(instruction, Instruction::CallFunction(..))
+                            && !external.contains_function(resource)
+                        {
+                            bail!("Function '{resource}' is not defined in '{}'.", external.id())
                         }
                     }
                     CallOperator::Resource(resource) => {
@@ -389,7 +397,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the function or closure exists in the program.
                         // if !self.program.contains_function(resource) && !self.program.contains_closure(resource) {
                         if !stack.program().contains_closure(resource) {
-                            bail!("'{resource}' is not defined in '{}'.", stack.program_id())
+                            bail!("Closure '{resource}' is not defined in '{}'.", stack.program_id())
                         }
                     }
                 }
