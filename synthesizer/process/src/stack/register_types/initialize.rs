@@ -344,10 +344,14 @@ impl<N: Network> RegisterTypes<N> {
                 }
             }
             Opcode::Call(_) => {
+                enum CallType {
+                    Closure,
+                    Function,
+                }
                 // Retrieve the call operator.
-                let operator = match instruction {
-                    Instruction::CallClosure(call) => call.operator(),
-                    Instruction::CallFunction(call) => call.operator(),
+                let (call_type, operator) = match instruction {
+                    Instruction::CallClosure(call) => (CallType::Closure, call.operator()),
+                    Instruction::CallFunction(call) => (CallType::Function, call.operator()),
                     _ => bail!("Instruction '{instruction}' is not a call operation."),
                 };
 
@@ -370,13 +374,18 @@ impl<N: Network> RegisterTypes<N> {
 
                         // Retrieve the program.
                         let external = stack.get_external_program(program_id)?;
-                        // Ensure the closure exists in the program.
-                        if matches!(instruction, Instruction::CallClosure(..)) && !external.contains_closure(resource) {
-                            bail!("Closure '{resource}' is not defined in '{}'.", external.id())
-                        } else if matches!(instruction, Instruction::CallFunction(..))
-                            && !external.contains_function(resource)
-                        {
-                            bail!("Function '{resource}' is not defined in '{}'.", external.id())
+                        // Ensure the closure or function exists in the program.
+                        match call_type {
+                            CallType::Closure => {
+                                if !external.contains_closure(resource) {
+                                    bail!("Closure '{resource}' is not defined in '{}'.", external.id())
+                                }
+                            }
+                            CallType::Function => {
+                                if !external.contains_function(resource) {
+                                    bail!("Function '{resource}' is not defined in '{}'.", external.id())
+                                }
+                            }
                         }
                     }
                     CallOperator::Resource(resource) => {
@@ -385,18 +394,20 @@ impl<N: Network> RegisterTypes<N> {
                             bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.")
                         }
 
-                        // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
-                        //  But there are legitimate uses for passing a record through to an internal function.
-                        //  We could invoke the internal function without a state transition, but need to match visibility.
-                        if stack.program().contains_function(resource) {
-                            bail!(
-                                "Cannot call '{resource}' from '{closure_or_function_name}'. Use a closure ('closure {resource}:') instead."
-                            )
-                        }
-                        // Ensure the function or closure exists in the program.
-                        // if !self.program.contains_function(resource) && !self.program.contains_closure(resource) {
-                        if !stack.program().contains_closure(resource) {
-                            bail!("Closure '{resource}' is not defined in '{}'.", stack.program_id())
+                        // Ensure that the call is valid.
+                        match call_type {
+                            CallType::Closure => {
+                                // Ensure the closure exists in the program.
+                                if !stack.program().contains_closure(resource) {
+                                    bail!("Closure '{resource}' is not defined in '{}'.", stack.program_id())
+                                }
+                            }
+                            // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
+                            //  But there are legitimate uses for passing a record through to an internal function.
+                            //  We could invoke the internal function without a state transition, but need to match visibility.
+                            CallType::Function => bail!(
+                                "Cannot call a function '{resource}' from '{closure_or_function_name}'. Call a closure instead."
+                            ),
                         }
                     }
                 }
