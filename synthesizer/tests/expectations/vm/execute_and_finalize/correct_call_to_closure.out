@@ -1,0 +1,22 @@
+- execute:
+    correct_call_to_closure.aleo/hello:
+      outputs:
+      - '{"type":"private","id":"7907321115511662662611710813484961494862368537173065280758078201013878433133field","value":"ciphertext1qyq057evx9c0hjvwd5ns5r4nkhpttrk3g4t3yj7qe76umryg7mut7qgmalh0q"}'
+      finalize: []
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"5021104627360995647577843544264481707701245757471855322655624136682647533905field","checksum":"5028449332906493561062196346448948238981190042254439536311412689413530292267field","value":"record1qyqsp2chptj98sa80uzx2nh0r6tpcnksecam027rramxpsy6n2tr02ssqyxx66trwfhkxun9v35hguerqqpqzqxqa93vpawv4xnfgappv73t8rrwpgd42fz63kl9h88cfdze84x8plgdkwvjpq3dpjy37r5etk5dmqwuynef42jqg3q6jeffzxa82esqccl4sa7"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute:
+    correct_call_to_closure.aleo/hello:
+      outputs:
+      - '{"type":"private","id":"2545141572953908638622128649331611904146053994120109418972459691074664214599field","value":"ciphertext1qyqzke8qknktldpjmxg4mm8eme0n87s9w996km0mr7ycpnqtz03aspq4gl0uk"}'
+      finalize: []
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"6879371894339631825448960892962259924982472926325692156759123809771206113275field","checksum":"7449718695658621283150010371901692060351476360339476814556690262574096972003field","value":"record1qyqspjfe5u76any56fr7hfhn76mpv2jgzrqzjyycqhwp53damsuqzdgdqyxx66trwfhkxun9v35hguerqqpqzqzva5s4vn835eym0gg3z2qtvfyxkak7t7suasadvmvjpzpd0ezzqgdjt9wtcs99hcsyda7jp28flcqujfgjnefkmga7cvmuwmmwcvls5u0s73a"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
