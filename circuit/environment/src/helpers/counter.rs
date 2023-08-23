@@ -15,7 +15,7 @@
 use crate::*;
 use snarkvm_fields::PrimeField;
 
-use std::rc::Rc;
+use std::{mem, rc::Rc};
 
 #[derive(Debug, Default)]
 pub(crate) struct Counter<F: PrimeField> {
@@ -44,7 +44,7 @@ impl<F: PrimeField> Counter<F> {
                 // Save the current scope members.
                 self.parents.push((
                     self.scope.clone(),
-                    self.constraints.clone(),
+                    mem::take(&mut self.constraints),
                     self.constants,
                     self.public,
                     self.private,
@@ -53,7 +53,6 @@ impl<F: PrimeField> Counter<F> {
 
                 // Initialize the new scope members.
                 self.scope = scope;
-                self.constraints = Default::default();
                 self.constants = 0;
                 self.public = 0;
                 self.private = 0;
