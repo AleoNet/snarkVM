@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - execute:
     timelock.aleo/lock:
       outputs: []

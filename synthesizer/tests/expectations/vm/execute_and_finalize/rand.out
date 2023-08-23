@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - execute:
     test_rand.aleo/rand_chacha_with_literals:
       outputs: []

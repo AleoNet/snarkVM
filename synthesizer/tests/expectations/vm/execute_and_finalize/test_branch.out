@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - execute:
     test_branch.aleo/run_test:
       outputs: []

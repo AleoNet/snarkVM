@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - execute:
     unused_position.aleo/foo:
       outputs: []

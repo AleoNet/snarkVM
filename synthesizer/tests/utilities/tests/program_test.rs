@@ -35,8 +35,8 @@ pub struct ProgramTest {
     program: Program<CurrentNetwork>,
     /// The set of test cases.
     cases: Vec<Value>,
-    /// The set of expected outputs for each test case.
-    expected: Vec<Value>,
+    /// The expected output of the test.
+    expected: serde_yaml::Mapping,
     /// The path to the expectation file.
     path: PathBuf,
     /// Whether the expectation file should be rewritten.
@@ -63,8 +63,7 @@ impl ProgramTest {
 }
 
 impl ExpectedTest for ProgramTest {
-    type Output = Vec<Value>;
-    type Test = Vec<Value>;
+    type Output = serde_yaml::Mapping;
 
     /// Loads the test from a given path.
     fn load<P: AsRef<Path>>(test_path: P, expectation_dir: P) -> Self {
@@ -101,10 +100,10 @@ impl ExpectedTest for ProgramTest {
         let path = get_expectation_path(&test_path, &expectation_dir);
         // If the expectation file should be rewritten, then there is no need to read the expectation file.
         let expected = match rewrite {
-            true => vec![],
+            true => serde_yaml::Mapping::default(),
             false => {
                 let source = std::fs::read_to_string(&path).expect("Failed to read expectation file.");
-                serde_yaml::from_str::<Sequence>(&source).expect("invalid expectation")
+                serde_yaml::from_str::<Mapping>(&source).expect("invalid expectation")
             }
         };
 
@@ -112,11 +111,27 @@ impl ExpectedTest for ProgramTest {
     }
 
     fn check(&self, output: &Self::Output) -> Result<()> {
-        // Initialize space to accumulate errors.
-        let mut errors = Vec::new();
+        // Initialize space to accumulate failed tests.
+        let mut failed = Vec::new();
         // If the expectation file should be rewritten, then there is no need to check the output.
         if !self.rewrite {
-            self.cases.iter().zip_eq(self.expected.iter().zip_eq(output.iter())).for_each(
+            // Check that the errors match.
+            let expected_errors =
+                self.expected.get(&Value::String("errors".to_string())).unwrap().as_sequence().unwrap();
+            let actual_errors = output.get(&Value::String("errors".to_string())).unwrap().as_sequence().unwrap();
+            expected_errors.iter().zip_eq(actual_errors.iter()).for_each(|(expected, actual)| {
+                if expected != actual {
+                    let expected =
+                        serde_yaml::to_string(expected).expect("failed to serialize expected error to string");
+                    let actual = serde_yaml::to_string(actual).expect("failed to serialize actual error to string");
+                    failed.push(print_difference("errors", expected, actual));
+                }
+            });
+            // Check that the outputs match.
+            let expected_outputs =
+                self.expected.get(&Value::String("outputs".to_string())).unwrap().as_sequence().unwrap();
+            let actual_outputs = output.get(&Value::String("outputs".to_string())).unwrap().as_sequence().unwrap();
+            self.cases.iter().zip_eq(expected_outputs.iter().zip_eq(actual_outputs.iter())).for_each(
                 |(test, (expected, actual))| {
                     if expected != actual {
                         let test = serde_yaml::to_string(test).expect("failed to serialize test to string");
@@ -124,15 +139,15 @@ impl ExpectedTest for ProgramTest {
                             serde_yaml::to_string(expected).expect("failed to serialize expected output to string");
                         let actual =
                             serde_yaml::to_string(actual).expect("failed to serialize actual output to string");
-                        errors.push(print_difference(test, expected, actual));
+                        failed.push(print_difference(test, expected, actual));
                     }
                 },
             );
         };
         // Write the errors, if any.
-        match errors.is_empty() {
+        match failed.is_empty() {
             true => Ok(()),
-            false => bail!("{}", errors.iter().join("\n\n")),
+            false => bail!("{}", failed.iter().join("\n\n")),
         }
     }
 
