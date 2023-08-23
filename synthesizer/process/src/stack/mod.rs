@@ -179,6 +179,7 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn new(process: &Process<N>, program: &Program<N>) -> Result<Self> {
         // Retrieve the program ID.
+        println!("Inside creating new stack...");
         let program_id = program.id();
         // Ensure the program does not already exist in the process.
         ensure!(!process.contains_program(program_id), "Program '{program_id}' already exists");

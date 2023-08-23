@@ -25,15 +25,17 @@ impl<N: Network> Stack<N> {
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         let timer = timer!("Stack::authorize");
-
+        println!("Inside authorizing the call");
         // Prepare the function name.
+        println!("Preparing the function name...");
         let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
         // Retrieve the input types.
+        println!("Getting the function inputs....");
         let input_types = self.get_function(&function_name)?.input_types();
         lap!(timer, "Retrieve the input types");
 
         // Compute the request.
-        println!("Signing....");
+        println!("Compute the request....");
         let request = Request::sign(private_key, *self.program.id(), function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
@@ -42,6 +44,7 @@ impl<N: Network> Stack<N> {
         // This logic is only executed if the program contains external calls.
         if self.get_number_of_calls(&function_name)? > 1 {
             // Construct the call stack.
+            println!("Authorize the call stack if program contains external calls..");
             let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
             // Construct the authorization from the function.
             let _response = self.execute_function::<A>(call_stack)?;

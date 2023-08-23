@@ -126,6 +126,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     #[inline]
     fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
+        println!("Inside execute function...");
 
         // Ensure the call stack is not `Evaluate`.
         ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
@@ -134,6 +135,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         A::reset();
 
         // Retrieve the next request.
+        println!("Popping off the call stack...");
         let console_request = call_stack.pop()?;
 
         // Ensure the network ID matches.

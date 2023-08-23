@@ -46,10 +46,11 @@ impl<N: Network> Package<N> {
         println!("🚀 Executing '{}'...\n", locator.to_string().bold());
 
         // Construct the process.
+        println!("Getting process...");
         let process = self.get_process()?;
         // Authorize the function call.
 
-        println!("Authorizing...");
+        println!("Authorizing the process...");
         let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs.iter(), rng)?;
 
         // Retrieve the program.

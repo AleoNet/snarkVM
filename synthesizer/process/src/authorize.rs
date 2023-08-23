@@ -26,6 +26,8 @@ impl<N: Network> Process<N> {
         rng: &mut R,
     ) -> Result<Authorization<N>> {
         // Authorize the call.
+        println!("Inside authorizing the process...");
+        println!("Authorizing the call");
         self.get_stack(program_id)?.authorize::<A, R>(private_key, function_name, inputs, rng)
     }
 

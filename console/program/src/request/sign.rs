@@ -40,7 +40,7 @@ impl<N: Network> Request<N> {
             )
         }
 
-        println!("Inside sign...");
+        println!("Inside Request::sign...");
 
         // Retrieve `sk_sig`.
         // TODO @matt -- swap with seed phrase for a view key

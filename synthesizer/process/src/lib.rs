@@ -138,6 +138,7 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn add_stack(&mut self, stack: Stack<N>) {
         // Add the stack to the process.
+        println!("Inserting stack to the process..");
         self.stacks.insert(*stack.program_id(), stack);
     }
 }
@@ -146,21 +147,26 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn load() -> Result<Self> {
+        println!("Inside loading process...");
         let timer = timer!("Process::load");
 
         // Initialize the process.
+        println!("initializing process...");
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
         lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
+        println!("initializing credits.aleo...");
         let program = Program::credits()?;
         lap!(timer, "Load credits program");
 
         // Compute the 'credits.aleo' program stack.
+        println!("creating new stack...");
         let stack = Stack::new(&process, &program)?;
         lap!(timer, "Initialize stack");
 
         // Synthesize the 'credits.aleo' verifying keys.
+        println!("Synthezising credits.aleo verifying keys");
         for function_name in program.functions().keys() {
             // Load the verifying key.
             let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
@@ -170,6 +176,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Load circuit keys");
 
         // Add the stack to the process.
+        println!("Adding stack to the process...");
         process.add_stack(stack);
 
         finish!(timer, "Process::load");
