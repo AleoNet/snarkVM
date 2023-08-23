@@ -108,10 +108,20 @@ impl<N: Network> ToBytes for CallOperator<N> {
     }
 }
 
+/// Calls the closure on the operands into the declared type.
+pub type CallClosure<N> = Call<N, { Variant::CallClosure as u8 }>;
+/// Calls the function on the operands into the declared type.
+pub type CallFunction<N> = Call<N, { Variant::CallFunction as u8 }>;
+
+enum Variant {
+    CallClosure,
+    CallFunction,
+}
+
 /// Calls the operands into the declared type.
-/// i.e. `call transfer r0.owner 0u64 r1.amount into r1 r2;`
+/// i.e. `call.function transfer r0.owner 0u64 r1.amount into r1 r2;`
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Call<N: Network> {
+pub struct Call<N: Network, const VARIANT: u8> {
     /// The reference.
     operator: CallOperator<N>,
     /// The operands.
@@ -120,11 +130,15 @@ pub struct Call<N: Network> {
     destinations: Vec<Register<N>>,
 }
 
-impl<N: Network> Call<N> {
+impl<N: Network, const VARIANT: u8> Call<N, VARIANT> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Call
+        match VARIANT {
+            0 => Opcode::Call("call.closure"),
+            1 => Opcode::Call("call.function"),
+            _ => panic!("Invalid 'call' instruction opcode"),
+        }
     }
 
     /// Return the operator.
@@ -146,21 +160,11 @@ impl<N: Network> Call<N> {
     }
 }
 
-impl<N: Network> Call<N> {
+impl<N: Network, const VARIANT: u8> Call<N, VARIANT> {
     /// Returns `true` if the instruction is a function call.
     #[inline]
-    pub fn is_function_call(&self, stack: &impl StackProgram<N>) -> Result<bool> {
-        match self.operator() {
-            // Check if the locator is for a function.
-            CallOperator::Locator(locator) => {
-                // Retrieve the program.
-                let program = stack.get_external_program(locator.program_id())?;
-                // Check if the resource is a function.
-                Ok(program.contains_function(locator.resource()))
-            }
-            // Check if the resource is a function.
-            CallOperator::Resource(resource) => Ok(stack.program().contains_function(resource)),
-        }
+    pub const fn is_function_call(&self) -> bool {
+        VARIANT == Variant::CallFunction as u8
     }
 
     /// Evaluates the instruction.
@@ -264,7 +268,7 @@ impl<N: Network> Call<N> {
     }
 }
 
-impl<N: Network> Parser for Call<N> {
+impl<N: Network, const VARIANT: u8> Parser for Call<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -329,7 +333,7 @@ impl<N: Network> Parser for Call<N> {
     }
 }
 
-impl<N: Network> FromStr for Call<N> {
+impl<N: Network, const VARIANT: u8> FromStr for Call<N, VARIANT> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -347,14 +351,14 @@ impl<N: Network> FromStr for Call<N> {
     }
 }
 
-impl<N: Network> Debug for Call<N> {
+impl<N: Network, const VARIANT: u8> Debug for Call<N, VARIANT> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Call<N> {
+impl<N: Network, const VARIANT: u8> Display for Call<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
@@ -376,7 +380,7 @@ impl<N: Network> Display for Call<N> {
     }
 }
 
-impl<N: Network> FromBytes for Call<N> {
+impl<N: Network, const VARIANT: u8> FromBytes for Call<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the operator of the call.
@@ -415,7 +419,7 @@ impl<N: Network> FromBytes for Call<N> {
     }
 }
 
-impl<N: Network> ToBytes for Call<N> {
+impl<N: Network, const VARIANT: u8> ToBytes for Call<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
@@ -450,29 +454,43 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const TEST_CASES: &[&str] = &[
-        "call foo",
-        "call foo r0",
-        "call foo r0.owner",
-        "call foo r0 r1",
-        "call foo into r0",
-        "call foo into r0 r1",
-        "call foo into r0 r1 r2",
-        "call foo r0 into r1",
-        "call foo r0 r1 into r2",
-        "call foo r0 r1 into r2 r3",
-        "call foo r0 r1 r2 into r3 r4",
-        "call foo r0 r1 r2 into r3 r4 r5",
+    const CLOSURE_TEST_CASES: &[&str] = &[
+        "call.closure foo",
+        "call.closure foo r0",
+        "call.closure foo r0.owner",
+        "call.closure foo r0 r1",
+        "call.closure foo into r0",
+        "call.closure foo into r0 r1",
+        "call.closure foo into r0 r1 r2",
+        "call.closure foo r0 into r1",
+        "call.closure foo r0 r1 into r2",
+        "call.closure foo r0 r1 into r2 r3",
+        "call.closure foo r0 r1 r2 into r3 r4",
+        "call.closure foo r0 r1 r2 into r3 r4 r5",
+    ];
+    const FUNCTION_TEST_CASES: &[&str] = &[
+        "call.function foo",
+        "call.function foo r0",
+        "call.function foo r0.owner",
+        "call.function foo r0 r1",
+        "call.function foo into r0",
+        "call.function foo into r0 r1",
+        "call.function foo into r0 r1 r2",
+        "call.function foo r0 into r1",
+        "call.function foo r0 r1 into r2",
+        "call.function foo r0 r1 into r2 r3",
+        "call.function foo r0 r1 r2 into r3 r4",
+        "call.function foo r0 r1 r2 into r3 r4 r5",
     ];
 
-    fn check_parser(
+    fn check_parser<const VARIANT: u8>(
         string: &str,
         expected_operator: CallOperator<CurrentNetwork>,
         expected_operands: Vec<Operand<CurrentNetwork>>,
         expected_destinations: Vec<Register<CurrentNetwork>>,
     ) {
         // Check that the parser works.
-        let (string, call) = Call::<CurrentNetwork>::parse(string).unwrap();
+        let (string, call) = Call::<CurrentNetwork, VARIANT>::parse(string).unwrap();
 
         // Check that the entire string was consumed.
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
@@ -495,8 +513,8 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        check_parser(
-            "call transfer r0.owner r0.token_amount into r1 r2 r3",
+        check_parser::<0>(
+            "call.closure transfer r0.owner r0.token_amount into r1 r2 r3",
             CallOperator::from_str("transfer").unwrap(),
             vec![
                 Operand::Register(Register::Access(0, vec![Access::from(Identifier::from_str("owner").unwrap())])),
@@ -507,8 +525,18 @@ mod tests {
             vec![Register::Locator(1), Register::Locator(2), Register::Locator(3)],
         );
 
-        check_parser(
-            "call mint_public aleo1wfyyj2uvwuqw0c0dqa5x70wrawnlkkvuepn4y08xyaqfqqwweqys39jayw 100u64",
+        check_parser::<1>(
+            "call.function transfer r0.owner r0.token_amount into r1 r2 r3",
+            CallOperator::from_str("transfer").unwrap(),
+            vec![
+                Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
+                Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
+            ],
+            vec![Register::Locator(1), Register::Locator(2), Register::Locator(3)],
+        );
+
+        check_parser::<0>(
+            "call.closure mint_public aleo1wfyyj2uvwuqw0c0dqa5x70wrawnlkkvuepn4y08xyaqfqqwweqys39jayw 100u64",
             CallOperator::from_str("mint_public").unwrap(),
             vec![
                 Operand::Literal(Literal::Address(
@@ -519,32 +547,62 @@ mod tests {
             vec![],
         );
 
-        check_parser(
-            "call get_magic_number into r0",
+        check_parser::<1>(
+            "call.function mint_public aleo1wfyyj2uvwuqw0c0dqa5x70wrawnlkkvuepn4y08xyaqfqqwweqys39jayw 100u64",
+            CallOperator::from_str("mint_public").unwrap(),
+            vec![
+                Operand::Literal(Literal::Address(
+                    Address::from_str("aleo1wfyyj2uvwuqw0c0dqa5x70wrawnlkkvuepn4y08xyaqfqqwweqys39jayw").unwrap(),
+                )),
+                Operand::Literal(Literal::U64(U64::from_str("100u64").unwrap())),
+            ],
+            vec![],
+        );
+
+        check_parser::<0>(
+            "call.closure get_magic_number into r0",
+            CallOperator::from_str("get_magic_number").unwrap(),
+            vec![],
+            vec![Register::Locator(0)],
+        );
+        check_parser::<1>(
+            "call.function get_magic_number into r0",
             CallOperator::from_str("get_magic_number").unwrap(),
             vec![],
             vec![Register::Locator(0)],
         );
 
-        check_parser("call noop", CallOperator::from_str("noop").unwrap(), vec![], vec![])
+        check_parser::<0>("call.closure noop", CallOperator::from_str("noop").unwrap(), vec![], vec![]);
+        check_parser::<1>("call.function noop", CallOperator::from_str("noop").unwrap(), vec![], vec![])
     }
 
     #[test]
     fn test_display() {
-        for expected in TEST_CASES {
-            assert_eq!(Call::<CurrentNetwork>::from_str(expected).unwrap().to_string(), *expected);
+        for expected in CLOSURE_TEST_CASES {
+            assert_eq!(CallClosure::<CurrentNetwork>::from_str(expected).unwrap().to_string(), *expected);
+        }
+        for expected in FUNCTION_TEST_CASES {
+            assert_eq!(CallFunction::<CurrentNetwork>::from_str(expected).unwrap().to_string(), *expected);
         }
     }
 
     #[test]
     fn test_bytes() {
-        for case in TEST_CASES {
-            let expected = Call::<CurrentNetwork>::from_str(case).unwrap();
+        for case in CLOSURE_TEST_CASES {
+            let expected = CallClosure::<CurrentNetwork>::from_str(case).unwrap();
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Call::read_le(&expected_bytes[..]).unwrap());
-            assert!(Call::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+            assert!(CallClosure::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        }
+        for case in FUNCTION_TEST_CASES {
+            let expected = CallFunction::<CurrentNetwork>::from_str(case).unwrap();
+
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            assert_eq!(expected, Call::read_le(&expected_bytes[..]).unwrap());
+            assert!(CallFunction::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
     }
 }

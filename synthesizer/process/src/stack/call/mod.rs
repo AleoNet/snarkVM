@@ -48,7 +48,7 @@ pub trait CallTrait<N: Network> {
     ) -> Result<()>;
 }
 
-impl<N: Network> CallTrait<N> for Call<N> {
+impl<N: Network, const VARIANT: u8> CallTrait<N> for Call<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
     fn evaluate<A: circuit::Aleo<Network = N>>(

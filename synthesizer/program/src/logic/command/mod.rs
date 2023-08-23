@@ -125,7 +125,10 @@ impl<N: Network> CommandTrait<N> for Command<N> {
     /// Returns `true` if the command is a call instruction.
     #[inline]
     fn is_call(&self) -> bool {
-        matches!(self, Command::Instruction(Instruction::Call(_)))
+        matches!(
+            self,
+            Command::Instruction(Instruction::CallClosure(_)) | Command::Instruction(Instruction::CallFunction(_))
+        )
     }
 
     /// Returns `true` if the command is a cast to record instruction.
