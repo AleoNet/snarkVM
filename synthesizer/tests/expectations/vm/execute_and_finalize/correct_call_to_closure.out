@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - execute:
     correct_call_to_closure.aleo/hello:
       outputs:

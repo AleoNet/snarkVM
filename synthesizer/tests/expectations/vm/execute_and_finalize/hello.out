@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - execute:
     hello.aleo/hello:
       outputs:
