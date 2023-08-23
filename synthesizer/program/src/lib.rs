@@ -758,10 +758,10 @@ function swap:
     input r1 as usdc.aleo/usdc.record;
 
     // Send the record for token A to the owner of token B.
-    call eth.aleo/transfer r0 r1.owner r0.amount into r2 r3;
+    call.function eth.aleo/transfer r0 r1.owner r0.amount into r2 r3;
 
     // Send the record for token B to the owner of token A.
-    call usdc.aleo/transfer r1 r0.owner r1.amount into r4 r5;
+    call.function usdc.aleo/transfer r1 r0.owner r1.amount into r4 r5;
 
     // Output the new record for token A.
     output r2 as eth.aleo/eth.record;
@@ -790,8 +790,8 @@ function swap:
         assert_eq!(function.instructions().len(), 2);
 
         // Ensure the instructions are calls.
-        assert_eq!(function.instructions()[0].opcode(), Opcode::Call);
-        assert_eq!(function.instructions()[1].opcode(), Opcode::Call);
+        assert_eq!(function.instructions()[0].opcode(), Opcode::Call("function"));
+        assert_eq!(function.instructions()[1].opcode(), Opcode::Call("function"));
 
         // Ensure there are two outputs.
         assert_eq!(function.outputs().len(), 2);

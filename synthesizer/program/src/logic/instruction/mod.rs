@@ -80,7 +80,9 @@ pub enum Instruction<N: Network> {
     /// Asserts `first` and `second` are **not** equal.
     AssertNeq(AssertNeq<N>),
     /// Calls a closure on the operands.
-    Call(Call<N>),
+    CallClosure(CallClosure<N>),
+    /// Calls a function on the operands.
+    CallFunction(CallFunction<N>),
     /// Casts the operands into the declared type.
     Cast(Cast<N>),
     /// Performs a BHP commitment on inputs of 256-bit chunks.
@@ -223,7 +225,8 @@ macro_rules! instruction {
             And,
             AssertEq,
             AssertNeq,
-            Call,
+            CallClosure,
+            CallFunction,
             Cast,
             CommitBHP256,
             CommitBHP512,
