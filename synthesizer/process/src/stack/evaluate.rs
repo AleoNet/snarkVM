@@ -160,7 +160,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             // Evaluate the instruction.
             let result = match instruction {
                 // If the instruction is a `call` instruction, we need to handle it separately.
-                Instruction::Call(call) => CallTrait::evaluate(call, self, &mut registers),
+                Instruction::CallClosure(call) => CallTrait::evaluate(call, self, &mut registers),
+                Instruction::CallFunction(call) => CallTrait::evaluate(call, self, &mut registers),
                 // Otherwise, evaluate the instruction normally.
                 _ => instruction.evaluate(self, &mut registers),
             };

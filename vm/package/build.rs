@@ -224,7 +224,7 @@ impl<N: Network> Package<N> {
             let function = program.get_function(function_name)?;
             // Save all the prover and verifier files for any function calls that are made.
             for instruction in function.instructions() {
-                if let Instruction::Call(call) = instruction {
+                if let Instruction::CallFunction(call) = instruction {
                     // Retrieve the program and resource.
                     let (program, resource) = match call.operator() {
                         CallOperator::Locator(locator) => {

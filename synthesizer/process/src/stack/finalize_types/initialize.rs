@@ -456,7 +456,7 @@ impl<N: Network> FinalizeTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
-            Opcode::Call => {
+            Opcode::Call(_) => {
                 bail!("Instruction 'call' is not allowed in 'finalize'");
             }
             Opcode::Cast => {

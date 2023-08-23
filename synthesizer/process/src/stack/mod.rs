@@ -267,17 +267,14 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         // Determine the number of calls for this function (including the function itself).
         let mut num_calls = 1;
         for instruction in self.get_function(function_name)?.instructions() {
-            if let Instruction::Call(call) = instruction {
-                // Determine if this is a function call.
-                if call.is_function_call(self)? {
-                    // Increment by the number of calls.
-                    num_calls += match call.operator() {
-                        CallOperator::Locator(locator) => {
-                            self.get_external_stack(locator.program_id())?.get_number_of_calls(locator.resource())?
-                        }
-                        CallOperator::Resource(resource) => self.get_number_of_calls(resource)?,
-                    };
-                }
+            if let Instruction::CallFunction(call) = instruction {
+                // Increment by the number of calls.
+                num_calls += match call.operator() {
+                    CallOperator::Locator(locator) => {
+                        self.get_external_stack(locator.program_id())?.get_number_of_calls(locator.resource())?
+                    }
+                    CallOperator::Resource(resource) => self.get_number_of_calls(resource)?,
+                };
             }
         }
         Ok(num_calls)
