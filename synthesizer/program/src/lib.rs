@@ -790,8 +790,8 @@ function swap:
         assert_eq!(function.instructions().len(), 2);
 
         // Ensure the instructions are calls.
-        assert_eq!(function.instructions()[0].opcode(), Opcode::Call("function"));
-        assert_eq!(function.instructions()[1].opcode(), Opcode::Call("function"));
+        assert_eq!(function.instructions()[0].opcode(), Opcode::Call("call.function"));
+        assert_eq!(function.instructions()[1].opcode(), Opcode::Call("call.function"));
 
         // Ensure there are two outputs.
         assert_eq!(function.outputs().len(), 2);

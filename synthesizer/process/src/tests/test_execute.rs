@@ -296,7 +296,7 @@ output r2 as field;
 function compute:
 input r0 as field.private;
 input r1 as field.public;
-call execute r0 r1 into r2 r3 r4;
+call.closure execute r0 r1 into r2 r3 r4;
 output r2 as field.private;
 output r3 as field.private;
 output r4 as field.private;",
