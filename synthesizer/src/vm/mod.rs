@@ -794,7 +794,7 @@ program second_program.aleo;
 function b:
     input r0 as u8.private;
     input r1 as u8.private;
-    call first_program.aleo/c r0 r1 into r2;
+    call.function first_program.aleo/c r0 r1 into r2;
     output r2 as u8.private;
         ";
         let deployment_2 = vm
@@ -814,7 +814,7 @@ program third_program.aleo;
 function a:
     input r0 as u8.private;
     input r1 as u8.private;
-    call second_program.aleo/b r0 r1 into r2;
+    call.function second_program.aleo/b r0 r1 into r2;
     output r2 as u8.private;
         ";
         let deployment_3 = vm
@@ -831,7 +831,7 @@ program fourth_program.aleo;
 function a:
     input r0 as u8.private;
     input r1 as u8.private;
-    call second_program.aleo/b r0 r1 into r2;
+    call.function second_program.aleo/b r0 r1 into r2;
     output r2 as u8.private;
         ";
         let deployment_4 = vm
@@ -895,8 +895,8 @@ function multitransfer:
     input r0 as credits.aleo/credits.record;
     input r1 as address.private;
     input r2 as u64.private;
-    call credits.aleo/transfer_private r0 r1 r2 into r3 r4;
-    call credits.aleo/transfer_private r4 r1 r2 into r5 r6;
+    call.function credits.aleo/transfer_private r0 r1 r2 into r3 r4;
+    call.function credits.aleo/transfer_private r4 r1 r2 into r5 r6;
     output r4 as credits.aleo/credits.record;
     output r5 as credits.aleo/credits.record;
     output r6 as credits.aleo/credits.record;

@@ -941,8 +941,8 @@ function compute:
     input r1 as field.public;
     input r2 as token.record;
     cast r2.owner r2.token_amount into r3 as token.record;
-    call check_not_equal r0 r1;
-    call execute r0 r1 into r4 r5 r6;
+    call.closure check_not_equal r0 r1;
+    call.closure execute r0 r1 into r4 r5 r6;
     output r3 as token.record;
     output r4 as field.private;
     output r5 as field.private;
@@ -1084,10 +1084,10 @@ function transfer:
     input r0 as token.aleo/token.record;
     input r1 as address.private;
     input r2 as u64.private;
-    call token.aleo/noop;
-    call token.aleo/produce_magic_number into r3;
-    call token.aleo/check_magic_number r3;
-    call token.aleo/transfer r0 r1 r2 into r4 r5;
+    call.function token.aleo/noop;
+    call.function token.aleo/produce_magic_number into r3;
+    call.function token.aleo/check_magic_number r3;
+    call.function token.aleo/transfer r0 r1 r2 into r4 r5;
     output r4 as token.aleo/token.record;
     output r5 as token.aleo/token.record;",
     )
@@ -1629,7 +1629,7 @@ program public_wallet.aleo;
 function init:
     input r0 as address.public;
     input r1 as u64.public;
-    call token.aleo/mint_public r0 r1;",
+    call.function token.aleo/mint_public r0 r1;",
     )
     .unwrap();
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
@@ -1832,7 +1832,7 @@ program one.aleo;
 function b:
     input r0 as u8.private;
     input r1 as u8.private;
-    call zero.aleo/c r0 r1 into r2;
+    call.function zero.aleo/c r0 r1 into r2;
     output r2 as u8.private;",
     )
     .unwrap();
@@ -1851,7 +1851,7 @@ program two.aleo;
 function a:
     input r0 as u8.private;
     input r1 as u8.private;
-    call one.aleo/b r0 r1 into r2;
+    call.function one.aleo/b r0 r1 into r2;
     output r2 as u8.private;",
     )
     .unwrap();
@@ -1988,8 +1988,8 @@ fn test_complex_execution_order() {
     function b:
         input r0 as u8.private;
         input r1 as u8.private;
-        call zero.aleo/c r0 r1 into r2;
-        call one.aleo/d r1 r2 into r3;
+        call.function zero.aleo/c r0 r1 into r2;
+        call.function one.aleo/d r1 r2 into r3;
         output r3 as u8.private;",
     )
     .unwrap();
@@ -2010,9 +2010,9 @@ fn test_complex_execution_order() {
     function e:
         input r0 as u8.private;
         input r1 as u8.private;
-        call two.aleo/b r0 r1 into r2;
-        call one.aleo/d r1 r2 into r3;
-        call zero.aleo/c r1 r2 into r4;
+        call.function two.aleo/b r0 r1 into r2;
+        call.function one.aleo/d r1 r2 into r3;
+        call.function zero.aleo/c r1 r2 into r4;
         output r4 as u8.private;",
     )
     .unwrap();
@@ -2032,8 +2032,8 @@ fn test_complex_execution_order() {
     function a:
         input r0 as u8.private;
         input r1 as u8.private;
-        call two.aleo/b r0 r1 into r2;
-        call three.aleo/e r1 r2 into r3;
+        call.function two.aleo/b r0 r1 into r2;
+        call.function three.aleo/e r1 r2 into r3;
         output r3 as u8.private;",
     )
     .unwrap();
@@ -2256,8 +2256,8 @@ closure check_not_equal:
 function compute:
     input r0 as field.private;
     input r1 as field.public;
-    call check_not_equal r0 r1;
-    call execute r0 r1 into r2 r3 r4;
+    call.closure check_not_equal r0 r1;
+    call.closure execute r0 r1 into r2 r3 r4;
     output r2 as field.private;
     output r3 as field.private;
     output r4 as field.private;",
