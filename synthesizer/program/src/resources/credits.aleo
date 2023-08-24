@@ -5,6 +5,15 @@ program credits.aleo;
 
 /**********************************************************************************************************************/
 
+/// The `supply` mapping contains information about the supply of microcredits.
+mapping supply:
+    // The key represents the lookup index.
+    key id as u8.public;
+    // The value represents the amount of microcredits in the supply.
+    value amount as u64.public;
+
+/**********************************************************************************************************************/
+
 /// The `committee` mapping contains the active validator set and their corresponding stake.
 mapping committee:
     // The key represents the address of the validator.
