@@ -52,6 +52,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.check_fee(fee, deployment_or_execution_id).map_err(|error| warn!("{error}")).is_ok()
     }
 
+    /// Returns `true` if the fee amount is valid
+    pub fn verify_fee_amount(&self, transaction: &Transaction<N>) -> bool {
+        self.check_fee_amount(transaction).map_err(|error| warn!("{error}")).is_ok()
+    }
+
     /// Verifies the transaction in the VM. On failure, returns an error.
     #[inline]
     pub fn check_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> Result<()> {
@@ -249,6 +254,38 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         };
         finish!(timer, "Check the global state root");
         result
+    }
+
+    /// Verifies the fee amount is sufficient for the transaction. On failure, returns an error.
+    #[inline]
+    pub fn check_fee_amount(&self, transaction: &Transaction<N>) -> Result<()> {
+        let transaction_id = transaction.id();
+
+        // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
+        let is_fee_required = match transaction.execution() {
+            Some(execution) => !(execution.len() == 1 && transaction.contains_split()),
+            None => true,
+        };
+
+        if is_fee_required {
+            // Retrieve the transaction fee.
+            let fee_amount = *transaction.fee_amount()?;
+            // Retrieve the minimum cost of the transaction.
+            let (cost, _) = match transaction {
+                // Compute the deployment cost.
+                Transaction::Deploy(_, _, deployment, _) => crate::deployment_cost(deployment)?,
+                // Compute the execution cost.
+                Transaction::Execute(_, execution, _) => crate::execution_cost(self, execution)?,
+                // TODO (howardwu): Plug in the Rejected struct, to compute the cost.
+                Transaction::Fee(_, _) => (0, (0, 0)),
+            };
+            // Ensure the transaction has a sufficient fee.
+            if cost > fee_amount {
+                bail!("Transaction '{transaction_id}' has an insufficient fee - expected at least {cost} microcredits")
+            }
+        }
+
+        Ok(())
     }
 }
 
