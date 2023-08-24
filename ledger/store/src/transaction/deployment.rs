@@ -671,75 +671,85 @@ mod tests {
     fn test_insert_get_remove() {
         let rng = &mut TestRng::default();
 
-        // Sample the deployment transaction.
-        let transaction = ledger_test_helpers::sample_deployment_transaction(rng);
-        let transaction_id = transaction.id();
+        // Sample the transactions.
+        let transaction_0 = ledger_test_helpers::sample_deployment_transaction(true, rng);
+        let transaction_1 = ledger_test_helpers::sample_deployment_transaction(false, rng);
+        let transactions = vec![transaction_0, transaction_1];
 
-        // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
-        // Initialize a new fee store.
-        let fee_store = FeeStore::open(transition_store).unwrap();
-        // Initialize a new deployment store.
-        let deployment_store = DeploymentMemory::open(fee_store).unwrap();
+        for transaction in transactions {
+            let transaction_id = transaction.id();
 
-        // Ensure the deployment transaction does not exist.
-        let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+            // Initialize a new transition store.
+            let transition_store = TransitionStore::open(None).unwrap();
+            // Initialize a new fee store.
+            let fee_store = FeeStore::open(transition_store).unwrap();
+            // Initialize a new deployment store.
+            let deployment_store = DeploymentMemory::open(fee_store).unwrap();
 
-        // Insert the deployment transaction.
-        deployment_store.insert(&transaction).unwrap();
+            // Ensure the deployment transaction does not exist.
+            let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
 
-        // Retrieve the deployment transaction.
-        let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(Some(transaction), candidate);
+            // Insert the deployment transaction.
+            deployment_store.insert(&transaction).unwrap();
 
-        // Remove the deployment.
-        deployment_store.remove(&transaction_id).unwrap();
+            // Retrieve the deployment transaction.
+            let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(Some(transaction), candidate);
 
-        // Ensure the deployment transaction does not exist.
-        let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+            // Remove the deployment.
+            deployment_store.remove(&transaction_id).unwrap();
+
+            // Ensure the deployment transaction does not exist.
+            let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 
     #[test]
     fn test_find_transaction_id() {
         let rng = &mut TestRng::default();
 
-        // Sample the deployment transaction.
-        let transaction = ledger_test_helpers::sample_deployment_transaction(rng);
-        let transaction_id = transaction.id();
-        let program_id = match transaction {
-            Transaction::Deploy(_, _, ref deployment, _) => *deployment.program_id(),
-            _ => panic!("Incorrect transaction type"),
-        };
+        // Sample the transactions.
+        let transaction_0 = ledger_test_helpers::sample_deployment_transaction(true, rng);
+        let transaction_1 = ledger_test_helpers::sample_deployment_transaction(false, rng);
+        let transactions = vec![transaction_0, transaction_1];
 
-        // Initialize a new transition store.
-        let transition_store = TransitionStore::open(None).unwrap();
-        // Initialize a new fee store.
-        let fee_store = FeeStore::open(transition_store).unwrap();
-        // Initialize a new deployment store.
-        let deployment_store = DeploymentMemory::open(fee_store).unwrap();
+        for transaction in transactions {
+            let transaction_id = transaction.id();
+            let program_id = match transaction {
+                Transaction::Deploy(_, _, ref deployment, _) => *deployment.program_id(),
+                _ => panic!("Incorrect transaction type"),
+            };
 
-        // Ensure the deployment transaction does not exist.
-        let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
+            // Initialize a new transition store.
+            let transition_store = TransitionStore::open(None).unwrap();
+            // Initialize a new fee store.
+            let fee_store = FeeStore::open(transition_store).unwrap();
+            // Initialize a new deployment store.
+            let deployment_store = DeploymentMemory::open(fee_store).unwrap();
 
-        // Ensure the transaction ID is not found.
-        let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
-        assert_eq!(None, candidate);
+            // Ensure the deployment transaction does not exist.
+            let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
 
-        // Insert the deployment.
-        deployment_store.insert(&transaction).unwrap();
+            // Ensure the transaction ID is not found.
+            let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
+            assert_eq!(None, candidate);
 
-        // Find the transaction ID.
-        let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
-        assert_eq!(Some(transaction_id), candidate);
+            // Insert the deployment.
+            deployment_store.insert(&transaction).unwrap();
 
-        // Remove the deployment.
-        deployment_store.remove(&transaction_id).unwrap();
+            // Find the transaction ID.
+            let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
+            assert_eq!(Some(transaction_id), candidate);
 
-        // Ensure the transaction ID is not found.
-        let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
-        assert_eq!(None, candidate);
+            // Remove the deployment.
+            deployment_store.remove(&transaction_id).unwrap();
+
+            // Ensure the transaction ID is not found.
+            let candidate = deployment_store.find_transaction_id_from_program_id(&program_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 }

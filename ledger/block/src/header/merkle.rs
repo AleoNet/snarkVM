@@ -29,8 +29,8 @@ impl<N: Network> Header<N> {
     /// Returns the Merkle leaf for the given ID in the header.
     pub fn to_leaf(&self, id: &Field<N>) -> Result<HeaderLeaf<N>> {
         // If the ID is the previous state root, return the 0th leaf.
-        if id == &self.previous_state_root {
-            Ok(HeaderLeaf::<N>::new(0, self.previous_state_root))
+        if id == &*self.previous_state_root {
+            Ok(HeaderLeaf::<N>::new(0, *self.previous_state_root))
         }
         // If the ID is the transactions root, return the 1st leaf.
         else if id == &self.transactions_root {
@@ -44,9 +44,9 @@ impl<N: Network> Header<N> {
         else if id == &self.ratifications_root {
             Ok(HeaderLeaf::<N>::new(3, self.ratifications_root))
         }
-        // If the ID is the coinbase accumulator point, return the 4th leaf.
-        else if id == &self.coinbase_accumulator_point {
-            Ok(HeaderLeaf::<N>::new(4, self.coinbase_accumulator_point))
+        // If the ID is the solutions root, return the 4th leaf.
+        else if id == &self.solutions_root {
+            Ok(HeaderLeaf::<N>::new(4, self.solutions_root))
         }
         // If the ID is the metadata hash, then return the 7th leaf.
         else if id == &self.metadata.to_hash()? {
@@ -65,11 +65,11 @@ impl<N: Network> Header<N> {
 
         // Construct the Merkle leaves.
         let mut leaves: Vec<Vec<bool>> = Vec::with_capacity(num_leaves);
-        leaves.push(HeaderLeaf::<N>::new(0, self.previous_state_root).to_bits_le());
+        leaves.push(HeaderLeaf::<N>::new(0, *self.previous_state_root).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(1, self.transactions_root).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(2, self.finalize_root).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(3, self.ratifications_root).to_bits_le());
-        leaves.push(HeaderLeaf::<N>::new(4, self.coinbase_accumulator_point).to_bits_le());
+        leaves.push(HeaderLeaf::<N>::new(4, self.solutions_root).to_bits_le());
         for i in 5..7 {
             leaves.push(HeaderLeaf::<N>::new(i, Field::zero()).to_bits_le());
         }
@@ -112,7 +112,7 @@ mod tests {
             let proof_target = rng.gen_range(0..coinbase_target);
 
             let header = Header::<CurrentNetwork>::from(
-                Field::rand(rng),
+                Into::<<CurrentNetwork as Network>::StateRoot>::into(Field::rand(rng)),
                 Field::rand(rng),
                 Field::rand(rng),
                 Field::rand(rng),
@@ -121,13 +121,12 @@ mod tests {
                     CurrentNetwork::ID,
                     u64::rand(rng),
                     u32::rand(rng),
-                    u64::rand(rng),
                     u128::rand(rng),
                     u128::rand(rng),
                     coinbase_target,
                     proof_target,
                     u64::rand(rng),
-                    rng.gen_range(0..u32::MAX),
+                    rng.gen_range(0..i64::MAX),
                     rng.gen_range(0..i64::MAX),
                 )?,
             )?;
@@ -136,7 +135,7 @@ mod tests {
             let root = header.to_root()?;
 
             // Check the 0th leaf.
-            let leaf = header.to_leaf(&header.previous_state_root())?;
+            let leaf = header.to_leaf(&*header.previous_state_root())?;
             assert_eq!(leaf.index(), 0);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
@@ -156,12 +155,12 @@ mod tests {
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 4th leaf.
-            let leaf = header.to_leaf(&header.coinbase_accumulator_point())?;
+            let leaf = header.to_leaf(&header.solutions_root())?;
             assert_eq!(leaf.index(), 4);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 7th leaf.
-            let leaf = header.to_leaf(&CurrentNetwork::hash_bhp512(&header.metadata().to_bits_le())?)?;
+            let leaf = header.to_leaf(&CurrentNetwork::hash_bhp1024(&header.metadata().to_bits_le())?)?;
             assert_eq!(leaf.index(), 7);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
         }

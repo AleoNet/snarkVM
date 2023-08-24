@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod execute;
-mod fee;
+mod prepare;
 
 #[cfg(debug_assertions)]
 use crate::Stack;
+
 use console::{
     network::prelude::*,
     program::{InputID, StatePath, TransactionLeaf, TransitionLeaf, TransitionPath, TRANSACTION_DEPTH},
@@ -35,17 +35,18 @@ struct InputTask<N: Network> {
     gamma: Group<N>,
     /// The serial number.
     serial_number: Field<N>,
-    /// Contains the local transaction leaf, local transition path, and local transition leaf,
-    /// if this input is a record from a previous local transition.
-    local: Option<(TransactionLeaf<N>, TransitionPath<N>, TransitionLeaf<N>)>,
+    /// Contains the local transaction leaf, local transition root, local transition tcm, local transition path,
+    /// and local transition leaf, if this input is a record from a previous local transition.
+    local: Option<(TransactionLeaf<N>, Field<N>, Field<N>, TransitionPath<N>, TransitionLeaf<N>)>,
 }
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct Inclusion<N: Network> {
     /// A map of `transition IDs` to a list of `input tasks`.
     input_tasks: HashMap<N::TransitionID, Vec<InputTask<N>>>,
-    /// A map of `commitments` to `(local transaction leaf, local transition path, local transition leaf)` pairs.
-    output_commitments: HashMap<Field<N>, (TransactionLeaf<N>, TransitionPath<N>, TransitionLeaf<N>)>,
+    /// A map of `commitments` to `(local transaction leaf, local transition root, local transition tcm, local transition path, local transition leaf)` pairs.
+    output_commitments:
+        HashMap<Field<N>, (TransactionLeaf<N>, Field<N>, Field<N>, TransitionPath<N>, TransitionLeaf<N>)>,
 }
 
 impl<N: Network> Inclusion<N> {
@@ -81,20 +82,30 @@ impl<N: Network> Inclusion<N> {
             }
         }
 
-        // Process the outputs.
-        for (index, output) in transition.outputs().iter().enumerate() {
-            // Filter the outputs for records.
-            if let Output::Record(commitment, ..) = output {
-                // Compute the output index.
-                let output_index = u8::try_from(input_ids.len().saturating_add(index))?;
-                // Compute the transaction leaf.
-                let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
-                // Compute the transition leaf.
-                let transition_leaf = output.to_transition_leaf(output_index);
-                // Compute the transition path.
-                let transition_path = transition.to_path(&transition_leaf)?;
-                // Add the record's local Merklization to the output commitments.
-                self.output_commitments.insert(*commitment, (transaction_leaf, transition_path, transition_leaf));
+        if !transition.outputs().is_empty() {
+            // Compute the transaction leaf.
+            let transaction_leaf = TransactionLeaf::new_execution(transition_index, **transition.id());
+            // Compute the transition root.
+            let transition_root = transition.to_root()?;
+            // Fetch the tcm.
+            let tcm = *transition.tcm();
+
+            // Process the outputs.
+            for (index, output) in transition.outputs().iter().enumerate() {
+                // Filter the outputs for records.
+                if let Output::Record(commitment, ..) = output {
+                    // Compute the output index.
+                    let output_index = u8::try_from(input_ids.len().saturating_add(index))?;
+                    // Compute the transition leaf.
+                    let transition_leaf = output.to_transition_leaf(output_index);
+                    // Compute the transition path.
+                    let transition_path = transition.to_path(&transition_leaf)?;
+                    // Add the record's local Merklization to the output commitments.
+                    self.output_commitments.insert(
+                        *commitment,
+                        (transaction_leaf, transition_root, tcm, transition_path, transition_leaf),
+                    );
+                }
             }
         }
 

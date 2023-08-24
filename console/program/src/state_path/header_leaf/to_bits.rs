@@ -16,14 +16,16 @@ use super::*;
 
 impl<N: Network> ToBits for HeaderLeaf<N> {
     /// Returns the little-endian bits of the Merkle leaf.
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
         // Construct the leaf as (index || ID).
-        self.index.to_bits_le().into_iter().chain(self.id.to_bits_le().into_iter()).collect()
+        self.index.write_bits_le(vec);
+        self.id.write_bits_le(vec);
     }
 
     /// Returns the big-endian bits of the Merkle leaf.
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
         // Construct the leaf as (index || ID).
-        self.index.to_bits_be().into_iter().chain(self.id.to_bits_be().into_iter()).collect()
+        self.index.write_bits_be(vec);
+        self.id.write_bits_be(vec);
     }
 }

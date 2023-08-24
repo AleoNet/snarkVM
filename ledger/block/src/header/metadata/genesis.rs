@@ -21,13 +21,12 @@ impl<N: Network> Metadata<N> {
         let network = N::ID;
         let round = 0;
         let height = 0;
-        let total_supply_in_microcredits = N::STARTING_SUPPLY;
         let cumulative_weight = 0;
         let cumulative_proof_target = 0;
         let coinbase_target = N::GENESIS_COINBASE_TARGET;
         let proof_target = N::GENESIS_PROOF_TARGET;
         let last_coinbase_target = N::GENESIS_COINBASE_TARGET;
-        let last_coinbase_height = 0;
+        let last_coinbase_timestamp = N::GENESIS_TIMESTAMP;
         let timestamp = N::GENESIS_TIMESTAMP;
 
         // Return the genesis metadata.
@@ -35,13 +34,12 @@ impl<N: Network> Metadata<N> {
             network,
             round,
             height,
-            total_supply_in_microcredits,
             cumulative_weight,
             cumulative_proof_target,
             coinbase_target,
             proof_target,
             last_coinbase_target,
-            last_coinbase_height,
+            last_coinbase_timestamp,
             timestamp,
         )
     }
@@ -54,8 +52,6 @@ impl<N: Network> Metadata<N> {
             && self.round == 0u64
             // Ensure the height in the genesis block is 0.
             && self.height == 0u32
-            // Ensure the total supply in the genesis block is `STARTING_SUPPLY`.
-            && self.total_supply_in_microcredits == N::STARTING_SUPPLY
             // Ensure the cumulative weight in the genesis block is 0.
             && self.cumulative_weight == 0u128
             // Ensure the cumulative proof target in the genesis block is 0.
@@ -66,8 +62,8 @@ impl<N: Network> Metadata<N> {
             && self.proof_target == N::GENESIS_PROOF_TARGET
             // Ensure the last coinbase target in the genesis block is `GENESIS_COINBASE_TARGET`.
             && self.last_coinbase_target == N::GENESIS_COINBASE_TARGET
-            // Ensure the last coinbase height in the genesis block is 0.
-            && self.last_coinbase_height == 0u32
+            // Ensure the last coinbase timestamp in the genesis block is `GENESIS_TIMESTAMP`.
+            && self.last_coinbase_timestamp == N::GENESIS_TIMESTAMP
             // Ensure the timestamp in the genesis block is `GENESIS_TIMESTAMP`.
             && self.timestamp == N::GENESIS_TIMESTAMP
     }
@@ -84,7 +80,7 @@ mod tests {
     /// Update this method if the contents of the metadata have changed.
     fn get_expected_size() -> usize {
         // Metadata size.
-        1 + 8 + 4 + 8 + 16 + 16 + 8 + 8 + 8 + 4 + 8
+        1 + 8 + 4 + 16 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 2 bytes for versioning.
             + 2
     }
@@ -114,13 +110,12 @@ mod tests {
         assert_eq!(metadata.network(), CurrentNetwork::ID);
         assert_eq!(metadata.round(), 0);
         assert_eq!(metadata.height(), 0);
-        assert_eq!(metadata.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
         assert_eq!(metadata.cumulative_weight(), 0);
         assert_eq!(metadata.cumulative_proof_target(), 0);
         assert_eq!(metadata.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(metadata.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(metadata.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
-        assert_eq!(metadata.last_coinbase_height(), 0);
+        assert_eq!(metadata.last_coinbase_timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
         assert_eq!(metadata.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
     }
 }

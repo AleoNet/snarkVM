@@ -33,7 +33,8 @@ use synthesizer_program::FinalizeGlobalState;
 #[test]
 fn test_vm_execute_and_finalize() {
     // Load the tests.
-    let tests = load_tests::<_, ProgramTest>("./tests/program", "./expectations/vm/execute_and_finalize");
+    let tests =
+        load_tests::<_, ProgramTest>("./tests/vm/execute_and_finalize", "./expectations/vm/execute_and_finalize");
 
     // Run each test and compare it against its corresponding expectation.
     tests.par_iter().for_each(|test| {
@@ -55,8 +56,9 @@ fn test_vm_execute_and_finalize() {
 
         // Deploy the program.
         let transaction =
-            vm.deploy(&genesis_private_key, test.program(), (fee_records.pop().unwrap().0, 0), None, rng).unwrap();
-        let transactions = vm.speculate(construct_finalize_global_state(&vm), [transaction].iter()).unwrap();
+            vm.deploy(&genesis_private_key, test.program(), Some(fee_records.pop().unwrap().0), 0, None, rng).unwrap();
+        let (transactions, _) =
+            vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
         let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
 
@@ -108,7 +110,8 @@ fn test_vm_execute_and_finalize() {
                         &private_key,
                         (test.program().id(), function_name),
                         inputs.iter(),
-                        Some((fee_records.pop().unwrap().0, 0u64)),
+                        Some(fee_records.pop().unwrap().0),
+                        0u64,
                         None,
                         rng,
                     ) {
@@ -158,34 +161,35 @@ fn test_vm_execute_and_finalize() {
                     output
                         .insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
                     // Speculate on the transaction.
-                    let transactions = match vm.speculate(construct_finalize_global_state(&vm), [transaction].iter()) {
-                        Ok(transactions) => {
-                            output.insert(
-                                serde_yaml::Value::String("speculate".to_string()),
-                                serde_yaml::Value::String(match transactions.iter().next().unwrap() {
-                                    ConfirmedTransaction::AcceptedExecute(_, _, _) => {
-                                        "the execution was accepted".to_string()
-                                    }
-                                    ConfirmedTransaction::RejectedExecute(_, _, _) => {
-                                        "the execution was rejected".to_string()
-                                    }
-                                    ConfirmedTransaction::AcceptedDeploy(_, _, _)
-                                    | ConfirmedTransaction::RejectedDeploy(_, _, _) => {
-                                        unreachable!("unexpected deployment transaction")
-                                    }
-                                }),
-                            );
+                    let transactions =
+                        match vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()) {
+                            Ok((transactions, _)) => {
+                                output.insert(
+                                    serde_yaml::Value::String("speculate".to_string()),
+                                    serde_yaml::Value::String(match transactions.iter().next().unwrap() {
+                                        ConfirmedTransaction::AcceptedExecute(_, _, _) => {
+                                            "the execution was accepted".to_string()
+                                        }
+                                        ConfirmedTransaction::RejectedExecute(_, _, _) => {
+                                            "the execution was rejected".to_string()
+                                        }
+                                        ConfirmedTransaction::AcceptedDeploy(_, _, _)
+                                        | ConfirmedTransaction::RejectedDeploy(_, _, _) => {
+                                            unreachable!("unexpected deployment transaction")
+                                        }
+                                    }),
+                                );
 
-                            transactions
-                        }
-                        Err(err) => {
-                            output.insert(
-                                serde_yaml::Value::String("speculate".to_string()),
-                                serde_yaml::Value::String(err.to_string()),
-                            );
-                            return serde_yaml::Value::Mapping(output);
-                        }
-                    };
+                                transactions
+                            }
+                            Err(err) => {
+                                output.insert(
+                                    serde_yaml::Value::String("speculate".to_string()),
+                                    serde_yaml::Value::String(err.to_string()),
+                                );
+                                return serde_yaml::Value::Mapping(output);
+                            }
+                        };
                     // Construct the next block.
                     let block = construct_next_block(&vm, &private_key, transactions, rng).unwrap();
                     // Add the next block.
@@ -221,7 +225,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
         VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
-    let genesis = vm.genesis(private_key, rng).unwrap();
+    let genesis = vm.genesis_beacon(private_key, rng).unwrap();
 
     // Select a record to spend.
     let view_key = ViewKey::try_from(private_key).unwrap();
@@ -280,7 +284,8 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let transactions = vm.speculate(construct_finalize_global_state(vm), transactions.iter()).unwrap();
+        let (transactions, _) =
+            vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
         let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
@@ -307,18 +312,17 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         CurrentNetwork::ID,
         previous_block.round() + 1,
         previous_block.height() + 1,
-        CurrentNetwork::STARTING_SUPPLY,
         0,
         0,
         CurrentNetwork::GENESIS_COINBASE_TARGET,
         CurrentNetwork::GENESIS_PROOF_TARGET,
         previous_block.last_coinbase_target(),
-        previous_block.last_coinbase_height(),
+        previous_block.last_coinbase_timestamp(),
         CurrentNetwork::GENESIS_TIMESTAMP + 1,
     )?;
     // Construct the block header.
     let header = Header::from(
-        *vm.block_store().current_state_root(),
+        vm.block_store().current_state_root(),
         transactions.to_transactions_root().unwrap(),
         transactions.to_finalize_root().unwrap(),
         *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),
@@ -340,7 +344,7 @@ fn split<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (Vec<Record<CurrentNetwork, Plaintext<CurrentNetwork>>>, Vec<Transaction<CurrentNetwork>>) {
     let inputs = vec![Value::Record(record), Value::Plaintext(Plaintext::from(Literal::U64(U64::new(amount))))];
-    let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, None, rng).unwrap();
+    let transaction = vm.execute(private_key, ("credits.aleo", "split"), inputs.iter(), None, 0, None, rng).unwrap();
     let records = transaction
         .records()
         .map(|(_, record)| record.decrypt(&ViewKey::try_from(private_key).unwrap()).unwrap())

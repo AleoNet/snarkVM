@@ -65,6 +65,10 @@ pub struct StatePath<A: Aleo> {
     transaction_path: TransactionPath<A>,
     /// The transaction leaf.
     transaction_leaf: TransactionLeaf<A>,
+    /// The transition root.
+    transition_root: Field<A>,
+    /// The transition commitment.
+    tcm: Field<A>,
     /// The Merkle path for the transition leaf.
     transition_path: TransitionPath<A>,
     /// The transition leaf.
@@ -95,6 +99,8 @@ impl<A: Aleo> Inject for StatePath<A> {
             transaction_id: Field::new(mode, **state_path.transaction_id()),
             transaction_path: TransactionPath::new(mode, state_path.transaction_path().clone()),
             transaction_leaf: TransactionLeaf::new(mode, *state_path.transaction_leaf()),
+            transition_root: Field::new(mode, *state_path.transition_root()),
+            tcm: Field::new(mode, *state_path.tcm()),
             transition_path: TransitionPath::new(mode, state_path.transition_path().clone()),
             transition_leaf: TransitionLeaf::new(mode, *state_path.transition_leaf()),
         }
@@ -117,6 +123,8 @@ impl<A: Aleo> Eject for StatePath<A> {
             self.transaction_id.eject_mode(),
             self.transaction_path.eject_mode(),
             self.transaction_leaf.eject_mode(),
+            self.transition_root.eject_mode(),
+            self.tcm.eject_mode(),
             self.transition_path.eject_mode(),
             self.transition_leaf.eject_mode(),
         ])
@@ -136,6 +144,8 @@ impl<A: Aleo> Eject for StatePath<A> {
             self.transaction_id.eject_value().into(),
             self.transaction_path.eject_value(),
             self.transaction_leaf.eject_value(),
+            self.transition_root.eject_value(),
+            self.tcm.eject_value(),
             self.transition_path.eject_value(),
             self.transition_leaf.eject_value(),
         )
@@ -181,16 +191,16 @@ mod tests {
 
     #[test]
     fn test_state_path_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 444, 1, 0, 0)
+        check_new(Mode::Constant, 446, 1, 0, 0)
     }
 
     #[test]
     fn test_state_path_new_public() -> Result<()> {
-        check_new(Mode::Public, 0, 445, 0, 376)
+        check_new(Mode::Public, 0, 447, 0, 376)
     }
 
     #[test]
     fn test_state_path_new_private() -> Result<()> {
-        check_new(Mode::Private, 0, 1, 444, 376)
+        check_new(Mode::Private, 0, 1, 446, 376)
     }
 }

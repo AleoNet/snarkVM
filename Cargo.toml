@@ -69,6 +69,7 @@ members = [
   "ledger/narwhal",
   "ledger/narwhal/batch-certificate",
   "ledger/narwhal/batch-header",
+  "ledger/narwhal/data",
   "ledger/narwhal/subdag",
   "ledger/narwhal/transmission",
   "ledger/narwhal/transmission-id",
@@ -132,7 +133,6 @@ noconfig = [ ]
 rocks = [ "snarkvm-ledger/rocks" ]
 test-helpers = [ "snarkvm-ledger/test-helpers" ]
 timer = [ "snarkvm-ledger/timer" ]
-ed25519 = [ "snarkvm-console/ed25519" ]
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
@@ -199,7 +199,7 @@ optional = true
 version = "1"
 
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 optional = true
 
 [dependencies.clap]
@@ -262,7 +262,7 @@ version = "1.3"
 version = "0.11.2"
 
 [dev-dependencies.tempfile]
-version = "3.7"
+version = "3.8"
 
 [build-dependencies.walkdir]
 version = "2"

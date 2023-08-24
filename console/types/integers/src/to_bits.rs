@@ -16,13 +16,13 @@ use super::*;
 
 impl<E: Environment, I: IntegerType> ToBits for Integer<E, I> {
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<bool> {
-        (**self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        (**self).write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<bool> {
-        (**self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        (**self).write_bits_be(vec);
     }
 }
 

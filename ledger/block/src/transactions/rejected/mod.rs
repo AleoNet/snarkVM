@@ -18,7 +18,7 @@ mod string;
 
 use super::*;
 
-use crate::{Deployment, Execution};
+use crate::{Deployment, Execution, Fee};
 
 /// A wrapper around the rejected deployment or execution.
 #[derive(Clone, PartialEq, Eq)]
@@ -79,6 +79,16 @@ impl<N: Network> Rejected<N> {
             Self::Execution(execution) => execution.to_execution_id(),
         }
     }
+
+    /// Returns the unconfirmed transaction ID, which is defined as the transaction ID prior to confirmation.
+    /// When a transaction is rejected, its fee transition is used to construct the confirmed transaction ID,
+    /// changing the original transaction ID.
+    pub fn to_unconfirmed_id(&self, fee: &Option<Fee<N>>) -> Result<Field<N>> {
+        match self {
+            Self::Deployment(_, deployment) => Ok(*Transaction::deployment_tree(deployment, fee.as_ref())?.root()),
+            Self::Execution(execution) => Ok(*Transaction::execution_tree(execution, fee)?.root()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -89,9 +99,9 @@ pub mod test_helpers {
     type CurrentNetwork = Testnet3;
 
     /// Samples a rejected deployment.
-    pub(crate) fn sample_rejected_deployment(rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    pub(crate) fn sample_rejected_deployment(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
         // Sample a deploy transaction.
-        let deployment = match crate::transaction::test_helpers::sample_deployment_transaction(rng) {
+        let deployment = match crate::transaction::test_helpers::sample_deployment_transaction(is_fee_private, rng) {
             Transaction::Deploy(_, _, deployment, _) => (*deployment).clone(),
             _ => unreachable!(),
         };
@@ -106,12 +116,13 @@ pub mod test_helpers {
     }
 
     /// Samples a rejected execution.
-    pub(crate) fn sample_rejected_execution(rng: &mut TestRng) -> Rejected<CurrentNetwork> {
+    pub(crate) fn sample_rejected_execution(is_fee_private: bool, rng: &mut TestRng) -> Rejected<CurrentNetwork> {
         // Sample an execute transaction.
-        let execution = match crate::transaction::test_helpers::sample_execution_transaction_with_fee(rng) {
-            Transaction::Execute(_, execution, _) => execution,
-            _ => unreachable!(),
-        };
+        let execution =
+            match crate::transaction::test_helpers::sample_execution_transaction_with_fee(is_fee_private, rng) {
+                Transaction::Execute(_, execution, _) => execution,
+                _ => unreachable!(),
+            };
 
         // Return the rejected execution.
         Rejected::new_execution(execution)
@@ -121,6 +132,11 @@ pub mod test_helpers {
     pub(crate) fn sample_rejected_transactions() -> Vec<Rejected<CurrentNetwork>> {
         let rng = &mut TestRng::default();
 
-        vec![sample_rejected_deployment(rng), sample_rejected_execution(rng)]
+        vec![
+            sample_rejected_deployment(true, rng),
+            sample_rejected_deployment(false, rng),
+            sample_rejected_execution(true, rng),
+            sample_rejected_execution(false, rng),
+        ]
     }
 }

@@ -18,9 +18,6 @@ pub use internal::*;
 mod block;
 pub use block::*;
 
-mod committee;
-pub use committee::*;
-
 mod consensus;
 pub use consensus::*;
 

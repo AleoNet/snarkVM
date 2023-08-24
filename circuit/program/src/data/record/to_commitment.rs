@@ -19,8 +19,8 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
     pub fn to_commitment(&self, program_id: &ProgramID<A>, record_name: &Identifier<A>) -> Field<A> {
         // Construct the input as `(program_id || record_name || record)`.
         let mut input = program_id.to_bits_le();
-        input.extend(record_name.to_bits_le());
-        input.extend(self.to_bits_le());
+        record_name.write_bits_le(&mut input);
+        self.write_bits_le(&mut input);
         // Compute the BHP hash of the program record.
         A::hash_bhp1024(&input)
     }

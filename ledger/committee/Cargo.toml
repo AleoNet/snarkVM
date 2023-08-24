@@ -28,7 +28,7 @@ default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 prop-tests = [ "rand", "rand_chacha", "test-strategy", "proptest", "anyhow" ]
-test-helpers = [ "rand_distr" ]
+test-helpers = [ "prop-tests", "rand_distr" ]
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -44,7 +44,7 @@ version = "1.0"
 features = [ "preserve_order" ]
 
 [dependencies.anyhow]
-version = "1.0.71"
+version = "1.0.73"
 optional = true
 
 [dependencies.proptest]

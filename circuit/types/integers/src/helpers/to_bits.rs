@@ -18,13 +18,13 @@ impl<E: Environment, I: IntegerType> ToBits for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *with* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *with* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -32,15 +32,15 @@ impl<E: Environment, I: IntegerType> ToBits for &Integer<E, I> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *with* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.bits_le.clone()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        vec.extend_from_slice(&self.bits_le);
     }
 
     /// Outputs the big-endian bit representation of `self` *with* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.to_bits_le();
-        bits_le.reverse();
-        bits_le
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        let initial_len = vec.len();
+        self.write_bits_le(vec);
+        vec[initial_len..].reverse();
     }
 }
 

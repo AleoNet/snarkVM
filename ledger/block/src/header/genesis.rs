@@ -18,7 +18,7 @@ impl<N: Network> Header<N> {
     /// Initializes the genesis block header.
     pub fn genesis(transactions: &Transactions<N>) -> Result<Self> {
         // Prepare a genesis block header.
-        let previous_state_root = Field::zero();
+        let previous_state_root = Into::<N::StateRoot>::into(Field::zero());
         let transactions_root = transactions.to_transactions_root()?;
         let finalize_root = transactions.to_finalize_root()?;
         let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root();
@@ -39,15 +39,15 @@ impl<N: Network> Header<N> {
     /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the previous ledger root is zero.
-        self.previous_state_root == Field::zero()
+        *self.previous_state_root == Field::zero()
             // Ensure the transactions root is nonzero.
             && self.transactions_root != Field::zero()
             // Ensure the finalize root is nonzero.
             && self.finalize_root != Field::zero()
             // Ensure the ratifications root is nonzero.
             && self.ratifications_root != Field::zero()
-            // Ensure the coinbase accumulator point is zero.
-            && self.coinbase_accumulator_point == Field::zero()
+            // Ensure the solutions root is zero.
+            && self.solutions_root == Field::zero()
             // Ensure the metadata is a genesis metadata.
             && self.metadata.is_genesis()
     }
@@ -63,10 +63,10 @@ mod tests {
     /// Returns the expected block header size by summing its subcomponent sizes.
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
-        // Previous state root, transactions root, finalize root, ratifications root, and accumulator point size.
+        // Previous state root, transactions root, finalize root, ratifications root, and solutions root size.
         (Field::<N>::size_in_bytes() * 5)
             // Metadata size.
-            + 1 + 8 + 4 + 8 + 16 + 16 + 8 + 8 + 8 + 4 + 8
+            + 1 + 8 + 4 + 16 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 3 bytes for versioning.
             + 1 + 2
     }
@@ -93,17 +93,16 @@ mod tests {
         assert!(header.is_genesis());
 
         // Ensure the genesis block contains the following.
-        assert_eq!(header.previous_state_root(), Field::zero());
-        assert_eq!(header.coinbase_accumulator_point(), Field::zero());
+        assert_eq!(*header.previous_state_root(), Field::zero());
+        assert_eq!(header.solutions_root(), Field::zero());
         assert_eq!(header.network(), CurrentNetwork::ID);
         assert_eq!(header.round(), 0);
         assert_eq!(header.height(), 0);
-        assert_eq!(header.total_supply_in_microcredits(), CurrentNetwork::STARTING_SUPPLY);
         assert_eq!(header.cumulative_weight(), 0);
         assert_eq!(header.coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
         assert_eq!(header.proof_target(), CurrentNetwork::GENESIS_PROOF_TARGET);
         assert_eq!(header.last_coinbase_target(), CurrentNetwork::GENESIS_COINBASE_TARGET);
-        assert_eq!(header.last_coinbase_height(), 0);
+        assert_eq!(header.last_coinbase_timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
         assert_eq!(header.timestamp(), CurrentNetwork::GENESIS_TIMESTAMP);
 
         // Ensure the genesis block does *not* contain the following.

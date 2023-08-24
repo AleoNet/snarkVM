@@ -18,7 +18,7 @@ pub use genesis::*;
 pub mod powers;
 pub use powers::*;
 
-const REMOTE_URL: &str = "https://testnet3.parameters.aleo.org";
+const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet3.parameters";
 
 // Degrees
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");
@@ -58,9 +58,21 @@ impl_local!(NegBeta, "resources/", "neg-powers-of-beta", "usrs");
 // Negative Powers of Beta in G2
 impl_local!(BetaH, "resources/", "beta-h", "usrs");
 
-// Mint
-impl_remote!(MintProver, REMOTE_URL, "resources/", "mint", "prover");
-impl_remote!(MintVerifier, REMOTE_URL, "resources/", "mint", "verifier");
+// BondPublic
+impl_remote!(BondPublicProver, REMOTE_URL, "resources/", "bond_public", "prover");
+impl_remote!(BondPublicVerifier, REMOTE_URL, "resources/", "bond_public", "verifier");
+// UnbondPublic
+impl_remote!(UnbondPublicProver, REMOTE_URL, "resources/", "unbond_public", "prover");
+impl_remote!(UnbondPublicVerifier, REMOTE_URL, "resources/", "unbond_public", "verifier");
+// UnbondDelegatorAsValidator
+impl_remote!(UnbondDelegatorAsValidatorProver, REMOTE_URL, "resources/", "unbond_delegator_as_validator", "prover");
+impl_remote!(UnbondDelegatorAsValidatorVerifier, REMOTE_URL, "resources/", "unbond_delegator_as_validator", "verifier");
+// ClaimUnbondPublic
+impl_remote!(ClaimUnbondPublicProver, REMOTE_URL, "resources/", "claim_unbond_public", "prover");
+impl_remote!(ClaimUnbondPublicVerifier, REMOTE_URL, "resources/", "claim_unbond_public", "verifier");
+// SetValidatorState
+impl_remote!(SetValidatorStateProver, REMOTE_URL, "resources/", "set_validator_state", "prover");
+impl_remote!(SetValidatorStateVerifier, REMOTE_URL, "resources/", "set_validator_state", "verifier");
 // TransferPrivate
 impl_remote!(TransferPrivateProver, REMOTE_URL, "resources/", "transfer_private", "prover");
 impl_remote!(TransferPrivateVerifier, REMOTE_URL, "resources/", "transfer_private", "verifier");
@@ -79,23 +91,31 @@ impl_remote!(JoinVerifier, REMOTE_URL, "resources/", "join", "verifier");
 // Split
 impl_remote!(SplitProver, REMOTE_URL, "resources/", "split", "prover");
 impl_remote!(SplitVerifier, REMOTE_URL, "resources/", "split", "verifier");
-// Fee
-impl_remote!(FeeProver, REMOTE_URL, "resources/", "fee", "prover");
-impl_remote!(FeeVerifier, REMOTE_URL, "resources/", "fee", "verifier");
+// FeePrivate
+impl_remote!(FeePrivateProver, REMOTE_URL, "resources/", "fee_private", "prover");
+impl_remote!(FeePrivateVerifier, REMOTE_URL, "resources/", "fee_private", "verifier");
+// FeePublic
+impl_remote!(FeePublicProver, REMOTE_URL, "resources/", "fee_public", "prover");
+impl_remote!(FeePublicVerifier, REMOTE_URL, "resources/", "fee_public", "verifier");
 
 #[macro_export]
 macro_rules! insert_credit_keys {
     ($map:ident, $type:ident<$network:ident>, $variant:ident) => {{
         paste::paste! {
             let string = stringify!([<$variant:lower>]);
-            $crate::insert_key!($map, string, $type<$network>, ("mint", $crate::testnet3::[<Mint $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("bond_public", $crate::testnet3::[<BondPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("unbond_public", $crate::testnet3::[<UnbondPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("unbond_delegator_as_validator", $crate::testnet3::[<UnbondDelegatorAsValidator $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("claim_unbond_public", $crate::testnet3::[<ClaimUnbondPublic $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("set_validator_state", $crate::testnet3::[<SetValidatorState $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private", $crate::testnet3::[<TransferPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public", $crate::testnet3::[<TransferPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_private_to_public", $crate::testnet3::[<TransferPrivateToPublic $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("transfer_public_to_private", $crate::testnet3::[<TransferPublicToPrivate $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("join", $crate::testnet3::[<Join $variant>]::load_bytes()));
             $crate::insert_key!($map, string, $type<$network>, ("split", $crate::testnet3::[<Split $variant>]::load_bytes()));
-            $crate::insert_key!($map, string, $type<$network>, ("fee", $crate::testnet3::[<Fee $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("fee_private", $crate::testnet3::[<FeePrivate $variant>]::load_bytes()));
+            $crate::insert_key!($map, string, $type<$network>, ("fee_public", $crate::testnet3::[<FeePublic $variant>]::load_bytes()));
         }
     }};
 }
@@ -133,17 +153,26 @@ mod tests {
     wasm_bindgen_test_configure!(run_in_browser);
 
     #[wasm_bindgen_test]
-    fn test_transfer_flow() {
+    fn test_load_bytes() {
         Degree16::load_bytes().expect("Failed to load degree 16");
         Degree17::load_bytes().expect("Failed to load degree 17");
         Degree18::load_bytes().expect("Failed to load degree 18");
         Degree19::load_bytes().expect("Failed to load degree 19");
+        Degree20::load_bytes().expect("Failed to load degree 20");
+        BondPublicVerifier::load_bytes().expect("Failed to load bond_public verifier");
+        UnbondPublicVerifier::load_bytes().expect("Failed to load unbond_public verifier");
+        UnbondDelegatorAsValidatorVerifier::load_bytes()
+            .expect("Failed to load unbond_delegator_as_validator verifier");
+        ClaimUnbondPublicVerifier::load_bytes().expect("Failed to load claim_unbond_public verifier");
+        SetValidatorStateVerifier::load_bytes().expect("Failed to load set_validator_state verifier");
         TransferPrivateVerifier::load_bytes().expect("Failed to load transfer_private verifier");
         TransferPublicVerifier::load_bytes().expect("Failed to load transfer_public verifier");
         TransferPrivateToPublicVerifier::load_bytes().expect("Failed to load transfer_private_to_public verifier");
         TransferPublicToPrivateVerifier::load_bytes().expect("Failed to load transfer_public_to_private verifier");
-        FeeProver::load_bytes().expect("Failed to load fee prover");
-        FeeVerifier::load_bytes().expect("Failed to load fee verifier");
+        FeePrivateProver::load_bytes().expect("Failed to load fee_private prover");
+        FeePrivateVerifier::load_bytes().expect("Failed to load fee_private verifier");
+        FeePublicProver::load_bytes().expect("Failed to load fee_public prover");
+        FeePublicVerifier::load_bytes().expect("Failed to load fee_public verifier");
         InclusionProver::load_bytes().expect("Failed to load inclusion prover");
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifier");
     }

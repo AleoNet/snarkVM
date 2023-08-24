@@ -28,7 +28,7 @@ harness = false
 
 [features]
 default = [ "async", "indexmap/rayon", "rayon" ]
-async = [ "ledger-query/async", "synthesizer/async" ]
+async = [ "ledger-narwhal/async", "ledger-query/async", "synthesizer/async" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
@@ -41,7 +41,8 @@ serial = [
   "ledger-store/serial",
   "synthesizer/serial"
 ]
-test-helpers = [ "ledger-narwhal/test-helpers" ]
+test = [ "ledger-block/test" ]
+test-helpers = [ "ledger-committee/test-helpers", "ledger-narwhal/test-helpers" ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
@@ -95,7 +96,7 @@ version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [dependencies.indexmap]
 version = "2.0"
@@ -122,6 +123,11 @@ version = "1.3"
 
 [dev-dependencies.criterion]
 version = "0.5"
+
+[dev-dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "./block"
+features = [ "test" ]
 
 [dev-dependencies.serde_json]
 version = "1.0"

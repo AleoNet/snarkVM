@@ -24,12 +24,14 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "process", "program", "snark" ]
+default = [ "process", "program", "rayon", "snark" ]
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
+  "ledger-coinbase/serial",
+  "ledger-committee/serial",
   "ledger-query/serial",
   "ledger-store/serial",
   "synthesizer-process/serial",
@@ -42,9 +44,12 @@ timer = [ "aleo-std/timer" ]
 wasm = [
   "process",
   "program",
+  "rayon",
   "snark",
   "console/wasm",
   "ledger-block/wasm",
+  "ledger-coinbase/wasm",
+  "ledger-committee/wasm",
   "ledger-query/wasm",
   "synthesizer-process/wasm",
   "synthesizer-program/wasm",
@@ -67,6 +72,16 @@ version = "=0.14.6"
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
 path = "../ledger/block"
+version = "=0.14.6"
+
+[dependencies.ledger-coinbase]
+package = "snarkvm-ledger-coinbase"
+path = "../ledger/coinbase"
+version = "=0.14.6"
+
+[dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../ledger/committee"
 version = "=0.14.6"
 
 [dependencies.ledger-query]
@@ -103,6 +118,9 @@ optional = true
 version = "0.1.18"
 default-features = false
 
+[dependencies.anyhow]
+version = "1.0"
+
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde", "rayon" ]
@@ -113,14 +131,27 @@ version = "0.12"
 [dependencies.rand]
 version = "0.8"
 
+[dependencies.rayon]
+version = "1"
+optional = true
+
 [dependencies.tracing]
 version = "0.1"
 
 [dev-dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [dev-dependencies.itertools]
 version = "0.11.0"
+
+[dev-dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../ledger/committee"
+features = [ "test-helpers" ]
+
+[dev-dependencies.ledger-test-helpers]
+package = "snarkvm-ledger-test-helpers"
+path = "../ledger/test-helpers"
 
 [dev-dependencies.once_cell]
 version = "1.18"

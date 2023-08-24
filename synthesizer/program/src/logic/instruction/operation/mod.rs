@@ -38,6 +38,9 @@ pub use literals::*;
 
 mod macros;
 
+mod sign_verify;
+pub use sign_verify::*;
+
 use crate::Opcode;
 use console::network::prelude::*;
 
@@ -61,7 +64,7 @@ pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const
 pub type Abs<N> = UnaryLiteral<N, AbsOperation<N>>;
 
 crate::operation!(
-    pub struct AbsOperation<console::prelude::AbsChecked, circuit::prelude::AbsChecked, abs_checked, "abs"> {
+    pub struct AbsOperation<console::prelude::AbsChecked, circuit::traits::AbsChecked, abs_checked, "abs"> {
         I8 => I8 ("ensure overflows halt"),
         I16 => I16 ("ensure overflows halt"),
         I32 => I32 ("ensure overflows halt"),
@@ -74,7 +77,7 @@ crate::operation!(
 pub type AbsWrapped<N> = UnaryLiteral<N, AbsWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct AbsWrappedOperation<console::prelude::AbsWrapped, circuit::prelude::AbsWrapped, abs_wrapped, "abs.w"> {
+    pub struct AbsWrappedOperation<console::prelude::AbsWrapped, circuit::traits::AbsWrapped, abs_wrapped, "abs.w"> {
         I8 => I8,
         I16 => I16,
         I32 => I32,
@@ -108,7 +111,7 @@ crate::operation!(
 pub type AddWrapped<N> = BinaryLiteral<N, AddWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct AddWrappedOperation<console::prelude::AddWrapped, circuit::prelude::AddWrapped, add_wrapped, "add.w"> {
+    pub struct AddWrappedOperation<console::prelude::AddWrapped, circuit::traits::AddWrapped, add_wrapped, "add.w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -165,7 +168,7 @@ crate::operation!(
 pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::prelude::DivWrapped, div_wrapped, "div.w"> {
+    pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::traits::DivWrapped, div_wrapped, "div.w"> {
         (I8, I8) => I8 ("ensure divide by zero halts"),
         (I16, I16) => I16 ("ensure divide by zero halts"),
         (I32, I32) => I32 ("ensure divide by zero halts"),
@@ -183,7 +186,7 @@ crate::operation!(
 pub type Double<N> = UnaryLiteral<N, DoubleOperation<N>>;
 
 crate::operation!(
-    pub struct DoubleOperation<console::prelude::Double, circuit::prelude::Double, double, "double"> {
+    pub struct DoubleOperation<console::prelude::Double, circuit::traits::Double, double, "double"> {
         Field => Field,
         Group => Group,
     }
@@ -193,7 +196,7 @@ crate::operation!(
 pub type GreaterThan<N> = BinaryLiteral<N, GreaterThanOperation<N>>;
 
 crate::operation!(
-    pub struct GreaterThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than, "gt"> {
+    pub struct GreaterThanOperation<console::prelude::Compare, circuit::traits::Compare, is_greater_than, "gt"> {
         // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
@@ -214,7 +217,7 @@ crate::operation!(
 pub type GreaterThanOrEqual<N> = BinaryLiteral<N, GreaterThanOrEqualOperation<N>>;
 
 crate::operation!(
-    pub struct GreaterThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than_or_equal, "gte"> {
+    pub struct GreaterThanOrEqualOperation<console::prelude::Compare, circuit::traits::Compare, is_greater_than_or_equal, "gte"> {
         // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
@@ -235,7 +238,7 @@ crate::operation!(
 pub type Inv<N> = UnaryLiteral<N, InvOperation<N>>;
 
 crate::operation!(
-    pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
+    pub struct InvOperation<console::prelude::Inverse, circuit::traits::Inverse, inverse?, "inv"> {
         Field => Field ("ensure inverse of zero halts"),
     }
 );
@@ -244,7 +247,7 @@ crate::operation!(
 pub type LessThan<N> = BinaryLiteral<N, LessThanOperation<N>>;
 
 crate::operation!(
-    pub struct LessThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than, "lt"> {
+    pub struct LessThanOperation<console::prelude::Compare, circuit::traits::Compare, is_less_than, "lt"> {
         // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
@@ -265,7 +268,7 @@ crate::operation!(
 pub type LessThanOrEqual<N> = BinaryLiteral<N, LessThanOrEqualOperation<N>>;
 
 crate::operation!(
-    pub struct LessThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than_or_equal, "lte"> {
+    pub struct LessThanOrEqualOperation<console::prelude::Compare, circuit::traits::Compare, is_less_than_or_equal, "lte"> {
         // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
@@ -286,7 +289,7 @@ crate::operation!(
 pub type Modulo<N> = BinaryLiteral<N, ModuloOperation<N>>;
 
 crate::operation!(
-    pub struct ModuloOperation<console::prelude::Modulo, circuit::prelude::Modulo, modulo, "mod"> {
+    pub struct ModuloOperation<console::prelude::Modulo, circuit::traits::Modulo, modulo, "mod"> {
         (U8, U8) => U8("ensure divide by zero halts"),
         (U16, U16) => U16("ensure divide by zero halts"),
         (U32, U32) => U32("ensure divide by zero halts"),
@@ -321,7 +324,7 @@ crate::operation!(
 pub type MulWrapped<N> = BinaryLiteral<N, MulWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct MulWrappedOperation<console::prelude::MulWrapped, circuit::prelude::MulWrapped, mul_wrapped, "mul.w"> {
+    pub struct MulWrappedOperation<console::prelude::MulWrapped, circuit::traits::MulWrapped, mul_wrapped, "mul.w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -339,7 +342,7 @@ crate::operation!(
 pub type Nand<N> = BinaryLiteral<N, NandOperation<N>>;
 
 crate::operation!(
-    pub struct NandOperation<console::prelude::Nand, circuit::prelude::Nand, nand, "nand"> {
+    pub struct NandOperation<console::prelude::Nand, circuit::traits::Nand, nand, "nand"> {
         (Boolean, Boolean) => Boolean,
     }
 );
@@ -363,7 +366,7 @@ crate::operation!(
 pub type Nor<N> = BinaryLiteral<N, NorOperation<N>>;
 
 crate::operation!(
-    pub struct NorOperation<console::prelude::Nor, circuit::prelude::Nor, nor, "nor"> {
+    pub struct NorOperation<console::prelude::Nor, circuit::traits::Nor, nor, "nor"> {
         (Boolean, Boolean) => Boolean,
     }
 );
@@ -410,7 +413,7 @@ crate::operation!(
 pub type Pow<N> = BinaryLiteral<N, PowOperation<N>>;
 
 crate::operation!(
-    pub struct PowOperation<console::prelude::Pow, circuit::prelude::Pow, pow, "pow"> {
+    pub struct PowOperation<console::prelude::Pow, circuit::traits::Pow, pow, "pow"> {
         (Field, Field) => Field,
         (I8, U8) => I8 ("ensure exponentiation overflows halt"),
         (I8, U16) => I8 ("ensure exponentiation overflows halt"),
@@ -449,7 +452,7 @@ crate::operation!(
 pub type PowWrapped<N> = BinaryLiteral<N, PowWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct PowWrappedOperation<console::prelude::PowWrapped, circuit::prelude::PowWrapped, pow_wrapped, "pow.w"> {
+    pub struct PowWrappedOperation<console::prelude::PowWrapped, circuit::traits::PowWrapped, pow_wrapped, "pow.w"> {
         (I8, U8) => I8,
         (I8, U16) => I8,
         (I8, U32) => I8,
@@ -505,7 +508,7 @@ crate::operation!(
 pub type RemWrapped<N> = BinaryLiteral<N, RemWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct RemWrappedOperation<console::prelude::RemWrapped, circuit::prelude::RemWrapped, rem_wrapped, "rem.w"> {
+    pub struct RemWrappedOperation<console::prelude::RemWrapped, circuit::traits::RemWrapped, rem_wrapped, "rem.w"> {
         (I8, I8) => I8 ("ensure divide by zero halts"),
         (I16, I16) => I16 ("ensure divide by zero halts"),
         (I32, I32) => I32 ("ensure divide by zero halts"),
@@ -523,7 +526,7 @@ crate::operation!(
 pub type Shl<N> = BinaryLiteral<N, ShlOperation<N>>;
 
 crate::operation!(
-    pub struct ShlOperation<console::prelude::ShlChecked, circuit::prelude::ShlChecked, shl_checked, "shl"> {
+    pub struct ShlOperation<console::prelude::ShlChecked, circuit::traits::ShlChecked, shl_checked, "shl"> {
         (I8, U8) => I8 ("ensure shifting past boundary halts"),
         (I8, U16) => I8 ("ensure shifting past boundary halts"),
         (I8, U32) => I8 ("ensure shifting past boundary halts"),
@@ -561,7 +564,7 @@ crate::operation!(
 pub type ShlWrapped<N> = BinaryLiteral<N, ShlWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct ShlWrappedOperation<console::prelude::ShlWrapped, circuit::prelude::ShlWrapped, shl_wrapped, "shl.w"> {
+    pub struct ShlWrappedOperation<console::prelude::ShlWrapped, circuit::traits::ShlWrapped, shl_wrapped, "shl.w"> {
         (I8, U8) => I8,
         (I8, U16) => I8,
         (I8, U32) => I8,
@@ -599,7 +602,7 @@ crate::operation!(
 pub type Shr<N> = BinaryLiteral<N, ShrOperation<N>>;
 
 crate::operation!(
-    pub struct ShrOperation<console::prelude::ShrChecked, circuit::prelude::ShrChecked, shr_checked, "shr"> {
+    pub struct ShrOperation<console::prelude::ShrChecked, circuit::traits::ShrChecked, shr_checked, "shr"> {
         (I8, U8) => I8 ("ensure shifting past boundary halts"),
         (I8, U16) => I8 ("ensure shifting past boundary halts"),
         (I8, U32) => I8 ("ensure shifting past boundary halts"),
@@ -637,7 +640,7 @@ crate::operation!(
 pub type ShrWrapped<N> = BinaryLiteral<N, ShrWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct ShrWrappedOperation<console::prelude::ShrWrapped, circuit::prelude::ShrWrapped, shr_wrapped, "shr.w"> {
+    pub struct ShrWrappedOperation<console::prelude::ShrWrapped, circuit::traits::ShrWrapped, shr_wrapped, "shr.w"> {
         (I8, U8) => I8,
         (I8, U16) => I8,
         (I8, U32) => I8,
@@ -675,7 +678,7 @@ crate::operation!(
 pub type Square<N> = UnaryLiteral<N, SquareOperation<N>>;
 
 crate::operation!(
-    pub struct SquareOperation<console::prelude::Square, circuit::prelude::Square, square, "square"> {
+    pub struct SquareOperation<console::prelude::Square, circuit::traits::Square, square, "square"> {
         Field => Field,
     }
 );
@@ -684,7 +687,7 @@ crate::operation!(
 pub type SquareRoot<N> = UnaryLiteral<N, SquareRootOperation<N>>;
 
 crate::operation!(
-    pub struct SquareRootOperation<console::prelude::SquareRoot, circuit::prelude::SquareRoot, square_root?, "sqrt"> {
+    pub struct SquareRootOperation<console::prelude::SquareRoot, circuit::traits::SquareRoot, square_root?, "sqrt"> {
         Field => Field ("ensure quadratic nonresidues halt"),
     }
 );
@@ -714,7 +717,7 @@ crate::operation!(
 pub type SubWrapped<N> = BinaryLiteral<N, SubWrappedOperation<N>>;
 
 crate::operation!(
-    pub struct SubWrappedOperation<console::prelude::SubWrapped, circuit::prelude::SubWrapped, sub_wrapped, "sub.w"> {
+    pub struct SubWrappedOperation<console::prelude::SubWrapped, circuit::traits::SubWrapped, sub_wrapped, "sub.w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -732,7 +735,7 @@ crate::operation!(
 pub type Ternary<N> = TernaryLiteral<N, TernaryOperation<N>>;
 
 crate::operation!(
-    pub struct TernaryOperation<console::prelude::Ternary, circuit::prelude::Ternary, ternary, "ternary"> {
+    pub struct TernaryOperation<console::prelude::Ternary, circuit::traits::Ternary, ternary, "ternary"> {
         (Boolean, Address, Address) => Address,
         (Boolean, Boolean, Boolean) => Boolean,
         (Boolean, Field, Field) => Field,
@@ -748,6 +751,7 @@ crate::operation!(
         (Boolean, U64, U64) => U64,
         (Boolean, U128, U128) => U128,
         (Boolean, Scalar, Scalar) => Scalar,
+        // (Boolean, Signature, Signature) => Signature,
         // (Boolean, StringType, StringType) => StringType,
     }
 );

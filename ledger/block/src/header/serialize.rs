@@ -24,7 +24,7 @@ impl<N: Network> Serialize for Header<N> {
                 header.serialize_field("transactions_root", &self.transactions_root)?;
                 header.serialize_field("finalize_root", &self.finalize_root)?;
                 header.serialize_field("ratifications_root", &self.ratifications_root)?;
-                header.serialize_field("coinbase_accumulator_point", &self.coinbase_accumulator_point)?;
+                header.serialize_field("solutions_root", &self.solutions_root)?;
                 header.serialize_field("metadata", &self.metadata)?;
                 header.end()
             }
@@ -44,7 +44,7 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
                     DeserializeExt::take_from_value::<D>(&mut header, "transactions_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "finalize_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "ratifications_root")?,
-                    DeserializeExt::take_from_value::<D>(&mut header, "coinbase_accumulator_point")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "solutions_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "metadata")?,
                 )
                 .map_err(de::Error::custom)?)

@@ -655,79 +655,84 @@ mod tests {
     fn test_insert_get_remove() {
         let rng = &mut TestRng::default();
 
-        // Sample the transitions.
-        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
-        let transitions = transaction.transitions().cloned().collect::<Vec<_>>();
+        // Sample the transactions.
+        let transaction_0 = ledger_test_helpers::sample_execution_transaction_with_fee(true, rng);
+        let transaction_1 = ledger_test_helpers::sample_execution_transaction_with_fee(false, rng);
+        let transactions = vec![transaction_0, transaction_1];
 
-        // Ensure there is at least 2 transition.
-        println!("\n\nNumber of transitions: {}\n", transitions.len());
-        assert!(transitions.len() > 1, "\n\nNumber of transitions: {}\n", transitions.len());
+        for transaction in transactions {
+            let transitions = transaction.transitions().cloned().collect::<Vec<_>>();
 
-        // Initialize a new transition store.
-        let transition_store = TransitionMemory::open(None).unwrap();
+            // Ensure there is at least 2 transition.
+            println!("\n\nNumber of transitions: {}\n", transitions.len());
+            assert!(transitions.len() > 1, "\n\nNumber of transitions: {}\n", transitions.len());
 
-        // Test each transition in isolation.
-        for transition in transitions.iter() {
-            // Retrieve the transition ID.
-            let transition_id = *transition.id();
+            // Initialize a new transition store.
+            let transition_store = TransitionMemory::open(None).unwrap();
 
-            // Ensure the transition does not exist.
-            let candidate = transition_store.get(&transition_id).unwrap();
-            assert_eq!(None, candidate);
+            // Test each transition in isolation.
+            for transition in transitions.iter() {
+                // Retrieve the transition ID.
+                let transition_id = *transition.id();
 
-            // Insert the transition.
-            transition_store.insert(transition).unwrap();
+                // Ensure the transition does not exist.
+                let candidate = transition_store.get(&transition_id).unwrap();
+                assert_eq!(None, candidate);
 
-            // Retrieve the transition.
-            let candidate = transition_store.get(&transition_id).unwrap();
-            assert_eq!(Some(transition.clone()), candidate);
+                // Insert the transition.
+                transition_store.insert(transition).unwrap();
 
-            // Remove the transition.
-            transition_store.remove(&transition_id).unwrap();
+                // Retrieve the transition.
+                let candidate = transition_store.get(&transition_id).unwrap();
+                assert_eq!(Some(transition.clone()), candidate);
 
-            // Retrieve the transition.
-            let candidate = transition_store.get(&transition_id).unwrap();
-            assert_eq!(None, candidate);
-        }
+                // Remove the transition.
+                transition_store.remove(&transition_id).unwrap();
 
-        // Insert every transition.
-        for transition in transitions.iter() {
-            // Retrieve the transition ID.
-            let transition_id = *transition.id();
+                // Retrieve the transition.
+                let candidate = transition_store.get(&transition_id).unwrap();
+                assert_eq!(None, candidate);
+            }
 
-            // Ensure the transition does not exist.
-            let candidate = transition_store.get(&transition_id).unwrap();
-            assert_eq!(None, candidate);
+            // Insert every transition.
+            for transition in transitions.iter() {
+                // Retrieve the transition ID.
+                let transition_id = *transition.id();
 
-            // Insert the transition.
-            transition_store.insert(transition).unwrap();
+                // Ensure the transition does not exist.
+                let candidate = transition_store.get(&transition_id).unwrap();
+                assert_eq!(None, candidate);
 
-            // Ensure the transition exists.
-            let candidate = transition_store.get(&transition_id).unwrap();
-            assert_eq!(Some(transition.clone()), candidate);
-        }
+                // Insert the transition.
+                transition_store.insert(transition).unwrap();
 
-        // Get every transition (in reverse).
-        for transition in transitions.iter().rev() {
-            // Retrieve the transition ID.
-            let transition_id = *transition.id();
+                // Ensure the transition exists.
+                let candidate = transition_store.get(&transition_id).unwrap();
+                assert_eq!(Some(transition.clone()), candidate);
+            }
 
-            // Retrieve the transition.
-            let candidate = transition_store.get(&transition_id).unwrap();
-            assert_eq!(Some(transition.clone()), candidate);
-        }
+            // Get every transition (in reverse).
+            for transition in transitions.iter().rev() {
+                // Retrieve the transition ID.
+                let transition_id = *transition.id();
 
-        // Remove every transition (in reverse).
-        for transition in transitions.iter().rev() {
-            // Retrieve the transition ID.
-            let transition_id = *transition.id();
+                // Retrieve the transition.
+                let candidate = transition_store.get(&transition_id).unwrap();
+                assert_eq!(Some(transition.clone()), candidate);
+            }
 
-            // Remove the transition.
-            transition_store.remove(&transition_id).unwrap();
+            // Remove every transition (in reverse).
+            for transition in transitions.iter().rev() {
+                // Retrieve the transition ID.
+                let transition_id = *transition.id();
 
-            // Ensure the transition does not exist.
-            let candidate = transition_store.get(&transition_id).unwrap();
-            assert_eq!(None, candidate);
+                // Remove the transition.
+                transition_store.remove(&transition_id).unwrap();
+
+                // Ensure the transition does not exist.
+                let candidate = transition_store.get(&transition_id).unwrap();
+                assert_eq!(None, candidate);
+            }
         }
     }
 }

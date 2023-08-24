@@ -19,17 +19,22 @@ impl<N: Network> Serialize for Ratify<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
-                Self::ProvingReward(address, amount) => {
+                Self::Genesis(committee, public_balances) => {
                     let mut input = serializer.serialize_struct("Ratify", 3)?;
-                    input.serialize_field("type", "proving_reward")?;
-                    input.serialize_field("address", &address)?;
+                    input.serialize_field("type", "genesis")?;
+                    input.serialize_field("committee", &committee)?;
+                    input.serialize_field("public_balances", &public_balances)?;
+                    input.end()
+                }
+                Self::BlockReward(amount) => {
+                    let mut input = serializer.serialize_struct("Ratify", 2)?;
+                    input.serialize_field("type", "block_reward")?;
                     input.serialize_field("amount", &amount)?;
                     input.end()
                 }
-                Self::StakingReward(address, amount) => {
-                    let mut input = serializer.serialize_struct("Ratify", 3)?;
-                    input.serialize_field("type", "staking_reward")?;
-                    input.serialize_field("address", &address)?;
+                Self::PuzzleReward(amount) => {
+                    let mut input = serializer.serialize_struct("Ratify", 2)?;
+                    input.serialize_field("type", "puzzle_reward")?;
                     input.serialize_field("amount", &amount)?;
                     input.end()
                 }
@@ -49,21 +54,26 @@ impl<'de, N: Network> Deserialize<'de> for Ratify<N> {
 
                 // Recover the ratify object.
                 let ratify = match object.get("type").and_then(|t| t.as_str()) {
-                    Some("proving_reward") => {
-                        // Retrieve the address.
-                        let address: Address<N> = DeserializeExt::take_from_value::<D>(&mut object, "address")?;
-                        // Retrieve the amount.
-                        let amount: u64 = DeserializeExt::take_from_value::<D>(&mut object, "amount")?;
+                    Some("genesis") => {
+                        // Retrieve the committee.
+                        let committee: Committee<N> = DeserializeExt::take_from_value::<D>(&mut object, "committee")?;
+                        // Retrieve the public balances.
+                        let public_balances: PublicBalances<N> =
+                            DeserializeExt::take_from_value::<D>(&mut object, "public_balances")?;
                         // Construct the ratify object.
-                        Ratify::ProvingReward(address, amount)
+                        Ratify::Genesis(committee, public_balances)
                     }
-                    Some("staking_reward") => {
-                        // Retrieve the address.
-                        let address: Address<N> = DeserializeExt::take_from_value::<D>(&mut object, "address")?;
+                    Some("block_reward") => {
                         // Retrieve the amount.
                         let amount: u64 = DeserializeExt::take_from_value::<D>(&mut object, "amount")?;
                         // Construct the ratify object.
-                        Ratify::StakingReward(address, amount)
+                        Ratify::BlockReward(amount)
+                    }
+                    Some("puzzle_reward") => {
+                        // Retrieve the amount.
+                        let amount: u64 = DeserializeExt::take_from_value::<D>(&mut object, "amount")?;
+                        // Construct the ratify object.
+                        Ratify::PuzzleReward(amount)
                     }
                     _ => return Err(de::Error::custom("Invalid ratify object type")),
                 };

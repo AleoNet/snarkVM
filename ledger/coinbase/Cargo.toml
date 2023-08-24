@@ -40,6 +40,7 @@ serial = [
   "snarkvm-utilities/serial"
 ]
 setup = [ ]
+timer = [ "aleo-std/timer" ]
 wasm = [
   "console/wasm",
   "snarkvm-algorithms/wasm",
@@ -72,8 +73,12 @@ path = "../../utilities"
 version = "=0.14.6"
 default-features = false
 
+[dependencies.aleo-std]
+version = "0.1.18"
+default-features = false
+
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [dependencies.bincode]
 version = "1"

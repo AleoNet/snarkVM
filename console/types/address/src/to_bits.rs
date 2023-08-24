@@ -16,13 +16,13 @@ use super::*;
 
 impl<E: Environment> ToBits for Address<E> {
     /// Outputs the little-endian bit representation of `self.to_x_coordinate()` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<bool> {
-        self.address.to_x_coordinate().to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        self.address.to_x_coordinate().write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self.to_x_coordinate()` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<bool> {
-        self.address.to_x_coordinate().to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        self.address.to_x_coordinate().write_bits_be(vec);
     }
 }
 
