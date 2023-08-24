@@ -20,7 +20,7 @@ use console::{
     types::{U64, U8},
 };
 
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use indexmap::IndexMap;
 
 /// The supply type.
@@ -80,13 +80,20 @@ impl Supply {
         self.staked = self.staked.saturating_add(amount);
     }
 
-    pub fn bond(&mut self, amount: u64) -> Result<()> {
-        if self.public < amount {
-            bail!("Insufficient public supply");
-        }
+    pub fn bond_public(&mut self, amount: u64) -> Result<()> {
+        ensure!(self.public < amount, "Insufficient public supply");
 
         self.public = self.public.saturating_sub(amount);
         self.staked = self.staked.saturating_add(amount);
+
+        Ok(())
+    }
+
+    pub fn unbond_public(&mut self, amount: u64) -> Result<()> {
+        ensure!(self.staked < amount, "Insufficient staked supply");
+
+        self.staked = self.staked.saturating_sub(amount);
+        self.public = self.public.saturating_add(amount);
 
         Ok(())
     }
@@ -102,12 +109,8 @@ impl Supply {
     }
 
     pub fn fee_public(&mut self, amount: u64) -> Result<()> {
-        if self.total < amount {
-            bail!("Insufficient total supply");
-        }
-        if self.public < amount {
-            bail!("Insufficient public supply");
-        }
+        ensure!(self.total < amount, "Insufficient total supply");
+        ensure!(self.public < amount, "Insufficient public supply");
 
         self.total = self.total.saturating_sub(amount);
         self.public = self.public.saturating_sub(amount);
@@ -116,12 +119,8 @@ impl Supply {
     }
 
     pub fn fee_private(&mut self, amount: u64) -> Result<()> {
-        if self.total < amount {
-            bail!("Insufficient total supply");
-        }
-        if self.private < amount {
-            bail!("Insufficient private supply");
-        }
+        ensure!(self.total < amount, "Insufficient total supply");
+        ensure!(self.private < amount, "Insufficient private supply");
 
         self.total = self.total.saturating_sub(amount);
         self.private = self.private.saturating_sub(amount);
@@ -130,12 +129,8 @@ impl Supply {
     }
 
     pub fn split(&mut self) -> Result<()> {
-        if self.total < 10_000 {
-            bail!("Insufficient total supply");
-        }
-        if self.private < 10_000 {
-            bail!("Insufficient private supply");
-        }
+        ensure!(self.total < 10_000, "Insufficient total supply");
+        ensure!(self.private < 10_000, "Insufficient private supply");
 
         self.total = self.total.saturating_sub(self.staked);
         self.private = self.private.saturating_add(self.staked);
@@ -144,9 +139,7 @@ impl Supply {
     }
 
     pub fn transfer_public_to_private(&mut self, amount: u64) -> Result<()> {
-        if self.public < amount {
-            bail!("Insufficient public supply");
-        }
+        ensure!(self.public < amount, "Insufficient public supply");
 
         self.public = self.public.saturating_sub(amount);
         self.private = self.private.saturating_add(amount);
@@ -155,9 +148,7 @@ impl Supply {
     }
 
     pub fn transfer_private_to_public(&mut self, amount: u64) -> Result<()> {
-        if self.private < amount {
-            bail!("Insufficient private supply");
-        }
+        ensure!(self.private < amount, "Insufficient private supply");
 
         self.private = self.private.saturating_sub(amount);
         self.public = self.public.saturating_add(amount);
