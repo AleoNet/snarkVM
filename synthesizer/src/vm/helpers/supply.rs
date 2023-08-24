@@ -53,35 +53,48 @@ pub struct Supply {
     staked: u64,
 }
 
-// TODO (raychu86): Clean up and add documentation.
 impl Supply {
+    /// Returns the total supply.
     pub fn total(&self) -> u64 {
         self.total
     }
 
+    /// Returns the private supply.
     pub fn private(&self) -> u64 {
         self.private
     }
 
+    /// Returns the public supply.
     pub fn public(&self) -> u64 {
         self.public
     }
 
+    /// Returns the staked supply.
     pub fn staked(&self) -> u64 {
         self.staked
     }
+}
 
-    pub fn add_initial_balance(&mut self, amount: u64) {
-        self.total = self.total.saturating_sub(amount);
+impl Supply {
+    /// Updates the supply after an initial public balance has been added.
+    pub fn add_initial_public_balance(&mut self, amount: u64) -> Result<()> {
+        self.total = self.total.saturating_add(amount);
+        self.public = self.public.saturating_add(amount);
+
+        Ok(())
     }
 
-    pub fn add_initial_committee_member(&mut self, amount: u64) {
-        self.total = self.total.saturating_sub(amount);
+    /// Updates the supply after an initial committee member has been added.
+    pub fn add_initial_committee_member(&mut self, amount: u64) -> Result<()> {
+        self.total = self.total.saturating_add(amount);
         self.staked = self.staked.saturating_add(amount);
+
+        Ok(())
     }
 
+    /// Updates the supply with a `bond_public` operation.
     pub fn bond_public(&mut self, amount: u64) -> Result<()> {
-        ensure!(self.public < amount, "Insufficient public supply");
+        ensure!(self.public > amount, "Failed to perform `bond_public` - insufficient public supply");
 
         self.public = self.public.saturating_sub(amount);
         self.staked = self.staked.saturating_add(amount);
@@ -89,8 +102,9 @@ impl Supply {
         Ok(())
     }
 
+    /// Updates the supply with an `unbond_public` operation.
     pub fn unbond_public(&mut self, amount: u64) -> Result<()> {
-        ensure!(self.staked < amount, "Insufficient staked supply");
+        ensure!(self.staked > amount, "Failed to perform `unbond_public` - insufficient staked supply");
 
         self.staked = self.staked.saturating_sub(amount);
         self.public = self.public.saturating_add(amount);
@@ -98,19 +112,26 @@ impl Supply {
         Ok(())
     }
 
-    pub fn block_reward(&mut self, amount: u64) {
+    /// Updates the supply with a `block_reward` operation.
+    pub fn block_reward(&mut self, amount: u64) -> Result<()> {
         self.total = self.total.saturating_add(amount);
         self.public = self.public.saturating_add(amount);
+
+        Ok(())
     }
 
-    pub fn coinbase_reward(&mut self, amount: u64) {
+    /// Updates the supply with a `coinbase_reward` operation.
+    pub fn puzzle_reward(&mut self, amount: u64) -> Result<()> {
         self.total = self.total.saturating_add(amount);
         self.staked = self.staked.saturating_add(amount);
+
+        Ok(())
     }
 
+    /// Updates the supply with a `fee_public` operation.
     pub fn fee_public(&mut self, amount: u64) -> Result<()> {
-        ensure!(self.total < amount, "Insufficient total supply");
-        ensure!(self.public < amount, "Insufficient public supply");
+        ensure!(self.total > amount, "Failed to perform `fee_public` - insufficient total supply");
+        ensure!(self.public > amount, "Failed to perform `fee_public` - insufficient public supply");
 
         self.total = self.total.saturating_sub(amount);
         self.public = self.public.saturating_sub(amount);
@@ -118,9 +139,10 @@ impl Supply {
         Ok(())
     }
 
+    /// Updates the supply with a `fee_private` operation.
     pub fn fee_private(&mut self, amount: u64) -> Result<()> {
-        ensure!(self.total < amount, "Insufficient total supply");
-        ensure!(self.private < amount, "Insufficient private supply");
+        ensure!(self.total > amount, "Failed to perform `fee_private` - insufficient total supply");
+        ensure!(self.private > amount, "Failed to perform `fee_private` - insufficient private supply");
 
         self.total = self.total.saturating_sub(amount);
         self.private = self.private.saturating_sub(amount);
@@ -128,18 +150,22 @@ impl Supply {
         Ok(())
     }
 
+    /// Updates the supply with a `split` operation.
     pub fn split(&mut self) -> Result<()> {
-        ensure!(self.total < 10_000, "Insufficient total supply");
-        ensure!(self.private < 10_000, "Insufficient private supply");
+        const SPLIT_FEE: u64 = 10_000;
 
-        self.total = self.total.saturating_sub(self.staked);
-        self.private = self.private.saturating_add(self.staked);
+        ensure!(self.total > SPLIT_FEE, "Failed to perform `split` - insufficient total supply");
+        ensure!(self.private > SPLIT_FEE, "Failed to perform `split` - insufficient private supply");
+
+        self.total = self.total.saturating_sub(SPLIT_FEE);
+        self.private = self.private.saturating_sub(SPLIT_FEE);
 
         Ok(())
     }
 
+    /// Updates the supply with a `transfer_public_to_private` operation.
     pub fn transfer_public_to_private(&mut self, amount: u64) -> Result<()> {
-        ensure!(self.public < amount, "Insufficient public supply");
+        ensure!(self.public > amount, "Failed to perform `transfer_public_to_private` - insufficient public supply");
 
         self.public = self.public.saturating_sub(amount);
         self.private = self.private.saturating_add(amount);
@@ -147,8 +173,9 @@ impl Supply {
         Ok(())
     }
 
+    /// Updates the supply with a `transfer_private_to_public` operation.
     pub fn transfer_private_to_public(&mut self, amount: u64) -> Result<()> {
-        ensure!(self.private < amount, "Insufficient private supply");
+        ensure!(self.private > amount, "Failed to perform `transfer_private_to_public` - insufficient private supply");
 
         self.private = self.private.saturating_sub(amount);
         self.public = self.public.saturating_add(amount);
@@ -157,7 +184,7 @@ impl Supply {
     }
 }
 
-/// Returns the total supply.
+/// Returns the supply given the supply map from finalize storage.
 pub fn supply_map_into_supply<N: Network>(supply_map: Vec<(Plaintext<N>, Value<N>)>) -> Result<Supply> {
     // Convert the given key and value into a staker entry.
     let convert = |key, value| {
@@ -199,8 +226,8 @@ pub fn to_next_supply_mapping<N: Network>(next_supply: &Supply) -> Vec<(Plaintex
         ),
         // Add the private supply.
         (
-            Plaintext::Literal(Literal::U8(U8::new(SupplyType::Total as u8)), Default::default()),
-            Value::Plaintext(Plaintext::Literal(Literal::U64(U64::new(next_supply.total())), Default::default())),
+            Plaintext::Literal(Literal::U8(U8::new(SupplyType::Private as u8)), Default::default()),
+            Value::Plaintext(Plaintext::Literal(Literal::U64(U64::new(next_supply.private())), Default::default())),
         ),
         // Add the public supply.
         (

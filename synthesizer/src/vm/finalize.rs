@@ -495,7 +495,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Insert the validator into the stakers.
                         stakers.insert(*validator, (*validator, *microcredits));
                         // Update the supply.
-                        supply.add_initial_committee_member(*microcredits);
+                        supply.add_initial_committee_member(*microcredits)?;
                     }
 
                     // Construct the next committee map and next bonded map.
@@ -526,7 +526,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Update the public balance in finalize storage.
                         store.update_key_value(&program_id, &account_mapping, key, next_value)?;
                         // Update the supply.
-                        supply.add_initial_balance(*amount);
+                        supply.add_initial_public_balance(*amount)?;
                     }
                 }
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => continue,
@@ -584,9 +584,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Ensure the committee matches the bonded mapping.
                     ensure_stakers_matches(&current_committee, &current_stakers)?;
 
-                    // TODO (raychu86): Consider truncation for the individual reward payouts.
                     // Update the supply.
-                    supply.block_reward(*block_reward);
+                    supply.block_reward(*block_reward)?;
 
                     // Compute the updated stakers, using the committee and block reward.
                     let next_stakers = staking_rewards(&current_stakers, &current_committee, *block_reward);
@@ -637,6 +636,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Update the public balance in finalize storage.
                         store.update_key_value(&program_id, &account_mapping, key, next_value)?;
                     }
+                    // Update the supply.
+                    supply.puzzle_reward(*puzzle_reward)?;
                 }
             }
         }
