@@ -423,7 +423,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
+        polynomials: impl IntoIterator<Item = LabeledPolynomial<E::Fr>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         query_set: &QuerySet<E::Fr>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
@@ -437,7 +437,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             .into_iter()
             .zip_eq(rands)
             .zip_eq(commitments)
-            .map(|((p, r), c)| (p.label(), (p, r, c)))
+            .map(|((p, r), c)| (p.clone_label(), (p, r, c)))
             .collect::<BTreeMap<_, _>>();
 
         let mut lc_polynomials = Vec::new();
@@ -457,7 +457,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             let num_polys = lc.len();
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
-                let &(cur_poly, cur_rand, cur_comm) =
+                let (cur_poly, cur_rand, cur_comm) =
                     label_map.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
                 if num_polys == 1 && cur_poly.degree_bound().is_some() {
                     assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
@@ -468,7 +468,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                 // Some(_) > None, always.
                 hiding_bound = core::cmp::max(hiding_bound, cur_poly.hiding_bound());
                 poly += (*coeff, cur_poly.polynomial());
-                randomness += (*coeff, cur_rand);
+                randomness += (*coeff, *cur_rand);
                 coeffs_and_comms.push((*coeff, cur_comm.commitment()));
             }
 

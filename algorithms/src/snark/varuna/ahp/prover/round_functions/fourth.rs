@@ -23,7 +23,7 @@ use crate::{
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
         ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS, CircuitId},
-        matrices::MatrixArithmetization,
+        matrices::MatrixEvals,
         prover,
         witness_label,
         SNARKMode,
@@ -150,7 +150,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         constraint_domain: EvaluationDomain<F>,
         variable_domain: EvaluationDomain<F>,
         non_zero_domain: EvaluationDomain<F>,
-        arithmetization: &MatrixArithmetization<F>,
+        arithmetization: &MatrixEvals<F>,
         alpha: F,
         beta: F,
         v_R_i_alpha_v_C_i_beta: F,
@@ -158,22 +158,22 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         fft_precomputation: &FFTPrecomputation<F>,
         ifft_precomputation: &IFFTPrecomputation<F>,
     ) -> Result<(Sum<F>, Lhs<F>, Gpoly<F>)> {
+        let (row_on_K, col_on_K, row_col_val) =
+            (&arithmetization.row, &arithmetization.col, &arithmetization.row_col_val);
+        let R_size = constraint_domain.size_as_field_element;
+        let C_size = variable_domain.size_as_field_element;
+
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| format!("Computing a poly for {label}"));
             let a_poly = {
-                let coeffs = cfg_iter!(arithmetization.row_col_val.as_dense().unwrap().coeffs())
-                    .map(|v| v_R_i_alpha_v_C_i_beta * v)
-                    .collect();
-                DensePolynomial::from_coefficients_vec(coeffs)
+                let evals = cfg_iter!(row_col_val.evaluations).map(|v| v_R_i_alpha_v_C_i_beta * v).collect();
+                EvaluationsOnDomain::from_vec_and_domain(evals, non_zero_domain)
+                    .interpolate_with_pc(ifft_precomputation)
             };
             end_timer!(a_poly_time);
             a_poly
         });
-
-        let (row_on_K, col_on_K) = (&arithmetization.evals_on_K.row, &arithmetization.evals_on_K.col);
-        let R_size = constraint_domain.size_as_field_element;
-        let C_size = variable_domain.size_as_field_element;
 
         job_pool.add_job(|| {
             let b_poly_time = start_timer!(|| format!("Computing b poly for {label}"));
@@ -200,9 +200,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let new_constant = v_R_i_alpha_v_C_i_beta * constraint_domain.size_inv * variable_domain.size_inv;
         batch_inversion_and_mul(&mut inverses, &new_constant);
 
-        cfg_iter_mut!(inverses)
-            .zip_eq(&arithmetization.evals_on_K.row_col_val.evaluations)
-            .for_each(|(inv, v)| *inv *= v);
+        cfg_iter_mut!(inverses).zip_eq(&row_col_val.evaluations).for_each(|(inv, v)| *inv *= v);
         let f_evals_on_K = inverses;
 
         end_timer!(f_evals_time);

@@ -102,8 +102,13 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments
-            let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
-                SonicKZG10::<E, FS>::commit(universal_prover, &ck, indexed_circuit.iter().map(Into::into), setup_rng)?;
+
+            let (mut circuit_commitments, circuit_commitment_randomness): (_, _) = SonicKZG10::<E, FS>::commit(
+                universal_prover,
+                &ck,
+                indexed_circuit.arithmetize_polys().map(Into::into),
+                setup_rng,
+            )?;
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
@@ -242,18 +247,20 @@ where
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
 
+        let circuit_id = std::iter::once(&verifying_key.id);
+        let circuit_poly_info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id);
+
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        for (poly, &c) in proving_key.circuit.iter().zip(linear_combination_challenges) {
-            lc.add(c, poly.label());
+        for (label, &c) in circuit_poly_info.keys().zip(linear_combination_challenges) {
+            lc.add(c, label.clone());
         }
 
-        let circuit_id = std::iter::once(&verifying_key.id);
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id).values())
+            .zip_eq(circuit_poly_info.values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
 
@@ -263,7 +270,7 @@ where
             universal_prover,
             &committer_key,
             &[lc],
-            proving_key.circuit.iter(),
+            proving_key.circuit.arithmetize_polys(),
             &commitments,
             &query_set,
             &proving_key.circuit_commitment_randomness.clone(),
@@ -379,11 +386,11 @@ where
         // --------------------------------------------------------------------
         // First round
 
-        let mut prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, zk_rng)?;
+        let prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, zk_rng)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = {
-            let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
+            let first_round_oracles = prover_state.first_round_oracles.as_ref().unwrap();
             SonicKZG10::<E, FS>::commit(
                 universal_prover,
                 &committer_key,
@@ -403,8 +410,6 @@ where
             prover_state.max_non_zero_domain,
             &mut sponge,
         )?;
-        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -460,7 +465,7 @@ where
         // --------------------------------------------------------------------
         // Fourth round
 
-        let (prover_fourth_message, fourth_oracles, prover_state) =
+        let (prover_fourth_message, fourth_oracles, mut prover_state) =
             AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_second_msg, &verifier_third_msg, prover_state, zk_rng)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
@@ -480,7 +485,8 @@ where
 
         // --------------------------------------------------------------------
         // Fifth round
-
+        // We take out first_round_oracles before they are consumed. // TODO: maybe its cleaner not to have first_round_oracles as part of state. But be mindful of my existing state refactor PR.
+        let first_round_oracles = prover_state.first_round_oracles.take().unwrap();
         let fifth_oracles = AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg, prover_state, zk_rng)?;
 
         let fifth_round_comm_time = start_timer!(|| "Committing to fifth round polys");
@@ -498,14 +504,15 @@ where
         // --------------------------------------------------------------------
 
         // Gather prover polynomials in one vector.
+        // TODO: instead of doing this, we should re-use a(X) and b(X polys
         let polynomials: Vec<_> = keys_to_constraints
             .keys()
-            .flat_map(|pk| pk.circuit.iter())
-            .chain(first_round_oracles.iter())
-            .chain(second_oracles.iter())
-            .chain(third_oracles.iter())
-            .chain(fourth_oracles.iter())
-            .chain(fifth_oracles.iter())
+            .flat_map(|pk| pk.circuit.arithmetize_polys())
+            .chain(first_round_oracles.into_iter())
+            .chain(second_oracles.into_iter())
+            .chain(third_oracles.into_iter())
+            .chain(fourth_oracles.into_iter())
+            .chain(fifth_oracles.into_iter())
             .collect();
         assert!(
             polynomials.len()

@@ -20,7 +20,14 @@ use crate::{
         EvaluationDomain,
     },
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::varuna::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, Matrix, SNARKMode},
+    snark::varuna::{
+        ahp::matrices::MatrixEvals,
+        matrices::MatrixArithmetization,
+        AHPForR1CS,
+        CircuitInfo,
+        Matrix,
+        SNARKMode,
+    },
 };
 use blake2::Digest;
 use hex::FromHex;
@@ -67,9 +74,9 @@ pub struct Circuit<F: PrimeField, MM: SNARKMode> {
     pub c: Matrix<F>,
 
     /// Joint arithmetization of the A, B, and C matrices.
-    pub a_arith: MatrixArithmetization<F>,
-    pub b_arith: MatrixArithmetization<F>,
-    pub c_arith: MatrixArithmetization<F>,
+    pub a_arith: MatrixEvals<F>,
+    pub b_arith: MatrixEvals<F>,
+    pub c_arith: MatrixEvals<F>,
 
     pub fft_precomputation: FFTPrecomputation<F>,
     pub ifft_precomputation: IFFTPrecomputation<F>,
@@ -126,31 +133,22 @@ impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
         crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables).unwrap().size()
     }
 
-    /// Iterate over the indexed polynomials.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        // Alphabetical order
-        [
-            &self.a_arith.col,
-            &self.b_arith.col,
-            &self.c_arith.col,
-            &self.a_arith.row,
-            &self.b_arith.row,
-            &self.c_arith.row,
-            &self.a_arith.row_col,
-            &self.b_arith.row_col,
-            &self.c_arith.row_col,
-            &self.a_arith.row_col_val,
-            &self.b_arith.row_col_val,
-            &self.c_arith.row_col_val,
-        ]
-        .into_iter()
+    pub fn arithmetize_polys(&self) -> impl Iterator<Item = LabeledPolynomial<F>> {
+        let [a_arith, b_arith, c_arith]: [_; 3] = [("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)]
+            .into_iter()
+            .map(|(label, evals)| MatrixArithmetization::new(&self.id, label, evals))
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+            .try_into()
+            .unwrap();
+        a_arith.into_iter().chain(b_arith.into_iter()).chain(c_arith.into_iter())
     }
 
     /// After indexing, we drop these evaluations to save space in the ProvingKey.
     pub fn prune_row_col_evals(&mut self) {
-        self.a_arith.evals_on_K.row_col = None;
-        self.b_arith.evals_on_K.row_col = None;
-        self.c_arith.evals_on_K.row_col = None;
+        self.a_arith.row_col = None;
+        self.b_arith.row_col = None;
+        self.c_arith.row_col = None;
     }
 }
 

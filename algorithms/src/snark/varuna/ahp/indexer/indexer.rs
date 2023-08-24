@@ -19,7 +19,6 @@ use crate::{
     snark::varuna::{
         ahp::{
             indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
-            matrices::arithmetize_matrix,
             AHPError,
             AHPForR1CS,
         },
@@ -51,27 +50,20 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 
             a,
             non_zero_a_domain,
-            a_evals,
+            a_arith,
 
             b,
             non_zero_b_domain,
-            b_evals,
+            b_arith,
 
             c,
             non_zero_c_domain,
-            c_evals,
+            c_arith,
 
             index_info,
         } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
         let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
-
-        let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
-            .into_iter()
-            .map(|(label, evals)| arithmetize_matrix(&id, label, evals))
-            .collect::<Result<Vec<_>, _>>()?
-            .try_into()
-            .unwrap();
 
         end_timer!(joint_arithmetization_time);
 
@@ -196,7 +188,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let constraint_domain_elements = constraint_domain.elements().collect::<Vec<_>>();
         let variable_domain_elements = variable_domain.elements().collect::<Vec<_>>();
 
-        let [a_evals, b_evals, c_evals]: [_; 3] =
+        let [a_arith, b_arith, c_arith]: [_; 3] =
             cfg_into_iter!([(&a, &non_zero_a_domain), (&b, &non_zero_b_domain), (&c, &non_zero_c_domain)])
                 .map(|(matrix, non_zero_domain)| {
                     matrix_evals(
@@ -218,15 +210,15 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 
             a,
             non_zero_a_domain,
-            a_evals,
+            a_arith,
 
             b,
             non_zero_b_domain,
-            b_evals,
+            b_arith,
 
             c,
             non_zero_c_domain,
-            c_evals,
+            c_arith,
 
             index_info,
         });
@@ -241,9 +233,9 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     ) -> Result<impl Iterator<Item = F>, AHPError> {
         let state = Self::index_helper(c)?;
         let mut evals = [
-            (state.a_evals, state.non_zero_a_domain),
-            (state.b_evals, state.non_zero_b_domain),
-            (state.c_evals, state.non_zero_c_domain),
+            (state.a_arith, state.non_zero_a_domain),
+            (state.b_arith, state.non_zero_b_domain),
+            (state.c_arith, state.non_zero_c_domain),
         ]
         .into_iter()
         .flat_map(move |(evals, domain)| {
@@ -263,15 +255,15 @@ struct IndexerState<F: PrimeField> {
 
     a: Matrix<F>,
     non_zero_a_domain: EvaluationDomain<F>,
-    a_evals: MatrixEvals<F>,
+    a_arith: MatrixEvals<F>,
 
     b: Matrix<F>,
     non_zero_b_domain: EvaluationDomain<F>,
-    b_evals: MatrixEvals<F>,
+    b_arith: MatrixEvals<F>,
 
     c: Matrix<F>,
     non_zero_c_domain: EvaluationDomain<F>,
-    c_evals: MatrixEvals<F>,
+    c_arith: MatrixEvals<F>,
 
     index_info: CircuitInfo,
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
@@ -67,7 +67,7 @@ pub struct State<'a, F: PrimeField, MM: SNARKMode> {
     pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
+    pub(in crate::snark) first_round_oracles: Option<super::FirstOracles<F>>,
     /// The largest non_zero domain of all circuits in the batch.
     pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
     /// The largest constraint domain of all circuits in the batch.

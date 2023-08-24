@@ -507,7 +507,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
             universal_prover,
             &ck,
             &linear_combinations,
-            &polynomials,
+            polynomials,
             &comms,
             &query_set,
             &rands,
@@ -526,10 +526,6 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         )?;
         if !result {
             println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
-            println!("Degree of polynomials:");
-            for poly in polynomials {
-                println!("Degree: {:?}", poly.degree());
-            }
         }
         assert!(result, "proof was incorrect, equations: {linear_combinations:#?}");
 

@@ -230,8 +230,8 @@ mod varuna {
     fn prove_and_verify_with_tall_matrix_small() {
         let num_constraints = 26;
         let num_variables = 25;
-        let pk_size_zk = 39008;
-        let pk_size_posw = 38670;
+        let pk_size_zk = 25428;
+        let pk_size_posw = 25090;
 
         SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
@@ -247,8 +247,8 @@ mod varuna {
     fn prove_and_verify_with_squat_matrix_big() {
         let num_constraints = 25;
         let num_variables = 100;
-        let pk_size_zk = 67103;
-        let pk_size_posw = 66765;
+        let pk_size_zk = 53523;
+        let pk_size_posw = 53185;
 
         SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
@@ -264,8 +264,8 @@ mod varuna {
     fn prove_and_verify_with_squat_matrix_small() {
         let num_constraints = 25;
         let num_variables = 26;
-        let pk_size_zk = 38864;
-        let pk_size_posw = 38526;
+        let pk_size_zk = 25284;
+        let pk_size_posw = 24946;
 
         SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
@@ -281,8 +281,8 @@ mod varuna {
     fn prove_and_verify_with_square_matrix() {
         let num_constraints = 25;
         let num_variables = 25;
-        let pk_size_zk = 38864;
-        let pk_size_posw = 38526;
+        let pk_size_zk = 25284;
+        let pk_size_posw = 24946;
 
         SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
