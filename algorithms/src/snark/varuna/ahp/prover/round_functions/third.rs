@@ -16,9 +16,7 @@ use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         polynomial::PolyMultiplier,
-        DensePolynomial,
-        EvaluationDomain,
-        Evaluations,
+        DensePolynomial, EvaluationDomain, Evaluations,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
@@ -26,9 +24,7 @@ use crate::{
         matrices::transpose,
         prover::{self, MatrixSums, ThirdMessage},
         selectors::apply_randomized_selector,
-        AHPError,
-        Matrix,
-        SNARKMode,
+        AHPError, Matrix, SNARKMode,
     },
 };
 use snarkvm_fields::PrimeField;
@@ -231,6 +227,8 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                     .zip_eq(x_polys)
                     .enumerate()
                     .map(|(_j, (w_poly, x_poly))| {
+                        println!("w_poly: {:?}", w_poly);
+                        println!("x_poly: {:?}", x_poly);
                         let z_time = start_timer!(move || format!("Compute z poly for circuit {} {}", circuit.id, _j));
                         let mut assignment =
                             w_poly.0.polynomial().as_dense().unwrap().mul_by_vanishing_poly(*input_domain);
