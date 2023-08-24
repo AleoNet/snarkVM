@@ -110,6 +110,17 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Finalize the transactions.
             'outer: for (index, transaction) in transactions.enumerate() {
+                // TODO (raychu86): Change this model once we migrate to the new finalize fee model.
+                // Check that the fee amount is sufficient for the transaction.
+                if let Err(error) = self.check_fee_amount(transaction) {
+                    // Note: On failure, skip this transaction, and continue speculation.
+                    #[cfg(debug_assertions)]
+                    eprintln!("Failed to speculate transaction with insufficient fee - {error}");
+                    // Store the aborted transaction.
+                    aborted.push(transaction.clone());
+                    continue 'outer;
+                }
+
                 // Convert the transaction index to a u32.
                 // Note: On failure, this will abort the entire atomic batch.
                 let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
@@ -269,6 +280,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // Finalize the transactions.
             for (index, transaction) in transactions.iter().enumerate() {
+                // TODO (raychu86): Change this model once we migrate to the new finalize fee model.
+                // Check that the fee amount is sufficient for the transaction.
+                // Note: On failure, this will abort the entire atomic batch.
+                if let Err(error) = self.check_fee_amount(transaction) {
+                    return Err(format!("Failed to finalize transaction - {error}"));
+                }
+
                 // Convert the transaction index to a u32.
                 // Note: On failure, this will abort the entire atomic batch.
                 let index = u32::try_from(index).map_err(|_| "Failed to convert transaction index".to_string())?;
