@@ -204,7 +204,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
 
             // Ensure all transactions were processed.
-            if confirmed.len() != num_transactions {
+            if confirmed.len() + aborted.len() != num_transactions {
                 // Note: This will abort the entire atomic batch.
                 return Err("Not all transactions were processed in 'VM::atomic_speculate'".to_string());
             }
