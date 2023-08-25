@@ -139,6 +139,7 @@ mod tests {
     #[test]
     fn test_encrypt_and_decrypt() -> Result<()> {
         let mut rng = TestRng::default();
+        let mut rng = TestRng::fixed(7989021474061408653);
 
         for _ in 0..ITERATIONS {
             // Sample a view key and address.
