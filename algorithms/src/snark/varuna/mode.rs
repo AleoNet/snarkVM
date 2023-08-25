@@ -12,29 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+use core::fmt::Debug;
 
-mod bytes;
-mod parse;
-mod serialize;
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct Proof<N: Network> {
-    /// The proof.
-    proof: varuna::Proof<N::PairingCurve>,
+/// A trait to specify the SNARK mode.
+pub trait SNARKMode: 'static + Copy + Clone + Debug + PartialEq + Eq + Sync + Send {
+    const ZK: bool;
 }
 
-impl<N: Network> Proof<N> {
-    /// Initializes a new proof.
-    pub(super) const fn new(proof: varuna::Proof<N::PairingCurve>) -> Self {
-        Self { proof }
-    }
+/// This mode produces a hiding SNARK proof.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct VarunaHidingMode;
+
+impl SNARKMode for VarunaHidingMode {
+    const ZK: bool = true;
 }
 
-impl<N: Network> Deref for Proof<N> {
-    type Target = varuna::Proof<N::PairingCurve>;
+/// This mode produces a non-hiding SNARK proof.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct VarunaNonHidingMode;
 
-    fn deref(&self) -> &Self::Target {
-        &self.proof
-    }
+impl SNARKMode for VarunaNonHidingMode {
+    const ZK: bool = false;
 }

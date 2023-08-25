@@ -12,29 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+/// Implements an Algebraic Holographic Proof (AHP) for the R1CS indexed relation.
+pub mod ahp;
+pub use ahp::*;
 
-mod bytes;
-mod parse;
-mod serialize;
+pub(crate) mod data_structures;
+pub use data_structures::*;
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct Proof<N: Network> {
-    /// The proof.
-    proof: varuna::Proof<N::PairingCurve>,
-}
+/// Implements the Varuna zkSNARK proof system.
+mod varuna;
+pub use varuna::*;
 
-impl<N: Network> Proof<N> {
-    /// Initializes a new proof.
-    pub(super) const fn new(proof: varuna::Proof<N::PairingCurve>) -> Self {
-        Self { proof }
-    }
-}
+/// Specifies the SNARK mode.
+mod mode;
+pub use mode::*;
 
-impl<N: Network> Deref for Proof<N> {
-    type Target = varuna::Proof<N::PairingCurve>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.proof
-    }
-}
+#[cfg(test)]
+pub mod tests;
