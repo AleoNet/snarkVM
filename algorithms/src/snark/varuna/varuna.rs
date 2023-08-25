@@ -103,12 +103,14 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments
 
-            let (mut circuit_commitments, circuit_commitment_randomness): (_, _) = SonicKZG10::<E, FS>::commit(
+            let (mut circuit_commitments, commitment_randomnesses): (_, _) = SonicKZG10::<E, FS>::commit(
                 universal_prover,
                 &ck,
                 indexed_circuit.arithmetize_polys().map(Into::into),
                 setup_rng,
             )?;
+            let empty_randomness = Randomness::<E>::empty();
+            assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
@@ -121,7 +123,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             };
             let circuit_proving_key = CircuitProvingKey {
                 circuit_verifying_key: circuit_verifying_key.clone(),
-                circuit_commitment_randomness,
                 circuit: Arc::new(indexed_circuit),
                 committer_key: Arc::new(committer_key),
             };
@@ -257,23 +258,16 @@ where
         }
 
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
-        let commitments = verifying_key
-            .iter()
-            .cloned()
-            .zip_eq(circuit_poly_info.values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
-            .collect::<Vec<_>>();
-
         let committer_key = CommitterUnionKey::union(std::iter::once(proving_key.committer_key.as_ref()));
 
+        let empty_randomness = vec![Randomness::<E>::empty(); 12];
         let certificate = SonicKZG10::<E, FS>::open_combinations(
             universal_prover,
             &committer_key,
             &[lc],
             proving_key.circuit.arithmetize_polys(),
-            &commitments,
+            &empty_randomness,
             &query_set,
-            &proving_key.circuit_commitment_randomness.clone(),
             &mut sponge,
         )?;
 
@@ -483,10 +477,15 @@ where
             AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
+        // We take out values from state before they are consumed.
+        let first_round_oracles = prover_state.first_round_oracles.take().unwrap();
+        let index_a_polys =
+            prover_state.circuit_specific_states.values_mut().flat_map(|s| s.a_polys.take().unwrap()).collect_vec();
+        let index_b_polys =
+            prover_state.circuit_specific_states.values_mut().flat_map(|s| s.b_polys.take().unwrap()).collect_vec();
+
         // --------------------------------------------------------------------
         // Fifth round
-        // We take out first_round_oracles before they are consumed. // TODO: maybe its cleaner not to have first_round_oracles as part of state. But be mindful of my existing state refactor PR.
-        let first_round_oracles = prover_state.first_round_oracles.take().unwrap();
         let fifth_oracles = AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg, prover_state, zk_rng)?;
 
         let fifth_round_comm_time = start_timer!(|| "Committing to fifth round polys");
@@ -504,10 +503,9 @@ where
         // --------------------------------------------------------------------
 
         // Gather prover polynomials in one vector.
-        // TODO: instead of doing this, we should re-use a(X) and b(X polys
-        let polynomials: Vec<_> = keys_to_constraints
-            .keys()
-            .flat_map(|pk| pk.circuit.arithmetize_polys())
+        let polynomials: Vec<_> = index_a_polys
+            .into_iter()
+            .chain(index_b_polys)
             .chain(first_round_oracles.into_iter())
             .chain(second_oracles.into_iter())
             .chain(third_oracles.into_iter())
@@ -516,7 +514,7 @@ where
             .collect();
         assert!(
             polynomials.len()
-                == num_unique_circuits * 12 + // row, col, rowcol, rowcolval
+                == num_unique_circuits * 6 + // numerator and denominator for each matrix sumcheck
             AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances) +
             AHPForR1CS::<E::Fr, MM>::num_second_round_oracles() +
             AHPForR1CS::<E::Fr, MM>::num_third_round_oracles() +
@@ -528,44 +526,31 @@ where
         let witness_comm_len = if MM::ZK { first_commitments.len() - 1 } else { first_commitments.len() };
         let mask_poly = MM::ZK.then(|| *first_commitments[witness_comm_len].commitment());
         let witness_commitments = first_commitments[..witness_comm_len]
-            .iter()
+            .into_iter()
             .map(|c| proof::WitnessCommitments { w: *c.commitment() })
             .collect_vec();
         let fourth_commitments_chunked = fourth_commitments.chunks_exact(3);
+        let (g_a_commitments, g_b_commitments, g_c_commitments) = fourth_commitments_chunked
+            .map(|c| (*c[0].commitment(), *c[1].commitment(), *c[2].commitment()))
+            .multiunzip();
 
         #[rustfmt::skip]
         let commitments = proof::Commitments {
             witness_commitments,
             mask_poly,
-
             h_0: *second_commitments[0].commitment(),
-
             g_1: *third_commitments[0].commitment(),
             h_1: *third_commitments[1].commitment(),
-
-            g_a_commitments: fourth_commitments_chunked.clone().map(|c| *c[0].commitment()).collect(),
-            g_b_commitments: fourth_commitments_chunked.clone().map(|c| *c[1].commitment()).collect(),
-            g_c_commitments: fourth_commitments_chunked.map(|c| *c[2].commitment()).collect(),
-
+            g_a_commitments,
+            g_b_commitments,
+            g_c_commitments,
             h_2: *fifth_commitments[0].commitment(),
         };
 
-        let labeled_commitments: Vec<_> = circuit_commitments
-            .into_iter()
-            .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
-            .chain(first_commitments.into_iter())
-            .chain(second_commitments.into_iter())
-            .chain(third_commitments.into_iter())
-            .chain(fourth_commitments.into_iter())
-            .chain(fifth_commitments.into_iter())
-            .collect();
-
         // Gather commitment randomness together.
-        let commitment_randomnesses: Vec<Randomness<E>> = keys_to_constraints
-            .keys()
-            .flat_map(|pk| pk.circuit_commitment_randomness.clone())
+        let indexer_randomness = vec![Randomness::<E>::empty(); 6 * num_unique_circuits];
+        let commitment_randomnesses: Vec<Randomness<E>> = indexer_randomness
+            .into_iter()
             .chain(first_commitment_randomnesses)
             .chain(second_commitment_randomnesses)
             .chain(third_commitment_randomnesses)
@@ -573,9 +558,11 @@ where
             .chain(fifth_commitment_randomnesses)
             .collect();
 
+        let empty_randomness = Randomness::<E>::empty();
         if !MM::ZK {
-            let empty_randomness = Randomness::<E>::empty();
             assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
+        } else {
+            assert!(commitment_randomnesses.iter().any(|r| r != &empty_randomness));
         }
 
         // Compute the AHP verifier's query set.
@@ -585,6 +572,7 @@ where
             &polynomials,
             &prover_third_message,
             &prover_fourth_message,
+            true,
             &verifier_state,
         )?;
 
@@ -608,9 +596,8 @@ where
             &committer_key,
             lc_s.values(),
             polynomials,
-            &labeled_commitments,
-            &query_set.to_set(),
             &commitment_randomnesses,
+            &query_set.to_set(),
             &mut sponge,
         )?;
 
@@ -887,6 +874,7 @@ where
             &evaluations,
             &proof.third_msg,
             &proof.fourth_msg,
+            false,
             &verifier_state,
         )?;
         end_timer!(lc_time);

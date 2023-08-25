@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    polycommit::sonic_pc::LabeledPolynomial,
     r1cs::{SynthesisError, SynthesisResult},
     snark::varuna::{AHPError, AHPForR1CS, Circuit, SNARKMode},
 };
@@ -57,14 +58,20 @@ pub struct CircuitSpecificState<F: PrimeField> {
     /// The length of this list must be equal to the batch size.
     pub(super) x_polys: Vec<DensePolynomial<F>>,
 
-    /// Polynomials involved in the holographic sumcheck.
+    /// Intermediary polynomials of the matrix sumcheck.
+    pub(in crate::snark) a_polys: Option<[LabeledPolynomial<F>; 3]>,
+
+    /// Intermediary polynomials of the matrix sumcheck.
+    pub(in crate::snark) b_polys: Option<[LabeledPolynomial<F>; 3]>,
+
+    /// Intermediary polynomials of the matrix sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
 }
 
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: SNARKMode> {
     /// The state for each circuit in the batch.
-    pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
+    pub(in crate::snark) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<super::FirstOracles<F>>,
@@ -157,6 +164,8 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                     z_a: Some(z_as),
                     z_b: Some(z_bs),
                     z_c: Some(z_cs),
+                    a_polys: None,
+                    b_polys: None,
                     lhs_polynomials: None,
                 };
                 Ok((circuit, state))

@@ -523,7 +523,7 @@ impl<B: Borrow<String>> PartialEq<B> for LCTerm {
 pub struct LinearCombination<F> {
     /// The label.
     pub label: String,
-    /// The linear combination of `(coeff, poly_label)` pairs.
+    /// The linear combination of `(poly_label, coeff)` pairs.
     pub terms: BTreeMap<LCTerm, F>,
 }
 

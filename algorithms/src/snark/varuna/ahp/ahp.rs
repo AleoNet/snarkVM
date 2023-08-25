@@ -170,6 +170,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         prover_fourth_message: &prover::FourthMessage<F>,
+        prover: bool,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
@@ -334,15 +335,10 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
         for (i, (&id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
-            let v_R_i_at_alpha_time = start_timer!(|| format!("v_R_i_at_alpha {id}"));
             let v_R_i_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(alpha);
-            end_timer!(v_R_i_at_alpha_time);
-
-            let v_C_i_at_beta_time = start_timer!(|| format!("v_C_i_at_beta {id}"));
             let v_C_i_at_beta = circuit_state.variable_domain.evaluate_vanishing_polynomial(beta);
-            end_timer!(v_C_i_at_beta_time);
-
             let v_rc = v_R_i_at_alpha * v_C_i_at_beta;
+
             let RC = circuit_state.constraint_domain.size_as_field_element
                 * circuit_state.variable_domain.size_as_field_element;
 
@@ -370,9 +366,46 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             let sum_b = sums_fourth_msg[i].sum_b;
             let sum_c = sums_fourth_msg[i].sum_c;
 
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", challenges, g_a_at_gamma, v_rc, d_a, sum_a, s_a, RC)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", challenges, g_b_at_gamma, v_rc, d_b, sum_b, s_b, RC)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", challenges, g_c_at_gamma, v_rc, d_c, sum_c, s_c, RC)?;
+            // TODO: consider precomputing whatever we need a_polys, b_polys for, to reduce # of arguments to g_m
+            Self::add_g_m_term(
+                &mut matrix_sumcheck,
+                id,
+                "a",
+                challenges,
+                g_a_at_gamma,
+                v_rc,
+                d_a,
+                sum_a,
+                s_a,
+                RC,
+                prover,
+            )?;
+            Self::add_g_m_term(
+                &mut matrix_sumcheck,
+                id,
+                "b",
+                challenges,
+                g_b_at_gamma,
+                v_rc,
+                d_b,
+                sum_b,
+                s_b,
+                RC,
+                prover,
+            )?;
+            Self::add_g_m_term(
+                &mut matrix_sumcheck,
+                id,
+                "c",
+                challenges,
+                g_c_at_gamma,
+                v_rc,
+                d_c,
+                sum_c,
+                s_c,
+                RC,
+                prover,
+            )?;
 
             linear_combinations.insert(g_a.label.clone(), g_a);
             linear_combinations.insert(g_b.label.clone(), g_b);
@@ -399,10 +432,17 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         sum: F,
         selector_at_gamma: F,
         rc_size: F,
+        prover: bool,
     ) -> Result<(), AHPError> {
         let b_term = challenges.gamma * g_at_gamma + sum; // Xg_m(\gamma) + sum_m/|K_M|
+        // TODO: I should only compute the index_linear_combination relevant arguments (such as v_rc_at_alpha_beta and rc_size), if we actually use it...
+        // One hack: precompute and add it to verifier_state
+        let index_lc = (!prover).then(|| {
+            Self::index_linear_combinations(id, m, v_rc_at_alpha_beta, challenges.alpha, challenges.beta, rc_size)
+        });
 
-        let lhs = Self::construct_lhs(id, m, challenges, v_rc_at_alpha_beta, b_term, selector_at_gamma, rc_size);
+        // TODO: improve naming, perhaps something like add a and b. Or rational_sumcheck
+        let lhs = Self::construct_lhs(id, m, b_term, selector_at_gamma, index_lc);
         *matrix_sumcheck += (delta, &lhs);
         Ok(())
     }
@@ -411,37 +451,54 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     fn construct_lhs(
         id: CircuitId,
         m: &str,
-        challenges: VerifierChallenges<F>,
-        v_rc_at_alpha_beta: F,
         b_term: F,
         selector_at_gamma: F,
-        rc_size: F,
+        index_lc: Option<(LinearCombination<F>, LinearCombination<F>)>,
     ) -> LinearCombination<F> {
-        let label_row = format!("circuit_{id}_row_{m}");
-        let label_col = format!("circuit_{id}_col_{m}");
-        let label_row_col_val = format!("circuit_{id}_row_col_val_{m}");
-        let label_row_col = format!("circuit_{id}_row_col_{m}");
-        let label_a_poly = format!("circuit_{id}_a_poly_{m}");
-        let label_denom = format!("circuit_{id}_denom_{m}");
+        let (a, mut b) = if let Some(index_linear_combinations) = index_lc {
+            index_linear_combinations
+        } else {
+            // The prover already took the effort to create a_poly and b_poly, so can just use them directly
+            let label_a_poly = format!("circuit_{id}_a_poly_{m}");
+            let label_b_poly = format!("circuit_{id}_b_poly_{m}");
+            let a = LinearCombination::new(label_a_poly.clone(), [(F::one(), label_a_poly)]);
+            let b = LinearCombination::new(label_b_poly.clone(), [(F::one(), label_b_poly)]);
+            (a, b)
+        };
 
-        // recall that row_col_val(X) is M_{i,j}*rowcol(X)
-        let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
-
-        let alpha_beta = challenges.alpha * challenges.beta;
-        let mut b = LinearCombination::new(label_denom, [
-            (alpha_beta, LCTerm::One),
-            (-challenges.alpha, (label_col).into()),
-            (-challenges.beta, (label_row).into()),
-            (F::one(), (label_row_col).into()),
-        ]);
-
-        b *= rc_size;
         b *= b_term; // Xg_m(X) + sum_m
 
         let mut lhs = a;
         lhs -= &b;
         lhs *= selector_at_gamma;
         lhs
+    }
+
+    pub fn index_linear_combinations(
+        id: CircuitId,
+        matrix: &str,
+        v_rc_at_alpha_beta: F,
+        alpha: F,
+        beta: F,
+        rc_size: F,
+    ) -> (LinearCombination<F>, LinearCombination<F>) {
+        let label_row = format!("circuit_{id}_row_{matrix}");
+        let label_col = format!("circuit_{id}_col_{matrix}");
+        let label_row_col_val = format!("circuit_{id}_row_col_val_{matrix}");
+        let label_row_col = format!("circuit_{id}_row_col_{matrix}");
+        let label_a_poly = format!("circuit_{id}_a_poly_{matrix}");
+        let label_b_poly = format!("circuit_{id}_b_poly_{matrix}");
+
+        // recall that row_col_val(X) is M_{i,j}*rowcol(X)
+        let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
+        let mut b = LinearCombination::new(label_b_poly, [
+            (alpha * beta, LCTerm::One),
+            (-alpha, (label_col).into()),
+            (-beta, (label_row).into()),
+            (F::one(), (label_row_col).into()),
+        ]);
+        b *= rc_size;
+        (a, b)
     }
 }
 

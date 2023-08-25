@@ -213,8 +213,8 @@ mod varuna {
     fn prove_and_verify_with_tall_matrix_big() {
         let num_constraints = 100;
         let num_variables = 25;
-        let pk_size_zk = 142415;
-        let pk_size_posw = 142077;
+        let pk_size_zk = 91971;
+        let pk_size_posw = 91633;
 
         SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);

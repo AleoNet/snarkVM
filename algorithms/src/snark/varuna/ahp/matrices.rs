@@ -196,7 +196,6 @@ impl<F: PrimeField> MatrixArithmetization<F> {
         let row_col = if let Some(row_col) = matrix_evals.row_col.as_ref() {
             row_col.clone().interpolate()
         } else {
-            // TODO: intermediary collection might be avoidable
             let row_col_evals: Vec<F> = cfg_iter!(matrix_evals.row.evaluations)
                 .zip_eq(&matrix_evals.col.evaluations)
                 .map(|(&r, &c)| r * c)
