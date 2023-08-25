@@ -17,7 +17,7 @@ use core::marker::PhantomData;
 use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
-        ahp::verifier::{FirstMessage, SecondMessage, ThirdMessage},
+        ahp::verifier::{FirstMessage, FourthMessage, SecondMessage, ThirdMessage},
         CircuitId,
         MarlinMode,
     },
@@ -29,6 +29,7 @@ use std::collections::BTreeMap;
 /// Circuit Specific State of the Verifier
 pub struct CircuitSpecificState<F: PrimeField> {
     pub(crate) input_domain: EvaluationDomain<F>,
+    pub(crate) variable_domain: EvaluationDomain<F>,
     pub(crate) constraint_domain: EvaluationDomain<F>,
     pub(crate) non_zero_a_domain: EvaluationDomain<F>,
     pub(crate) non_zero_b_domain: EvaluationDomain<F>,
@@ -44,8 +45,10 @@ pub struct State<F: PrimeField, MM: MarlinMode> {
     pub(crate) circuit_specific_states: BTreeMap<CircuitId, CircuitSpecificState<F>>,
     /// The largest constraint domain of all circuits in the batch.
     pub(crate) max_constraint_domain: EvaluationDomain<F>,
+    /// The largest variable domain of all circuits in the batch.
+    pub(crate) max_variable_domain: EvaluationDomain<F>,
     /// The largest non_zero domain of all circuits in the batch.
-    pub(crate) largest_non_zero_domain: EvaluationDomain<F>,
+    pub(crate) max_non_zero_domain: EvaluationDomain<F>,
 
     /// The verifier message in the first round of the AHP
     pub(crate) first_round_message: Option<FirstMessage<F>>,
@@ -53,7 +56,9 @@ pub struct State<F: PrimeField, MM: MarlinMode> {
     pub(crate) second_round_message: Option<SecondMessage<F>>,
     /// The verifier message in the third round of the AHP
     pub(crate) third_round_message: Option<ThirdMessage<F>>,
-    /// The verifier's random challenge in the fourth round of the AHP
+    /// The verifier message in the fourth round of the AHP
+    pub(crate) fourth_round_message: Option<FourthMessage<F>>,
+    /// The verifier's random challenge in the last round of the AHP
     pub(crate) gamma: Option<F>,
     pub(crate) mode: PhantomData<MM>,
 }

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeMap;
+
+use crate::snark::marlin::{verifier::BatchCombiners, CircuitId};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
@@ -25,11 +28,40 @@ pub struct MatrixSums<F: PrimeField> {
 /// The prover message in the third round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ThirdMessage<F: PrimeField> {
-    pub sums: Vec<MatrixSums<F>>,
+    pub sums: Vec<Vec<MatrixSums<F>>>,
+}
+
+impl<F: PrimeField> ThirdMessage<F> {
+    pub(crate) fn sum(&self, batch_combiners: &BTreeMap<CircuitId, BatchCombiners<F>>, eta_b: F, eta_c: F) -> F {
+        self.sums
+            .iter()
+            .zip(batch_combiners.values())
+            .map(|(circuit_sums, combiners)| {
+                combiners.circuit_combiner
+                    * circuit_sums
+                        .iter()
+                        .zip(&combiners.instance_combiners)
+                        .map(|(sums, combiner)| (sums.sum_a + eta_b * sums.sum_b + eta_c * sums.sum_c) * combiner)
+                        .sum::<F>()
+            })
+            .sum()
+    }
 }
 
 impl<F: PrimeField> ToBytes for ThirdMessage<F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
+        CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ThirdMessage"))
+    }
+}
+
+/// The prover message in the fourth round.
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct FourthMessage<F: PrimeField> {
+    pub sums: Vec<MatrixSums<F>>,
+}
+
+impl<F: PrimeField> ToBytes for FourthMessage<F> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
+        CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize FourthMessage"))
     }
 }

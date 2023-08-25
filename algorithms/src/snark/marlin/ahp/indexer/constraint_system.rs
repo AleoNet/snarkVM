@@ -14,7 +14,7 @@
 
 use crate::{
     r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable},
-    snark::marlin::ahp::matrices::{make_matrices_square, padded_matrix_dim, to_matrix_helper},
+    snark::marlin::ahp::matrices::to_matrix_helper,
 };
 use snarkvm_fields::Field;
 use snarkvm_utilities::serialize::*;
@@ -43,31 +43,21 @@ impl<F: Field> ConstraintSystem<F> {
     }
 
     #[inline]
+    /// Returns the sparse A matrix as Vec of rows, where each row is a Vec of assigned value and variable index
     pub(crate) fn a_matrix(&self) -> Vec<Vec<(F, usize)>> {
         to_matrix_helper(&self.a, self.num_public_variables)
     }
 
     #[inline]
+    /// Returns the sparse B matrix as Vec of rows, where each row is a Vec of assigned value and variable index
     pub(crate) fn b_matrix(&self) -> Vec<Vec<(F, usize)>> {
         to_matrix_helper(&self.b, self.num_public_variables)
     }
 
     #[inline]
+    /// Returns the sparse C matrix as Vec of rows, where each row is a Vec of assigned value and variable index
     pub(crate) fn c_matrix(&self) -> Vec<Vec<(F, usize)>> {
         to_matrix_helper(&self.c, self.num_public_variables)
-    }
-
-    #[inline]
-    pub(crate) fn make_matrices_square(&mut self) {
-        let num_variables = self.num_public_variables + self.num_private_variables;
-        let matrix_dim = padded_matrix_dim(num_variables, self.num_constraints);
-        make_matrices_square(self, num_variables);
-        assert_eq!(self.num_public_variables + self.num_private_variables, self.num_constraints, "padding failed!");
-        assert_eq!(
-            self.num_public_variables + self.num_private_variables,
-            matrix_dim,
-            "padding does not result in expected matrix size!"
-        );
     }
 
     #[inline]

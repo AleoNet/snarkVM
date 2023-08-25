@@ -15,6 +15,8 @@
 /// Describes the failure modes of the AHP scheme.
 #[derive(Debug)]
 pub enum AHPError {
+    /// Anyhow error
+    Anyhow(anyhow::Error),
     /// The batch size is zero.
     BatchSizeIsZero,
     /// An error occurred during constraint generation.
@@ -34,5 +36,11 @@ pub enum AHPError {
 impl From<crate::r1cs::errors::SynthesisError> for AHPError {
     fn from(other: crate::r1cs::errors::SynthesisError) -> Self {
         AHPError::ConstraintSystemError(other)
+    }
+}
+
+impl From<anyhow::Error> for AHPError {
+    fn from(other: anyhow::Error) -> Self {
+        AHPError::Anyhow(other)
     }
 }

@@ -152,6 +152,9 @@ version = "1.0"
 version = "0.4"
 optional = true
 
+[dependencies.num-traits]
+version = "0.2"
+
 [dev-dependencies.expect-test]
 version = "1.4.1"
 

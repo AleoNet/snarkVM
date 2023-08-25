@@ -19,16 +19,15 @@ use crate::{
     polycommit::sonic_pc::LabeledPolynomial,
     r1cs::{ConstraintSystem, Index as VarIndex},
     snark::marlin::{
-        ahp::{indexer::Matrix, AHPForR1CS, CircuitId, UnnormalizedBivariateLagrangePoly},
+        ahp::{indexer::Matrix, AHPForR1CS, CircuitId},
         MarlinHidingMode,
     },
 };
-use itertools::Itertools;
-use snarkvm_fields::{batch_inversion, Field, PrimeField};
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
-use hashbrown::HashMap;
-
+use anyhow::{ensure, Result};
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]
@@ -40,21 +39,37 @@ pub(crate) fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_inpu
     cfg_iter!(matrix)
         .map(|row| {
             let mut row_map = BTreeMap::new();
-            row.iter().for_each(|(fe, column)| {
-                let column = match column {
-                    VarIndex::Public(i) => *i,
-                    VarIndex::Private(i) => num_input_variables + i,
-                };
-                *row_map.entry(column).or_insert_with(F::zero) += *fe;
+            row.iter().for_each(|(val, column)| {
+                if !val.is_zero() {
+                    let column = match column {
+                        VarIndex::Public(i) => *i,
+                        VarIndex::Private(i) => num_input_variables + i,
+                    };
+                    *row_map.entry(column).or_insert_with(F::zero) += *val;
+                }
             });
-            row_map.into_iter().map(|(column, coeff)| (coeff, column)).collect()
+            row_map.into_iter().map(|(column, val)| (val, column)).collect()
         })
         .collect()
 }
 
-/// This must *always* be in sync with `make_matrices_square`.
-pub(crate) fn padded_matrix_dim(num_formatted_variables: usize, num_constraints: usize) -> usize {
-    core::cmp::max(num_formatted_variables, num_constraints)
+/// Adds variables to randomize each z_M and preserve zero-knowledge
+/// When no random assignments are passed, we use F::one()
+pub(crate) fn add_randomizing_variables<F: PrimeField, CS: ConstraintSystem<F>>(
+    cs: &mut CS,
+    rand_assignments: Option<[F; 3]>,
+) {
+    let mut assignments = [F::one(); 3];
+    if let Some(r) = rand_assignments {
+        assignments = r;
+    }
+
+    let zk_vars = assignments
+        .into_iter()
+        .enumerate()
+        .map(|(i, assignment)| cs.alloc(|| format!("random_{i}"), || Ok(assignment)).unwrap())
+        .collect_vec();
+    cs.enforce(|| "constraint zk", |lc| lc + zk_vars[0], |lc| lc + zk_vars[1], |lc| lc + zk_vars[2]);
 }
 
 /// Pads the public variables up to the closest power of two.
@@ -73,49 +88,32 @@ pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSyst
     }
 }
 
-pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut CS, num_formatted_variables: usize) {
-    let num_constraints = cs.num_constraints();
-    let matrix_padding = ((num_formatted_variables as isize) - (num_constraints as isize)).abs();
-
-    if num_formatted_variables > num_constraints {
-        use core::convert::identity as iden;
-        // Add dummy constraints of the form 0 * 0 == 0
-        for i in 0..matrix_padding {
-            cs.enforce(|| format!("pad_constraint_{i}"), iden, iden, iden);
-        }
-    } else {
-        // Add dummy unconstrained variables
-        for i in 0..matrix_padding {
-            let _ = cs.alloc(|| format!("pad_variable_{i}"), || Ok(F::one())).expect("alloc failed");
-        }
-    }
-}
-
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the `row` polynomial.
     pub row: EvaluationsOnDomain<F>,
     /// Evaluations of the `col` polynomial.
     pub col: EvaluationsOnDomain<F>,
-    /// Evaluations of the `val` polynomial.
-    pub val: EvaluationsOnDomain<F>,
     /// Evaluations of the `row_col` polynomial.
-    pub row_col: EvaluationsOnDomain<F>,
+    /// After indexing, we drop these evaluations to save space in the ProvingKey
+    pub row_col: Option<EvaluationsOnDomain<F>>,
+    /// Evaluations of the `row_col_val` polynomial.
+    pub row_col_val: EvaluationsOnDomain<F>,
 }
 
 impl<F: PrimeField> MatrixEvals<F> {
-    pub(crate) fn evaluate(&self, lagrange_coefficients_at_point: &[F]) -> [F; 4] {
-        [
+    pub(crate) fn evaluate(&self, lagrange_coefficients_at_point: &[F]) -> Result<[F; 4]> {
+        ensure!(self.row_col.is_some(), "row_col evaluations are not available");
+        Ok([
             self.row.evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.col.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.val.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.row_col.evaluate_with_coeffs(lagrange_coefficients_at_point),
-        ]
+            self.row_col.as_ref().unwrap().evaluate_with_coeffs(lagrange_coefficients_at_point),
+            self.row_col_val.evaluate_with_coeffs(lagrange_coefficients_at_point),
+        ])
     }
 }
 
-/// Contains information about the arithmetization of the matrix M^*.
-/// Here `M^*(i, j) := M(j, i) * u_H(j, j)`. For more details, see [\[COS20\]](https://eprint.iacr.org/2019/1076).
+/// Contains information about the arithmetization of the matrices, as per the Aleo protocol docs
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
 pub struct MatrixArithmetization<F: PrimeField> {
     /// LDE of the row indices of M^*.
@@ -124,81 +122,70 @@ pub struct MatrixArithmetization<F: PrimeField> {
     pub col: LabeledPolynomial<F>,
     /// LDE of the vector containing entry-wise products of `row` and `col`.
     pub row_col: LabeledPolynomial<F>,
-    /// LDE of the non-zero entries of M^*.
-    pub val: LabeledPolynomial<F>,
+    /// LDE of the vector containing entry-wise products of `row`, `col` and the non-zero entries of M.
+    pub row_col_val: LabeledPolynomial<F>,
 
-    /// Evaluation of `self.row_a`, `self.col_a`, and `self.val_a` on the domain `K`.
+    /// Evaluation of the above polynomials on the domain `K`.
     pub evals_on_K: MatrixEvals<F>,
-}
-
-pub(crate) fn precomputation_for_matrix_evals<F: PrimeField>(
-    constraint_domain: &EvaluationDomain<F>,
-) -> (Vec<F>, HashMap<F, F>) {
-    let elements = constraint_domain.elements().collect::<Vec<_>>();
-    let eq_poly_vals_time = start_timer!(|| "Precomputing eq_poly_vals");
-    let eq_poly_vals: HashMap<F, F> = elements
-        .iter()
-        .cloned()
-        .zip_eq(constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
-        .collect();
-    end_timer!(eq_poly_vals_time);
-    (elements, eq_poly_vals)
 }
 
 pub(crate) fn matrix_evals<F: PrimeField>(
     matrix: &Matrix<F>,
     non_zero_domain: &EvaluationDomain<F>,
-    constraint_domain: &EvaluationDomain<F>,
+    variable_domain: &EvaluationDomain<F>,
     input_domain: &EvaluationDomain<F>,
-    elems: &[F],
-    eq_poly_vals: &HashMap<F, F>,
-) -> MatrixEvals<F> {
+    constraint_domain_elems: &[F],
+    variable_domain_elems: &[F],
+) -> Result<MatrixEvals<F>> {
     let lde_evals_time = start_timer!(|| "Computing row, col and val evals");
 
-    // Recall that we are computing the arithmetization of M^*,
-    // where `M^*(i, j) := M(j, i) * u_H(j, j)`.
+    // We are computing the arithmetization of M,
+    // where `M(α,β) = \sum_{κ∈K} val(κ)·L^R_row(κ)(α)·L^C_col(κ)(β)`
 
-    let mut row_vec = Vec::with_capacity(non_zero_domain.size());
-    let mut col_vec = Vec::with_capacity(non_zero_domain.size());
-    let mut val_vec = Vec::with_capacity(non_zero_domain.size());
-    let mut inverses = Vec::with_capacity(non_zero_domain.size());
-    let mut count = 0;
+    let mut row_indices = Vec::with_capacity(non_zero_domain.size());
+    let mut col_indices = Vec::with_capacity(non_zero_domain.size());
+    let mut row_col_indices = Vec::with_capacity(non_zero_domain.size());
+    let mut row_col_vals = Vec::with_capacity(non_zero_domain.size());
 
-    // Recall that we are computing the arithmetization of M^*,
-    // where `M^*(i, j) := M(j, i) * u_H(j, j)`.
-    for (r, row) in matrix.iter().enumerate() {
-        for (val, i) in row {
-            let row_val = elems[r];
-            let col_val = elems[constraint_domain.reindex_by_subdomain(input_domain, *i)];
+    for (row_index, row) in matrix.iter().enumerate() {
+        for (val, input_var_index) in row {
+            let row_i = constraint_domain_elems[row_index];
+            let col_i = variable_domain_elems[variable_domain.reindex_by_subdomain(input_domain, *input_var_index)?];
 
-            // We are dealing with the transpose of M
-            row_vec.push(col_val);
-            col_vec.push(row_val);
-            val_vec.push(*val);
-            inverses.push(eq_poly_vals[&col_val]);
-
-            count += 1;
+            row_indices.push(row_i);
+            row_col_indices.push(row_i);
+            col_indices.push(col_i);
+            row_col_vals.push(*val);
         }
     }
 
-    batch_inversion::<F>(&mut inverses);
+    let non_zero_entries = row_indices.len();
 
-    cfg_iter_mut!(val_vec).zip_eq(inverses).for_each(|(v, inv)| *v *= inv);
-    end_timer!(lde_evals_time);
+    // Zip safety: we intentionally only multiply the first non_zero_entries
+    cfg_iter_mut!(row_col_indices).zip(&col_indices).for_each(|(rc, &col)| *rc *= col);
+    cfg_iter_mut!(row_col_vals).zip(&row_col_indices).for_each(|(v, rc)| *v *= rc);
 
-    for _ in count..non_zero_domain.size() {
-        col_vec.push(elems[0]);
-        row_vec.push(elems[0]);
-        val_vec.push(F::zero());
+    // Fill up the evaluations to the next power of two
+    let padding = non_zero_domain.size() - non_zero_entries;
+    for _ in 0..padding {
+        row_indices.push(F::one());
+        col_indices.push(F::one());
+        row_col_indices.push(F::one());
+        row_col_vals.push(F::zero());
     }
 
-    let row_col_vec: Vec<_> = row_vec.iter().zip_eq(&col_vec).map(|(row, col)| *row * col).collect();
+    end_timer!(lde_evals_time);
 
-    let row_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(row_vec, *non_zero_domain);
-    let col_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(col_vec, *non_zero_domain);
-    let val_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(val_vec, *non_zero_domain);
-    let row_col_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(row_col_vec, *non_zero_domain);
-    MatrixEvals { row: row_evals_on_K, col: col_evals_on_K, row_col: row_col_evals_on_K, val: val_evals_on_K }
+    let row_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(row_indices, *non_zero_domain);
+    let col_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(col_indices, *non_zero_domain);
+    let row_col_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(row_col_indices, *non_zero_domain);
+    let row_col_val_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(row_col_vals, *non_zero_domain);
+    Ok(MatrixEvals {
+        row: row_evals_on_K,
+        col: col_evals_on_K,
+        row_col: Some(row_col_evals_on_K),
+        row_col_val: row_col_val_evals_on_K,
+    })
 }
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
@@ -206,28 +193,43 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     id: &CircuitId,
     label: &str,
     matrix_evals: MatrixEvals<F>,
-) -> MatrixArithmetization<F> {
-    let matrix_time = start_timer!(|| "Computing row, col, and val LDEs");
+) -> Result<MatrixArithmetization<F>> {
+    ensure!(matrix_evals.row_col.is_some(), "row_col evaluations are not available");
 
     let interpolate_time = start_timer!(|| "Interpolating on K");
     let row = matrix_evals.row.clone().interpolate();
     let col = matrix_evals.col.clone().interpolate();
-    let val = matrix_evals.val.clone().interpolate();
-    let row_col = matrix_evals.row_col.clone().interpolate();
+    let row_col = matrix_evals.row_col.as_ref().unwrap().clone().interpolate();
+    let row_col_val = matrix_evals.row_col_val.clone().interpolate();
     end_timer!(interpolate_time);
-
-    end_timer!(matrix_time);
 
     let label = &[label];
     let mut labels = AHPForR1CS::<F, MarlinHidingMode>::index_polynomial_labels(label, std::iter::once(id));
 
-    MatrixArithmetization {
+    Ok(MatrixArithmetization {
         row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
         col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
-        val: LabeledPolynomial::new(labels.next().unwrap(), val, None, None),
         row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
+        row_col_val: LabeledPolynomial::new(labels.next().unwrap(), row_col_val, None, None),
         evals_on_K: matrix_evals,
+    })
+}
+
+/// Compute the transpose of a sparse matrix
+pub(crate) fn transpose<F: PrimeField>(
+    matrix: &Matrix<F>,
+    variable_domain: &EvaluationDomain<F>,
+    input_domain: &EvaluationDomain<F>,
+) -> Result<Matrix<F>> {
+    // NOTE: we cannot preallocate the inner Vec because we don't know ahead of time how many rows are used by which variables
+    let mut transpose = vec![vec![]; variable_domain.size()];
+    for (row_index, row) in matrix.iter().enumerate() {
+        for (val, input_var_index) in row {
+            let c_i = variable_domain.reindex_by_subdomain(input_domain, *input_var_index)?;
+            transpose[c_i].push((*val, row_index));
+        }
     }
+    Ok(transpose)
 }
 
 #[cfg(test)]
@@ -236,6 +238,7 @@ mod tests {
     use crate::snark::marlin::num_non_zero;
     use snarkvm_curves::bls12_377::Fr as F;
     use snarkvm_fields::{One, Zero};
+    use std::{borrow::Cow, collections::HashMap};
 
     fn entry(matrix: &Matrix<F>, row: usize, col: usize) -> F {
         matrix[row].iter().find_map(|(f, i)| (i == &col).then_some(*f)).unwrap_or_else(F::zero)
@@ -268,22 +271,22 @@ mod tests {
         let c = vec![vec![], vec![(F::one(), 7)], vec![], vec![], vec![], vec![(F::one(), 3)], vec![], vec![]];
 
         let constraint_domain = EvaluationDomain::new(2 + 6).unwrap();
+        let variable_domain = EvaluationDomain::new(2 + 6).unwrap();
         let input_domain = EvaluationDomain::new(2).unwrap();
         let inverse_map = constraint_domain.elements().enumerate().map(|(i, e)| (e, i)).collect::<HashMap<_, _>>();
         let elements = constraint_domain.elements().collect::<Vec<_>>();
         let reindexed_inverse_map = (0..constraint_domain.size())
             .map(|i| {
-                let reindexed_i = constraint_domain.reindex_by_subdomain(&input_domain, i);
+                let reindexed_i = constraint_domain.reindex_by_subdomain(&input_domain, i).unwrap();
                 (elements[reindexed_i], i)
             })
             .collect::<HashMap<_, _>>();
-        let eq_poly_vals: HashMap<F, F> = constraint_domain
-            .elements()
-            .zip_eq(constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
-            .collect();
-
-        let (constraint_domain_elements, constraint_domain_eq_poly_vals) =
-            precomputation_for_matrix_evals(&constraint_domain);
+        let constraint_domain_elements = constraint_domain.elements().collect::<Vec<_>>();
+        let variable_domain_elements = if variable_domain == constraint_domain {
+            Cow::from(&constraint_domain_elements)
+        } else {
+            Cow::from(variable_domain.elements().collect::<Vec<_>>())
+        };
         for (matrix, label) in [(a, "a"), (b, "b"), (c, "c")] {
             let num_non_zero = num_non_zero(&matrix);
             let interpolation_domain = EvaluationDomain::new(num_non_zero).unwrap();
@@ -291,30 +294,29 @@ mod tests {
             let evals = matrix_evals(
                 &matrix,
                 &interpolation_domain,
-                &constraint_domain,
+                &variable_domain,
                 &input_domain,
                 &constraint_domain_elements,
-                &constraint_domain_eq_poly_vals,
-            );
+                &variable_domain_elements,
+            )
+            .unwrap();
             let dummy_id = CircuitId([0; 32]);
-            let arith = arithmetize_matrix(&dummy_id, label, evals);
+            let arith = arithmetize_matrix(&dummy_id, label, evals).unwrap();
 
             for (k_index, k) in interpolation_domain.elements().enumerate() {
                 let row_val = arith.row.evaluate(k);
                 let col_val = arith.col.evaluate(k);
+                let row_col = arith.row_col.evaluate(k);
 
-                let inverse = (eq_poly_vals[&row_val]).inverse().unwrap();
-                // we're in transpose land.
-
-                let val = arith.val.evaluate(k);
+                let row_col_val = arith.row_col_val.evaluate(k);
                 assert_eq!(arith.evals_on_K.row[k_index], row_val);
                 assert_eq!(arith.evals_on_K.col[k_index], col_val);
-                assert_eq!(arith.evals_on_K.val[k_index], val);
+                assert_eq!(arith.evals_on_K.row_col_val[k_index], row_col_val);
                 if k_index < num_non_zero {
-                    let col = *dbg!(reindexed_inverse_map.get(&row_val).unwrap());
-                    let row = *dbg!(inverse_map.get(&col_val).unwrap());
+                    let col = *dbg!(reindexed_inverse_map.get(&col_val).unwrap());
+                    let row = *dbg!(inverse_map.get(&row_val).unwrap());
                     assert!(matrix[row].iter().any(|(_, c)| *c == col));
-                    assert_eq!(val, inverse * entry(&matrix, row, col),);
+                    assert_eq!(row_col_val, entry(&matrix, row, col) * row_col);
                 }
             }
         }

@@ -53,8 +53,7 @@ impl CircuitId {
 /// 1) `index_info` is information about the index, such as the size of the
 ///     public input
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
-/// 3) `{a,b,c}_star_arith` are structs containing information about A^*, B^*, and C^*,
-/// which are matrices defined as `M^*(i, j) = M(j, i) * u_H(j, j)`.
+/// 3) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
 #[derive(Clone, Debug)]
 pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// Information about the indexed circuit.
@@ -67,7 +66,7 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// The C matrix for the R1CS instance
     pub c: Matrix<F>,
 
-    /// Joint arithmetization of the A*, B*, and C* matrices.
+    /// Joint arithmetization of the A, B, and C matrices.
     pub a_arith: MatrixArithmetization<F>,
     pub b_arith: MatrixArithmetization<F>,
     pub c_arith: MatrixArithmetization<F>,
@@ -117,9 +116,14 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
         self.index_info.max_degree::<F, MM>()
     }
 
-    /// The number of constraints in this R1CS instance.
+    /// The size of the constraint domain in this R1CS instance.
     pub fn constraint_domain_size(&self) -> usize {
         crate::fft::EvaluationDomain::<F>::new(self.index_info.num_constraints).unwrap().size()
+    }
+
+    /// The size of the variable domain in this R1CS instance.
+    pub fn variable_domain_size(&self) -> usize {
+        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables).unwrap().size()
     }
 
     /// Iterate over the indexed polynomials.
@@ -135,11 +139,18 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
             &self.a_arith.row_col,
             &self.b_arith.row_col,
             &self.c_arith.row_col,
-            &self.a_arith.val,
-            &self.b_arith.val,
-            &self.c_arith.val,
+            &self.a_arith.row_col_val,
+            &self.b_arith.row_col_val,
+            &self.c_arith.row_col_val,
         ]
         .into_iter()
+    }
+
+    /// After indexing, we drop these evaluations to save space in the ProvingKey.
+    pub fn prune_row_col_evals(&mut self) {
+        self.a_arith.evals_on_K.row_col = None;
+        self.b_arith.evals_on_K.row_col = None;
+        self.c_arith.evals_on_K.row_col = None;
     }
 }
 
@@ -192,6 +203,8 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
             .ok_or(SerializationError::InvalidData)?;
+        let variable_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_variables)
+            .ok_or(SerializationError::InvalidData)?;
         let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)
             .ok_or(SerializationError::InvalidData)?;
         let non_zero_b_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_b)
@@ -200,6 +213,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             .ok_or(SerializationError::InvalidData)?;
 
         let (fft_precomputation, ifft_precomputation) = AHPForR1CS::<F, MM>::fft_precomputation(
+            variable_domain_size,
             constraint_domain_size,
             non_zero_a_domain_size,
             non_zero_b_domain_size,
