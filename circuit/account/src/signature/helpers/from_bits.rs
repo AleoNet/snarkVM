@@ -26,9 +26,15 @@ impl<A: Aleo> FromBits for Signature<A> {
         let (response_start, response_end) = (challenge_end, challenge_end + scalar_size_in_bits);
         let (compute_key_start, compute_key_end) = (response_end, response_end + compute_key_size_in_bits);
         Self {
-            challenge: Scalar::from_bits_le(&bits_le[challenge_start..challenge_end]),
-            response: Scalar::from_bits_le(&bits_le[response_start..response_end]),
-            compute_key: ComputeKey::from_bits_le(&bits_le[compute_key_start..compute_key_end]),
+            challenge: Scalar::from_bits_le(
+                bits_le.get(challenge_start..challenge_end).unwrap_or_else(|| A::halt("Invalid challenge")),
+            ),
+            response: Scalar::from_bits_le(
+                bits_le.get(response_start..response_end).unwrap_or_else(|| A::halt("Invalid response")),
+            ),
+            compute_key: ComputeKey::from_bits_le(
+                bits_le.get(compute_key_start..compute_key_end).unwrap_or_else(|| A::halt("Invalid compute key")),
+            ),
         }
     }
 
@@ -40,9 +46,15 @@ impl<A: Aleo> FromBits for Signature<A> {
         let (response_start, response_end) = (challenge_end, challenge_end + scalar_size_in_bits);
         let (compute_key_start, compute_key_end) = (response_end, response_end + compute_key_size_in_bits);
         Self {
-            challenge: Scalar::from_bits_be(&bits_be[challenge_start..challenge_end]),
-            response: Scalar::from_bits_be(&bits_be[response_start..response_end]),
-            compute_key: ComputeKey::from_bits_be(&bits_be[compute_key_start..compute_key_end]),
+            challenge: Scalar::from_bits_be(
+                bits_be.get(challenge_start..challenge_end).unwrap_or_else(|| A::halt("Invalid challenge")),
+            ),
+            response: Scalar::from_bits_be(
+                bits_be.get(response_start..response_end).unwrap_or_else(|| A::halt("Invalid response")),
+            ),
+            compute_key: ComputeKey::from_bits_be(
+                bits_be.get(compute_key_start..compute_key_end).unwrap_or_else(|| A::halt("Invalid compute key")),
+            ),
         }
     }
 }

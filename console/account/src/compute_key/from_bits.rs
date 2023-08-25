@@ -21,8 +21,8 @@ impl<N: Network> FromBits for ComputeKey<N> {
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
         Self::try_from((
-            Group::from_bits_le(&bits_le[pk_sig_start..pk_sig_end])?,
-            Group::from_bits_le(&bits_le[pr_sig_start..pr_sig_end])?,
+            Group::from_bits_le(bits_le.get(pk_sig_start..pk_sig_end).ok_or(error("Invalid group"))?)?,
+            Group::from_bits_le(bits_le.get(pr_sig_start..pr_sig_end).ok_or(error("Invalid group"))?)?,
         ))
     }
 
@@ -32,8 +32,8 @@ impl<N: Network> FromBits for ComputeKey<N> {
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
         Self::try_from((
-            Group::from_bits_be(&bits_be[pk_sig_start..pk_sig_end])?,
-            Group::from_bits_be(&bits_be[pr_sig_start..pr_sig_end])?,
+            Group::from_bits_be(bits_be.get(pk_sig_start..pk_sig_end).ok_or(error("Invalid group"))?)?,
+            Group::from_bits_be(bits_be.get(pr_sig_start..pr_sig_end).ok_or(error("Invalid group"))?)?,
         ))
     }
 }
