@@ -471,7 +471,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         let proof =
             Self::batch_open(universal_prover, ck, lc_polynomials.iter(), query_set, lc_randomness.iter(), fs_rng)?;
 
-        Ok(BatchLCProof { proof, evaluations: None })
+        Ok(BatchLCProof { proof })
     }
 
     /// Checks that `values` are the true evaluations at `query_set` of the polynomials
