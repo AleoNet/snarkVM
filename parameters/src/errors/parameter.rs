@@ -42,6 +42,12 @@ impl From<curl::Error> for ParameterError {
     }
 }
 
+impl From<reqwest::Error> for ParameterError {
+    fn from(error: reqwest::Error) -> Self {
+        ParameterError::Crate("reqwest", format!("{error:?}"))
+    }
+}
+
 impl From<std::io::Error> for ParameterError {
     fn from(error: std::io::Error) -> Self {
         ParameterError::Crate("std::io", format!("{error:?}"))

@@ -109,6 +109,11 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.powers_of_beta_g.download_powers_for(&range)
     }
 
+    /// Download the powers of beta G specified by `range`.
+    pub async fn download_powers_for_async(&mut self, range: Range<usize>) -> Result<()> {
+        self.powers_of_beta_g.download_powers_for_async(&range).await
+    }
+
     /// Returns the number of contiguous powers of beta G starting from the 0-th power.
     pub fn num_powers(&self) -> usize {
         self.powers_of_beta_g.num_powers()
@@ -129,9 +134,19 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.powers_of_beta_g.power(index)
     }
 
+    /// Returns the `index`-th power of beta * G.
+    pub async fn power_of_beta_g_async(&mut self, index: usize) -> Result<E::G1Affine> {
+        self.powers_of_beta_g.power_async(index).await
+    }
+
     /// Returns the powers of `beta * G` that lie within `range`.
     pub fn powers_of_beta_g(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
         self.powers_of_beta_g.powers(range)
+    }
+
+    /// Returns the powers of `beta * G` that lie within `range`.
+    pub async fn powers_of_beta_g_async(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+        self.powers_of_beta_g.powers_async(range).await
     }
 
     pub fn negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
@@ -324,6 +339,11 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         self.powers(target..(target + 1)).map(|s| s[0])
     }
 
+    /// Returns the power of beta times G specified by `target`.
+    async fn power_async(&mut self, target: usize) -> Result<E::G1Affine> {
+        self.powers_async(target..(target + 1)).await.map(|s| s[0])
+    }
+
     /// Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
     fn powers(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
         if range.is_empty() {
@@ -334,6 +354,23 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         if !self.contains_powers(&range) {
             // We must download the powers.
             self.download_powers_for(&range)?;
+        }
+        match self.contains_in_normal_powers(&range) {
+            true => self.normal_powers(range),
+            false => self.shifted_powers(range),
+        }
+    }
+
+    /// Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
+    async fn powers_async(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+        if range.is_empty() {
+            return Ok(&self.powers_of_beta_g[0..0]);
+        }
+        ensure!(range.start < range.end, "Lower power must be less than upper power");
+        ensure!(range.end <= MAX_NUM_POWERS, "Upper bound must be less than the maximum number of powers");
+        if !self.contains_powers(&range) {
+            // We must download the powers.
+            self.download_powers_for_async(&range).await?;
         }
         match self.contains_in_normal_powers(&range) {
             true => self.normal_powers(range),
@@ -357,6 +394,26 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         } else {
             // Otherwise, we download the normal powers.
             self.download_powers_up_to(range.end)?;
+        }
+        Ok(())
+    }
+
+    pub async fn download_powers_for_async(&mut self, range: &Range<usize>) -> Result<()> {
+        if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
+            return Ok(());
+        }
+        let half_max = MAX_NUM_POWERS / 2;
+        if (range.start <= half_max) && (range.end > half_max) {
+            // If the range contains the midpoint, then we must download all the powers.
+            // (because we round up to the next power of two).
+            self.download_powers_up_to(range.end)?;
+            self.shifted_powers_of_beta_g = Vec::new();
+        } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
+            // If the range is closer to the shifted powers, then we download the shifted powers.
+            self.download_shifted_powers_from_async(range.start).await?;
+        } else {
+            // Otherwise, we download the normal powers.
+            self.download_powers_up_to_async(range.end).await?;
         }
         Ok(())
     }
@@ -416,6 +473,73 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
                 NUM_POWERS_26 => Degree26::load_bytes()?,
                 NUM_POWERS_27 => Degree27::load_bytes()?,
                 NUM_POWERS_28 => Degree28::load_bytes()?,
+                _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
+            };
+
+            // Deserialize the group elements.
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
+            // Extend the powers.
+            self.powers_of_beta_g.extend(&additional_powers);
+        }
+        ensure!(self.powers_of_beta_g.len() == final_power_of_two, "Loaded an incorrect number of powers");
+        Ok(())
+    }
+
+    /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
+    /// and updates `Self` in place with the new powers.
+    async fn download_powers_up_to_async(&mut self, end: usize) -> Result<()> {
+        // Determine the new power of two.
+        let final_power_of_two =
+            end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+        // Ensure the total number of powers is less than the maximum number of powers.
+        ensure!(final_power_of_two <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
+
+        // Retrieve the current power of two.
+        let current_power_of_two = self
+            .powers_of_beta_g
+            .len()
+            .checked_next_power_of_two()
+            .ok_or_else(|| anyhow!("The current degree is too large"))?;
+
+        // Initialize a vector for the powers of two to be downloaded.
+        let mut download_queue = Vec::with_capacity(14);
+
+        // Initialize the first degree to download.
+        let mut accumulator = current_power_of_two * 2;
+        // Determine the powers of two to download.
+        while accumulator <= final_power_of_two {
+            download_queue.push(accumulator);
+            accumulator =
+                accumulator.checked_mul(2).ok_or_else(|| anyhow!("Overflowed while requesting a larger degree"))?;
+        }
+        ensure!(final_power_of_two * 2 == accumulator, "Ensure the loop terminates at the right power of two");
+
+        // Reserve capacity for the new powers of two.
+        let additional_size = final_power_of_two
+            .checked_sub(self.powers_of_beta_g.len())
+            .ok_or_else(|| anyhow!("final_power_of_two is smaller than existing powers"))?;
+        self.powers_of_beta_g.reserve(additional_size);
+
+        // Download the powers of two.
+        for num_powers in &download_queue {
+            #[cfg(debug_assertions)]
+            println!("Loading {num_powers} powers");
+
+            // Download the universal SRS powers if they're not already on disk.
+            let additional_bytes = match *num_powers {
+                NUM_POWERS_16 => Degree16::load_bytes_async().await?,
+                NUM_POWERS_17 => Degree17::load_bytes_async().await?,
+                NUM_POWERS_18 => Degree18::load_bytes_async().await?,
+                NUM_POWERS_19 => Degree19::load_bytes_async().await?,
+                NUM_POWERS_20 => Degree20::load_bytes_async().await?,
+                NUM_POWERS_21 => Degree21::load_bytes_async().await?,
+                NUM_POWERS_22 => Degree22::load_bytes_async().await?,
+                NUM_POWERS_23 => Degree23::load_bytes_async().await?,
+                NUM_POWERS_24 => Degree24::load_bytes_async().await?,
+                NUM_POWERS_25 => Degree25::load_bytes_async().await?,
+                NUM_POWERS_26 => Degree26::load_bytes_async().await?,
+                NUM_POWERS_27 => Degree27::load_bytes_async().await?,
+                NUM_POWERS_28 => Degree28::load_bytes_async().await?,
                 _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
             };
 
@@ -493,6 +617,93 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
                 NUM_POWERS_25 => ShiftedDegree25::load_bytes()?,
                 NUM_POWERS_26 => ShiftedDegree26::load_bytes()?,
                 NUM_POWERS_27 => ShiftedDegree27::load_bytes()?,
+                _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
+            };
+
+            // Deserialize the group elements.
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
+
+            if final_powers.is_empty() {
+                final_powers = additional_powers;
+            } else {
+                final_powers.extend(additional_powers);
+            }
+        }
+        final_powers.extend(self.shifted_powers_of_beta_g.iter());
+        self.shifted_powers_of_beta_g = final_powers;
+
+        ensure!(
+            self.shifted_powers_of_beta_g.len() == final_num_powers,
+            "Loaded an incorrect number of shifted powers"
+        );
+        Ok(())
+    }
+
+    /// This method downloads the universal SRS powers from
+    /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
+    /// and updates `Self` in place with the new powers.
+    async fn download_shifted_powers_from_async(&mut self, start: usize) -> Result<()> {
+        // Ensure the total number of powers is less than the maximum number of powers.
+        ensure!(start <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
+
+        // The possible powers are:
+        // (2^28 - 2^15)..=(2^28)       = 2^15 powers
+        // (2^28 - 2^16)..(2^28 - 2^15) = 2^15 powers
+        // (2^28 - 2^17)..(2^28 - 2^16) = 2^16 powers
+        // (2^28 - 2^18)..(2^28 - 2^17) = 2^17 powers
+        // (2^28 - 2^19)..(2^28 - 2^18) = 2^18 powers
+        // (2^28 - 2^20)..(2^28 - 2^19) = 2^19 powers
+        // (2^28 - 2^21)..(2^28 - 2^20) = 2^20 powers
+        // (2^28 - 2^22)..(2^28 - 2^21) = 2^21 powers
+        // (2^28 - 2^23)..(2^28 - 2^22) = 2^22 powers
+        // (2^28 - 2^24)..(2^28 - 2^23) = 2^23 powers
+        // (2^28 - 2^25)..(2^28 - 2^24) = 2^24 powers
+        // (2^28 - 2^26)..(2^28 - 2^25) = 2^25 powers
+        // (2^28 - 2^27)..(2^28 - 2^26) = 2^26 powers
+
+        // Figure out the number of powers to download, as follows:
+        // Let `start := 2^28 - k`.
+        // We know that `shifted_powers_of_beta_g.len() = 2^s` such that `2^s < k`.
+        // That is, we have already downloaded the powers `2^28 - 2^s` up to `2^28`.
+        // Then, we have to download the powers 2^s..k.next_power_of_two().
+        let final_num_powers = MAX_NUM_POWERS
+            .checked_sub(start)
+            .ok_or_else(|| {
+                anyhow!("Requesting too many powers: `start ({start}) > MAX_NUM_POWERS ({MAX_NUM_POWERS})`")
+            })?
+            .checked_next_power_of_two()
+            .ok_or_else(|| anyhow!("Requesting too many powers"))?; // Calculated k.next_power_of_two().
+
+        let mut download_queue = Vec::with_capacity(14);
+        let mut existing_num_powers = self.shifted_powers_of_beta_g.len();
+        while existing_num_powers < final_num_powers {
+            existing_num_powers = existing_num_powers
+                .checked_mul(2)
+                .ok_or_else(|| anyhow!("Overflowed while requesting additional powers"))?;
+            download_queue.push(existing_num_powers);
+        }
+        download_queue.reverse(); // We want to download starting from the smallest power.
+
+        let mut final_powers = Vec::with_capacity(final_num_powers);
+        // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
+        for num_powers in &download_queue {
+            #[cfg(debug_assertions)]
+            println!("Loading {num_powers} shifted powers");
+
+            // Download the universal SRS powers if they're not already on disk.
+            let additional_bytes = match *num_powers {
+                NUM_POWERS_16 => ShiftedDegree16::load_bytes_async().await?,
+                NUM_POWERS_17 => ShiftedDegree17::load_bytes_async().await?,
+                NUM_POWERS_18 => ShiftedDegree18::load_bytes_async().await?,
+                NUM_POWERS_19 => ShiftedDegree19::load_bytes_async().await?,
+                NUM_POWERS_20 => ShiftedDegree20::load_bytes_async().await?,
+                NUM_POWERS_21 => ShiftedDegree21::load_bytes_async().await?,
+                NUM_POWERS_22 => ShiftedDegree22::load_bytes_async().await?,
+                NUM_POWERS_23 => ShiftedDegree23::load_bytes_async().await?,
+                NUM_POWERS_24 => ShiftedDegree24::load_bytes_async().await?,
+                NUM_POWERS_25 => ShiftedDegree25::load_bytes_async().await?,
+                NUM_POWERS_26 => ShiftedDegree26::load_bytes_async().await?,
+                NUM_POWERS_27 => ShiftedDegree27::load_bytes_async().await?,
                 _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
             };
 

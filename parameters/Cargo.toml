@@ -60,6 +60,10 @@ optional = true
 version = "0.2"
 optional = true
 
+[dependencies.getrandom]
+version = "0.2"
+features = [ "js" ]
+
 [dependencies.hex]
 version = "0.4.3"
 
@@ -81,6 +85,9 @@ version = "1"
 
 [dependencies.rand]
 version = "0.8"
+
+[dependencies.reqwest]
+version = "0.11.18"
 
 [dependencies.serde_json]
 version = "1"

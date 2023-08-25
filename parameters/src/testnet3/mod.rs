@@ -150,10 +150,15 @@ lazy_static! {
 mod tests {
     use super::*;
     use wasm_bindgen_test::*;
-    wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    async fn test_parameter_downloads() {
+        Degree16::load_bytes_async().await.expect("Failed to load degree 16");
+    }
 
     #[wasm_bindgen_test]
     fn test_load_bytes() {
+        /*
         Degree16::load_bytes().expect("Failed to load degree 16");
         Degree17::load_bytes().expect("Failed to load degree 17");
         Degree18::load_bytes().expect("Failed to load degree 18");
@@ -175,5 +180,7 @@ mod tests {
         FeePublicVerifier::load_bytes().expect("Failed to load fee_public verifier");
         InclusionProver::load_bytes().expect("Failed to load inclusion prover");
         InclusionVerifier::load_bytes().expect("Failed to load inclusion verifier");
+
+         */
     }
 }

@@ -65,6 +65,10 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.write().download_powers_for(range)
     }
 
+    pub async fn download_powers_for_async(&self, range: Range<usize>) -> Result<()> {
+        self.powers.write().download_powers_for_async(range).await
+    }
+
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Result<Vec<E::G1Affine>> {
         let basis = domain
             .ifft(&self.powers_of_beta_g(0, domain.size())?.iter().map(|e| (*e).to_projective()).collect::<Vec<_>>());

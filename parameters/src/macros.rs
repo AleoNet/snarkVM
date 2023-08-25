@@ -101,8 +101,23 @@ macro_rules! impl_store_and_remote_fetch {
             Ok(transfer.perform()?)
         }
 
+        // This will work in both wasm and non-wasm environments
+        async fn remote_fetch_async(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
+            let response = reqwest::get(url).await?;
+            if response.status().is_success() {
+                // Read the response body as bytes and collect into the buffer
+                let bytes = response.bytes().await?;
+                buffer.extend_from_slice(&bytes);
+            } else {
+                let error_msg = response.text().await?;
+                let error = format!("Failed to download from {}. Response: {}", url, error_msg);
+                $crate::errors::ParameterError::Crate("bad url", error);
+            }
+            Ok(())
+        }
+
         #[cfg(feature = "wasm")]
-        fn remote_fetch(url: &str) -> Result<Vec<u8>, $crate::errors::ParameterError> {
+        fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
             // Use the browser's XmlHttpRequest object to download the parameter file synchronously.
             //
             // This method blocks the event loop while the parameters are downloaded, and should be
@@ -138,9 +153,11 @@ macro_rules! impl_store_and_remote_fetch {
 
                 // Re-encode the text back into bytes using the chosen encoding.
                 use encoding::Encoding;
-                encoding::all::ISO_8859_5
+                let data = encoding::all::ISO_8859_5
                     .encode(&rust_text, encoding::EncoderTrap::Strict)
-                    .map_err(|_| $crate::errors::ParameterError::Wasm("Parameter decoding failed".to_string()))
+                    .map_err(|_| $crate::errors::ParameterError::Wasm("Parameter decoding failed".to_string()))?;
+                buffer.extend_from_slice(&data);
+                Ok(())
             } else {
                 Err($crate::errors::ParameterError::Wasm("Download failed - XMLHttpRequest failed".to_string()))
             }
@@ -167,7 +184,7 @@ macro_rules! impl_load_bytes_logic_local {
 }
 
 macro_rules! impl_load_bytes_logic_remote {
-    ($remote_url: expr, $local_dir: expr, $filename: expr, $metadata: expr, $expected_checksum: expr, $expected_size: expr) => {
+    ($remote_url: expr, $local_dir: expr, $filename: expr, $metadata: expr, $expected_checksum: expr, $expected_size: expr, $remote_fetch:ident $(, $await:ident)?) => {
         // Compose the correct file path for the parameter file.
         let mut file_path = aleo_std::aleo_dir();
         file_path.push($local_dir);
@@ -192,17 +209,19 @@ macro_rules! impl_load_bytes_logic_remote {
             let url = format!("{}/{}", $remote_url, $filename);
 
             // Load remote file
+            let mut buffer = vec![];
+
+            Self::$remote_fetch(&mut buffer, &url)
+            $(.$await)?;
+
+            // Ensure the checksum matches.
+            let candidate_checksum = checksum!(&buffer);
+            if $expected_checksum != candidate_checksum {
+                return checksum_error!($expected_checksum, candidate_checksum)
+            }
+
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
-                    let mut buffer = vec![];
-                    Self::remote_fetch(&mut buffer, &url)?;
-
-                    // Ensure the checksum matches.
-                    let candidate_checksum = checksum!(&buffer);
-                    if $expected_checksum != candidate_checksum {
-                        return checksum_error!($expected_checksum, candidate_checksum)
-                    }
-
                     match Self::store_bytes(&buffer, &file_path) {
                         Ok(()) => buffer,
                         Err(_) => {
@@ -214,14 +233,6 @@ macro_rules! impl_load_bytes_logic_remote {
                         }
                     }
                 } else if #[cfg(feature = "wasm")] {
-                    let buffer = Self::remote_fetch(&url)?;
-
-                    // Ensure the checksum matches.
-                    let candidate_checksum = checksum!(&buffer);
-                    if $expected_checksum != candidate_checksum {
-                        return checksum_error!($expected_checksum, candidate_checksum)
-                    }
-
                     buffer
                 } else {
                     return Err($crate::errors::ParameterError::RemoteFetchDisabled);
@@ -315,9 +326,10 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
+
             impl_store_and_remote_fetch!();
 
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+            fn get_filename() -> (serde_json::Value, String, usize, String) {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
                 let metadata: serde_json::Value =
@@ -333,13 +345,37 @@ macro_rules! impl_remote {
                     _ => format!("{}.{}", $fname, "usrs"),
                 };
 
+                (metadata, expected_checksum, expected_size, filename)
+            }
+
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+
+                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+
                 impl_load_bytes_logic_remote!(
                     $remote_url,
                     $local_dir,
                     &filename,
                     metadata,
                     expected_checksum,
-                    expected_size
+                    expected_size,
+                    remote_fetch
+                );
+            }
+
+            pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+
+                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+
+                impl_load_bytes_logic_remote!(
+                    $remote_url,
+                    $local_dir,
+                    &filename,
+                    metadata,
+                    expected_checksum,
+                    expected_size,
+                    remote_fetch_async,
+                    await
                 );
             }
         }
@@ -357,7 +393,7 @@ macro_rules! impl_remote {
         impl $name {
             impl_store_and_remote_fetch!();
 
-            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+            fn get_filename() -> (serde_json::Value, String, usize, String) {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
                 let metadata: serde_json::Value =
@@ -373,13 +409,37 @@ macro_rules! impl_remote {
                     _ => format!("{}.{}", $fname, $ftype),
                 };
 
+                (metadata, expected_checksum, expected_size, filename)
+            }
+
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+
+                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+
                 impl_load_bytes_logic_remote!(
                     $remote_url,
                     $local_dir,
                     &filename,
                     metadata,
                     expected_checksum,
-                    expected_size
+                    expected_size,
+                    remote_fetch
+                );
+            }
+
+            pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+
+                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+
+                impl_load_bytes_logic_remote!(
+                    $remote_url,
+                    $local_dir,
+                    &filename,
+                    metadata,
+                    expected_checksum,
+                    expected_size,
+                    remote_fetch_async,
+                    await
                 );
             }
         }
