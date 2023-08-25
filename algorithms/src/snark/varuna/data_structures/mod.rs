@@ -12,29 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+/// The Varuna certificate.
+pub(super) mod certificate;
+pub use certificate::*;
 
-mod bytes;
-mod parse;
-mod serialize;
+/// The Varuna circuit proving key.
+pub(super) mod circuit_proving_key;
+pub use circuit_proving_key::*;
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct Proof<N: Network> {
-    /// The proof.
-    proof: varuna::Proof<N::PairingCurve>,
-}
+/// The Varuna circuit verifying key.
+pub(super) mod circuit_verifying_key;
+pub use circuit_verifying_key::*;
 
-impl<N: Network> Proof<N> {
-    /// Initializes a new proof.
-    pub(super) const fn new(proof: varuna::Proof<N::PairingCurve>) -> Self {
-        Self { proof }
-    }
-}
+/// The Varuna zkSNARK proof.
+pub(super) mod proof;
+pub use proof::*;
 
-impl<N: Network> Deref for Proof<N> {
-    type Target = varuna::Proof<N::PairingCurve>;
+/// A test circuit.
+pub(super) mod test_circuit;
+pub use test_circuit::*;
 
-    fn deref(&self) -> &Self::Target {
-        &self.proof
-    }
-}
+/// The Varuna universal SRS.
+pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;

@@ -32,7 +32,7 @@ pub mod kzg10;
 /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
 /// [sonic]: https://eprint.iacr.org/2019/099
 /// [al]: https://eprint.iacr.org/2019/601
-/// [marlin]: https://eprint.iacr.org/2019/1047
+/// [varuna]: https://eprint.iacr.org/2019/1047
 pub mod sonic_pc;
 
 /// Errors pertaining to query sets.

@@ -30,8 +30,8 @@ lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
 
-    /// The Marlin sponge parameters.
-    pub static ref MARLIN_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
+    /// The Varuna sponge parameters.
+    pub static ref VARUNA_FS_PARAMETERS: FiatShamirParameters<Testnet3> = FiatShamir::<Testnet3>::sample_parameters();
 
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoSymmetricEncryption0");
@@ -61,14 +61,14 @@ lazy_static! {
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 
-    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<MarlinProvingKey<Console>>> = {
+    pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<VarunaProvingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_credit_keys!(map, MarlinProvingKey<Console>, Prover);
+        snarkvm_parameters::insert_credit_keys!(map, VarunaProvingKey<Console>, Prover);
         map
     };
-    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<MarlinVerifyingKey<Console>>> = {
+    pub static ref CREDITS_VERIFYING_KEYS: IndexMap<String, Arc<VarunaVerifyingKey<Console>>> = {
         let mut map = IndexMap::new();
-        snarkvm_parameters::insert_credit_keys!(map, MarlinVerifyingKey<Console>, Verifier);
+        snarkvm_parameters::insert_credit_keys!(map, VarunaVerifyingKey<Console>, Verifier);
         map
     };
 }
@@ -138,22 +138,22 @@ impl Network for Testnet3 {
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.
-    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<MarlinProvingKey<Self>>> {
+    fn get_credits_proving_key(function_name: String) -> Result<&'static Arc<VarunaProvingKey<Self>>> {
         CREDITS_PROVING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Proving key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the verifying key for the given function name in `credits.aleo`.
-    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<MarlinVerifyingKey<Self>>> {
+    fn get_credits_verifying_key(function_name: String) -> Result<&'static Arc<VarunaVerifyingKey<Self>>> {
         CREDITS_VERIFYING_KEYS
             .get(&function_name)
             .ok_or_else(|| anyhow!("Verifying key for credits.aleo/{function_name}' not found"))
     }
 
     /// Returns the `proving key` for the inclusion circuit.
-    fn inclusion_proving_key() -> &'static Arc<MarlinProvingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<MarlinProvingKey<Console>>> = OnceCell::new();
+    fn inclusion_proving_key() -> &'static Arc<VarunaProvingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<VarunaProvingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
@@ -164,8 +164,8 @@ impl Network for Testnet3 {
     }
 
     /// Returns the `verifying key` for the inclusion circuit.
-    fn inclusion_verifying_key() -> &'static Arc<MarlinVerifyingKey<Self>> {
-        static INSTANCE: OnceCell<Arc<MarlinVerifyingKey<Console>>> = OnceCell::new();
+    fn inclusion_verifying_key() -> &'static Arc<VarunaVerifyingKey<Self>> {
+        static INSTANCE: OnceCell<Arc<VarunaVerifyingKey<Console>>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             // Skipping the first byte, which is the encoded version.
             Arc::new(
@@ -192,8 +192,8 @@ impl Network for Testnet3 {
             .sum()
     }
 
-    /// Returns the Marlin universal prover.
-    fn marlin_universal_prover() -> &'static UniversalProver<Self::PairingCurve> {
+    /// Returns the Varuna universal prover.
+    fn varuna_universal_prover() -> &'static UniversalProver<Self::PairingCurve> {
         static INSTANCE: OnceCell<UniversalProver<<Console as Environment>::PairingCurve>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
@@ -203,8 +203,8 @@ impl Network for Testnet3 {
         })
     }
 
-    /// Returns the Marlin universal verifier.
-    fn marlin_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve> {
+    /// Returns the Varuna universal verifier.
+    fn varuna_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve> {
         static INSTANCE: OnceCell<UniversalVerifier<<Console as Environment>::PairingCurve>> = OnceCell::new();
         INSTANCE.get_or_init(|| {
             snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
@@ -214,9 +214,9 @@ impl Network for Testnet3 {
         })
     }
 
-    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
-    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self> {
-        &MARLIN_FS_PARAMETERS
+    /// Returns the sponge parameters used for the sponge in the Varuna SNARK.
+    fn varuna_fs_parameters() -> &'static FiatShamirParameters<Self> {
+        &VARUNA_FS_PARAMETERS
     }
 
     /// Returns the encryption domain as a constant field element.
