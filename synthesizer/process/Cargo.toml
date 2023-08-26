@@ -44,6 +44,9 @@ wasm = [
 ]
 timer = [ "aleo-std/timer" ]
 
+[dependencies.async-trait]
+version = "0.1.73"
+
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
@@ -120,3 +123,8 @@ features = [ "query" ]
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
 path = "../../ledger/test-helpers"
+
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3.37"
+
+

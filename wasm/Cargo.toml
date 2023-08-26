@@ -75,6 +75,10 @@ features = [ "js" ]
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3.37"
 
+[dev-dependencies.snarkvm-circuit-network]
+version = "=0.14.6"
+path = "../circuit/network"
+
 [features]
 default = [ "full" ]
 full = [ "console", "curves", "fields", "synthesizer", "utilities" ]

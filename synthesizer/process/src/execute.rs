@@ -49,6 +49,41 @@ impl<N: Network> Process<N> {
         finish!(timer);
         Ok((response, trace))
     }
+
+    /// Executes the given authorization.
+    #[inline]
+    pub async fn execute_async<A: circuit::Aleo<Network = N>>(
+        &self,
+        authorization: Authorization<N>,
+    ) -> Result<(Response<N>, Trace<N>)> {
+        let timer = timer!("Process::execute");
+
+        // Retrieve the main request (without popping it).
+        let request = authorization.peek_next()?;
+        // Construct the locator.
+        let locator = Locator::new(*request.program_id(), *request.function_name());
+
+        #[cfg(feature = "aleo-cli")]
+        println!("{}", format!(" • Executing '{locator}'...",).dimmed());
+
+        // Initialize the trace.
+        let trace = Arc::new(RwLock::new(Trace::new()));
+        // Initialize the call stack.
+        let call_stack = CallStack::execute(authorization, trace.clone())?;
+        lap!(timer, "Initialize call stack");
+
+        // Execute the circuit.
+        let response = self.get_stack(request.program_id())?.execute_function_async::<A>(call_stack).await?;
+        lap!(timer, "Execute the function");
+
+        // Extract the trace.
+        let trace = Arc::try_unwrap(trace).unwrap().into_inner();
+        // Ensure the trace is not empty.
+        ensure!(!trace.transitions().is_empty(), "Execution of '{locator}' is empty");
+
+        finish!(timer);
+        Ok((response, trace))
+    }
 }
 
 #[cfg(test)]

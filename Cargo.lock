@@ -2485,6 +2485,7 @@ version = "0.14.6"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "async-trait",
  "bincode",
  "blake2",
  "cfg-if",
@@ -3261,6 +3262,7 @@ name = "snarkvm-synthesizer-process"
 version = "0.14.6"
 dependencies = [
  "aleo-std",
+ "async-trait",
  "colored",
  "indexmap 2.0.0",
  "once_cell",
@@ -3276,6 +3278,7 @@ dependencies = [
  "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -3340,6 +3343,7 @@ dependencies = [
  "getrandom",
  "rand",
  "serde",
+ "snarkvm-circuit-network",
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",

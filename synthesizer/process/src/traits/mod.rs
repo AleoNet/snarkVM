@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{CallStack, Closure, FinalizeTypes, RegisterTypes};
+use async_trait::async_trait;
 use console::{
     account::Address,
     network::Network,
@@ -42,6 +43,7 @@ pub trait StackEvaluate<N: Network>: Clone {
     fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
 }
 
+#[async_trait(?Send)]
 pub trait StackExecute<N: Network> {
     /// Executes a program closure on the given inputs.
     ///
@@ -63,6 +65,17 @@ pub trait StackExecute<N: Network> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     fn execute_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
+
+    /// Executes a program function on the given inputs.
+    ///
+    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    async fn execute_function_async<A: circuit::Aleo<Network = N>>(
+        &self,
+        call_stack: CallStack<N>,
+    ) -> Result<Response<N>>;
 }
 
 pub trait StackProgramTypes<N: Network> {

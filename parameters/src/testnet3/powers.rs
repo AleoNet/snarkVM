@@ -15,15 +15,7 @@
 use super::*;
 use snarkvm_curves::traits::{PairingCurve, PairingEngine};
 use snarkvm_utilities::{
-    CanonicalDeserialize,
-    CanonicalSerialize,
-    Compress,
-    FromBytes,
-    Read,
-    SerializationError,
-    ToBytes,
-    Valid,
-    Validate,
+    CanonicalDeserialize, CanonicalSerialize, Compress, FromBytes, Read, SerializationError, ToBytes, Valid, Validate,
     Write,
 };
 
@@ -406,7 +398,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         if (range.start <= half_max) && (range.end > half_max) {
             // If the range contains the midpoint, then we must download all the powers.
             // (because we round up to the next power of two).
-            self.download_powers_up_to(range.end)?;
+            self.download_powers_up_to_async(range.end).await?;
             self.shifted_powers_of_beta_g = Vec::new();
         } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
             // If the range is closer to the shifted powers, then we download the shifted powers.
@@ -738,5 +730,19 @@ impl<E: PairingEngine> ToBytes for PowersOfBetaG<E> {
     /// Writes the powers to the buffer.
     fn write_le<W: Write>(&self, writer: W) -> std::io::Result<()> {
         self.serialize_with_mode(writer, Compress::No).map_err(|e| e.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use wasm_bindgen_test::*;
+
+    #[wasm_bindgen_test]
+    async fn test_powers_of_beta_g() {
+        let mut powers = PowersOfG::<Bls12_377>::load().unwrap();
+        powers.download_powers_for_async(0..NUM_POWERS_17).await.unwrap();
+        assert_eq!(131072, powers.powers_of_beta_g.powers_of_beta_g.len());
     }
 }

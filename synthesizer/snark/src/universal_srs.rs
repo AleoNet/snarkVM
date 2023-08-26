@@ -42,6 +42,23 @@ impl<N: Network> UniversalSRS<N> {
 
         Ok((ProvingKey::new(Arc::new(proving_key)), VerifyingKey::new(Arc::new(verifying_key))))
     }
+
+    /// Returns the circuit proving and verifying key.
+    pub async fn to_circuit_key_async(
+        &self,
+        function_name: &str,
+        assignment: &circuit::Assignment<N::Field>,
+    ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
+        #[cfg(feature = "aleo-cli")]
+        let timer = std::time::Instant::now();
+
+        let (proving_key, verifying_key) = Marlin::<N>::circuit_setup_async(self, assignment).await?;
+
+        #[cfg(feature = "aleo-cli")]
+        println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+
+        Ok((ProvingKey::new(Arc::new(proving_key)), VerifyingKey::new(Arc::new(verifying_key))))
+    }
 }
 
 impl<N: Network> FromBytes for UniversalSRS<N> {

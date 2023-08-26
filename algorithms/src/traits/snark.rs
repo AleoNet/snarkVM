@@ -17,6 +17,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes};
 
 use anyhow::Result;
+use async_trait::async_trait;
 use rand::{CryptoRng, Rng};
 use std::{borrow::Borrow, collections::BTreeMap, fmt::Debug};
 
@@ -26,6 +27,7 @@ pub trait Prepare {
     fn prepare(&self) -> Self::Prepared;
 }
 
+#[async_trait(?Send)]
 pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
@@ -57,6 +59,11 @@ pub trait SNARK {
     fn universal_setup(config: usize) -> Result<Self::UniversalSRS, SNARKError>;
 
     fn circuit_setup<C: ConstraintSynthesizer<Self::ScalarField>>(
+        srs: &Self::UniversalSRS,
+        circuit: &C,
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey)>;
+
+    async fn circuit_setup_async<C: ConstraintSynthesizer<Self::ScalarField>>(
         srs: &Self::UniversalSRS,
         circuit: &C,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey)>;

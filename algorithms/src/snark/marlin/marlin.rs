@@ -16,36 +16,22 @@ use super::Certificate;
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{
-        Commitment,
-        CommitterUnionKey,
-        Evaluations,
-        LabeledCommitment,
-        QuerySet,
-        Randomness,
-        SonicKZG10,
+        Commitment, CommitterUnionKey, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10,
     },
     r1cs::ConstraintSynthesizer,
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
-        proof,
-        prover,
-        witness_label,
-        CircuitProvingKey,
-        CircuitVerifyingKey,
-        MarlinMode,
-        Proof,
-        UniversalSRS,
+        proof, prover, witness_label, CircuitProvingKey, CircuitVerifyingKey, MarlinMode, Proof, UniversalSRS,
     },
     srs::UniversalVerifier,
-    AlgebraicSponge,
-    SNARKError,
-    SNARK,
+    AlgebraicSponge, SNARKError, SNARK,
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use core::marker::PhantomData;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
@@ -84,6 +70,63 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
             universal_srs
                 .download_powers_for(0..indexed_circuit.max_degree())
                 .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree()))?;
+            let coefficient_support = AHPForR1CS::<E::Fr, MM>::get_degree_bounds(&indexed_circuit.index_info);
+
+            // Marlin only needs degree 2 random polynomials.
+            let supported_hiding_bound = 1;
+            let (committer_key, _) = SonicKZG10::<E, FS>::trim(
+                universal_srs,
+                indexed_circuit.max_degree(),
+                [indexed_circuit.constraint_domain_size()],
+                supported_hiding_bound,
+                Some(coefficient_support.as_slice()),
+            )?;
+
+            let ck = CommitterUnionKey::union(std::iter::once(&committer_key));
+
+            let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
+            let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
+                SonicKZG10::<E, FS>::commit(universal_prover, &ck, indexed_circuit.iter().map(Into::into), None)?;
+            end_timer!(commit_time);
+
+            circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
+            let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
+            let circuit_verifying_key = CircuitVerifyingKey {
+                circuit_info: indexed_circuit.index_info,
+                circuit_commitments,
+                id: indexed_circuit.id,
+            };
+            let circuit_proving_key = CircuitProvingKey {
+                circuit: Arc::new(indexed_circuit),
+                circuit_commitment_randomness,
+                circuit_verifying_key: circuit_verifying_key.clone(),
+                committer_key: Arc::new(committer_key),
+            };
+            circuit_keys.push((circuit_proving_key, circuit_verifying_key));
+        }
+
+        end_timer!(index_time);
+        Ok(circuit_keys)
+    }
+
+    // TODO: implement optimizations resulting from batching
+    //       (e.g. computing a common set of Lagrange powers, FFT precomputations, etc)
+    pub async fn batch_circuit_setup_async<C: ConstraintSynthesizer<E::Fr>>(
+        universal_srs: &UniversalSRS<E>,
+        circuits: &[&C],
+    ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>> {
+        let index_time = start_timer!(|| "Marlin::CircuitSetup");
+
+        let universal_prover = &universal_srs.to_universal_prover()?;
+
+        let mut circuit_keys = Vec::with_capacity(circuits.len());
+        for circuit in circuits {
+            let indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
+            // TODO: Add check that c is in the correct mode.
+            // Ensure the universal SRS supports the circuit size.
+            universal_srs.download_powers_for_async(0..indexed_circuit.max_degree()).await.map_err(|e| {
+                anyhow!("Failed to asynchronously download powers for degree {}: {e}", indexed_circuit.max_degree())
+            })?;
             let coefficient_support = AHPForR1CS::<E::Fr, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Marlin only needs degree 2 random polynomials.
@@ -182,6 +225,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
     }
 }
 
+#[async_trait(?Send)]
 impl<E: PairingEngine, FS, MM> SNARK for MarlinSNARK<E, FS, MM>
 where
     E::Fr: PrimeField,
@@ -216,6 +260,17 @@ where
         circuit: &C,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey)> {
         let mut circuit_keys = Self::batch_circuit_setup(universal_srs, &[circuit])?;
+        assert_eq!(circuit_keys.len(), 1);
+        Ok(circuit_keys.pop().unwrap())
+    }
+
+    /// Generates the circuit proving and verifying keys.
+    /// This is a deterministic algorithm that anyone can rerun.
+    async fn circuit_setup_async<C: ConstraintSynthesizer<E::Fr>>(
+        universal_srs: &Self::UniversalSRS,
+        circuit: &C,
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey)> {
+        let mut circuit_keys = Self::batch_circuit_setup_async(universal_srs, &[circuit]).await?;
         assert_eq!(circuit_keys.len(), 1);
         Ok(circuit_keys.pop().unwrap())
     }

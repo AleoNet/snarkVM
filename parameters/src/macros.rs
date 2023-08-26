@@ -111,7 +111,7 @@ macro_rules! impl_store_and_remote_fetch {
             } else {
                 let error_msg = response.text().await?;
                 let error = format!("Failed to download from {}. Response: {}", url, error_msg);
-                $crate::errors::ParameterError::Crate("bad url", error);
+                return Err($crate::errors::ParameterError::Crate("bad url", error));
             }
             Ok(())
         }
@@ -211,9 +211,7 @@ macro_rules! impl_load_bytes_logic_remote {
             // Load remote file
             let mut buffer = vec![];
 
-            Self::$remote_fetch(&mut buffer, &url)
-            $(.$await)?;
-
+            Self::$remote_fetch(&mut buffer, &url)$(.$await)?;
             // Ensure the checksum matches.
             let candidate_checksum = checksum!(&buffer);
             if $expected_checksum != candidate_checksum {
@@ -223,21 +221,17 @@ macro_rules! impl_load_bytes_logic_remote {
             cfg_if::cfg_if! {
                 if #[cfg(not(feature = "wasm"))] {
                     match Self::store_bytes(&buffer, &file_path) {
-                        Ok(()) => buffer,
                         Err(_) => {
                             eprintln!(
                                 "\n❗ Error - Failed to store \"{}\" locally. Please download this file manually and ensure it is stored in {:?}.\n",
                                 $filename, file_path
                             );
-                            buffer
                         }
+                        _ = {}
                     }
-                } else if #[cfg(feature = "wasm")] {
-                    buffer
-                } else {
-                    return Err($crate::errors::ParameterError::RemoteFetchDisabled);
                 }
-            }
+            };
+            buffer
         };
 
         // Ensure the size matches.
@@ -350,13 +344,13 @@ macro_rules! impl_remote {
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
 
-                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+                let (_metadata, expected_checksum, expected_size, filename) = Self::get_filename();
 
                 impl_load_bytes_logic_remote!(
                     $remote_url,
                     $local_dir,
                     &filename,
-                    metadata,
+                    _metadata,
                     expected_checksum,
                     expected_size,
                     remote_fetch
@@ -365,13 +359,13 @@ macro_rules! impl_remote {
 
             pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
 
-                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+                let (_metadata, expected_checksum, expected_size, filename) = Self::get_filename();
 
                 impl_load_bytes_logic_remote!(
                     $remote_url,
                     $local_dir,
                     &filename,
-                    metadata,
+                    _metadata,
                     expected_checksum,
                     expected_size,
                     remote_fetch_async,
@@ -414,13 +408,13 @@ macro_rules! impl_remote {
 
             pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
 
-                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+                let (_metadata, expected_checksum, expected_size, filename) = Self::get_filename();
 
                 impl_load_bytes_logic_remote!(
                     $remote_url,
                     $local_dir,
                     &filename,
-                    metadata,
+                    _metadata,
                     expected_checksum,
                     expected_size,
                     remote_fetch
@@ -429,13 +423,13 @@ macro_rules! impl_remote {
 
             pub async fn load_bytes_async() -> Result<Vec<u8>, $crate::errors::ParameterError> {
 
-                let (metadata, expected_checksum, expected_size, filename) = Self::get_filename();
+                let (_metadata, expected_checksum, expected_size, filename) = Self::get_filename();
 
                 impl_load_bytes_logic_remote!(
                     $remote_url,
                     $local_dir,
                     &filename,
-                    metadata,
+                    _metadata,
                     expected_checksum,
                     expected_size,
                     remote_fetch_async,
