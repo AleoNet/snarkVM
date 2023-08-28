@@ -33,15 +33,15 @@ pub enum ArrayType<N: Network> {
 impl<N: Network> ArrayType<N> {
     /// Initializes a new array type composed of literals.
     pub fn new_literal(literal_type: LiteralType, length: U32<N>) -> Result<Self> {
-        ensure!(*length as usize >= N::MIN_ARRAY_ENTRIES, "An array must have {} element", N::MIN_ARRAY_ENTRIES);
-        ensure!(*length as usize <= N::MAX_ARRAY_ENTRIES, "An array can contain {} elements", N::MAX_ARRAY_ENTRIES);
+        ensure!(*length as usize >= N::MIN_ARRAY_ELEMENTS, "An array must have {} element", N::MIN_ARRAY_ELEMENTS);
+        ensure!(*length as usize <= N::MAX_ARRAY_ELEMENTS, "An array can contain {} elements", N::MAX_ARRAY_ELEMENTS);
         Ok(Self::Literal(literal_type, length))
     }
 
     /// Initializes a new array type composed of structs.
     pub fn new_struct(struct_: Identifier<N>, length: U32<N>) -> Result<Self> {
-        ensure!(*length as usize >= N::MIN_ARRAY_ENTRIES, "An array must have {} element", N::MIN_ARRAY_ENTRIES);
-        ensure!(*length as usize <= N::MAX_ARRAY_ENTRIES, "An array can contain {} elements", N::MAX_ARRAY_ENTRIES);
+        ensure!(*length as usize >= N::MIN_ARRAY_ELEMENTS, "An array must have {} element", N::MIN_ARRAY_ELEMENTS);
+        ensure!(*length as usize <= N::MAX_ARRAY_ELEMENTS, "An array can contain {} elements", N::MAX_ARRAY_ELEMENTS);
         Ok(Self::Struct(struct_, length))
     }
 }

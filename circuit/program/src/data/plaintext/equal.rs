@@ -32,7 +32,18 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(false),
             },
-            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::constant(false),
+            (Self::Array(a, _), Self::Array(b, _)) => match a.len() == b.len() {
+                true => {
+                    // Recursively check each element for equality.
+                    let mut equal = Boolean::constant(true);
+                    for (plaintext_a, plaintext_b) in a.iter().zip_eq(b.iter()) {
+                        equal &= plaintext_a.is_equal(plaintext_b);
+                    }
+                    equal
+                }
+                false => Boolean::constant(false),
+            },
+            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::constant(false),
         }
     }
 
@@ -51,7 +62,18 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(true),
             },
-            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::constant(true),
+            (Self::Array(a, _), Self::Array(b, _)) => match a.len() == b.len() {
+                true => {
+                    // Recursively check each element for inequality.
+                    let mut not_equal = Boolean::constant(false);
+                    for (plaintext_a, plaintext_b) in a.iter().zip_eq(b.iter()) {
+                        not_equal |= plaintext_a.is_not_equal(plaintext_b);
+                    }
+                    not_equal
+                }
+                false => Boolean::constant(true),
+            },
+            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::constant(true),
         }
     }
 }

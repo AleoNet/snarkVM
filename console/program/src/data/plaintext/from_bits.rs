@@ -69,6 +69,21 @@ impl<N: Network> FromBits for Plaintext<N> {
             // Cache the plaintext bits, and return the struct.
             Ok(Self::Struct(members, OnceCell::with_value(bits_le.to_vec())))
         }
+        // Array
+        else if variant == [true, false] {
+            let num_elements = u32::from_bits_le(next_bits(32)?)?;
+
+            let mut elements = Vec::with_capacity(num_elements as usize);
+            for _ in 0..num_elements {
+                let element_size = u16::from_bits_le(next_bits(16)?)?;
+                let element = Plaintext::from_bits_le(next_bits(element_size as usize)?)?;
+
+                elements.push(element);
+            }
+
+            // Cache the plaintext bits, and return the array.
+            Ok(Self::Array(elements, OnceCell::with_value(bits_le.to_vec())))
+        }
         // Unknown variant.
         else {
             bail!("Unknown plaintext variant - {variant:?}");
@@ -128,6 +143,21 @@ impl<N: Network> FromBits for Plaintext<N> {
 
             // Cache the plaintext bits, and return the struct.
             Ok(Self::Struct(members, OnceCell::with_value(bits_be.to_vec())))
+        }
+        // Array
+        else if variant == [true, false] {
+            let num_elements = u32::from_bits_be(next_bits(32)?)?;
+
+            let mut elements = Vec::with_capacity(num_elements as usize);
+            for _ in 0..num_elements {
+                let element_size = u16::from_bits_be(next_bits(16)?)?;
+                let element = Plaintext::from_bits_be(next_bits(element_size as usize)?)?;
+
+                elements.push(element);
+            }
+
+            // Cache the plaintext bits, and return the array.
+            Ok(Self::Array(elements, OnceCell::with_value(bits_be.to_vec())))
         }
         // Unknown variant.
         else {

@@ -193,6 +193,8 @@ impl<N: Network> Stack<N> {
                 }
                 // If `plaintext` is a struct, this is a mismatch.
                 Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected literal, found struct"),
+                // If `plaintext` is an array, this is a mismatch.
+                Plaintext::Array(..) => bail!("'{plaintext_type}' is invalid: expected literal, found array"),
             },
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct name is valid.
@@ -213,6 +215,7 @@ impl<N: Network> Stack<N> {
                 let members = match plaintext {
                     Plaintext::Literal(..) => bail!("'{struct_name}' is invalid: expected struct, found literal"),
                     Plaintext::Struct(members, ..) => members,
+                    Plaintext::Array(..) => bail!("'{struct_name}' is invalid: expected struct, found array"),
                 };
 
                 // Ensure the number of struct members does not exceed the maximum.
