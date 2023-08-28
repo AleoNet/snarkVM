@@ -22,11 +22,10 @@ use std::{
     str::FromStr,
 };
 
-/// A register `Access`.
+/// A helper type for accessing an entry in a register, struct, array, or record.
 #[derive(Clone)]
 pub enum Access<A: Aleo> {
-    // TODO (d0cd): Add the index variant.
-    /// The access is a member.
+    /// Access a member of a register, struct, or record.
     Member(Identifier<A>),
 }
 
@@ -35,9 +34,10 @@ impl<A: Aleo> Inject for Access<A> {
     type Primitive = console::Access<A::Network>;
 
     /// Initializes a new access circuit from a primitive.
-    fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
+    /// Note: Access types are always `Mode::Constant`.
+    fn new(_m: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
-            Self::Primitive::Member(identifier) => Self::Member(Identifier::new(mode, identifier)),
+            Self::Primitive::Member(identifier) => Self::Member(Identifier::new(_m, identifier)),
         }
     }
 }

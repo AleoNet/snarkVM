@@ -15,11 +15,11 @@
 use super::*;
 
 impl<A: Aleo> Plaintext<A> {
-    /// Returns the plaintext from the given path.
-    pub fn find(&self, path: &[Access<A>]) -> Result<Plaintext<A>> {
+    /// Returns the plaintext member from the given path.
+    pub fn find<A0: Into<Access<A>> + Clone + Debug>(&self, path: &[A0]) -> Result<Plaintext<A>> {
         // Ensure the path is not empty.
         if path.is_empty() {
-            A::halt("Attempted to find plaintext with an empty path.")
+            A::halt("Attempted to find member with an empty path.")
         }
 
         match self {
@@ -35,10 +35,10 @@ impl<A: Aleo> Plaintext<A> {
 
                 // Iterate through the path to retrieve the value.
                 for (i, access) in path.iter().enumerate() {
-                    let Access::Member(identifier) = access;
+                    let Access::Member(identifier) = access.clone().into();
                     // If this is not the last item in the path, ensure the value is a struct.
                     if i != path.len() - 1 {
-                        match submembers.get(identifier) {
+                        match submembers.get(&identifier) {
                             // Halts if the member is not a struct.
                             Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
                             // Retrieve the member and update `submembers` for the next iteration.
@@ -49,7 +49,7 @@ impl<A: Aleo> Plaintext<A> {
                     }
                     // Otherwise, return the final member.
                     else {
-                        match submembers.get(identifier) {
+                        match submembers.get(&identifier) {
                             // Return the plaintext member.
                             Some(plaintext) => output = Some(plaintext.clone()),
                             // Halts if the member does not exist.
