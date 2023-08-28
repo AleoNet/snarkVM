@@ -301,7 +301,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             .iter()
             .cloned()
             .map(|confirmed| to_confirmed_tuple(confirmed))
-            .collect::<Result<Vec<_>, anyhow::Error>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
 
         atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.

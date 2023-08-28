@@ -16,9 +16,9 @@ use super::*;
 
 impl<N: Network> Plaintext<N> {
     /// Returns the plaintext member from the given path.
-    pub fn find(&self, path: &[Identifier<N>]) -> Result<Plaintext<N>> {
+    pub fn find<A: Into<Access<N>> + Copy + Debug>(&self, path: &[A]) -> Result<Plaintext<N>> {
         // Ensure the path is not empty.
-        ensure!(!path.is_empty(), "Attempted to find member with an empty path.");
+        ensure!(!path.is_empty(), "Attempted to find a member with an empty path.");
 
         match self {
             // Halts if the value is not a struct.
@@ -32,10 +32,11 @@ impl<N: Network> Plaintext<N> {
                 let mut output = None;
 
                 // Iterate through the path to retrieve the value.
-                for (i, identifier) in path.iter().enumerate() {
+                for (i, access) in path.iter().enumerate() {
+                    let Access::Member(identifier) = (*access).into();
                     // If this is not the last item in the path, ensure the value is a struct.
                     if i != path.len() - 1 {
-                        match submembers.get(identifier) {
+                        match submembers.get(&identifier) {
                             // Halts if the member is not a struct.
                             Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
                             // Retrieve the member and update `submembers` for the next iteration.
@@ -46,7 +47,7 @@ impl<N: Network> Plaintext<N> {
                     }
                     // Otherwise, return the final member.
                     else {
-                        match submembers.get(identifier) {
+                        match submembers.get(&identifier) {
                             // Return the plaintext member.
                             Some(plaintext) => output = Some(plaintext.clone()),
                             // Halts if the member does not exist.

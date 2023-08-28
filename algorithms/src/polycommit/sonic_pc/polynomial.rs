@@ -79,12 +79,12 @@ impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
 impl<F: Field> LabeledPolynomial<F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
     pub fn new(
-        label: PolynomialLabel,
+        label: impl Into<PolynomialLabel>,
         polynomial: impl Into<Polynomial<'static, F>>,
-        degree_bound: Option<usize>,
-        hiding_bound: Option<usize>,
+        degree_bound: impl Into<Option<usize>>,
+        hiding_bound: impl Into<Option<usize>>,
     ) -> Self {
-        let info = PolynomialInfo::new(label, degree_bound, hiding_bound);
+        let info = PolynomialInfo::new(label.into(), degree_bound.into(), hiding_bound.into());
         Self { info, polynomial: polynomial.into() }
     }
 

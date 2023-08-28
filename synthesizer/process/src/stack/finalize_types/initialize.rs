@@ -64,8 +64,8 @@ impl<N: Network> FinalizeTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 
@@ -87,8 +87,8 @@ impl<N: Network> FinalizeTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 }
@@ -204,7 +204,7 @@ impl<N: Network> FinalizeTypes<N> {
         }
         // Get the destination register.
         let destination = contains.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
         self.add_destination(destination, PlaintextType::Literal(LiteralType::Boolean))?;
@@ -238,7 +238,7 @@ impl<N: Network> FinalizeTypes<N> {
         }
         // Get the destination register.
         let destination = get.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
         self.add_destination(destination, *mapping_value_type)?;
@@ -282,7 +282,7 @@ impl<N: Network> FinalizeTypes<N> {
         }
         // Get the destination register.
         let destination = get_or_use.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
         self.add_destination(destination, *mapping_value_type)?;
@@ -304,7 +304,7 @@ impl<N: Network> FinalizeTypes<N> {
 
         // Get the destination register.
         let destination = rand_chacha.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
 
         // Get the destination type.
@@ -408,7 +408,7 @@ impl<N: Network> FinalizeTypes<N> {
         for (destination, destination_type) in
             instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
         {
-            // Ensure the destination register is a locator (and does not reference a member).
+            // Ensure the destination register is a locator (and does not reference an access).
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
             // Ensure that the destination type is a plaintext type.
             let destination_type = match destination_type {

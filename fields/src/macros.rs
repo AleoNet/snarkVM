@@ -140,15 +140,15 @@ macro_rules! sqrt_impl {
                     s
                 };
 
-                let calc_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
+                let calculate_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
                     l_s.iter().take(j).sum::<u64>() + 1 + l_s.iter().skip(i + 1).sum::<u64>()
                 };
 
-                let calc_gamma = |i: usize, q_s: &[u64], last: bool| -> $Self {
+                let calculate_gamma = |i: usize, q_s: &[u64], last: bool| -> $Self {
                     let mut gamma = $Self::one();
                     if i != 0 {
                         q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q, l))| {
-                            let mut kappa = calc_kappa(i, j, &l_s);
+                            let mut kappa = calculate_kappa(i, j, &l_s);
                             if last {
                                 kappa -= 1;
                             }
@@ -172,7 +172,7 @@ macro_rules! sqrt_impl {
                     // Calculate g^t.
                     // This algorithm deviates from the standard description in the paper, and is
                     // explained in detail in page 6, in section 2.1.
-                    let gamma = calc_gamma(i, &q_s, false);
+                    let gamma = calculate_gamma(i, &q_s, false);
                     let alpha = x * gamma;
                     q_s.push(
                         eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l },
@@ -180,7 +180,7 @@ macro_rules! sqrt_impl {
                 });
 
                 // Calculate g^{t/2}.
-                let gamma = calc_gamma(k as usize, &q_s, true);
+                let gamma = calculate_gamma(k as usize, &q_s, true);
                 Some(*$self * v * gamma)
             }
         }

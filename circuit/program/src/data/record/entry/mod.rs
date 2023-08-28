@@ -17,7 +17,7 @@ mod find;
 mod num_randomizers;
 mod to_bits;
 
-use crate::{Ciphertext, Identifier, Plaintext, Visibility};
+use crate::{Access, Ciphertext, Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean};
 
