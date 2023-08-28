@@ -18,6 +18,7 @@
 #[repr(u16)]
 pub enum MapID {
     Block(BlockMap),
+    Committee(CommitteeMap),
     Deployment(DeploymentMap),
     Execution(ExecutionMap),
     Fee(FeeMap),
@@ -34,6 +35,7 @@ impl From<MapID> for u16 {
     fn from(id: MapID) -> u16 {
         match id {
             MapID::Block(id) => id as u16,
+            MapID::Committee(id) => id as u16,
             MapID::Deployment(id) => id as u16,
             MapID::Execution(id) => id as u16,
             MapID::Fee(id) => id as u16,
@@ -59,12 +61,23 @@ pub enum BlockMap {
     ID = DataID::BlockIDMap as u16,
     ReverseID = DataID::BlockReverseIDMap as u16,
     Header = DataID::BlockHeaderMap as u16,
+    Authority = DataID::BlockAuthorityMap as u16,
     Transactions = DataID::BlockTransactionsMap as u16,
     ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
     Ratifications = DataID::BlockRatificationsMap as u16,
     CoinbaseSolution = DataID::BlockCoinbaseSolutionMap as u16,
     CoinbasePuzzleCommitment = DataID::BlockCoinbasePuzzleCommitmentMap as u16,
-    Signature = DataID::BlockSignatureMap as u16,
+}
+
+/// The RocksDB map prefix for committee-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum CommitteeMap {
+    CurrentRound = DataID::CurrentRoundMap as u16,
+    RoundToHeight = DataID::RoundToHeightMap as u16,
+    Committee = DataID::CommitteeMap as u16,
 }
 
 /// The RocksDB map prefix for deployment-related entries.
@@ -178,6 +191,9 @@ pub enum ProgramMap {
 #[repr(u16)]
 pub enum TestMap {
     Test = DataID::Test as u16,
+    Test2 = DataID::Test2 as u16,
+    Test3 = DataID::Test3 as u16,
+    Test4 = DataID::Test4 as u16,
 }
 
 /// The RocksDB map prefix.
@@ -194,12 +210,16 @@ enum DataID {
     BlockIDMap,
     BlockReverseIDMap,
     BlockHeaderMap,
+    BlockAuthorityMap,
     BlockTransactionsMap,
     BlockConfirmedTransactionsMap,
     BlockRatificationsMap,
     BlockCoinbaseSolutionMap,
     BlockCoinbasePuzzleCommitmentMap,
-    BlockSignatureMap,
+    // Committee
+    CurrentRoundMap,
+    RoundToHeightMap,
+    CommitteeMap,
     // Deployment
     DeploymentIDMap,
     DeploymentEditionMap,
@@ -252,4 +272,10 @@ enum DataID {
     // Testing
     #[cfg(test)]
     Test,
+    #[cfg(test)]
+    Test2,
+    #[cfg(test)]
+    Test3,
+    #[cfg(test)]
+    Test4,
 }

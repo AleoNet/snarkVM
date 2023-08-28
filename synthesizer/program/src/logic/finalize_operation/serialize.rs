@@ -44,6 +44,10 @@ impl<N: Network> Serialize for FinalizeOperation<N> {
                         operation.serialize_field("mapping_id", mapping_id)?;
                         operation.serialize_field("index", index)?;
                     }
+                    Self::ReplaceMapping(mapping_id) => {
+                        operation.serialize_field("type", "replace_mapping")?;
+                        operation.serialize_field("mapping_id", mapping_id)?;
+                    }
                     Self::RemoveMapping(mapping_id) => {
                         operation.serialize_field("type", "remove_mapping")?;
                         operation.serialize_field("mapping_id", mapping_id)?;
@@ -99,6 +103,12 @@ impl<'de, N: Network> Deserialize<'de> for FinalizeOperation<N> {
                         let index = DeserializeExt::take_from_value::<D>(&mut operation, "index")?;
                         // Return the operation.
                         Self::RemoveKeyValue(mapping_id, index)
+                    }
+                    Some("replace_mapping") => {
+                        // Deserialize the mapping ID.
+                        let mapping_id = DeserializeExt::take_from_value::<D>(&mut operation, "mapping_id")?;
+                        // Return the operation.
+                        Self::ReplaceMapping(mapping_id)
                     }
                     Some("remove_mapping") => {
                         // Deserialize the mapping ID.

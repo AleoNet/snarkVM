@@ -31,7 +31,6 @@ mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
-mod execute_fee;
 mod finalize;
 mod verify_deployment;
 mod verify_execution;
@@ -43,7 +42,19 @@ mod tests;
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Literal, Locator, Plaintext, ProgramID, Record, Request, Response, Value},
+    program::{
+        Identifier,
+        Literal,
+        LiteralType,
+        Locator,
+        Plaintext,
+        ProgramID,
+        Record,
+        Request,
+        Response,
+        Value,
+        ValueType,
+    },
     types::{Field, U16, U64},
 };
 use ledger_block::{Deployment, Execution, Fee, Input, Transition};
@@ -149,27 +160,14 @@ impl<N: Network> Process<N> {
         let stack = Stack::new(&process, &program)?;
         lap!(timer, "Initialize stack");
 
-        // Synthesize the 'credits.aleo' circuit keys.
+        // Synthesize the 'credits.aleo' verifying keys.
         for function_name in program.functions().keys() {
-            // Load the proving key.
-            let proving_key = N::get_credits_proving_key(function_name.to_string())?;
-            stack.insert_proving_key(function_name, ProvingKey::new(proving_key.clone()))?;
-            lap!(timer, "Load proving key for {function_name}");
-
             // Load the verifying key.
             let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
             stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone()))?;
             lap!(timer, "Load verifying key for {function_name}");
         }
         lap!(timer, "Load circuit keys");
-
-        // Initialize the inclusion proving key.
-        let _ = N::inclusion_proving_key();
-        lap!(timer, "Load inclusion proving key");
-
-        // Initialize the inclusion verifying key.
-        let _ = N::inclusion_verifying_key();
-        lap!(timer, "Load inclusion verifying key");
 
         // Add the stack to the process.
         process.add_stack(stack);

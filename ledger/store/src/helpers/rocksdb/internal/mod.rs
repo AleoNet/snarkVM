@@ -33,7 +33,10 @@ use std::{
     borrow::Borrow,
     marker::PhantomData,
     ops::Deref,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize},
+        Arc,
+    },
 };
 
 pub const PREFIX_LEN: usize = 4; // N::ID (u16) + DataID (u16)
@@ -61,6 +64,12 @@ pub struct RocksDB {
     network_id: u16,
     /// The optional development ID.
     dev: Option<u16>,
+    /// The low-level database transaction that gets executed atomically at the end
+    /// of a real-run `atomic_finalize` or the outermost `atomic_batch_scope`.
+    pub(super) atomic_batch: Arc<Mutex<rocksdb::WriteBatch>>,
+    /// The depth of the current atomic write batch; it gets incremented with every call
+    /// to `start_atomic` and decremented with each call to `finish_atomic`.
+    pub(super) atomic_depth: Arc<AtomicUsize>,
 }
 
 impl Deref for RocksDB {
@@ -98,7 +107,13 @@ impl Database for RocksDB {
                     Arc::new(rocksdb::DB::open(&options, primary)?)
                 };
 
-                Ok::<_, anyhow::Error>(RocksDB { rocksdb, network_id, dev })
+                Ok::<_, anyhow::Error>(RocksDB {
+                    rocksdb,
+                    network_id,
+                    dev,
+                    atomic_batch: Default::default(),
+                    atomic_depth: Default::default(),
+                })
             })?
             .clone();
 
@@ -128,7 +143,7 @@ impl Database for RocksDB {
             context,
             batch_in_progress: Default::default(),
             atomic_batch: Default::default(),
-            checkpoint: Default::default(),
+            checkpoints: Default::default(),
         })
     }
 }
@@ -158,7 +173,13 @@ impl RocksDB {
                 Arc::new(rocksdb::DB::open(&options, primary)?)
             };
 
-            Ok::<_, anyhow::Error>(RocksDB { rocksdb, network_id: u16::MAX, dev })
+            Ok::<_, anyhow::Error>(RocksDB {
+                rocksdb,
+                network_id: u16::MAX,
+                dev,
+                atomic_batch: Default::default(),
+                atomic_depth: Default::default(),
+            })
         }?;
 
         // Ensure the database development ID match.
@@ -188,7 +209,7 @@ impl RocksDB {
             context,
             batch_in_progress: Default::default(),
             atomic_batch: Default::default(),
-            checkpoint: Default::default(),
+            checkpoints: Default::default(),
         })
     }
 }

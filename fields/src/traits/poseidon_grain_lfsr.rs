@@ -39,11 +39,7 @@ impl PoseidonGrainLFSR {
         state[1] = true;
 
         // b2, ..., b5 describes the S-BOX
-        if is_sbox_an_inverse {
-            state[5] = true;
-        } else {
-            state[5] = false;
-        }
+        state[5] = is_sbox_an_inverse;
 
         // b6, ..., b17 are the binary representation of n (prime_num_bits)
         {
@@ -81,11 +77,8 @@ impl PoseidonGrainLFSR {
             }
         }
 
-        #[allow(clippy::needless_range_loop)]
         // b50, ..., b79 are set to 1
-        for i in 50..=79 {
-            state[i] = true;
-        }
+        state[50..=79].copy_from_slice(&[true; 30]);
 
         // Initialize.
         let mut res = Self { field_size_in_bits, state, head: 0 };

@@ -487,9 +487,12 @@ mod tests {
 
         // Sample the transactions.
         for transaction in [
-            ledger_test_helpers::sample_deployment_transaction(rng),
-            ledger_test_helpers::sample_execution_transaction_with_fee(rng),
-            ledger_test_helpers::sample_fee_transaction(rng),
+            ledger_test_helpers::sample_deployment_transaction(true, rng),
+            ledger_test_helpers::sample_deployment_transaction(false, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(true, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(false, rng),
+            ledger_test_helpers::sample_fee_private_transaction(rng),
+            ledger_test_helpers::sample_fee_public_transaction(rng),
         ] {
             let transaction_id = transaction.id();
 
@@ -522,43 +525,46 @@ mod tests {
     fn test_find_transaction_id() {
         let rng = &mut TestRng::default();
 
-        // Sample the execution transaction.
-        let transaction = ledger_test_helpers::sample_execution_transaction_with_fee(rng);
-        let transaction_id = transaction.id();
-        let transition_ids = match transaction {
-            Transaction::Execute(_, ref execution, _) => {
-                execution.transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
+        // Sample the transactions.
+        for transaction in [
+            ledger_test_helpers::sample_deployment_transaction(true, rng),
+            ledger_test_helpers::sample_deployment_transaction(false, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(true, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(false, rng),
+            ledger_test_helpers::sample_fee_private_transaction(rng),
+            ledger_test_helpers::sample_fee_public_transaction(rng),
+        ] {
+            let transaction_id = transaction.id();
+            let transition_ids = transaction.transition_ids();
+
+            // Initialize a new transition store.
+            let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
+            // Initialize a new transaction store.
+            let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
+
+            // Ensure the execution transaction does not exist.
+            let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
+
+            for transition_id in transition_ids {
+                // Ensure the transaction ID is not found.
+                let candidate = transaction_store.find_transaction_id_from_transition_id(transition_id).unwrap();
+                assert_eq!(None, candidate);
+
+                // Insert the transaction.
+                transaction_store.insert(&transaction).unwrap();
+
+                // Find the transaction ID.
+                let candidate = transaction_store.find_transaction_id_from_transition_id(transition_id).unwrap();
+                assert_eq!(Some(transaction_id), candidate);
+
+                // Remove the transaction.
+                transaction_store.remove(&transaction_id).unwrap();
+
+                // Ensure the transaction ID is not found.
+                let candidate = transaction_store.find_transaction_id_from_transition_id(transition_id).unwrap();
+                assert_eq!(None, candidate);
             }
-            _ => panic!("Incorrect transaction type"),
-        };
-
-        // Initialize a new transition store.
-        let transition_store = TransitionStore::<_, TransitionMemory<_>>::open(None).unwrap();
-        // Initialize a new transaction store.
-        let transaction_store = TransactionStore::<_, TransactionMemory<_>>::open(transition_store).unwrap();
-
-        // Ensure the execution transaction does not exist.
-        let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
-        assert_eq!(None, candidate);
-
-        for transition_id in transition_ids {
-            // Ensure the transaction ID is not found.
-            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
-            assert_eq!(None, candidate);
-
-            // Insert the transaction.
-            transaction_store.insert(&transaction).unwrap();
-
-            // Find the transaction ID.
-            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
-            assert_eq!(Some(transaction_id), candidate);
-
-            // Remove the transaction.
-            transaction_store.remove(&transaction_id).unwrap();
-
-            // Ensure the transaction ID is not found.
-            let candidate = transaction_store.find_transaction_id_from_transition_id(&transition_id).unwrap();
-            assert_eq!(None, candidate);
         }
     }
 }

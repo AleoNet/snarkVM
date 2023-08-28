@@ -40,3 +40,31 @@ impl<N: Network> Process<N> {
         verification
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentAleo = circuit::network::AleoV0;
+
+    /// Use `cargo test profiler --features timer` to run this test.
+    #[ignore]
+    #[test]
+    fn test_profiler() -> Result<()> {
+        let rng = &mut TestRng::default();
+
+        // Initialize the process.
+        let process = Process::load()?;
+
+        // Fetch the large program to deploy.
+        let large_program = Program::from_str(include_str!("./resources/large_functions.aleo"))?;
+
+        // Create a deployment for the program.
+        let deployment = process.deploy::<CurrentAleo, _>(&large_program, rng)?;
+
+        // Verify the deployment.
+        assert!(process.verify_deployment::<CurrentAleo, _>(&deployment, rng).is_ok());
+
+        bail!("\n\nRemember to #[ignore] this test!\n\n")
+    }
+}

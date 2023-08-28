@@ -87,7 +87,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_types::{environment::Circuit, Eject};
+    use snarkvm_circuit_types::environment::{Circuit, Eject};
 
     use anyhow::Result;
 

@@ -18,7 +18,7 @@
 #![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
 
 use console::network::{prelude::*, FiatShamir};
-use snarkvm_algorithms::{snark::marlin, traits::SNARK};
+use snarkvm_algorithms::{snark::varuna, traits::SNARK};
 
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ use std::sync::Arc;
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
-type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, marlin::MarlinHidingMode>;
+type Varuna<N> = varuna::VarunaSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, varuna::VarunaHidingMode>;
 
 mod certificate;
 pub use certificate::Certificate;
@@ -46,8 +46,11 @@ pub use verifying_key::VerifyingKey;
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use circuit::prelude::{Assignment, Circuit, Eject, Environment, Field, Inject, Mode, NumOne, One};
-    use console::network::Testnet3;
+    use circuit::{
+        environment::{Assignment, Circuit, Eject, Environment, Inject, Mode, One},
+        types::Field,
+    };
+    use console::{network::Testnet3, prelude::One as _};
 
     use once_cell::sync::OnceCell;
 
@@ -134,16 +137,16 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod test {
     use super::*;
-    use circuit::prelude::{Circuit, Environment, NumOne};
+    use circuit::environment::{Circuit, Environment};
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_marlin() {
+    fn test_varuna() {
         let assignment = crate::test_helpers::sample_assignment();
 
-        // Marlin setup, prove, and verify.
+        // Varuna setup, prove, and verify.
         let srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
         let (proving_key, verifying_key) = srs.to_circuit_key("test", &assignment).unwrap();
         println!("Called circuit setup");

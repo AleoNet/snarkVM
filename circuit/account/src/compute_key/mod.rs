@@ -12,16 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod equal;
+mod from;
 mod from_private_key;
+mod helpers;
+mod ternary;
 mod to_address;
 
 #[cfg(test)]
-use snarkvm_circuit_types::environment::assert_scope;
+use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::PrivateKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Group, Scalar};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
+#[derive(Clone)]
 pub struct ComputeKey<A: Aleo> {
     /// The signature public key `pk_sig` := G^sk_sig.
     pk_sig: Group<A>,
@@ -41,10 +46,8 @@ impl<A: Aleo> Inject for ComputeKey<A> {
         let pk_sig = Group::new(mode, compute_key.pk_sig());
         // Inject `pr_sig`.
         let pr_sig = Group::new(mode, compute_key.pr_sig());
-        // Compute `sk_prf` := HashToScalar(G^sk_sig || G^r_sig).
-        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
         // Output the compute key.
-        Self { pk_sig, pr_sig, sk_prf }
+        Self::from((pk_sig, pr_sig))
     }
 }
 

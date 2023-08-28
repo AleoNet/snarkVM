@@ -19,8 +19,8 @@ mod string;
 use crate::{Input, Transition};
 use console::{
     network::prelude::*,
-    program::{Literal, Plaintext},
-    types::U64,
+    program::{Literal, Plaintext, Value},
+    types::{Address, Field, U64},
 };
 use synthesizer_snark::Proof;
 
@@ -36,22 +36,74 @@ pub struct Fee<N: Network> {
 
 impl<N: Network> Fee<N> {
     /// Initializes a new `Fee` instance with the given transition, global state root, and proof.
-    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, proof: Option<Proof<N>>) -> Self {
-        // Return the new `Fee` instance.
-        Self { transition, global_state_root, proof }
+    pub fn from(transition: Transition<N>, global_state_root: N::StateRoot, proof: Option<Proof<N>>) -> Result<Self> {
+        // Ensure the transition is correct for a fee function.
+        match transition.is_fee_private() || transition.is_fee_public() {
+            true => Ok(Self::from_unchecked(transition, global_state_root, proof)),
+            false => bail!("Invalid fee transition locator"),
+        }
     }
 
+    /// Initializes a new `Fee` instance with the given transition, global state root, and proof.
+    pub const fn from_unchecked(
+        transition: Transition<N>,
+        global_state_root: N::StateRoot,
+        proof: Option<Proof<N>>,
+    ) -> Self {
+        Self { transition, global_state_root, proof }
+    }
+}
+
+impl<N: Network> Fee<N> {
+    /// Returns `true` if this is a `fee_private` transition.
+    #[inline]
+    pub fn is_fee_private(&self) -> bool {
+        self.transition.is_fee_private()
+    }
+
+    /// Returns `true` if this is a `fee_public` transition.
+    #[inline]
+    pub fn is_fee_public(&self) -> bool {
+        self.transition.is_fee_public()
+    }
+}
+
+impl<N: Network> Fee<N> {
     /// Returns 'true' if the fee amount is zero.
     pub fn is_zero(&self) -> Result<bool> {
         self.amount().map(|amount| amount.is_zero())
     }
 
+    /// Returns the payer, if the fee is public.
+    pub fn payer(&self) -> Option<Address<N>> {
+        // Retrieve the payer.
+        match self.transition.finalize().and_then(|f| f.get(0)) {
+            Some(Value::Plaintext(Plaintext::Literal(Literal::Address(address), _))) => Some(*address),
+            _ => None,
+        }
+    }
+
     /// Returns the amount (in microcredits).
     pub fn amount(&self) -> Result<U64<N>> {
+        // Determine the input index for the amount.
+        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
+        let input_index = if self.transition.finalize().is_none() { 1 } else { 0 };
         // Retrieve the amount (in microcredits) as a plaintext value.
-        match self.transition.inputs().get(1) {
+        match self.transition.inputs().get(input_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
             _ => bail!("Failed to retrieve the fee (in microcredits) from the fee transition"),
+        }
+    }
+
+    /// Returns the deployment or execution ID.
+    pub fn deployment_or_execution_id(&self) -> Result<Field<N>> {
+        // Determine the input index for the deployment or execution ID.
+        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
+        let input_index = if self.transition.finalize().is_none() { 2 } else { 1 };
+        // Retrieve the deployment or execution ID as a plaintext value.
+        match self.transition.inputs().get(input_index) {
+            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(id), _)))) => Ok(*id),
+            _ => bail!("Failed to retrieve the deployment or execution ID from the fee transition"),
         }
     }
 
@@ -102,21 +154,24 @@ pub mod test_helpers {
     type CurrentNetwork = console::network::Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
-    /// Samples a random hardcoded fee.
-    pub fn sample_fee_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+    /// Samples a random hardcoded private fee.
+    pub fn sample_fee_private_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
         static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Sample a deployment or execution ID.
                 let deployment_or_execution_id = Field::rand(rng);
                 // Sample a fee.
-                sample_fee(deployment_or_execution_id, rng)
+                sample_fee_private(deployment_or_execution_id, rng)
             })
             .clone()
     }
 
-    /// Samples a random fee.
-    pub fn sample_fee(deployment_or_execution_id: Field<CurrentNetwork>, rng: &mut TestRng) -> Fee<CurrentNetwork> {
+    /// Samples a random private fee.
+    pub fn sample_fee_private(
+        deployment_or_execution_id: Field<CurrentNetwork>,
+        rng: &mut TestRng,
+    ) -> Fee<CurrentNetwork> {
         // Sample the genesis block, transaction, and private key.
         let (block, transaction, private_key) = crate::test_helpers::sample_genesis_block_and_components(rng);
         // Retrieve a credits record.
@@ -128,9 +183,57 @@ pub mod test_helpers {
 
         // Initialize the process.
         let process = Process::load().unwrap();
-        // Compute the fee trace.
-        let (_, _, mut trace) =
-            process.execute_fee::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+        // Authorize the fee.
+        let authorization =
+            process.authorize_fee_private(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+        // Construct the fee trace.
+        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+        // Insert the block into the block store.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+        block_store.insert(&FromStr::from_str(&block.to_string()).unwrap()).unwrap();
+
+        // Prepare the assignments.
+        trace.prepare(Query::from(block_store)).unwrap();
+        // Compute the proof and construct the fee.
+        let fee = trace.prove_fee::<CurrentAleo, _>(rng).unwrap();
+
+        // Convert the fee.
+        // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+        Fee::from_str(&fee.to_string()).unwrap()
+    }
+
+    /// Samples a random hardcoded public fee.
+    pub fn sample_fee_public_hardcoded(rng: &mut TestRng) -> Fee<CurrentNetwork> {
+        static INSTANCE: OnceCell<Fee<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Sample a deployment or execution ID.
+                let deployment_or_execution_id = Field::rand(rng);
+                // Sample a fee.
+                sample_fee_public(deployment_or_execution_id, rng)
+            })
+            .clone()
+    }
+
+    /// Samples a random public fee.
+    pub fn sample_fee_public(
+        deployment_or_execution_id: Field<CurrentNetwork>,
+        rng: &mut TestRng,
+    ) -> Fee<CurrentNetwork> {
+        // Sample the genesis block and private key.
+        let (block, _, private_key) = crate::test_helpers::sample_genesis_block_and_components(rng);
+        // Set the fee amount.
+        let fee = 10_000_000;
+
+        // Initialize the process.
+        let process = Process::load().unwrap();
+        // Authorize the fee.
+        let authorization = process.authorize_fee_public(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+        // Construct the fee trace.
+        let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
         // Initialize a new block store.
         let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();

@@ -57,18 +57,16 @@ macro_rules! cast_mut_ref {
 macro_rules! process {
     // Example: process!(self, logic)
     ($self:ident, $logic:ident) => {{
-        // Process the logic.
         match N::ID {
             console::network::Testnet3::ID => {
                 // Cast the process.
                 let process = (&$self.process as &dyn std::any::Any)
                     .downcast_ref::<Arc<RwLock<Process<console::network::Testnet3>>>>()
-                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))
-                    .unwrap();
-
+                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($self.process)))?;
+                // Process the logic.
                 $logic!(process.read(), console::network::Testnet3, circuit::AleoV0)
             }
-            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
+            _ => bail!("Unsupported VM configuration for network: {}", N::ID),
         }
     }};
 }

@@ -16,44 +16,47 @@
 #![allow(clippy::too_many_arguments)]
 #![warn(clippy::cast_possible_truncation)]
 
-pub use snarkvm_console_network_environment as environment;
-
-#[cfg(feature = "address")]
-pub use snarkvm_console_types_address as address;
-#[cfg(feature = "address")]
-pub use snarkvm_console_types_address::Address;
-
-#[cfg(feature = "boolean")]
-pub use snarkvm_console_types_boolean as boolean;
-#[cfg(feature = "boolean")]
-pub use snarkvm_console_types_boolean::Boolean;
-
-#[cfg(feature = "field")]
-pub use snarkvm_console_types_field as field;
-#[cfg(feature = "field")]
-pub use snarkvm_console_types_field::Field;
-
-#[cfg(feature = "group")]
-pub use snarkvm_console_types_group as group;
-#[cfg(feature = "group")]
-pub use snarkvm_console_types_group::Group;
-
-#[cfg(feature = "integers")]
-pub use snarkvm_console_types_integers as integers;
-#[cfg(feature = "integers")]
-pub use snarkvm_console_types_integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
-
-#[cfg(feature = "scalar")]
-pub use snarkvm_console_types_scalar as scalar;
-#[cfg(feature = "scalar")]
-pub use snarkvm_console_types_scalar::Scalar;
-
-#[cfg(feature = "string")]
-pub use snarkvm_console_types_string as string;
-#[cfg(feature = "string")]
-pub use snarkvm_console_types_string::StringType;
-
+pub use modules::*;
 pub mod prelude {
-    pub use super::*;
+    pub use crate::modules::*;
     pub use snarkvm_console_network_environment::prelude::*;
+}
+
+pub mod modules {
+    pub use snarkvm_console_network_environment as environment;
+
+    #[cfg(feature = "address")]
+    pub use snarkvm_console_types_address as address;
+    #[cfg(feature = "address")]
+    pub use snarkvm_console_types_address::Address;
+
+    #[cfg(feature = "boolean")]
+    pub use snarkvm_console_types_boolean as boolean;
+    #[cfg(feature = "boolean")]
+    pub use snarkvm_console_types_boolean::Boolean;
+
+    #[cfg(feature = "field")]
+    pub use snarkvm_console_types_field as field;
+    #[cfg(feature = "field")]
+    pub use snarkvm_console_types_field::Field;
+
+    #[cfg(feature = "group")]
+    pub use snarkvm_console_types_group as group;
+    #[cfg(feature = "group")]
+    pub use snarkvm_console_types_group::Group;
+
+    #[cfg(feature = "integers")]
+    pub use snarkvm_console_types_integers as integers;
+    #[cfg(feature = "integers")]
+    pub use snarkvm_console_types_integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
+
+    #[cfg(feature = "scalar")]
+    pub use snarkvm_console_types_scalar as scalar;
+    #[cfg(feature = "scalar")]
+    pub use snarkvm_console_types_scalar::Scalar;
+
+    #[cfg(feature = "string")]
+    pub use snarkvm_console_types_string as string;
+    #[cfg(feature = "string")]
+    pub use snarkvm_console_types_string::StringType;
 }

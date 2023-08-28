@@ -23,12 +23,69 @@ pub struct Authorization<N: Network> {
     requests: Arc<RwLock<VecDeque<Request<N>>>>,
 }
 
+impl<N: Network> From<Vec<Request<N>>> for Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given request.
+    fn from(requests: Vec<Request<N>>) -> Self {
+        Self { requests: Arc::new(RwLock::new(VecDeque::from(requests))) }
+    }
+}
+
+impl<N: Network> From<Request<N>> for Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given request.
+    fn from(request: Request<N>) -> Self {
+        Self::from(vec![request])
+    }
+}
+
+impl<N: Network> From<&Request<N>> for Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given request.
+    fn from(request: &Request<N>) -> Self {
+        Self::from(request.clone())
+    }
+}
+
 impl<N: Network> Authorization<N> {
-    /// Initialize a new `Authorization` instance, with the given requests.
-    pub fn new(requests: &[Request<N>]) -> Self {
-        Self { requests: Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))) }
+    /// Returns `true` if the authorization is for call to `credits.aleo/fee_private`.
+    pub fn is_fee_private(&self) -> bool {
+        let requests = self.requests.read();
+        match requests.len() {
+            1 => {
+                let program_id = requests[0].program_id().to_string();
+                let function_name = requests[0].function_name().to_string();
+                &program_id == "credits.aleo" && &function_name == "fee_private"
+            }
+            _ => false,
+        }
     }
 
+    /// Returns `true` if the authorization is for call to `credits.aleo/fee_public`.
+    pub fn is_fee_public(&self) -> bool {
+        let requests = self.requests.read();
+        match requests.len() {
+            1 => {
+                let program_id = requests[0].program_id().to_string();
+                let function_name = requests[0].function_name().to_string();
+                &program_id == "credits.aleo" && &function_name == "fee_public"
+            }
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the authorization is for call to `credits.aleo/split`.
+    pub fn is_split(&self) -> bool {
+        let requests = self.requests.read();
+        match requests.len() {
+            1 => {
+                let program_id = requests[0].program_id().to_string();
+                let function_name = requests[0].function_name().to_string();
+                &program_id == "credits.aleo" && &function_name == "split"
+            }
+            _ => false,
+        }
+    }
+}
+
+impl<N: Network> Authorization<N> {
     /// Returns a new and independent replica of the authorization.
     pub fn replicate(&self) -> Self {
         Self { requests: Arc::new(RwLock::new(self.requests.read().clone())) }

@@ -46,7 +46,7 @@ impl<'de, N: Network> Deserialize<'de> for Fee<N> {
                 // Retrieve the proof.
                 let proof = DeserializeExt::take_from_value::<D>(&mut fee, "proof")?;
                 // Recover the fee.
-                Ok(Self::from(transition, global_state_root, proof))
+                Self::from(transition, global_state_root, proof).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "fee"),
         }
@@ -61,8 +61,20 @@ mod tests {
     fn test_serde_json() -> Result<()> {
         let rng = &mut TestRng::default();
 
-        // Sample the fee.
-        let expected = crate::transaction::fee::test_helpers::sample_fee_hardcoded(rng);
+        // Sample the private fee.
+        let expected = crate::transaction::fee::test_helpers::sample_fee_private_hardcoded(rng);
+
+        // Serialize
+        let expected_string = &expected.to_string();
+        let candidate_string = serde_json::to_string(&expected)?;
+        assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+
+        // Deserialize
+        assert_eq!(expected, Fee::from_str(expected_string)?);
+        assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+
+        // Sample the public fee.
+        let expected = crate::transaction::fee::test_helpers::sample_fee_public_hardcoded(rng);
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -80,8 +92,20 @@ mod tests {
     fn test_bincode() -> Result<()> {
         let rng = &mut TestRng::default();
 
-        // Sample the fee.
-        let expected = crate::transaction::fee::test_helpers::sample_fee_hardcoded(rng);
+        // Sample the private fee.
+        let expected = crate::transaction::fee::test_helpers::sample_fee_private_hardcoded(rng);
+
+        // Serialize
+        let expected_bytes = expected.to_bytes_le()?;
+        let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
+        assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
+
+        // Deserialize
+        assert_eq!(expected, Fee::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
+
+        // Sample the public fee.
+        let expected = crate::transaction::fee::test_helpers::sample_fee_public_hardcoded(rng);
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

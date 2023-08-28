@@ -148,8 +148,8 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 /// `cargo run --example setup [variant]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Invalid number of arguments. Given: {} - Required: 2", args.len() - 1);
+    if args.len() < 2 {
+        eprintln!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
         return Ok(());
     }
 
