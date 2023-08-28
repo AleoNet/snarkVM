@@ -23,13 +23,12 @@ impl<N: Network> FromBytes for Register<N> {
             0 => Ok(Self::Locator(locator)),
             1 => {
                 // Read the number of accesses.
-                // TODO (d0cd): Should this be restricted to a u8, since it must be <= N::MAX_DATA_DEPTH?
                 let num_accesses = u16::read_le(&mut reader)?;
-                // Read the accesses.
-                let mut accesses = Vec::with_capacity(num_accesses as usize);
-                for _ in 0..num_accesses {
-                    accesses.push(Access::read_le(&mut reader)?);
+                if num_accesses as usize > N::MAX_DATA_DEPTH {
+                    return Err(error("Failed to deserialize register: Register access exceeds maximum depth"));
                 }
+                // Read the accesses.
+                let accesses = (0..num_accesses).map(|_| Access::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
                 Ok(Self::Access(locator, accesses))
             }
             2.. => Err(error(format!("Failed to deserialize register variant {variant}"))),
@@ -53,10 +52,7 @@ impl<N: Network> ToBytes for Register<N> {
 
                 u8::write_le(&1u8, &mut writer)?;
                 variable_length_integer(locator).write_le(&mut writer)?;
-                // TODO (d0cd): Should this be restricted to a u8, since it must be <= N::MAX_DATA_DEPTH?
-                u16::try_from(accesses.len())
-                    .or_halt_with::<N>("Register path length exceeds u16::MAX")
-                    .write_le(&mut writer)?;
+                u16::try_from(accesses.len()).map_err(error)?.write_le(&mut writer)?;
                 accesses.write_le(&mut writer)
             }
         }
