@@ -30,7 +30,7 @@ impl<N: Network> Parser for Input<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the register from the string.
         let (string, register) = map_res(Register::parse, |register| {
-            // Ensure the register is not a register member.
+            // Ensure the register is not a register access.
             match &register {
                 Register::Locator(..) => Ok(register),
                 Register::Access(..) => Err(error(format!("Input register {register} cannot be a register member"))),
