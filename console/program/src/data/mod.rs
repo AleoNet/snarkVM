@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod access;
+pub use access::Access;
+
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 

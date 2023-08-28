@@ -16,7 +16,7 @@ use super::*;
 
 impl<A: Aleo> Plaintext<A> {
     /// Returns the plaintext member from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Plaintext<A>> {
+    pub fn find<A0: Into<Access<A>> + Clone + Debug>(&self, path: &[A0]) -> Result<Plaintext<A>> {
         // Ensure the path is not empty.
         if path.is_empty() {
             A::halt("Attempted to find member with an empty path.")
@@ -25,7 +25,7 @@ impl<A: Aleo> Plaintext<A> {
         match self {
             // Halts if the value is not a struct.
             Self::Literal(..) => A::halt("Literal is not a struct"),
-            // Retrieve the value of the member (from the value).
+            // Retrieve the value of the access (from the value).
             Self::Struct(members, ..) => {
                 // Initialize the members starting from the top-level.
                 let mut submembers = members;
@@ -34,10 +34,11 @@ impl<A: Aleo> Plaintext<A> {
                 let mut output = None;
 
                 // Iterate through the path to retrieve the value.
-                for (i, identifier) in path.iter().enumerate() {
+                for (i, access) in path.iter().enumerate() {
+                    let Access::Member(identifier) = access.clone().into();
                     // If this is not the last item in the path, ensure the value is a struct.
                     if i != path.len() - 1 {
-                        match submembers.get(identifier) {
+                        match submembers.get(&identifier) {
                             // Halts if the member is not a struct.
                             Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
                             // Retrieve the member and update `submembers` for the next iteration.
@@ -48,7 +49,7 @@ impl<A: Aleo> Plaintext<A> {
                     }
                     // Otherwise, return the final member.
                     else {
-                        match submembers.get(identifier) {
+                        match submembers.get(&identifier) {
                             // Return the plaintext member.
                             Some(plaintext) => output = Some(plaintext.clone()),
                             // Halts if the member does not exist.

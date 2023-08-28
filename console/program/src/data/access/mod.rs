@@ -12,23 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+mod bytes;
+mod parse;
+mod serialize;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+use crate::Identifier;
+use snarkvm_console_network::prelude::*;
 
-pub(super) mod identifier;
-pub use identifier::Identifier;
+/// A helper type for accessing an entry in a register, struct, array, or record.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Access<N: Network> {
+    /// Access a member of a register, struct, or record.
+    Member(Identifier<N>),
+}
 
-mod literal;
-pub use literal::Literal;
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
+impl<N: Network> From<Identifier<N>> for Access<N> {
+    /// Initializes a new member access from an identifier.
+    #[inline]
+    fn from(identifier: Identifier<N>) -> Self {
+        Self::Member(identifier)
+    }
+}
