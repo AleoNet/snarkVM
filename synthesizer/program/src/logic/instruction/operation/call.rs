@@ -500,7 +500,7 @@ mod tests {
             CallOperator::from_str("transfer").unwrap(),
             vec![
                 Operand::Register(Register::Access(0, vec![Access::from(Identifier::from_str("owner").unwrap())])),
-                Operand::Register(Register::Access(0, vec![Access::Member(
+                Operand::Register(Register::Access(0, vec![Access::from(
                     Identifier::from_str("token_amount").unwrap(),
                 )])),
             ],
