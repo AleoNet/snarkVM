@@ -31,6 +31,7 @@ use synthesizer_program::{
     StackProgram,
 };
 
+use console::program::Access;
 use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -98,27 +99,28 @@ impl<N: Network> FinalizeTypes<N> {
                 .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         };
 
-        // Retrieve the member path if the register is a member. Otherwise, return the type.
+        // Retrieve the path if the register is an access. Otherwise, return the type.
         let path = match &register {
             // If the register is a locator, then output the register type.
             Register::Locator(..) => return Ok(plaintext_type),
-            // If the register is a member, then traverse the member path to output the register type.
-            Register::Member(_, path) => {
-                // Ensure the member path is valid.
-                ensure!(!path.is_empty(), "Register '{register}' references no members.");
-                // Output the member path.
+            // If the register is an access, then traverse the path to output the register type.
+            Register::Access(_, path) => {
+                // Ensure the path is valid.
+                ensure!(!path.is_empty(), "Register '{register}' references no accesses.");
+                // Output the path.
                 path
             }
         };
 
-        // Traverse the member path to find the register type.
+        // Traverse the path to find the register type.
         for path_name in path.iter() {
             // Update the register type at each step.
             plaintext_type = match &plaintext_type {
-                // Ensure the plaintext type is not a literal, as the register references a member.
+                // Ensure the plaintext type is not a literal, as the register references an access.
                 PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
-                // Traverse the member path to output the register type.
+                // Access the member on the path to output the register type.
                 PlaintextType::Struct(struct_name) => {
+                    let Access::Member(path_name) = path_name;
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
@@ -128,7 +130,7 @@ impl<N: Network> FinalizeTypes<N> {
                 }
             }
         }
-        // Output the member type.
+        // Output the plaintext type.
         Ok(plaintext_type)
     }
 }

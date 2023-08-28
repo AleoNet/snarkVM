@@ -18,6 +18,7 @@ mod matches;
 use console::{
     network::prelude::*,
     program::{
+        Access,
         EntryType,
         Identifier,
         LiteralType,
@@ -114,27 +115,28 @@ impl<N: Network> RegisterTypes<N> {
                 .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         };
 
-        // Retrieve the member path if the register is a member. Otherwise, return the register type.
+        // Retrieve the path if the register is an access. Otherwise, return the register type.
         let path = match &register {
             // If the register is a locator, then output the register type.
             Register::Locator(..) => return Ok(register_type),
-            // If the register is a member, then traverse the member path to output the register type.
-            Register::Member(_, path) => {
-                // Ensure the member path is valid.
-                ensure!(!path.is_empty(), "Register '{register}' references no members.");
-                // Output the member path.
+            // If the register is an access, then traverse the path to output the register type.
+            Register::Access(_, path) => {
+                // Ensure the path is valid.
+                ensure!(!path.is_empty(), "Register '{register}' references no accesses.");
+                // Output the path.
                 path
             }
         };
 
-        // Traverse the member path to find the register type.
+        // Traverse the path to find the register type.
         for path_name in path.iter() {
             // Update the register type at each step.
             register_type = match &register_type {
-                // Ensure the plaintext type is not a literal, as the register references a member.
+                // Ensure the plaintext type is not a literal, as the register references an access.
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
-                // Traverse the member path to output the register type.
+                // Traverse the path to output the register type.
                 RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                    let Access::Member(path_name) = path_name;
                     // Retrieve the member type from the struct.
                     match stack.program().get_struct(struct_name)?.members().get(path_name) {
                         // Update the member type.
@@ -146,10 +148,11 @@ impl<N: Network> RegisterTypes<N> {
                     // Ensure the record type exists.
                     ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");
                     // Retrieve the member type from the record.
-                    if path_name == &Identifier::from_str("owner")? {
+                    if path_name == &Access::Member(Identifier::from_str("owner")?) {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
                     } else {
+                        let Access::Member(path_name) = path_name;
                         // Retrieve the entry type from the record.
                         match stack.program().get_record(record_name)?.entries().get(path_name) {
                             // Update the entry type.
@@ -166,10 +169,11 @@ impl<N: Network> RegisterTypes<N> {
                     // Ensure the external record type exists.
                     ensure!(stack.contains_external_record(locator), "External record '{locator}' does not exist");
                     // Retrieve the member type from the external record.
-                    if path_name == &Identifier::from_str("owner")? {
+                    if path_name == &Access::Member(Identifier::from_str("owner")?) {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
                     } else {
+                        let Access::Member(path_name) = path_name;
                         // Retrieve the entry type from the external record.
                         match stack.get_external_record(locator)?.entries().get(path_name) {
                             // Update the entry type.
@@ -184,7 +188,7 @@ impl<N: Network> RegisterTypes<N> {
                 }
             }
         }
-        // Output the member type.
+        // Output the register type.
         Ok(register_type)
     }
 }
