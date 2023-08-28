@@ -26,22 +26,6 @@ pub enum Access<N: Network> {
     Member(Identifier<N>),
 }
 
-impl<N: Network> From<&str> for Access<N> {
-    /// Initializes a new member access from a string.
-    #[inline]
-    fn from(string: &str) -> Self {
-        Self::Member(Identifier::from_str(string).unwrap())
-    }
-}
-
-impl<N: Network> From<String> for Access<N> {
-    /// Initializes a new member access from a string.
-    #[inline]
-    fn from(string: String) -> Self {
-        Self::Member(Identifier::from_str(&string).unwrap())
-    }
-}
-
 impl<N: Network> From<Identifier<N>> for Access<N> {
     /// Initializes a new member access from an identifier.
     #[inline]

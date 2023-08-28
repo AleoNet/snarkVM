@@ -499,7 +499,7 @@ mod tests {
             "call transfer r0.owner r0.token_amount into r1 r2 r3",
             CallOperator::from_str("transfer").unwrap(),
             vec![
-                Operand::Register(Register::Access(0, vec![Access::Member(Identifier::from_str("owner").unwrap())])),
+                Operand::Register(Register::Access(0, vec![Access::from(Identifier::from_str("owner").unwrap())])),
                 Operand::Register(Register::Access(0, vec![Access::Member(
                     Identifier::from_str("token_amount").unwrap(),
                 )])),

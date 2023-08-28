@@ -104,7 +104,7 @@ impl<N: Network> Process<N> {
 /// Ensures the record contains a sufficient balance to pay the fee.
 fn ensure_record_balance<N: Network>(record: &Record<N, Plaintext<N>>, fee_in_microcredits: u64) -> Result<()> {
     // Retrieve the balance from the record.
-    let balance = match record.find(&["microcredits"]) {
+    let balance = match record.find(&[Identifier::from_str("microcredits")?]) {
         Ok(console::program::Entry::Private(Plaintext::Literal(Literal::U64(amount), _))) => *amount,
         _ => bail!("The fee record does not contain a 'microcredits' entry"),
     };
