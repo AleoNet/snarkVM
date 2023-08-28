@@ -14,7 +14,7 @@
 
 use crate::Identifier;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Eject, Inject, Mode, Parser, ParserResult};
+use snarkvm_circuit_types::environment::prelude::*;
 
 use std::{
     fmt,

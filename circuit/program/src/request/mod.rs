@@ -21,7 +21,7 @@ mod verify;
 use crate::{Identifier, Plaintext, ProgramID, Record, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar, U16};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U16};
 
 pub enum InputID<A: Aleo> {
     /// The hash of the constant input.

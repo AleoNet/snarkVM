@@ -16,27 +16,29 @@ use super::*;
 
 impl<N: Network> ToBits for Identifier<N> {
     /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<bool> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<bool> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        (&self).write_bits_be(vec);
     }
 }
 
 impl<N: Network> ToBits for &Identifier<N> {
     /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<bool> {
-        self.0.to_bits_le()[..8 * self.1 as usize].to_vec()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.0.write_bits_le(vec);
+        vec.truncate(initial_len + 8 * self.1 as usize);
     }
 
     /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits = self.to_bits_le();
-        bits.reverse();
-        bits
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        let initial_len = vec.len();
+        self.write_bits_le(vec);
+        vec[initial_len..].reverse();
     }
 }
 

@@ -18,6 +18,7 @@ use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter_mut, serialize::*};
 
+use num_traits::CheckedDiv;
 use rand::Rng;
 use std::{
     fmt,
@@ -201,7 +202,7 @@ impl<'a, 'b, F: Field> Add<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
             // Zip safety: `result` and `other` could have different lengths.
             cfg_iter_mut!(result.coeffs).zip(&self.coeffs).for_each(|(a, b)| *a += b);
             // If the leading coefficient ends up being zero, pop it off.
-            while result.coeffs.last().unwrap().is_zero() {
+            while let Some(true) = self.coeffs.last().map(|c| c.is_zero()) {
                 result.coeffs.pop();
             }
             result
@@ -224,10 +225,10 @@ impl<'a, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
             self.coeffs.resize(other.coeffs.len(), F::zero());
             // Zip safety: `self` and `other` have the same length.
             cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a += b);
-            // If the leading coefficient ends up being zero, pop it off.
-            while self.coeffs.last().unwrap().is_zero() {
-                self.coeffs.pop();
-            }
+        }
+        // If the leading coefficient ends up being zero, pop it off.
+        while let Some(true) = self.coeffs.last().map(|c| c.is_zero()) {
+            self.coeffs.pop();
         }
     }
 }
@@ -272,7 +273,7 @@ impl<'a, F: Field> AddAssign<(F, &'a DensePolynomial<F>)> for DensePolynomial<F>
                 *a += f * b;
             });
             // If the leading coefficient ends up being zero, pop it off.
-            while self.coeffs.last().unwrap().is_zero() {
+            while let Some(true) = self.coeffs.last().map(|c| c.is_zero()) {
                 self.coeffs.pop();
             }
         }
@@ -318,7 +319,7 @@ impl<'a, 'b, F: Field> Sub<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
             });
             if !result.is_zero() {
                 // If the leading coefficient ends up being zero, pop it off.
-                while result.coeffs.last().unwrap().is_zero() {
+                while result.coeffs.last().map(|c| c.is_zero()) == Some(true) {
                     result.coeffs.pop();
                 }
             }
@@ -347,7 +348,7 @@ impl<'a, F: Field> SubAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
             // Zip safety: self and other have the same length after the resize.
             cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a -= b);
             // If the leading coefficient ends up being zero, pop it off.
-            while self.coeffs.last().unwrap().is_zero() {
+            while let Some(true) = self.coeffs.last().map(|c| c.is_zero()) {
                 self.coeffs.pop();
             }
         }
@@ -392,11 +393,38 @@ impl<'a, F: Field> Sub<&'a super::SparsePolynomial<F>> for DensePolynomial<F> {
 impl<'a, 'b, F: Field> Div<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
     type Output = DensePolynomial<F>;
 
+    /// This division can panic and ignores remainders
     #[inline]
     fn div(self, divisor: &'a DensePolynomial<F>) -> DensePolynomial<F> {
         let a: Polynomial<_> = self.into();
         let b: Polynomial<_> = divisor.into();
         a.divide_with_q_and_r(&b).expect("division failed").0
+    }
+}
+
+impl<F: Field> Div<DensePolynomial<F>> for DensePolynomial<F> {
+    type Output = DensePolynomial<F>;
+
+    /// This division can panic and ignores remainders
+    #[inline]
+    fn div(self, divisor: DensePolynomial<F>) -> DensePolynomial<F> {
+        let a: Polynomial<_> = self.into();
+        let b: Polynomial<_> = divisor.into();
+        a.divide_with_q_and_r(&b).expect("division failed").0
+    }
+}
+
+impl<F: Field> CheckedDiv for DensePolynomial<F> {
+    #[inline]
+    fn checked_div(&self, divisor: &DensePolynomial<F>) -> Option<DensePolynomial<F>> {
+        let a: Polynomial<_> = self.into();
+        let b: Polynomial<_> = divisor.into();
+        let res = a.divide_with_q_and_r(&b);
+        if let Some((divisor, remainder)) = res {
+            if remainder.is_zero() { Some(divisor) } else { None }
+        } else {
+            None
+        }
     }
 }
 
@@ -472,6 +500,7 @@ impl<F: Field> DerefMut for DensePolynomial<F> {
 #[cfg(test)]
 mod tests {
     use crate::fft::polynomial::*;
+    use num_traits::CheckedDiv;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::{Field, One, Zero};
     use snarkvm_utilities::rand::{TestRng, Uniform};
@@ -540,7 +569,7 @@ mod tests {
             "1".parse().unwrap(),
         ]);
         let divisor = DensePolynomial::from_coefficients_slice(&[Fr::one(), Fr::one()]); // Construct a monic linear polynomial.
-        let result = &dividend / &divisor;
+        let result = dividend.checked_div(&divisor).unwrap();
         let expected_result = DensePolynomial::from_coefficients_slice(&[
             "4".parse().unwrap(),
             "4".parse().unwrap(),

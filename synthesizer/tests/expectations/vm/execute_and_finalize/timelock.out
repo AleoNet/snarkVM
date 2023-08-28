@@ -2,9 +2,9 @@
     timelock.aleo/lock:
       outputs: []
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4491561189808098883093845015891842095976293434608571154990439009109435428001field","checksum":"4996771749119914888139738238079865985617042485162388697891351596113337523102field","value":"record1qyqsq9jtjxwleyp4wwzc3xfghucfy4whxwr3ftkrssyeaftwzfvyzrg9qyxx66trwfhkxun9v35hguerqqpqzqr3wrwdvzvs43tjqph9r65rj3nswa4uwljfrjy49tfgzljatwzwqmqez49x9lz30gxa7mqy2hzf6hwrp4rhr8yxmw3n7rju7sjfwd4q6n2ckm4"}'
+      - '{"type":"record","id":"3136577677495521282545661861403057240732487854259448967596734495987373428854field","checksum":"651980376224882979469682091293592253925292894943020556401496947779271991382field","value":"record1qyqspmxa6hf672z4g02lsyr39dza2ewvwlzl80lh9eh3d3vyyhe08vs2qyxx66trwfhkxun9v35hguerqqpqzqxk3u4y8tzkd93ykrlc7syrx68zz509h6nkfn4mtw0php83nl4upftd0nnhpkll5z5zu5q6u4xk9zhx8sneztwswkedqg946rlak2fpq2zzzv7"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -12,9 +12,9 @@
     timelock.aleo/lock:
       outputs: []
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"2129739391819769390433616069357061840013631118346688863179042550350464327166field","checksum":"696070081700349486650863375683711312904296313991413705970562224287411084937field","value":"record1qyqsp9anhcxt3arvt40dcksqw2qw9w37nax0fgs5ag2cccgu2yvy8jcrqyxx66trwfhkxun9v35hguerqqpqzqrjp8qzhlwzdzrnkmxtnuwje4n786t5830zx3fn5mlr9u6x6ucupqc993weknewlk2td3nsjfnlf52y9tch298228xlqcycgqaylkdqy2nhxuw"}'
+      - '{"type":"record","id":"2075853995151469721522969948157527933953893487615129161386071358759473701244field","checksum":"7590013800060194483114290526468399173095010050391665704688241552680710646436field","value":"record1qyqsqdy4cnc0h9efy44m295jgeyg5407ga0e0728s0rehz47wjlet4cwqyxx66trwfhkxun9v35hguerqqpqzqq4vj690ry2t8lw20yr6ddxceqwslx5sjkcv70frksvu00xddu2zyas8035g5rxsw7pny6954txf4ncgjsy60h3ujtuqnlje3ezc203yf8qm9d"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.14.1"
+version = "0.14.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -62,8 +62,17 @@ members = [
   "curves",
   "fields",
   "ledger",
+  "ledger/authority",
   "ledger/block",
   "ledger/coinbase",
+  "ledger/committee",
+  "ledger/narwhal",
+  "ledger/narwhal/batch-certificate",
+  "ledger/narwhal/batch-header",
+  "ledger/narwhal/data",
+  "ledger/narwhal/subdag",
+  "ledger/narwhal/transmission",
+  "ledger/narwhal/transmission-id",
   "ledger/query",
   "ledger/store",
   "ledger/test-helpers",
@@ -110,6 +119,7 @@ cli = [
   "anyhow",
   "clap",
   "colored",
+  "dotenvy",
   "rand",
   "self_update",
   "serde_json",
@@ -121,8 +131,8 @@ cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 noconfig = [ ]
 rocks = [ "snarkvm-ledger/rocks" ]
+test-helpers = [ "snarkvm-ledger/test-helpers" ]
 timer = [ "snarkvm-ledger/timer" ]
-ed25519 = [ "snarkvm-console/ed25519" ]
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
@@ -136,60 +146,60 @@ wasm = [ "snarkvm-wasm" ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-console]
 path = "./console"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-synthesizer]
 path = "./synthesizer"
-version = "=0.14.1"
+version = "=0.14.6"
 default-features = false
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.snarkvm-wasm]
 path = "./wasm"
-version = "=0.14.1"
+version = "=0.14.6"
 optional = true
 
 [dependencies.anstyle]
 version = "1"
 
 [dependencies.anyhow]
-version = "1.0.71"
+version = "1.0.73"
 optional = true
 
 [dependencies.clap]
@@ -199,6 +209,10 @@ optional = true
 
 [dependencies.colored]
 version = "2"
+optional = true
+
+[dependencies.dotenvy]
+version = "0.15"
 optional = true
 
 [dependencies.indexmap]
@@ -245,7 +259,7 @@ version = "1.3"
 version = "0.11.2"
 
 [dev-dependencies.tempfile]
-version = "3.6"
+version = "3.8"
 
 [build-dependencies.walkdir]
 version = "2"

@@ -16,10 +16,7 @@ use super::*;
 
 impl<N: Network> FromBytes for Access<N> {
     /// Reads the access from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
             0 => Ok(Self::Member(Identifier::read_le(&mut reader)?)),
@@ -30,13 +27,10 @@ impl<N: Network> FromBytes for Access<N> {
 
 impl<N: Network> ToBytes for Access<N> {
     /// Write the access to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Access::Member(identifier) => {
-                u8::write_le(&0u8, &mut writer)?;
+                0u8.write_le(&mut writer)?;
                 identifier.write_le(&mut writer)
             }
         }

@@ -17,13 +17,35 @@ mod parse;
 mod serialize;
 
 use crate::Identifier;
-
 use snarkvm_console_network::prelude::*;
 
-/// A register `Access`.
+/// A helper type for accessing an entry in a register, struct, array, or record.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Access<N: Network> {
-    // TODO (d0cd): Introduce the `Index` variant.
-    /// The access is a member.
+    /// Access a member of a register, struct, or record.
     Member(Identifier<N>),
+}
+
+impl<N: Network> From<&str> for Access<N> {
+    /// Initializes a new member access from a string.
+    #[inline]
+    fn from(string: &str) -> Self {
+        Self::Member(Identifier::from_str(string).unwrap())
+    }
+}
+
+impl<N: Network> From<String> for Access<N> {
+    /// Initializes a new member access from a string.
+    #[inline]
+    fn from(string: String) -> Self {
+        Self::Member(Identifier::from_str(&string).unwrap())
+    }
+}
+
+impl<N: Network> From<Identifier<N>> for Access<N> {
+    /// Initializes a new member access from an identifier.
+    #[inline]
+    fn from(identifier: Identifier<N>) -> Self {
+        Self::Member(identifier)
+    }
 }

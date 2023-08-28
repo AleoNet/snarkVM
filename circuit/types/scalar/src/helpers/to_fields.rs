@@ -18,7 +18,7 @@ use snarkvm_circuit_types_field::Field;
 impl<E: Environment> ToFields for Scalar<E> {
     type Field = Field<E>;
 
-    /// Casts a string into a list of base fields.
+    /// Casts a scalar into a list of base fields.
     fn to_fields(&self) -> Vec<Self::Field> {
         vec![self.to_field()]
     }

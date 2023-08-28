@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network> Block<N> {
     /// Specifies the number of genesis transactions.
-    pub const NUM_GENESIS_TRANSACTIONS: usize = 16;
+    pub const NUM_GENESIS_TRANSACTIONS: usize = 4;
 
     /// Returns `true` if the block is a genesis block.
     pub fn is_genesis(&self) -> bool {
@@ -24,15 +24,17 @@ impl<N: Network> Block<N> {
         self.previous_hash == N::BlockHash::default()
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
+            // Ensure the genesis authority is a beacon.
+            && self.authority.is_beacon()
             // Ensure there is the correct number of accepted transaction in the genesis block.
             && self.transactions.num_accepted() == Self::NUM_GENESIS_TRANSACTIONS
             // Ensure there is the correct number of rejected transaction in the genesis block.
             && self.transactions.num_rejected() == 0
             // Ensure there is the correct number of finalize operations in the genesis block.
-            && self.transactions.num_finalize() == 0
+            && self.transactions.num_finalize() == 2 * Self::NUM_GENESIS_TRANSACTIONS
             // Ensure there is the correct number of ratification operations in the genesis block.
-            && self.ratifications.is_empty()
-            // Ensure the coinbase solution does not exist.
+            && self.ratifications.len() == 1
+            // Ensure there are no solutions in the genesis block.
             && self.coinbase.is_none()
     }
 }

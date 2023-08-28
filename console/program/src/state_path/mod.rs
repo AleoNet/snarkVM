@@ -57,6 +57,10 @@ pub struct StatePath<N: Network> {
     transaction_path: TransactionPath<N>,
     /// The transaction leaf.
     transaction_leaf: TransactionLeaf<N>,
+    /// The transition root.
+    transition_root: Field<N>,
+    /// The transition commitment.
+    tcm: Field<N>,
     /// The Merkle path for the transition leaf.
     transition_path: TransitionPath<N>,
     /// The transition leaf.
@@ -70,25 +74,30 @@ impl<N: Network> StatePath<N> {
         local_state_root: N::TransactionID,
         transaction_path: TransactionPath<N>,
         transaction_leaf: TransactionLeaf<N>,
+        transition_root: Field<N>,
+        tcm: Field<N>,
         transition_path: TransitionPath<N>,
         transition_leaf: TransitionLeaf<N>,
     ) -> Result<Self> {
         // Compute an arbitrary transactions path.
-        let transactions_tree: TransactionsTree<N> = N::merkle_tree_bhp(&[local_state_root.to_bits_le()])?;
-        let transactions_path = transactions_tree.prove(0, &local_state_root.to_bits_le())?;
+        let local_state_root_bits = local_state_root.to_bits_le();
+        let transactions_tree: TransactionsTree<N> = N::merkle_tree_bhp(&[local_state_root_bits.clone()])?;
+        let transactions_path = transactions_tree.prove(0, &local_state_root_bits)?;
         let transactions_root = transactions_tree.root();
 
         // Compute an arbitrary block header path.
         let header_leaf = HeaderLeaf::<N>::new(0, *transactions_root);
-        let header_tree: HeaderTree<N> = N::merkle_tree_bhp(&[header_leaf.to_bits_le()])?;
-        let header_path = header_tree.prove(0, &header_leaf.to_bits_le())?;
+        let header_leaf_bits = header_leaf.to_bits_le();
+        let header_tree: HeaderTree<N> = N::merkle_tree_bhp(&[header_leaf_bits.clone()])?;
+        let header_path = header_tree.prove(0, &header_leaf_bits)?;
         let header_root = *header_tree.root();
 
         // Compute an arbitrary block path.
         let previous_block_hash: N::BlockHash = Field::<N>::zero().into();
         let block_hash: N::BlockHash = previous_block_hash;
-        let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[block_hash.to_bits_le()])?;
-        let block_path = block_tree.prove(0, &block_hash.to_bits_le())?;
+        let block_hash_bits = block_hash.to_bits_le();
+        let block_tree: BlockTree<N> = N::merkle_tree_bhp(&[block_hash_bits.clone()])?;
+        let block_path = block_tree.prove(0, &block_hash_bits)?;
 
         // Return the state path.
         Ok(Self {
@@ -103,6 +112,8 @@ impl<N: Network> StatePath<N> {
             transaction_id: local_state_root,
             transaction_path,
             transaction_leaf,
+            transition_root,
+            tcm,
             transition_path,
             transition_leaf,
         })
@@ -122,6 +133,8 @@ impl<N: Network> StatePath<N> {
         transaction_id: N::TransactionID,
         transaction_path: TransactionPath<N>,
         transaction_leaf: TransactionLeaf<N>,
+        transition_root: Field<N>,
+        tcm: Field<N>,
         transition_path: TransitionPath<N>,
         transition_leaf: TransitionLeaf<N>,
     ) -> Self {
@@ -138,6 +151,8 @@ impl<N: Network> StatePath<N> {
             transaction_id,
             transaction_path,
             transaction_leaf,
+            transition_root,
+            tcm,
             transition_path,
             transition_leaf,
         }
@@ -198,6 +213,16 @@ impl<N: Network> StatePath<N> {
         &self.transaction_leaf
     }
 
+    /// Returns the transition root.
+    pub const fn transition_root(&self) -> &Field<N> {
+        &self.transition_root
+    }
+
+    /// Returns the transition commitment.
+    pub const fn tcm(&self) -> &Field<N> {
+        &self.tcm
+    }
+
     /// Returns the Merkle path for the transition leaf.
     pub const fn transition_path(&self) -> &TransitionPath<N> {
         &self.transition_path
@@ -226,14 +251,18 @@ pub mod test_helpers {
             None => Field::rand(rng),
         };
 
+        // Prepare the tcm.
+        let tcm = Field::rand(rng);
+
         // Construct the transition path and transaction leaf.
         let transition_leaf = TransitionLeaf::new_with_version(0, 3, commitment);
         let transition_tree: TransitionTree<N> = N::merkle_tree_bhp(&[transition_leaf.to_bits_le()])?;
-        let transition_id = transition_tree.root();
+        let transition_root = *transition_tree.root();
+        let transition_id = N::hash_bhp512(&(transition_root, tcm).to_bits_le())?;
         let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;
 
         // Construct the transaction path and transaction leaf.
-        let transaction_leaf = TransactionLeaf::new_execution(0, *transition_id);
+        let transaction_leaf = TransactionLeaf::new_execution(0, transition_id);
         let transaction_tree: TransactionTree<N> = N::merkle_tree_bhp(&[transaction_leaf.to_bits_le()])?;
         let transaction_id = *transaction_tree.root();
         let transaction_path = transaction_tree.prove(0, &transaction_leaf.to_bits_le())?;
@@ -271,6 +300,8 @@ pub mod test_helpers {
             transaction_id.into(),
             transaction_path,
             transaction_leaf,
+            transition_root,
+            tcm,
             transition_path,
             transition_leaf,
         ))
@@ -288,14 +319,18 @@ pub mod test_helpers {
             None => Field::rand(rng),
         };
 
+        // Prepare the tcm.
+        let tcm = Field::rand(rng);
+
         // Construct the transition path and transaction leaf.
         let transition_leaf = TransitionLeaf::new_with_version(0, 3, commitment);
         let transition_tree: TransitionTree<N> = N::merkle_tree_bhp(&[transition_leaf.to_bits_le()])?;
-        let transition_id = transition_tree.root();
+        let transition_root = *transition_tree.root();
+        let transition_id = N::hash_bhp512(&(transition_root, tcm).to_bits_le())?;
         let transition_path = transition_tree.prove(0, &transition_leaf.to_bits_le())?;
 
         // Construct the transaction path and transaction leaf.
-        let transaction_leaf = TransactionLeaf::new_execution(0, *transition_id);
+        let transaction_leaf = TransactionLeaf::new_execution(0, transition_id);
         let transaction_tree: TransactionTree<N> = N::merkle_tree_bhp(&[transaction_leaf.to_bits_le()])?;
         let transaction_id = *transaction_tree.root();
         let transaction_path = transaction_tree.prove(0, &transaction_leaf.to_bits_le())?;
@@ -336,6 +371,8 @@ pub mod test_helpers {
             transaction_id.into(),
             transaction_path,
             transaction_leaf,
+            transition_root,
+            tcm,
             transition_path,
             transition_leaf,
         ))

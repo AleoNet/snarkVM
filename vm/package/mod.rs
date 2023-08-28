@@ -15,6 +15,7 @@
 mod build;
 mod clean;
 mod deploy;
+mod execute;
 mod is_build_required;
 mod run;
 
@@ -22,28 +23,18 @@ pub use build::{BuildRequest, BuildResponse};
 pub use deploy::{DeployRequest, DeployResponse};
 
 use crate::{
-    file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
-    prelude::{
-        Deserialize,
-        Deserializer,
-        Identifier,
-        Locator,
-        Network,
-        PrivateKey,
-        ProgramID,
-        Response,
-        Serialize,
-        SerializeStruct,
-        Serializer,
-        Value,
+    console::{
+        account::PrivateKey,
+        network::Network,
+        program::{Identifier, Locator, ProgramID, Response, Value},
     },
+    file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
+    ledger::{block::Execution, query::Query, store::helpers::memory::BlockMemory},
+    prelude::{Deserialize, Deserializer, Serialize, SerializeStruct, Serializer},
     synthesizer::{
-        program::CallOperator,
+        process::{Assignments, CallMetrics, CallStack, Process, StackExecute},
+        program::{CallOperator, Instruction, Program},
         snark::{ProvingKey, VerifyingKey},
-        Instruction,
-        Process,
-        Program,
-        Trace,
     },
 };
 
@@ -210,7 +201,7 @@ record token:
     owner as address.private;
     amount as u64.private;
 
-function mint:
+function initialize:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
@@ -259,7 +250,7 @@ record token:
     owner as address.private;
     amount as u64.private;
 
-function mint:
+function initialize:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
@@ -331,11 +322,11 @@ function transfer:
         match program_id.to_string().as_str() {
             "token.aleo" => {
                 // Sample a random private key.
-                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let private_key = crate::cli::helpers::dotenv_private_key().unwrap();
                 let caller = Address::try_from(&private_key).unwrap();
 
                 // Initialize the function name.
-                let function_name = Identifier::from_str("mint").unwrap();
+                let function_name = Identifier::from_str("initialize").unwrap();
 
                 // Initialize the function inputs.
                 let r0 = Value::from_str(&caller.to_string()).unwrap();
@@ -345,7 +336,7 @@ function transfer:
             }
             "wallet.aleo" => {
                 // Initialize caller 0.
-                let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let caller0_private_key = crate::cli::helpers::dotenv_private_key().unwrap();
                 let caller0 = Address::try_from(&caller0_private_key).unwrap();
 
                 // Initialize caller 1.

@@ -26,7 +26,6 @@ use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, SerializationError, Valid, Validate},
     FromBytes,
     ToBytes,
-    ToMinimalBits,
 };
 
 use crate::srs::{UniversalProver, UniversalVerifier};
@@ -285,12 +284,6 @@ impl<E: PairingEngine> ToBytes for KZGCommitment<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut writer)
             .map_err(|_| error("could not serialize KZGCommitment"))
-    }
-}
-
-impl<E: PairingEngine> ToMinimalBits for KZGCommitment<E> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        self.0.to_minimal_bits()
     }
 }
 

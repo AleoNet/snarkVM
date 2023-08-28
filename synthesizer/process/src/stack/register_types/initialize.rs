@@ -473,6 +473,13 @@ impl<N: Network> RegisterTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
+            Opcode::Sign => {
+                // Ensure the instruction has one destination register.
+                ensure!(
+                    instruction.destinations().len() == 1,
+                    "Instruction '{instruction}' has multiple destinations."
+                );
+            }
         }
         Ok(())
     }

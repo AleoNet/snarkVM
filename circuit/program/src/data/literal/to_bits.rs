@@ -18,13 +18,13 @@ impl<A: Aleo> ToBits for Literal<A> {
     type Boolean = Boolean<A>;
 
     /// Returns the little-endian bits of the literal.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Returns the big-endian bits of the literal.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -32,46 +32,48 @@ impl<A: Aleo> ToBits for &Literal<A> {
     type Boolean = Boolean<A>;
 
     /// Returns the little-endian bits of the literal.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
+    fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Literal::Address(literal) => literal.to_bits_le(),
-            Literal::Boolean(literal) => literal.to_bits_le(),
-            Literal::Field(literal) => literal.to_bits_le(),
-            Literal::Group(literal) => literal.to_bits_le(),
-            Literal::I8(literal) => literal.to_bits_le(),
-            Literal::I16(literal) => literal.to_bits_le(),
-            Literal::I32(literal) => literal.to_bits_le(),
-            Literal::I64(literal) => literal.to_bits_le(),
-            Literal::I128(literal) => literal.to_bits_le(),
-            Literal::U8(literal) => literal.to_bits_le(),
-            Literal::U16(literal) => literal.to_bits_le(),
-            Literal::U32(literal) => literal.to_bits_le(),
-            Literal::U64(literal) => literal.to_bits_le(),
-            Literal::U128(literal) => literal.to_bits_le(),
-            Literal::Scalar(literal) => literal.to_bits_le(),
-            Literal::String(literal) => literal.to_bits_le(),
+            Literal::Address(literal) => literal.write_bits_le(vec),
+            Literal::Boolean(literal) => literal.write_bits_le(vec),
+            Literal::Field(literal) => literal.write_bits_le(vec),
+            Literal::Group(literal) => literal.write_bits_le(vec),
+            Literal::I8(literal) => literal.write_bits_le(vec),
+            Literal::I16(literal) => literal.write_bits_le(vec),
+            Literal::I32(literal) => literal.write_bits_le(vec),
+            Literal::I64(literal) => literal.write_bits_le(vec),
+            Literal::I128(literal) => literal.write_bits_le(vec),
+            Literal::U8(literal) => literal.write_bits_le(vec),
+            Literal::U16(literal) => literal.write_bits_le(vec),
+            Literal::U32(literal) => literal.write_bits_le(vec),
+            Literal::U64(literal) => literal.write_bits_le(vec),
+            Literal::U128(literal) => literal.write_bits_le(vec),
+            Literal::Scalar(literal) => literal.write_bits_le(vec),
+            Literal::Signature(literal) => literal.write_bits_le(vec),
+            Literal::String(literal) => literal.write_bits_le(vec),
         }
     }
 
     /// Returns the big-endian bits of the literal.
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+    fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Literal::Address(literal) => literal.to_bits_be(),
-            Literal::Boolean(literal) => literal.to_bits_be(),
-            Literal::Field(literal) => literal.to_bits_be(),
-            Literal::Group(literal) => literal.to_bits_be(),
-            Literal::I8(literal) => literal.to_bits_be(),
-            Literal::I16(literal) => literal.to_bits_be(),
-            Literal::I32(literal) => literal.to_bits_be(),
-            Literal::I64(literal) => literal.to_bits_be(),
-            Literal::I128(literal) => literal.to_bits_be(),
-            Literal::U8(literal) => literal.to_bits_be(),
-            Literal::U16(literal) => literal.to_bits_be(),
-            Literal::U32(literal) => literal.to_bits_be(),
-            Literal::U64(literal) => literal.to_bits_be(),
-            Literal::U128(literal) => literal.to_bits_be(),
-            Literal::Scalar(literal) => literal.to_bits_be(),
-            Literal::String(literal) => literal.to_bits_be(),
+            Literal::Address(literal) => literal.write_bits_be(vec),
+            Literal::Boolean(literal) => literal.write_bits_be(vec),
+            Literal::Field(literal) => literal.write_bits_be(vec),
+            Literal::Group(literal) => literal.write_bits_be(vec),
+            Literal::I8(literal) => literal.write_bits_be(vec),
+            Literal::I16(literal) => literal.write_bits_be(vec),
+            Literal::I32(literal) => literal.write_bits_be(vec),
+            Literal::I64(literal) => literal.write_bits_be(vec),
+            Literal::I128(literal) => literal.write_bits_be(vec),
+            Literal::U8(literal) => literal.write_bits_be(vec),
+            Literal::U16(literal) => literal.write_bits_be(vec),
+            Literal::U32(literal) => literal.write_bits_be(vec),
+            Literal::U64(literal) => literal.write_bits_be(vec),
+            Literal::U128(literal) => literal.write_bits_be(vec),
+            Literal::Scalar(literal) => literal.write_bits_be(vec),
+            Literal::Signature(literal) => literal.write_bits_be(vec),
+            Literal::String(literal) => literal.write_bits_be(vec),
         }
     }
 }

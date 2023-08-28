@@ -44,10 +44,10 @@ impl<N: Network> Parser for ArrayType<N> {
         // Parse the element type, followed by the length.
         alt((
             map_res(pair(LiteralType::parse, parse_length), |(element_type, length)| {
-                ArrayType::new_literal_array(element_type, U32::new(length))
+                ArrayType::new_literal(element_type, U32::new(length))
             }),
             map_res(pair(Identifier::parse, parse_length), |(element_type, length)| {
-                ArrayType::new_struct_array(element_type, U32::new(length))
+                ArrayType::new_struct(element_type, U32::new(length))
             }),
         ))(string)
     }

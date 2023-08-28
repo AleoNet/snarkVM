@@ -15,10 +15,7 @@
 use super::*;
 
 impl<N: Network> Parser for Access<N> {
-    fn parse(string: &str) -> ParserResult<Self>
-    where
-        Self: Sized,
-    {
+    fn parse(string: &str) -> ParserResult<Self> {
         alt((map(pair(tag("."), Identifier::parse), |(_, identifier)| Self::Member(identifier)),))(string)
     }
 }

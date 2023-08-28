@@ -19,6 +19,7 @@ pub mod from_x_coordinate;
 pub mod from_xy_coordinates;
 pub mod mul_by_cofactor;
 pub mod to_bits;
+pub mod to_field;
 pub mod to_x_coordinate;
 pub mod to_y_coordinate;
 pub mod zero;

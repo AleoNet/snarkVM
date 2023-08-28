@@ -73,18 +73,16 @@ impl<A: Aleo> ToBits for TransactionLeaf<A> {
     type Boolean = Boolean<A>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.variant.to_bits_le();
-        bits_le.extend(self.index.to_bits_le());
-        bits_le.extend(self.id.to_bits_le());
-        bits_le
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        self.variant.write_bits_le(vec);
+        self.index.write_bits_le(vec);
+        self.id.write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_be = self.variant.to_bits_be();
-        bits_be.extend(self.index.to_bits_be());
-        bits_be.extend(self.id.to_bits_be());
-        bits_be
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        self.variant.write_bits_be(vec);
+        self.index.write_bits_be(vec);
+        self.id.write_bits_be(vec);
     }
 }

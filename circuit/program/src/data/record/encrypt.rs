@@ -22,11 +22,13 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
         // Compute the record view key.
         let record_view_key = ((*self.owner).to_group() * randomizer).to_x_coordinate();
         // Encrypt the record.
-        self.encrypt_symmetric(record_view_key)
+        self.encrypt_symmetric_unchecked(record_view_key)
     }
 
     /// Encrypts `self` under the given record view key.
-    pub fn encrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Ciphertext<A>> {
+    /// Note: This method does not check that the record view key corresponds to the record owner.
+    /// Use `Self::encrypt` for the checked variant.
+    pub fn encrypt_symmetric_unchecked(&self, record_view_key: Field<A>) -> Record<A, Ciphertext<A>> {
         // Determine the number of randomizers needed to encrypt the record.
         let num_randomizers = self.num_randomizers();
         // Prepare a randomizer for each field element.
