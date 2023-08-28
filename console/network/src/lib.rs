@@ -128,6 +128,11 @@ pub trait Network:
     /// The maximum number of entries in a struct.
     const MAX_STRUCT_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
 
+    /// The minimum number of entries in an array.
+    const MIN_ARRAY_ENTRIES: usize = 1; // This ensures the array is not empty.
+    /// The maximum number of entries in an array.
+    const MAX_ARRAY_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
+
     /// The minimum number of entries in a record.
     const MIN_RECORD_ENTRIES: usize = 1; // This accounts for 'record.owner'.
     /// The maximum number of entries in a record.
