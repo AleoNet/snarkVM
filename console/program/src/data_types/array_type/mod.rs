@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn test_array_type() -> Result<()> {
         // Test literal array types.
-        let array = ArrayType::<CurrentNetwork>::from_str("[field; 4]")?;
+        let array = ArrayType::<CurrentNetwork>::from_str("[field; 4u32]")?;
         assert_eq!(array, ArrayType::<CurrentNetwork>::Literal(LiteralType::Field, U32::new(4)));
         assert_eq!(
             array.to_bytes_le()?,
@@ -95,7 +95,7 @@ mod tests {
         assert!(!array.is_empty());
 
         // Test struct array types.
-        let array = ArrayType::<CurrentNetwork>::from_str("[foo; 1]")?;
+        let array = ArrayType::<CurrentNetwork>::from_str("[foo; 1u32]")?;
         assert_eq!(array, ArrayType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?, U32::new(1)));
         assert_eq!(
             array.to_bytes_le()?,
@@ -106,7 +106,7 @@ mod tests {
         assert!(!array.is_empty());
 
         // Test array type with maximum length.
-        let array = ArrayType::<CurrentNetwork>::from_str("[scalar; 32]")?;
+        let array = ArrayType::<CurrentNetwork>::from_str("[scalar; 32u32]")?;
         assert_eq!(array, ArrayType::<CurrentNetwork>::Literal(LiteralType::Scalar, U32::new(32)));
         assert_eq!(
             array.to_bytes_le()?,
@@ -121,13 +121,16 @@ mod tests {
 
     #[test]
     fn test_array_type_fails() {
-        let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 0]");
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 0u32]");
         assert!(type_.is_err());
 
-        let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 4294967296]");
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 4294967296u32]");
         assert!(type_.is_err());
 
-        let type_ = ArrayType::<CurrentNetwork>::from_str("[foo; -1]");
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[foo; -1i32]");
+        assert!(type_.is_err());
+
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[foo; 1u8]");
         assert!(type_.is_err());
     }
 }
