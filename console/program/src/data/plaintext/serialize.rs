@@ -41,7 +41,7 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u64 = 1;
+    const ITERATIONS: u64 = 2;
 
     #[test]
     fn test_serde_json() -> Result<()> {

@@ -47,6 +47,16 @@ impl<N: Network> Plaintext<N> {
                                     None => bail!("Failed to locate member '{identifier}' in '{self}'"),
                                 }
                             }
+                            (Self::Array(array, ..), Access::Index(index)) => {
+                                match array.get(*index as usize) {
+                                    // Halts if the element is not a struct or list.
+                                    Some(Self::Literal(..)) => bail!("'{index}' must be a struct or list"),
+                                    // Retrieve the element and update `plaintext` for the next iteration.
+                                    Some(member) => plaintext = member,
+                                    // Halts if the index is out of bounds.
+                                    None => bail!("Index '{index}' for '{self}' is out of bounds"),
+                                }
+                            }
                             _ => bail!("Invalid access `{access}` for `{plaintext}`"),
                         }
                     }
@@ -59,6 +69,14 @@ impl<N: Network> Plaintext<N> {
                                     Some(member) => output = Some(member.clone()),
                                     // Halts if the member does not exist.
                                     None => bail!("Failed to locate member '{identifier}' in '{self}'"),
+                                }
+                            }
+                            (Self::Array(array, ..), Access::Index(index)) => {
+                                match array.get(*index as usize) {
+                                    // Retrieve the element and update `plaintext` for the next iteration.
+                                    Some(member) => output = Some(member.clone()),
+                                    // Halts if the index is out of bounds.
+                                    None => bail!("Index '{index}' for '{self}' is out of bounds"),
                                 }
                             }
                             _ => bail!("Invalid access `{access}` for `{plaintext}`"),

@@ -16,7 +16,20 @@ use super::*;
 
 impl<N: Network> Parser for Access<N> {
     fn parse(string: &str) -> ParserResult<Self> {
-        alt((map(pair(tag("."), Identifier::parse), |(_, identifier)| Self::Member(identifier)),))(string)
+        // A helper function to parse an index access.
+        fn parse_index(string: &str) -> ParserResult<u32> {
+            // Parse the opening bracket '['.
+            let (string, _) = tag("[")(string)?;
+            // Parse the digits from the string.
+            let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
+            // Parse the closing bracket ']' and return the value as a U32.
+            map_res(tag("]"), |_| primitive.replace('_', "").parse())(string)
+        }
+
+        alt((
+            map(parse_index, |index| Self::Index(U32::new(index))),
+            map(pair(tag("."), Identifier::parse), |(_, identifier)| Self::Member(identifier)),
+        ))(string)
     }
 }
 
@@ -51,6 +64,8 @@ impl<N: Network> Display for Access<N> {
         match self {
             // Prints the access member, i.e. `.foo`
             Self::Member(identifier) => write!(f, ".{}", identifier),
+            // Prints the access index, i.e. `[0]`
+            Self::Index(index) => write!(f, "[{}]", **index),
         }
     }
 }
@@ -65,6 +80,7 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         assert_eq!(Access::parse(".data"), Ok(("", Access::<CurrentNetwork>::Member(Identifier::from_str("data")?))));
+        assert_eq!(Access::parse("[0]"), Ok(("", Access::<CurrentNetwork>::Index(U32::new(0)))));
         Ok(())
     }
 
@@ -92,6 +108,7 @@ mod tests {
     #[test]
     fn test_display() -> Result<()> {
         assert_eq!(Access::<CurrentNetwork>::Member(Identifier::from_str("foo")?).to_string(), ".foo");
+        assert_eq!(Access::<CurrentNetwork>::Index(U32::new(0)).to_string(), "[0]");
         Ok(())
     }
 }

@@ -154,7 +154,7 @@ mod tests {
             OnceCell::new(),
         ));
 
-        // Test a random struct with list members.
+        // Test a random struct with array members.
         run_test(Plaintext::<Circuit>::Struct(
             IndexMap::from_iter(
                 vec![

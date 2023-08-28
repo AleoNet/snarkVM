@@ -23,8 +23,8 @@ impl<A: Aleo> Plaintext<A> {
         }
 
         match self {
-            // Halts if the value is not a struct.
-            Self::Literal(..) => A::halt("Literal is not a struct"),
+            // Halts if the value is not a struct or an array.
+            Self::Literal(..) => A::halt("A literal is not a struct or an array"),
             // Retrieve the value of the member (from the value).
             Self::Struct(..) | Self::Array(..) => {
                 // Initialize the plaintext starting from the top-level.
@@ -49,6 +49,20 @@ impl<A: Aleo> Plaintext<A> {
                                     None => bail!("Failed to locate access '{access}'"),
                                 }
                             }
+                            (Self::Array(array, ..), Access::Index(index)) => {
+                                let index = match index.eject_mode() {
+                                    Mode::Constant => index.eject_value(),
+                                    _ => bail!("'{index}' must be a constant"),
+                                };
+                                match array.get(*index as usize) {
+                                    // Halts if the element is not a struct or an array.
+                                    Some(Self::Literal(..)) => bail!("'{index}' must be a struct or array"),
+                                    // Retrieve the element and update `plaintext` for the next iteration.
+                                    Some(element) => plaintext = element,
+                                    // Halts if the element does not exist.
+                                    None => bail!("Failed to locate access '{access}'"),
+                                }
+                            }
                             _ => bail!("Invalid access `{access}`"),
                         }
                     }
@@ -61,6 +75,18 @@ impl<A: Aleo> Plaintext<A> {
                                     Some(member) => output = Some(member.clone()),
                                     // Halts if the member does not exist.
                                     None => bail!("Failed to locate member '{identifier}'"),
+                                }
+                            }
+                            (Self::Array(array, ..), Access::Index(index)) => {
+                                let index = match index.eject_mode() {
+                                    Mode::Constant => index.eject_value(),
+                                    _ => bail!("'{index}' must be a constant"),
+                                };
+                                match array.get(*index as usize) {
+                                    // Retrieve the element and update `plaintext` for the next iteration.
+                                    Some(element) => output = Some(element.clone()),
+                                    // Halts if the element does not exist.
+                                    None => bail!("Failed to locate element '{index}'"),
                                 }
                             }
                             _ => bail!("Invalid access `{access}``"),
