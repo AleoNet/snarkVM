@@ -49,7 +49,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
             // If the register is a register access, then load the specific stack value.
             Register::Access(_, ref path) => {
                 match stack_value {
-                    // Retrieve the plaintext from the path.
+                    // Retrieve the plaintext member from the path.
                     Value::Plaintext(plaintext) => Value::Plaintext(plaintext.find(path)?),
                     // Retrieve the record entry from the path.
                     Value::Record(record) => match record.find(path)? {
@@ -127,7 +127,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
                 let path = path.iter().map(|access| circuit::Access::constant(*access)).collect::<Vec<_>>();
 
                 match circuit_value {
-                    // Retrieve the plaintext from the path.
+                    // Retrieve the plaintext member from the path.
                     circuit::Value::Plaintext(plaintext) => circuit::Value::Plaintext(plaintext.find(&path)?),
                     // Retrieve the record entry from the path.
                     circuit::Value::Record(record) => match record.find(&path)? {
