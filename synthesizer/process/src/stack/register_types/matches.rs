@@ -20,7 +20,7 @@ impl<N: Network> RegisterTypes<N> {
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         operands: &[Operand<N>],
-        struct_: &Struct<N>,
+        struct_: &StructType<N>,
     ) -> Result<()> {
         // Retrieve the struct name.
         let struct_name = struct_.name();

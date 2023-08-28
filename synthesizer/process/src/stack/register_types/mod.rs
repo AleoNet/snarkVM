@@ -25,7 +25,7 @@ use console::{
         RecordType,
         Register,
         RegisterType,
-        Struct,
+        StructType,
         ValueType,
     },
 };
