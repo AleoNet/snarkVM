@@ -40,7 +40,7 @@ mod tests {
     use snarkvm_console_network::Testnet3;
 
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &["[u8; 1]", "[foo; 4]"];
+    const TEST_CASES: &[&str] = &["[u8; 1]", "[foo; 4]", "[boolean; 31]", "[field; 32]"];
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
