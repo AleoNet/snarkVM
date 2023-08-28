@@ -19,6 +19,8 @@ use crate::helpers::{Map, MapRead};
 
 use log::trace;
 
+use tracing_subscriber::FmtSubscriber;
+
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
 use std::{borrow::Cow, sync::atomic::Ordering};
@@ -96,7 +98,8 @@ impl<
     ///
     /// Begins an atomic operation. Any further calls to `insert` and `remove` will be queued
     /// without an actual write taking place until `finish_atomic` is called.
-    ///
+    /// 
+    
     fn start_atomic(&self) {
         // Set the atomic batch flag to `true`.
         self.batch_in_progress.store(true, Ordering::SeqCst);
@@ -170,6 +173,8 @@ impl<
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) -> Result<()> {
+        // initialize the logger
+        FmtSubscriber::builder().with_env_filter("trace").init();
         // Instantiate the kafka queue
         let mut kafka_queue = KafkaQueue { messages: Vec::new() };
         // Retrieve the atomic batch belonging to the map.
