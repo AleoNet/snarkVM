@@ -114,8 +114,6 @@ pub trait Network:
     /// The number of blocks per epoch.
     const NUM_BLOCKS_PER_EPOCH: u32 = 3600 / Self::BLOCK_TIME as u32; // 720 blocks == ~1 hour
 
-    /// the maximum number of entries in an array.
-    const MAX_ARRAY_ENTRIES: usize = u32::MAX as usize;
     /// The maximum number of entries in data.
     const MAX_DATA_ENTRIES: usize = 32;
     /// The maximum recursive depth of an entry.
@@ -129,6 +127,11 @@ pub trait Network:
     const MIN_STRUCT_ENTRIES: usize = 1; // This ensures the struct is not empty.
     /// The maximum number of entries in a struct.
     const MAX_STRUCT_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
+
+    /// The minimum number of entries in an array.
+    const MIN_ARRAY_ENTRIES: usize = 1; // This ensures the array is not empty.
+    /// The maximum number of entries in an array.
+    const MAX_ARRAY_ENTRIES: usize = Self::MAX_DATA_ENTRIES;
 
     /// The minimum number of entries in a record.
     const MIN_RECORD_ENTRIES: usize = 1; // This accounts for 'record.owner'.
