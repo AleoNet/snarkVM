@@ -72,7 +72,7 @@ impl<N: Network> RegisterTypes<N> {
             ensure!(!matches!(input.value_type(), ValueType::Constant(..)), "Constant inputs are not supported");
 
             // Check the input register type.
-            register_types.check_input(stack, input.register(), &RegisterType::from(*input.value_type()))?;
+            register_types.check_input(stack, input.register(), &RegisterType::from(input.value_type().clone()))?;
         }
 
         // Step 2. Check the instructions are well-formed.
@@ -84,7 +84,7 @@ impl<N: Network> RegisterTypes<N> {
         // Step 3. Check the outputs are well-formed.
         for output in function.outputs() {
             // Check the output operand type.
-            register_types.check_output(stack, output.operand(), &RegisterType::from(*output.value_type()))?;
+            register_types.check_output(stack, output.operand(), &RegisterType::from(output.value_type().clone()))?;
         }
 
         // Step 4. If the function has a finalize command, check that its operands are all defined.
@@ -103,6 +103,7 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the register type is a literal or a struct.
                 // See `Stack::execute_function()` for the same set of checks.
                 match register_type {
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => (),
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
                     RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
                     RegisterType::Record(..) => {
@@ -188,6 +189,7 @@ impl<N: Network> RegisterTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
+            RegisterType::Plaintext(PlaintextType::Array(..)) => todo!(),
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Ensure the struct is defined in the program.
@@ -210,7 +212,7 @@ impl<N: Network> RegisterTypes<N> {
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), *register_type)?;
+        self.add_input(register.clone(), register_type.clone())?;
 
         // Ensure the register type and the input type match.
         if *register_type != self.get_type(stack, register)? {
@@ -242,6 +244,7 @@ impl<N: Network> RegisterTypes<N> {
 
         // Ensure the register type is defined in the program.
         match register_type {
+            RegisterType::Plaintext(PlaintextType::Array(..)) => todo!(),
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Ensure the struct is defined in the program.
@@ -415,6 +418,7 @@ impl<N: Network> RegisterTypes<N> {
 
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => todo!(),
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }

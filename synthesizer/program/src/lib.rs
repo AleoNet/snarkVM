@@ -371,6 +371,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
             ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match plaintext_type {
+                PlaintextType::Array(_) => {
+                    todo!()
+                }
                 PlaintextType::Literal(..) => continue,
                 PlaintextType::Struct(member_identifier) => {
                     // Ensure the member struct name exists in the program.
@@ -422,6 +425,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
                 EntryType::Constant(plaintext_type)
                 | EntryType::Public(plaintext_type)
                 | EntryType::Private(plaintext_type) => match plaintext_type {
+                    PlaintextType::Array(_) => {
+                        todo!()
+                    }
                     PlaintextType::Literal(..) => continue,
                     PlaintextType::Struct(identifier) => {
                         if !self.structs.contains_key(identifier) {

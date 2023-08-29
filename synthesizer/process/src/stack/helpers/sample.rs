@@ -143,6 +143,8 @@ impl<N: Network> Stack<N> {
 
         // Sample the plaintext value.
         let plaintext = match plaintext_type {
+            // Sample an array.
+            PlaintextType::Array(..) => todo!(),
             // Sample a literal.
             PlaintextType::Literal(literal_type) => {
                 Plaintext::Literal(Literal::sample(*literal_type, rng), Default::default())

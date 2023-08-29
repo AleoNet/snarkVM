@@ -182,6 +182,7 @@ impl<N: Network> Stack<N> {
 
         // Ensure the plaintext matches the plaintext definition in the program.
         match plaintext_type {
+            PlaintextType::Array(..) => todo!(),
             PlaintextType::Literal(literal_type) => match plaintext {
                 // If `plaintext` is a literal, it must match the literal type.
                 Plaintext::Literal(literal, ..) => {

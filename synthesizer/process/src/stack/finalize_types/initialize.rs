@@ -104,6 +104,7 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match plaintext_type {
+            PlaintextType::Array(..) => todo!(),
             PlaintextType::Literal(..) => (),
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
@@ -114,10 +115,10 @@ impl<N: Network> FinalizeTypes<N> {
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), *plaintext_type)?;
+        self.add_input(register.clone(), plaintext_type.clone())?;
 
         // Ensure the register type and the input type match.
-        if *plaintext_type != self.get_type(stack, register)? {
+        if plaintext_type != &self.get_type(stack, register)? {
             bail!("Input '{register}' does not match the expected input register type.")
         }
         Ok(())
@@ -241,7 +242,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, *mapping_value_type)?;
+        self.add_destination(destination, mapping_value_type.clone())?;
         Ok(())
     }
 
@@ -275,7 +276,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the default value.
         let default_value_type = self.get_type_from_operand(stack, get_or_use.default())?;
         // Check that the value type in the mapping matches the default value type.
-        if *mapping_value_type != default_value_type {
+        if mapping_value_type != &default_value_type {
             bail!(
                 "Default value type in `get.or_use` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
@@ -285,7 +286,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, *mapping_value_type)?;
+        self.add_destination(destination, default_value_type)?;
         Ok(())
     }
 
@@ -348,7 +349,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the type of the value.
         let value_type = self.get_type_from_operand(stack, set.value())?;
         // Check that the value type in the mapping matches the type of the value.
-        if *mapping_value_type != value_type {
+        if mapping_value_type != &value_type {
             bail!(
                 "Value type in `set` '{value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
@@ -478,6 +479,7 @@ impl<N: Network> FinalizeTypes<N> {
 
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => todo!(),
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }
