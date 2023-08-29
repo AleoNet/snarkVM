@@ -117,7 +117,13 @@ impl<N: Network> FinalizeTypes<N> {
             // Update the register type at each step.
             plaintext_type = match &plaintext_type {
                 // Access the member on the path to output the register type.
-                PlaintextType::Array(..) => todo!(),
+                PlaintextType::Array(array_type) => match path_name {
+                    Access::Index(index) => match index < array_type.length() {
+                        true => array_type.element_type().clone(),
+                        false => bail!("'{index}' is out of bounds for '{register}'"),
+                    },
+                    Access::Member(_) => bail!("Attempted to access a member of an array"),
+                },
                 // Ensure the plaintext type is not a literal, as the register references an access.
                 PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
                 // Access the member on the path to output the register type.

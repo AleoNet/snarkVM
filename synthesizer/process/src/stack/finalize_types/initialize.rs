@@ -104,7 +104,27 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match plaintext_type {
-            PlaintextType::Array(..) => todo!(),
+            PlaintextType::Array(array_type) => {
+                // Get the base element type.
+                let mut type_ = PlaintextType::Array(array_type.clone());
+                for _ in 0..N::MAX_DATA_DEPTH {
+                    match &type_ {
+                        PlaintextType::Array(array_type) => type_ = array_type.element_type().clone(),
+                        PlaintextType::Literal(..) => break,
+                        PlaintextType::Struct(struct_name) => {
+                            // Ensure the struct is defined in the program.
+                            if !stack.program().contains_struct(struct_name) {
+                                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                            }
+                            break;
+                        }
+                    }
+                }
+                // If `type_` is an array, then the array has exceeded the maximum depth.
+                if let PlaintextType::Array(..) = type_ {
+                    bail!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH)
+                }
+            }
             PlaintextType::Literal(..) => (),
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
@@ -479,7 +499,9 @@ impl<N: Network> FinalizeTypes<N> {
 
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
-                    RegisterType::Plaintext(PlaintextType::Array(..)) => todo!(),
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => {
+                        bail!("Illegal operation: Cannot cast to an array.")
+                    }
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }

@@ -133,7 +133,13 @@ impl<N: Network> RegisterTypes<N> {
             // Update the register type at each step.
             register_type = match register_type {
                 // Traverse the path to output the register type.
-                RegisterType::Plaintext(PlaintextType::Array(..)) => todo!(),
+                RegisterType::Plaintext(PlaintextType::Array(array_type)) => match path_name {
+                    Access::Index(index) => match index < array_type.length() {
+                        true => RegisterType::Plaintext(array_type.element_type().clone()),
+                        false => bail!("'{index}' is out of bounds for '{register}'"),
+                    },
+                    Access::Member(_) => bail!("Attempted to access a member of an array"),
+                },
                 // Ensure the plaintext type is not a literal, as the register references an access.
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
                 // Traverse the path to output the register type.
