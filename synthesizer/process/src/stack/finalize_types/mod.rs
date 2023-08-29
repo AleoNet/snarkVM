@@ -17,7 +17,7 @@ mod matches;
 
 use console::{
     network::prelude::*,
-    program::{Identifier, LiteralType, PlaintextType, Register, RegisterType, Struct},
+    program::{Identifier, LiteralType, PlaintextType, Register, RegisterType, StructType},
 };
 use synthesizer_program::{
     Command,
