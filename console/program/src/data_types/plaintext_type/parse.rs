@@ -20,6 +20,7 @@ impl<N: Network> Parser for PlaintextType<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the plaintext type (order matters).
         alt((
+            map(ArrayType::parse, |type_| Self::Array(type_)),
             map(LiteralType::parse, |type_| Self::Literal(type_)),
             map(Identifier::parse, |identifier| Self::Struct(identifier)),
         ))(string)
@@ -54,6 +55,8 @@ impl<N: Network> Display for PlaintextType<N> {
     /// Prints the plaintext type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
+            // Prints the array type, i.e. [field; 2u32]
+            Self::Array(array) => Display::fmt(array, f),
             // Prints the literal, i.e. field
             Self::Literal(literal) => Display::fmt(literal, f),
             // Prints the struct, i.e. signature
@@ -72,6 +75,10 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         assert_eq!(
+            PlaintextType::parse("[field; 1u32];"),
+            Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?)))
+        );
+        assert_eq!(
             PlaintextType::parse("field"),
             Ok(("", PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field)))
         );
@@ -88,6 +95,20 @@ mod tests {
 
     #[test]
     fn test_parse_fails() -> Result<()> {
+        // Array type must not contain visibility.
+        assert_eq!(
+            Ok((".constant", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
+            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].constant")
+        );
+        assert_eq!(
+            Ok((".public", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
+            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].public")
+        );
+        assert_eq!(
+            Ok((".private", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
+            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].private")
+        );
+
         // Literal type must not contain visibility.
         assert_eq!(
             Ok((".constant", PlaintextType::<CurrentNetwork>::from_str("field")?)),
@@ -139,7 +160,7 @@ mod tests {
         assert!(PlaintextType::<CurrentNetwork>::parse("12").is_err());
         assert!(PlaintextType::<CurrentNetwork>::parse("111").is_err());
 
-        // Must fit within the data capacity of a base field element.
+        // Struct types must fit within the data capacity of a base field element.
         let struct_ = PlaintextType::<CurrentNetwork>::parse(
             "foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy",
         );
@@ -150,6 +171,10 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
+        assert_eq!(
+            PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?).to_string(),
+            "[field; 1u32]"
+        );
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Signature).to_string(), "signature");
         assert_eq!(PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?).to_string(), "foo");
