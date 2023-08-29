@@ -28,9 +28,11 @@ mod tests {
     use super::*;
     use rand::Rng;
     use snarkvm_circuit_network::AleoV0;
-    use snarkvm_console::account::Address;
-    use snarkvm_console::program::{Field, Plaintext, Record};
-    use snarkvm_console::{account::PrivateKey, network::Testnet3};
+    use snarkvm_console::{
+        account::{Address, PrivateKey},
+        network::Testnet3,
+        program::{Field, Plaintext, Record},
+    };
     use snarkvm_synthesizer::Process;
     use snarkvm_utilities::{TestRng, Uniform};
     use std::str::FromStr;

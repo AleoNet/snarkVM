@@ -79,8 +79,16 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.write().power_of_beta_g(index)
     }
 
+    pub async fn power_of_beta_g_async(&self, index: usize) -> Result<E::G1Affine> {
+        self.powers.write().power_of_beta_g_async(index).await
+    }
+
     pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
         Ok(self.powers.write().powers_of_beta_g(lower..upper)?.to_vec())
+    }
+
+    pub async fn powers_of_beta_g_async(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
+        Ok(self.powers.write().powers_of_beta_g_async(lower..upper).await?.to_vec())
     }
 
     pub fn powers_of_beta_times_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {

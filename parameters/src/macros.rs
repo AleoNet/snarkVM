@@ -211,7 +211,7 @@ macro_rules! impl_load_bytes_logic_remote {
             // Load remote file
             let mut buffer = vec![];
 
-            Self::$remote_fetch(&mut buffer, &url)$(.$await)?;
+            let _ = Self::$remote_fetch(&mut buffer, &url)$(.$await)?;
             // Ensure the checksum matches.
             let candidate_checksum = checksum!(&buffer);
             if $expected_checksum != candidate_checksum {
@@ -227,7 +227,7 @@ macro_rules! impl_load_bytes_logic_remote {
                                 $filename, file_path
                             );
                         }
-                        _ = {}
+                        _ => {}
                     }
                 }
             };

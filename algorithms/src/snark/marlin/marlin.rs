@@ -16,15 +16,30 @@ use super::Certificate;
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{
-        Commitment, CommitterUnionKey, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10,
+        Commitment,
+        CommitterUnionKey,
+        Evaluations,
+        LabeledCommitment,
+        QuerySet,
+        Randomness,
+        SonicKZG10,
     },
     r1cs::ConstraintSynthesizer,
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
-        proof, prover, witness_label, CircuitProvingKey, CircuitVerifyingKey, MarlinMode, Proof, UniversalSRS,
+        proof,
+        prover,
+        witness_label,
+        CircuitProvingKey,
+        CircuitVerifyingKey,
+        MarlinMode,
+        Proof,
+        UniversalSRS,
     },
     srs::UniversalVerifier,
-    AlgebraicSponge, SNARKError, SNARK,
+    AlgebraicSponge,
+    SNARKError,
+    SNARK,
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
@@ -131,13 +146,14 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: MarlinMode> MarlinSNAR
 
             // Marlin only needs degree 2 random polynomials.
             let supported_hiding_bound = 1;
-            let (committer_key, _) = SonicKZG10::<E, FS>::trim(
+            let (committer_key, _) = SonicKZG10::<E, FS>::trim_async(
                 universal_srs,
                 indexed_circuit.max_degree(),
                 [indexed_circuit.constraint_domain_size()],
                 supported_hiding_bound,
                 Some(coefficient_support.as_slice()),
-            )?;
+            )
+            .await?;
 
             let ck = CommitterUnionKey::union(std::iter::once(&committer_key));
 
