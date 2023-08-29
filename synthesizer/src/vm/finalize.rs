@@ -1413,4 +1413,62 @@ finalize compute:
         let expected = Value::<CurrentNetwork>::from_str("3u8").unwrap();
         assert_eq!(value, expected);
     }
+
+    #[test]
+    fn test_genesis_supply() {
+        let rng = &mut TestRng::default();
+
+        // Construct the program ID.
+        let program_id = ProgramID::from_str("credits.aleo").unwrap();
+
+        // Construct the supply mapping name.
+        let supply_mapping = Identifier::from_str("supply").unwrap();
+
+        // Initialize the vm.
+        let vm = test_helpers::sample_vm();
+
+        // Sample the genesis block.
+        let genesis = test_helpers::sample_genesis_block(rng);
+
+        // Retrieve the supply mapping from storage.
+        let current_supply_map =
+            vm.store.finalize_store().get_mapping_speculative(&program_id, &supply_mapping).unwrap();
+
+        // Convert the supply mapping into the supply.
+        let supply = supply_map_into_supply(current_supply_map).unwrap();
+
+        // Ensure that the supply is zero.
+        assert_eq!(supply.total(), 0);
+        assert_eq!(supply.private(), 0);
+        assert_eq!(supply.public(), 0);
+        assert_eq!(supply.staked(), 0);
+
+        // Add the genesis block to the VM.
+        vm.add_next_block(&genesis).unwrap();
+
+        // Retrieve the supply mapping from storage.
+        let current_supply_map =
+            vm.store.finalize_store().get_mapping_speculative(&program_id, &supply_mapping).unwrap();
+
+        // Convert the supply mapping into the supply.
+        let supply = supply_map_into_supply(current_supply_map).unwrap();
+
+        // Fetch the genesis ratification.
+        let Ratify::Genesis(committee, public_balances) = genesis.ratifications().iter().next().unwrap() else {
+            panic!("Expected genesis ratification");
+        };
+
+        // Calculate the expected stake.
+        let total_committee_stake = committee.total_stake();
+        let genesis_fees = genesis.transaction_fee_amounts().map(|amount| *(amount.unwrap())).sum::<u64>();
+        let total_private_balance =
+            Block::<CurrentNetwork>::NUM_GENESIS_TRANSACTIONS as u64 * ledger_committee::MIN_VALIDATOR_STAKE;
+        let total_public_balance = public_balances.values().sum::<u64>() - total_private_balance - genesis_fees;
+
+        // Ensure that the supply is updated with the genesis values.
+        assert_eq!(supply.total(), CurrentNetwork::STARTING_SUPPLY - genesis_fees);
+        assert_eq!(supply.private(), total_private_balance);
+        assert_eq!(supply.public(), total_public_balance);
+        assert_eq!(supply.staked(), total_committee_stake);
+    }
 }
