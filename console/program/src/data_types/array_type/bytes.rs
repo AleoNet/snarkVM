@@ -16,28 +16,20 @@ use super::*;
 
 impl<N: Network> FromBytes for ArrayType<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let variant = u8::read_le(&mut reader)?;
-        match variant {
-            0 => Ok(Self::new_literal(LiteralType::read_le(&mut reader)?, U32::read_le(&mut reader)?).map_err(error)?),
-            1 => Ok(Self::new_struct(Identifier::read_le(&mut reader)?, U32::read_le(&mut reader)?).map_err(error)?),
-            2.. => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
-        }
+        // Read the plaintext type.
+        let plaintext_type = PlaintextType::read_le(&mut reader)?;
+        // Read the length of the array.
+        let length = U32::read_le(&mut reader)?;
+        // Return the array type.
+        Self::new(plaintext_type, length).map_err(|e| error(format!("{e}")))
     }
 }
 
 impl<N: Network> ToBytes for ArrayType<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::Literal(literal_type, length) => {
-                0u8.write_le(&mut writer)?;
-                literal_type.write_le(&mut writer)?;
-                length.write_le(&mut writer)
-            }
-            Self::Struct(identifier, length) => {
-                1u8.write_le(&mut writer)?;
-                identifier.write_le(&mut writer)?;
-                length.write_le(&mut writer)
-            }
-        }
+        // Write the plaintext type.
+        self.element_type().write_le(&mut writer)?;
+        // Write the length of the array.
+        self.length.write_le(&mut writer)
     }
 }

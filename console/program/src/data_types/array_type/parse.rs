@@ -30,14 +30,22 @@ impl<N: Network> Parser for ArrayType<N> {
         let (string, _) = tag(";")(string)?;
         // Parse the whitespaces from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the length of the array.
-        let (string, length) = U32::parse(string)?;
+        // Parse the length of the array, check that the length is valid.
+        let (string, length) = map_res(U32::parse, |length| {
+            if (*length as usize) < N::MIN_ARRAY_ELEMENTS {
+                Err(format!("An array must have {} element", N::MIN_ARRAY_ELEMENTS))
+            } else if (*length as usize) > N::MAX_ARRAY_ELEMENTS {
+                Err(format!("An array can contain {} elements", N::MAX_ARRAY_ELEMENTS))
+            } else {
+                Ok(length)
+            }
+        })(string)?;
         // Parse the whitespaces from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the closing bracket.
         let (string, _) = tag("]")(string)?;
         // Return the array type.
-        Ok((string, Self { plaintext_type, length }))
+        Ok((string, Self { element_type: Box::new(plaintext_type), length }))
     }
 }
 
@@ -68,9 +76,6 @@ impl<N: Network> Debug for ArrayType<N> {
 impl<N: Network> Display for ArrayType<N> {
     /// Prints the array type as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Literal(literal_type, length) => write!(f, "[{}; {}]", literal_type, *length),
-            Self::Struct(identifier, length) => write!(f, "[{}; {}]", identifier, *length),
-        }
+        write!(f, "[{}; {}]", self.element_type(), self.length())
     }
 }
