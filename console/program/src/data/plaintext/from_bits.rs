@@ -72,7 +72,7 @@ impl<N: Network> FromBits for Plaintext<N> {
         // Array
         else if variant == [true, false] {
             let num_elements = u32::from_bits_le(next_bits(32)?)?;
-            if num_elements as usize <= N::MAX_ARRAY_ELEMENTS {
+            if num_elements as usize > N::MAX_ARRAY_ELEMENTS {
                 bail!("Array size exceeds maximum of elements.");
             }
 
