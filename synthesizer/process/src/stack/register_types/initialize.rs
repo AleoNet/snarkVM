@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use console::program::ArrayType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
@@ -191,7 +190,12 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
-                RegisterTypes::check_array_type(stack, array_type)?
+                // If the base element type is a struct, ensure the struct is defined in the program.
+                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+                    if !stack.program().contains_struct(struct_name) {
+                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                    }
+                }
             }
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
@@ -248,7 +252,12 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
-                RegisterTypes::check_array_type(stack, array_type)?
+                // If the base element type is a struct, ensure the struct is defined in the program.
+                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+                    if !stack.program().contains_struct(struct_name) {
+                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                    }
+                }
             }
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
@@ -491,34 +500,6 @@ impl<N: Network> RegisterTypes<N> {
                     "Instruction '{instruction}' has multiple destinations."
                 );
             }
-        }
-        Ok(())
-    }
-}
-
-impl<N: Network> RegisterTypes<N> {
-    #[inline]
-    fn check_array_type(stack: &(impl StackMatches<N> + StackProgram<N>), array_type: &ArrayType<N>) -> Result<()> {
-        // Get the base element type.
-        let mut type_ = PlaintextType::Array(array_type.clone());
-        for _ in 0..N::MAX_DATA_DEPTH {
-            match &type_ {
-                PlaintextType::Array(array_type) => {
-                    type_ = array_type.element_type().clone();
-                }
-                PlaintextType::Literal(..) => break,
-                PlaintextType::Struct(struct_name) => {
-                    // Ensure the struct is defined in the program.
-                    if !stack.program().contains_struct(struct_name) {
-                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                    }
-                    break;
-                }
-            }
-        }
-        // If `type_` is an array, then the array has exceeded the maximum depth.
-        if let PlaintextType::Array(..) = type_ {
-            bail!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH)
         }
         Ok(())
     }

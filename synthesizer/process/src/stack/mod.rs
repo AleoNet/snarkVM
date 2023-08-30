@@ -242,7 +242,7 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         }
     }
 
-    /// Returns `true` if the stack contains the external record.
+    /// Returns the external record if the stack contains the external record.
     #[inline]
     fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
         // Retrieve the external program.

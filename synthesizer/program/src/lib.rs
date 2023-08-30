@@ -235,10 +235,32 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         Ok(struct_)
     }
 
+    /// Returns the struct with the given name as a reference.
+    pub fn get_struct_as_ref(&self, name: &Identifier<N>) -> Result<&Struct<N>> {
+        // Attempt to retrieve the struct.
+        let struct_ = self.structs.get(name).ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
+        // Ensure the struct name matches.
+        ensure!(struct_.name() == name, "Expected struct '{name}', but found struct '{}'", struct_.name());
+        // Ensure the struct contains members.
+        ensure!(!struct_.members().is_empty(), "Struct '{name}' is missing members.");
+        // Return the struct.
+        Ok(struct_)
+    }
+
     /// Returns the record with the given name.
     pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
         // Attempt to retrieve the record.
         let record = self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
+        // Ensure the record name matches.
+        ensure!(record.name() == name, "Expected record '{name}', but found record '{}'", record.name());
+        // Return the record.
+        Ok(record)
+    }
+
+    /// Returns the record with the given name.
+    pub fn get_record_as_ref(&self, name: &Identifier<N>) -> Result<&RecordType<N>> {
+        // Attempt to retrieve the record.
+        let record = self.records.get(name).ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
         // Ensure the record name matches.
         ensure!(record.name() == name, "Expected record '{name}', but found record '{}'", record.name());
         // Return the record.

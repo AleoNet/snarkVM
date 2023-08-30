@@ -105,24 +105,12 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the register type is defined in the program.
         match plaintext_type {
             PlaintextType::Array(array_type) => {
-                // Get the base element type.
-                let mut type_ = PlaintextType::Array(array_type.clone());
-                for _ in 0..N::MAX_DATA_DEPTH {
-                    match &type_ {
-                        PlaintextType::Array(array_type) => type_ = array_type.element_type().clone(),
-                        PlaintextType::Literal(..) => break,
-                        PlaintextType::Struct(struct_name) => {
-                            // Ensure the struct is defined in the program.
-                            if !stack.program().contains_struct(struct_name) {
-                                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                            }
-                            break;
-                        }
+                // If the base element type is a struct, check that it is defined in the program.
+                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+                    // Ensure the struct is defined in the program.
+                    if !stack.program().contains_struct(struct_name) {
+                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                     }
-                }
-                // If `type_` is an array, then the array has exceeded the maximum depth.
-                if let PlaintextType::Array(..) = type_ {
-                    bail!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH)
                 }
             }
             PlaintextType::Literal(..) => (),
