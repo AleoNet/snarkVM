@@ -36,11 +36,11 @@ impl<N: Network> ToBytes for PlaintextType<N> {
                 array_type.write_le(&mut writer)
             }
             Self::Literal(literal_type) => {
-                u8::write_le(&0u8, &mut writer)?;
+                u8::write_le(&1u8, &mut writer)?;
                 literal_type.write_le(&mut writer)
             }
             Self::Struct(identifier) => {
-                u8::write_le(&1u8, &mut writer)?;
+                u8::write_le(&2u8, &mut writer)?;
                 identifier.write_le(&mut writer)
             }
         }

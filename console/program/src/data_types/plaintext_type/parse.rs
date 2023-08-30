@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         assert_eq!(
-            PlaintextType::parse("[field; 1u32];"),
+            PlaintextType::parse("[field; 1u32]"),
             Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?)))
         );
         assert_eq!(

@@ -31,11 +31,27 @@ pub struct ArrayType<N: Network> {
 }
 
 impl<N: Network> ArrayType<N> {
-    /// Initializes a new array type.
-    pub fn new(plaintext_type: PlaintextType<N>, length: U32<N>) -> Result<Self> {
-        ensure!(*length as usize >= N::MIN_ARRAY_ELEMENTS, "An array must have {} element", N::MIN_ARRAY_ELEMENTS);
-        ensure!(*length as usize <= N::MAX_ARRAY_ELEMENTS, "An array can contain {} elements", N::MAX_ARRAY_ELEMENTS);
-        Ok(Self { element_type: Box::new(plaintext_type), length })
+    /// Initializes a new multi-dimensional array type.
+    pub fn new(plaintext_type: PlaintextType<N>, mut dimensions: Vec<U32<N>>) -> Result<Self> {
+        // Check that the number of dimensions are valid.
+        ensure!(!dimensions.is_empty(), "An array must have at least one dimension");
+        ensure!(dimensions.len() <= N::MAX_DATA_DEPTH, "An array can have at most {} dimensions", N::MAX_DATA_DEPTH);
+        // Check that each dimension is valid.
+        for length in &dimensions {
+            ensure!(**length as usize >= N::MIN_ARRAY_ELEMENTS, "An array must have {} element", N::MIN_ARRAY_ELEMENTS);
+            ensure!(
+                **length as usize <= N::MAX_ARRAY_ELEMENTS,
+                "An array can contain {} elements",
+                N::MAX_ARRAY_ELEMENTS
+            );
+        }
+        // Construct the array type.
+        // Note that this `unwrap` is safe because we have already checked that the number of dimensions is greater than zero.
+        let array_type = Self { element_type: Box::new(plaintext_type), length: dimensions.pop().unwrap() };
+        Ok(dimensions.into_iter().rev().fold(array_type, |array_type, dimension| Self {
+            element_type: Box::new(PlaintextType::Array(array_type)),
+            length: dimension,
+        }))
     }
 }
 
@@ -70,7 +86,7 @@ mod tests {
     fn test_array_type() -> Result<()> {
         // Test literal array types.
         let array = ArrayType::<CurrentNetwork>::from_str("[field; 4u32]")?;
-        assert_eq!(array, ArrayType::<CurrentNetwork>::new(PlaintextType::from_str("field")?, U32::new(4))?);
+        assert_eq!(array, ArrayType::<CurrentNetwork>::new(PlaintextType::from_str("field")?, vec![U32::new(4)])?);
         assert_eq!(
             array.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&array.to_bytes_le()?)?.to_bytes_le()?
@@ -81,7 +97,7 @@ mod tests {
 
         // Test struct array types.
         let array = ArrayType::<CurrentNetwork>::from_str("[foo; 1u32]")?;
-        assert_eq!(array, ArrayType::<CurrentNetwork>::new(PlaintextType::from_str("foo")?, U32::new(1))?);
+        assert_eq!(array, ArrayType::<CurrentNetwork>::new(PlaintextType::from_str("foo")?, vec![U32::new(1)])?);
         assert_eq!(
             array.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&array.to_bytes_le()?)?.to_bytes_le()?
@@ -92,7 +108,7 @@ mod tests {
 
         // Test array type with maximum length.
         let array = ArrayType::<CurrentNetwork>::from_str("[scalar; 32u32]")?;
-        assert_eq!(array, ArrayType::<CurrentNetwork>::new(PlaintextType::from_str("scalar")?, U32::new(32))?);
+        assert_eq!(array, ArrayType::<CurrentNetwork>::new(PlaintextType::from_str("scalar")?, vec![U32::new(32)])?);
         assert_eq!(
             array.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&array.to_bytes_le()?)?.to_bytes_le()?

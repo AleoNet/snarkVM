@@ -13,23 +13,82 @@
 // limitations under the License.
 
 use super::*;
+use crate::{Identifier, LiteralType};
 
 impl<N: Network> FromBytes for ArrayType<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the plaintext type.
-        let plaintext_type = PlaintextType::read_le(&mut reader)?;
-        // Read the length of the array.
-        let length = U32::read_le(&mut reader)?;
-        // Return the array type.
-        Self::new(plaintext_type, length).map_err(|e| error(format!("{e}")))
+        // Read the number of dimensions of the array.
+        let dimensions = u8::read_le(&mut reader)? as usize;
+
+        // Ensure the dimensions of the array are valid.
+        match dimensions {
+            0 => return Err(error("Array type must have at least one dimension.")),
+            dimensions if dimensions < N::MAX_DATA_DEPTH => (),
+            _ => return Err(error(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH))),
+        }
+
+        // Read the lengths of the array.
+        let mut lengths = Vec::with_capacity(dimensions);
+        for _ in 0..dimensions {
+            lengths.push(U32::read_le(&mut reader)?);
+        }
+
+        // Read the innermost element type.
+        let variant = u8::read_le(&mut reader)?;
+        let element_type = match variant {
+            0 => PlaintextType::Literal(LiteralType::read_le(&mut reader)?),
+            1 => PlaintextType::Struct(Identifier::read_le(&mut reader)?),
+            2.. => return Err(error(format!("Failed to deserialize element type {variant}"))),
+        };
+
+        // Construct the array type.
+        ArrayType::new(element_type, lengths).map_err(|e| error(format!("{e}")))
     }
 }
 
 impl<N: Network> ToBytes for ArrayType<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the plaintext type.
-        self.element_type().write_le(&mut writer)?;
-        // Write the length of the array.
-        self.length.write_le(&mut writer)
+        // Initialize storage
+        let mut element_type = *self.element_type.clone();
+        let mut lengths = vec![*self.length()];
+
+        // Collect the each dimension of the array.
+        for _ in 1..N::MAX_DATA_DEPTH {
+            element_type = match element_type {
+                PlaintextType::Literal(_) | PlaintextType::Struct(_) => break,
+                PlaintextType::Array(array_type) => {
+                    lengths.push(*array_type.length());
+                    array_type.element_type().clone()
+                }
+            };
+        }
+
+        // Check that the array type does not exceed the maximum depth.
+        if let PlaintextType::Array(_) = element_type {
+            return Err(error(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH)));
+        }
+
+        // Write the number of dimensions of the array.
+        u8::try_from(lengths.len()).or_halt::<N>().write_le(&mut writer)?;
+
+        // Write the lengths of the array.
+        for length in lengths {
+            length.write_le(&mut writer)?;
+        }
+
+        // Write the innermost element type.
+        match element_type {
+            PlaintextType::Literal(literal_type) => {
+                0u8.write_le(&mut writer)?;
+                literal_type.write_le(&mut writer)?;
+            }
+            PlaintextType::Struct(identifier) => {
+                1u8.write_le(&mut writer)?;
+                identifier.write_le(&mut writer)?;
+            }
+            PlaintextType::Array(_) => unreachable!(),
+        }
+
+        Ok(())
     }
 }
