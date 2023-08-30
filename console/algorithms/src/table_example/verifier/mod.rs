@@ -14,20 +14,20 @@
 
 mod verify;
 
-use crate::ecdsa::lookup_table::LookupTable;
+use crate::table_example::lookup_table::LookupTable;
 use snarkvm_console_types::prelude::*;
 
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct ECDSAVerifier<E: Environment> {
+pub struct TableExampleVerifier<E: Environment> {
     tables: Arc<Vec<LookupTable<E>>>,
 }
 
 type Input<E> = Field<E>;
 
-impl<E: Environment> ECDSAVerifier<E> {
-    /// Initializes a new instance of ECDSA
+impl<E: Environment> TableExampleVerifier<E> {
+    /// Initializes a new instance of TableExample
     pub fn setup(input: &[Input<E>]) -> Result<Self> {
         let key_0 = input[0];
         let key_1 = input[1];

@@ -14,34 +14,19 @@
 
 use super::*;
 
-impl<E: Environment> Verify for ECDSA<E> {
+impl<E: Environment> Verify for TableExampleVerifier<E> {
     type Input = Field<E>;
 
     fn verify(&self, input: &[Self::Input]) -> Result<bool> {
-        let result = self.verifier.verify(input)?;
+        let input = input.to_vec();
+
+        let key_0 = input[0];
+        let key_1 = input[1];
+        let value = input[2];
+        let table_index = 0;
+
+        let result = *self.tables[table_index].lookup(&[key_0, key_1]).unwrap().2 == value;
 
         Ok(result)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_console_types::environment::Console;
-
-    type CurrentEnvironment = Console;
-
-    const ITERATIONS: u64 = 100;
-
-    #[test]
-    fn test_ecdsa() -> Result<()> {
-        let rng = &mut TestRng::default();
-        let input = (0..3).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
-        let ecdsa = ECDSA::<CurrentEnvironment>::setup(&input)?;
-
-        for _ in 0..ITERATIONS {
-            assert!(ecdsa.verify(&input)?);
-        }
-        Ok(())
     }
 }

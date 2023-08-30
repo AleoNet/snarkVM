@@ -13,29 +13,29 @@
 // limitations under the License.
 
 pub mod verifier;
-use verifier::ECDSAVerifier;
+use verifier::TableExampleVerifier;
 
 mod lookup_table;
 mod verify;
 
 use snarkvm_console_types::prelude::*;
 
-use crate::ecdsa::lookup_table::LookupTable;
+use crate::table_example::lookup_table::LookupTable;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct ECDSA<E: Environment> {
-    /// The internal ECDSA verifier
-    verifier: ECDSAVerifier<E>,
+pub struct TableExample<E: Environment> {
+    /// The internal TableExample verifier
+    verifier: TableExampleVerifier<E>,
 }
 
 type Input<E> = Field<E>;
 
-impl<E: Environment> ECDSA<E> {
-    /// Initializes a new instance of ECDSA
+impl<E: Environment> TableExample<E> {
+    /// Initializes a new instance of TableExample
     pub fn setup(input: &[Input<E>]) -> Result<Self> {
-        // Initialize the ECDSA verifier.
-        let verifier = ECDSAVerifier::<E>::setup(&input)?;
+        // Initialize the TableExample verifier.
+        let verifier = TableExampleVerifier::<E>::setup(&input)?;
 
         Ok(Self { verifier })
     }

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod verifier;
-use verifier::ECDSAVerifier;
+use verifier::TableExampleVerifier;
 
 mod verify;
 
@@ -23,19 +23,19 @@ use snarkvm_circuit_types::environment::assert_scope_with_lookup;
 use crate::Verify;
 use snarkvm_circuit_types::prelude::*;
 
-pub struct ECDSA<E: Environment> {
-    /// The internal ECDSA verifier used to process one iteration.
-    verifier: ECDSAVerifier<E>,
+pub struct TableExample<E: Environment> {
+    /// The internal TableExample verifier used to process one iteration.
+    verifier: TableExampleVerifier<E>,
 }
 
 #[cfg(console)]
-impl<E: Environment> Inject for ECDSA<E> {
-    type Primitive = console::ECDSA<E::Network>;
+impl<E: Environment> Inject for TableExample<E> {
+    type Primitive = console::TableExample<E::Network>;
 
-    /// Initializes a new instance of a ECDSA circuit with the given ECDSA variant.
-    fn new(_mode: Mode, ecdsa: Self::Primitive) -> Self {
-        // Initialize the ECDSA verifier.
-        let verifier = ECDSAVerifier::<E>::constant(ecdsa);
+    /// Initializes a new instance of a TableExample circuit with the given TableExample variant.
+    fn new(_mode: Mode, table_example: Self::Primitive) -> Self {
+        // Initialize the TableExample verifier.
+        let verifier = TableExampleVerifier::<E>::constant(table_example);
 
         Self { verifier }
     }
@@ -56,8 +56,8 @@ mod tests {
         for _ in 0..ITERATIONS {
             let rng = &mut TestRng::default();
             let input = (0..3).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
-            let native = console::ECDSA::<<Circuit as Environment>::Network>::setup(&input)?;
-            let circuit = ECDSA::<Circuit>::new(Mode::Constant, native.clone());
+            let native = console::TableExample::<<Circuit as Environment>::Network>::setup(&input)?;
+            let circuit = TableExample::<Circuit>::new(Mode::Constant, native.clone());
             // TODO: fix test
             // println!("circuit.verifier.tables(): {:?}", circuit.verifier.tables());
             // assert!(circuit.verifier.tables().len() > 0);

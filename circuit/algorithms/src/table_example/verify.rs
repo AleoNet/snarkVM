@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<E: Environment> Verify for ECDSA<E> {
+impl<E: Environment> Verify for TableExample<E> {
     // type Input = Boolean<E>;
     type Input = Field<E>;
     type Output = Boolean<E>;
@@ -43,18 +43,18 @@ mod tests {
     ) -> Result<()> {
         use console::Verify as H;
 
-        // Initialize ECDSA.
+        // Initialize TableExample.
         let rng = &mut TestRng::default();
         let input = (0..3).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
-        let native = console::ECDSA::<<Circuit as Environment>::Network>::setup(&input)?;
-        let circuit = ECDSA::<Circuit>::new(Mode::Constant, native.clone());
+        let native = console::TableExample::<<Circuit as Environment>::Network>::setup(&input)?;
+        let circuit = TableExample::<Circuit>::new(Mode::Constant, native.clone());
 
         // Compute the expected hash.
         let expected = native.verify(&input).expect("Failed to hash native input");
         // Prepare the circuit input.
         let circuit_input: Vec<Field<_>> = Inject::new(mode, input);
 
-        Circuit::scope(format!("ECDSA {mode}"), || {
+        Circuit::scope(format!("TableExample {mode}"), || {
             // Perform the hash operation.
             let candidate = circuit.verify(&circuit_input);
             assert_scope_with_lookup!(num_constants, num_public, num_private, num_constraints, num_lookup_constraints);

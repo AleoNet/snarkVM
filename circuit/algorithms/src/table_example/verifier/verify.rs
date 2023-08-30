@@ -16,12 +16,12 @@ use super::*;
 
 use crate::Verify;
 
-impl<E: Environment> Verify for ECDSAVerifier<E> {
+impl<E: Environment> Verify for TableExampleVerifier<E> {
     type Input = Field<E>;
     type Output = Boolean<E>;
 
     fn verify(&self, input: &[Self::Input]) -> Self::Output {
-        // TODO: how to set the table, for both Console and Circuit, during Self::new(..)
+        // TODO: set the table, for both Console and Circuit, during Self::new(..)
         let input = input.to_vec();
         let key_0 = &input[0];
         let lc_0: LinearCombination<E::BaseField> = key_0.clone().into();
@@ -42,7 +42,6 @@ impl<E: Environment> Verify for ECDSAVerifier<E> {
             E::enforce_lookup(|| (key_0, key_1, value, table_index));
         }
 
-        // TODO: can we derive this return value from the lookup? Perhaps it is implied by the enforce_lookup function not throwing. But it doesn't return a Result
         Boolean::<E>::from_str("true").unwrap()
     }
 }
@@ -66,21 +65,22 @@ mod tests {
     ) -> Result<()> {
         use console::Verify as H;
 
-        // Initialize the native ECDSA verifier.
+        // Initialize the native TableExample verifier.
         let rng = &mut TestRng::default();
         let input = (0..3).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
-        let native = console::ecdsa::verifier::ECDSAVerifier::<<Circuit as Environment>::Network>::setup(&input)?;
+        let native =
+            console::table_example::verifier::TableExampleVerifier::<<Circuit as Environment>::Network>::setup(&input)?;
 
-        // Initialize the circuit ECDSA verifier.
-        let primitive = console::ECDSA::<<Circuit as Environment>::Network>::setup(&input)?;
-        let circuit = ECDSAVerifier::<Circuit>::new(Mode::Constant, primitive);
+        // Initialize the circuit TableExample verifier.
+        let primitive = console::TableExample::<<Circuit as Environment>::Network>::setup(&input)?;
+        let circuit = TableExampleVerifier::<Circuit>::new(Mode::Constant, primitive);
 
         // Compute the expected verification.
         let expected = native.verify(&input).expect("Failed to verify native input");
         // Prepare the circuit input.
         let circuit_input: Vec<Field<_>> = Inject::new(mode, input);
 
-        Circuit::scope(format!("ECDSA {mode}"), || {
+        Circuit::scope(format!("TableExample {mode}"), || {
             let candidate = circuit.verify(&circuit_input);
             assert_scope_with_lookup!(num_constants, num_public, num_private, num_constraints, num_lookup_constraints);
             assert_eq!(expected, candidate.eject_value());
