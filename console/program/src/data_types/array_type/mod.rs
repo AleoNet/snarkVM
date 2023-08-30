@@ -61,6 +61,16 @@ impl<N: Network> ArrayType<N> {
         &self.element_type
     }
 
+    /// Returns the base element type.
+    pub fn base_element_type(&self) -> &PlaintextType<N> {
+        let mut element_type = self.element_type();
+        // Note that this `while` loop must terminate because the number of dimensions of `ArrayType` is checked to be less then N::MAX_DATA_DEPTH.
+        while let PlaintextType::Array(array_type) = element_type {
+            element_type = array_type.element_type();
+        }
+        element_type
+    }
+
     /// Returns `true` if the array is empty.
     pub fn is_empty(&self) -> bool {
         self.length.is_zero()
