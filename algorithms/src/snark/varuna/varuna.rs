@@ -572,7 +572,6 @@ where
             &polynomials,
             &prover_third_message,
             &prover_fourth_message,
-            true,
             &verifier_state,
         )?;
 
@@ -874,7 +873,6 @@ where
             &evaluations,
             &proof.third_msg,
             &proof.fourth_msg,
-            false,
             &verifier_state,
         )?;
         end_timer!(lc_time);
