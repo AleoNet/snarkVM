@@ -526,7 +526,7 @@ where
         let witness_comm_len = if MM::ZK { first_commitments.len() - 1 } else { first_commitments.len() };
         let mask_poly = MM::ZK.then(|| *first_commitments[witness_comm_len].commitment());
         let witness_commitments = first_commitments[..witness_comm_len]
-            .into_iter()
+            .iter()
             .map(|c| proof::WitnessCommitments { w: *c.commitment() })
             .collect_vec();
         let fourth_commitments_chunked = fourth_commitments.chunks_exact(3);

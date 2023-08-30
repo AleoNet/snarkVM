@@ -356,8 +356,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 
                 // The verifier does not have access to a_poly and b_poly, so uses linear combinations of index polynomials instead
                 let index_linear_combinations = Self::index_linear_combinations(id, m, v_rc, alpha, beta, RC);
-                let a_poly = a_poly_missing.then_some(index_linear_combinations.0).or_else(|| Some(a_poly)).unwrap();
-                let b_poly = b_poly_missing.then_some(index_linear_combinations.1).or_else(|| Some(b_poly)).unwrap();
+                let a_poly = if a_poly_missing { index_linear_combinations.0 } else { a_poly };
+                let b_poly = if b_poly_missing { index_linear_combinations.1 } else { b_poly };
 
                 let g_m_term = Self::construct_g_m_term(gamma, g_m_at_gamma, sum, selector_at_gamma, a_poly, b_poly);
                 matrix_sumcheck += (delta, &g_m_term);

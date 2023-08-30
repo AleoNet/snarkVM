@@ -570,8 +570,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         coeffs_and_comms: impl IntoIterator<Item = (E::Fr, &'a Commitment<E>)>,
     ) -> E::G1Projective {
         let (scalars, bases): (Vec<_>, Vec<_>) = coeffs_and_comms.into_iter().map(|(f, c)| (f.into(), c.0)).unzip();
-        let combined_commitment = VariableBase::msm(&bases, &scalars);
-        combined_commitment
+        VariableBase::msm(&bases, &scalars)
     }
 
     fn normalize_commitments(commitments: Vec<E::G1Projective>) -> impl Iterator<Item = Commitment<E>> {
