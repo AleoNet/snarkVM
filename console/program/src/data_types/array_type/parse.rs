@@ -13,39 +13,54 @@
 // limitations under the License.
 
 use super::*;
+use crate::{Identifier, LiteralType};
 
 impl<N: Network> Parser for ArrayType<N> {
     /// Parses a string into a literal type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the opening bracket.
-        let (string, _) = tag("[")(string)?;
-        // Parse the whitespaces from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the plaintext type.
-        let (string, plaintext_type) = PlaintextType::parse(string)?;
-        // Parse the whitespaces from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the ";" from the string.
-        let (string, _) = tag(";")(string)?;
-        // Parse the whitespaces from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the length of the array, check that the length is valid.
-        let (string, length) = map_res(U32::parse, |length| {
-            if (*length as usize) < N::MIN_ARRAY_ELEMENTS {
-                Err(format!("An array must have {} element", N::MIN_ARRAY_ELEMENTS))
-            } else if (*length as usize) > N::MAX_ARRAY_ELEMENTS {
-                Err(format!("An array can contain {} elements", N::MAX_ARRAY_ELEMENTS))
+        // A helper function to parse the innermost element type.
+        fn parse_inner_element_type<N: Network>(string: &str) -> ParserResult<PlaintextType<N>> {
+            alt((map(LiteralType::parse, PlaintextType::from), map(Identifier::parse, PlaintextType::from)))(string)
+        }
+
+        // A helper function to parse the length of each dimension.
+        fn parse_length<N: Network>(string: &str) -> ParserResult<U32<N>> {
+            // Parse the whitespaces from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the semicolon from the string.
+            let (string, _) = tag(";")(string)?;
+            // Parse the whitespaces from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the length.
+            let (string, length) = U32::parse(string)?;
+            // Parse the whitespaces from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the closing bracket.
+            let (string, _) = tag("]")(string)?;
+            // Return the length.
+            Ok((string, length))
+        }
+
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the opening brackets and validate the number of dimensions.
+        let (string, dimensions) = map_res(many0_count(pair(tag("["), Sanitizer::parse_whitespaces)), |dimensions| {
+            if dimensions.is_zero() {
+                Err("An array must have at least one dimension.".to_string())
+            } else if dimensions > N::MAX_DATA_DEPTH {
+                Err(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH))
             } else {
-                Ok(length)
+                Ok(dimensions)
             }
         })(string)?;
+
         // Parse the whitespaces from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the closing bracket.
-        let (string, _) = tag("]")(string)?;
-        // Return the array type.
-        Ok((string, Self { element_type: Box::new(plaintext_type), length }))
+        // Parse the innermost element type and the dimensions and return the array type.
+        map_res(pair(parse_inner_element_type, count(parse_length, dimensions)), |(plaintext_type, dimensions)| {
+            ArrayType::new(plaintext_type, dimensions)
+        })(string)
     }
 }
 
