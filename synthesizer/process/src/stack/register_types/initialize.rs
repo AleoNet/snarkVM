@@ -312,7 +312,7 @@ impl<N: Network> RegisterTypes<N> {
     /// This method is called when adding a new closure or function to the program.
     #[inline]
     fn check_instruction_opcode(
-        &mut self,
+        &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
