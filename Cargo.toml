@@ -204,7 +204,7 @@ optional = true
 
 [dependencies.clap]
 version = "4.4"
-features = [ "derive", "color", "unstable-styles" ]
+features = [ "derive", "color" ]
 optional = true
 
 [dependencies.colored]
