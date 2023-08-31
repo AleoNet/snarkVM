@@ -203,7 +203,7 @@ version = "1.0.73"
 optional = true
 
 [dependencies.clap]
-version = "4.3"
+version = "4.4"
 features = [ "derive", "color", "unstable-styles" ]
 optional = true
 
