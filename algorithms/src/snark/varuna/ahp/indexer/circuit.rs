@@ -133,7 +133,7 @@ impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
         crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables).unwrap().size()
     }
 
-    pub fn arithmetize_polys(&self) -> impl Iterator<Item = LabeledPolynomial<F>> {
+    pub fn interpolate_matrix_evals(&self) -> impl Iterator<Item = LabeledPolynomial<F>> {
         let [a_arith, b_arith, c_arith]: [_; 3] = [("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)]
             .into_iter()
             .map(|(label, evals)| MatrixArithmetization::new(&self.id, label, evals))

@@ -106,7 +106,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             let (mut circuit_commitments, commitment_randomnesses): (_, _) = SonicKZG10::<E, FS>::commit(
                 universal_prover,
                 &ck,
-                indexed_circuit.arithmetize_polys().map(Into::into),
+                indexed_circuit.interpolate_matrix_evals().map(Into::into),
                 setup_rng,
             )?;
             let empty_randomness = Randomness::<E>::empty();
@@ -265,7 +265,7 @@ where
             universal_prover,
             &committer_key,
             &[lc],
-            proving_key.circuit.arithmetize_polys(),
+            proving_key.circuit.interpolate_matrix_evals(),
             &empty_randomness,
             &query_set,
             &mut sponge,
@@ -559,10 +559,10 @@ where
             .collect();
 
         let empty_randomness = Randomness::<E>::empty();
-        if !MM::ZK {
-            assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
-        } else {
+        if MM::ZK {
             assert!(commitment_randomnesses.iter().any(|r| r != &empty_randomness));
+        } else {
+            assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
         }
 
         // Compute the AHP verifier's query set.

@@ -111,6 +111,15 @@ impl<F: PrimeField> MatrixEvals<F> {
             self.row_col_val.evaluate_with_coeffs(lagrange_coefficients_at_point),
         ])
     }
+
+    pub(crate) fn domain(&self) -> Result<EvaluationDomain<F>> {
+        ensure!(self.row.domain() == self.col.domain());
+        if let Some(row_col) = self.row_col.as_ref() {
+            ensure!(self.row.domain() == row_col.domain());
+        }
+        ensure!(self.row.domain() == self.row_col_val.domain());
+        Ok(self.row.domain())
+    }
 }
 
 pub(crate) fn matrix_evals<F: PrimeField>(
@@ -190,7 +199,7 @@ impl<F: PrimeField> MatrixArithmetization<F> {
     /// Create a new MatrixArithmetization
     pub fn new(id: &CircuitId, label: &str, matrix_evals: &MatrixEvals<F>) -> Result<MatrixArithmetization<F>> {
         let interpolate_time = start_timer!(|| "Interpolating on K");
-        let non_zero_domain = matrix_evals.row.domain();
+        let non_zero_domain = matrix_evals.domain()?;
         let row = matrix_evals.row.clone().interpolate();
         let col = matrix_evals.col.clone().interpolate();
         let row_col = if let Some(row_col) = matrix_evals.row_col.as_ref() {

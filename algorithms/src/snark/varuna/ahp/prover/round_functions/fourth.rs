@@ -203,8 +203,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             .map(|(r, c)| (alpha - r) * (beta - c))
             .collect();
 
-        let new_constant = v_R_i_alpha_v_C_i_beta * constraint_domain.size_inv * variable_domain.size_inv;
-        batch_inversion_and_mul(&mut inverses, &new_constant);
+        let matrix_sumcheck_constants = v_R_i_alpha_v_C_i_beta * constraint_domain.size_inv * variable_domain.size_inv;
+        batch_inversion_and_mul(&mut inverses, &matrix_sumcheck_constants);
 
         cfg_iter_mut!(inverses).zip_eq(&row_col_val.evaluations).for_each(|(inv, v)| *inv *= v);
         let f_evals_on_K = inverses;

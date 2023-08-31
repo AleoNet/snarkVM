@@ -39,6 +39,13 @@ pub struct AHPForR1CS<F: Field, MM: SNARKMode> {
     mode: PhantomData<MM>,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct VerifierChallenges<F: Field> {
+    alpha: F,
+    beta: F,
+    gamma: F,
+}
+
 pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
     format!("circuit_{circuit_id}_{poly}_{i:0>8}")
 }
@@ -330,7 +337,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             let v_R_i_at_alpha = state_i.constraint_domain.evaluate_vanishing_polynomial(alpha);
             let v_C_i_at_beta = state_i.variable_domain.evaluate_vanishing_polynomial(beta);
             let v_rc = v_R_i_at_alpha * v_C_i_at_beta;
-            let RC = state_i.constraint_domain.size_as_field_element * state_i.variable_domain.size_as_field_element;
+            let rc = state_i.constraint_domain.size_as_field_element * state_i.variable_domain.size_as_field_element;
 
             let matrices = ["a", "b", "c"];
             let deltas = [delta_a[i], delta_b[i], delta_c[i]];
@@ -345,21 +352,11 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                 let g_m_label = witness_label(id, &label, 0);
                 let g_m = LinearCombination::new(g_m_label.clone(), [(F::one(), g_m_label)]);
                 let g_m_at_gamma = evals.get_lc_eval(&g_m, gamma)?;
+                let challenges = VerifierChallenges { alpha, beta, gamma };
 
-                let label_a_poly = format!("circuit_{id}_a_poly_{m}");
-                let a_poly = LinearCombination::new(label_a_poly.clone(), [(F::one(), label_a_poly)]);
-                let a_poly_missing = evals.get_lc_eval(&a_poly, gamma).is_err();
-                let label_b_poly = format!("circuit_{id}_b_poly_{m}");
-                let b_poly = LinearCombination::new(label_b_poly.clone(), [(F::one(), label_b_poly)]);
-                let b_poly_missing = evals.get_lc_eval(&b_poly, gamma).is_err();
-                assert_eq!(a_poly_missing, b_poly_missing);
-
-                // The verifier does not have access to a_poly and b_poly, so uses linear combinations of index polynomials instead
-                let index_linear_combinations = Self::index_linear_combinations(id, m, v_rc, alpha, beta, RC);
-                let a_poly = if a_poly_missing { index_linear_combinations.0 } else { a_poly };
-                let b_poly = if b_poly_missing { index_linear_combinations.1 } else { b_poly };
-
+                let (a_poly, b_poly) = Self::construct_matrix_linear_combinations(evals, id, m, v_rc, challenges, rc);
                 let g_m_term = Self::construct_g_m_term(gamma, g_m_at_gamma, sum, selector_at_gamma, a_poly, b_poly);
+
                 matrix_sumcheck += (delta, &g_m_term);
 
                 linear_combinations.insert(g_m.label.clone(), g_m);
@@ -391,22 +388,34 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         lhs
     }
 
-    pub fn index_linear_combinations(
+    fn construct_matrix_linear_combinations<E: EvaluationsProvider<F>>(
+        evals: &E,
         id: CircuitId,
         matrix: &str,
         v_rc_at_alpha_beta: F,
-        alpha: F,
-        beta: F,
+        challenges: VerifierChallenges<F>,
         rc_size: F,
     ) -> (LinearCombination<F>, LinearCombination<F>) {
-        let label_row = format!("circuit_{id}_row_{matrix}");
-        let label_col = format!("circuit_{id}_col_{matrix}");
-        let label_row_col_val = format!("circuit_{id}_row_col_val_{matrix}");
-        let label_row_col = format!("circuit_{id}_row_col_{matrix}");
         let label_a_poly = format!("circuit_{id}_a_poly_{matrix}");
         let label_b_poly = format!("circuit_{id}_b_poly_{matrix}");
+        let VerifierChallenges { alpha, beta, gamma } = challenges;
 
+        // When running as the prover, who has access to a(X) and b(X), we directly return those
+        let a_poly = LinearCombination::new(label_a_poly.clone(), [(F::one(), label_a_poly.clone())]);
+        let a_poly_eval_available = evals.get_lc_eval(&a_poly, gamma).is_ok();
+        let b_poly = LinearCombination::new(label_b_poly.clone(), [(F::one(), label_b_poly.clone())]);
+        let b_poly_eval_available = evals.get_lc_eval(&b_poly, gamma).is_ok();
+        assert_eq!(a_poly_eval_available, b_poly_eval_available);
+        if a_poly_eval_available && b_poly_eval_available {
+            return (a_poly, b_poly);
+        };
+
+        // When running as the verifier, we need to construct a(X) and b(X) from the indexing polynomials
+        let label_col = format!("circuit_{id}_col_{matrix}");
+        let label_row = format!("circuit_{id}_row_{matrix}");
+        let label_row_col = format!("circuit_{id}_row_col_{matrix}");
         // recall that row_col_val(X) is M_{i,j}*rowcol(X)
+        let label_row_col_val = format!("circuit_{id}_row_col_val_{matrix}");
         let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
         let mut b = LinearCombination::new(label_b_poly, [
             (alpha * beta, LCTerm::One),
