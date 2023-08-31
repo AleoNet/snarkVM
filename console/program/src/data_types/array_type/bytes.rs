@@ -17,6 +17,14 @@ use crate::{Identifier, LiteralType};
 
 impl<N: Network> FromBytes for ArrayType<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the innermost element type.
+        let variant = u8::read_le(&mut reader)?;
+        let element_type = match variant {
+            0 => PlaintextType::Literal(LiteralType::read_le(&mut reader)?),
+            1 => PlaintextType::Struct(Identifier::read_le(&mut reader)?),
+            2.. => return Err(error(format!("Failed to deserialize element type {variant}"))),
+        };
+
         // Read the number of dimensions of the array.
         let dimensions = u8::read_le(&mut reader)? as usize;
 
@@ -33,14 +41,6 @@ impl<N: Network> FromBytes for ArrayType<N> {
             lengths.push(U32::read_le(&mut reader)?);
         }
 
-        // Read the innermost element type.
-        let variant = u8::read_le(&mut reader)?;
-        let element_type = match variant {
-            0 => PlaintextType::Literal(LiteralType::read_le(&mut reader)?),
-            1 => PlaintextType::Struct(Identifier::read_le(&mut reader)?),
-            2.. => return Err(error(format!("Failed to deserialize element type {variant}"))),
-        };
-
         // Construct the array type.
         ArrayType::new(element_type, lengths).map_err(|e| error(format!("{e}")))
     }
@@ -53,6 +53,7 @@ impl<N: Network> ToBytes for ArrayType<N> {
         let mut lengths = vec![*self.length()];
 
         // Collect the each dimension of the array.
+        // Note that the lengths are in the order of the outermost dimension to the innermost dimension.
         for _ in 1..N::MAX_DATA_DEPTH {
             element_type = match element_type {
                 PlaintextType::Literal(_) | PlaintextType::Struct(_) => break,
@@ -68,14 +69,6 @@ impl<N: Network> ToBytes for ArrayType<N> {
             return Err(error(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH)));
         }
 
-        // Write the number of dimensions of the array.
-        u8::try_from(lengths.len()).or_halt::<N>().write_le(&mut writer)?;
-
-        // Write the lengths of the array.
-        for length in lengths {
-            length.write_le(&mut writer)?;
-        }
-
         // Write the innermost element type.
         match element_type {
             PlaintextType::Literal(literal_type) => {
@@ -87,6 +80,14 @@ impl<N: Network> ToBytes for ArrayType<N> {
                 identifier.write_le(&mut writer)?;
             }
             PlaintextType::Array(_) => unreachable!(),
+        }
+
+        // Write the number of dimensions of the array.
+        u8::try_from(lengths.len()).or_halt::<N>().write_le(&mut writer)?;
+
+        // Write the lengths of the array.
+        for length in lengths {
+            length.write_le(&mut writer)?;
         }
 
         Ok(())

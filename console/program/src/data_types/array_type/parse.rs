@@ -58,7 +58,9 @@ impl<N: Network> Parser for ArrayType<N> {
         // Parse the whitespaces from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the innermost element type and the dimensions and return the array type.
-        map_res(pair(parse_inner_element_type, count(parse_length, dimensions)), |(plaintext_type, dimensions)| {
+        map_res(pair(parse_inner_element_type, count(parse_length, dimensions)), |(plaintext_type, mut dimensions)| {
+            // Reverse the dimensions, since they were parsed from innermost to outermost.
+            dimensions.reverse();
             ArrayType::new(plaintext_type, dimensions)
         })(string)
     }

@@ -32,6 +32,7 @@ pub struct ArrayType<N: Network> {
 
 impl<N: Network> ArrayType<N> {
     /// Initializes a new multi-dimensional array type.
+    /// Note that the dimensions must be specified from the outermost to the innermost.
     pub fn new(plaintext_type: PlaintextType<N>, mut dimensions: Vec<U32<N>>) -> Result<Self> {
         // Check that the number of dimensions are valid.
         ensure!(!dimensions.is_empty(), "An array must have at least one dimension");
@@ -125,6 +126,31 @@ mod tests {
         );
         assert_eq!(array.element_type(), &PlaintextType::Literal(LiteralType::Scalar));
         assert_eq!(array.length(), &U32::new(32));
+        assert!(!array.is_empty());
+
+        // Test multi-dimensional array types.
+        let array = ArrayType::<CurrentNetwork>::from_str("[[field; 2u32]; 3u32]")?;
+        assert_eq!(
+            array,
+            ArrayType::<CurrentNetwork>::new(
+                PlaintextType::Array(ArrayType::<CurrentNetwork>::new(PlaintextType::from_str("field")?, vec![
+                    U32::new(2)
+                ])?),
+                vec![U32::new(3)]
+            )?
+        );
+        assert_eq!(
+            array.to_bytes_le()?,
+            ArrayType::<CurrentNetwork>::from_bytes_le(&array.to_bytes_le()?)?.to_bytes_le()?
+        );
+        assert_eq!(array.to_string(), "[[field; 2u32]; 3u32]");
+        assert_eq!(
+            array.element_type(),
+            &PlaintextType::Array(ArrayType::<CurrentNetwork>::new(PlaintextType::Literal(LiteralType::Field), vec![
+                U32::new(2)
+            ])?)
+        );
+        assert_eq!(array.length(), &U32::new(3));
         assert!(!array.is_empty());
 
         Ok(())
