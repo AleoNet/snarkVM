@@ -92,7 +92,7 @@ pub struct EvaluationDomain<F: FftField> {
     pub group_gen: F,
     /// Inverse of the generator of the subgroup.
     pub group_gen_inv: F,
-    /// Multiplicative generator of the finite field.
+    /// Inverse of the multiplicative generator of the finite field.
     pub generator_inv: F,
 }
 
