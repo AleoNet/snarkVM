@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
-#![warn(clippy::cast_possible_truncation)]
-#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
+mod leaf_hash;
+pub use leaf_hash::*;
 
-pub use snarkvm_console_types::prelude::*;
-
-pub mod merkle_tree;
-pub mod multi_arity_merkle_tree;
+mod path_hash;
+pub use path_hash::*;
