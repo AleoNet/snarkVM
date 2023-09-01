@@ -198,8 +198,13 @@ impl<N: Network> RegisterTypes<N> {
             }
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
                 let mut array_type = array_type.clone();
+                let mut counter = 0;
                 // Ensure all struct types are defined in the program.
                 loop {
+                    // Ensure the array does not exceed the maximum number of elements.
+                    if counter >= N::MAX_ARRAY_ELEMENTS {
+                        bail!("Array '{array_type}' exceeds the maximum of {}.", N::MAX_ARRAY_ELEMENTS)
+                    }
                     match array_type.next_element_type() {
                         PlaintextType::Literal(..) => break,
                         PlaintextType::Struct(struct_name) => {
@@ -209,7 +214,10 @@ impl<N: Network> RegisterTypes<N> {
                             }
                             break;
                         }
-                        PlaintextType::Array(next_array_type) => array_type = next_array_type.clone(),
+                        PlaintextType::Array(next_array_type) => {
+                            array_type = next_array_type.clone();
+                            counter += 1;
+                        }
                     }
                 }
             }
