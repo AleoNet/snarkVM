@@ -16,9 +16,16 @@
 #![allow(clippy::too_many_arguments)]
 #![warn(clippy::cast_possible_truncation)]
 
+pub mod cast;
+pub use cast::*;
+
+pub mod cast_lossy;
+pub use cast_lossy::*;
+
 pub use modules::*;
+
 pub mod prelude {
-    pub use crate::modules::*;
+    pub use crate::{cast::*, cast_lossy::*, modules::*};
     pub use snarkvm_console_network_environment::prelude::*;
 }
 
