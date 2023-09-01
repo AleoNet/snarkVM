@@ -244,7 +244,7 @@ impl<N: Network> StackProgram<N> for Stack<N> {
 
     /// Returns the external record if the stack contains the external record.
     #[inline]
-    fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
+    fn get_external_record(&self, locator: &Locator<N>) -> Result<&RecordType<N>> {
         // Retrieve the external program.
         let external_program = self.get_external_program(locator.program_id())?;
         // Return the external record, if it exists.

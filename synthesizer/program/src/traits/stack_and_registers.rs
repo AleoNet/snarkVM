@@ -67,7 +67,7 @@ pub trait StackProgram<N: Network> {
     fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>>;
 
     /// Returns `true` if the stack contains the external record.
-    fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>>;
+    fn get_external_record(&self, locator: &Locator<N>) -> Result<&RecordType<N>>;
 
     /// Returns the function with the given function name.
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>>;

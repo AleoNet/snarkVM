@@ -55,9 +55,8 @@ impl<N: Network> StackMatches<N> for Stack<N> {
         ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Retrieve the record type from the program.
-        let record_type = match self.get_external_record(locator) {
-            Ok(record_type) => record_type,
-            Err(..) => bail!("External '{locator}' is not defined in the program"),
+        let Ok(record_type) = self.get_external_record(locator) else {
+            bail!("External '{locator}' is not defined in the program")
         };
 
         // Ensure the record name matches.
@@ -65,7 +64,7 @@ impl<N: Network> StackMatches<N> for Stack<N> {
             bail!("Expected external record '{record_name}', found external record '{}'", record_type.name())
         }
 
-        self.matches_record_internal(record, &record_type, 0)
+        self.matches_record_internal(record, record_type, 0)
     }
 
     /// Checks that the given record matches the layout of the record type.
@@ -74,9 +73,8 @@ impl<N: Network> StackMatches<N> for Stack<N> {
         ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Retrieve the record type from the program.
-        let record_type = match self.program().get_record(record_name) {
-            Ok(record_type) => record_type,
-            Err(..) => bail!("Record '{record_name}' is not defined in the program"),
+        let Ok(record_type) = self.program().get_record(record_name) else {
+            bail!("Record '{record_name}' is not defined in the program")
         };
 
         // Ensure the record name matches.
@@ -84,7 +82,7 @@ impl<N: Network> StackMatches<N> for Stack<N> {
             bail!("Expected record '{record_name}', found record '{}'", record_type.name())
         }
 
-        self.matches_record_internal(record, &record_type, 0)
+        self.matches_record_internal(record, record_type, 0)
     }
 
     /// Checks that the given plaintext matches the layout of the plaintext type.

@@ -148,7 +148,7 @@ impl<N: Network> RegisterTypes<N> {
                         Access::Index(_) => bail!("Attempted to index into a record"),
                     };
                     // Retrieve the entry type from the record.
-                    match stack.program().get_record_as_ref(record_name)?.entries().get(path_name) {
+                    match stack.program().get_record(record_name)?.entries().get(path_name) {
                         // Retrieve the plaintext type.
                         Some(entry_type) => entry_type.plaintext_type().clone(),
                         None => bail!("'{path_name}' does not exist in record '{record_name}'"),

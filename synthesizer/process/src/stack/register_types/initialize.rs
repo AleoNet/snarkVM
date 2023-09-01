@@ -433,7 +433,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Retrieve the record type.
                         let record_type = stack.program().get_record(record_name)?;
                         // Ensure the operand types match the record type.
-                        self.matches_record(stack, instruction.operands(), &record_type)?;
+                        self.matches_record(stack, instruction.operands(), record_type)?;
                     }
                     RegisterType::ExternalRecord(_locator) => {
                         bail!("Illegal operation: Cannot cast to an external record.")

@@ -248,17 +248,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     }
 
     /// Returns the record with the given name.
-    pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
-        // Attempt to retrieve the record.
-        let record = self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
-        // Ensure the record name matches.
-        ensure!(record.name() == name, "Expected record '{name}', but found record '{}'", record.name());
-        // Return the record.
-        Ok(record)
-    }
-
-    /// Returns the record with the given name.
-    pub fn get_record_as_ref(&self, name: &Identifier<N>) -> Result<&RecordType<N>> {
+    pub fn get_record(&self, name: &Identifier<N>) -> Result<&RecordType<N>> {
         // Attempt to retrieve the record.
         let record = self.records.get(name).ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
         // Ensure the record name matches.
@@ -734,7 +724,7 @@ record foo:
         // Ensure the record was added.
         assert!(program.contains_record(&Identifier::from_str("foo")?));
         // Ensure the retrieved record matches.
-        assert_eq!(record, program.get_record(&Identifier::from_str("foo")?)?);
+        assert_eq!(&record, program.get_record(&Identifier::from_str("foo")?)?);
 
         Ok(())
     }
