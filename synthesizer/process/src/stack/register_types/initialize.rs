@@ -190,12 +190,7 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the struct is defined in the program.
-                if !stack.program().contains_struct(struct_name) {
-                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
                 // If the base element type is a struct, ensure the struct is defined in the program.
                 if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
@@ -252,12 +247,7 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the struct is defined in the program.
-                if !stack.program().contains_struct(struct_name) {
-                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
                 // If the base element type is a struct, ensure the struct is defined in the program.
                 if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
@@ -506,6 +496,35 @@ impl<N: Network> RegisterTypes<N> {
 }
 
 impl<N: Network> RegisterTypes<N> {
+    /// Ensures the struct exists in the program, and recursively-checks for array members.
+    pub(crate) fn check_struct(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        struct_name: &Identifier<N>,
+    ) -> Result<()> {
+        // Retrieve the struct from the program.
+        let Ok(struct_) = stack.program().get_struct_as_ref(struct_name) else {
+            bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+        };
+
+        // If the struct contains arrays, ensure their base element types are defined in the program.
+        for member in struct_.members().values() {
+            match member {
+                PlaintextType::Literal(..) => (),
+                PlaintextType::Struct(struct_name) => Self::check_struct(stack, struct_name)?,
+                PlaintextType::Array(array_type) => {
+                    // If the base element type is a struct, check that it is defined in the program.
+                    if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+                        // Ensure the struct is defined in the program.
+                        if !stack.program().contains_struct(struct_name) {
+                            bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Ensures the opcode is a valid opcode and corresponds to the `commit` instruction.
     #[inline]
     pub(crate) fn check_commit_opcode(opcode: &str, instruction: &Instruction<N>) -> Result<()> {
