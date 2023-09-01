@@ -58,7 +58,7 @@ impl<N: Network> Literal<N> {
     pub fn cast_lossy(&self, to_type: LiteralType) -> Result<Self> {
         match self {
             Self::Address(address) => cast_lossy_group_to_type(address.to_group(), to_type),
-            Self::Boolean(..) => bail!("Cannot cast a boolean literal to another type."),
+            Self::Boolean(boolean) => cast_lossy_boolean_to_type(boolean, to_type),
             Self::Field(field) => cast_lossy_field_to_type(field, to_type),
             Self::Group(group) => cast_lossy_group_to_type(group, to_type),
             Self::I8(..) => bail!("Cannot cast an i8 literal to another type (yet)."),
@@ -96,6 +96,29 @@ fn cast_boolean_to_type<N: Network>(boolean: &Boolean<N>, to_type: LiteralType) 
         LiteralType::U64 => Ok(Literal::U64(boolean.cast()?)),
         LiteralType::U128 => Ok(Literal::U128(boolean.cast()?)),
         LiteralType::Scalar => Ok(Literal::Scalar(boolean.cast()?)),
+        LiteralType::Signature => bail!("Cannot cast a boolean literal to a signature type."),
+        LiteralType::String => bail!("Cannot cast a boolean literal to a string type."),
+    }
+}
+
+/// Casts a boolean literal to the given literal type, with lossy truncation.
+fn cast_lossy_boolean_to_type<N: Network>(boolean: &Boolean<N>, to_type: LiteralType) -> Result<Literal<N>> {
+    match to_type {
+        LiteralType::Address => Ok(Literal::Address(boolean.cast_lossy()?)),
+        LiteralType::Boolean => Ok(Literal::Boolean(*boolean)),
+        LiteralType::Field => Ok(Literal::Field(boolean.cast_lossy()?)),
+        LiteralType::Group => Ok(Literal::Group(boolean.cast_lossy()?)),
+        LiteralType::I8 => Ok(Literal::I8(boolean.cast_lossy()?)),
+        LiteralType::I16 => Ok(Literal::I16(boolean.cast_lossy()?)),
+        LiteralType::I32 => Ok(Literal::I32(boolean.cast_lossy()?)),
+        LiteralType::I64 => Ok(Literal::I64(boolean.cast_lossy()?)),
+        LiteralType::I128 => Ok(Literal::I128(boolean.cast_lossy()?)),
+        LiteralType::U8 => Ok(Literal::U8(boolean.cast_lossy()?)),
+        LiteralType::U16 => Ok(Literal::U16(boolean.cast_lossy()?)),
+        LiteralType::U32 => Ok(Literal::U32(boolean.cast_lossy()?)),
+        LiteralType::U64 => Ok(Literal::U64(boolean.cast_lossy()?)),
+        LiteralType::U128 => Ok(Literal::U128(boolean.cast_lossy()?)),
+        LiteralType::Scalar => Ok(Literal::Scalar(boolean.cast_lossy()?)),
         LiteralType::Signature => bail!("Cannot cast a boolean literal to a signature type."),
         LiteralType::String => bail!("Cannot cast a boolean literal to a string type."),
     }
