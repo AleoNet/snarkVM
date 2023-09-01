@@ -74,11 +74,11 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
             (Self::Array(a, _), Self::Array(b, _)) => match a.len() == b.len() {
                 true => {
                     // Recursively check each element for equality.
-                    let mut not_equal = Boolean::new(false);
-                    for (plaintext_a, plaintext_b) in a.iter().zip_eq(b.iter()) {
-                        not_equal |= plaintext_a.is_not_equal(plaintext_b);
+                    if a.iter().zip_eq(b.iter()).any(|(plaintext_a, plaintext_b)| plaintext_a.is_not_equal(plaintext_b)) {
+                        Boolean::new(true)
+                    } else {
+                        Boolean::new(false)
                     }
-                    not_equal
                 }
                 false => Boolean::new(true),
             },
