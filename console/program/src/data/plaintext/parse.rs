@@ -358,26 +358,6 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_with_arrays() {
-        let expected = r"{
-  foo: [
-    1u8,
-    2u8,
-    3u8
-  ],
-  bar: [
-    4u8,
-    5u8,
-    6u8
-  ]
-}";
-        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
-        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
-        assert_eq!(expected, candidate.to_string());
-        assert_eq!("", remainder);
-    }
-
-    #[test]
     fn test_array() {
         // Test an array of literals.
         let expected = r"[
@@ -405,6 +385,88 @@ mod tests {
     bar: 6u8
   }
 ]";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_struct_with_arrays() {
+        let expected = r"{
+  foo: [
+    1u8,
+    2u8,
+    3u8
+  ],
+  bar: [
+    4u8,
+    5u8,
+    6u8
+  ]
+}";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+    }
+
+    #[test]
+    fn test_struct_with_array_of_structs() {
+        let expected = r"{
+  foo: [
+    {
+      foo: 1u8,
+      bar: 2u8
+    },
+    {
+      foo: 3u8,
+      bar: 4u8
+    },
+    {
+      foo: 5u8,
+      bar: 6u8
+    }
+  ],
+  bar: [
+    {
+      foo: [
+        1u8,
+        2u8,
+        3u8
+      ],
+      bar: [
+        4u8,
+        5u8,
+        6u8
+      ]
+    },
+    {
+      foo: [
+        7u8,
+        8u8,
+        9u8
+      ],
+      bar: [
+        10u8,
+        11u8,
+        12u8
+      ]
+    },
+    {
+      foo: [
+        13u8,
+        14u8,
+        15u8
+      ],
+      bar: [
+        16u8,
+        17u8,
+        18u8
+      ]
+    }
+  ]
+}";
         let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected).unwrap();
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());
