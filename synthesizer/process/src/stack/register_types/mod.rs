@@ -134,7 +134,8 @@ impl<N: Network> RegisterTypes<N> {
             RegisterType::Record(record_name) => {
                 // Ensure the record type exists.
                 ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");
-                // Get the first access. Note that this unwrap is since the path is non-empty.
+                // Retrieve the first access.
+                // Note: this unwrap is safe since the path is checked to be non-empty above.
                 let access = path_iter.next().unwrap();
                 // Retrieve the member type from the record.
                 if access == &Access::Member(Identifier::from_str("owner")?) {
@@ -148,12 +149,8 @@ impl<N: Network> RegisterTypes<N> {
                     };
                     // Retrieve the entry type from the record.
                     match stack.program().get_record_as_ref(record_name)?.entries().get(path_name) {
-                        // Update the entry type.
-                        Some(entry_type) => match entry_type {
-                            EntryType::Constant(plaintext_type)
-                            | EntryType::Public(plaintext_type)
-                            | EntryType::Private(plaintext_type) => plaintext_type.clone(),
-                        },
+                        // Retrieve the plaintext type.
+                        Some(entry_type) => entry_type.plaintext_type().clone(),
                         None => bail!("'{path_name}' does not exist in record '{record_name}'"),
                     }
                 }
@@ -161,7 +158,8 @@ impl<N: Network> RegisterTypes<N> {
             RegisterType::ExternalRecord(locator) => {
                 // Ensure the external record type exists.
                 ensure!(stack.contains_external_record(locator), "External record '{locator}' does not exist");
-                // Get the first access. Note that this unwrap is since the path is non-empty.
+                // Retrieve the first access.
+                // Note: this unwrap is safe since the path is checked to be non-empty above.
                 let access = path_iter.next().unwrap();
                 // Retrieve the member type from the external record.
                 if access == &Access::Member(Identifier::from_str("owner")?) {
@@ -175,12 +173,8 @@ impl<N: Network> RegisterTypes<N> {
                     };
                     // Retrieve the entry type from the external record.
                     match stack.get_external_record(locator)?.entries().get(path_name) {
-                        // Update the entry type.
-                        Some(entry_type) => match entry_type {
-                            EntryType::Constant(plaintext_type)
-                            | EntryType::Public(plaintext_type)
-                            | EntryType::Private(plaintext_type) => plaintext_type.clone(),
-                        },
+                        // Retrieve the plaintext type.
+                        Some(entry_type) => entry_type.plaintext_type().clone(),
                         None => bail!("'{path_name}' does not exist in external record '{locator}'"),
                     }
                 }
