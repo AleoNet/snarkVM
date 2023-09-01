@@ -103,7 +103,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                 // Compute the bits of the array.
                 let bits = bits_be.get_or_init(|| {
                     let mut bits_be = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
-                    bits_be.extend(U32::constant(console::U32::new(elements.len() as u32)).to_bits_be());
+                    U32::constant(console::U32::new(elements.len() as u32)).write_bits_be(&mut bits_be);
                     for value in elements {
                         let value_bits = value.to_bits_be();
                         bits_be.extend(U16::constant(console::U16::new(value_bits.len() as u16)).to_bits_be());
