@@ -22,7 +22,9 @@ pub struct MerklePath<E: Environment, const DEPTH: u8, const ARITY: u8> {
     siblings: Vec<Vec<Field<E>>>,
 }
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> TryFrom<(U64<E>, Vec<Field<E>>)> for MerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> TryFrom<(U64<E>, Vec<Vec<Field<E>>>)>
+    for MerklePath<E, DEPTH, ARITY>
+{
     type Error = Error;
 
     /// Returns a new instance of a Merkle path.
@@ -34,11 +36,11 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> TryFrom<(U64<E>, Vec<Fiel
         // Ensure the Merkle tree arity is greater than 1.
         ensure!(ARITY > 1, "Merkle tree arity must be greater than 1");
         // Ensure the leaf index is within the tree depth.
-        ensure!((*leaf_index as u128) < (arity as u128).pow(DEPTH as u32), "Found an out of bounds Merkle leaf index");
+        ensure!((*leaf_index as u128) < (ARITY as u128).pow(DEPTH as u32), "Found an out of bounds Merkle leaf index");
         // Ensure the Merkle path is the correct length.
         ensure!(siblings.len() == DEPTH as usize, "Found an incorrect Merkle path length");
         for sibling in &siblings {
-            ensire!(sibling.len() == ARITY as usize, "Found an incorrect Merkle path arity");
+            ensure!(sibling.len() == ARITY.saturating_sub(1) as usize, "Found an incorrect Merkle path arity");
         }
         // Return the Merkle path.
         Ok(Self { leaf_index, siblings })
@@ -52,7 +54,7 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> MerklePath<E, DEPTH, ARIT
     }
 
     /// Returns the siblings for the path.
-    pub fn siblings(&self) -> &[[Field<E>]] {
+    pub fn siblings(&self) -> &[Vec<Field<E>>] {
         &self.siblings
     }
 
@@ -65,12 +67,12 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> MerklePath<E, DEPTH, ARIT
         leaf: &LH::Leaf,
     ) -> bool {
         // Ensure the leaf index is within the tree depth.
-        if (*self.leaf_index as u128) >= (arity as u128).pow(DEPTH as u32) {
+        if (*self.leaf_index as u128) >= (ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(u128::MAX) {
             eprintln!("Found an out of bounds Merkle leaf index");
             return false;
         }
         // Ensure the path length matches the expected depth.
-        else if self.siblings.len() != DEPTH as usize {
+        if self.siblings.len() != DEPTH as usize {
             eprintln!("Found an incorrect Merkle path length");
             return false;
         }
@@ -84,20 +86,29 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> MerklePath<E, DEPTH, ARIT
             }
         };
 
-        // Compute the ordering of the current hash and sibling hash on each level.
-        // If the indicator bit is `true`, then the ordering is (current_hash, sibling_hash).
-        // If the indicator bit is `false`, then the ordering is (sibling_hash, current_hash).
-        let indicators = (0..DEPTH).map(|i| ((*self.leaf_index >> i) & 1) == 0);
+        // Compute the ordering of the current hash and sibling hashes on each level.
+        // The indicator index determines which sibling the current hash is.
+        let indicator_indexes: Vec<usize> = match (0..DEPTH)
+            .map(|i| usize::try_from(*self.leaf_index as u128 / (ARITY as u128).pow(i as u32) % ARITY as u128))
+            .collect::<Result<Vec<_>, _>>()
+        {
+            Ok(indexes) => indexes,
+            _ => {
+                eprintln!("Found an incorrect Merkle leaf index");
+                return false;
+            }
+        };
 
         // Check levels between leaf level and root.
-        for (indicator, sibling_hash) in indicators.zip_eq(&self.siblings) {
-            // Construct the ordering of the left & right child hash for this level.
-            let (left, right) = match indicator {
-                true => (current_hash, *sibling_hash),
-                false => (*sibling_hash, current_hash),
-            };
+        for (indicator_index, sibling_hashes) in indicator_indexes.into_iter().zip_eq(&self.siblings) {
+            // Construct the ordering of sibling hashes for this level.
+            let mut sibling_hashes = sibling_hashes.clone();
+
+            // Insert the current hash into the list of sibling hashes.
+            sibling_hashes.insert(indicator_index, current_hash);
+
             // Update the current hash for the next level.
-            match path_hasher.hash_children(&left, &right) {
+            match path_hasher.hash_children(&sibling_hashes) {
                 Ok(hash) => current_hash = hash,
                 Err(error) => {
                     eprintln!("Failed to hash the Merkle path during verification: {error}");
@@ -118,8 +129,9 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> FromBytes for MerklePath<
         // Read the leaf index.
         let leaf_index = u64::read_le(&mut reader)?;
         // Read the Merkle path siblings.
-        let siblings =
-            (0..DEPTH).map(|_| Ok(Field::new(FromBytes::read_le(&mut reader)?))).collect::<IoResult<Vec<_>>>()?;
+        let siblings = (0..DEPTH)
+            .map(|_| (0..ARITY).map(|_| Ok(Field::new(FromBytes::read_le(&mut reader)?))).collect::<IoResult<Vec<_>>>())
+            .collect::<IoResult<Vec<_>>>()?;
         // Return the Merkle path.
         Self::try_from((U64::new(leaf_index), siblings)).map_err(|err| error(err.to_string()))
     }
@@ -132,7 +144,9 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> ToBytes for MerklePath<E,
         // Write the leaf index.
         self.leaf_index.write_le(&mut writer)?;
         // Write the Merkle path siblings.
-        self.siblings.iter().try_for_each(|sibling| sibling.write_le(&mut writer))
+        self.siblings
+            .iter()
+            .try_for_each(|siblings| siblings.iter().try_for_each(|sibling| sibling.write_le(&mut writer)))
     }
 }
 
@@ -145,7 +159,7 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> Serialize for MerklePath<
 impl<'de, E: Environment, const DEPTH: u8, const ARITY: u8> Deserialize<'de> for MerklePath<E, DEPTH, ARITY> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Compute the size for: u64 + (Field::SIZE_IN_BYTES * DEPTH * (ARITY - 1)).
-        let size = 8 + DEPTH as usize * (ARITY.saturating_sub(1)) * (Field::<E>::size_in_bits() + 7) / 8;
+        let size = 8 + DEPTH as usize * (ARITY.saturating_sub(1) as usize) * (Field::<E>::size_in_bits() + 7) / 8;
         FromBytesDeserializer::<Self>::deserialize(deserializer, "Merkle path", size)
     }
 }

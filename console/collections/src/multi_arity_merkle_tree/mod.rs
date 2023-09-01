@@ -15,8 +15,8 @@
 mod helpers;
 pub use helpers::*;
 
-// mod path;
-// pub use path::*;
+mod path;
+pub use path::*;
 
 #[cfg(test)]
 mod tests;
@@ -47,22 +47,18 @@ pub struct MultiArityMerkleTree<
     number_of_leaves: usize,
 }
 
-/// Returns the next power of n given a base number.
+/// Returns the next power of `n` that's greater than or equal to `base`.
+/// Returns `None` for edge cases or in case of overflow.
 fn checked_next_power_of_n(base: usize, n: usize) -> Option<usize> {
-    if n == 0 || n == 1 {
+    if n <= 1 {
         return None;
     }
 
     let mut value = 1;
-    while value > 0 {
-        // Will stop once overflow happens
-        if value >= base {
-            return Some(value);
-        }
+    while value < base {
         value = value.checked_mul(n)?;
     }
-
-    None
+    Some(value)
 }
 
 impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8, const ARITY: u8>
@@ -239,59 +235,62 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     //     Ok(())
     // }
     //
-    //
-    // #[inline]
-    // /// Returns the Merkle path for the given leaf index and leaf.
-    // pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<E, DEPTH, ARITY>> {
-    //     // Ensure the leaf index is valid.
-    //     ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
-    //
-    //     // Compute the leaf hash.
-    //     let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
-    //
-    //     // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
-    //     let start = match self.number_of_leaves.checked_next_power_of_two() {
-    //         Some(num_leaves) => num_leaves - 1,
-    //         None => bail!("Integer overflow when computing the Merkle tree start index"),
-    //     };
-    //
-    //     // Compute the absolute index of the leaf in the Merkle tree.
-    //     let mut index = start + leaf_index;
-    //     // Ensure the leaf index is valid.
-    //     ensure!(index < self.tree.len(), "The given Merkle leaf index is out of bounds");
-    //     // Ensure the leaf hash matches the one in the tree.
-    //     ensure!(self.tree[index] == leaf_hash, "The given Merkle leaf does not match the one in the Merkle tree");
-    //
-    //     // Initialize a vector for the Merkle path.
-    //     let mut path = Vec::with_capacity(DEPTH as usize);
-    //
-    //     // Iterate from the leaf hash to the root level, storing the sibling hashes along the path.
-    //     for _ in 0..DEPTH {
-    //         // Compute the index of the sibling hash, if it exists.
-    //         if let Some(sibling) = sibling(index) {
-    //             // Append the sibling hash to the path.
-    //             path.push(self.tree[sibling]);
-    //             // Compute the index of the parent hash, if it exists.
-    //             match parent(index) {
-    //                 // Update the index to the parent index.
-    //                 Some(parent) => index = parent,
-    //                 // If the parent does not exist, the path is complete.
-    //                 None => break,
-    //             }
-    //         }
-    //     }
-    //
-    //     // If the Merkle path length is not equal to `DEPTH`, pad the path with the empty hash.
-    //     path.resize(DEPTH as usize, self.empty_hash);
-    //
-    //     // Return the Merkle path.
-    //     MerklePath::try_from((U64::new(leaf_index as u64), path))
-    // }
-    //
-    // /// Returns `true` if the given Merkle path is valid for the given root and leaf.
-    // pub fn verify(&self, path: &MerklePath<E, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
-    //     path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
-    // }
+
+    #[inline]
+    /// Returns the Merkle path for the given leaf index and leaf.
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<E, DEPTH, ARITY>> {
+        // Ensure the leaf index is valid.
+        ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
+
+        // Compute the leaf hash.
+        let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
+
+        // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
+        let start = match checked_next_power_of_n(self.number_of_leaves, ARITY as usize) {
+            Some(num_leaves) => (num_leaves - 1) / (ARITY as usize - 1),
+            None => bail!("Integer overflow when computing the Merkle tree start index"),
+        };
+
+        // Compute the absolute index of the leaf in the Merkle tree.
+        let mut index = start + leaf_index;
+        // Ensure the leaf index is valid.
+        ensure!(index < self.tree.len(), "The given Merkle leaf index is out of bounds");
+        // Ensure the leaf hash matches the one in the tree.
+        ensure!(self.tree[index] == leaf_hash, "The given Merkle leaf does not match the one in the Merkle tree");
+
+        // Initialize a vector for the Merkle path.
+        let mut path = Vec::with_capacity(DEPTH as usize);
+
+        // Iterate from the leaf hash to the root level, storing the sibling hashes along the path.
+        for _ in 0..DEPTH {
+            // Compute the index of the sibling hash, if it exists.
+            if let Some(siblings) = siblings::<ARITY>(index) {
+                // Append the sibling hashes to the path.
+                let sibling_hashes = siblings.iter().map(|index| self.tree[*index]).collect::<Vec<_>>();
+
+                path.push(sibling_hashes);
+                // Compute the index of the parent hash, if it exists.
+                match parent::<ARITY>(index) {
+                    // Update the index to the parent index.
+                    Some(parent) => index = parent,
+                    // If the parent does not exist, the path is complete.
+                    None => break,
+                }
+            }
+        }
+
+        // If the Merkle path length is not equal to `DEPTH`, pad the path with the empty hash.
+        let empty_hashes = (0..ARITY.saturating_sub(1)).map(|_| self.empty_hash).collect::<Vec<_>>();
+        path.resize(DEPTH as usize, empty_hashes);
+
+        // Return the Merkle path.
+        MerklePath::try_from((U64::new(leaf_index as u64), path))
+    }
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    pub fn verify(&self, path: &MerklePath<E, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
+        path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
+    }
 
     /// Returns the Merkle root of the tree.
     pub const fn root(&self) -> &PH::Hash {
@@ -339,6 +338,20 @@ fn tree_depth<const DEPTH: u8, const ARITY: u8>(tree_size: usize) -> Result<u8> 
 fn child_indexes<const ARITY: u8>(index: usize) -> Vec<usize> {
     let start = index * ARITY as usize + 1;
     (start..start + ARITY as usize).collect()
+}
+
+/// Returns the index of the siblings, given an index.
+#[inline]
+fn siblings<const ARITY: u8>(index: usize) -> Option<Vec<usize>> {
+    if is_root(index) {
+        None
+    } else {
+        // Find the left-most sibling.
+        let left_most_sibling = ((index - 1) / ARITY as usize) * ARITY as usize + 1;
+
+        // Add all the siblings except for the given index.
+        Some((left_most_sibling..left_most_sibling + ARITY as usize).filter(|&i| index != i).collect::<Vec<_>>())
+    }
 }
 
 /// Returns true iff the index represents the root.
