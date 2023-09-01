@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::ArrayType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
@@ -191,14 +192,7 @@ impl<N: Network> RegisterTypes<N> {
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
-            RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
-                // If the base element type is a struct, ensure the struct is defined in the program.
-                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
-                    if !stack.program().contains_struct(struct_name) {
-                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                    }
-                }
-            }
+            RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -248,14 +242,7 @@ impl<N: Network> RegisterTypes<N> {
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
-            RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
-                // If the base element type is a struct, ensure the struct is defined in the program.
-                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
-                    if !stack.program().contains_struct(struct_name) {
-                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                    }
-                }
-            }
+            RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -511,15 +498,22 @@ impl<N: Network> RegisterTypes<N> {
             match member {
                 PlaintextType::Literal(..) => (),
                 PlaintextType::Struct(struct_name) => Self::check_struct(stack, struct_name)?,
-                PlaintextType::Array(array_type) => {
-                    // If the base element type is a struct, check that it is defined in the program.
-                    if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
-                        // Ensure the struct is defined in the program.
-                        if !stack.program().contains_struct(struct_name) {
-                            bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                        }
-                    }
-                }
+                PlaintextType::Array(array_type) => Self::check_array(stack, array_type)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Ensure the base element type of the array is defined in the program.
+    pub(crate) fn check_array(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        array_type: &ArrayType<N>,
+    ) -> Result<()> {
+        // If the base element type is a struct, check that it is defined in the program.
+        if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+            // Ensure the struct is defined in the program.
+            if !stack.program().contains_struct(struct_name) {
+                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
             }
         }
         Ok(())

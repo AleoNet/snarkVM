@@ -106,15 +106,7 @@ impl<N: Network> FinalizeTypes<N> {
         match plaintext_type {
             PlaintextType::Literal(..) => (),
             PlaintextType::Struct(struct_name) => RegisterTypes::check_struct(stack, struct_name)?,
-            PlaintextType::Array(array_type) => {
-                // If the base element type is a struct, check that it is defined in the program.
-                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
-                    // Ensure the struct is defined in the program.
-                    if !stack.program().contains_struct(struct_name) {
-                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                    }
-                }
-            }
+            PlaintextType::Array(array_type) => RegisterTypes::check_array(stack, array_type)?,
         };
 
         // Insert the input register.
