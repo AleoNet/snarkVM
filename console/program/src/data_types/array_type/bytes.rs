@@ -31,7 +31,7 @@ impl<N: Network> FromBytes for ArrayType<N> {
         // Ensure the dimensions of the array are valid.
         match dimensions {
             0 => return Err(error("Array type must have at least one dimension.")),
-            dimensions if dimensions < N::MAX_DATA_DEPTH => (),
+            dimensions if dimensions <= N::MAX_DATA_DEPTH => (),
             _ => return Err(error(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH))),
         }
 
@@ -48,7 +48,7 @@ impl<N: Network> FromBytes for ArrayType<N> {
 
 impl<N: Network> ToBytes for ArrayType<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Initialize storage
+        // Initialize the components to serialize.
         let mut element_type = *self.element_type.clone();
         let mut lengths = vec![*self.length()];
 
@@ -87,7 +87,7 @@ impl<N: Network> ToBytes for ArrayType<N> {
         }
 
         // Write the number of dimensions of the array.
-        u8::try_from(lengths.len()).or_halt::<N>().write_le(&mut writer)?;
+        u8::try_from(lengths.len()).map_err(error)?.write_le(&mut writer)?;
 
         // Write the lengths of the array.
         for length in lengths {
@@ -95,5 +95,34 @@ impl<N: Network> ToBytes for ArrayType<N> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = snarkvm_console_network::Testnet3;
+
+    #[test]
+    fn test_array_maximum_depth() {
+        // Construct the array type.
+        let array_type = {
+            let mut string = "[u8; 1u32]".to_string();
+            for i in 1..CurrentNetwork::MAX_DATA_DEPTH {
+                string = format!("[{}; {}u32]", string, i + 1);
+            }
+            let array_type = ArrayType::<CurrentNetwork>::from_str(&string).unwrap();
+            assert_eq!(array_type.length(), &U32::new(u32::try_from(CurrentNetwork::MAX_DATA_DEPTH).unwrap()));
+            assert_eq!(array_type.base_element_type(), &PlaintextType::Literal(LiteralType::U8));
+            array_type
+        };
+
+        // Serialize and deserialize the array type.
+        let mut bytes = Vec::new();
+        array_type.write_le(&mut bytes).unwrap();
+        let array_type = ArrayType::<CurrentNetwork>::read_le(&bytes[..]).unwrap();
+        assert_eq!(array_type.length(), &U32::new(u32::try_from(CurrentNetwork::MAX_DATA_DEPTH).unwrap()));
+        assert_eq!(array_type.base_element_type(), &PlaintextType::Literal(LiteralType::U8))
     }
 }
