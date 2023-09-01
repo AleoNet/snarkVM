@@ -495,9 +495,6 @@ impl<N: Network> FinalizeTypes<N> {
 
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
-                    RegisterType::Plaintext(PlaintextType::Array(..)) => {
-                        bail!("Illegal operation: Cannot cast to an array.")
-                    }
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }
@@ -510,6 +507,9 @@ impl<N: Network> FinalizeTypes<N> {
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), &struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => {
+                        bail!("Illegal operation: Cannot cast to an array yet.")
                     }
                     RegisterType::Record(..) => {
                         bail!("Illegal operation: Cannot cast to a record.")
