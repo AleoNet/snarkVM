@@ -23,7 +23,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         // A helper to parse a program.
         enum P<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> {
             M(Mapping<N>),
-            I(Struct<N>),
+            I(StructType<N>),
             R(RecordType<N>),
             C(ClosureCore<N, Instruction>),
             F(FunctionCore<N, Instruction, Command>),
@@ -47,7 +47,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         // Parse the struct or function from the string.
         let (string, components) = many1(alt((
             map(Mapping::parse, |mapping| P::<N, Instruction, Command>::M(mapping)),
-            map(Struct::parse, |struct_| P::<N, Instruction, Command>::I(struct_)),
+            map(StructType::parse, |struct_| P::<N, Instruction, Command>::I(struct_)),
             map(RecordType::parse, |record| P::<N, Instruction, Command>::R(record)),
             map(ClosureCore::parse, |closure| P::<N, Instruction, Command>::C(closure)),
             map(FunctionCore::parse, |function| P::<N, Instruction, Command>::F(function)),

@@ -84,7 +84,7 @@ use console::{
         TypeName,
         Write,
     },
-    program::{Identifier, PlaintextType, ProgramID, RecordType, Struct},
+    program::{Identifier, PlaintextType, ProgramID, RecordType, StructType},
 };
 
 use indexmap::IndexMap;
@@ -114,7 +114,7 @@ pub struct ProgramCore<N: Network, Instruction: InstructionTrait<N>, Command: Co
     /// A map of the declared mappings for the program.
     mappings: IndexMap<Identifier<N>, Mapping<N>>,
     /// A map of the declared structs for the program.
-    structs: IndexMap<Identifier<N>, Struct<N>>,
+    structs: IndexMap<Identifier<N>, StructType<N>>,
     /// A map of the declared record types for the program.
     records: IndexMap<Identifier<N>, RecordType<N>>,
     /// A map of the declared closures for the program.
@@ -164,7 +164,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     }
 
     /// Returns the structs in the program.
-    pub const fn structs(&self) -> &IndexMap<Identifier<N>, Struct<N>> {
+    pub const fn structs(&self) -> &IndexMap<Identifier<N>, StructType<N>> {
         &self.structs
     }
 
@@ -223,8 +223,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         Ok(mapping)
     }
 
-    /// Returns the struct with the given name as a reference.
-    pub fn get_struct(&self, name: &Identifier<N>) -> Result<&Struct<N>> {
+    /// Returns the struct with the given name.
+    pub fn get_struct(&self, name: &Identifier<N>) -> Result<&StructType<N>> {
         // Attempt to retrieve the struct.
         let struct_ = self.structs.get(name).ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
         // Ensure the struct name matches.
@@ -350,7 +350,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     /// This method will halt if the struct name is a reserved opcode or keyword.
     /// This method will halt if any structs in the struct's members are not already defined.
     #[inline]
-    fn add_struct(&mut self, struct_: Struct<N>) -> Result<()> {
+    fn add_struct(&mut self, struct_: StructType<N>) -> Result<()> {
         // Retrieve the struct name.
         let struct_name = *struct_.name();
 
@@ -679,7 +679,7 @@ mapping message:
     #[test]
     fn test_program_struct() -> Result<()> {
         // Create a new struct.
-        let struct_ = Struct::<CurrentNetwork>::from_str(
+        let struct_ = StructType::<CurrentNetwork>::from_str(
             r"
 struct message:
     first as field;

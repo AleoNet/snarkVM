@@ -14,10 +14,10 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Struct<N> {
-    /// Reads a struct from a buffer.
+impl<N: Network> FromBytes for StructType<N> {
+    /// Reads a struct type from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the name of the struct.
+        // Read the name of the struct type.
         let name = Identifier::read_le(&mut reader)?;
 
         // Read the number of members.
@@ -25,7 +25,7 @@ impl<N: Network> FromBytes for Struct<N> {
         // Ensure the number of members is within the maximum limit.
         if num_members as usize > N::MAX_STRUCT_ENTRIES {
             return Err(error(format!(
-                "Struct exceeds size: expected <= {}, found {num_members}",
+                "StructType exceeds size: expected <= {}, found {num_members}",
                 N::MAX_STRUCT_ENTRIES
             )));
         }
@@ -46,8 +46,8 @@ impl<N: Network> FromBytes for Struct<N> {
     }
 }
 
-impl<N: Network> ToBytes for Struct<N> {
-    /// Writes the struct to a buffer.
+impl<N: Network> ToBytes for StructType<N> {
+    /// Writes the struct type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of members is within the maximum limit.
         if self.members.len() > N::MAX_STRUCT_ENTRIES {
@@ -80,8 +80,8 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let expected =
-            Struct::<CurrentNetwork>::from_str("struct message:\n    first as field;\n    second as field;")?;
-        let candidate = Struct::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
+            StructType::<CurrentNetwork>::from_str("struct message:\n    first as field;\n    second as field;")?;
+        let candidate = StructType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
         Ok(())
     }
