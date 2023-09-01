@@ -19,7 +19,7 @@ mod serialize;
 use crate::{ArrayType, Identifier, LiteralType};
 use snarkvm_console_network::prelude::*;
 
-/// A `PlaintextType` defines the type parameter for an entry in an `Struct`.
+/// A `PlaintextType` defines the type parameter for a literal, struct, or array.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum PlaintextType<N: Network> {
     /// A literal type contains its type name.
