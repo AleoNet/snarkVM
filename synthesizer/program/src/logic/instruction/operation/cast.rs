@@ -254,11 +254,7 @@ impl<N: Network> Cast<N> {
                     inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
                 {
                     // Compute the plaintext type.
-                    let plaintext_type = match entry_type {
-                        EntryType::Constant(plaintext_type) => plaintext_type,
-                        EntryType::Public(plaintext_type) => plaintext_type,
-                        EntryType::Private(plaintext_type) => plaintext_type,
-                    };
+                    let plaintext_type = entry_type.plaintext_type();
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match entry {
                         Value::Plaintext(plaintext) => {

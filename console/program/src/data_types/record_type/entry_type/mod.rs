@@ -30,3 +30,14 @@ pub enum EntryType<N: Network> {
     /// A private type.
     Private(PlaintextType<N>),
 }
+
+impl<N: Network> EntryType<N> {
+    /// Returns the plaintext type.
+    pub const fn plaintext_type(&self) -> &PlaintextType<N> {
+        match self {
+            EntryType::Constant(plaintext_type) => plaintext_type,
+            EntryType::Public(plaintext_type) => plaintext_type,
+            EntryType::Private(plaintext_type) => plaintext_type,
+        }
+    }
+}
