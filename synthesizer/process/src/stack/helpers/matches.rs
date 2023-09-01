@@ -182,27 +182,6 @@ impl<N: Network> Stack<N> {
 
         // Ensure the plaintext matches the plaintext definition in the program.
         match plaintext_type {
-            PlaintextType::Array(array_type) => match plaintext {
-                // If `plaintext` is an array, it must match the array type.
-                Plaintext::Array(array, ..) => {
-                    // Ensure the array length matches.
-                    let (actual_length, expected_length) = (array.len(), array_type.length());
-                    if **expected_length as usize != actual_length {
-                        bail!(
-                            "'{plaintext_type}' is invalid: expected {expected_length} elements, found {actual_length} elements"
-                        )
-                    }
-                    // Ensure the array elements match.
-                    for element in array.iter() {
-                        self.matches_plaintext_internal(element, array_type.next_element_type(), depth + 1)?;
-                    }
-                    Ok(())
-                }
-                // If `plaintext` is a literal, this is a mismatch.
-                Plaintext::Literal(..) => bail!("'{plaintext_type}' is invalid: expected array, found literal"),
-                // If `plaintext` is a struct, this is a mismatch.
-                Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected array, found struct"),
-            },
             PlaintextType::Literal(literal_type) => match plaintext {
                 // If `plaintext` is a literal, it must match the literal type.
                 Plaintext::Literal(literal, ..) => {
@@ -271,6 +250,27 @@ impl<N: Network> Stack<N> {
 
                 Ok(())
             }
+            PlaintextType::Array(array_type) => match plaintext {
+                // If `plaintext` is a literal, this is a mismatch.
+                Plaintext::Literal(..) => bail!("'{plaintext_type}' is invalid: expected array, found literal"),
+                // If `plaintext` is a struct, this is a mismatch.
+                Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected array, found struct"),
+                // If `plaintext` is an array, it must match the array type.
+                Plaintext::Array(array, ..) => {
+                    // Ensure the array length matches.
+                    let (actual_length, expected_length) = (array.len(), array_type.length());
+                    if **expected_length as usize != actual_length {
+                        bail!(
+                            "'{plaintext_type}' is invalid: expected {expected_length} elements, found {actual_length} elements"
+                        )
+                    }
+                    // Ensure the array elements match.
+                    for element in array.iter() {
+                        self.matches_plaintext_internal(element, array_type.next_element_type(), depth + 1)?;
+                    }
+                    Ok(())
+                }
+            },
         }
     }
 }
