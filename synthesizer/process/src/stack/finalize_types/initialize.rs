@@ -112,27 +112,11 @@ impl<N: Network> FinalizeTypes<N> {
                 }
             }
             PlaintextType::Array(array_type) => {
-                let mut array_type = array_type.clone();
-                let mut counter = 0;
-                // Ensure all struct types are defined in the program.
-                loop {
-                    // Ensure the array does not exceed the maximum number of elements.
-                    if counter >= N::MAX_ARRAY_ELEMENTS {
-                        bail!("Array '{array_type}' exceeds the maximum of {}.", N::MAX_ARRAY_ELEMENTS)
-                    }
-                    match array_type.next_element_type() {
-                        PlaintextType::Literal(..) => break,
-                        PlaintextType::Struct(struct_name) => {
-                            // Ensure the struct is defined in the program.
-                            if !stack.program().contains_struct(struct_name) {
-                                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                            }
-                            break;
-                        }
-                        PlaintextType::Array(next_array_type) => {
-                            array_type = next_array_type.clone();
-                            counter += 1;
-                        }
+                // If the base element type is a struct, check that it is defined in the program.
+                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+                    // Ensure the struct is defined in the program.
+                    if !stack.program().contains_struct(struct_name) {
+                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
                     }
                 }
             }
