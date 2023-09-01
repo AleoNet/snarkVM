@@ -35,12 +35,12 @@ impl<'de, N: Network> Deserialize<'de> for ArrayType<N> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
 
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &[
+    pub(crate) const TEST_CASES: &[&str] = &[
         "[boolean; 31u32]",
         "[field; 32u32]",
         "[group; 32u32]",

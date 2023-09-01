@@ -55,12 +55,12 @@ impl<N: Network> Display for PlaintextType<N> {
     /// Prints the plaintext type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            // Prints the array type, i.e. [field; 2u32]
-            Self::Array(array) => Display::fmt(array, f),
             // Prints the literal, i.e. field
             Self::Literal(literal) => Display::fmt(literal, f),
             // Prints the struct, i.e. signature
             Self::Struct(struct_) => Display::fmt(struct_, f),
+            // Prints the array type, i.e. [field; 2u32]
+            Self::Array(array) => Display::fmt(array, f),
         }
     }
 }
@@ -75,10 +75,6 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         assert_eq!(
-            PlaintextType::parse("[field; 1u32]"),
-            Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?)))
-        );
-        assert_eq!(
             PlaintextType::parse("field"),
             Ok(("", PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field)))
         );
@@ -90,25 +86,15 @@ mod tests {
             PlaintextType::parse("foo"),
             Ok(("", PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?)))
         );
+        assert_eq!(
+            PlaintextType::parse("[field; 1u32]"),
+            Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?)))
+        );
         Ok(())
     }
 
     #[test]
     fn test_parse_fails() -> Result<()> {
-        // Array type must not contain visibility.
-        assert_eq!(
-            Ok((".constant", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
-            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].constant")
-        );
-        assert_eq!(
-            Ok((".public", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
-            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].public")
-        );
-        assert_eq!(
-            Ok((".private", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
-            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].private")
-        );
-
         // Literal type must not contain visibility.
         assert_eq!(
             Ok((".constant", PlaintextType::<CurrentNetwork>::from_str("field")?)),
@@ -135,6 +121,20 @@ mod tests {
         assert_eq!(
             Ok((".private", Identifier::<CurrentNetwork>::from_str("foo")?)),
             Identifier::<CurrentNetwork>::parse("foo.private")
+        );
+
+        // Array type must not contain visibility.
+        assert_eq!(
+            Ok((".constant", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
+            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].constant")
+        );
+        assert_eq!(
+            Ok((".public", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
+            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].public")
+        );
+        assert_eq!(
+            Ok((".private", PlaintextType::<CurrentNetwork>::from_str("[field; 1u32]")?)),
+            PlaintextType::<CurrentNetwork>::parse("[field; 1u32].private")
         );
 
         // Must be non-empty.
@@ -171,13 +171,15 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        assert_eq!(
-            PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?).to_string(),
-            "[field; 1u32]"
-        );
+        assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Boolean).to_string(), "boolean");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Signature).to_string(), "signature");
         assert_eq!(PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("foo")?).to_string(), "foo");
+        assert_eq!(PlaintextType::<CurrentNetwork>::Struct(Identifier::from_str("bar")?).to_string(), "bar");
+        assert_eq!(
+            PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 8u32]")?).to_string(),
+            "[field; 8u32]"
+        );
         Ok(())
     }
 }
