@@ -104,20 +104,28 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match plaintext_type {
-            PlaintextType::Array(array_type) => {
-                // If the base element type is a struct, check that it is defined in the program.
-                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
-                    // Ensure the struct is defined in the program.
-                    if !stack.program().contains_struct(struct_name) {
-                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                    }
-                }
-            }
             PlaintextType::Literal(..) => (),
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                }
+            }
+            PlaintextType::Array(array_type) => {
+                let mut array_type = array_type.clone();
+                // Ensure all struct types are defined in the program.
+                loop {
+                    match array_type.next_element_type() {
+                        PlaintextType::Literal(..) => break,
+                        PlaintextType::Struct(struct_name) => {
+                            // Ensure the struct is defined in the program.
+                            if !stack.program().contains_struct(struct_name) {
+                                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                            }
+                            break;
+                        }
+                        PlaintextType::Array(next_array_type) => array_type = next_array_type.clone(),
+                    }
                 }
             }
         };

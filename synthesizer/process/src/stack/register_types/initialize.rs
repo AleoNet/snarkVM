@@ -189,19 +189,28 @@ impl<N: Network> RegisterTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
-            RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
-                // If the base element type is a struct, ensure the struct is defined in the program.
-                if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
-                    if !stack.program().contains_struct(struct_name) {
-                        bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                    }
-                }
-            }
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Ensure the struct is defined in the program.
                 if !stack.program().contains_struct(struct_name) {
                     bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                }
+            }
+            RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
+                let mut array_type = array_type.clone();
+                // Ensure all struct types are defined in the program.
+                loop {
+                    match array_type.next_element_type() {
+                        PlaintextType::Literal(..) => break,
+                        PlaintextType::Struct(struct_name) => {
+                            // Ensure the struct is defined in the program.
+                            if !stack.program().contains_struct(struct_name) {
+                                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+                            }
+                            break;
+                        }
+                        PlaintextType::Array(next_array_type) => array_type = next_array_type.clone(),
+                    }
                 }
             }
             RegisterType::Record(identifier) => {
