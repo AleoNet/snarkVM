@@ -44,54 +44,13 @@ use super::Matrix;
 impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     /// Generate the index polynomials for this constraint system.
     pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>> {
-        let IndexerState {
-            constraint_domain,
-            variable_domain,
-
-            a,
-            non_zero_a_domain,
-            a_arith,
-
-            b,
-            non_zero_b_domain,
-            b_arith,
-
-            c,
-            non_zero_c_domain,
-            c_arith,
-
-            index_info,
-            id,
-        } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
+        let IndexerState { a, a_arith, b, b_arith, c, c_arith, index_info, id, .. } =
+            Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
 
         end_timer!(joint_arithmetization_time);
 
-        let fft_precomp_time = start_timer!(|| format!("Precomputing roots of unity {id}"));
-
-        let (fft_precomputation, ifft_precomputation) = Self::fft_precomputation(
-            constraint_domain.size(),
-            variable_domain.size(),
-            non_zero_a_domain.size(),
-            non_zero_b_domain.size(),
-            non_zero_c_domain.size(),
-        )
-        .ok_or(anyhow!("The polynomial degree is too large"))?;
-        end_timer!(fft_precomp_time);
-
-        Ok(Circuit {
-            index_info,
-            a,
-            b,
-            c,
-            a_arith,
-            b_arith,
-            c_arith,
-            fft_precomputation,
-            ifft_precomputation,
-            id,
-            _mode: PhantomData,
-        })
+        Ok(Circuit { index_info, a, b, c, a_arith, b_arith, c_arith, id, _mode: PhantomData })
     }
 
     pub fn index_polynomial_info<'a>(
@@ -209,9 +168,6 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
 
         let result = Ok(IndexerState {
-            constraint_domain,
-            variable_domain,
-
             a,
             non_zero_a_domain,
             a_arith,
@@ -254,9 +210,6 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 }
 
 pub(crate) struct IndexerState<F: PrimeField> {
-    constraint_domain: EvaluationDomain<F>,
-    variable_domain: EvaluationDomain<F>,
-
     a: Matrix<F>,
     non_zero_a_domain: EvaluationDomain<F>,
     a_arith: MatrixEvals<F>,

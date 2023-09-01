@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::snark::varuna::{ahp::AHPForR1CS, SNARKMode};
+use crate::{
+    fft::EvaluationDomain,
+    snark::varuna::{ahp::AHPForR1CS, SNARKMode},
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, ToBytes};
 
@@ -41,6 +44,24 @@ impl CircuitInfo {
     pub fn max_degree<F: PrimeField, MM: SNARKMode>(&self) -> usize {
         let max_non_zero = self.num_non_zero_a.max(self.num_non_zero_b).max(self.num_non_zero_c);
         AHPForR1CS::<F, MM>::max_degree(self.num_constraints, self.num_variables, max_non_zero).unwrap()
+    }
+
+    /// Get all the strict degree bounds enforced in the AHP.
+    pub fn get_degree_bounds<F: PrimeField>(&self) -> [usize; 4] {
+        let num_variables = self.num_variables;
+        let num_non_zero_a = self.num_non_zero_a;
+        let num_non_zero_b = self.num_non_zero_b;
+        let num_non_zero_c = self.num_non_zero_c;
+        [
+            // The degree bound for g_1
+            EvaluationDomain::<F>::compute_size_of_domain(num_variables).unwrap() - 2,
+            // The degree bound for g_A
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_a).unwrap() - 2,
+            // The degree bound for g_B
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_b).unwrap() - 2,
+            // The degree bound for g_C
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_c).unwrap() - 2,
+        ]
     }
 }
 

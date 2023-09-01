@@ -13,9 +13,17 @@
 // limitations under the License.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain},
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        DensePolynomial,
+        EvaluationDomain,
+    },
+    polycommit::sonic_pc::CommitterKey,
+    prelude::PCError,
+    srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
+use anyhow::{bail, Result};
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
 use snarkvm_parameters::testnet3::PowersOfG;
@@ -28,8 +36,6 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::srs::{UniversalProver, UniversalVerifier};
-use anyhow::Result;
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
@@ -91,8 +97,27 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.read().max_num_powers() - 1
     }
 
-    pub fn to_universal_prover(&self) -> Result<UniversalProver<E>> {
-        Ok(UniversalProver::<E> { max_degree: self.max_degree(), _unused: None })
+    pub fn to_universal_prover(
+        &self,
+        max_degree: usize,
+        max_domain_size: usize,
+        coefficient_support: Option<&[usize]>,
+        supported_lagrange_sizes: Option<&[usize]>,
+        hiding_bound: usize,
+    ) -> Result<UniversalProver<E>> {
+        let committer_key =
+            self.to_committer_key(max_degree, supported_lagrange_sizes, coefficient_support, hiding_bound)?;
+
+        let (fft_precomputation, ifft_precomputation) =
+            Self::fft_precomputation(max_domain_size).ok_or(SerializationError::InvalidData)?;
+
+        Ok(UniversalProver::<E> {
+            committer_key,
+            fft_precomputation,
+            ifft_precomputation,
+            max_degree: self.max_degree(),
+            _unused: None,
+        })
     }
 
     pub fn to_universal_verifier(&self) -> Result<UniversalVerifier<E>> {
@@ -107,6 +132,118 @@ impl<E: PairingEngine> UniversalParams<E> {
             vk: VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h },
             prepared_negative_powers_of_beta_h: self.powers.read().prepared_negative_powers_of_beta_h(),
         })
+    }
+
+    pub fn to_committer_key(
+        &self,
+        supported_degree: usize,
+        supported_lagrange_sizes: Option<&[usize]>,
+        enforced_degree_bounds: Option<&[usize]>,
+        supported_hiding_bound: usize,
+    ) -> Result<CommitterKey<E>> {
+        let trim_time = start_timer!(|| "Trimming public parameters");
+        let max_degree = self.max_degree(); // max degree of the entire SRS
+
+        let enforced_degree_bounds = enforced_degree_bounds.map(|bounds| {
+            let mut v = bounds.to_vec();
+            v.sort_unstable();
+            v.dedup();
+            v
+        });
+
+        let (shifted_powers_of_beta_g, shifted_powers_of_beta_times_gamma_g) = if let Some(enforced_degree_bounds) =
+            enforced_degree_bounds.as_ref()
+        {
+            if enforced_degree_bounds.is_empty() {
+                (None, None)
+            } else {
+                let highest_enforced_degree_bound = *enforced_degree_bounds.last().unwrap();
+                if highest_enforced_degree_bound > supported_degree {
+                    bail!(
+                        "The highest enforced degree bound {highest_enforced_degree_bound} is larger than the supported degree {supported_degree}"
+                    );
+                }
+
+                let lowest_shift_degree = max_degree - highest_enforced_degree_bound;
+
+                let shifted_ck_time = start_timer!(|| format!(
+                    "Constructing `shifted_powers_of_beta_g` of size {}",
+                    max_degree - lowest_shift_degree + 1
+                ));
+
+                let shifted_powers_of_beta_g =
+                    self.powers_of_beta_g(lowest_shift_degree, self.max_degree() + 1)?.to_vec();
+                let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
+                // Also add degree 0.
+                for degree_bound in enforced_degree_bounds {
+                    let shift_degree = max_degree - degree_bound;
+                    let mut powers_for_degree_bound = Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
+                    for i in 0..=supported_hiding_bound + 1 {
+                        // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
+                        if shift_degree + i < max_degree + 2 {
+                            powers_for_degree_bound.push(self.powers_of_beta_times_gamma_g()[&(shift_degree + i)]);
+                        }
+                    }
+                    shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
+                }
+
+                end_timer!(shifted_ck_time);
+
+                (Some(shifted_powers_of_beta_g), Some(shifted_powers_of_beta_times_gamma_g))
+            }
+        } else {
+            (None, None)
+        };
+
+        let powers_of_beta_g = self.powers_of_beta_g(0, supported_degree + 1)?.to_vec();
+        let powers_of_beta_times_gamma_g = (0..=(supported_hiding_bound + 1))
+            .map(|i| {
+                self.powers_of_beta_times_gamma_g()
+                    .get(&i)
+                    .copied()
+                    .ok_or(PCError::HidingBoundToolarge { hiding_poly_degree: supported_hiding_bound, num_powers: 0 })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut lagrange_bases_at_beta_g = BTreeMap::new();
+        if let Some(supported_lagrange_sizes) = supported_lagrange_sizes {
+            for size in supported_lagrange_sizes {
+                let lagrange_time = start_timer!(|| format!("Constructing `lagrange_bases` of size {size}"));
+                if !size.is_power_of_two() {
+                    bail!("The Lagrange basis size ({size}) is not a power of two")
+                }
+                if *size > self.max_degree() + 1 {
+                    bail!(
+                        "The Lagrange basis size ({size}) is larger than the supported degree ({})",
+                        self.max_degree() + 1
+                    )
+                }
+                let domain = crate::fft::EvaluationDomain::new(*size).unwrap();
+                let lagrange_basis_at_beta_g = self.lagrange_basis(domain)?;
+                assert!(lagrange_basis_at_beta_g.len().is_power_of_two());
+                lagrange_bases_at_beta_g.insert(domain.size(), lagrange_basis_at_beta_g);
+                end_timer!(lagrange_time);
+            }
+        }
+
+        let ck = CommitterKey {
+            powers_of_beta_g,
+            lagrange_bases_at_beta_g,
+            powers_of_beta_times_gamma_g,
+            shifted_powers_of_beta_g,
+            shifted_powers_of_beta_times_gamma_g,
+            enforced_degree_bounds,
+        };
+
+        end_timer!(trim_time);
+        Ok(ck)
+    }
+
+    pub fn fft_precomputation(max_domain_size: usize) -> Option<(FFTPrecomputation<E::Fr>, IFFTPrecomputation<E::Fr>)> {
+        let largest_mul_domain = EvaluationDomain::new(max_domain_size)?;
+        let fft_precomputation = largest_mul_domain.precompute_fft();
+        let ifft_precomputation = fft_precomputation.to_ifft_precomputation();
+        Some((fft_precomputation, ifft_precomputation))
     }
 }
 

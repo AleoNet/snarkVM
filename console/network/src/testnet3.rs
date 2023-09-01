@@ -199,14 +199,16 @@ impl Network for Testnet3 {
     }
 
     /// Returns the Varuna universal prover.
-    fn varuna_universal_prover() -> &'static UniversalProver<Self::PairingCurve> {
-        static INSTANCE: OnceCell<UniversalProver<<Console as Environment>::PairingCurve>> = OnceCell::new();
-        INSTANCE.get_or_init(|| {
-            snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
-                .expect("Failed to load universal SRS (KZG10).")
-                .to_universal_prover()
-                .expect("Failed to convert universal SRS (KZG10) to the prover.")
-        })
+    fn varuna_universal_prover(
+        max_degree: usize,
+        max_domain_size: usize,
+        coefficient_support: &[usize],
+    ) -> UniversalProver<Self::PairingCurve> {
+        let hiding_bound = 1; // We always use a hiding bound in Testnet3.
+        snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
+            .expect("Failed to load universal SRS (KZG10).")
+            .to_universal_prover(max_degree, max_domain_size, Some(coefficient_support), None, hiding_bound)
+            .expect("Failed to convert universal SRS (KZG10) to the prover.")
     }
 
     /// Returns the Varuna universal verifier.

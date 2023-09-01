@@ -13,7 +13,11 @@
 // limitations under the License.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain},
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        DensePolynomial,
+        EvaluationDomain,
+    },
     r1cs::ConstraintSynthesizer,
     snark::varuna::{
         ahp::{indexer::Circuit, AHPError, AHPForR1CS},
@@ -46,6 +50,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     /// Initialize the AHP prover.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>, R: Rng + CryptoRng>(
         circuits_to_constraints: &BTreeMap<&'a Circuit<F, MM>, &[C]>,
+        fft_precomp: &'a FFTPrecomputation<F>,
+        ifft_precomp: &'a IFFTPrecomputation<F>,
         rng: &mut R,
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
@@ -161,7 +167,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             })
             .collect::<Result<BTreeMap<&'a Circuit<F, MM>, Vec<prover::Assignments<F>>>, AHPError>>()?;
 
-        let state = prover::State::initialize(indices_and_assignments)?;
+        let state = prover::State::initialize(indices_and_assignments, fft_precomp, ifft_precomp)?;
 
         Ok(state)
     }

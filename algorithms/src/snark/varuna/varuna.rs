@@ -15,15 +15,7 @@
 use super::Certificate;
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{
-        Commitment,
-        CommitterUnionKey,
-        Evaluations,
-        LabeledCommitment,
-        QuerySet,
-        Randomness,
-        SonicKZG10,
-    },
+    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
     r1cs::{ConstraintSynthesizer, SynthesisError},
     snark::varuna::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
@@ -67,15 +59,14 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"VARUNA-2023";
 
-    // TODO: implement optimizations resulting from batching
-    //       (e.g. computing a common set of Lagrange powers, FFT precomputations, etc)
+    /// Creates a set of proving and verifying keys for a set of circuits
+    /// We commit to each circuit's index polys separately
+    /// Performing a single batch commitment can be a future optimization
     pub fn batch_circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
     ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>> {
         let index_time = start_timer!(|| "Varuna::CircuitSetup");
-
-        let universal_prover = &universal_srs.to_universal_prover()?;
 
         let mut circuit_keys = Vec::with_capacity(circuits.len());
         for circuit in circuits {
@@ -85,37 +76,35 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             universal_srs
                 .download_powers_for(0..indexed_circuit.max_degree())
                 .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree()))?;
-            let coefficient_support = AHPForR1CS::<E::Fr, MM>::get_degree_bounds(&indexed_circuit.index_info);
 
-            // Varuna only needs degree 2 random polynomials.
-            let supported_hiding_bound = 1;
-            let supported_lagrange_sizes = [].into_iter(); // TODO: consider removing lagrange_bases_at_beta_g from CommitterKey
-            let (committer_key, _) = SonicKZG10::<E, FS>::trim(
-                universal_srs,
-                indexed_circuit.max_degree(),
+            let max_degree = indexed_circuit.max_degree();
+            let max_domain_size = indexed_circuit.max_domain_size();
+            let coefficient_support = indexed_circuit.index_info.get_degree_bounds::<E::Fr>();
+            let supported_lagrange_sizes = None; // TODO: optionally use either lagrange or monomial basis
+            let hiding_bound = AHPForR1CS::<E::Fr, MM>::zk_bound().unwrap_or(0);
+            let universal_prover = &universal_srs.to_universal_prover(
+                max_degree,
+                max_domain_size,
+                Some(&coefficient_support),
                 supported_lagrange_sizes,
-                supported_hiding_bound,
-                Some(coefficient_support.as_slice()),
+                hiding_bound,
             )?;
-
-            let ck = CommitterUnionKey::union(std::iter::once(&committer_key));
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments
 
             let (mut circuit_commitments, commitment_randomnesses): (_, _) = SonicKZG10::<E, FS>::commit(
                 universal_prover,
-                &ck,
                 indexed_circuit.interpolate_matrix_evals().map(Into::into),
                 setup_rng,
             )?;
+            indexed_circuit.prune_row_col_evals(); // row_col were only needed during indexing
             let empty_randomness = Randomness::<E>::empty();
             assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
             let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
-            indexed_circuit.prune_row_col_evals();
             let circuit_verifying_key = CircuitVerifyingKey {
                 circuit_info: indexed_circuit.index_info,
                 circuit_commitments,
@@ -124,7 +113,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             let circuit_proving_key = CircuitProvingKey {
                 circuit_verifying_key: circuit_verifying_key.clone(),
                 circuit: Arc::new(indexed_circuit),
-                committer_key: Arc::new(committer_key),
             };
             circuit_keys.push((circuit_proving_key, circuit_verifying_key));
         }
@@ -257,14 +245,13 @@ where
         }
 
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
-        let committer_key = CommitterUnionKey::union(std::iter::once(proving_key.committer_key.as_ref()));
 
         let empty_randomness = vec![Randomness::<E>::empty(); 12];
+        let index_polynomials = proving_key.circuit.interpolate_matrix_evals();
         let certificate = SonicKZG10::<E, FS>::open_combinations(
             universal_prover,
-            &committer_key,
             &[lc],
-            proving_key.circuit.interpolate_matrix_evals(),
+            index_polynomials,
             &empty_randomness,
             &query_set,
             &mut sponge,
@@ -353,7 +340,10 @@ where
         for (pk, constraints) in keys_to_constraints {
             circuits_to_constraints.insert(pk.circuit.deref(), *constraints);
         }
-        let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuits_to_constraints, zk_rng)?;
+        let fft_precomp = &universal_prover.fft_precomputation;
+        let ifft_precomp = &universal_prover.ifft_precomputation;
+        let prover_state =
+            AHPForR1CS::<_, MM>::init_prover(&circuits_to_constraints, fft_precomp, ifft_precomp, zk_rng)?;
 
         // extract information from the prover key and state to consume in further calculations
         let mut batch_sizes = BTreeMap::new();
@@ -379,8 +369,6 @@ where
         }
         assert_eq!(prover_state.total_instances, total_instances);
 
-        let committer_key = CommitterUnionKey::union(keys_to_constraints.keys().map(|pk| pk.committer_key.deref()));
-
         let circuit_commitments =
             keys_to_constraints.keys().map(|pk| pk.circuit_verifying_key.circuit_commitments.as_slice());
 
@@ -396,7 +384,6 @@ where
             let first_round_oracles = prover_state.first_round_oracles.as_ref().unwrap();
             SonicKZG10::<E, FS>::commit(
                 universal_prover,
-                &committer_key,
                 first_round_oracles.iter().map(Into::into),
                 MM::ZK.then_some(zk_rng),
             )?
@@ -424,7 +411,6 @@ where
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,
-            &committer_key,
             second_oracles.iter().map(Into::into),
             MM::ZK.then_some(zk_rng),
         )?;
@@ -449,7 +435,6 @@ where
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
         let (third_commitments, third_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,
-            &committer_key,
             third_oracles.iter().map(Into::into),
             MM::ZK.then_some(zk_rng),
         )?;
@@ -474,7 +459,6 @@ where
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
         let (fourth_commitments, fourth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,
-            &committer_key,
             fourth_oracles.iter().map(Into::into),
             MM::ZK.then_some(zk_rng),
         )?;
@@ -500,7 +484,6 @@ where
         let fifth_round_comm_time = start_timer!(|| "Committing to fifth round polys");
         let (fifth_commitments, fifth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,
-            &committer_key,
             fifth_oracles.iter().map(Into::into),
             MM::ZK.then_some(zk_rng),
         )?;
@@ -601,7 +584,6 @@ where
 
         let pc_proof = SonicKZG10::<E, FS>::open_combinations(
             universal_prover,
-            &committer_key,
             lc_s.values(),
             polynomials,
             &commitment_randomnesses,

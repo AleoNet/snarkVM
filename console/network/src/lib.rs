@@ -187,7 +187,11 @@ pub trait Network:
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns the Varuna universal prover.
-    fn varuna_universal_prover() -> &'static UniversalProver<Self::PairingCurve>;
+    fn varuna_universal_prover(
+        max_degree: usize,
+        max_domain_size: usize,
+        coefficient_support: &[usize],
+    ) -> UniversalProver<Self::PairingCurve>;
 
     /// Returns the Varuna universal verifier.
     fn varuna_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;

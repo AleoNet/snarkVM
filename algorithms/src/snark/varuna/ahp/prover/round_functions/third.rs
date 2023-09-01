@@ -136,11 +136,14 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         let matrix_labels = ["a", "b", "c"];
         let matrix_combiners = [F::one(), *eta_b, *eta_c];
 
+        let fft_precomputation = &state.fft_precomputation;
+        let ifft_precomputation = &state.ifft_precomputation;
+
         // Compute lineval sumcheck witnesses
         let mut job_pool = ExecutionPool::with_capacity(total_instances * 3);
-        for ((((circuit, circuit_specific_state), batch_combiner), assignments_i), matrix_transposes_i) in state
+        for (((circuit_specific_state, batch_combiner), assignments_i), matrix_transposes_i) in state
             .circuit_specific_states
-            .iter_mut()
+            .values_mut()
             .zip_eq(batch_combiners.values())
             .zip_eq(assignments.values())
             .zip_eq(matrix_transposes.values())
@@ -149,8 +152,6 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             let instance_combiners = &batch_combiner.instance_combiners;
             let constraint_domain = &circuit_specific_state.constraint_domain;
             let variable_domain = &circuit_specific_state.variable_domain;
-            let fft_precomputation = &circuit.fft_precomputation;
-            let ifft_precomputation = &circuit.ifft_precomputation;
 
             for (_j, (&instance_combiner, assignment)) in
                 itertools::izip!(instance_combiners, assignments_i).enumerate()

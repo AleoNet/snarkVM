@@ -15,19 +15,8 @@
 use core::marker::PhantomData;
 
 use crate::{
-    fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
-        EvaluationDomain,
-    },
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::varuna::{
-        ahp::matrices::MatrixEvals,
-        matrices::MatrixArithmetization,
-        AHPForR1CS,
-        CircuitInfo,
-        Matrix,
-        SNARKMode,
-    },
+    snark::varuna::{ahp::matrices::MatrixEvals, matrices::MatrixArithmetization, CircuitInfo, Matrix, SNARKMode},
 };
 use blake2::Digest;
 use hex::FromHex;
@@ -78,8 +67,6 @@ pub struct Circuit<F: PrimeField, MM: SNARKMode> {
     pub b_arith: MatrixEvals<F>,
     pub c_arith: MatrixEvals<F>,
 
-    pub fft_precomputation: FFTPrecomputation<F>,
-    pub ifft_precomputation: IFFTPrecomputation<F>,
     pub(crate) _mode: PhantomData<MM>,
     pub(crate) id: CircuitId,
 }
@@ -123,14 +110,19 @@ impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
         self.index_info.max_degree::<F, MM>()
     }
 
-    /// The size of the constraint domain in this R1CS instance.
-    pub fn constraint_domain_size(&self) -> usize {
-        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_constraints).unwrap().size()
-    }
-
-    /// The size of the variable domain in this R1CS instance.
-    pub fn variable_domain_size(&self) -> usize {
-        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables).unwrap().size()
+    /// The maximum domain size.
+    pub fn max_domain_size(&self) -> usize {
+        let size = [
+            2 * self.index_info.num_constraints, // zerocheck poly degree
+            2 * self.index_info.num_variables,   // lineval sumcheck poly degree
+            2 * self.index_info.num_non_zero_a,  // matrix sumcheck poly degree
+            2 * self.index_info.num_non_zero_b,  // matrix sumcheck poly degree
+            2 * self.index_info.num_non_zero_c,  // matrix sumcheck poly degree
+        ]
+        .into_iter()
+        .max()
+        .unwrap();
+        crate::fft::EvaluationDomain::<F>::compute_size_of_domain(size).unwrap()
     }
 
     pub fn interpolate_matrix_evals(&self) -> impl Iterator<Item = LabeledPolynomial<F>> {
@@ -193,25 +185,6 @@ impl<F: PrimeField, MM: SNARKMode> CanonicalDeserialize for Circuit<F, MM> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let index_info: CircuitInfo = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
-            .ok_or(SerializationError::InvalidData)?;
-        let variable_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_variables)
-            .ok_or(SerializationError::InvalidData)?;
-        let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)
-            .ok_or(SerializationError::InvalidData)?;
-        let non_zero_b_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_b)
-            .ok_or(SerializationError::InvalidData)?;
-        let non_zero_c_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_c)
-            .ok_or(SerializationError::InvalidData)?;
-
-        let (fft_precomputation, ifft_precomputation) = AHPForR1CS::<F, MM>::fft_precomputation(
-            variable_domain_size,
-            constraint_domain_size,
-            non_zero_a_domain_size,
-            non_zero_b_domain_size,
-            non_zero_c_domain_size,
-        )
-        .ok_or(SerializationError::InvalidData)?;
         let a = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let b = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let c = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
@@ -224,8 +197,6 @@ impl<F: PrimeField, MM: SNARKMode> CanonicalDeserialize for Circuit<F, MM> {
             a_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             b_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             c_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            fft_precomputation,
-            ifft_precomputation,
             _mode: PhantomData,
             id,
         })

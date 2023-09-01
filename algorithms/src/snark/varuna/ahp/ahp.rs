@@ -13,10 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
-        EvaluationDomain,
-    },
+    fft::EvaluationDomain,
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     r1cs::SynthesisError,
     snark::varuna::{
@@ -106,20 +103,6 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         .unwrap())
     }
 
-    /// Get all the strict degree bounds enforced in the AHP.
-    pub fn get_degree_bounds(info: &CircuitInfo) -> [usize; 4] {
-        let num_variables = info.num_variables;
-        let num_non_zero_a = info.num_non_zero_a;
-        let num_non_zero_b = info.num_non_zero_b;
-        let num_non_zero_c = info.num_non_zero_c;
-        [
-            EvaluationDomain::<F>::compute_size_of_domain(num_variables).unwrap() - 2,
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_a).unwrap() - 2,
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_b).unwrap() - 2,
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_c).unwrap() - 2,
-        ]
-    }
-
     pub(crate) fn cmp_non_zero_domains(
         info: &CircuitInfo,
         max_candidate: Option<EvaluationDomain<F>>,
@@ -133,29 +116,6 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             max_non_zero_domain = max_candidate;
         }
         Ok(NonZeroDomains { max_non_zero_domain, domain_a, domain_b, domain_c })
-    }
-
-    pub fn fft_precomputation(
-        constraint_domain_size: usize,
-        variable_domain_size: usize,
-        non_zero_a_domain_size: usize,
-        non_zero_b_domain_size: usize,
-        non_zero_c_domain_size: usize,
-    ) -> Option<(FFTPrecomputation<F>, IFFTPrecomputation<F>)> {
-        let largest_domain_size = [
-            2 * constraint_domain_size,
-            2 * variable_domain_size,
-            2 * non_zero_a_domain_size,
-            2 * non_zero_b_domain_size,
-            2 * non_zero_c_domain_size,
-        ]
-        .into_iter()
-        .max()?;
-        let largest_mul_domain = EvaluationDomain::new(largest_domain_size)?;
-
-        let fft_precomputation = largest_mul_domain.precompute_fft();
-        let ifft_precomputation = fft_precomputation.to_ifft_precomputation();
-        Some((fft_precomputation, ifft_precomputation))
     }
 
     /// Construct the linear combinations that are checked by the AHP.

@@ -40,11 +40,14 @@ impl<N: Network> Certificate<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the proving parameters.
-        let universal_prover = N::varuna_universal_prover();
+        let max_degree = proving_key.circuit.max_degree();
+        let max_domain_size = proving_key.circuit.max_domain_size();
+        let coefficient_support = proving_key.circuit.index_info.get_degree_bounds::<N::Field>();
+        let universal_prover = N::varuna_universal_prover(max_degree, max_domain_size, &coefficient_support);
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the certificate.
-        let certificate = Varuna::<N>::prove_vk(universal_prover, fiat_shamir, verifying_key, proving_key)?;
+        let certificate = Varuna::<N>::prove_vk(&universal_prover, fiat_shamir, verifying_key, proving_key)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Certified '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());
