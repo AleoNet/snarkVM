@@ -27,7 +27,7 @@ impl<N: Network> Literal<N> {
     pub fn cast(&self, to_type: LiteralType) -> Result<Self> {
         match self {
             Self::Address(address) => cast_group_to_type(address.to_group(), to_type),
-            Self::Boolean(..) => bail!("Cannot cast a boolean literal to another type."),
+            Self::Boolean(..) => cast_boolean_to_type(self, to_type),
             Self::Field(field) => cast_field_to_type(field, to_type),
             Self::Group(group) => cast_group_to_type(group, to_type),
             Self::I8(..) => bail!("Cannot cast an i8 literal to another type (yet)."),
@@ -75,6 +75,29 @@ impl<N: Network> Literal<N> {
             Self::Signature(..) => bail!("Cannot cast a signature literal to another type."),
             Self::String(..) => bail!("Cannot cast a string literal to another type."),
         }
+    }
+}
+
+/// Casts a boolean literal to the given literal type.
+fn cast_boolean_to_type<N: Network>(boolean: &Boolean<N>, to_type: LiteralType) -> Result<Literal<N>> {
+    match to_type {
+        LiteralType::Address => Ok(Literal::Address(boolean.cast()?)),
+        LiteralType::Boolean => Ok(Literal::Boolean(*boolean)),
+        LiteralType::Field => Ok(Literal::Field(boolean.cast()?)),
+        LiteralType::Group => Ok(Literal::Group(boolean.cast()?)),
+        LiteralType::I8 => Ok(Literal::I8(boolean.cast()?)),
+        LiteralType::I16 => Ok(Literal::I16(boolean.cast()?)),
+        LiteralType::I32 => Ok(Literal::I32(boolean.cast()?)),
+        LiteralType::I64 => Ok(Literal::I64(boolean.cast()?)),
+        LiteralType::I128 => Ok(Literal::I128(boolean.cast()?)),
+        LiteralType::U8 => Ok(Literal::U8(boolean.cast()?)),
+        LiteralType::U16 => Ok(Literal::U16(boolean.cast()?)),
+        LiteralType::U32 => Ok(Literal::U32(boolean.cast()?)),
+        LiteralType::U64 => Ok(Literal::U64(boolean.cast()?)),
+        LiteralType::U128 => Ok(Literal::U128(boolean.cast()?)),
+        LiteralType::Scalar => Ok(Literal::Scalar(boolean.cast()?)),
+        LiteralType::Signature => bail!("Cannot cast a boolean literal to a signature type."),
+        LiteralType::String => bail!("Cannot cast a boolean literal to a string type."),
     }
 }
 

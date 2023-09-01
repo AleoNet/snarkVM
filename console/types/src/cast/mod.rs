@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod boolean;
 mod field;
 
 use crate::prelude::{
@@ -21,6 +22,8 @@ use crate::prelude::{
     Environment,
     Field,
     FromField,
+    Group,
+    IntegerType,
     One,
     Result,
     Scalar,
@@ -36,6 +39,7 @@ use crate::prelude::{
     U64,
     U8,
 };
+use snarkvm_console_types_integers::Integer;
 
 /// Unary operator for casting values of one type to another.
 pub trait Cast<T: Sized = Self> {
