@@ -79,7 +79,11 @@ impl<N: Network> ToBytes for ArrayType<N> {
                 1u8.write_le(&mut writer)?;
                 identifier.write_le(&mut writer)?;
             }
-            PlaintextType::Array(_) => unreachable!(),
+            PlaintextType::Array(_) => {
+                // This is technically unreachable by definition, however we return an error
+                // out of an abundance of caution.
+                return Err(error(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH)));
+            }
         }
 
         // Write the number of dimensions of the array.
