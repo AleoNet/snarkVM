@@ -222,7 +222,7 @@ impl<N: Network> RegisterTypes<N> {
     /// Ensure the given output register is well-formed.
     #[inline]
     fn check_output(
-        &mut self,
+        &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         operand: &Operand<N>,
         register_type: &RegisterType<N>,
@@ -312,7 +312,7 @@ impl<N: Network> RegisterTypes<N> {
     /// This method is called when adding a new closure or function to the program.
     #[inline]
     fn check_instruction_opcode(
-        &mut self,
+        &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
