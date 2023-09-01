@@ -56,7 +56,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                     U32::constant(console::U32::new(elements.len() as u32)).write_bits_le(&mut bits_le));
                     for value in elements {
                         let value_bits = value.to_bits_le();
-                        bits_le.extend(U16::constant(console::U16::new(value_bits.len() as u16)).to_bits_le());
+                        U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_le(&mut bits_le);
                         bits_le.extend(value_bits);
                     }
                     bits_le
