@@ -112,13 +112,8 @@ impl<N: Network> FinalizeTypes<N> {
         // Traverse the path to find the register type.
         for access in path.iter() {
             match (&plaintext_type, access) {
-                // Access the member on the path to output the register type and check that it is in bounds.
-                (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
-                    // Retrieve the element type and update `plaintext_type` for the next iteration.
-                    true => plaintext_type = array_type.next_element_type(),
-                    // Halts if the index is out of bounds.
-                    false => bail!("Index out of bounds"),
-                },
+                // Ensure the plaintext type is not a literal, as the register references an access.
+                (PlaintextType::Literal(..), _) => bail!("'{register}' references a literal."),
                 // Access the member on the path to output the register type.
                 (PlaintextType::Struct(struct_name), Access::Member(identifier)) => {
                     // Retrieve the member type from the struct and check that it exists.
@@ -129,7 +124,16 @@ impl<N: Network> FinalizeTypes<N> {
                         None => bail!("'{identifier}' does not exist in struct '{struct_name}'"),
                     }
                 }
-                _ => bail!("Invalid access `{access}`"),
+                // Access the member on the path to output the register type and check that it is in bounds.
+                (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
+                    // Retrieve the element type and update `plaintext_type` for the next iteration.
+                    true => plaintext_type = array_type.next_element_type(),
+                    // Halts if the index is out of bounds.
+                    false => bail!("Index out of bounds"),
+                },
+                (PlaintextType::Struct(..), Access::Index(..)) | (PlaintextType::Array(..), Access::Member(..)) => {
+                    bail!("Invalid access `{access}`")
+                }
             }
         }
 

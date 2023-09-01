@@ -191,11 +191,8 @@ impl<N: Network> RegisterTypes<N> {
         for access in path_iter {
             // Update the plaintext type at each step.
             match (plaintext_type, access) {
-                // Traverse the path to output the register type.
-                (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
-                    true => plaintext_type = array_type.next_element_type(),
-                    false => bail!("'{index}' is out of bounds for '{register}'"),
-                },
+                // Ensure the plaintext type is not a literal, as the register references an access.
+                (PlaintextType::Literal(..), _) => bail!("'{register}' references a literal."),
                 // Traverse the path to output the register type.
                 (PlaintextType::Struct(struct_name), Access::Member(identifier)) => {
                     // Retrieve the member type from the struct.
@@ -205,7 +202,14 @@ impl<N: Network> RegisterTypes<N> {
                         None => bail!("'{identifier}' does not exist in struct '{struct_name}'"),
                     }
                 }
-                _ => bail!("Invalid access `{access}`"),
+                // Traverse the path to output the register type.
+                (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
+                    true => plaintext_type = array_type.next_element_type(),
+                    false => bail!("'{index}' is out of bounds for '{register}'"),
+                },
+                (PlaintextType::Struct(..), Access::Index(..)) | (PlaintextType::Array(..), Access::Member(..)) => {
+                    bail!("Invalid access `{access}`")
+                }
             }
         }
 
