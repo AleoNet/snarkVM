@@ -115,7 +115,7 @@ impl<N: Network> FinalizeTypes<N> {
                 // Access the member on the path to output the register type and check that it is in bounds.
                 (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
                     // Retrieve the element type and update `plaintext_type` for the next iteration.
-                    true => plaintext_type = array_type.element_type(),
+                    true => plaintext_type = array_type.next_element_type(),
                     // Halts if the index is out of bounds.
                     false => bail!("Index out of bounds"),
                 },

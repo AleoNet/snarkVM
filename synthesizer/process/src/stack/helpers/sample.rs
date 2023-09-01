@@ -149,7 +149,7 @@ impl<N: Network> Stack<N> {
                 let elements = (0..**array_type.length())
                     .map(|_| {
                         // Sample the element value.
-                        self.sample_plaintext_internal(array_type.element_type(), depth + 1, rng)
+                        self.sample_plaintext_internal(array_type.next_element_type(), depth + 1, rng)
                     })
                     .collect::<Result<Vec<_>>>()?;
 

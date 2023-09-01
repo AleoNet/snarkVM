@@ -193,7 +193,7 @@ impl<N: Network> RegisterTypes<N> {
             match (plaintext_type, access) {
                 // Traverse the path to output the register type.
                 (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
-                    true => plaintext_type = array_type.element_type(),
+                    true => plaintext_type = array_type.next_element_type(),
                     false => bail!("'{index}' is out of bounds for '{register}'"),
                 },
                 // Traverse the path to output the register type.

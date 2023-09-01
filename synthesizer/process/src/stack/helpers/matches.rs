@@ -194,7 +194,7 @@ impl<N: Network> Stack<N> {
                     }
                     // Ensure the array elements match.
                     for element in array.iter() {
-                        self.matches_plaintext_internal(element, array_type.element_type(), depth + 1)?;
+                        self.matches_plaintext_internal(element, array_type.next_element_type(), depth + 1)?;
                     }
                     Ok(())
                 }

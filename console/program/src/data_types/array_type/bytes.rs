@@ -59,7 +59,7 @@ impl<N: Network> ToBytes for ArrayType<N> {
                 PlaintextType::Literal(_) | PlaintextType::Struct(_) => break,
                 PlaintextType::Array(array_type) => {
                     lengths.push(*array_type.length());
-                    array_type.element_type().clone()
+                    array_type.next_element_type().clone()
                 }
             };
         }

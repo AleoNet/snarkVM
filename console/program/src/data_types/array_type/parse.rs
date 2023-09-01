@@ -93,6 +93,6 @@ impl<N: Network> Debug for ArrayType<N> {
 impl<N: Network> Display for ArrayType<N> {
     /// Prints the array type as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}; {}]", self.element_type(), self.length())
+        write!(f, "[{}; {}]", self.next_element_type(), self.length())
     }
 }

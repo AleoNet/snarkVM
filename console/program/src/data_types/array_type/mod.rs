@@ -57,17 +57,21 @@ impl<N: Network> ArrayType<N> {
 }
 
 impl<N: Network> ArrayType<N> {
-    /// Returns the element type.
-    pub const fn element_type(&self) -> &PlaintextType<N> {
+    /// Returns the next element type.
+    /// In the case of a one-dimensional array, this will return the element type of the array.
+    /// In the case of a multi-dimensional array, this will return the element type of the **outermost** array.
+    pub const fn next_element_type(&self) -> &PlaintextType<N> {
         &self.element_type
     }
 
     /// Returns the base element type.
+    /// In the case of a one-dimensional array, this will return the element type of the array.
+    /// In the case of a multi-dimensional array, this will return the element type of the **innermost** array.
     pub fn base_element_type(&self) -> &PlaintextType<N> {
-        let mut element_type = self.element_type();
+        let mut element_type = self.next_element_type();
         // Note that this `while` loop must terminate because the number of dimensions of `ArrayType` is checked to be less then N::MAX_DATA_DEPTH.
         while let PlaintextType::Array(array_type) = element_type {
-            element_type = array_type.element_type();
+            element_type = array_type.next_element_type();
         }
         element_type
     }
@@ -102,7 +106,7 @@ mod tests {
             array.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&array.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(array.element_type(), &PlaintextType::Literal(LiteralType::Field));
+        assert_eq!(array.next_element_type(), &PlaintextType::Literal(LiteralType::Field));
         assert_eq!(array.length(), &U32::new(4));
         assert!(!array.is_empty());
 
@@ -113,7 +117,7 @@ mod tests {
             array.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&array.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(array.element_type(), &PlaintextType::Struct(Identifier::from_str("foo")?));
+        assert_eq!(array.next_element_type(), &PlaintextType::Struct(Identifier::from_str("foo")?));
         assert_eq!(array.length(), &U32::new(1));
         assert!(!array.is_empty());
 
@@ -124,7 +128,7 @@ mod tests {
             array.to_bytes_le()?,
             ArrayType::<CurrentNetwork>::from_bytes_le(&array.to_bytes_le()?)?.to_bytes_le()?
         );
-        assert_eq!(array.element_type(), &PlaintextType::Literal(LiteralType::Scalar));
+        assert_eq!(array.next_element_type(), &PlaintextType::Literal(LiteralType::Scalar));
         assert_eq!(array.length(), &U32::new(32));
         assert!(!array.is_empty());
 
@@ -145,7 +149,7 @@ mod tests {
         );
         assert_eq!(array.to_string(), "[[field; 2u32]; 3u32]");
         assert_eq!(
-            array.element_type(),
+            array.next_element_type(),
             &PlaintextType::Array(ArrayType::<CurrentNetwork>::new(PlaintextType::Literal(LiteralType::Field), vec![
                 U32::new(2)
             ])?)
