@@ -40,7 +40,32 @@ mod tests {
     use snarkvm_console_network::Testnet3;
 
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &["[u8; 1u32]", "[foo; 4u32]", "[boolean; 31u32]", "[field; 32u32]"];
+    const TEST_CASES: &[&str] = &[
+        "[boolean; 31u32]",
+        "[field; 32u32]",
+        "[group; 32u32]",
+        "[scalar; 32u32]",
+        "[u8; 1u32]",
+        "[u16; 1u32]",
+        "[u32; 1u32]",
+        "[u64; 1u32]",
+        "[u128; 1u32]",
+        "[i8; 1u32]",
+        "[i16; 1u32]",
+        "[i32; 1u32]",
+        "[i64; 1u32]",
+        "[i128; 1u32]",
+        "[signature; 1u32]",
+        "[foo; 4u32]",
+        "[bar; 4u32]",
+        "[[u8; 1u32]; 2u32]",
+        "[[[u8; 1u32]; 2u32]; 3u32]",
+        "[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]",
+        "[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]",
+        "[[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]; 6u32]",
+        "[[[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]; 6u32]; 7u32]",
+        "[[[[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]; 6u32]; 7u32]; 8u32]",
+    ];
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
