@@ -27,7 +27,7 @@ impl<N: Network> Literal<N> {
     pub fn cast(&self, to_type: LiteralType) -> Result<Self> {
         match self {
             Self::Address(address) => cast_group_to_type(address.to_group(), to_type),
-            Self::Boolean(..) => cast_boolean_to_type(self, to_type),
+            Self::Boolean(boolean) => cast_boolean_to_type(boolean, to_type),
             Self::Field(field) => cast_field_to_type(field, to_type),
             Self::Group(group) => cast_group_to_type(group, to_type),
             Self::I8(..) => bail!("Cannot cast an i8 literal to another type (yet)."),
@@ -104,10 +104,10 @@ fn cast_boolean_to_type<N: Network>(boolean: &Boolean<N>, to_type: LiteralType) 
 /// Casts a field literal to the given literal type.
 fn cast_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
-        LiteralType::Address => bail!("Cannot cast a field literal to an address type."),
+        LiteralType::Address => Ok(Literal::Address(field.cast()?)),
         LiteralType::Boolean => Ok(Literal::Boolean(field.cast()?)),
         LiteralType::Field => Ok(Literal::Field(*field)),
-        LiteralType::Group => bail!("Cannot cast a field literal to a group type."),
+        LiteralType::Group => Ok(Literal::Group(field.cast()?)),
         LiteralType::I8 => Ok(Literal::I8(field.cast()?)),
         LiteralType::I16 => Ok(Literal::I16(field.cast()?)),
         LiteralType::I32 => Ok(Literal::I32(field.cast()?)),
@@ -127,10 +127,10 @@ fn cast_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Res
 /// Casts a field literal to the given literal type, with lossy truncation.
 fn cast_lossy_field_to_type<N: Network>(field: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
     match to_type {
-        LiteralType::Address => bail!("Cannot cast a field literal to an address type."),
+        LiteralType::Address => Ok(Literal::Address(field.cast_lossy()?)),
         LiteralType::Boolean => Ok(Literal::Boolean(field.cast_lossy()?)),
         LiteralType::Field => Ok(Literal::Field(*field)),
-        LiteralType::Group => bail!("Cannot cast a field literal to a group type."),
+        LiteralType::Group => Ok(Literal::Group(field.cast_lossy()?)),
         LiteralType::I8 => Ok(Literal::I8(field.cast_lossy()?)),
         LiteralType::I16 => Ok(Literal::I16(field.cast_lossy()?)),
         LiteralType::I32 => Ok(Literal::I32(field.cast_lossy()?)),

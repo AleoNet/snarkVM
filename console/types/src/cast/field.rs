@@ -38,6 +38,7 @@ macro_rules! impl_cast {
 }
 
 impl_cast!(Address<E>);
+impl_cast!(Group<E>);
 impl_cast!(I8<E>);
 impl_cast!(I16<E>);
 impl_cast!(I32<E>);

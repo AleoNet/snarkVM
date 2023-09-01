@@ -13,6 +13,19 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_console_types_group::Group;
+
+impl<E: Environment> CastLossy<Address<E>> for Field<E> {
+    fn cast_lossy(&self) -> Result<Address<E>> {
+        Address::from_field(self)
+    }
+}
+
+impl<E: Environment> CastLossy<Group<E>> for Field<E> {
+    fn cast_lossy(&self) -> Result<Group<E>> {
+        Group::from_field(self)
+    }
+}
 
 impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
     fn cast_lossy(&self) -> Result<Boolean<E>> {
@@ -23,7 +36,7 @@ impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
     }
 }
 
-// A simple macro to implement `Cast` on types that have a method `from_field_lossy`.
+// A simple macro to implement `Cast` on types that have the method `from_field_lossy`.
 macro_rules! impl_cast {
     ($type:ty) => {
         impl<E: Environment> CastLossy<$type> for Field<E> {
