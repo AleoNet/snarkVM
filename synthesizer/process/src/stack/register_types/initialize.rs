@@ -420,7 +420,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Retrieve the struct.
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
-                        self.matches_struct(stack, instruction.operands(), &struct_)?;
+                        self.matches_struct(stack, instruction.operands(), struct_)?;
                     }
                     RegisterType::Plaintext(PlaintextType::Array(..)) => {
                         bail!("Illegal operation: Cannot cast to an array yet.")
@@ -489,7 +489,7 @@ impl<N: Network> RegisterTypes<N> {
         struct_name: &Identifier<N>,
     ) -> Result<()> {
         // Retrieve the struct from the program.
-        let Ok(struct_) = stack.program().get_struct_as_ref(struct_name) else {
+        let Ok(struct_) = stack.program().get_struct(struct_name) else {
             bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
         };
 

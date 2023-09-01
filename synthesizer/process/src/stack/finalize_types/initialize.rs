@@ -485,7 +485,7 @@ impl<N: Network> FinalizeTypes<N> {
                         // Retrieve the struct.
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
-                        self.matches_struct(stack, instruction.operands(), &struct_)?;
+                        self.matches_struct(stack, instruction.operands(), struct_)?;
                     }
                     RegisterType::Plaintext(PlaintextType::Array(..)) => {
                         bail!("Illegal operation: Cannot cast to an array yet.")

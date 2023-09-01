@@ -199,9 +199,8 @@ impl<N: Network> Stack<N> {
                 ensure!(!Program::is_reserved_keyword(struct_name), "Struct '{struct_name}' is reserved");
 
                 // Retrieve the struct from the program.
-                let struct_ = match self.program().get_struct(struct_name) {
-                    Ok(struct_) => struct_,
-                    Err(..) => bail!("Struct '{struct_name}' is not defined in the program"),
+                let Ok(struct_) = self.program().get_struct(struct_name) else {
+                    bail!("Struct '{struct_name}' is not defined in the program")
                 };
 
                 // Ensure the struct name matches.

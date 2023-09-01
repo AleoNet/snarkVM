@@ -190,7 +190,7 @@ impl<N: Network> RegisterTypes<N> {
                 // Traverse the path to output the register type.
                 (PlaintextType::Struct(struct_name), Access::Member(identifier)) => {
                     // Retrieve the member type from the struct.
-                    match stack.program().get_struct_as_ref(struct_name)?.members().get(identifier) {
+                    match stack.program().get_struct(struct_name)?.members().get(identifier) {
                         // Update the member type.
                         Some(member_type) => plaintext_type = member_type,
                         None => bail!("'{identifier}' does not exist in struct '{struct_name}'"),

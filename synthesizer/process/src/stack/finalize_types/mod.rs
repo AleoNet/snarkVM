@@ -117,7 +117,7 @@ impl<N: Network> FinalizeTypes<N> {
                 // Access the member on the path to output the register type.
                 (PlaintextType::Struct(struct_name), Access::Member(identifier)) => {
                     // Retrieve the member type from the struct and check that it exists.
-                    match stack.program().get_struct_as_ref(struct_name)?.members().get(identifier) {
+                    match stack.program().get_struct(struct_name)?.members().get(identifier) {
                         // Retrieve the member and update `plaintext_type` for the next iteration.
                         Some(member_type) => plaintext_type = member_type,
                         // Halts if the member does not exist.

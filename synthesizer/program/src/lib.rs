@@ -223,20 +223,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         Ok(mapping)
     }
 
-    /// Returns the struct with the given name.
-    pub fn get_struct(&self, name: &Identifier<N>) -> Result<Struct<N>> {
-        // Attempt to retrieve the struct.
-        let struct_ = self.structs.get(name).cloned().ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
-        // Ensure the struct name matches.
-        ensure!(struct_.name() == name, "Expected struct '{name}', but found struct '{}'", struct_.name());
-        // Ensure the struct contains members.
-        ensure!(!struct_.members().is_empty(), "Struct '{name}' is missing members.");
-        // Return the struct.
-        Ok(struct_)
-    }
-
     /// Returns the struct with the given name as a reference.
-    pub fn get_struct_as_ref(&self, name: &Identifier<N>) -> Result<&Struct<N>> {
+    pub fn get_struct(&self, name: &Identifier<N>) -> Result<&Struct<N>> {
         // Attempt to retrieve the struct.
         let struct_ = self.structs.get(name).ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
         // Ensure the struct name matches.
@@ -703,7 +691,7 @@ struct message:
         // Ensure the struct was added.
         assert!(program.contains_struct(&Identifier::from_str("message")?));
         // Ensure the retrieved struct matches.
-        assert_eq!(struct_, program.get_struct(&Identifier::from_str("message")?)?);
+        assert_eq!(&struct_, program.get_struct(&Identifier::from_str("message")?)?);
 
         Ok(())
     }
