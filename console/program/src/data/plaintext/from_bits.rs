@@ -52,6 +52,9 @@ impl<N: Network> FromBits for Plaintext<N> {
         // Struct
         else if variant == [false, true] {
             let num_members = u8::from_bits_le(next_bits(8)?)?;
+            if num_members as usize > N::MAX_STRUCT_ENTRIES {
+                bail!("Struct exceeds maximum of entries.");
+            }
 
             let mut members = IndexMap::with_capacity(num_members as usize);
             for _ in 0..num_members {
@@ -73,7 +76,7 @@ impl<N: Network> FromBits for Plaintext<N> {
         else if variant == [true, false] {
             let num_elements = u32::from_bits_le(next_bits(32)?)?;
             if num_elements as usize > N::MAX_ARRAY_ELEMENTS {
-                bail!("Array size exceeds maximum of elements.");
+                bail!("Array exceeds maximum of elements.");
             }
 
             let mut elements = Vec::with_capacity(num_elements as usize);
@@ -130,6 +133,9 @@ impl<N: Network> FromBits for Plaintext<N> {
         // Struct
         else if variant == [false, true] {
             let num_members = u8::from_bits_be(next_bits(8)?)?;
+            if num_members as usize > N::MAX_STRUCT_ENTRIES {
+                bail!("Struct exceeds maximum of entries.");
+            }
 
             let mut members = IndexMap::with_capacity(num_members as usize);
             for _ in 0..num_members {
@@ -150,6 +156,9 @@ impl<N: Network> FromBits for Plaintext<N> {
         // Array
         else if variant == [true, false] {
             let num_elements = u32::from_bits_be(next_bits(32)?)?;
+            if num_elements as usize > N::MAX_ARRAY_ELEMENTS {
+                bail!("Array exceeds maximum of elements.");
+            }
 
             let mut elements = Vec::with_capacity(num_elements as usize);
             for _ in 0..num_elements {
