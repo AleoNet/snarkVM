@@ -14,6 +14,7 @@
 
 mod boolean;
 mod field;
+mod integer;
 
 use crate::prelude::{
     bail,
@@ -21,12 +22,16 @@ use crate::prelude::{
     Boolean,
     Environment,
     Field,
+    FromBits,
     FromField,
     Group,
     IntegerType,
     One,
     Result,
     Scalar,
+    SizeInBits,
+    ToBits,
+    ToField,
     Zero,
     I128,
     I16,
