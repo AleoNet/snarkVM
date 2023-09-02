@@ -14,6 +14,7 @@
 
 mod boolean;
 mod field;
+mod integer;
 
 use crate::prelude::{
     bail,
@@ -22,12 +23,16 @@ use crate::prelude::{
     Cast,
     Environment,
     Field,
+    FromBits,
     FromField,
     Group,
+    IntegerType,
     One,
     Result,
     Scalar,
+    SizeInBits,
     ToBits,
+    ToField,
     Zero,
     I128,
     I16,
@@ -40,6 +45,7 @@ use crate::prelude::{
     U64,
     U8,
 };
+use snarkvm_console_types_integers::Integer;
 
 /// Unary operator for casting values of one type to another, with lossy truncation.
 pub trait CastLossy<T: Sized = Self> {
