@@ -31,17 +31,22 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_equal(b),
             (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
+                // Recursively check each member for equality.
                 true => {
-                    // Recursively check each member for equality.
-                    let mut equal = Boolean::new(true);
-                    for ((name_a, plaintext_a), (name_b, plaintext_b)) in a.iter().zip_eq(b.iter()) {
-                        equal = equal & name_a.is_equal(name_b) & plaintext_a.is_equal(plaintext_b);
-                    }
-                    equal
+                    Boolean::new(a.iter().zip_eq(b.iter()).all(|((name_a, plaintext_a), (name_b, plaintext_b))| {
+                        *name_a.is_equal(name_b) && *plaintext_a.is_equal(plaintext_b)
+                    }))
                 }
                 false => Boolean::new(false),
             },
-            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::new(false),
+            (Self::Array(a, _), Self::Array(b, _)) => match a.len() == b.len() {
+                // Recursively check each element for equality.
+                true => Boolean::new(
+                    a.iter().zip_eq(b.iter()).all(|(plaintext_a, plaintext_b)| *plaintext_a.is_equal(plaintext_b)),
+                ),
+                false => Boolean::new(false),
+            },
+            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::new(false),
         }
     }
 
@@ -50,17 +55,22 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
         match (self, other) {
             (Self::Literal(a, _), Self::Literal(b, _)) => a.is_not_equal(b),
             (Self::Struct(a, _), Self::Struct(b, _)) => match a.len() == b.len() {
+                // Recursively check each member for equality.
                 true => {
-                    // Recursively check each member for equality.
-                    let mut not_equal = Boolean::new(false);
-                    for ((name_a, plaintext_a), (name_b, plaintext_b)) in a.iter().zip_eq(b.iter()) {
-                        not_equal = not_equal | name_a.is_not_equal(name_b) | plaintext_a.is_not_equal(plaintext_b);
-                    }
-                    not_equal
+                    Boolean::new(a.iter().zip_eq(b.iter()).any(|((name_a, plaintext_a), (name_b, plaintext_b))| {
+                        *(name_a.is_not_equal(name_b) | plaintext_a.is_not_equal(plaintext_b))
+                    }))
                 }
                 false => Boolean::new(true),
             },
-            (Self::Literal(..), _) | (Self::Struct(..), _) => Boolean::new(true),
+            (Self::Array(a, _), Self::Array(b, _)) => match a.len() == b.len() {
+                // Recursively check each element for equality.
+                true => Boolean::new(
+                    a.iter().zip_eq(b.iter()).any(|(plaintext_a, plaintext_b)| *plaintext_a.is_not_equal(plaintext_b)),
+                ),
+                false => Boolean::new(true),
+            },
+            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::new(true),
         }
     }
 }
