@@ -71,7 +71,7 @@ impl<N: Network> Literal<N> {
             Self::U32(integer) => cast_lossy_integer_to_type(integer, to_type),
             Self::U64(integer) => cast_lossy_integer_to_type(integer, to_type),
             Self::U128(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::Scalar(..) => bail!("Cannot cast a scalar literal to another type (yet)."),
+            Self::Scalar(scalar) => cast_lossy_scalar_to_type(scalar, to_type),
             Self::Signature(..) => bail!("Cannot cast a signature literal to another type."),
             Self::String(..) => bail!("Cannot cast a string literal to another type."),
         }
@@ -257,6 +257,29 @@ fn cast_scalar_to_type<N: Network>(scalar: &Scalar<N>, to_type: LiteralType) -> 
         LiteralType::U32 => Ok(Literal::U32(scalar.cast()?)),
         LiteralType::U64 => Ok(Literal::U64(scalar.cast()?)),
         LiteralType::U128 => Ok(Literal::U128(scalar.cast()?)),
+        LiteralType::Scalar => Ok(Literal::Scalar(*scalar)),
+        LiteralType::Signature => bail!("Cannot cast a scalar literal to a signature type."),
+        LiteralType::String => bail!("Cannot cast a scalar literal to a string type."),
+    }
+}
+
+/// Casts a scalar literal to the given literal type, with lossy truncation.
+fn cast_lossy_scalar_to_type<N: Network>(scalar: &Scalar<N>, to_type: LiteralType) -> Result<Literal<N>> {
+    match to_type {
+        LiteralType::Address => Ok(Literal::Address(scalar.cast_lossy()?)),
+        LiteralType::Boolean => Ok(Literal::Boolean(scalar.cast_lossy()?)),
+        LiteralType::Field => Ok(Literal::Field(scalar.cast_lossy()?)),
+        LiteralType::Group => Ok(Literal::Group(scalar.cast_lossy()?)),
+        LiteralType::I8 => Ok(Literal::I8(scalar.cast_lossy()?)),
+        LiteralType::I16 => Ok(Literal::I16(scalar.cast_lossy()?)),
+        LiteralType::I32 => Ok(Literal::I32(scalar.cast_lossy()?)),
+        LiteralType::I64 => Ok(Literal::I64(scalar.cast_lossy()?)),
+        LiteralType::I128 => Ok(Literal::I128(scalar.cast_lossy()?)),
+        LiteralType::U8 => Ok(Literal::U8(scalar.cast_lossy()?)),
+        LiteralType::U16 => Ok(Literal::U16(scalar.cast_lossy()?)),
+        LiteralType::U32 => Ok(Literal::U32(scalar.cast_lossy()?)),
+        LiteralType::U64 => Ok(Literal::U64(scalar.cast_lossy()?)),
+        LiteralType::U128 => Ok(Literal::U128(scalar.cast_lossy()?)),
         LiteralType::Scalar => Ok(Literal::Scalar(*scalar)),
         LiteralType::Signature => bail!("Cannot cast a scalar literal to a signature type."),
         LiteralType::String => bail!("Cannot cast a scalar literal to a string type."),

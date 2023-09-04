@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_console_network_environment::IntegerType;
 
 impl<E: Environment> Cast<Address<E>> for Boolean<E> {
     fn cast(&self) -> Result<Address<E>> {
