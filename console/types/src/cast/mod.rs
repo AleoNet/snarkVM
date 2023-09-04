@@ -15,6 +15,7 @@
 mod boolean;
 mod field;
 mod integer;
+mod scalar;
 
 use crate::prelude::{
     bail,
