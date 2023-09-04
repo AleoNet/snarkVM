@@ -75,6 +75,7 @@ members = [
   "ledger/query",
   "ledger/store",
   "ledger/test-helpers",
+  "metrics",
   "parameters",
   "synthesizer",
   "synthesizer/process",
@@ -143,6 +144,7 @@ parameters = [ "snarkvm-parameters" ]
 synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
 wasm = [ "snarkvm-wasm" ]
+metrics = [ "snarkvm-metrics"]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
@@ -171,6 +173,11 @@ optional = true
 
 [dependencies.snarkvm-ledger]
 path = "./ledger"
+version = "=0.14.6"
+optional = true
+
+[dependencies.snarkvm-metrics]
+path = "./metrics"
 version = "=0.14.6"
 optional = true
 
