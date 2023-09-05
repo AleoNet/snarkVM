@@ -192,7 +192,19 @@ fn cast_lossy_group_to_type<N: Network>(group: &Group<N>, to_type: LiteralType) 
 fn cast_integer_to_type<N: Network, I: IntegerType>(
     integer: &integers::Integer<N, I>,
     to_type: LiteralType,
-) -> Result<Literal<N>> {
+) -> Result<Literal<N>>
+where
+    i8: TryFrom<I>,
+    i16: TryFrom<I>,
+    i32: TryFrom<I>,
+    i64: TryFrom<I>,
+    i128: TryFrom<I>,
+    u8: TryFrom<I>,
+    u16: TryFrom<I>,
+    u32: TryFrom<I>,
+    u64: TryFrom<I>,
+    u128: TryFrom<I>,
+{
     match to_type {
         LiteralType::Address => Ok(Literal::Address(integer.cast()?)),
         LiteralType::Boolean => Ok(Literal::Boolean(integer.cast()?)),
@@ -218,7 +230,19 @@ fn cast_integer_to_type<N: Network, I: IntegerType>(
 fn cast_lossy_integer_to_type<N: Network, I: IntegerType>(
     integer: &integers::Integer<N, I>,
     to_type: LiteralType,
-) -> Result<Literal<N>> {
+) -> Result<Literal<N>>
+where
+    i8: TryFrom<I>,
+    i16: TryFrom<I>,
+    i32: TryFrom<I>,
+    i64: TryFrom<I>,
+    i128: TryFrom<I>,
+    u8: TryFrom<I>,
+    u16: TryFrom<I>,
+    u32: TryFrom<I>,
+    u64: TryFrom<I>,
+    u128: TryFrom<I>,
+{
     match to_type {
         LiteralType::Address => Ok(Literal::Address(integer.cast_lossy()?)),
         LiteralType::Boolean => Ok(Literal::Boolean(integer.cast_lossy()?)),

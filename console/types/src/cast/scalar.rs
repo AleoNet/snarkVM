@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment> Cast<Address<E>> for Scalar<E> {
+    #[inline]
     fn cast(&self) -> Result<Address<E>> {
         let field: Field<E> = self.cast()?;
         Address::from_field(&field)
@@ -22,6 +23,7 @@ impl<E: Environment> Cast<Address<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Cast<Boolean<E>> for Scalar<E> {
+    #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {
             Ok(Boolean::new(false))
@@ -34,6 +36,7 @@ impl<E: Environment> Cast<Boolean<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Cast<Group<E>> for Scalar<E> {
+    #[inline]
     fn cast(&self) -> Result<Group<E>> {
         let field: Field<E> = self.cast()?;
         Group::from_field(&field)
@@ -41,12 +44,14 @@ impl<E: Environment> Cast<Group<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Cast<Field<E>> for Scalar<E> {
+    #[inline]
     fn cast(&self) -> Result<Field<E>> {
         self.to_field()
     }
 }
 
 impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Scalar<E> {
+    #[inline]
     fn cast(&self) -> Result<Integer<E, I>> {
         let bits_le = self.to_bits_le();
         Integer::<E, I>::from_bits_le(&bits_le)

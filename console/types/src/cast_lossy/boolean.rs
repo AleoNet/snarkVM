@@ -19,6 +19,7 @@ use super::*;
 macro_rules! impl_cast_lossy {
     ($type:ty) => {
         impl<E: Environment> CastLossy<$type> for Boolean<E> {
+            #[inline]
             fn cast_lossy(&self) -> Result<$type> {
                 self.cast()
             }

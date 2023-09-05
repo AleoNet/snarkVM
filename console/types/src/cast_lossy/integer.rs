@@ -13,15 +13,16 @@
 // limitations under the License.
 
 use super::*;
-use crate::Cast;
 
 impl<E: Environment, I: IntegerType> CastLossy<Address<E>> for Integer<E, I> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Address<E>> {
         self.cast()
     }
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Boolean<E>> {
         match self.to_bits_be().pop() {
             Some(bit) => Ok(Boolean::new(bit)),
@@ -31,40 +32,36 @@ impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Field<E>> for Integer<E, I> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Field<E>> {
         self.cast()
     }
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Group<E>> for Integer<E, I> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Group<E>> {
         self.cast()
     }
 }
 
-impl<E: Environment, I0: IntegerType, I1: IntegerType> CastLossy<Integer<E, I1>> for Integer<E, I0> {
+impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> CastLossy<Integer<E, I1>> for Integer<E, I0> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Integer<E, I1>> {
-        let mut bits_le = self.to_bits_le();
         match I0::BITS <= I1::BITS {
-            // If the target integer type is larger or the same size as the source integer type, then extend the bits appropriately.
-            true => {
-                match I0::is_signed() {
-                    // Sign extend the uppermost bit.
-                    true => bits_le.extend(
-                        std::iter::repeat(*bits_le.last().unwrap()).take(usize::try_from(I1::BITS - I0::BITS)?),
-                    ),
-                    // Zero extend the uppermost bit.
-                    false => bits_le.extend(std::iter::repeat(false).take(usize::try_from(I1::BITS - I0::BITS)?)),
-                }
-            }
-            // If the target integer type is smaller than the source integer type, then truncate the bits upper bits.
-            false => bits_le.truncate(usize::try_from(I1::BITS)?),
-        };
-        Integer::<E, I1>::from_bits_le(&bits_le)
+            // If the target integer type is larger or the same size as the source integer type, then use the default cast.
+            true => Ok(Integer::<E, I1>::new(match I1::try_from(**self) {
+                Ok(value) => value,
+                Err(_) => bail!("Failed to convert '{}' into '{}'", I0::type_name(), I1::type_name()),
+            })),
+            // Otherwise, use the lower bits of the source integer type.
+            false => Integer::<E, I1>::from_bits_le(&self.to_bits_le()[0..usize::try_from(I1::BITS)?]),
+        }
     }
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Scalar<E>> for Integer<E, I> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Scalar<E>> {
         self.cast()
     }

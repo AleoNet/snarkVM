@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment> Cast<Boolean<E>> for Field<E> {
+    #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {
             Ok(Boolean::new(false))
@@ -30,6 +31,7 @@ impl<E: Environment> Cast<Boolean<E>> for Field<E> {
 macro_rules! impl_cast {
     ($type:ty) => {
         impl<E: Environment> Cast<$type> for Field<E> {
+            #[inline]
             fn cast(&self) -> Result<$type> {
                 <$type>::from_field(self)
             }

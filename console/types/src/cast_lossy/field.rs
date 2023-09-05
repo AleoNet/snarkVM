@@ -13,21 +13,23 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_console_types_group::Group;
 
 impl<E: Environment> CastLossy<Address<E>> for Field<E> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Address<E>> {
         Address::from_field(self)
     }
 }
 
 impl<E: Environment> CastLossy<Group<E>> for Field<E> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Group<E>> {
         Group::from_field(self)
     }
 }
 
 impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
+    #[inline]
     fn cast_lossy(&self) -> Result<Boolean<E>> {
         match self.to_bits_be().pop() {
             Some(bit) => Ok(Boolean::new(bit)),
@@ -40,6 +42,7 @@ impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
 macro_rules! impl_cast {
     ($type:ty) => {
         impl<E: Environment> CastLossy<$type> for Field<E> {
+            #[inline]
             fn cast_lossy(&self) -> Result<$type> {
                 <$type>::from_field_lossy(self)
             }

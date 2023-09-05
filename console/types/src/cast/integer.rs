@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment, I: IntegerType> Cast<Address<E>> for Integer<E, I> {
+    #[inline]
     fn cast(&self) -> Result<Address<E>> {
         let field: Field<E> = self.cast()?;
         field.cast()
@@ -22,6 +23,7 @@ impl<E: Environment, I: IntegerType> Cast<Address<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Boolean<E>> for Integer<E, I> {
+    #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {
             Ok(Boolean::new(false))
@@ -34,68 +36,32 @@ impl<E: Environment, I: IntegerType> Cast<Boolean<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Field<E>> for Integer<E, I> {
+    #[inline]
     fn cast(&self) -> Result<Field<E>> {
         self.to_field()
     }
 }
 
 impl<E: Environment, I: IntegerType> Cast<Group<E>> for Integer<E, I> {
+    #[inline]
     fn cast(&self) -> Result<Group<E>> {
         let field: Field<E> = self.cast()?;
         field.cast()
     }
 }
 
-impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for Integer<E, I0> {
+impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> Cast<Integer<E, I1>> for Integer<E, I0> {
+    #[inline]
     fn cast(&self) -> Result<Integer<E, I1>> {
-        let mut bits_le = self.to_bits_le();
-        match I0::BITS <= I1::BITS {
-            // If the target integer type is larger or the same size as the source integer type, then extend the bits appropriately.
-            true => {
-                match I0::is_signed() {
-                    // Sign extend the uppermost bit.
-                    true => bits_le.extend(
-                        std::iter::repeat(*bits_le.last().unwrap()).take(usize::try_from(I1::BITS - I0::BITS)?),
-                    ),
-                    // Zero extend the uppermost bit.
-                    false => bits_le.extend(std::iter::repeat(false).take(usize::try_from(I1::BITS - I0::BITS)?)),
-                }
-            }
-            // If the target integer type is smaller than the source integer type, then check that the value is within bounds of the
-            // target integer type and truncate the bits appropriately.
-            false => {
-                for bit in bits_le.iter().skip(usize::try_from(I1::BITS)?) {
-                    // TODO (d0cd): Check that this logic is correct.
-                    match I0::is_signed() {
-                        // If the source integer type is signed and the value is negative, then check that the upper bits are set.
-                        true if *bits_le.last().unwrap() => {
-                            if !*bit {
-                                bail!(format!(
-                                    "Failed to convert integer '{}' to integer '{}': integer is out of bounds",
-                                    I0::type_name(),
-                                    I1::type_name()
-                                ))
-                            }
-                        }
-                        // Otherwise, check that the upper bits are zero.
-                        _ => {
-                            if *bit {
-                                bail!(format!(
-                                    "Failed to convert integer '{}' to integer '{}': integer is out of bounds",
-                                    I0::type_name(),
-                                    I1::type_name()
-                                ))
-                            }
-                        }
-                    }
-                }
-            }
-        };
-        Integer::<E, I1>::from_bits_le(&bits_le)
+        Ok(Integer::<E, I1>::new(match I1::try_from(**self) {
+            Ok(value) => value,
+            Err(_) => bail!("Failed to convert '{}' into '{}'", I0::type_name(), I1::type_name()),
+        }))
     }
 }
 
 impl<E: Environment, I: IntegerType> Cast<Scalar<E>> for Integer<E, I> {
+    #[inline]
     fn cast(&self) -> Result<Scalar<E>> {
         let mut bits_le = self.to_bits_le();
         Scalar::<E>::from_bits_le(&bits_le)
