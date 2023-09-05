@@ -15,7 +15,7 @@
 use super::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct MerklePath<E: Environment, const DEPTH: u8, const ARITY: u8> {
+pub struct MultiArityMerklePath<E: Environment, const DEPTH: u8, const ARITY: u8> {
     /// The leaf index for the path.
     leaf_index: U64<E>,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
@@ -23,7 +23,7 @@ pub struct MerklePath<E: Environment, const DEPTH: u8, const ARITY: u8> {
 }
 
 impl<E: Environment, const DEPTH: u8, const ARITY: u8> TryFrom<(U64<E>, Vec<Vec<Field<E>>>)>
-    for MerklePath<E, DEPTH, ARITY>
+    for MultiArityMerklePath<E, DEPTH, ARITY>
 {
     type Error = Error;
 
@@ -47,7 +47,7 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> TryFrom<(U64<E>, Vec<Vec<
     }
 }
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> MerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> MultiArityMerklePath<E, DEPTH, ARITY> {
     /// Returns the leaf index for the path.
     pub fn leaf_index(&self) -> U64<E> {
         self.leaf_index
@@ -122,7 +122,7 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> MerklePath<E, DEPTH, ARIT
     }
 }
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> FromBytes for MerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> FromBytes for MultiArityMerklePath<E, DEPTH, ARITY> {
     /// Reads in a Merkle path from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -137,7 +137,7 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> FromBytes for MerklePath<
     }
 }
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> ToBytes for MerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> ToBytes for MultiArityMerklePath<E, DEPTH, ARITY> {
     /// Writes the Merkle path to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -150,13 +150,13 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> ToBytes for MerklePath<E,
     }
 }
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> Serialize for MerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> Serialize for MultiArityMerklePath<E, DEPTH, ARITY> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         ToBytesSerializer::serialize(self, serializer)
     }
 }
 
-impl<'de, E: Environment, const DEPTH: u8, const ARITY: u8> Deserialize<'de> for MerklePath<E, DEPTH, ARITY> {
+impl<'de, E: Environment, const DEPTH: u8, const ARITY: u8> Deserialize<'de> for MultiArityMerklePath<E, DEPTH, ARITY> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         // Compute the size for: u64 + (Field::SIZE_IN_BYTES * DEPTH * (ARITY - 1)).
         let size = 8 + DEPTH as usize * (ARITY.saturating_sub(1) as usize) * (Field::<E>::size_in_bits() + 7) / 8;

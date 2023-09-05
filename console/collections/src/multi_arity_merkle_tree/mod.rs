@@ -238,7 +238,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
     #[inline]
     /// Returns the Merkle path for the given leaf index and leaf.
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<E, DEPTH, ARITY>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MultiArityMerklePath<E, DEPTH, ARITY>> {
         // Ensure the leaf index is valid.
         ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
 
@@ -284,11 +284,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         path.resize(DEPTH as usize, empty_hashes);
 
         // Return the Merkle path.
-        MerklePath::try_from((U64::new(leaf_index as u64), path))
+        MultiArityMerklePath::try_from((U64::new(leaf_index as u64), path))
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
-    pub fn verify(&self, path: &MerklePath<E, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
+    pub fn verify(&self, path: &MultiArityMerklePath<E, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
         path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
     }
 
