@@ -40,7 +40,10 @@ use snarkvm_algorithms::{
     AlgebraicSponge,
 };
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
-use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
+use snarkvm_console_collections::{
+    merkle_tree::{MerklePath, MerkleTree},
+    multi_arity_merkle_tree::{MultiArityMerklePath, MultiArityMerkleTree},
+};
 use snarkvm_console_types::{Field, Group, Scalar};
 use snarkvm_curves::PairingEngine;
 
@@ -52,6 +55,13 @@ use std::sync::Arc;
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
 /// A helper type for the Poseidon Merkle tree.
 pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
+
+/// A helper type for the multi arity BHP Merkle tree.
+pub type MultiArityBHPMerkleTree<N, const DEPTH: u8, const ARITY: u8> =
+    MultiArityMerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH, ARITY>;
+/// A helper type for the multi arity Poseidon Merkle tree.
+pub type MultiArityPoseidonMerkleTree<N, const DEPTH: u8, const ARITY: u8> =
+    MultiArityMerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH, ARITY>;
 
 /// Helper types for the Varuna parameters.
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
@@ -318,6 +328,16 @@ pub trait Network:
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
     fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Field<Self>>]) -> Result<PoseidonMerkleTree<Self, DEPTH>>;
 
+    /// Returns a multi arity Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
+    fn multi_arity_merkle_tree_bhp<const DEPTH: u8, const ARITY: u8>(
+        leaves: &[Vec<bool>],
+    ) -> Result<MultiArityBHPMerkleTree<Self, DEPTH, ARITY>>;
+
+    /// Returns a multi arity Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
+    fn multi_arity_merkle_tree_psd<const DEPTH: u8, const ARITY: u8>(
+        leaves: &[Vec<Field<Self>>],
+    ) -> Result<MultiArityPoseidonMerkleTree<Self, DEPTH, ARITY>>;
+
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
     #[allow(clippy::ptr_arg)]
     fn verify_merkle_path_bhp<const DEPTH: u8>(
@@ -330,6 +350,22 @@ pub trait Network:
     #[allow(clippy::ptr_arg)]
     fn verify_merkle_path_psd<const DEPTH: u8>(
         path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<Field<Self>>,
+    ) -> bool;
+
+    /// Returns `true` if the given multi arity Merkle path is valid for the given root and leaf.
+    #[allow(clippy::ptr_arg)]
+    fn verify_multi_arity_merkle_path_bhp<const DEPTH: u8, const ARITY: u8>(
+        path: &MultiArityMerklePath<Self, DEPTH, ARITY>,
+        root: &Field<Self>,
+        leaf: &Vec<bool>,
+    ) -> bool;
+
+    /// Returns `true` if the given multi arity Merkle path is valid for the given root and leaf.
+    #[allow(clippy::ptr_arg)]
+    fn verify_multi_arity_merkle_path_psd<const DEPTH: u8, const ARITY: u8>(
+        path: &MultiArityMerklePath<Self, DEPTH, ARITY>,
         root: &Field<Self>,
         leaf: &Vec<Field<Self>>,
     ) -> bool;
