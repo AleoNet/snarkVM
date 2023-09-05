@@ -12,42 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::ops::Not;
 use super::*;
 
 impl<E: Environment> Cast<Address<E>> for Scalar<E> {
-    fn cast(&self) -> Result<Address<E>> {
-        let field: Field<E> = self.cast()?;
-        Address::from_field(&field)
+    fn cast(&self) -> Address<E> {
+        let field: Field<E> = self.cast();
+        Address::from_field(field)
     }
 }
 
 impl<E: Environment> Cast<Boolean<E>> for Scalar<E> {
-    fn cast(&self) -> Result<Boolean<E>> {
-        if self.is_zero() {
-            Ok(Boolean::new(false))
-        } else if self.is_one() {
-            Ok(Boolean::new(true))
-        } else {
-            bail!("Failed to convert scalar to boolean: scalar is not zero or one")
-        }
+    fn cast(&self) -> Boolean<E> {
+        let is_one = self.is_one();
+        E::assert!(self.is_zero().bitor(&is_one));
+        is_one
     }
 }
 
 impl<E: Environment> Cast<Group<E>> for Scalar<E> {
-    fn cast(&self) -> Result<Group<E>> {
-        let field: Field<E> = self.cast()?;
+    fn cast(&self) -> Group<E> {
+        let field: Field<E> = self.cast();
         Group::from_field(&field)
     }
 }
 
 impl<E: Environment> Cast<Field<E>> for Scalar<E> {
-    fn cast(&self) -> Result<Field<E>> {
+    fn cast(&self) -> Field<E> {
         self.to_field()
     }
 }
 
 impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Scalar<E> {
-    fn cast(&self) -> Result<Integer<E, I>> {
+    fn cast(&self) -> Integer<E, I> {
         let bits_le = self.to_bits_le();
         Integer::<E, I>::from_bits_le(&bits_le)
     }

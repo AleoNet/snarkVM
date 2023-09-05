@@ -98,7 +98,6 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
 impl<E: Environment, I: IntegerType> Cast<Scalar<E>> for Integer<E, I> {
     fn cast(&self) -> Result<Scalar<E>> {
         let mut bits_le = self.to_bits_le();
-        bits_le.extend(std::iter::repeat(false).take(Scalar::<E>::size_in_bits() - usize::try_from(I::BITS)?));
         Scalar::<E>::from_bits_le(&bits_le)
     }
 }

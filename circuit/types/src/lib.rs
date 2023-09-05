@@ -14,6 +14,12 @@
 
 #![forbid(unsafe_code)]
 
+pub mod cast;
+pub use cast::*;
+
+pub mod cast_lossy;
+pub use cast_lossy::*;
+
 pub use modules::*;
 
 pub mod modules {
@@ -42,6 +48,6 @@ pub mod modules {
 }
 
 pub mod prelude {
-    pub use crate::modules::*;
+    pub use crate::{cast::*, cast_lossy::*, modules::*};
     pub use snarkvm_circuit_environment::prelude::*;
 }
