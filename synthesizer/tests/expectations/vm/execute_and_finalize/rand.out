@@ -12,7 +12,7 @@
       - 10field
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"5614750638973565193441469515228713726748960794537604905077233003358118762543field","checksum":"4523550740627614592894526591573763836417808016131138535945999579112411112497field","value":"record1qyqspqgrj0f99jd9hc24k4tlye4e50ggza7vezwng4jg5upfrfrm79q9qyxx66trwfhkxun9v35hguerqqpqzq9zq3mcequ27fhc0lp3py9f5xhkysmaqwj2dgesz9352ccnnglkprqa5c8wld49ey9l9wjkv0uuuwtzuzlamswyj9udt8y86c07kdzsj95mft3"}'
+      - '{"type":"record","id":"3472186409303077066237018585328322601253270839712500932267769401205533207698field","checksum":"7014357398738404462732001899291900700096012313415284224344694601653297526564field","value":"record1qyqspqgrj0f99jd9hc24k4tlye4e50ggza7vezwng4jg5upfrfrm79q9qyxx66trwfhkxun9v35hguerqqpqzq9zq3m63q527fhc0lp3py9f5xhkysmaqwj2dgesz9352ccnnglkprqa5c8wld49ey9l9wjkv0uuuwtzuzlamswyj9udt8y86c07kdzsjazuz7k"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -30,7 +30,7 @@
         }
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4298623534642079413885054141087186450738164385535851298200835905134222458860field","checksum":"7193360662221612301961158754598753828829882050256402781998658078366241498654field","value":"record1qyqsqve6es35jjn7njhp60aeqrn2vy044pk4yrjpantynxrngmhxckc9qyxx66trwfhkxun9v35hguerqqpqzqxfrsxspy6a78e2h8ey6xwaqpfj7ugq85ysh4ym5h7lshlkmkfxqtr7p928u97ctwzrvatugnflesmz0ype7uqstkgz48l3t4vkd3ks6dgkpw8"}'
+      - '{"type":"record","id":"7227417933957868865138061773118540015003610277298132008373417009193880563642field","checksum":"2179958313697120353642110536007384714336253089745792536670970036661750878264field","value":"record1qyqsqve6es35jjn7njhp60aeqrn2vy044pk4yrjpantynxrngmhxckc9qyxx66trwfhkxun9v35hguerqqpqzqxfrsx3eyja78e2h8ey6xwaqpfj7ugq85ysh4ym5h7lshlkmkfxqtr7p928u97ctwzrvatugnflesmz0ype7uqstkgz48l3t4vkd3ks65mhx5j"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -39,10 +39,10 @@
       outputs: []
       finalize:
       - 0field
-      - 'true'
+      - 'false'
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"5104161477859429074928700484398344121188237941390622218138001142121405536747field","checksum":"5401060537431327595740976983644033584356445014708376489412140132539165606922field","value":"record1qyqsqm608z05c93fzttldfjvqx4atpssxjf3cdxxk7vp05j20nxs5fqtqyxx66trwfhkxun9v35hguerqqpqzqzp59vm9txnm4w9rlxavsz97wpq5h7hqwluwqgl4csup47t3g4sp229u7eyzh83z09ukunr0hp6xndrdc5e53xcpdzrxfhaalqfqg3sqgu3csk"}'
+      - '{"type":"record","id":"303004276342090357821977667015895323353902804387888818729334589647621600509field","checksum":"8373408082833929298353246021789819686446463046896079639790998234853530403591field","value":"record1qyqsp7xl8q6sdp07tev3nvdu4xnd4v9erj7x8c7yzgugj62u3zu7yzcrqyxx66trwfhkxun9v35hguerqqpqzqyz2lz2gtqk3u655w9x69z5ru5tyr9msqdg2fxfzsfeeezwlyyrzpenpws9xxrljh4jmh6ejed5n7z7ufk6q2ws3d3g3zgmpvl0a4eqyx0ft3j"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -51,10 +51,10 @@
       outputs: []
       finalize:
       - 1field
-      - 'false'
+      - 'true'
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"1832044792884028111229739482478401842725766903473248998519826796848394571469field","checksum":"6614700812131631988781051603435150808980869683736224629852581281570619306123field","value":"record1qyqsq7hwqhhqzt4fxak4gzpug973s7aaalqelkdu8zhpc9n6cccvtqs8qyxx66trwfhkxun9v35hguerqqpqzqpsg3agzsxu86g05w5h7dnyw89m6rfqky8pk7g9w2fz5vhtpca0q35phy06vml4nfxr5zf4007mhcnuxn3mlcllnjuts5yftmx9jh0sst59430"}'
+      - '{"type":"record","id":"4157514551570108997872728987003577682055425864981733910887064028654539376638field","checksum":"3625436013477864627536848756258403730952397125736544732632973040806276354797field","value":"record1qyqsp7lvh3d9gtwr0dnd220305xz6phdh98pf96xdmyj7jvw0trrgds2qyxx66trwfhkxun9v35hguerqqpqzqqhkhduev2847kccrawv3jlplr67ng82yuryytm0740gqa6g9rnqgv3ztcjlykgll2t2pf4xfp7l029kmalseku6cn0mqad0p79nl0qy4220ar"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.

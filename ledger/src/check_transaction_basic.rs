@@ -23,8 +23,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
         let is_fee_required = match transaction.execution() {
-            Some(execution) => execution.len() == 1 && transaction.contains_split(),
-            None => false,
+            Some(execution) => !(execution.len() == 1 && transaction.contains_split()),
+            None => true,
         };
 
         if is_fee_required {

@@ -71,6 +71,21 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             // Cache the plaintext bits, and return the struct.
             Self::Struct(members, OnceCell::with_value(bits_le.to_vec()))
         }
+        // Array
+        else if variant == [true, false] {
+            let num_elements = U32::from_bits_le(next_bits(32)).eject_value();
+
+            let mut elements = Vec::with_capacity(*num_elements as usize);
+            for _ in 0..*num_elements {
+                let element_size = U16::from_bits_le(next_bits(16)).eject_value();
+                let value = Plaintext::from_bits_le(next_bits(*element_size as usize));
+
+                elements.push(value);
+            }
+
+            // Cache the plaintext bits, and return the array.
+            Self::Array(elements, OnceCell::with_value(bits_le.to_vec()))
+        }
         // Unknown variant.
         else {
             A::halt("Unknown plaintext variant.")
@@ -130,6 +145,21 @@ impl<A: Aleo> FromBits for Plaintext<A> {
 
             // Cache the plaintext bits, and return the struct.
             Self::Struct(members, OnceCell::with_value(bits_be.to_vec()))
+        }
+        // Array
+        else if variant == [true, false] {
+            let num_elements = U32::from_bits_be(next_bits(32)).eject_value();
+
+            let mut elements = Vec::with_capacity(*num_elements as usize);
+            for _ in 0..*num_elements {
+                let element_size = U16::from_bits_be(next_bits(16)).eject_value();
+                let value = Plaintext::from_bits_be(next_bits(*element_size as usize));
+
+                elements.push(value);
+            }
+
+            // Cache the plaintext bits, and return the array.
+            Self::Array(elements, OnceCell::with_value(bits_be.to_vec()))
         }
         // Unknown variant.
         else {

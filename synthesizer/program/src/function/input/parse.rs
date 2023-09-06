@@ -33,7 +33,7 @@ impl<N: Network> Parser for Input<N> {
             // Ensure the register is not a register member.
             match &register {
                 Register::Locator(..) => Ok(register),
-                Register::Member(..) => Err(error(format!("Input register {register} cannot be a register member"))),
+                Register::Access(..) => Err(error(format!("Input register {register} cannot be a register member"))),
             }
         })(string)?;
         // Parse the whitespace from the string.

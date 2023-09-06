@@ -21,18 +21,18 @@ mod serialize;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Proof<N: Network> {
     /// The proof.
-    proof: marlin::Proof<N::PairingCurve>,
+    proof: varuna::Proof<N::PairingCurve>,
 }
 
 impl<N: Network> Proof<N> {
     /// Initializes a new proof.
-    pub(super) const fn new(proof: marlin::Proof<N::PairingCurve>) -> Self {
+    pub(super) const fn new(proof: varuna::Proof<N::PairingCurve>) -> Self {
         Self { proof }
     }
 }
 
 impl<N: Network> Deref for Proof<N> {
-    type Target = marlin::Proof<N::PairingCurve>;
+    type Target = varuna::Proof<N::PairingCurve>;
 
     fn deref(&self) -> &Self::Target {
         &self.proof

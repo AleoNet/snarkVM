@@ -67,7 +67,7 @@ pub trait StackProgram<N: Network> {
     fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>>;
 
     /// Returns `true` if the stack contains the external record.
-    fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>>;
+    fn get_external_record(&self, locator: &Locator<N>) -> Result<&RecordType<N>>;
 
     /// Returns the function with the given function name.
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>>;
@@ -137,8 +137,9 @@ pub trait RegistersLoad<N: Network> {
     ) -> Result<Literal<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            Value::Plaintext(Plaintext::Struct(..)) => bail!("Operand must be a literal"),
-            Value::Record(..) => bail!("Operand must be a literal"),
+            Value::Plaintext(Plaintext::Struct(..)) | Value::Plaintext(Plaintext::Array(..)) | Value::Record(..) => {
+                bail!("Operand must be a literal")
+            }
         }
     }
 
@@ -187,8 +188,9 @@ pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     ) -> Result<circuit::Literal<A>> {
         match self.load_circuit(stack, operand)? {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
-            circuit::Value::Plaintext(circuit::Plaintext::Struct(..)) => bail!("Operand must be a literal"),
-            circuit::Value::Record(..) => bail!("Operand must be a literal"),
+            circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
+            | circuit::Value::Plaintext(circuit::Plaintext::Array(..))
+            | circuit::Value::Record(..) => bail!("Operand must be a literal"),
         }
     }
 

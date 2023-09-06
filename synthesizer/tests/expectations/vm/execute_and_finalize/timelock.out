@@ -4,7 +4,7 @@
       finalize: []
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4052473634506423659304918785144138480620399463053996365175936797089509462321field","checksum":"5365818025609575444734172293486047283959260860537195449090993710021547709717field","value":"record1qyqsq9etzs74c8tcl6zvu874r6rcsu36t8frmhg53suku4kejmzf48g8qyxx66trwfhkxun9v35hguerqqpqzqyys55xznkkvqxpfeky86sayp6g00mgknv6jjlxz8fgthhfsmgqpm587kkc7s5hgw6cffx0z7pkjr27agdevt6jtmau88sys75dyg6q58qxa7l"}'
+      - '{"type":"record","id":"3136577677495521282545661861403057240732487854259448967596734495987373428854field","checksum":"651980376224882979469682091293592253925292894943020556401496947779271991382field","value":"record1qyqspmxa6hf672z4g02lsyr39dza2ewvwlzl80lh9eh3d3vyyhe08vs2qyxx66trwfhkxun9v35hguerqqpqzqxk3u4y8tzkd93ykrlc7syrx68zz509h6nkfn4mtw0php83nl4upftd0nnhpkll5z5zu5q6u4xk9zhx8sneztwswkedqg946rlak2fpq2zzzv7"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -14,7 +14,7 @@
       finalize: []
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"3399727729674360949123413151398582103408490783162587305375232440740175239844field","checksum":"8046110954603880302627505529444050650510093440445138783814969223435550274686field","value":"record1qyqsplycw9nkzse928z0dd553hxvnjss8u7fgqaakag8qw5v62yd3fgqqyxx66trwfhkxun9v35hguerqqpqzqysllarxjf0h9rvvnjfculqd882cmnzj575lqlf5mnp4738rs9ezqh4xkevuep8exnj4vng0fhj62xy2f8plxtmyptueklhy8frdtksqal63wg"}'
+      - '{"type":"record","id":"2075853995151469721522969948157527933953893487615129161386071358759473701244field","checksum":"7590013800060194483114290526468399173095010050391665704688241552680710646436field","value":"record1qyqsqdy4cnc0h9efy44m295jgeyg5407ga0e0728s0rehz47wjlet4cwqyxx66trwfhkxun9v35hguerqqpqzqq4vj690ry2t8lw20yr6ddxceqwslx5sjkcv70frksvu00xddu2zyas8035g5rxsw7pny6954txf4ncgjsy60h3ujtuqnlje3ezc203yf8qm9d"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.

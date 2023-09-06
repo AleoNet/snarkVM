@@ -34,7 +34,7 @@ jobs:
           cd algorithms
           cargo bench --bench variable_base -- --output-format bencher | tee -a ../output.txt
           cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../output.txt
-          cargo bench --bench marlin -- --output-format bencher | tee -a ../output.txt
+          cargo bench --bench varuna -- --output-format bencher | tee -a ../output.txt
           cd ..
 
       - name: Benchmark circuit/environment

@@ -18,7 +18,7 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
-    /// This method will halt if the given register is a register member.
+    /// This method will halt if the given register is a register access.
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
@@ -65,8 +65,8 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
                     }
                 }
             }
-            // Ensure the register is not a register member.
-            Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
+            // Ensure the register is not a register access.
+            Register::Access(..) => bail!("Cannot store to a register access: '{register}'"),
         }
     }
 }
