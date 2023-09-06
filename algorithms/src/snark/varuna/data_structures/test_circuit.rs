@@ -60,7 +60,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
             mul_vars.push(mul_var);
         }
 
-        for i in 0..(self.num_variables - 2 - self.mul_depth) {
+        for i in 0..(self.num_variables - 3 - self.mul_depth) {
             let _ = cs.alloc(|| format!("var {i}"), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         }
 
@@ -72,6 +72,9 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
         for i in 0..mul_constraints {
             cs.enforce(|| format!("constraint_mul {i}"), |lc| lc + mul_vars[i], |lc| lc + b, |lc| lc + mul_vars[i + 1]);
         }
+
+        assert_eq!(cs.num_constraints(), self.num_constraints);
+        assert_eq!(cs.num_public_variables() + cs.num_private_variables(), self.num_variables);
 
         Ok(())
     }
