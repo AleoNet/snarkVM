@@ -608,5 +608,4 @@ pub mod integer_magnitude {
     impl Magnitude for u8 {}
     impl Magnitude for u16 {}
     impl Magnitude for u32 {}
-    impl Magnitude for u64 {}
 }
