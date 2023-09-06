@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-pub mod merkle_tree;
-pub mod multi_arity_merkle_tree;
+mod leaf_hash;
+pub use leaf_hash::*;
+
+mod path_hash;
+pub use path_hash::*;
