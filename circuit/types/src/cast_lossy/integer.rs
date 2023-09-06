@@ -16,12 +16,16 @@ use super::*;
 use crate::Cast;
 
 impl<E: Environment, I: IntegerType> CastLossy<Address<E>> for Integer<E, I> {
+    /// Casts an `Integer` to an `Address`.
+    #[inline]
     fn cast_lossy(&self) -> Address<E> {
         self.cast()
     }
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Boolean`.
+    #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
         match self.to_bits_be().pop() {
             Some(bit) => bit,
@@ -31,12 +35,16 @@ impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Field<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Field`.
+    #[inline]
     fn cast_lossy(&self) -> Field<E> {
         self.cast()
     }
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Group<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Group`.
+    #[inline]
     fn cast_lossy(&self) -> Group<E> {
         self.cast()
     }
@@ -44,11 +52,11 @@ impl<E: Environment, I: IntegerType> CastLossy<Group<E>> for Integer<E, I> {
 
 impl<E: Environment, I0: IntegerType, I1: IntegerType> CastLossy<Integer<E, I1>> for Integer<E, I0> {
     fn cast_lossy(&self) -> Integer<E, I1> {
-        let mut bits_le = self.to_bits_le();
-        // If the target integer type has few bits, use the appropriate lower bits.
         match I0::BITS <= I1::BITS {
-            true => Integer::<E, I1>::from_bits_le(&bits_le),
-            false => Integer::<E, I1>::from_bits_le(&bits_le[0..(I1::BITS as usize)]),
+            // If the target integer type is larger or the same size as the source integer type, then use the default cast.
+            true => self.cast(),
+            // Otherwise, use the lower bits of the source integer type.
+            false => Integer::<E, I1>::from_bits_le(&self.to_bits_le()[0..(I1::BITS as usize)]),
         }
     }
 }

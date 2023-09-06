@@ -15,6 +15,8 @@
 use super::*;
 
 impl<E: Environment> Cast<Boolean<E>> for Field<E> {
+    /// Casts a `Field` to a `Boolean`.
+    #[inline]
     fn cast(&self) -> Boolean<E> {
         let is_one = self.is_one();
         E::assert(self.is_zero().bitor(&is_one));
@@ -22,10 +24,19 @@ impl<E: Environment> Cast<Boolean<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Cast<Group<E>> for Field<E> {
+    /// Casts a `Field` to a `Group`.
+    #[inline]
+    fn cast(&self) -> Group<E> {
+        Group::from_x_coordinate(self.clone())
+    }
+}
+
 // A simple macro to implement `Cast` on types that implement `FromField`.
 macro_rules! impl_cast {
     ($type:ty) => {
         impl<E: Environment> Cast<$type> for Field<E> {
+            #[inline]
             fn cast(&self) -> $type {
                 <$type>::from_field(self.clone())
             }
@@ -34,7 +45,6 @@ macro_rules! impl_cast {
 }
 
 impl_cast!(Address<E>);
-impl_cast!(Group<E>);
 impl_cast!(I8<E>);
 impl_cast!(I16<E>);
 impl_cast!(I32<E>);

@@ -15,18 +15,24 @@
 use super::*;
 
 impl<E: Environment> CastLossy<Address<E>> for Field<E> {
+    /// Casts a `Field` to an `Address`.
+    #[inline]
     fn cast_lossy(&self) -> Address<E> {
-        Address::from_field(self.clone())
+        self.cast()
     }
 }
 
 impl<E: Environment> CastLossy<Group<E>> for Field<E> {
+    /// Casts a `Field` to a `Group`.
+    #[inline]
     fn cast_lossy(&self) -> Group<E> {
-        Group::from_field(self)
+        self.cast()
     }
 }
 
 impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
+    /// Casts a `Field` to a `Boolean`.
+    #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
         match self.to_bits_be().pop() {
             Some(bit) => bit,
@@ -39,6 +45,7 @@ impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
 macro_rules! impl_cast {
     ($type:ty) => {
         impl<E: Environment> CastLossy<$type> for Field<E> {
+            #[inline]
             fn cast_lossy(&self) -> $type {
                 <$type>::from_field_lossy(self.clone())
             }

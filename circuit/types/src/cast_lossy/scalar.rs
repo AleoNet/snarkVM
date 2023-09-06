@@ -15,12 +15,16 @@
 use super::*;
 
 impl<E: Environment> CastLossy<Address<E>> for Scalar<E> {
+    /// Casts a `Scalar` to an `Address`.
+    #[inline]
     fn cast_lossy(&self) -> Address<E> {
         self.cast()
     }
 }
 
 impl<E: Environment> CastLossy<Boolean<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Boolean`.
+    #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
         match self.to_bits_be().pop() {
             Some(bit) => bit,
@@ -30,18 +34,24 @@ impl<E: Environment> CastLossy<Boolean<E>> for Scalar<E> {
 }
 
 impl<E: Environment> CastLossy<Group<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Group`.
+    #[inline]
     fn cast_lossy(&self) -> Group<E> {
         self.cast()
     }
 }
 
 impl<E: Environment> CastLossy<Field<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Field`.
+    #[inline]
     fn cast_lossy(&self) -> Field<E> {
         self.cast()
     }
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Integer<E, I>> for Scalar<E> {
+    /// Casts a `Scalar` to an `Integer`.
+    #[inline]
     fn cast_lossy(&self) -> Integer<E, I> {
         let bits_le = self.to_bits_le();
         // Use the appropriate lower bits.
