@@ -23,12 +23,12 @@ use std::collections::BTreeMap;
 #[derive(Clone, PartialEq, Eq)]
 pub struct VerifyingKey<N: Network> {
     /// The verifying key for the function.
-    verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve>>,
+    verifying_key: Arc<varuna::CircuitVerifyingKey<N::PairingCurve>>,
 }
 
 impl<N: Network> VerifyingKey<N> {
     /// Initializes a new verifying key.
-    pub const fn new(verifying_key: Arc<marlin::CircuitVerifyingKey<N::PairingCurve>>) -> Self {
+    pub const fn new(verifying_key: Arc<varuna::CircuitVerifyingKey<N::PairingCurve>>) -> Self {
         Self { verifying_key }
     }
 
@@ -38,11 +38,11 @@ impl<N: Network> VerifyingKey<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the verification parameters.
-        let universal_verifier = N::marlin_universal_verifier();
-        let fiat_shamir = N::marlin_fs_parameters();
+        let universal_verifier = N::varuna_universal_verifier();
+        let fiat_shamir = N::varuna_fs_parameters();
 
         // Verify the proof.
-        match Marlin::<N>::verify(universal_verifier, fiat_shamir, self, inputs, proof) {
+        match Varuna::<N>::verify(universal_verifier, fiat_shamir, self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 println!(
@@ -70,11 +70,11 @@ impl<N: Network> VerifyingKey<N> {
             inputs.iter().map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice())).collect();
 
         // Retrieve the verification parameters.
-        let universal_verifier = N::marlin_universal_verifier();
-        let fiat_shamir = N::marlin_fs_parameters();
+        let universal_verifier = N::varuna_universal_verifier();
+        let fiat_shamir = N::varuna_fs_parameters();
 
         // Verify the batch proof.
-        match Marlin::<N>::verify_batch(universal_verifier, fiat_shamir, &keys_to_inputs, proof) {
+        match Varuna::<N>::verify_batch(universal_verifier, fiat_shamir, &keys_to_inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 println!("{}", format!(" • Verified '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -90,7 +90,7 @@ impl<N: Network> VerifyingKey<N> {
 }
 
 impl<N: Network> Deref for VerifyingKey<N> {
-    type Target = marlin::CircuitVerifyingKey<N::PairingCurve>;
+    type Target = varuna::CircuitVerifyingKey<N::PairingCurve>;
 
     fn deref(&self) -> &Self::Target {
         &self.verifying_key

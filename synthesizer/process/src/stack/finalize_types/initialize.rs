@@ -64,8 +64,8 @@ impl<N: Network> FinalizeTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 
@@ -87,8 +87,8 @@ impl<N: Network> FinalizeTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 }
@@ -105,19 +105,15 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the register type is defined in the program.
         match plaintext_type {
             PlaintextType::Literal(..) => (),
-            PlaintextType::Struct(struct_name) => {
-                // Ensure the struct is defined in the program.
-                if !stack.program().contains_struct(struct_name) {
-                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
+            PlaintextType::Struct(struct_name) => RegisterTypes::check_struct(stack, struct_name)?,
+            PlaintextType::Array(array_type) => RegisterTypes::check_array(stack, array_type)?,
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), *plaintext_type)?;
+        self.add_input(register.clone(), plaintext_type.clone())?;
 
         // Ensure the register type and the input type match.
-        if *plaintext_type != self.get_type(stack, register)? {
+        if plaintext_type != &self.get_type(stack, register)? {
             bail!("Input '{register}' does not match the expected input register type.")
         }
         Ok(())
@@ -204,7 +200,7 @@ impl<N: Network> FinalizeTypes<N> {
         }
         // Get the destination register.
         let destination = contains.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
         self.add_destination(destination, PlaintextType::Literal(LiteralType::Boolean))?;
@@ -238,10 +234,10 @@ impl<N: Network> FinalizeTypes<N> {
         }
         // Get the destination register.
         let destination = get.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, *mapping_value_type)?;
+        self.add_destination(destination, mapping_value_type.clone())?;
         Ok(())
     }
 
@@ -275,17 +271,17 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the register type of the default value.
         let default_value_type = self.get_type_from_operand(stack, get_or_use.default())?;
         // Check that the value type in the mapping matches the default value type.
-        if *mapping_value_type != default_value_type {
+        if mapping_value_type != &default_value_type {
             bail!(
                 "Default value type in `get.or_use` '{default_value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
         }
         // Get the destination register.
         let destination = get_or_use.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, *mapping_value_type)?;
+        self.add_destination(destination, default_value_type)?;
         Ok(())
     }
 
@@ -304,7 +300,7 @@ impl<N: Network> FinalizeTypes<N> {
 
         // Get the destination register.
         let destination = rand_chacha.destination().clone();
-        // Ensure the destination register is a locator (and does not reference a member).
+        // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
 
         // Get the destination type.
@@ -348,7 +344,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Retrieve the type of the value.
         let value_type = self.get_type_from_operand(stack, set.value())?;
         // Check that the value type in the mapping matches the type of the value.
-        if *mapping_value_type != value_type {
+        if mapping_value_type != &value_type {
             bail!(
                 "Value type in `set` '{value_type}' does not match the value type in the mapping '{mapping_value_type}'."
             )
@@ -408,7 +404,7 @@ impl<N: Network> FinalizeTypes<N> {
         for (destination, destination_type) in
             instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
         {
-            // Ensure the destination register is a locator (and does not reference a member).
+            // Ensure the destination register is a locator (and does not reference an access).
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
             // Ensure that the destination type is a plaintext type.
             let destination_type = match destination_type {
@@ -489,7 +485,10 @@ impl<N: Network> FinalizeTypes<N> {
                         // Retrieve the struct.
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
-                        self.matches_struct(stack, instruction.operands(), &struct_)?;
+                        self.matches_struct(stack, instruction.operands(), struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => {
+                        bail!("Illegal operation: Cannot cast to an array yet.")
                     }
                     RegisterType::Record(..) => {
                         bail!("Illegal operation: Cannot cast to a record.")

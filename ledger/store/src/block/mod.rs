@@ -313,7 +313,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             .iter()
             .cloned()
             .map(|confirmed| to_confirmed_tuple(confirmed))
-            .collect::<Result<Vec<_>, anyhow::Error>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Determine which certificates to store.
         let mut certificates_to_store = Vec::new();
