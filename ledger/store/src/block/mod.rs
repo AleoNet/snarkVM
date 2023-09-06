@@ -403,16 +403,16 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 bail!("Failed to remove block: missing solutions for block '{block_height}' ('{block_hash}')")
             }
         };
-        // Retrieve the block authority.
-        let block_authority = match self.authority_map().get_confirmed(block_hash)? {
-            Some(authority) => cow_to_cloned!(authority),
-            None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
-        };
 
-        // Determine the certificate ids to remove.
-        let certificate_ids_to_remove = match block_authority {
-            Authority::Beacon(_) => Vec::new(),
-            Authority::Quorum(subdag) => subdag.values().flatten().map(|c| c.certificate_id()).collect(),
+        // Determine the certificate IDs to remove.
+        let certificate_ids_to_remove = match self.authority_map().get_confirmed(block_hash)? {
+            Some(authority) => match authority {
+                Cow::Owned(Authority::Beacon(_)) | Cow::Borrowed(Authority::Beacon(_)) => Vec::new(),
+                Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
+                    subdag.values().flatten().map(|c| c.certificate_id()).collect()
+                }
+            },
+            None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
         };
 
         atomic_batch_scope!(self, {
@@ -642,16 +642,18 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         };
         // Retrieve the certificate for the given certificate ID.
         match authority {
-            Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => match subdag.get(&round) {
-                Some(certificates) => {
-                    // Retrieve the certificate for the given certificate ID.
-                    match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
-                        Some(certificate) => Ok(Some(certificate.clone())),
-                        None => bail!("The certificate '{certificate_id}' is missing in block storage"),
+            Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
+                match subdag.get(&round) {
+                    Some(certificates) => {
+                        // Retrieve the certificate for the given certificate ID.
+                        match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
+                            Some(certificate) => Ok(Some(certificate.clone())),
+                            None => bail!("The certificate '{certificate_id}' is missing in block storage"),
+                        }
                     }
-                },
-                None => bail!("The certificates for round '{round}' is missing in block storage"),
-            },
+                    None => bail!("The certificates for round '{round}' is missing in block storage"),
+                }
+            }
             _ => bail!(
                 "Cannot fetch batch certificate '{certificate_id}' - The authority for block '{block_height}' is not a subdag"
             ),
