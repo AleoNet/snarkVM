@@ -318,9 +318,10 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         // Retrieve the certificate IDs to store.
         let certificates_to_store = match block.authority() {
             Authority::Beacon(_) => Vec::new(),
-            Authority::Quorum(subdag) => {
-                subdag.iter().map(|(round, certificates)| certificates.iter().map(|c| (c.certificate_id(), *round)))
-            }
+            Authority::Quorum(subdag) => subdag
+                .iter()
+                .flat_map(|(round, certificates)| certificates.iter().map(|c| (c.certificate_id(), *round)))
+                .collect(),
         };
 
         atomic_batch_scope!(self, {
