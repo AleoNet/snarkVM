@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment> Cast<Address<E>> for Scalar<E> {
+    /// Casts a `Scalar` to an `Address`.
     #[inline]
     fn cast(&self) -> Result<Address<E>> {
         let field: Field<E> = self.cast()?;
@@ -23,6 +24,7 @@ impl<E: Environment> Cast<Address<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Cast<Boolean<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Boolean`.
     #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {
@@ -36,6 +38,7 @@ impl<E: Environment> Cast<Boolean<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Cast<Group<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Group`.
     #[inline]
     fn cast(&self) -> Result<Group<E>> {
         let field: Field<E> = self.cast()?;
@@ -44,6 +47,7 @@ impl<E: Environment> Cast<Group<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Cast<Field<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Field`.
     #[inline]
     fn cast(&self) -> Result<Field<E>> {
         self.to_field()
@@ -51,6 +55,7 @@ impl<E: Environment> Cast<Field<E>> for Scalar<E> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Scalar<E> {
+    /// Casts a `Scalar` to an `Integer`.
     #[inline]
     fn cast(&self) -> Result<Integer<E, I>> {
         let bits_le = self.to_bits_le();

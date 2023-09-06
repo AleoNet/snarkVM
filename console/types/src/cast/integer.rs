@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment, I: IntegerType> Cast<Address<E>> for Integer<E, I> {
+    /// Casts an `Integer` to an `Address`.
     #[inline]
     fn cast(&self) -> Result<Address<E>> {
         let field: Field<E> = self.cast()?;
@@ -23,6 +24,7 @@ impl<E: Environment, I: IntegerType> Cast<Address<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Boolean<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Boolean`.
     #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {
@@ -36,6 +38,7 @@ impl<E: Environment, I: IntegerType> Cast<Boolean<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Field<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Field`.
     #[inline]
     fn cast(&self) -> Result<Field<E>> {
         self.to_field()
@@ -43,6 +46,7 @@ impl<E: Environment, I: IntegerType> Cast<Field<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Group<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Group`.
     #[inline]
     fn cast(&self) -> Result<Group<E>> {
         let field: Field<E> = self.cast()?;
@@ -51,6 +55,7 @@ impl<E: Environment, I: IntegerType> Cast<Group<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> Cast<Integer<E, I1>> for Integer<E, I0> {
+    /// Casts an `Integer` to another `Integer`.
     #[inline]
     fn cast(&self) -> Result<Integer<E, I1>> {
         Ok(Integer::<E, I1>::new(match I1::try_from(**self) {
@@ -61,9 +66,10 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> Cast<Intege
 }
 
 impl<E: Environment, I: IntegerType> Cast<Scalar<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Scalar`.
     #[inline]
     fn cast(&self) -> Result<Scalar<E>> {
-        let mut bits_le = self.to_bits_le();
+        let bits_le = self.to_bits_le();
         Scalar::<E>::from_bits_le(&bits_le)
     }
 }

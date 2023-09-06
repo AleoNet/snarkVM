@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use std::ops::Not;
 
 impl<E: Environment> Cast<Address<E>> for Scalar<E> {
     /// Casts a `Scalar` to an `Address`.

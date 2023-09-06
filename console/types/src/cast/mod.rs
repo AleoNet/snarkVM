@@ -30,7 +30,6 @@ use crate::prelude::{
     One,
     Result,
     Scalar,
-    SizeInBits,
     ToBits,
     ToField,
     Zero,

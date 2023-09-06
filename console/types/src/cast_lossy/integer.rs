@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment, I: IntegerType> CastLossy<Address<E>> for Integer<E, I> {
+    /// Casts an `Integer` to an `Address`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Address<E>> {
         self.cast()
@@ -22,6 +23,7 @@ impl<E: Environment, I: IntegerType> CastLossy<Address<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Boolean`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Boolean<E>> {
         match self.to_bits_be().pop() {
@@ -32,6 +34,7 @@ impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Field<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Field`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Field<E>> {
         self.cast()
@@ -39,6 +42,7 @@ impl<E: Environment, I: IntegerType> CastLossy<Field<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Group<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Group`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Group<E>> {
         self.cast()
@@ -46,14 +50,12 @@ impl<E: Environment, I: IntegerType> CastLossy<Group<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> CastLossy<Integer<E, I1>> for Integer<E, I0> {
+    /// Casts an `Integer` to an `Integer` of a different type, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Integer<E, I1>> {
         match I0::BITS <= I1::BITS {
             // If the target integer type is larger or the same size as the source integer type, then use the default cast.
-            true => Ok(Integer::<E, I1>::new(match I1::try_from(**self) {
-                Ok(value) => value,
-                Err(_) => bail!("Failed to convert '{}' into '{}'", I0::type_name(), I1::type_name()),
-            })),
+            true => self.cast(),
             // Otherwise, use the lower bits of the source integer type.
             false => Integer::<E, I1>::from_bits_le(&self.to_bits_le()[0..usize::try_from(I1::BITS)?]),
         }
@@ -61,6 +63,7 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> CastLossy<I
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Scalar<E>> for Integer<E, I> {
+    /// Casts an `Integer` to a `Scalar`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Scalar<E>> {
         self.cast()

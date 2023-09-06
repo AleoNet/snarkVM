@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment> Cast<Address<E>> for Boolean<E> {
+    /// Casts a `Boolean` to an `Address`.
     #[inline]
     fn cast(&self) -> Result<Address<E>> {
         let field: Field<E> = self.cast()?;
@@ -23,6 +24,7 @@ impl<E: Environment> Cast<Address<E>> for Boolean<E> {
 }
 
 impl<E: Environment> Cast<Field<E>> for Boolean<E> {
+    /// Casts a `Boolean` to a `Field`.
     #[inline]
     fn cast(&self) -> Result<Field<E>> {
         match **self {
@@ -33,6 +35,7 @@ impl<E: Environment> Cast<Field<E>> for Boolean<E> {
 }
 
 impl<E: Environment> Cast<Group<E>> for Boolean<E> {
+    /// Casts a `Boolean` to a `Group`.
     #[inline]
     fn cast(&self) -> Result<Group<E>> {
         let field: Field<E> = self.cast()?;
@@ -41,6 +44,7 @@ impl<E: Environment> Cast<Group<E>> for Boolean<E> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Boolean<E> {
+    /// Casts a `Boolean` to an `Integer`.
     #[inline]
     fn cast(&self) -> Result<Integer<E, I>> {
         match **self {
@@ -51,6 +55,7 @@ impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Boolean<E> {
 }
 
 impl<E: Environment> Cast<Scalar<E>> for Boolean<E> {
+    /// Casts a `Boolean` to a `Scalar`.
     #[inline]
     fn cast(&self) -> Result<Scalar<E>> {
         match **self {

@@ -18,23 +18,16 @@ mod integer;
 mod scalar;
 
 use crate::prelude::{
-    bail,
     Address,
     Boolean,
     Cast,
     Environment,
     Field,
     FromBits,
-    FromField,
     Group,
     IntegerType,
-    One,
-    Result,
     Scalar,
-    SizeInBits,
     ToBits,
-    ToField,
-    Zero,
     I128,
     I16,
     I32,

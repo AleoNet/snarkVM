@@ -18,7 +18,6 @@ mod integer;
 mod scalar;
 
 use crate::prelude::{
-    bail,
     Address,
     BitOr,
     Boolean,
@@ -30,9 +29,7 @@ use crate::prelude::{
     Group,
     IntegerType,
     One,
-    Result,
     Scalar,
-    SizeInBits,
     Ternary,
     ToBits,
     ToField,

@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment> CastLossy<Address<E>> for Scalar<E> {
+    /// Casts a `Scalar` to an `Address`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Address<E>> {
         self.cast()
@@ -22,6 +23,7 @@ impl<E: Environment> CastLossy<Address<E>> for Scalar<E> {
 }
 
 impl<E: Environment> CastLossy<Boolean<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Boolean`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Boolean<E>> {
         match self.to_bits_be().pop() {
@@ -32,6 +34,7 @@ impl<E: Environment> CastLossy<Boolean<E>> for Scalar<E> {
 }
 
 impl<E: Environment> CastLossy<Group<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Group`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Group<E>> {
         self.cast()
@@ -39,6 +42,7 @@ impl<E: Environment> CastLossy<Group<E>> for Scalar<E> {
 }
 
 impl<E: Environment> CastLossy<Field<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Field`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Field<E>> {
         self.cast()
@@ -46,6 +50,7 @@ impl<E: Environment> CastLossy<Field<E>> for Scalar<E> {
 }
 
 impl<E: Environment, I: IntegerType> CastLossy<Integer<E, I>> for Scalar<E> {
+    /// Casts a `Scalar` to an `Integer`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Integer<E, I>> {
         let bits_le = self.to_bits_le();

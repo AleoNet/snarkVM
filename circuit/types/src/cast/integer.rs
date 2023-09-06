@@ -54,7 +54,7 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
     /// Casts an `Integer` to an `Integer`.
     #[inline]
     fn cast(&self) -> Integer<E, I1> {
-        let mut bits_le = self.to_bits_le();
+        let bits_le = self.to_bits_le();
         Integer::<E, I1>::from_bits_le(&bits_le)
     }
 }
@@ -63,7 +63,7 @@ impl<E: Environment, I: IntegerType> Cast<Scalar<E>> for Integer<E, I> {
     /// Casts an `Integer` to a `Scalar`.
     #[inline]
     fn cast(&self) -> Scalar<E> {
-        let mut bits_le = self.to_bits_le();
+        let bits_le = self.to_bits_le();
         Scalar::<E>::from_bits_le(&bits_le)
     }
 }

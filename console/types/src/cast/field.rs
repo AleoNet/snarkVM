@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment> Cast<Boolean<E>> for Field<E> {
+    /// Casts a `Field` to a `Boolean`.
     #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {

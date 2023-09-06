@@ -15,6 +15,7 @@
 use super::*;
 
 impl<E: Environment> CastLossy<Address<E>> for Field<E> {
+    /// Casts a `Field` to an `Address`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Address<E>> {
         Address::from_field(self)
@@ -22,6 +23,7 @@ impl<E: Environment> CastLossy<Address<E>> for Field<E> {
 }
 
 impl<E: Environment> CastLossy<Group<E>> for Field<E> {
+    /// Casts a `Field` to a `Group`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Group<E>> {
         Group::from_field(self)
@@ -29,6 +31,7 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
 }
 
 impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
+    /// Casts a `Field` to a `Boolean`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Boolean<E>> {
         match self.to_bits_be().pop() {
