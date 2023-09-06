@@ -315,20 +315,13 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             .map(|confirmed| to_confirmed_tuple(confirmed))
             .collect::<Result<Vec<_>, _>>()?;
 
-        // Determine which certificates to store.
-        let mut certificates_to_store = Vec::new();
-        if let Authority::Quorum(subdag) = block.authority() {
-            // Store each committed certificate for the round.
-            for (round, certificates) in subdag.iter() {
-                // Store each certificate if it does not already exist.
-                for certificate in certificates
-                    .iter()
-                    .filter(|c| !self.certificate_map().contains_key_confirmed(&c.certificate_id()).unwrap_or(true))
-                {
-                    certificates_to_store.push((certificate.certificate_id(), *round));
-                }
+        // Retrieve the certificate IDs to store.
+        let certificates_to_store = match block.authority() {
+            Authority::Beacon(_) => Vec::new(),
+            Authority::Quorum(subdag) => {
+                subdag.iter().map(|(round, certificates)| certificates.iter().map(|c| (c.certificate_id(), *round)))
             }
-        }
+        };
 
         atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.
