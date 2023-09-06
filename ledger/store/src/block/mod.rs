@@ -661,17 +661,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         };
         // Retrieve the certificate for the given certificate ID.
         match authority {
-            Cow::Owned(Authority::Quorum(subdag)) => match subdag.get(&round) {
-                Some(certificates) => {
-                    // Retrieve the certificate for the given certificate ID.
-                    match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
-                        Some(certificate) => Ok(Some(certificate.clone())),
-                        None => bail!("The certificate '{certificate_id}' is missing in block storage"),
-                    }
-                },
-                None => bail!("The certificates for round '{round}' is missing in block storage"),
-            },
-            Cow::Borrowed(Authority::Quorum(subdag)) => match subdag.get(&round) {
+            Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => match subdag.get(&round) {
                 Some(certificates) => {
                     // Retrieve the certificate for the given certificate ID.
                     match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
