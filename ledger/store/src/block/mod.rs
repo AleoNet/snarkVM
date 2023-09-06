@@ -30,7 +30,7 @@ use console::{
 use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
-use ledger_narwhal::BatchCertificate;
+use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
 
 use anyhow::Result;
@@ -129,7 +129,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
     /// The mapping of `block hash` to `block authority`.
     type AuthorityMap: for<'a> Map<'a, N::BlockHash, Authority<N>>;
-    /// The mapping of `certificate id` to (`block height`, `round height`). // TODO (raychu86): Store the round height only. And then use the `RoundToHeightMap`.
+    /// The mapping of `certificate ID` to (`block height`, `round height`).
     type CertificateMap: for<'a> Map<'a, Field<N>, (u32, u64)>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
