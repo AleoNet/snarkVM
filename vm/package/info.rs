@@ -14,7 +14,6 @@
 
 use super::*;
 
-use snarkvm_circuit::{CircuitJSON, ConstraintTranscript, Transcribe};
 use snarkvm_utilities::DeserializeExt;
 
 pub struct InfoRequest<N: Network> {

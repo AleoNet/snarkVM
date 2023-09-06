@@ -24,6 +24,8 @@ extern crate snarkvm_circuit;
 #[cfg(test)]
 mod boolean {
     use crate::snarkvm_circuit::*;
+    use snarkvm_circuit::prelude::{Equal, Nand, Nor, Ternary};
+    use snarkvm_circuit_environment::{FormalCircuit, Transcribe};
 
     #[test]
     fn and() {

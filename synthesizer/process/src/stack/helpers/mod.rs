@@ -14,8 +14,8 @@
 
 use super::*;
 
-mod initialize;
 mod info;
+mod initialize;
 mod matches;
 mod sample;
 mod synthesize;

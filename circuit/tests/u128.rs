@@ -1,18 +1,16 @@
 // Copyright (C) 2019-2023 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// The snarkVM library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 //! This test file will output JSON R1CS files for u128 gadgets in `circuit/types/integers/`
 //!
@@ -25,13 +23,11 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod u128 {
-    use snarkvm_circuit::{FromStr, U128, U8};
-    use snarkvm_circuit_environment::{Environment, FormalCircuit, FromBits, Inject, Mode, ToBits, Transcribe};
-    use snarkvm_circuit_types::Modulo;
+    use snarkvm_circuit::{U128, U8};
+    use snarkvm_circuit_environment::{FormalCircuit, Inject, Mode, Modulo, Transcribe};
     use snarkvm_console_types_integers::{
         AddWrapped,
         MulWrapped,
-        One,
         PowChecked,
         PowWrapped,
         SubWrapped,

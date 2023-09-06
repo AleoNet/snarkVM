@@ -276,6 +276,18 @@ impl<N: Network> Process<N> {
         // Synthesize the proving and verifying key.
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
     }
+
+    /// Returns information about the given program.
+    #[inline]
+    pub fn info<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        rng: &mut R,
+    ) -> Result<A::Transcript> {
+        // Return the information.
+        self.get_stack(program_id)?.info::<A, R>(function_name, rng)
+    }
 }
 
 #[cfg(any(test, feature = "test"))]

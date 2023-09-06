@@ -22,7 +22,6 @@ pub use snarkvm_circuit_environment_witness::rename_selfs;
 pub mod circuit;
 pub use circuit::*;
 
-// TODO: Feature guard under `formal`.
 pub mod formal;
 pub use formal::*;
 

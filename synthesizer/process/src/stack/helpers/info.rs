@@ -14,8 +14,6 @@
 
 use super::*;
 
-use circuit::{CircuitJSON, ConstraintTranscript};
-
 impl<N: Network> Stack<N> {
     /// Returns information about the given function.
     #[inline]
@@ -55,7 +53,7 @@ impl<N: Network> Stack<N> {
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
-        let _ = self.execute_function::<A, R>(call_stack, rng)?;
+        let _ = self.execute_function::<A>(call_stack)?;
 
         let transcript = A::clear();
 

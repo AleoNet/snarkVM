@@ -23,7 +23,10 @@ extern crate snarkvm_circuit;
 
 #[cfg(test)]
 mod field {
-    use snarkvm_circuit::{Boolean, FromStr, Itertools};
+    use snarkvm_circuit::{
+        prelude::{Compare, DivUnchecked, Double, Equal, Itertools, Pow, Square, Ternary},
+        Boolean,
+    };
     use snarkvm_circuit_environment::{
         Environment,
         FormalCircuit,
@@ -35,9 +38,12 @@ mod field {
         ToBits,
         Transcribe,
     };
-    use snarkvm_circuit_types::{Compare, DivUnchecked, Double, Equal, Field, Pow, Square, Ternary};
+    use snarkvm_circuit_types::Field;
     use snarkvm_console_types_field::{Field as ConsoleField, One, Zero};
-    use std::ops::{BitAnd, BitOr};
+    use std::{
+        ops::{BitAnd, BitOr},
+        str::FromStr,
+    };
 
     #[test]
     fn add() {
