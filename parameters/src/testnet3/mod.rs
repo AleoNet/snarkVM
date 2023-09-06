@@ -20,6 +20,21 @@ pub use powers::*;
 
 const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/testnet3.parameters";
 
+pub const NUM_POWERS_15: usize = 1 << 15;
+pub const NUM_POWERS_16: usize = 1 << 16;
+pub const NUM_POWERS_17: usize = 1 << 17;
+pub const NUM_POWERS_18: usize = 1 << 18;
+pub const NUM_POWERS_19: usize = 1 << 19;
+pub const NUM_POWERS_20: usize = 1 << 20;
+pub const NUM_POWERS_21: usize = 1 << 21;
+pub const NUM_POWERS_22: usize = 1 << 22;
+pub const NUM_POWERS_23: usize = 1 << 23;
+pub const NUM_POWERS_24: usize = 1 << 24;
+pub const NUM_POWERS_25: usize = 1 << 25;
+pub const NUM_POWERS_26: usize = 1 << 26;
+pub const NUM_POWERS_27: usize = 1 << 27;
+pub const NUM_POWERS_28: usize = 1 << 28;
+
 // Degrees
 #[cfg(not(feature = "wasm"))]
 impl_local!(Degree15, "resources/", "powers-of-beta-15", "usrs");

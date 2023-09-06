@@ -29,10 +29,11 @@ use snarkvm_utilities::{
 };
 
 use crate::srs::{UniversalProver, UniversalVerifier};
-use anyhow::Result;
+use anyhow::{anyhow, ensure, Result};
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
+use snarkvm_parameters::*;
 use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
@@ -59,6 +60,25 @@ impl<E: PairingEngine> UniversalParams<E> {
         let prepared_beta_h = powers.read().beta_h().prepare();
 
         Ok(Self { powers, h, prepared_h, prepared_beta_h })
+    }
+
+    pub async fn download_powers_for_async(&self, range: Range<usize>) -> Result<()> {
+        let (powers, shifted_powers) = self.powers.read().estimate_powers_for(&range)?;
+        let mut downloaded_powers = vec![];
+        if shifted_powers {
+            println!("Powers and stuff");
+        } else {
+            // Download the powers of two.
+            for num_powers in &powers {
+                #[cfg(debug_assertions)]
+                println!("Loading {num_powers} powers");
+
+                downloaded_powers.push(PowersOfG::<E>::download_additional_powers_async(*num_powers).await?);
+            }
+            self.powers.write().extend_powers(&downloaded_powers)?;
+        }
+
+        Ok(())
     }
 
     pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {

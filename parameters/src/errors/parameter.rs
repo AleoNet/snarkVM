@@ -59,3 +59,9 @@ impl From<ParameterError> for std::io::Error {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{error:?}"))
     }
 }
+
+impl From<reqwest::Error> for ParameterError {
+    fn from(error: reqwest::Error) -> Self {
+        ParameterError::Message(format!("{error:?}"))
+    }
+}

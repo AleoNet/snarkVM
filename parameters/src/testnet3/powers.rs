@@ -30,21 +30,6 @@ use snarkvm_utilities::{
 use anyhow::{anyhow, bail, ensure, Result};
 use std::{collections::BTreeMap, ops::Range, sync::Arc};
 
-const NUM_POWERS_15: usize = 1 << 15;
-const NUM_POWERS_16: usize = 1 << 16;
-const NUM_POWERS_17: usize = 1 << 17;
-const NUM_POWERS_18: usize = 1 << 18;
-const NUM_POWERS_19: usize = 1 << 19;
-const NUM_POWERS_20: usize = 1 << 20;
-const NUM_POWERS_21: usize = 1 << 21;
-const NUM_POWERS_22: usize = 1 << 22;
-const NUM_POWERS_23: usize = 1 << 23;
-const NUM_POWERS_24: usize = 1 << 24;
-const NUM_POWERS_25: usize = 1 << 25;
-const NUM_POWERS_26: usize = 1 << 26;
-const NUM_POWERS_27: usize = 1 << 27;
-const NUM_POWERS_28: usize = 1 << 28;
-
 /// The maximum degree supported by the SRS.
 const MAX_NUM_POWERS: usize = NUM_POWERS_28;
 
@@ -107,6 +92,23 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Download the powers of beta G specified by `range`.
     pub fn download_powers_for(&mut self, range: Range<usize>) -> Result<()> {
         self.powers_of_beta_g.download_powers_for(&range)
+    }
+
+    /// Extend powers
+    pub fn extend_powers(&mut self, num_powers: &Vec<Vec<u8>>) -> Result<()> {
+        self.powers_of_beta_g.extend_powers(num_powers)
+    }
+
+    pub async fn download_additional_powers_async(num_powers: usize) -> Result<Vec<u8>> {
+        impl_get_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
+    }
+
+    pub async fn download_additional_shifted_powers_async(num_powers: usize) -> Result<Vec<u8>> {
+        impl_get_shifted_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
+    }
+
+    pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
+        self.powers_of_beta_g.estimate_powers_for(range)
     }
 
     /// Returns the number of contiguous powers of beta G starting from the 0-th power.
@@ -239,6 +241,11 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         self.powers_of_beta_g.len()
     }
 
+    /// Returns the number of contiguous shifted powers of beta G starting from the 0-th power.
+    pub fn num_shifted_powers(&self) -> usize {
+        self.shifted_powers_of_beta_g.len()
+    }
+
     /// Initializes the hard-coded instance of the powers.
     fn load() -> Result<Self> {
         // Deserialize the group elements.
@@ -341,6 +348,24 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         }
     }
 
+    pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
+        if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
+            return Ok((Vec::new(), false));
+        }
+        let half_max = MAX_NUM_POWERS / 2;
+        if (range.start <= half_max) && (range.end > half_max) {
+            // If the range contains the midpoint, then we must download all the powers.
+            // (because we round up to the next power of two).
+            Ok((self.get_powers_download_queue(range.end)?, false))
+        } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
+            // If the range is closer to the shifted powers, then we download the shifted powers.
+            Ok((self.get_shifted_powers_download_queue(range.start)?, true))
+        } else {
+            // Otherwise, we download the normal powers.
+            Ok((self.get_powers_download_queue(range.start)?, false))
+        }
+    }
+
     pub fn download_powers_for(&mut self, range: &Range<usize>) -> Result<()> {
         if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
             return Ok(());
@@ -361,9 +386,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(())
     }
 
-    /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
-    /// and updates `Self` in place with the new powers.
-    fn download_powers_up_to(&mut self, end: usize) -> Result<()> {
+    /// Get needed powers for a given degree.
+    fn get_powers_download_queue(&self, end: usize) -> Result<Vec<usize>> {
         // Determine the new power of two.
         let final_power_of_two =
             end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
@@ -389,6 +413,17 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
                 accumulator.checked_mul(2).ok_or_else(|| anyhow!("Overflowed while requesting a larger degree"))?;
         }
         ensure!(final_power_of_two * 2 == accumulator, "Ensure the loop terminates at the right power of two");
+        Ok(download_queue)
+    }
+
+    /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
+    /// and updates `Self` in place with the new powers.
+    fn download_powers_up_to(&mut self, end: usize) -> Result<()> {
+        let final_power_of_two =
+            end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+
+        // Get download queue
+        let download_queue = self.get_powers_download_queue(end)?;
 
         // Reserve capacity for the new powers of two.
         let additional_size = final_power_of_two
@@ -402,22 +437,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             println!("Loading {num_powers} powers");
 
             // Download the universal SRS powers if they're not already on disk.
-            let additional_bytes = match *num_powers {
-                NUM_POWERS_16 => Degree16::load_bytes()?,
-                NUM_POWERS_17 => Degree17::load_bytes()?,
-                NUM_POWERS_18 => Degree18::load_bytes()?,
-                NUM_POWERS_19 => Degree19::load_bytes()?,
-                NUM_POWERS_20 => Degree20::load_bytes()?,
-                NUM_POWERS_21 => Degree21::load_bytes()?,
-                NUM_POWERS_22 => Degree22::load_bytes()?,
-                NUM_POWERS_23 => Degree23::load_bytes()?,
-                NUM_POWERS_24 => Degree24::load_bytes()?,
-                NUM_POWERS_25 => Degree25::load_bytes()?,
-                NUM_POWERS_26 => Degree26::load_bytes()?,
-                NUM_POWERS_27 => Degree27::load_bytes()?,
-                NUM_POWERS_28 => Degree28::load_bytes()?,
-                _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
-            };
+            let additional_bytes = impl_get_powers!(*num_powers, load_bytes)?;
 
             // Deserialize the group elements.
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
@@ -428,10 +448,28 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(())
     }
 
-    /// This method downloads the universal SRS powers from
-    /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
-    /// and updates `Self` in place with the new powers.
-    fn download_shifted_powers_from(&mut self, start: usize) -> Result<()> {
+    pub fn extend_powers(&mut self, powers: &Vec<Vec<u8>>) -> Result<()> {
+        let current_length = self.powers_of_beta_g.len();
+        let final_power_of_two = powers
+            .last()
+            .ok_or(anyhow!("No powers to extend"))?
+            .len()
+            .checked_next_power_of_two()
+            .ok_or(anyhow!("Adding too many powers"))?;
+
+        let powers_length = powers.iter().fold(0, |acc, x| acc + x.len());
+        ensure!((powers_length + current_length) == final_power_of_two, "Incorrect number of powers to extend");
+
+        for power in powers {
+            // TODO: Check checksum
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&**power)?;
+            self.powers_of_beta_g.extend(&additional_powers);
+        }
+        ensure!(self.powers_of_beta_g.len() == final_power_of_two, "Loaded an incorrect number of powers");
+        Ok(())
+    }
+
+    fn get_shifted_powers_download_queue(&self, start: usize) -> Result<Vec<usize>> {
         // Ensure the total number of powers is less than the maximum number of powers.
         ensure!(start <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
 
@@ -472,6 +510,22 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             download_queue.push(existing_num_powers);
         }
         download_queue.reverse(); // We want to download starting from the smallest power.
+        Ok(download_queue)
+    }
+
+    /// This method downloads the universal SRS powers from
+    /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
+    /// and updates `Self` in place with the new powers.
+    fn download_shifted_powers_from(&mut self, start: usize) -> Result<()> {
+        let final_num_powers = MAX_NUM_POWERS
+            .checked_sub(start)
+            .ok_or_else(|| {
+                anyhow!("Requesting too many powers: `start ({start}) > MAX_NUM_POWERS ({MAX_NUM_POWERS})`")
+            })?
+            .checked_next_power_of_two()
+            .ok_or_else(|| anyhow!("Requesting too many powers"))?; // Calculated k.next_power_of_two().
+
+        let download_queue = self.get_shifted_powers_download_queue(start)?;
 
         let mut final_powers = Vec::with_capacity(final_num_powers);
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
@@ -480,21 +534,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             println!("Loading {num_powers} shifted powers");
 
             // Download the universal SRS powers if they're not already on disk.
-            let additional_bytes = match *num_powers {
-                NUM_POWERS_16 => ShiftedDegree16::load_bytes()?,
-                NUM_POWERS_17 => ShiftedDegree17::load_bytes()?,
-                NUM_POWERS_18 => ShiftedDegree18::load_bytes()?,
-                NUM_POWERS_19 => ShiftedDegree19::load_bytes()?,
-                NUM_POWERS_20 => ShiftedDegree20::load_bytes()?,
-                NUM_POWERS_21 => ShiftedDegree21::load_bytes()?,
-                NUM_POWERS_22 => ShiftedDegree22::load_bytes()?,
-                NUM_POWERS_23 => ShiftedDegree23::load_bytes()?,
-                NUM_POWERS_24 => ShiftedDegree24::load_bytes()?,
-                NUM_POWERS_25 => ShiftedDegree25::load_bytes()?,
-                NUM_POWERS_26 => ShiftedDegree26::load_bytes()?,
-                NUM_POWERS_27 => ShiftedDegree27::load_bytes()?,
-                _ => bail!("Cannot download an invalid degree of '{num_powers}'"),
-            };
+            let additional_bytes = impl_get_shifted_powers!(*num_powers, load_bytes)?;
 
             // Deserialize the group elements.
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
