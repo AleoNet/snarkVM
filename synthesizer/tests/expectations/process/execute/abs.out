@@ -7,6 +7,7 @@
 - - 10i8
 - - 100i8
 - - 127i8
+- Compiler panicked when calling `Process::execute`
 - - 0i16
 - - 1i16
 - - 1000i16
@@ -26,7 +27,7 @@
 - - 1000i32
 - - 10000000i32
 - - 2147483647i32
-- - 2147483647i32
+- Compiler panicked when calling `Process::execute`
 - - 0i64
 - - 1i64
 - - 1000i64

@@ -20,9 +20,8 @@ cases:
     inputs: [-100i8]
   - function: abs_i8
     inputs: [-127i8]
-# negative test:
-#  - function: abs_i8
-#    inputs: [-128i8]
+  - function: abs_i8
+    inputs: [-128i8]
 
   - function: abs_i16
     inputs: [0i16]
@@ -64,7 +63,7 @@ cases:
   - function: abs_i32
     inputs: [-2_147_483_647_i32]
   - function: abs_i32
-    inputs: [-2_147_483_647_i32]
+    inputs: [-2_147_483_648_i32]
 
   - function: abs_i64
     inputs: [0i64]
