@@ -69,10 +69,10 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> MultiArityMerklePath<E, D
 
                 // When the index is less than the indicator index, use the current index. Otherwise, use the previous index.
                 let option_a =
-                    Field::ternary(&index.is_less_than(&indicator_index), &sibling_hashes[i], &sibling_hashes[i - 1]);
+                    Field::ternary(&index.is_less_than(indicator_index), &sibling_hashes[i], &sibling_hashes[i - 1]);
 
                 // When the index is equal to the indicator index, use the current hash.
-                let option_b = Field::ternary(&index.is_equal(&indicator_index), &current_hash, &option_a);
+                let option_b = Field::ternary(&index.is_equal(indicator_index), &current_hash, &option_a);
 
                 // Push the final option to the children
                 children.push(option_b);
