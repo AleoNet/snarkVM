@@ -659,19 +659,28 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         let Some(authority) = self.authority_map().get_confirmed(&block_hash)? else {
             bail!("The authority for '{block_hash}' is missing in block storage")
         };
-
+        // Retrieve the certificate for the given certificate ID.
         match authority {
-            Cow::Owned(Authority::Quorum(subdag)) | Cow::Borrowed(Authority::Quorum(subdag)) => {
-                // Retrieve the certificates for the given round.
-                let Some(certificates) = subdag.get(&round) else {
-                    bail!("The certificates for round '{round}' is missing in block storage")
-                };
-                // Retrieve the certificate for the given ID.
-                match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
-                    Some(certificate) => Ok(Some(certificate.clone())),
-                    None => bail!("The certificate '{certificate_id}' is missing in block storage"),
-                }
-            }
+            Cow::Owned(Authority::Quorum(subdag)) => match subdag.get(&round) {
+                Some(certificates) => {
+                    // Retrieve the certificate for the given certificate ID.
+                    match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
+                        Some(certificate) => Ok(Some(certificate.clone())),
+                        None => bail!("The certificate '{certificate_id}' is missing in block storage"),
+                    }
+                },
+                None => bail!("The certificates for round '{round}' is missing in block storage"),
+            },
+            Cow::Borrowed(Authority::Quorum(subdag)) => match subdag.get(&round) {
+                Some(certificates) => {
+                    // Retrieve the certificate for the given certificate ID.
+                    match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
+                        Some(certificate) => Ok(Some(certificate.clone())),
+                        None => bail!("The certificate '{certificate_id}' is missing in block storage"),
+                    }
+                },
+                None => bail!("The certificates for round '{round}' is missing in block storage"),
+            },
             _ => bail!(
                 "Cannot fetch batch certificate '{certificate_id}' - The authority for block '{block_height}' is not a subdag"
             ),
