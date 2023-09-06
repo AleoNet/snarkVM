@@ -55,3 +55,43 @@ impl<E: Environment> Cast<Scalar<E>> for Boolean<E> {
         Scalar::ternary(self, &Scalar::one(), &Scalar::zero())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Cast as CircuitCast;
+    use snarkvm_circuit_environment::{Circuit, Count, Eject, Inject, Mode};
+
+    use console::{prelude::Console, Cast as ConsoleCast};
+
+    use core::panic::UnwindSafe;
+    use std::fmt::Debug;
+
+    fn check_cast<CircuitType, ConsoleType>(name: &str, mode: Mode, count: Count)
+    where
+        CircuitType: Eject,
+        <CircuitType as Eject>::Primitive: Debug + PartialEq<ConsoleType>,
+        ConsoleType: Debug,
+        console::Boolean<Console>: ConsoleCast<ConsoleType>,
+        Boolean<Circuit>: CircuitCast<CircuitType>,
+    {
+        for value in [true, false] {
+            let a = Boolean::<Circuit>::new(mode, value);
+            let expected: ConsoleType = console::Boolean::new(value).cast().unwrap();
+            Circuit::scope(name, || {
+                let candidate: CircuitType = a.cast();
+                assert_eq!(candidate.eject_value(), expected);
+                assert!(Circuit::is_satisfied_in_scope());
+                assert!(count.matches(
+                    Circuit::num_constants_in_scope(),
+                    Circuit::num_public_in_scope(),
+                    Circuit::num_private_in_scope(),
+                    Circuit::num_constraints_in_scope()
+                ))
+            });
+            Circuit::reset();
+        }
+    }
+
+    fn run_test<I: IntegerType + UnwindSafe>(mode: Mode) {}
+}
