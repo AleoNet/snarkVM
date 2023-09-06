@@ -410,28 +410,9 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         };
 
         // Determine the certificate ids to remove.
-        let mut certificate_ids_to_remove = Vec::new();
-        if let Authority::Quorum(subdag) = block_authority {
-            // Determine which certificates to remove.
-            for (_, certificates) in subdag.iter() {
-                for certificate in certificates.iter() {
-                    // Retrieve the committed height.
-                    let (committed_height, _) = match self
-                        .certificate_map()
-                        .get_confirmed(&certificate.certificate_id())?
-                    {
-                        Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
-                        None => bail!(
-                            "Failed to remove block: missing certificates for block '{block_height}' ('{block_hash}')"
-                        ),
-                    };
-
-                    // Remove the certificate if it was committed in this block.
-                    if committed_height == block_height {
-                        certificate_ids_to_remove.push(certificate.certificate_id());
-                    }
-                }
-            }
+        let certificate_ids_to_remove = match block_authority {
+            Authority::Beacon(_) => Vec::new(),
+            Authority::Quorum(subdag) => subdag.values().flatten().map(|c| c.certificate_id()).collect(),
         };
 
         atomic_batch_scope!(self, {
