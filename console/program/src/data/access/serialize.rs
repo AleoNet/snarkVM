@@ -75,6 +75,7 @@ mod tests {
     fn test_serde_json() {
         for i in 0..1000 {
             check_serde_json(Access::<CurrentNetwork>::from_str(&format!(".owner_{i}")).unwrap());
+            check_serde_json(Access::<CurrentNetwork>::from_str(&format!("[{i}u32]")).unwrap());
         }
     }
 
@@ -82,6 +83,7 @@ mod tests {
     fn test_bincode() {
         for i in 0..1000 {
             check_bincode(Access::<CurrentNetwork>::from_str(&format!(".owner_{i}")).unwrap());
+            check_bincode(Access::<CurrentNetwork>::from_str(&format!("[{i}u32]")).unwrap());
         }
     }
 }

@@ -13,43 +13,56 @@
 // limitations under the License.
 
 use super::*;
+use crate::{Identifier, LiteralType};
 
 impl<N: Network> Parser for ArrayType<N> {
     /// Parses a string into a literal type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the opening bracket.
-        let (string, _) = tag("[")(string)?;
-        // Parse the whitespaces from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // A helper function to parse the innermost element type.
+        fn parse_inner_element_type<N: Network>(string: &str) -> ParserResult<PlaintextType<N>> {
+            alt((map(LiteralType::parse, PlaintextType::from), map(Identifier::parse, PlaintextType::from)))(string)
+        }
 
-        // A helper function to parse the semicolon, length, and closing bracket.
-        fn parse_length(string: &str) -> ParserResult<u32> {
+        // A helper function to parse the length of each dimension.
+        fn parse_length<N: Network>(string: &str) -> ParserResult<U32<N>> {
             // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the semicolon.
+            // Parse the semicolon from the string.
             let (string, _) = tag(";")(string)?;
             // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(string)?;
-            // Parse the length from the string.
-            let (string, length) =
-                map_res(recognize(many1(one_of("0123456789"))), |digits: &str| digits.parse::<u32>())(string)?;
+            // Parse the length.
+            let (string, length) = U32::parse(string)?;
             // Parse the whitespaces from the string.
             let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the closing bracket.
             let (string, _) = tag("]")(string)?;
+            // Return the length.
             Ok((string, length))
         }
 
-        // Parse the element type, followed by the length.
-        alt((
-            map_res(pair(LiteralType::parse, parse_length), |(element_type, length)| {
-                ArrayType::new_literal(element_type, U32::new(length))
-            }),
-            map_res(pair(Identifier::parse, parse_length), |(element_type, length)| {
-                ArrayType::new_struct(element_type, U32::new(length))
-            }),
-        ))(string)
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the opening brackets and validate the number of dimensions.
+        let (string, dimensions) = map_res(many0_count(pair(tag("["), Sanitizer::parse_whitespaces)), |dimensions| {
+            if dimensions.is_zero() {
+                Err("An array must have at least one dimension.".to_string())
+            } else if dimensions > N::MAX_DATA_DEPTH {
+                Err(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH))
+            } else {
+                Ok(dimensions)
+            }
+        })(string)?;
+
+        // Parse the whitespaces from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the innermost element type and the dimensions and return the array type.
+        map_res(pair(parse_inner_element_type, count(parse_length, dimensions)), |(plaintext_type, mut dimensions)| {
+            // Reverse the dimensions, since they were parsed from innermost to outermost.
+            dimensions.reverse();
+            ArrayType::new(plaintext_type, dimensions)
+        })(string)
     }
 }
 
@@ -80,9 +93,6 @@ impl<N: Network> Debug for ArrayType<N> {
 impl<N: Network> Display for ArrayType<N> {
     /// Prints the array type as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Literal(literal_type, length) => write!(f, "[{}; {}]", literal_type, **length),
-            Self::Struct(identifier, length) => write!(f, "[{}; {}]", identifier, **length),
-        }
+        write!(f, "[{}; {}]", self.next_element_type(), self.length())
     }
 }

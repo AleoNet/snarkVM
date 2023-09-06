@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::Identifier;
+use crate::{Identifier, U32};
 use snarkvm_console_network::prelude::*;
 
 /// A helper type for accessing an entry in a register, struct, array, or record.
@@ -24,6 +24,8 @@ use snarkvm_console_network::prelude::*;
 pub enum Access<N: Network> {
     /// Access a member of a register, struct, or record.
     Member(Identifier<N>),
+    /// Access an element of an array.
+    Index(U32<N>),
 }
 
 impl<N: Network> From<Identifier<N>> for Access<N> {
@@ -31,5 +33,13 @@ impl<N: Network> From<Identifier<N>> for Access<N> {
     #[inline]
     fn from(identifier: Identifier<N>) -> Self {
         Self::Member(identifier)
+    }
+}
+
+impl<N: Network> From<U32<N>> for Access<N> {
+    /// Initializes a new index access from a u32.
+    #[inline]
+    fn from(index: U32<N>) -> Self {
+        Self::Index(index)
     }
 }
