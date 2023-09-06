@@ -46,7 +46,7 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> MultiArityMerklePath<E, D
 
         let indicator_indexes: Vec<_> = (0..DEPTH)
             .map(|i| {
-                let index = U64::<E>::new(Mode::Constant, console::U64::new(i as u64));
+                let index = U16::<E>::new(Mode::Constant, console::U16::new(i as u16));
                 &self.leaf_index / (arity.clone().pow(index)) % arity.clone()
             })
             .collect();
@@ -190,31 +190,31 @@ mod tests {
 
     #[test]
     fn test_verify_bhp512_constant() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Constant, 10, 4, 1024, (40866, 0, 0, 0))
+        check_verify!(BHP1024, BHP512, Constant, 10, 4, 1024, (40386, 0, 0, 0))
     }
 
     #[test]
     fn test_verify_bhp512_public() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Public, 10, 4, 1024, (11097, 0, 53876, 54097))
+        check_verify!(BHP1024, BHP512, Public, 10, 4, 1024, (10617, 0, 53876, 54097))
     }
 
     #[test]
     fn test_verify_bhp512_private() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Private, 10, 4, 1024, (11097, 0, 53876, 54097))
+        check_verify!(BHP1024, BHP512, Private, 10, 4, 1024, (10617, 0, 53876, 54097))
     }
 
     #[test]
     fn test_verify_poseidon2_constant() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Constant, 10, 4, 4, (5216, 0, 0, 0))
+        check_verify!(Poseidon4, Poseidon2, Constant, 10, 4, 4, (4736, 0, 0, 0))
     }
 
     #[test]
     fn test_verify_poseidon2_public() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Public, 10, 4, 4, (6475, 0, 14152, 14273))
+        check_verify!(Poseidon4, Poseidon2, Public, 10, 4, 4, (5995, 0, 14152, 14273))
     }
 
     #[test]
     fn test_verify_poseidon2_private() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Private, 10, 4, 4, (6475, 0, 14152, 14273))
+        check_verify!(Poseidon4, Poseidon2, Private, 10, 4, 4, (5995, 0, 14152, 14273))
     }
 }

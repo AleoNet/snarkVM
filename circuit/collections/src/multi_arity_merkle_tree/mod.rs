@@ -20,7 +20,7 @@ mod verify;
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U64};
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U64};
 
 pub struct MultiArityMerklePath<E: Environment, const DEPTH: u8, const ARITY: u8> {
     /// The leaf index for the path.
