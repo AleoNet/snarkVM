@@ -39,6 +39,6 @@ path = "./string"
 version = "=0.14.6"
 
 [dev-dependencies.console]
-package = "snarkvm-console-types"
-path = "../../console/types"
+package = "snarkvm-console"
+path = "../../console"
 version = "=0.14.6"

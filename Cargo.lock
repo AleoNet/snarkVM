@@ -2667,7 +2667,7 @@ dependencies = [
  "snarkvm-circuit-types-integers",
  "snarkvm-circuit-types-scalar",
  "snarkvm-circuit-types-string",
- "snarkvm-console-types",
+ "snarkvm-console",
 ]
 
 [[package]]
