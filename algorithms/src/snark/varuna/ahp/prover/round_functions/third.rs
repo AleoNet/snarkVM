@@ -30,6 +30,7 @@ use crate::{
         Matrix,
         SNARKMode,
     },
+    AlgebraicSponge,
 };
 
 use itertools::Itertools;
@@ -322,5 +323,13 @@ impl<'a, F: PrimeField, MM: SNARKMode> prover::State<'a, F, MM> {
         end_timer!(sumcheck_time);
 
         Ok(LinevalInstance { h_1_i, xg_1_i, sum })
+    }
+
+    pub fn verifier_third_round<Fq: PrimeField, R: AlgebraicSponge<Fq, 2>>(
+        &mut self,
+        fs_rng: &mut R,
+    ) -> Result<(), AHPError> {
+        self.verifier_state.as_mut().unwrap().third_round(fs_rng)?;
+        Ok(())
     }
 }

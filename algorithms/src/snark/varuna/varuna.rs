@@ -21,6 +21,7 @@ use crate::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
         proof,
         prover,
+        verifier,
         witness_label,
         CircuitProvingKey,
         CircuitVerifyingKey,
@@ -385,7 +386,7 @@ where
 
         Self::absorb_labeled(&first_commitments, &mut sponge);
 
-        let verifier_state = AHPForR1CS::<_, MM>::verifier_first_round(
+        prover_state.verifier_first_round(
             &batch_sizes,
             &circuit_infos,
             prover_state.max_constraint_domain,
@@ -393,8 +394,6 @@ where
             prover_state.max_non_zero_domain,
             &mut sponge,
         )?;
-
-        prover_state.verifier_state = Some(verifier_state);
 
         // --------------------------------------------------------------------
 
@@ -413,7 +412,7 @@ where
 
         Self::absorb_labeled(&second_commitments, &mut sponge);
 
-        prover_state.verifier_state.as_mut().unwrap().second_round(&mut sponge)?;
+        prover_state.verifier_second_round(&mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -435,7 +434,7 @@ where
             &mut sponge,
         );
 
-        prover_state.verifier_state.as_mut().unwrap().third_round(&mut sponge)?;
+        prover_state.verifier_third_round(&mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -453,7 +452,7 @@ where
 
         Self::absorb_labeled_with_sums(&fourth_commitments, &prover_fourth_message.sums, &mut sponge);
 
-        prover_state.verifier_state.as_mut().unwrap().fourth_round(&mut sponge)?;
+        prover_state.verifier_fourth_round(&mut sponge)?;
         // --------------------------------------------------------------------
 
         // We take out values from state before they are consumed.
@@ -478,7 +477,7 @@ where
 
         Self::absorb_labeled(&fifth_commitments, &mut sponge);
 
-        prover_state.verifier_state.as_mut().unwrap().fifth_round(&mut sponge)?;
+        prover_state.verifier_fifth_round(&mut sponge)?;
         // --------------------------------------------------------------------
 
         // Gather prover polynomials in one vector.
@@ -551,7 +550,7 @@ where
             &polynomials,
             &prover_third_message,
             &prover_fourth_message,
-            prover_state.verifier_state.as_ref().unwrap(),
+            prover_state.verifier_state.take().unwrap(),
         )?;
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
@@ -749,14 +748,14 @@ where
         // First round
         let first_round_time = start_timer!(|| "First round");
         Self::absorb_labeled(&first_commitments, &mut sponge);
-        let mut verifier_state = AHPForR1CS::<_, MM>::verifier_first_round(
+        let mut verifier_state = verifier::State::<_, MM>::new(
             &batch_sizes,
             &circuit_infos,
             max_constraint_domain,
             max_variable_domain,
             max_non_zero_domain,
-            &mut sponge,
         )?;
+        verifier_state.first_round(&mut sponge)?;
         end_timer!(first_round_time);
         // --------------------------------------------------------------------
 
@@ -851,7 +850,7 @@ where
             &evaluations,
             &proof.third_msg,
             &proof.fourth_msg,
-            &verifier_state,
+            verifier_state,
         )?;
         end_timer!(lc_time);
 
@@ -867,9 +866,9 @@ where
         )?;
         end_timer!(pc_time);
 
+        #[cfg(debug_assertions)]
         if !evaluations_are_correct {
-            #[cfg(debug_assertions)]
-            eprintln!("SonicKZG10::Check failed using final challenge: {:?}", verifier_state.fifth_round_message);
+            eprintln!("SonicKZG10::Check failed");
         }
 
         end_timer!(verifier_time, || format!(

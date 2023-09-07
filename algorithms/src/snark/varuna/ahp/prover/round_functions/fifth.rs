@@ -18,6 +18,7 @@ use crate::{
     fft::DensePolynomial,
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{ahp::AHPError, prover, AHPForR1CS, SNARKMode},
+    AlgebraicSponge,
 };
 
 use itertools::Itertools;
@@ -64,5 +65,13 @@ impl<'a, F: PrimeField, MM: SNARKMode> prover::State<'a, F, MM> {
         let oracles = prover::FifthOracles { h_2 };
         assert!(oracles.matches_info(&AHPForR1CS::<F, MM>::fifth_round_polynomial_info()));
         Ok(oracles)
+    }
+
+    pub fn verifier_fifth_round<Fq: PrimeField, R: AlgebraicSponge<Fq, 2>>(
+        &mut self,
+        fs_rng: &mut R,
+    ) -> Result<(), AHPError> {
+        self.verifier_state.as_mut().unwrap().fifth_round(fs_rng)?;
+        Ok(())
     }
 }

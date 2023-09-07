@@ -30,49 +30,28 @@ use crate::{
                 ThirdMessage,
             },
             AHPError,
-            AHPForR1CS,
         },
         verifier::CircuitSpecificState,
         SNARKMode,
     },
     AlgebraicSponge,
 };
+use itertools::Itertools;
 use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
 
-impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
+impl<TargetField: PrimeField, MM: SNARKMode> State<TargetField, MM> {
     /// Output the first message and next round state.
-    pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+    pub fn new(
         batch_sizes: &BTreeMap<CircuitId, usize>,
         circuit_infos: &BTreeMap<CircuitId, &CircuitInfo>,
         max_constraint_domain: EvaluationDomain<TargetField>,
         max_variable_domain: EvaluationDomain<TargetField>,
         max_non_zero_domain: EvaluationDomain<TargetField>,
-        fs_rng: &mut R,
     ) -> Result<State<TargetField, MM>, AHPError> {
-        let mut batch_combiners = BTreeMap::new();
         let mut circuit_specific_states = BTreeMap::new();
-        let mut num_circuit_combiners = vec![1; batch_sizes.len()];
-        num_circuit_combiners[0] = 0; // the first circuit_combiner is TargetField::one() and needs no random sampling
-
-        for ((batch_size, (circuit_id, circuit_info)), num_c_combiner) in
-            batch_sizes.values().zip(circuit_infos).zip(num_circuit_combiners)
-        {
-            let squeeze_time = start_timer!(|| format!("Squeezing challenges for {circuit_id}"));
-            let elems = fs_rng.squeeze_nonnative_field_elements(*batch_size - 1 + num_c_combiner);
-            end_timer!(squeeze_time);
-
-            let (instance_combiners, circuit_combiner) = elems.split_at(*batch_size - 1);
-            assert_eq!(circuit_combiner.len(), num_c_combiner);
-            let mut combiners =
-                BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
-            if num_c_combiner == 1 {
-                combiners.circuit_combiner = circuit_combiner[0];
-            }
-            combiners.instance_combiners.extend(instance_combiners);
-            batch_combiners.insert(*circuit_id, combiners);
-
+        for (batch_size, (circuit_id, circuit_info)) in batch_sizes.values().zip(circuit_infos) {
             let constraint_domain_time = start_timer!(|| format!("Constructing constraint domain for {circuit_id}"));
             let constraint_domain =
                 EvaluationDomain::new(circuit_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
@@ -115,15 +94,13 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
             circuit_specific_states.insert(*circuit_id, circuit_specific_state);
         }
 
-        let message = FirstMessage { batch_combiners };
-
         let new_state = State {
             circuit_specific_states,
             max_constraint_domain,
             max_variable_domain,
             max_non_zero_domain,
 
-            first_round_message: Some(message),
+            first_round_message: None,
             second_round_message: None,
             third_round_message: None,
             fourth_round_message: None,
@@ -134,9 +111,41 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
 
         Ok(new_state)
     }
-}
 
-impl<TargetField: PrimeField, MM: SNARKMode> State<TargetField, MM> {
+    /// Output the first message and next round state.
+    pub fn first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
+        &mut self,
+        fs_rng: &mut R,
+    ) -> Result<(), AHPError> {
+        let mut batch_combiners = BTreeMap::new();
+        let mut num_circuit_combiners = vec![1; self.circuit_specific_states.len()];
+        num_circuit_combiners[0] = 0; // the first circuit_combiner is TargetField::one() and needs no random sampling
+
+        for ((&circuit_id, circuit_state), num_c_combiner) in
+            self.circuit_specific_states.iter().zip_eq(num_circuit_combiners)
+        {
+            let batch_size = circuit_state.batch_size;
+            let squeeze_time = start_timer!(|| format!("Squeezing challenges for {circuit_id}"));
+            let elems = fs_rng.squeeze_nonnative_field_elements(batch_size - 1 + num_c_combiner);
+            end_timer!(squeeze_time);
+
+            let (instance_combiners, circuit_combiner) = elems.split_at(batch_size - 1);
+            assert_eq!(circuit_combiner.len(), num_c_combiner);
+            let mut combiners =
+                BatchCombiners { circuit_combiner: TargetField::one(), instance_combiners: vec![TargetField::one()] };
+            if num_c_combiner == 1 {
+                combiners.circuit_combiner = circuit_combiner[0];
+            }
+            combiners.instance_combiners.extend(instance_combiners);
+            batch_combiners.insert(circuit_id, combiners);
+        }
+
+        let message = FirstMessage { batch_combiners };
+        self.first_round_message = Some(message);
+
+        Ok(())
+    }
+
     /// Output the second message and next round state.
     pub fn second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         &mut self,

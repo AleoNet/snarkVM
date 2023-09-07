@@ -130,7 +130,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         prover_fourth_message: &prover::FourthMessage<F>,
-        state: &verifier::State<F, MM>,
+        state: verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
         let max_constraint_domain = state.max_constraint_domain;

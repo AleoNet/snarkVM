@@ -23,7 +23,8 @@ use crate::{
         Evaluations as EvaluationsOnDomain,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
-    snark::varuna::{ahp::verifier, prover, witness_label, AHPForR1CS, SNARKMode},
+    snark::varuna::{ahp::verifier, prover, witness_label, AHPError, AHPForR1CS, SNARKMode},
+    AlgebraicSponge,
 };
 use anyhow::{anyhow, Result};
 use snarkvm_fields::PrimeField;
@@ -160,5 +161,13 @@ impl<'a, F: PrimeField, MM: SNARKMode> prover::State<'a, F, MM> {
         end_timer!(poly_time);
 
         poly
+    }
+
+    pub fn verifier_second_round<Fq: PrimeField, R: AlgebraicSponge<Fq, 2>>(
+        &mut self,
+        fs_rng: &mut R,
+    ) -> Result<(), AHPError> {
+        self.verifier_state.as_mut().unwrap().second_round(fs_rng)?;
+        Ok(())
     }
 }

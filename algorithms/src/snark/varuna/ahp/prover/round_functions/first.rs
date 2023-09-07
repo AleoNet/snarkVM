@@ -23,7 +23,8 @@ use crate::{
         SparsePolynomial,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
-    snark::varuna::{ahp::AHPError, prover, witness_label, AHPForR1CS, CircuitId, SNARKMode},
+    snark::varuna::{ahp::AHPError, prover, verifier, witness_label, AHPForR1CS, CircuitId, CircuitInfo, SNARKMode},
+    AlgebraicSponge,
 };
 use itertools::Itertools;
 use rand_core::RngCore;
@@ -159,6 +160,27 @@ impl<'a, F: PrimeField, MM: SNARKMode> prover::State<'a, F, MM> {
         assert!(w_poly.degree() < variable_domain.size() - input_domain.size());
         end_timer!(w_poly_time);
         LabeledPolynomial::new(label, w_poly, None, Self::zk_bound())
+    }
+
+    pub fn verifier_first_round<Fq: PrimeField, R: AlgebraicSponge<Fq, 2>>(
+        &mut self,
+        batch_sizes: &BTreeMap<CircuitId, usize>,
+        circuit_infos: &BTreeMap<CircuitId, &CircuitInfo>,
+        max_constraint_domain: EvaluationDomain<F>,
+        max_variable_domain: EvaluationDomain<F>,
+        max_non_zero_domain: EvaluationDomain<F>,
+        fs_rng: &mut R,
+    ) -> Result<(), AHPError> {
+        let mut verifier_state = verifier::State::<F, MM>::new(
+            batch_sizes,
+            circuit_infos,
+            max_constraint_domain,
+            max_variable_domain,
+            max_non_zero_domain,
+        )?;
+        verifier_state.first_round(fs_rng)?;
+        self.verifier_state = Some(verifier_state);
+        Ok(())
     }
 }
 

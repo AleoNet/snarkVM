@@ -29,6 +29,7 @@ use crate::{
         AHPForR1CS,
         SNARKMode,
     },
+    AlgebraicSponge,
 };
 use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
@@ -241,5 +242,13 @@ impl<'a, F: PrimeField, MM: SNARKMode> prover::State<'a, F, MM> {
         assert!(lhs.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
         Ok((f.coeffs[0], lhs, g, a_poly, b_poly))
+    }
+
+    pub fn verifier_fourth_round<Fq: PrimeField, R: AlgebraicSponge<Fq, 2>>(
+        &mut self,
+        fs_rng: &mut R,
+    ) -> Result<(), AHPError> {
+        self.verifier_state.as_mut().unwrap().fourth_round(fs_rng)?;
+        Ok(())
     }
 }
