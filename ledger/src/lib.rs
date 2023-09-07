@@ -111,6 +111,8 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
     /// The current block.
     current_block: Arc<RwLock<Block<N>>>,
+    /// The current committee.
+    current_committee: Arc<RwLock<Committee<N>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -161,6 +163,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let vm = VM::from(store)?;
         lap!(timer, "Initialize a new VM");
 
+        let current_committee = vm.finalize_store().committee_store().current_committee()?;
+
         // Initialize the ledger.
         let mut ledger = Self {
             vm,
@@ -168,6 +172,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             coinbase_puzzle: CoinbasePuzzle::<N>::load()?,
             current_epoch_challenge: Default::default(),
             current_block: Arc::new(RwLock::new(genesis_block.clone())),
+            current_committee: Arc::new(RwLock::new(current_committee)),
         };
 
         // If the block store is empty, initialize the genesis block.
@@ -206,8 +211,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the latest committee.
-    pub fn latest_committee(&self) -> Result<Committee<N>> {
-        self.vm.finalize_store().committee_store().current_committee()
+    pub fn latest_committee(&self) -> Committee<N> {
+        self.current_committee.read().clone()
     }
 
     /// Returns the latest state root.

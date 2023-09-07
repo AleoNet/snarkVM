@@ -80,6 +80,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             // Update the current epoch challenge.
             self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
         }
+
+        // Update the cached committee from storage.
+        *self.current_committee.write() = self.vm.finalize_store().committee_store().current_committee()?;
+
         Ok(())
     }
 }
