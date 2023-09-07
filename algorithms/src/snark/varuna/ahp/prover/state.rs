@@ -23,7 +23,13 @@ use crate::{
     },
     polycommit::sonic_pc::LabeledPolynomial,
     r1cs::{SynthesisError, SynthesisResult},
-    snark::varuna::{verifier, AHPError, AHPForR1CS, Circuit, SNARKMode},
+    snark::varuna::{
+        verifier::{self, QuerySet},
+        AHPError,
+        AHPForR1CS,
+        Circuit,
+        SNARKMode,
+    },
 };
 use anyhow::{anyhow, Result};
 #[cfg(not(feature = "serial"))]
@@ -97,7 +103,7 @@ pub struct State<'a, F: PrimeField, MM: SNARKMode> {
     /// Precomputed inverse roots for calculating inverse FFTs
     pub(in crate::snark) ifft_precomputation: &'a IFFTPrecomputation<F>,
     /// The verifier state along all rounds of the AHP
-    pub(in crate::snark) verifier_state: Option<verifier::State<F, MM>>,
+    pub(super) verifier_state: Option<verifier::State<F, MM>>,
 }
 
 /// The public inputs for a single instance.
@@ -235,6 +241,16 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
     /// Get the zk_bound for the AHP
     pub fn zk_bound() -> Option<usize> {
         AHPForR1CS::<F, MM>::zk_bound()
+    }
+
+    /// Output the query set
+    pub fn query_set(&self) -> QuerySet<F> {
+        QuerySet::new(self.verifier_state.as_ref().unwrap())
+    }
+
+    /// Output the verifier state
+    pub fn verifier_state(&mut self) -> verifier::State<F, MM> {
+        self.verifier_state.take().unwrap()
     }
 
     /// Throughout the protocol, we are tasked with computing a zerocheck or sumcheck

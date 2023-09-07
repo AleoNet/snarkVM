@@ -544,13 +544,13 @@ where
         }
 
         // Compute the AHP verifier's query set.
-        let query_set = prover_state.verifier_state.as_ref().unwrap().query_set();
+        let query_set = prover_state.query_set();
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_inputs,
             &polynomials,
             &prover_third_message,
             &prover_fourth_message,
-            prover_state.verifier_state.take().unwrap(),
+            prover_state.verifier_state(),
         )?;
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
