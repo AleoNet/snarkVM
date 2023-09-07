@@ -2551,7 +2551,6 @@ dependencies = [
 name = "snarkvm-circuit"
 version = "0.14.6"
 dependencies = [
- "serial_test",
  "snarkvm-circuit-account",
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-collections",
@@ -2640,7 +2639,6 @@ name = "snarkvm-circuit-program"
 version = "0.14.6"
 dependencies = [
  "anyhow",
- "paste",
  "rand",
  "snarkvm-circuit-account",
  "snarkvm-circuit-collections",

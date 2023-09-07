@@ -50,6 +50,3 @@ version = "=0.14.6"
 [dependencies.snarkvm-circuit-types]
 path = "./types"
 version = "=0.14.6"
-
-[dev-dependencies.serial_test]
-version = "2.0.0"
