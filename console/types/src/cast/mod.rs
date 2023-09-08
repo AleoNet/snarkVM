@@ -17,33 +17,8 @@ mod field;
 mod integer;
 mod scalar;
 
-use crate::prelude::{
-    bail,
-    Address,
-    Boolean,
-    Environment,
-    Field,
-    FromBits,
-    FromField,
-    Group,
-    IntegerType,
-    One,
-    Result,
-    Scalar,
-    ToBits,
-    ToField,
-    Zero,
-    I128,
-    I16,
-    I32,
-    I64,
-    I8,
-    U128,
-    U16,
-    U32,
-    U64,
-    U8,
-};
+use crate::prelude::*;
+
 use snarkvm_console_types_integers::Integer;
 
 /// Unary operator for casting values of one type to another.
