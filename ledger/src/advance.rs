@@ -82,7 +82,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
 
         // Update the cached committee from storage.
-        *self.current_committee.write() = self.vm.finalize_store().committee_store().current_committee()?;
+        *self.current_committee.write() = Some(self.vm.finalize_store().committee_store().current_committee()?);
 
         Ok(())
     }

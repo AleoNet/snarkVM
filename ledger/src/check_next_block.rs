@@ -57,7 +57,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         block.verify(
             &self.latest_block(),
             self.latest_state_root(),
-            &self.latest_committee(),
+            &self.latest_committee()?,
             self.coinbase_puzzle(),
             &self.latest_epoch_challenge()?,
             OffsetDateTime::now_utc().unix_timestamp(),

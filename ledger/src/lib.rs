@@ -112,7 +112,7 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     /// The current block.
     current_block: Arc<RwLock<Block<N>>>,
     /// The current committee.
-    current_committee: Arc<RwLock<Committee<N>>>,
+    current_committee: Arc<RwLock<Option<Committee<N>>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -163,7 +163,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let vm = VM::from(store)?;
         lap!(timer, "Initialize a new VM");
 
-        let current_committee = vm.finalize_store().committee_store().current_committee()?;
+        let current_committee = vm.finalize_store().committee_store().current_committee().ok();
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -211,8 +211,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the latest committee.
-    pub fn latest_committee(&self) -> Committee<N> {
-        self.current_committee.read().clone()
+    pub fn latest_committee(&self) -> Result<Committee<N>> {
+        self.current_committee.read().clone().ok_or(anyhow!("Committee is not set"))
     }
 
     /// Returns the latest state root.
