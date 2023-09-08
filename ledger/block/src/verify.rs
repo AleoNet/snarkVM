@@ -29,6 +29,7 @@ impl<N: Network> Block<N> {
         current_puzzle: &CoinbasePuzzle<N>,
         current_epoch_challenge: &EpochChallenge<N>,
         current_timestamp: i64,
+        expected_finalize_root: Field<N>,
     ) -> Result<()> {
         // Ensure the block hash is correct.
         self.verify_hash(previous_block.height(), previous_block.hash())?;
@@ -59,8 +60,6 @@ impl<N: Network> Block<N> {
         let expected_previous_state_root = current_state_root;
         // Compute the expected transactions root.
         let expected_transactions_root = self.compute_transactions_root()?;
-        // Compute the expected finalize root.
-        let expected_finalize_root = self.compute_finalize_root()?;
         // Compute the expected ratifications root.
         let expected_ratifications_root = self.compute_ratifications_root()?;
         // Compute the expected solutions root.
@@ -431,14 +430,6 @@ impl<N: Network> Block<N> {
         match self.transactions.to_transactions_root() {
             Ok(transactions_root) => Ok(transactions_root),
             Err(error) => bail!("Failed to compute the transactions root for block {} - {error}", self.height()),
-        }
-    }
-
-    /// Computes the finalize root for the block.
-    fn compute_finalize_root(&self) -> Result<Field<N>> {
-        match self.transactions.to_finalize_root() {
-            Ok(finalize_root) => Ok(finalize_root),
-            Err(error) => bail!("Failed to compute the finalize root for block {} - {error}", self.height()),
         }
     }
 

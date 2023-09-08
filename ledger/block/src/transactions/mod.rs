@@ -26,15 +26,7 @@ mod string;
 use crate::{Transaction, Transition};
 use console::{
     network::prelude::*,
-    program::{
-        Ciphertext,
-        ProgramOwner,
-        Record,
-        TransactionsPath,
-        TransactionsTree,
-        FINALIZE_OPERATIONS_DEPTH,
-        TRANSACTIONS_DEPTH,
-    },
+    program::{Ciphertext, ProgramOwner, Record, TransactionsPath, TransactionsTree, TRANSACTIONS_DEPTH},
     types::{Field, Group, U64},
 };
 use synthesizer_program::FinalizeOperation;

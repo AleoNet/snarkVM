@@ -53,16 +53,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
-        // Ensure the block is correct.
-        block.verify(
-            &self.latest_block(),
-            self.latest_state_root(),
-            &self.latest_committee()?,
-            self.coinbase_puzzle(),
-            &self.latest_epoch_challenge()?,
-            OffsetDateTime::now_utc().unix_timestamp(),
-        )?;
-
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {
             // // Retrieve the latest total supply.
@@ -119,8 +109,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .collect::<Result<Vec<_>>>()?;
 
         // Speculate over the unconfirmed transactions.
-        let (confirmed_transactions, _) =
+        let (confirmed_transactions, _, expected_finalize_root) =
             self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?;
+
+        // Ensure the block is correct.
+        block.verify(
+            &self.latest_block(),
+            self.latest_state_root(),
+            &self.latest_committee()?,
+            self.coinbase_puzzle(),
+            &self.latest_epoch_challenge()?,
+            OffsetDateTime::now_utc().unix_timestamp(),
+            expected_finalize_root,
+        )?;
 
         // Ensure the transactions after speculation match.
         if block.transactions() != &confirmed_transactions {
