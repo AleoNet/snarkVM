@@ -30,6 +30,8 @@ use std::{
 static FILES: Lazy<Mutex<HashMap<&'static str, FileUpdates>>> = Lazy::new(Default::default);
 static WORKSPACE_ROOT: OnceCell<PathBuf> = OnceCell::new();
 
+/// To update the arguments to `count_is!`, run cargo test with the `UPDATE_COUNT` flag set to the name of the file containing the macro invocation.
+/// e.g. `UPDATE_COUNT=boolean cargo test
 #[macro_export]
 macro_rules! count_is {
     ($num_constants:literal, $num_public:literal, $num_private:literal, $num_constraints:literal) => {
@@ -45,6 +47,8 @@ macro_rules! count_is {
     };
 }
 
+/// To update the arguments to `count_less_than!`, run cargo test with the `UPDATE_COUNT` flag set to the name of the file containing the macro invocation.
+/// e.g. `UPDATE_COUNT=boolean cargo test
 #[macro_export]
 macro_rules! count_less_than {
     ($num_constants:literal, $num_public:literal, $num_private:literal, $num_constraints:literal) => {
