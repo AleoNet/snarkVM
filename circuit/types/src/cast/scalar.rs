@@ -81,7 +81,7 @@ mod tests {
             1 => console::types::Scalar::<Testnet3>::one(),
             _ => Uniform::rand(rng),
         };
-        let circuit_value = Scalar::<Circuit>::new(mode, console_value.clone());
+        let circuit_value = Scalar::<Circuit>::new(mode, console_value);
         (console_value, circuit_value)
     }
 

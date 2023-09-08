@@ -79,7 +79,7 @@ mod tests {
             1 => console::types::Field::<Testnet3>::one(),
             _ => Uniform::rand(rng),
         };
-        let circuit_value = Field::<Circuit>::new(mode, console_value.clone());
+        let circuit_value = Field::<Circuit>::new(mode, console_value);
         (console_value, circuit_value)
     }
 

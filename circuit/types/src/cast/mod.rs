@@ -39,6 +39,7 @@ use crate::prelude::{
     I32,
     I64,
     I8,
+    MSB,
     U128,
     U16,
     U32,

@@ -81,7 +81,7 @@ mod tests {
             1 => console::types::Scalar::<Testnet3>::one(),
             _ => Uniform::rand(rng),
         };
-        let circuit_value = Scalar::<Circuit>::new(mode, console_value.clone());
+        let circuit_value = Scalar::<Circuit>::new(mode, console_value);
         (console_value, circuit_value)
     }
 
@@ -96,9 +96,9 @@ mod tests {
 
     #[test]
     fn test_scalar_to_boolean() {
-        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Constant, count_is!(4, 0, 0, 0));
-        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Public, count_is!(2, 0, 5, 8));
-        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Private, count_is!(2, 0, 5, 8));
+        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
+        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
@@ -118,70 +118,70 @@ mod tests {
     #[test]
     fn test_scalar_to_i8() {
         check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 746));
-        check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 746));
+        check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_i16() {
         check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 738));
-        check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 738));
+        check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_i32() {
         check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 722));
-        check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 722));
+        check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_i64() {
         check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 690));
-        check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 690));
+        check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_i128() {
         check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 626));
-        check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 626));
+        check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_u8() {
         check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 746));
-        check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 746));
+        check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_u16() {
         check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 738));
-        check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 738));
+        check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_u32() {
         check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 722));
-        check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 722));
+        check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_u64() {
         check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 690));
-        check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 690));
+        check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 
     #[test]
     fn test_scalar_to_u128() {
         check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
-        check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 626));
-        check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 626));
+        check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 503));
+        check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 503));
     }
 }
