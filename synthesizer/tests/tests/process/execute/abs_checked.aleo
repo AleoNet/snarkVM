@@ -28,84 +28,84 @@ cases:
   - function: abs_i16
     inputs: [1i16]
   - function: abs_i16
-    inputs: [1_000_i16]
+    inputs: [1000i16]
   - function: abs_i16
-    inputs: [10_000_i16]
+    inputs: [10000i16]
   - function: abs_i16
-    inputs: [32767_i16]
+    inputs: [32767i16]
   - function: abs_i16
     inputs: [-1i16]
   - function: abs_i16
-    inputs: [-1_000_i16]
+    inputs: [-1000i16]
   - function: abs_i16
-    inputs: [-10_000_i16]
+    inputs: [-10000i16]
   - function: abs_i16
-    inputs: [-32_767_i16]
+    inputs: [-32767i16]
   - function: abs_i16
-    inputs: [-32_768_i16]
+    inputs: [-32768i16]
 
   - function: abs_i32
     inputs: [0i32]
   - function: abs_i32
     inputs: [1i32]
   - function: abs_i32
-    inputs: [1_000_i32]
+    inputs: [1000i32]
   - function: abs_i32
-    inputs: [10_000_000_i32]
+    inputs: [10000000i32]
   - function: abs_i32
-    inputs: [2_147_483_647_i32]
+    inputs: [2147483647i32]
   - function: abs_i32
     inputs: [-1i32]
   - function: abs_i32
-    inputs: [-1_000_i32]
+    inputs: [-1000i32]
   - function: abs_i32
-    inputs: [-10_000_000_i32]
+    inputs: [-10000000i32]
   - function: abs_i32
-    inputs: [-2_147_483_647_i32]
+    inputs: [-2147483647i32]
   - function: abs_i32
-    inputs: [-2_147_483_648_i32]
+    inputs: [-2147483648i32]
 
   - function: abs_i64
     inputs: [0i64]
   - function: abs_i64
     inputs: [1i64]
   - function: abs_i64
-    inputs: [1_000_i64]
+    inputs: [1000i64]
   - function: abs_i64
-    inputs: [10_000_000_000_i64]
+    inputs: [10000000000i64]
   - function: abs_i64
-    inputs: [2_147_483_647_i64]
+    inputs: [2147483647i64]
   - function: abs_i64
     inputs: [-1i64]
   - function: abs_i64
-    inputs: [-1_000_i64]
+    inputs: [-1000i64]
   - function: abs_i64
-    inputs: [-10_000_000_000_i64]
+    inputs: [-10000000000i64]
   - function: abs_i64
-    inputs: [-9_223_372_036_854_775_807_i64]
+    inputs: [-9223372036854775807i64]
   - function: abs_i64
-    inputs: [-9_223_372_036_854_775_808_i64]
+    inputs: [-9223372036854775808i64]
 
   - function: abs_i128
     inputs: [0i128]
   - function: abs_i128
     inputs: [1i128]
   - function: abs_i128
-    inputs: [1_000_i128]
+    inputs: [1000i128]
   - function: abs_i128
-    inputs: [10_000_000_000_000_000_000_000_000_000_i128]
+    inputs: [10000000000000000000000000000i128]
   - function: abs_i128
-    inputs: [2_147_483_647_i128]
+    inputs: [2147483647i128]
   - function: abs_i128
     inputs: [-1i128]
   - function: abs_i128
-    inputs: [-1_000_i128]
+    inputs: [-1000i128]
   - function: abs_i128
-    inputs: [-10_000_000_000_000_000_000_000_000_000_i128]
+    inputs: [-10000000000000000000000000000i128]
   - function: abs_i128
-    inputs: [-170_141_183_460_469_231_731_687_303_715_884_105_727_i128]
+    inputs: [-170141183460469231731687303715884105727i128]
   - function: abs_i128
-    inputs: [-170_141_183_460_469_231_731_687_303_715_884_105_728_i128]
+    inputs: [-170141183460469231731687303715884105728i128]
 
 */
 
