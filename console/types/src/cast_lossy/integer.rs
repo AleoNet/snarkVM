@@ -49,16 +49,11 @@ impl<E: Environment, I: IntegerType> CastLossy<Group<E>> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> CastLossy<Integer<E, I1>> for Integer<E, I0> {
+impl<E: Environment, I0: IntegerType + AsPrimitive<I1>, I1: IntegerType> CastLossy<Integer<E, I1>> for Integer<E, I0> {
     /// Casts an `Integer` to an `Integer` of a different type, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Integer<E, I1>> {
-        match I0::BITS <= I1::BITS {
-            // If the target integer type is larger or the same size as the source integer type, then use the default cast.
-            true => self.cast(),
-            // Otherwise, use the lower bits of the source integer type.
-            false => Integer::<E, I1>::from_bits_le(&self.to_bits_le()[0..usize::try_from(I1::BITS)?]),
-        }
+        Ok(Integer::new((**self).as_()))
     }
 }
 

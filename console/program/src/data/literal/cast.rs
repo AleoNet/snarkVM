@@ -232,16 +232,16 @@ fn cast_lossy_integer_to_type<N: Network, I: IntegerType>(
     to_type: LiteralType,
 ) -> Result<Literal<N>>
 where
-    i8: TryFrom<I>,
-    i16: TryFrom<I>,
-    i32: TryFrom<I>,
-    i64: TryFrom<I>,
-    i128: TryFrom<I>,
-    u8: TryFrom<I>,
-    u16: TryFrom<I>,
-    u32: TryFrom<I>,
-    u64: TryFrom<I>,
-    u128: TryFrom<I>,
+    I: AsPrimitive<u8>
+        + AsPrimitive<u16>
+        + AsPrimitive<u32>
+        + AsPrimitive<u64>
+        + AsPrimitive<u128>
+        + AsPrimitive<i8>
+        + AsPrimitive<i16>
+        + AsPrimitive<i32>
+        + AsPrimitive<i64>
+        + AsPrimitive<i128>,
 {
     match to_type {
         LiteralType::Address => Ok(Literal::Address(integer.cast_lossy()?)),

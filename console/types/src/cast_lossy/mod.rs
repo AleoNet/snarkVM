@@ -20,6 +20,7 @@ mod scalar;
 use crate::prelude::{
     bail,
     Address,
+    AsPrimitive,
     Boolean,
     Cast,
     Environment,
