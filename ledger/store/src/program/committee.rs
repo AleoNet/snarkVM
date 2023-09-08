@@ -97,6 +97,36 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.committee_map().finish_atomic()
     }
 
+    /// Returns the write batch.
+    fn get_write_batch(&self) -> Result<Vec<u8>> {
+        // TODO (raychu86): Optimize this.
+        let mut write_batch = Vec::new();
+
+        macro_rules! process_map {
+            ($map:expr, $result:expr) => {
+                for (key, value) in $map.iter_pending() {
+                    $result.extend(key.to_bytes_le()?);
+                    match value {
+                        Some(value) => {
+                            $result.push(1u8);
+                            $result.extend(value.to_bytes_le()?);
+                        }
+                        None => $result.push(0u8),
+                    }
+                }
+            };
+        }
+
+        // Add the current round map's key value atomic batch.
+        process_map!(self.current_round_map(), write_batch);
+        // Add the round to height map's key value atomic batch.
+        process_map!(self.round_to_height_map(), write_batch);
+        // Add the committee map's key value atomic batch.
+        process_map!(self.committee_map(), write_batch);
+
+        Ok(write_batch)
+    }
+
     /// Stores the given `(next height, committee)` pair into storage,
     /// and indexes storage up to the `next round`.
     fn insert(&self, next_height: u32, committee: Committee<N>) -> Result<()> {
@@ -388,6 +418,11 @@ impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
     /// Returns the committee for the given `round`.
     pub fn get_committee_for_round(&self, round: u64) -> Result<Option<Committee<N>>> {
         self.storage.get_committee_for_round(round)
+    }
+
+    /// Returns the write batch.
+    pub fn get_write_batch(&self) -> Result<Vec<u8>> {
+        self.storage.get_write_batch()
     }
 }
 
