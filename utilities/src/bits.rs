@@ -146,13 +146,15 @@ macro_rules! impl_bits_for_integer {
             /// Reads `Self` from a boolean array in little-endian order.
             #[inline]
             fn from_bits_le(bits: &[bool]) -> Result<Self> {
-                // Ensure that the upper bits are all zero.
+                // If the number of bits exceeds the size of the integer, ensure that the upper bits are all zero.
                 // Note that because the input bits are little-endian, these are the bits at the end of slice.
-                for bit in bits[(<$int>::BITS as usize)..].iter() {
-                    ensure!(!bit, "upper bits are not zero");
+                if bits.len() > (<$int>::BITS as usize) {
+                    for bit in bits[<$int>::BITS as usize..].iter() {
+                        ensure!(!bit, "upper bits are not zero");
+                    }
                 }
-                // Construct the integer from the lower bits.
-                Ok(bits[..(<$int>::BITS as usize)].iter().rev().fold(0, |value, bit| match bit {
+                // Construct the integer from the bits.
+                Ok(bits.iter().rev().fold(0, |value, bit| match bit {
                     true => (value.wrapping_shl(1)) ^ 1,
                     false => (value.wrapping_shl(1)) ^ 0,
                 }))
@@ -161,12 +163,15 @@ macro_rules! impl_bits_for_integer {
             /// Reads `Self` from a boolean array in big-endian order.
             #[inline]
             fn from_bits_be(bits: &[bool]) -> Result<Self> {
-                // Ensure that the upper bits are all zero.
+                // If the number of bits exceeds the size of the integer, ensure that the upper bits are all zero.
                 // Note that because the input bits are big-endian, these are the bits at the beginning of slice.
-                for bit in bits[..(bits.len() - (<$int>::BITS as usize))].iter() {
-                    ensure!(!bit, "upper bits are not zero");
+                if bits.len() > (<$int>::BITS as usize) {
+                    for bit in bits[0..(bits.len() - (<$int>::BITS as usize))].iter() {
+                        ensure!(!bit, "upper bits are not zero");
+                    }
                 }
-                Ok(bits[(bits.len() - (<$int>::BITS as usize))..].iter().fold(0, |value, bit| match bit {
+                // Construct the integer from the bits.
+                Ok(bits.iter().fold(0, |value, bit| match bit {
                     true => (value.wrapping_shl(1)) ^ 1,
                     false => (value.wrapping_shl(1)) ^ 0,
                 }))
