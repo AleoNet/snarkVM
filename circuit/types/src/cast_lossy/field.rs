@@ -75,7 +75,7 @@ mod tests {
         prelude::{One, TestRng, Uniform, Zero},
         types::CastLossy as ConsoleCast,
     };
-    use snarkvm_circuit_environment::{count_is, Circuit, Eject, Inject, Mode, UpdatableCount};
+    use snarkvm_circuit_environment::{count_is, count_less_than, Circuit, Eject, Inject, Mode, UpdatableCount};
 
     use std::fmt::Debug;
 
@@ -95,7 +95,10 @@ mod tests {
 
     #[test]
     fn test_field_to_address() {
-        check_cast::<Address<Circuit>, console::types::Address<Testnet3>>(Mode::Constant, count_is!(5, 0, 0, 0));
+        check_cast::<Address<Circuit>, console::types::Address<Testnet3>>(
+            Mode::Constant,
+            count_less_than!(11, 0, 0, 0),
+        );
         check_cast::<Address<Circuit>, console::types::Address<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
         check_cast::<Address<Circuit>, console::types::Address<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
     }
@@ -109,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_field_to_group() {
-        check_cast::<Group<Circuit>, console::types::Group<Testnet3>>(Mode::Constant, count_is!(5, 0, 0, 0));
+        check_cast::<Group<Circuit>, console::types::Group<Testnet3>>(Mode::Constant, count_less_than!(11, 0, 0, 0));
         check_cast::<Group<Circuit>, console::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
         check_cast::<Group<Circuit>, console::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
     }
