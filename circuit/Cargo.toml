@@ -68,3 +68,11 @@ version = "=0.14.6"
 [dev-dependencies.snarkvm-console-types-group]
 path = "../console/types/group"
 version = "=0.14.6"
+
+[dev-dependencies.snarkvm-console-types-scalar]
+path = "../console/types/scalar"
+version = "=0.14.6"
+
+[dev-dependencies.snarkvm-console-types-address]
+path = "../console/types/address"
+version = "=0.14.6"

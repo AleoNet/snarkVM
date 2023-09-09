@@ -30,6 +30,11 @@ mod group {
     use snarkvm_circuit_environment::{FormalCircuit, Inject, Mode, Transcribe};
     use snarkvm_circuit_types::Group;
     use snarkvm_console_types_group::{Group as ConsoleGroup, Zero};
+    use snarkvm_circuit_types::Scalar;
+    use snarkvm_console_types_scalar::{Scalar as ConsoleScalar};
+    use std::{
+        str::FromStr,
+    };
 
     #[test]
     fn add() {
@@ -109,4 +114,34 @@ mod group {
         println!("// ternary");
         println!("{}", output);
     }
+
+    #[test]
+    fn mul() {
+        // multiplication of a group by a scalar
+        let a = Scalar::<FormalCircuit>::new(Mode::Private, ConsoleScalar::zero());
+        let b = Group::<FormalCircuit>::new(Mode::Private, ConsoleGroup::zero());
+        let _candidate = &a * &b;
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// mul");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn mul10() {
+        // multiplication of a group by the constant 10scalar
+        let ten = ConsoleScalar::from_str("10scalar");
+        let a = Scalar::<FormalCircuit>::new(Mode::Constant, ten.unwrap());
+        let b = Group::<FormalCircuit>::new(Mode::Private, ConsoleGroup::zero());
+        let _candidate = &a * &b;
+
+        // print FormalCircuit to JSON in console
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// mul10");
+        println!("{}", output);
+    }
+
 }
