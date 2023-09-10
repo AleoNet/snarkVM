@@ -264,7 +264,7 @@ mod tests {
 
             // Compute the signed request.
             let request =
-                Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
+                Request::sign(&private_key, address, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
             assert!(request.verify(&input_types));
         }
     }

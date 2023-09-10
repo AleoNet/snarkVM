@@ -90,6 +90,16 @@ impl<N: Network> RegisterTypes<N> {
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
                     )
                 }
+                // Ensure the parent type (address) matches the member type.
+                Operand::Parent => {
+                    // Retrieve the parent type.
+                    let parent_type = PlaintextType::Literal(LiteralType::Address);
+                    // Ensure the parent type matches the member type.
+                    ensure!(
+                        &parent_type == member_type,
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{parent_type}' in the operand '{operand}'.",
+                    )
+                }
                 // If the operand is a block height type, throw an error.
                 Operand::BlockHeight => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be from a block height in a non-finalize scope"
@@ -153,6 +163,7 @@ impl<N: Network> RegisterTypes<N> {
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
             Operand::Caller => {}
+            Operand::Parent => {}
             Operand::BlockHeight => {
                 bail!("Forbidden operation: Cannot cast a block height as a record owner")
             }
@@ -209,6 +220,16 @@ impl<N: Network> RegisterTypes<N> {
                             ensure!(
                                 caller_type == plaintext_type,
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
+                            )
+                        }
+                        // Ensure the parent type (address) matches the entry type.
+                        Operand::Parent => {
+                            // Retrieve the parent type.
+                            let parent_type = &PlaintextType::Literal(LiteralType::Address);
+                            // Ensure the parent type matches the entry type.
+                            ensure!(
+                                parent_type == plaintext_type,
+                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{parent_type}' in the operand '{operand}'.",
                             )
                         }
                         // Fail if the operand is a block height.

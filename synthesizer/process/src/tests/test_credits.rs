@@ -15,7 +15,7 @@
 use crate::Process;
 use circuit::network::AleoV0;
 use console::{
-    account::{Address, PrivateKey},
+    account::{Address, PrivateKey, Address},
     network::{prelude::*, Testnet3},
     program::{Identifier, Literal, Plaintext, ProgramID, Value},
     types::U64,
@@ -1494,8 +1494,9 @@ mod sanity_checks {
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
+        let parent_address = Address::try_from(&private_key).unwrap();
         let request =
-            Request::sign(private_key, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
+            Request::sign(private_key, parent_address, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.

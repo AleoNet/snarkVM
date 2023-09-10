@@ -32,6 +32,7 @@ pub trait StackEvaluate<N: Network>: Clone {
         inputs: &[Value<N>],
         call_stack: CallStack<N>,
         caller: Address<N>,
+        parent: Address<N>,
         tvk: Field<N>,
     ) -> Result<Vec<Value<N>>>;
 
@@ -53,6 +54,7 @@ pub trait StackExecute<N: Network> {
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
         caller: circuit::Address<A>,
+        parent: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>>;
 

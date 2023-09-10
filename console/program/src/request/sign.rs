@@ -20,6 +20,7 @@ impl<N: Network> Request<N> {
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
+        parent_address: Address<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
@@ -215,6 +216,7 @@ impl<N: Network> Request<N> {
 
         Ok(Self {
             caller,
+            parent: parent_address,
             network_id: U16::new(N::ID),
             program_id,
             function_name,

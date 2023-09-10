@@ -30,6 +30,8 @@ use snarkvm_console_types::prelude::*;
 pub struct Request<N: Network> {
     /// The request caller.
     caller: Address<N>,
+    /// The request parent, i.e. the caller/program directly invoking this request.
+    parent: Address<N>,
     /// The network ID.
     network_id: U16<N>,
     /// The program ID.
@@ -55,6 +57,7 @@ pub struct Request<N: Network> {
 impl<N: Network>
     From<(
         Address<N>,
+        Address<N>,
         U16<N>,
         ProgramID<N>,
         Identifier<N>,
@@ -69,7 +72,8 @@ impl<N: Network>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
-        (caller, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm): (
+        (caller, parent, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm): (
+            Address<N>,
             Address<N>,
             U16<N>,
             ProgramID<N>,
@@ -87,7 +91,7 @@ impl<N: Network>
         if *network_id != N::ID {
             N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
         } else {
-            Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm }
+            Self { caller, parent, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm }
         }
     }
 }
@@ -96,6 +100,11 @@ impl<N: Network> Request<N> {
     /// Returns the request caller.
     pub const fn caller(&self) -> &Address<N> {
         &self.caller
+    }
+
+    /// Returns the request parent.
+    pub const fn parent(&self) -> &Address<N> {
+        &self.parent
     }
 
     /// Returns the network ID.
@@ -204,7 +213,7 @@ mod test_helpers {
 
                 // Compute the signed request.
                 let request =
-                    Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
+                    Request::sign(&private_key, address, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
                 assert!(request.verify(&input_types));
                 request
             })

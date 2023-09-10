@@ -14,6 +14,8 @@
 
 use super::*;
 
+use console::types::Address;
+
 impl<N: Network> Stack<N> {
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
@@ -33,7 +35,8 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Retrieve the input types");
 
         // Compute the request.
-        let request = Request::sign(private_key, *self.program.id(), function_name, inputs, &input_types, rng)?;
+        let parent_address = Address::try_from(private_key)?;
+        let request = Request::sign(private_key, parent_address, *self.program.id(), function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::from(request.clone());

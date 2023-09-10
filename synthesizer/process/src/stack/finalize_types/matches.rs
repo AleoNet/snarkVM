@@ -77,6 +77,10 @@ impl<N: Network> FinalizeTypes<N> {
                 Operand::Caller => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be cast from a caller in a finalize scope."
                 ),
+                // If the operand is a parent, throw an error.
+                Operand::Parent => bail!(
+                    "Struct member '{struct_name}.{member_name}' cannot be cast from a parent in a finalize scope."
+                ),
                 // Ensure the block height type (u32) matches the member type.
                 Operand::BlockHeight => {
                     // Retrieve the block height type.

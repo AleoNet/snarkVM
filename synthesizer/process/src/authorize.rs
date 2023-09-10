@@ -14,6 +14,8 @@
 
 use super::*;
 
+use console::types::Address;
+
 impl<N: Network> Process<N> {
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
@@ -61,7 +63,8 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let parent_address = Address::try_from(private_key)?;
+        let request = Request::sign(private_key, parent_address, program_id, function_name, inputs.iter(), &input_types, rng)?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.
@@ -93,7 +96,8 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let parent_address = Address::try_from(private_key)?;
+        let request = Request::sign(private_key, parent_address, program_id, function_name, inputs.iter(), &input_types, rng)?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.
