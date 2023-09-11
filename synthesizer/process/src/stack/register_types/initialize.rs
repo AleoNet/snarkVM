@@ -422,8 +422,11 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), struct_)?;
                     }
-                    RegisterType::Plaintext(PlaintextType::Array(..)) => {
-                        bail!("Illegal operation: Cannot cast to an array yet.")
+                    RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
+                        // Ensure that the array type is valid.
+                        RegisterTypes::check_array(stack, array_type)?;
+                        // Ensure the operand types match the element type.
+                        self.matches_array(stack, instruction.operands(), array_type)?;
                     }
                     RegisterType::Record(record_name) => {
                         // Ensure the record type is defined in the program.

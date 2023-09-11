@@ -46,6 +46,7 @@ use console::{
     types::Field,
 };
 
+use console::program::ArrayType;
 use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -186,7 +187,7 @@ impl<N: Network> Cast<N> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
-        match self.cast_type {
+        match &self.cast_type {
             CastType::GroupXCoordinate => {
                 ensure!(inputs.len() == 1, "Casting to a group x-coordinate requires exactly 1 operand");
                 let field = match &inputs[0] {
@@ -206,16 +207,16 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(*literal_type)?,
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
-                self.cast_to_struct(stack, registers, struct_name, inputs)
+                self.cast_to_struct(stack, registers, *struct_name, inputs)
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
-                bail!("Illegal operation: Cannot cast to an array.")
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+                self.cast_to_array(stack, registers, array_type, inputs)
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
@@ -224,7 +225,7 @@ impl<N: Network> Cast<N> {
                 }
 
                 // Retrieve the struct and ensure it is defined in the program.
-                let record_type = stack.program().get_record(&record_name)?;
+                let record_type = stack.program().get_record(record_name)?;
 
                 // Ensure that the number of operands is equal to the number of record entries, including the `owner`.
                 if inputs.len() != record_type.entries().len() + 1 {
@@ -305,7 +306,7 @@ impl<N: Network> Cast<N> {
         let inputs: Vec<_> =
             self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
 
-        match self.cast_type {
+        match &self.cast_type {
             CastType::GroupXCoordinate => {
                 ensure!(inputs.len() == 1, "Casting to a group x-coordinate requires exactly 1 operand");
                 let field = match &inputs[0] {
@@ -338,7 +339,7 @@ impl<N: Network> Cast<N> {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
                     circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                        literal.downcast(literal_type)?
+                        literal.downcast(*literal_type)?
                     }
                     _ => bail!("Casting to a literal requires a literal"),
                 };
@@ -355,7 +356,7 @@ impl<N: Network> Cast<N> {
                 }
 
                 // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_)?;
+                let struct_ = stack.program().get_struct(struct_)?;
 
                 // Ensure that the number of operands is equal to the number of struct members.
                 if inputs.len() != struct_.members().len() {
@@ -392,8 +393,44 @@ impl<N: Network> Cast<N> {
                 // Store the struct.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
-                bail!("Illegal operation: Cannot cast to an array.")
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+                // Ensure the operands length is at least the minimum.
+                if inputs.len() < N::MIN_ARRAY_ELEMENTS {
+                    bail!("Casting to an array requires at least {} operand", N::MIN_ARRAY_ELEMENTS)
+                }
+
+                // Ensure that the number of operands is equal to the number of array entries.
+                if inputs.len() != **array_type.length() as usize {
+                    bail!(
+                        "Casting to the array {} requires {} operands, but {} were provided",
+                        array_type,
+                        array_type.length(),
+                        inputs.len()
+                    )
+                }
+
+                // Initialize the elements.
+                let mut elements = Vec::with_capacity(inputs.len());
+                for element in inputs.iter() {
+                    // Retrieve the plaintext value from the element.
+                    let plaintext = match element {
+                        circuit::Value::Plaintext(plaintext) => {
+                            // Ensure the plaintext matches the element type.
+                            stack.matches_plaintext(&plaintext.eject_value(), array_type.next_element_type())?;
+                            // Output the plaintext.
+                            plaintext.clone()
+                        }
+                        // Ensure the element is not a record.
+                        circuit::Value::Record(..) => bail!("Casting a record into an array element is illegal"),
+                    };
+                    // Store the element.
+                    elements.push(plaintext);
+                }
+
+                // Construct the array.
+                let array = circuit::Plaintext::Array(elements, Default::default());
+                // Store the array.
+                registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(array))
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
@@ -402,7 +439,7 @@ impl<N: Network> Cast<N> {
                 }
 
                 // Retrieve the struct and ensure it is defined in the program.
-                let record_type = stack.program().get_record(&record_name)?;
+                let record_type = stack.program().get_record(record_name)?;
 
                 // Ensure that the number of operands is equal to the number of record entries, including the `owner`.
                 if inputs.len() != record_type.entries().len() + 1 {
@@ -488,7 +525,7 @@ impl<N: Network> Cast<N> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
-        match self.cast_type {
+        match &self.cast_type {
             CastType::GroupXCoordinate => {
                 ensure!(inputs.len() == 1, "Casting to a group x-coordinate requires exactly 1 operand");
                 let field = match &inputs[0] {
@@ -508,16 +545,16 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(*literal_type)?,
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
-                self.cast_to_struct(stack, registers, struct_name, inputs)
+                self.cast_to_struct(stack, registers, *struct_name, inputs)
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
-                bail!("Illegal operation: Cannot cast to an array.")
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+                self.cast_to_array(stack, registers, array_type, inputs)
             }
             CastType::RegisterType(RegisterType::Record(_record_name)) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
@@ -545,7 +582,7 @@ impl<N: Network> Cast<N> {
         );
 
         // Ensure the output type is defined in the program.
-        match self.cast_type {
+        match &self.cast_type {
             CastType::GroupXCoordinate | CastType::GroupYCoordinate => {
                 ensure!(input_types.len() == 1, "Casting to a group coordinate requires exactly 1 operand");
                 ensure!(
@@ -559,7 +596,7 @@ impl<N: Network> Cast<N> {
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 // Retrieve the struct and ensure it is defined in the program.
-                let struct_ = stack.program().get_struct(&struct_name)?;
+                let struct_ = stack.program().get_struct(struct_name)?;
                 // Ensure that the input types length is at least the minimum.
                 ensure!(
                     input_types.len() >= N::MIN_STRUCT_ENTRIES,
@@ -595,12 +632,51 @@ impl<N: Network> Cast<N> {
                     }
                 }
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
-                bail!("Illegal operation: Cannot cast to an array.")
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+                // Ensure that the number of input types is at least the minimum.
+                ensure!(
+                    input_types.len() >= N::MIN_ARRAY_ELEMENTS,
+                    "Casting to an array requires at least {} operand",
+                    N::MIN_ARRAY_ELEMENTS
+                );
+
+                // Ensure that the number of input types is equal to the number of array entries.
+                if input_types.len() != **array_type.length() as usize {
+                    bail!(
+                        "Casting to the array {} requires {} operands, but {} were provided",
+                        array_type,
+                        array_type.length(),
+                        input_types.len()
+                    )
+                }
+
+                // Ensure the input types match the element type.
+                for input_type in input_types {
+                    match input_type {
+                        // Ensure the plaintext type matches the member type.
+                        RegisterType::Plaintext(plaintext_type) => {
+                            ensure!(
+                                plaintext_type == array_type.next_element_type(),
+                                "Array element type mismatch: expected '{}', found '{plaintext_type}'",
+                                array_type.next_element_type()
+                            )
+                        }
+                        // Ensure the input type cannot be a record (this is unsupported behavior).
+                        RegisterType::Record(record_name) => bail!(
+                            "Array element type mismatch: expected '{}', found record '{record_name}'",
+                            array_type.next_element_type()
+                        ),
+                        // Ensure the input type cannot be an external record (this is unsupported behavior).
+                        RegisterType::ExternalRecord(locator) => bail!(
+                            "Array element type mismatch: expected '{}', found external record '{locator}'",
+                            array_type.next_element_type()
+                        ),
+                    }
+                }
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Retrieve the record type and ensure is defined in the program.
-                let record = stack.program().get_record(&record_name)?;
+                let record = stack.program().get_record(record_name)?;
 
                 // Ensure the input types length is at least the minimum.
                 ensure!(
@@ -712,6 +788,53 @@ impl<N: Network> Cast<N> {
         let struct_ = Plaintext::Struct(members, Default::default());
         // Store the struct.
         registers.store(stack, &self.destination, Value::Plaintext(struct_))
+    }
+
+    /// A helper method to handle casting to an array.
+    fn cast_to_array(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut impl RegistersStore<N>,
+        array_type: &ArrayType<N>,
+        inputs: Vec<Value<N>>,
+    ) -> Result<()> {
+        // Ensure that there is at least one operand.
+        if inputs.len() < N::MIN_ARRAY_ELEMENTS {
+            bail!("Casting to an array requires at least {} operand", N::MIN_ARRAY_ELEMENTS)
+        }
+
+        // Ensure that the number of operands is equal to the number of array entries.
+        if inputs.len() != **array_type.length() as usize {
+            bail!(
+                "Casting to the array {} requires {} operands, but {} were provided",
+                array_type,
+                array_type.length(),
+                inputs.len()
+            )
+        }
+
+        // Initialize the elements.
+        let mut elements = Vec::with_capacity(inputs.len());
+        for element in inputs.iter() {
+            // Retrieve the plaintext value from the element.
+            let plaintext = match element {
+                Value::Plaintext(plaintext) => {
+                    // Ensure the plaintext matches the element type.
+                    stack.matches_plaintext(plaintext, array_type.next_element_type())?;
+                    // Output the plaintext.
+                    plaintext.clone()
+                }
+                // Ensure the element is not a record.
+                Value::Record(..) => bail!("Casting a record into an array element is illegal"),
+            };
+            // Store the element.
+            elements.push(plaintext);
+        }
+
+        // Construct the array.
+        let array = Plaintext::Array(elements, Default::default());
+        // Store the array.
+        registers.store(stack, &self.destination, Value::Plaintext(array))
     }
 }
 
