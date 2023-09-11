@@ -110,11 +110,14 @@ impl<N: Network> ToBytes for CallOperator<N> {
 
 /// Calls the closure on the operands into the declared type.
 pub type CallClosure<N> = Call<N, { Variant::CallClosure as u8 }>;
+/// Calls the finalize block on the operands into the declared type.
+pub type CallFinalize<N> = Call<N, { Variant::CallFinalize as u8 }>;
 /// Calls the function on the operands into the declared type.
 pub type CallFunction<N> = Call<N, { Variant::CallFunction as u8 }>;
 
 enum Variant {
     CallClosure,
+    CallFinalize,
     CallFunction,
 }
 
@@ -136,7 +139,8 @@ impl<N: Network, const VARIANT: u8> Call<N, VARIANT> {
     pub const fn opcode() -> Opcode {
         match VARIANT {
             0 => Opcode::Call("call.closure"),
-            1 => Opcode::Call("call.function"),
+            1 => Opcode::Call("call.finalize"),
+            2 => Opcode::Call("call.function"),
             _ => panic!("Invalid 'call' instruction opcode"),
         }
     }
@@ -468,6 +472,20 @@ mod tests {
         "call.closure foo r0 r1 r2 into r3 r4",
         "call.closure foo r0 r1 r2 into r3 r4 r5",
     ];
+    const FINALIZE_TEST_CASES: &[&str] = &[
+        "call.finalize foo",
+        "call.finalize foo r0",
+        "call.finalize foo r0.owner",
+        "call.finalize foo r0 r1",
+        "call.finalize foo into r0",
+        "call.finalize foo into r0 r1",
+        "call.finalize foo into r0 r1 r2",
+        "call.finalize foo r0 into r1",
+        "call.finalize foo r0 r1 into r2",
+        "call.finalize foo r0 r1 into r2 r3",
+        "call.finalize foo r0 r1 r2 into r3 r4",
+        "call.finalize foo r0 r1 r2 into r3 r4 r5",
+    ];
     const FUNCTION_TEST_CASES: &[&str] = &[
         "call.function foo",
         "call.function foo r0",
@@ -526,6 +544,18 @@ mod tests {
         );
 
         check_parser::<1>(
+            "call.finalize transfer r0.owner r0.token_amount into r1 r2 r3",
+            CallOperator::from_str("transfer").unwrap(),
+            vec![
+                Operand::Register(Register::Access(0, vec![Access::Member(Identifier::from_str("owner").unwrap())])),
+                Operand::Register(Register::Access(0, vec![Access::Member(
+                    Identifier::from_str("token_amount").unwrap(),
+                )])),
+            ],
+            vec![Register::Locator(1), Register::Locator(2), Register::Locator(3)],
+        );
+
+        check_parser::<2>(
             "call.function transfer r0.owner r0.token_amount into r1 r2 r3",
             CallOperator::from_str("transfer").unwrap(),
             vec![
@@ -550,6 +580,18 @@ mod tests {
         );
 
         check_parser::<1>(
+            "call.finalize mint_public aleo1wfyyj2uvwuqw0c0dqa5x70wrawnlkkvuepn4y08xyaqfqqwweqys39jayw 100u64",
+            CallOperator::from_str("mint_public").unwrap(),
+            vec![
+                Operand::Literal(Literal::Address(
+                    Address::from_str("aleo1wfyyj2uvwuqw0c0dqa5x70wrawnlkkvuepn4y08xyaqfqqwweqys39jayw").unwrap(),
+                )),
+                Operand::Literal(Literal::U64(U64::from_str("100u64").unwrap())),
+            ],
+            vec![],
+        );
+
+        check_parser::<2>(
             "call.function mint_public aleo1wfyyj2uvwuqw0c0dqa5x70wrawnlkkvuepn4y08xyaqfqqwweqys39jayw 100u64",
             CallOperator::from_str("mint_public").unwrap(),
             vec![
@@ -567,7 +609,15 @@ mod tests {
             vec![],
             vec![Register::Locator(0)],
         );
+
         check_parser::<1>(
+            "call.finalize get_magic_number into r0",
+            CallOperator::from_str("get_magic_number").unwrap(),
+            vec![],
+            vec![Register::Locator(0)],
+        );
+
+        check_parser::<2>(
             "call.function get_magic_number into r0",
             CallOperator::from_str("get_magic_number").unwrap(),
             vec![],
@@ -575,6 +625,7 @@ mod tests {
         );
 
         check_parser::<0>("call.closure noop", CallOperator::from_str("noop").unwrap(), vec![], vec![]);
+        check_parser::<1>("call.finalize noop", CallOperator::from_str("noop").unwrap(), vec![], vec![]);
         check_parser::<1>("call.function noop", CallOperator::from_str("noop").unwrap(), vec![], vec![])
     }
 
@@ -582,6 +633,9 @@ mod tests {
     fn test_display() {
         for expected in CLOSURE_TEST_CASES {
             assert_eq!(CallClosure::<CurrentNetwork>::from_str(expected).unwrap().to_string(), *expected);
+        }
+        for expected in FINALIZE_TEST_CASES {
+            assert_eq!(CallFinalize::<CurrentNetwork>::from_str(expected).unwrap().to_string(), *expected);
         }
         for expected in FUNCTION_TEST_CASES {
             assert_eq!(CallFunction::<CurrentNetwork>::from_str(expected).unwrap().to_string(), *expected);
@@ -597,6 +651,14 @@ mod tests {
             let expected_bytes = expected.to_bytes_le().unwrap();
             assert_eq!(expected, Call::read_le(&expected_bytes[..]).unwrap());
             assert!(CallClosure::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        }
+        for case in FINALIZE_TEST_CASES {
+            let expected = CallFinalize::<CurrentNetwork>::from_str(case).unwrap();
+
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            assert_eq!(expected, Call::read_le(&expected_bytes[..]).unwrap());
+            assert!(CallFinalize::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         for case in FUNCTION_TEST_CASES {
             let expected = CallFunction::<CurrentNetwork>::from_str(case).unwrap();
