@@ -1,0 +1,32 @@
+- execute:
+    arrays_in_finalize.aleo/test_arrays:
+      outputs:
+      - '{"type":"public","id":"7478840637674867348334152936830348927618689666735497694442760373406118031677field","value":"[\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n]"}'
+      - '{"type":"public","id":"5497626638973564164115408441431072571251727387638555124557359358862572601150field","value":"[\n  [\n    false,\n    true,\n    false,\n    true\n  ]\n]"}'
+      - '{"type":"public","id":"6826141182633851685078476561830773249264254215146313720362967764421378578986field","value":"[\n  [\n    false,\n    false,\n    false,\n    false\n  ]\n]"}'
+      - '{"type":"private","id":"8090041184628455649123912475425661970245522643231603870408821235652148265153field","value":"ciphertext1qvq9rlleav6excsnqaep0h3cztdzpergd8pdrhnrhapvr49kfrws6zwarcw9rxh9q3g0v8e5dutwyw34qslkjeqx6jzexjt2qrthnnazqerfvaxj939casntsm62yke9djhnked6nv4mufg8rmh27macnejpzdgpy4a"}'
+      finalize:
+      - |-
+        [
+          [
+            true,
+            false,
+            true,
+            false
+          ]
+        ]
+      - |-
+        [
+          [
+            false,
+            true,
+            false,
+            true
+          ]
+        ]
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"1851602959723702773465320694036686070079159723381074216772112503607625694111field","checksum":"4064206344687993996447328386354781883592711575645253061397494836228763520050field","value":"record1qyqsp8vzct4ed5hge87puykkd4yem36s30w2x9hntmxlg43zar9ymeqzqyxx66trwfhkxun9v35hguerqqpqzqz4fgl4y44nzzlrvs38xfpzew83cru4c57xx6qpph932h5h8kd8zff5ypw2lqqkg8nw53f4uvt5urv5kl3txkaewvwqq52zxc62ly6qs6sgc3h"}'
+      finalize: []
+  speculate: the execution was accepted
+  add_next_block: succeeded.
