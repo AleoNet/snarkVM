@@ -79,7 +79,7 @@ pub struct Keccak<E: Environment, const TYPE: u8, const VARIANT: usize> {
     /// output of a linear feedback shift register (LFSR).
     round_constants: Vec<U64<E>>,
     /// Precomputations for the ρ step.
-    rotl: Vec<usize>,
+    rotl: [usize; MODULO * MODULO],
 }
 
 impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIANT> {
