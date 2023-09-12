@@ -19,6 +19,7 @@ use console::{
     network::prelude::*,
     program::{
         Access,
+        ArrayType,
         EntryType,
         Identifier,
         LiteralType,

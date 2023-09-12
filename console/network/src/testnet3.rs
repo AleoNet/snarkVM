@@ -15,11 +15,17 @@
 use super::*;
 use snarkvm_console_algorithms::{
     Blake2Xs,
+    Keccak256,
+    Keccak384,
+    Keccak512,
     Pedersen128,
     Pedersen64,
     Poseidon2,
     Poseidon4,
     Poseidon8,
+    Sha3_256,
+    Sha3_384,
+    Sha3_512,
     BHP1024,
     BHP256,
     BHP512,
@@ -314,6 +320,21 @@ impl Network for Testnet3 {
         BHP_1024.hash(input)
     }
 
+    /// Returns the Keccak hash with a 256-bit output.
+    fn hash_keccak256(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak256::default().hash(input)
+    }
+
+    /// Returns the Keccak hash with a 384-bit output.
+    fn hash_keccak384(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak384::default().hash(input)
+    }
+
+    /// Returns the Keccak hash with a 512-bit output.
+    fn hash_keccak512(input: &[bool]) -> Result<Vec<bool>> {
+        Keccak512::default().hash(input)
+    }
+
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[bool]) -> Result<Field<Self>> {
         PEDERSEN_64.hash(input)
@@ -337,6 +358,21 @@ impl Network for Testnet3 {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Result<Field<Self>> {
         POSEIDON_8.hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 256-bit output.
+    fn hash_sha3_256(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_256::default().hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 384-bit output.
+    fn hash_sha3_384(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_384::default().hash(input)
+    }
+
+    /// Returns the SHA-3 hash with a 512-bit output.
+    fn hash_sha3_512(input: &[bool]) -> Result<Vec<bool>> {
+        Sha3_512::default().hash(input)
     }
 
     /// Returns the extended Poseidon hash with an input rate of 2.

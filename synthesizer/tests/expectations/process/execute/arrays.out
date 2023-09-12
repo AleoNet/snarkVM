@@ -17,6 +17,15 @@
       ]
     ]
   - |-
+    [
+      [
+        false,
+        false,
+        false,
+        false
+      ]
+    ]
+  - |-
     {
       left: [
         [
@@ -35,7 +44,3 @@
         ]
       ]
     }
-  - 'false'
-  - 'false'
-  - 'false'
-  - 'false'
