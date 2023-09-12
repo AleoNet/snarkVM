@@ -137,7 +137,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     ///
     /// This method transposes the offsets to match the access pattern (i.e. for y, then for x).
     fn rotl_offsets<const NUM_ROUNDS: usize>() -> [usize; MODULO * MODULO] {
-        let mut rotl = vec![0; MODULO * MODULO];
+        let mut rotl = [0; MODULO * MODULO];
         let mut x: usize = 1;
         let mut y: usize = 0;
 
