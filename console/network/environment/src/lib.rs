@@ -96,7 +96,7 @@ pub mod prelude {
         multi::{count, many0, many0_count, many1, separated_list0, separated_list1},
         sequence::{pair, terminated},
     };
-    pub use num_traits::{One, Pow, Zero};
+    pub use num_traits::{AsPrimitive, One, Pow, Zero};
     pub use rand::{
         distributions::{Alphanumeric, Distribution, Standard},
         CryptoRng,

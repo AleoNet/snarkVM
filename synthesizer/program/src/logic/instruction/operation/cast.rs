@@ -207,7 +207,7 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(*literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(*literal_type)?,
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
@@ -339,7 +339,7 @@ impl<N: Network> Cast<N> {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
                     circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                        literal.downcast(*literal_type)?
+                        literal.cast(*literal_type)?
                     }
                     _ => bail!("Casting to a literal requires a literal"),
                 };
@@ -557,7 +557,7 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.downcast(*literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(*literal_type)?,
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
