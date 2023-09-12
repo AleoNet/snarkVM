@@ -247,17 +247,17 @@ impl Aleo for AleoV0 {
         POSEIDON_8.with(|poseidon| poseidon.hash(input))
     }
 
-    /// Returns the SHA3 hash with a 256-bit output.
+    /// Returns the SHA-3 hash with a 256-bit output.
     fn hash_sha3_256(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
         SHA3_256.with(|sha3| sha3.hash(input))
     }
 
-    /// Returns the SHA3 hash with a 384-bit output.
+    /// Returns the SHA-3 hash with a 384-bit output.
     fn hash_sha3_384(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
         SHA3_384.with(|sha3| sha3.hash(input))
     }
 
-    /// Returns the SHA3 hash with a 512-bit output.
+    /// Returns the SHA-3 hash with a 512-bit output.
     fn hash_sha3_512(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
         SHA3_512.with(|sha3| sha3.hash(input))
     }

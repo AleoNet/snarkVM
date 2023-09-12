@@ -360,17 +360,17 @@ impl Network for Testnet3 {
         POSEIDON_8.hash(input)
     }
 
-    /// Returns the SHA3 hash with a 256-bit output.
+    /// Returns the SHA-3 hash with a 256-bit output.
     fn hash_sha3_256(input: &[bool]) -> Result<Vec<bool>> {
         Sha3_256::default().hash(input)
     }
 
-    /// Returns the SHA3 hash with a 384-bit output.
+    /// Returns the SHA-3 hash with a 384-bit output.
     fn hash_sha3_384(input: &[bool]) -> Result<Vec<bool>> {
         Sha3_384::default().hash(input)
     }
 
-    /// Returns the SHA3 hash with a 512-bit output.
+    /// Returns the SHA-3 hash with a 512-bit output.
     fn hash_sha3_512(input: &[bool]) -> Result<Vec<bool>> {
         Sha3_512::default().hash(input)
     }

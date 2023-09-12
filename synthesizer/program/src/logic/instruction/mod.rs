@@ -129,11 +129,11 @@ pub enum Instruction<N: Network> {
     HashPSD4(HashPSD4<N>),
     /// Performs a Poseidon hash with an input rate of 8.
     HashPSD8(HashPSD8<N>),
-    /// Performs a SHA3 hash, outputting 256 bits.
+    /// Performs a SHA-3 hash, outputting 256 bits.
     HashSha3_256(HashSha3_256<N>),
-    /// Performs a SHA3 hash, outputting 384 bits.
+    /// Performs a SHA-3 hash, outputting 384 bits.
     HashSha3_384(HashSha3_384<N>),
-    /// Performs a SHA3 hash, outputting 512 bits.
+    /// Performs a SHA-3 hash, outputting 512 bits.
     HashSha3_512(HashSha3_512<N>),
     /// Performs a Poseidon hash with an input rate of 2.
     HashManyPSD2(HashManyPSD2<N>),

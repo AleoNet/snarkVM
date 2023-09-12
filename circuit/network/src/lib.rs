@@ -109,13 +109,13 @@ pub trait Aleo: Environment {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self>;
 
-    /// Returns the SHA3 hash with a 256-bit output.
+    /// Returns the SHA-3 hash with a 256-bit output.
     fn hash_sha3_256(input: &[Boolean<Self>]) -> Vec<Boolean<Self>>;
 
-    /// Returns the SHA3 hash with a 384-bit output.
+    /// Returns the SHA-3 hash with a 384-bit output.
     fn hash_sha3_384(input: &[Boolean<Self>]) -> Vec<Boolean<Self>>;
 
-    /// Returns the SHA3 hash with a 512-bit output.
+    /// Returns the SHA-3 hash with a 512-bit output.
     fn hash_sha3_512(input: &[Boolean<Self>]) -> Vec<Boolean<Self>>;
 
     /// Returns the extended Poseidon hash with an input rate of 2.
