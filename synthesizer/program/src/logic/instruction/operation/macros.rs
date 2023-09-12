@@ -92,7 +92,7 @@ macro_rules! operation {
             #[cfg(test)]
             mod [<test _ $operate>] {
                 use super::*;
-                use console::{types::*};
+                use console::types::*;
 
                 // Prepare the environment.
                 type CurrentNetwork = console::network::Testnet3;
@@ -147,7 +147,7 @@ macro_rules! operation {
             #[cfg(test)]
             mod [<test _ $operate>] {
                 use super::*;
-                use console::{types::*};
+                use console::types::*;
 
                 // Prepare the environment.
                 type CurrentNetwork = console::network::Testnet3;

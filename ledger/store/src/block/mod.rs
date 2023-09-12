@@ -30,6 +30,7 @@ use console::{
 use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
 
 use anyhow::Result;
@@ -128,6 +129,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
     /// The mapping of `block hash` to `block authority`.
     type AuthorityMap: for<'a> Map<'a, N::BlockHash, Authority<N>>;
+    /// The mapping of `certificate ID` to (`block height`, `round height`).
+    type CertificateMap: for<'a> Map<'a, Field<N>, (u32, u64)>;
     /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
     /// The mapping of `transaction ID` to `(block hash, confirmed tx type, confirmed blob)`.
@@ -158,6 +161,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     fn header_map(&self) -> &Self::HeaderMap;
     /// Returns the authority map.
     fn authority_map(&self) -> &Self::AuthorityMap;
+    /// Returns the certificate map.
+    fn certificate_map(&self) -> &Self::CertificateMap;
     /// Returns the accepted transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap;
     /// Returns the confirmed transactions map.
@@ -189,6 +194,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().start_atomic();
         self.header_map().start_atomic();
         self.authority_map().start_atomic();
+        self.certificate_map().start_atomic();
         self.transactions_map().start_atomic();
         self.confirmed_transactions_map().start_atomic();
         self.transaction_store().start_atomic();
@@ -205,6 +211,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             || self.reverse_id_map().is_atomic_in_progress()
             || self.header_map().is_atomic_in_progress()
             || self.authority_map().is_atomic_in_progress()
+            || self.certificate_map().is_atomic_in_progress()
             || self.transactions_map().is_atomic_in_progress()
             || self.confirmed_transactions_map().is_atomic_in_progress()
             || self.transaction_store().is_atomic_in_progress()
@@ -221,6 +228,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().atomic_checkpoint();
         self.header_map().atomic_checkpoint();
         self.authority_map().atomic_checkpoint();
+        self.certificate_map().atomic_checkpoint();
         self.transactions_map().atomic_checkpoint();
         self.confirmed_transactions_map().atomic_checkpoint();
         self.transaction_store().atomic_checkpoint();
@@ -237,6 +245,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().clear_latest_checkpoint();
         self.header_map().clear_latest_checkpoint();
         self.authority_map().clear_latest_checkpoint();
+        self.certificate_map().clear_latest_checkpoint();
         self.transactions_map().clear_latest_checkpoint();
         self.confirmed_transactions_map().clear_latest_checkpoint();
         self.transaction_store().clear_latest_checkpoint();
@@ -253,6 +262,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().atomic_rewind();
         self.header_map().atomic_rewind();
         self.authority_map().atomic_rewind();
+        self.certificate_map().atomic_rewind();
         self.transactions_map().atomic_rewind();
         self.confirmed_transactions_map().atomic_rewind();
         self.transaction_store().atomic_rewind();
@@ -269,6 +279,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().abort_atomic();
         self.header_map().abort_atomic();
         self.authority_map().abort_atomic();
+        self.certificate_map().abort_atomic();
         self.transactions_map().abort_atomic();
         self.confirmed_transactions_map().abort_atomic();
         self.transaction_store().abort_atomic();
@@ -285,6 +296,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         self.reverse_id_map().finish_atomic()?;
         self.header_map().finish_atomic()?;
         self.authority_map().finish_atomic()?;
+        self.certificate_map().finish_atomic()?;
         self.transactions_map().finish_atomic()?;
         self.confirmed_transactions_map().finish_atomic()?;
         self.transaction_store().finish_atomic()?;
@@ -301,7 +313,16 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             .iter()
             .cloned()
             .map(|confirmed| to_confirmed_tuple(confirmed))
-            .collect::<Result<Vec<_>, anyhow::Error>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Retrieve the certificate IDs to store.
+        let certificates_to_store = match block.authority() {
+            Authority::Beacon(_) => Vec::new(),
+            Authority::Quorum(subdag) => subdag
+                .iter()
+                .flat_map(|(round, certificates)| certificates.iter().map(|c| (c.certificate_id(), *round)))
+                .collect(),
+        };
 
         atomic_batch_scope!(self, {
             // Store the (block height, state root) pair.
@@ -318,6 +339,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Store the block authority.
             self.authority_map().insert(block.hash(), block.authority().clone())?;
+
+            // Store the block certificates.
+            for (certificate_id, round) in certificates_to_store {
+                self.certificate_map().insert(certificate_id, (block.height(), round))?;
+            }
 
             // Store the transaction IDs.
             self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
@@ -372,6 +398,17 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
             }
         };
 
+        // Determine the certificate IDs to remove.
+        let certificate_ids_to_remove = match self.authority_map().get_confirmed(block_hash)? {
+            Some(authority) => match authority {
+                Cow::Owned(Authority::Beacon(_)) | Cow::Borrowed(Authority::Beacon(_)) => Vec::new(),
+                Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
+                    subdag.values().flatten().map(|c| c.certificate_id()).collect()
+                }
+            },
+            None => bail!("Failed to remove block: missing authority for block '{block_height}' ('{block_hash}')"),
+        };
+
         atomic_batch_scope!(self, {
             // Remove the (block height, state root) pair.
             self.state_root_map().remove(&block_height)?;
@@ -387,6 +424,11 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Remove the block authority.
             self.authority_map().remove(block_hash)?;
+
+            // Remove the block certificates.
+            for certificate_id in certificate_ids_to_remove.iter() {
+                self.certificate_map().remove(certificate_id)?;
+            }
 
             // Remove the transaction IDs.
             self.transactions_map().remove(block_hash)?;
@@ -574,6 +616,41 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         match self.authority_map().get_confirmed(block_hash)? {
             Some(authority) => Ok(Some(cow_to_cloned!(authority))),
             None => Ok(None),
+        }
+    }
+
+    /// Returns the certificate for the given `certificate ID`.
+    fn get_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
+        // Retrieve the height and round for the given certificate ID.
+        let (block_height, round) = match self.certificate_map().get_confirmed(certificate_id)? {
+            Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
+            None => return Ok(None),
+        };
+        // Retrieve the block hash.
+        let Some(block_hash) = self.get_block_hash(block_height)? else {
+            bail!("The block hash for block '{block_height}' is missing in block storage")
+        };
+        // Retrieve the authority for the given block hash.
+        let Some(authority) = self.authority_map().get_confirmed(&block_hash)? else {
+            bail!("The authority for '{block_hash}' is missing in block storage")
+        };
+        // Retrieve the certificate for the given certificate ID.
+        match authority {
+            Cow::Owned(Authority::Quorum(ref subdag)) | Cow::Borrowed(Authority::Quorum(ref subdag)) => {
+                match subdag.get(&round) {
+                    Some(certificates) => {
+                        // Retrieve the certificate for the given certificate ID.
+                        match certificates.iter().find(|certificate| &certificate.certificate_id() == certificate_id) {
+                            Some(certificate) => Ok(Some(certificate.clone())),
+                            None => bail!("The certificate '{certificate_id}' is missing in block storage"),
+                        }
+                    }
+                    None => bail!("The certificates for round '{round}' is missing in block storage"),
+                }
+            }
+            _ => bail!(
+                "Cannot fetch batch certificate '{certificate_id}' - The authority for block '{block_height}' is not a subdag"
+            ),
         }
     }
 
@@ -930,6 +1007,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> Result<bool> {
         self.storage.reverse_id_map().contains_key_confirmed(block_hash)
+    }
+
+    /// Returns `true` if the given certificate ID exists.
+    pub fn contains_certificate(&self, certificate_id: &Field<N>) -> Result<bool> {
+        self.storage.certificate_map().contains_key_confirmed(certificate_id)
     }
 
     /// Returns `true` if the given puzzle commitment exists.

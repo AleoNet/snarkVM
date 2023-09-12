@@ -16,7 +16,7 @@ use super::*;
 
 impl<A: Aleo> Entry<A, Plaintext<A>> {
     /// Returns the entry from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Entry<A, Plaintext<A>>> {
+    pub fn find<A0: Into<Access<A>> + Clone + Debug>(&self, path: &[A0]) -> Result<Entry<A, Plaintext<A>>> {
         match self {
             Self::Constant(plaintext) => Ok(Self::Constant(plaintext.find(path)?)),
             Self::Public(plaintext) => Ok(Self::Public(plaintext.find(path)?)),

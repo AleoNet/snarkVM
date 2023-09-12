@@ -140,9 +140,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     self.check_fee(fee, execution_id)?;
                 } else {
                     // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    // TODO (howardwu): Remove support for 'mint'.
-                    let can_skip_fee =
-                        (transaction.contains_mint() || transaction.contains_split()) && execution.len() == 1;
+                    let can_skip_fee = execution.len() == 1 && transaction.contains_split();
                     ensure!(can_skip_fee, "Transaction is missing a fee (execution)");
                 }
                 // Verify the execution.
@@ -389,20 +387,20 @@ mod tests {
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 
-        // Fetch a valid execution transaction.
+        // Fetch a valid execution transaction with a private fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         assert!(vm.check_transaction(&valid_transaction, None).is_ok());
         assert!(vm.verify_transaction(&valid_transaction, None));
 
-        // Fetch a valid execution transaction.
+        // Fetch a valid execution transaction with a public fee.
         let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
         assert!(vm.check_transaction(&valid_transaction, None).is_ok());
         assert!(vm.verify_transaction(&valid_transaction, None));
 
-        // Fetch an invalid execution transaction.
-        let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
-        assert!(vm.check_transaction(&invalid_transaction, None).is_err());
-        assert!(!vm.verify_transaction(&invalid_transaction, None));
+        // Fetch an valid execution transaction with no fee.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
+        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction, None));
     }
 
     #[test]
@@ -485,7 +483,7 @@ mod tests {
 
         // Execute.
         let transaction =
-            vm.execute(&caller_private_key, ("testing.aleo", "mint"), inputs, credits, 10, None, rng).unwrap();
+            vm.execute(&caller_private_key, ("testing.aleo", "initialize"), inputs, credits, 10, None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());

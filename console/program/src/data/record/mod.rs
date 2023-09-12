@@ -34,7 +34,7 @@ mod to_bits;
 mod to_commitment;
 mod to_fields;
 
-use crate::{Ciphertext, Identifier, Literal, Plaintext, ProgramID};
+use crate::{Access, Ciphertext, Identifier, Literal, Plaintext, ProgramID};
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Boolean, Field, Group, Scalar};

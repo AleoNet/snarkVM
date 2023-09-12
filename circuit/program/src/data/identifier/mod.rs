@@ -43,6 +43,7 @@ impl<A: Aleo> Inject for Identifier<A> {
     type Primitive = console::Identifier<A::Network>;
 
     /// Initializes a new identifier from a string.
+    /// Note: Identifiers are always `Mode::Constant`.
     fn new(_: Mode, identifier: Self::Primitive) -> Self {
         // Convert the identifier to a string to check its validity.
         let identifier = identifier.to_string();
@@ -62,10 +63,8 @@ impl<A: Aleo> Eject for Identifier<A> {
 
     /// Ejects the mode of the identifier.
     fn eject_mode(&self) -> Mode {
-        match self.0.eject_mode() == Mode::Constant {
-            true => Mode::Constant,
-            false => A::halt("Identifier::eject_mode: Identifier mode is not constant."),
-        }
+        debug_assert!(self.0.eject_mode() == Mode::Constant, "Identifier::eject_mode - Mode must be 'Constant'");
+        Mode::Constant
     }
 
     /// Ejects the identifier as a string.

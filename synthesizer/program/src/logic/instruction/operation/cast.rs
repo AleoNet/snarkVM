@@ -214,6 +214,9 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
+                bail!("Illegal operation: Cannot cast to an array.")
+            }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
@@ -250,13 +253,13 @@ impl<N: Network> Cast<N> {
                 for (entry, (entry_name, entry_type)) in
                     inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
                 {
-                    // Compute the register type.
-                    let register_type = RegisterType::from(ValueType::from(*entry_type));
+                    // Compute the plaintext type.
+                    let plaintext_type = entry_type.plaintext_type();
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match entry {
                         Value::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            stack.matches_plaintext(plaintext, plaintext_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -367,16 +370,11 @@ impl<N: Network> Cast<N> {
                 // Initialize the struct members.
                 let mut members = IndexMap::new();
                 for (member, (member_name, member_type)) in inputs.iter().zip_eq(struct_.members()) {
-                    // Compute the register type.
-                    let register_type = RegisterType::Plaintext(*member_type);
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match member {
                         circuit::Value::Plaintext(plaintext) => {
                             // Ensure the member matches the register type.
-                            stack.matches_register_type(
-                                &circuit::Value::Plaintext(plaintext.clone()).eject_value(),
-                                &register_type,
-                            )?;
+                            stack.matches_plaintext(&plaintext.eject_value(), member_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -393,6 +391,9 @@ impl<N: Network> Cast<N> {
                 let struct_ = circuit::Plaintext::Struct(members, Default::default());
                 // Store the struct.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
+            }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
+                bail!("Illegal operation: Cannot cast to an array.")
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
@@ -434,7 +435,7 @@ impl<N: Network> Cast<N> {
                     inputs.iter().skip(N::MIN_RECORD_ENTRIES).zip_eq(record_type.entries())
                 {
                     // Compute the register type.
-                    let register_type = RegisterType::from(ValueType::from(*entry_type));
+                    let register_type = RegisterType::from(ValueType::from(entry_type.clone()));
                     // Retrieve the plaintext value from the entry.
                     let plaintext = match entry {
                         circuit::Value::Plaintext(plaintext) => {
@@ -515,6 +516,9 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 self.cast_to_struct(stack, registers, struct_name, inputs)
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
+                bail!("Illegal operation: Cannot cast to an array.")
+            }
             CastType::RegisterType(RegisterType::Record(_record_name)) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
             }
@@ -591,6 +595,9 @@ impl<N: Network> Cast<N> {
                     }
                 }
             }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(..))) => {
+                bail!("Illegal operation: Cannot cast to an array.")
+            }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Retrieve the record type and ensure is defined in the program.
                 let record = stack.program().get_record(&record_name)?;
@@ -647,11 +654,11 @@ impl<N: Network> Cast<N> {
             }
         }
 
-        Ok(vec![match self.cast_type {
+        Ok(vec![match &self.cast_type {
             CastType::GroupXCoordinate | CastType::GroupYCoordinate => {
                 RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))
             }
-            CastType::RegisterType(register_type) => register_type,
+            CastType::RegisterType(register_type) => register_type.clone(),
         }])
     }
 }
@@ -746,6 +753,7 @@ impl<N: Network> Parser for Cast<N> {
             | CastType::GroupYCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -794,6 +802,7 @@ impl<N: Network> Display for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -839,6 +848,7 @@ impl<N: Network> FromBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -860,6 +870,7 @@ impl<N: Network> ToBytes for Cast<N> {
             | CastType::GroupXCoordinate
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
@@ -881,7 +892,10 @@ impl<N: Network> ToBytes for Cast<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{network::Testnet3, program::Identifier};
+    use console::{
+        network::Testnet3,
+        program::{Access, Identifier},
+    };
 
     type CurrentNetwork = Testnet3;
 
@@ -893,12 +907,12 @@ mod tests {
         assert_eq!(cast.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(
             cast.operands[0],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
+            Operand::Register(Register::Access(0, vec![Access::from(Identifier::from_str("owner").unwrap())])),
             "The first operand is incorrect"
         );
         assert_eq!(
             cast.operands[1],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
+            Operand::Register(Register::Access(0, vec![Access::from(Identifier::from_str("token_amount").unwrap())])),
             "The second operand is incorrect"
         );
         assert_eq!(cast.destination, Register::Locator(1), "The destination register is incorrect");
