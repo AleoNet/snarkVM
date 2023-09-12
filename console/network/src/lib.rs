@@ -252,6 +252,15 @@ pub trait Network:
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[bool]) -> Result<Field<Self>>;
 
+    /// Returns the Keccak hash with a 256-bit output.
+    fn hash_keccak256(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the Keccak hash with a 384-bit output.
+    fn hash_keccak384(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the Keccak hash with a 512-bit output.
+    fn hash_keccak512(input: &[bool]) -> Result<Vec<bool>>;
+
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[bool]) -> Result<Field<Self>>;
 
@@ -266,6 +275,15 @@ pub trait Network:
 
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Result<Field<Self>>;
+
+    /// Returns the SHA3 hash with a 256-bit output.
+    fn hash_sha3_256(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the SHA3 hash with a 384-bit output.
+    fn hash_sha3_384(input: &[bool]) -> Result<Vec<bool>>;
+
+    /// Returns the SHA3 hash with a 512-bit output.
+    fn hash_sha3_512(input: &[bool]) -> Result<Vec<bool>>;
 
     /// Returns the extended Poseidon hash with an input rate of 2.
     fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;

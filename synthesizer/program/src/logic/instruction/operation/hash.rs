@@ -31,8 +31,6 @@ pub type HashBHP768<N> = HashInstruction<N, { Hasher::HashBHP768 as u8 }>;
 /// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
 pub type HashBHP1024<N> = HashInstruction<N, { Hasher::HashBHP1024 as u8 }>;
 
-/// Keccak224 is a cryptographic hash function that outputs a 224-bit digest.
-pub type HashKeccak224<N> = HashInstruction<N, { Hasher::HashKeccak224 as u8 }>;
 /// Keccak256 is a cryptographic hash function that outputs a 256-bit digest.
 pub type HashKeccak256<N> = HashInstruction<N, { Hasher::HashKeccak256 as u8 }>;
 /// Keccak384 is a cryptographic hash function that outputs a 384-bit digest.
@@ -52,8 +50,6 @@ pub type HashPSD4<N> = HashInstruction<N, { Hasher::HashPSD4 as u8 }>;
 /// Poseidon8 is a cryptographic hash function that processes inputs in 8-field chunks.
 pub type HashPSD8<N> = HashInstruction<N, { Hasher::HashPSD8 as u8 }>;
 
-/// SHA3-224 is a cryptographic hash function that outputs a 224-bit digest.
-pub type HashSha3_224<N> = HashInstruction<N, { Hasher::HashSha3_224 as u8 }>;
 /// SHA3-256 is a cryptographic hash function that outputs a 256-bit digest.
 pub type HashSha3_256<N> = HashInstruction<N, { Hasher::HashSha3_256 as u8 }>;
 /// SHA3-384 is a cryptographic hash function that outputs a 384-bit digest.
@@ -73,7 +69,6 @@ enum Hasher {
     HashBHP512,
     HashBHP768,
     HashBHP1024,
-    HashKeccak224,
     HashKeccak256,
     HashKeccak384,
     HashKeccak512,
@@ -82,7 +77,6 @@ enum Hasher {
     HashPSD2,
     HashPSD4,
     HashPSD8,
-    HashSha3_224,
     HashSha3_256,
     HashSha3_384,
     HashSha3_512,
@@ -94,7 +88,7 @@ enum Hasher {
 /// Returns the expected number of operands given the variant.
 const fn expected_num_operands(variant: u8) -> usize {
     match variant {
-        17..=19 => 2,
+        15..=17 => 2,
         _ => 1,
     }
 }
@@ -147,23 +141,21 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             1 => Opcode::Hash("hash.bhp512"),
             2 => Opcode::Hash("hash.bhp768"),
             3 => Opcode::Hash("hash.bhp1024"),
-            4 => Opcode::Hash("hash.keccak224"),
-            5 => Opcode::Hash("hash.keccak256"),
-            6 => Opcode::Hash("hash.keccak384"),
-            7 => Opcode::Hash("hash.keccak512"),
-            8 => Opcode::Hash("hash.ped64"),
-            9 => Opcode::Hash("hash.ped128"),
-            10 => Opcode::Hash("hash.psd2"),
-            11 => Opcode::Hash("hash.psd4"),
-            12 => Opcode::Hash("hash.psd8"),
-            13 => Opcode::Hash("hash.sha3_224"),
-            14 => Opcode::Hash("hash.sha3_256"),
-            15 => Opcode::Hash("hash.sha3_384"),
-            16 => Opcode::Hash("hash.sha3_512"),
-            17 => Opcode::Hash("hash_many.psd2"),
-            18 => Opcode::Hash("hash_many.psd4"),
-            19 => Opcode::Hash("hash_many.psd8"),
-            20.. => panic!("Invalid 'hash' instruction opcode"),
+            4 => Opcode::Hash("hash.keccak256"),
+            5 => Opcode::Hash("hash.keccak384"),
+            6 => Opcode::Hash("hash.keccak512"),
+            7 => Opcode::Hash("hash.ped64"),
+            8 => Opcode::Hash("hash.ped128"),
+            9 => Opcode::Hash("hash.psd2"),
+            10 => Opcode::Hash("hash.psd4"),
+            11 => Opcode::Hash("hash.psd8"),
+            12 => Opcode::Hash("hash.sha3_256"),
+            13 => Opcode::Hash("hash.sha3_384"),
+            14 => Opcode::Hash("hash.sha3_512"),
+            15 => Opcode::Hash("hash_many.psd2"),
+            16 => Opcode::Hash("hash_many.psd4"),
+            17 => Opcode::Hash("hash_many.psd8"),
+            18.. => panic!("Invalid 'hash' instruction opcode"),
         }
     }
 
@@ -214,32 +206,30 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (1, _) => Literal::Group(N::hash_to_group_bhp512(&input.to_bits_le())?),
             (2, _) => Literal::Group(N::hash_to_group_bhp768(&input.to_bits_le())?),
             (3, _) => Literal::Group(N::hash_to_group_bhp1024(&input.to_bits_le())?),
-            (4, _) => bail!("'hash.keccak224' is not yet implemented"),
-            (5, _) => bail!("'hash.keccak256' is not yet implemented"),
-            (6, _) => bail!("'hash.keccak384' is not yet implemented"),
-            (7, _) => bail!("'hash.keccak512' is not yet implemented"),
-            (8, _) => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
-            (9, _) => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
-            (10, LiteralType::Address) | (10, LiteralType::Group) => {
+            (4, _) => bail!("'hash.keccak256' is not yet implemented"),
+            (5, _) => bail!("'hash.keccak384' is not yet implemented"),
+            (6, _) => bail!("'hash.keccak512' is not yet implemented"),
+            (7, _) => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
+            (8, _) => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
+            (9, LiteralType::Address) | (9, LiteralType::Group) => {
                 Literal::Group(N::hash_to_group_psd2(&input.to_fields()?)?)
             }
-            (10, _) => Literal::Field(N::hash_psd2(&input.to_fields()?)?),
-            (11, LiteralType::Address) | (11, LiteralType::Group) => {
+            (9, _) => Literal::Field(N::hash_psd2(&input.to_fields()?)?),
+            (10, LiteralType::Address) | (10, LiteralType::Group) => {
                 Literal::Group(N::hash_to_group_psd4(&input.to_fields()?)?)
             }
-            (11, _) => Literal::Field(N::hash_psd4(&input.to_fields()?)?),
-            (12, LiteralType::Address) | (12, LiteralType::Group) => {
+            (10, _) => Literal::Field(N::hash_psd4(&input.to_fields()?)?),
+            (11, LiteralType::Address) | (11, LiteralType::Group) => {
                 Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?)
             }
-            (12, _) => Literal::Field(N::hash_psd8(&input.to_fields()?)?),
-            (13, _) => bail!("'hash.sha3_224' is not yet implemented"),
-            (14, _) => bail!("'hash.sha3_256' is not yet implemented"),
-            (15, _) => bail!("'hash.sha3_384' is not yet implemented"),
-            (16, _) => bail!("'hash.sha3_512' is not yet implemented"),
-            (17, _) => bail!("'hash_many.psd2' is not yet implemented"),
-            (18, _) => bail!("'hash_many.psd4' is not yet implemented"),
-            (19, _) => bail!("'hash_many.psd8' is not yet implemented"),
-            (20.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (11, _) => Literal::Field(N::hash_psd8(&input.to_fields()?)?),
+            (12, _) => bail!("'hash.sha3_256' is not yet implemented"),
+            (13, _) => bail!("'hash.sha3_384' is not yet implemented"),
+            (14, _) => bail!("'hash.sha3_512' is not yet implemented"),
+            (15, _) => bail!("'hash_many.psd2' is not yet implemented"),
+            (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
+            (17, _) => bail!("'hash_many.psd8' is not yet implemented"),
+            (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         // Cast the output to the destination type.
         let output = output.downcast_lossy(self.destination_type)?;
@@ -269,32 +259,30 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (1, _) => circuit::Literal::Group(A::hash_to_group_bhp512(&input.to_bits_le())),
             (2, _) => circuit::Literal::Group(A::hash_to_group_bhp768(&input.to_bits_le())),
             (3, _) => circuit::Literal::Group(A::hash_to_group_bhp1024(&input.to_bits_le())),
-            (4, _) => bail!("'hash.keccak224' is not yet implemented"),
-            (5, _) => bail!("'hash.keccak256' is not yet implemented"),
-            (6, _) => bail!("'hash.keccak384' is not yet implemented"),
-            (7, _) => bail!("'hash.keccak512' is not yet implemented"),
-            (8, _) => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
-            (9, _) => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
-            (10, LiteralType::Address) | (10, LiteralType::Group) => {
+            (4, _) => bail!("'hash.keccak256' is not yet implemented"),
+            (5, _) => bail!("'hash.keccak384' is not yet implemented"),
+            (6, _) => bail!("'hash.keccak512' is not yet implemented"),
+            (7, _) => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
+            (8, _) => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
+            (9, LiteralType::Address) | (9, LiteralType::Group) => {
                 circuit::Literal::Group(A::hash_to_group_psd2(&input.to_fields()))
             }
-            (10, _) => circuit::Literal::Field(A::hash_psd2(&input.to_fields())),
-            (11, LiteralType::Address) | (11, LiteralType::Group) => {
+            (9, _) => circuit::Literal::Field(A::hash_psd2(&input.to_fields())),
+            (10, LiteralType::Address) | (10, LiteralType::Group) => {
                 circuit::Literal::Group(A::hash_to_group_psd4(&input.to_fields()))
             }
-            (11, _) => circuit::Literal::Field(A::hash_psd4(&input.to_fields())),
-            (12, LiteralType::Address) | (12, LiteralType::Group) => {
+            (10, _) => circuit::Literal::Field(A::hash_psd4(&input.to_fields())),
+            (11, LiteralType::Address) | (11, LiteralType::Group) => {
                 circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields()))
             }
-            (12, _) => circuit::Literal::Field(A::hash_psd8(&input.to_fields())),
-            (13, _) => bail!("'hash.sha3_224' is not yet implemented"),
-            (14, _) => bail!("'hash.sha3_256' is not yet implemented"),
-            (15, _) => bail!("'hash.sha3_384' is not yet implemented"),
-            (16, _) => bail!("'hash.sha3_512' is not yet implemented"),
-            (17, _) => bail!("'hash_many.psd2' is not yet implemented"),
-            (18, _) => bail!("'hash_many.psd4' is not yet implemented"),
-            (19, _) => bail!("'hash_many.psd8' is not yet implemented"),
-            (20.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (11, _) => circuit::Literal::Field(A::hash_psd8(&input.to_fields())),
+            (12, _) => bail!("'hash.sha3_256' is not yet implemented"),
+            (13, _) => bail!("'hash.sha3_384' is not yet implemented"),
+            (14, _) => bail!("'hash.sha3_512' is not yet implemented"),
+            (15, _) => bail!("'hash_many.psd2' is not yet implemented"),
+            (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
+            (17, _) => bail!("'hash_many.psd8' is not yet implemented"),
+            (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
         let output = output.downcast_lossy(self.destination_type)?;
         // Convert the output to a stack value.
@@ -331,11 +319,11 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 
         match VARIANT {
             0..=3 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(self.destination_type))]),
-            4..=7 => bail!("'hash.keccak*' is not yet implemented"),
-            8..=12 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(self.destination_type))]),
-            13..=16 => bail!("'hash.sha3*' is not yet implemented"),
-            17..=19 => bail!("'hash_many' is not yet implemented"),
-            20.. => bail!("Invalid 'hash' variant: {VARIANT}"),
+            4..=6 => bail!("'hash.keccak*' is not yet implemented"),
+            7..=11 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(self.destination_type))]),
+            12..=14 => bail!("'hash.sha3*' is not yet implemented"),
+            15..=17 => bail!("'hash_many' is not yet implemented"),
+            18.. => bail!("Invalid 'hash' variant: {VARIANT}"),
         }
     }
 }

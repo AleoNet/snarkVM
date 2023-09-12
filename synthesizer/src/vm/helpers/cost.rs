@@ -122,9 +122,6 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::HashBHP512(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP768(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP1024(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashKeccak224(_)) => {
-            bail!("`hash.keccak224` is not supported in finalize yet.")
-        }
         Command::Instruction(Instruction::HashKeccak256(_)) => {
             bail!("`hash.keccak256` is not supported in finalize yet.")
         }
@@ -148,9 +145,6 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
             LiteralType::Address | LiteralType::Group => Ok(800_000),
             _ => Ok(200_000),
         },
-        Command::Instruction(Instruction::HashSha3_224(_)) => {
-            bail!("`hash.sha3_224` is not supported in finalize yet.")
-        }
         Command::Instruction(Instruction::HashSha3_256(_)) => {
             bail!("`hash.sha3_256` is not supported in finalize yet.")
         }
