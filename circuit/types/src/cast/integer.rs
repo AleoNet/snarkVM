@@ -65,10 +65,10 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
                 // If the source type is the same size or larger than the destination type, check that the most significant bits are zero.
                 // Then instantiate the new integer from the lower bits.
                 false => {
-                    for bit in &bits_le[((I1::BITS - 1) as usize)..] {
+                    for bit in bits_le.iter().skip(I1::BITS.saturating_sub(1) as usize) {
                         E::assert(!bit);
                     }
-                    Integer::<E, I1>::from_bits_le(&bits_le[..((I1::BITS - 1) as usize)])
+                    Integer::<E, I1>::from_bits_le(&bits_le[..(I1::BITS.saturating_sub(1) as usize)])
                 }
             },
             // If the source type is signed and the destination type is unsigned, perform the required checks.
@@ -76,13 +76,13 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
                 // If the source type is smaller than or equal to the destination type, check that the most significant bit is zero.
                 // Then instantiate the new integer from the lower bits.
                 true => {
-                    E::assert(!&bits_le[(I0::BITS - 1) as usize]);
-                    Integer::<E, I1>::from_bits_le(&bits_le[..((I0::BITS - 1) as usize)])
+                    E::assert(!&bits_le[I0::BITS.saturating_sub(1) as usize]);
+                    Integer::<E, I1>::from_bits_le(&bits_le[..(I0::BITS.saturating_sub(1) as usize)])
                 }
                 // If the source type is larger than the destination type, check that the upper bits are zero.
                 // Then instantiate the new integer from the lower bits.
                 false => {
-                    for bit in &bits_le[(I1::BITS as usize)..] {
+                    for bit in bits_le.iter().skip(I1::BITS as usize) {
                         E::assert(!bit);
                     }
                     Integer::<E, I1>::from_bits_le(&bits_le[..(I1::BITS as usize)])
@@ -93,7 +93,8 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
                 // If the source type is smaller than or equal to the destination type, sign extend the source integer.
                 // Then instantiate the new integer from the bits.
                 true => {
-                    bits_le.extend(std::iter::repeat(self.msb().clone()).take((I1::BITS - I0::BITS) as usize));
+                    bits_le
+                        .extend(std::iter::repeat(self.msb().clone()).take(I1::BITS.saturating_sub(I0::BITS) as usize));
                     Integer::<E, I1>::from_bits_le(&bits_le)
                 }
                 // If the source type is larger than the destination type, check that the upper bits match the most significant bit.
@@ -104,15 +105,14 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
                         Some(bit) => bit,
                         None => E::halt("Failed to extract the MSB from the integer."),
                     };
-                    // Split the bits into the upper and lower bits.
-                    let (lower_bits, upper_bits): (Vec<_>, Vec<_>) =
-                        bits_le.into_iter().enumerate().partition(|(i, _)| *i < ((I1::BITS as usize) - 1));
                     // Check that the upper bits match the most significant bit.
-                    for (_, bit) in upper_bits {
+                    let upper_bits = bits_le.iter().skip(I1::BITS.saturating_sub(1) as usize);
+                    for bit in upper_bits {
                         E::assert_eq(&msb, bit);
                     }
                     // Instantiate the new integer from the lower bits and the most significant bit.
-                    let mut lower_bits: Vec<_> = lower_bits.into_iter().map(|(_, bit)| bit).collect();
+                    let mut lower_bits: Vec<_> =
+                        bits_le.into_iter().take(I1::BITS.saturating_sub(1) as usize).collect();
                     lower_bits.push(msb);
                     Integer::<E, I1>::from_bits_le(&lower_bits)
                 }
@@ -204,6 +204,13 @@ mod tests {
             );
             check_cast::<Group<Circuit>, console::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
             check_cast::<Group<Circuit>, console::types::Group<Testnet3>>(Mode::Private, count_is!(4, 0, 15, 13));
+        }
+
+        #[test]
+        fn test_i8_to_i8() {
+            check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<I8<Circuit>, console::types::I8<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
         }
 
         #[test]
@@ -328,6 +335,13 @@ mod tests {
         }
 
         #[test]
+        fn test_i16_to_i16() {
+            check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        }
+
+        #[test]
         fn test_i16_to_i32() {
             check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
@@ -446,6 +460,13 @@ mod tests {
             check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 16));
             check_cast::<I16<Circuit>, console::types::I16<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 16));
+        }
+
+        #[test]
+        fn test_i32_to_i32() {
+            check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<I32<Circuit>, console::types::I32<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
         }
 
         #[test]
@@ -570,6 +591,13 @@ mod tests {
         }
 
         #[test]
+        fn test_i64_to_i64() {
+            check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        }
+
+        #[test]
         fn test_i64_to_i128() {
             check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
@@ -688,6 +716,13 @@ mod tests {
             check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 64));
             check_cast::<I64<Circuit>, console::types::I64<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 64));
+        }
+
+        #[test]
+        fn test_i128_to_i128() {
+            check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
         }
 
         #[test]
@@ -819,6 +854,13 @@ mod tests {
         }
 
         #[test]
+        fn test_u8_to_u8() {
+            check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        }
+
+        #[test]
         fn test_u8_to_u16() {
             check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
@@ -937,6 +979,13 @@ mod tests {
             check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 8));
             check_cast::<U8<Circuit>, console::types::U8<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 8));
+        }
+
+        #[test]
+        fn test_u16_to_u16() {
+            check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<U16<Circuit>, console::types::U16<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
         }
 
         #[test]
@@ -1061,6 +1110,13 @@ mod tests {
         }
 
         #[test]
+        fn test_u32_to_u32() {
+            check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<U32<Circuit>, console::types::U32<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        }
+
+        #[test]
         fn test_u32_to_u64() {
             check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
@@ -1182,6 +1238,13 @@ mod tests {
         }
 
         #[test]
+        fn test_u64_to_u64() {
+            check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+        }
+
+        #[test]
         fn test_u64_to_u128() {
             check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
@@ -1300,6 +1363,13 @@ mod tests {
             check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
             check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 64));
             check_cast::<U64<Circuit>, console::types::U64<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 64));
+        }
+
+        #[test]
+        fn test_u128_to_u128() {
+            check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+            check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+            check_cast::<U128<Circuit>, console::types::U128<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
         }
     }
 }

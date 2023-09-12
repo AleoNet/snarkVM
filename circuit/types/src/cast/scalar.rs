@@ -59,6 +59,14 @@ impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Scalar<E> {
     }
 }
 
+impl<E: Environment> Cast<Scalar<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Scalar`.
+    #[inline]
+    fn cast(&self) -> Scalar<E> {
+        self.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,6 +159,13 @@ mod tests {
         check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Constant, count_is!(251, 0, 0, 0));
         check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Public, count_is!(0, 0, 501, 626));
         check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Private, count_is!(0, 0, 501, 626));
+    }
+
+    #[test]
+    fn test_scalar_to_scalar() {
+        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
     }
 
     #[test]

@@ -78,97 +78,60 @@ impl<A: Aleo> Literal<A> {
     }
 }
 
-/// Casts a boolean literal to the given literal type.
-fn cast_boolean_to_type<A: Aleo>(boolean: &Boolean<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(boolean.cast())),
-        LiteralType::Boolean => Ok(Literal::Boolean(boolean.clone())),
-        LiteralType::Field => Ok(Literal::Field(boolean.cast())),
-        LiteralType::Group => Ok(Literal::Group(boolean.cast())),
-        LiteralType::I8 => Ok(Literal::I8(boolean.cast())),
-        LiteralType::I16 => Ok(Literal::I16(boolean.cast())),
-        LiteralType::I32 => Ok(Literal::I32(boolean.cast())),
-        LiteralType::I64 => Ok(Literal::I64(boolean.cast())),
-        LiteralType::I128 => Ok(Literal::I128(boolean.cast())),
-        LiteralType::U8 => Ok(Literal::U8(boolean.cast())),
-        LiteralType::U16 => Ok(Literal::U16(boolean.cast())),
-        LiteralType::U32 => Ok(Literal::U32(boolean.cast())),
-        LiteralType::U64 => Ok(Literal::U64(boolean.cast())),
-        LiteralType::U128 => Ok(Literal::U128(boolean.cast())),
-        LiteralType::Scalar => Ok(Literal::Scalar(boolean.cast())),
-        LiteralType::Signature => bail!("Cannot cast a boolean literal to a signature type."),
-        LiteralType::String => bail!("Cannot cast a boolean literal to a string type."),
+// A helper macro to implement the `cast` and `cast_lossy` methods for each literal type.
+macro_rules! impl_cast_to_type {
+    ($type_:ty, $type_name:ident) => {
+        paste::paste! {
+            fn[<cast_ $type_name _to_type>]<A: Aleo>(input: &$type_, to_type: LiteralType) -> Result<Literal<A>> {
+                match to_type {
+                    LiteralType::Address => Ok(Literal::Address(input.cast())),
+                    LiteralType::Boolean => Ok(Literal::Boolean(input.cast())),
+                    LiteralType::Field => Ok(Literal::Field(input.cast())),
+                    LiteralType::Group => Ok(Literal::Group(input.cast())),
+                    LiteralType::I8 => Ok(Literal::I8(input.cast())),
+                    LiteralType::I16 => Ok(Literal::I16(input.cast())),
+                    LiteralType::I32 => Ok(Literal::I32(input.cast())),
+                    LiteralType::I64 => Ok(Literal::I64(input.cast())),
+                    LiteralType::I128 => Ok(Literal::I128(input.cast())),
+                    LiteralType::U8 => Ok(Literal::U8(input.cast())),
+                    LiteralType::U16 => Ok(Literal::U16(input.cast())),
+                    LiteralType::U32 => Ok(Literal::U32(input.cast())),
+                    LiteralType::U64 => Ok(Literal::U64(input.cast())),
+                    LiteralType::U128 => Ok(Literal::U128(input.cast())),
+                    LiteralType::Scalar => Ok(Literal::Scalar(input.cast())),
+                    LiteralType::Signature => bail!(concat!("Cannot cast a ", stringify!($type_name), " literal to a signature type.")),
+                    LiteralType::String => bail!(concat!("Cannot cast a ", stringify!($type_name), " literal to a string type.")),
+                }
+            }
+
+            fn[<cast_lossy_ $type_name _to_type>]<A: Aleo>(input: &$type_, to_type: LiteralType) -> Result<Literal<A>> {
+                match to_type {
+                    LiteralType::Address => Ok(Literal::Address(input.cast_lossy())),
+                    LiteralType::Boolean => Ok(Literal::Boolean(input.cast_lossy())),
+                    LiteralType::Field => Ok(Literal::Field(input.cast_lossy())),
+                    LiteralType::Group => Ok(Literal::Group(input.cast_lossy())),
+                    LiteralType::I8 => Ok(Literal::I8(input.cast_lossy())),
+                    LiteralType::I16 => Ok(Literal::I16(input.cast_lossy())),
+                    LiteralType::I32 => Ok(Literal::I32(input.cast_lossy())),
+                    LiteralType::I64 => Ok(Literal::I64(input.cast_lossy())),
+                    LiteralType::I128 => Ok(Literal::I128(input.cast_lossy())),
+                    LiteralType::U8 => Ok(Literal::U8(input.cast_lossy())),
+                    LiteralType::U16 => Ok(Literal::U16(input.cast_lossy())),
+                    LiteralType::U32 => Ok(Literal::U32(input.cast_lossy())),
+                    LiteralType::U64 => Ok(Literal::U64(input.cast_lossy())),
+                    LiteralType::U128 => Ok(Literal::U128(input.cast_lossy())),
+                    LiteralType::Scalar => Ok(Literal::Scalar(input.cast_lossy())),
+                    LiteralType::Signature => bail!(concat!("Cannot cast a ", stringify!($type_name), " literal to a signature type.")),
+                    LiteralType::String => bail!(concat!("Cannot cast a ", stringify!($type_name), " literal to a string type.")),
+                }
+            }
+        }
     }
 }
 
-/// Casts a boolean literal to the given literal type, with lossy truncation.
-fn cast_lossy_boolean_to_type<A: Aleo>(boolean: &Boolean<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(boolean.cast_lossy())),
-        LiteralType::Boolean => Ok(Literal::Boolean(boolean.clone())),
-        LiteralType::Field => Ok(Literal::Field(boolean.cast_lossy())),
-        LiteralType::Group => Ok(Literal::Group(boolean.cast_lossy())),
-        LiteralType::I8 => Ok(Literal::I8(boolean.cast_lossy())),
-        LiteralType::I16 => Ok(Literal::I16(boolean.cast_lossy())),
-        LiteralType::I32 => Ok(Literal::I32(boolean.cast_lossy())),
-        LiteralType::I64 => Ok(Literal::I64(boolean.cast_lossy())),
-        LiteralType::I128 => Ok(Literal::I128(boolean.cast_lossy())),
-        LiteralType::U8 => Ok(Literal::U8(boolean.cast_lossy())),
-        LiteralType::U16 => Ok(Literal::U16(boolean.cast_lossy())),
-        LiteralType::U32 => Ok(Literal::U32(boolean.cast_lossy())),
-        LiteralType::U64 => Ok(Literal::U64(boolean.cast_lossy())),
-        LiteralType::U128 => Ok(Literal::U128(boolean.cast_lossy())),
-        LiteralType::Scalar => Ok(Literal::Scalar(boolean.cast_lossy())),
-        LiteralType::Signature => bail!("Cannot cast a boolean literal to a signature type."),
-        LiteralType::String => bail!("Cannot cast a boolean literal to a string type."),
-    }
-}
-
-/// Casts a field literal to the given literal type.
-fn cast_field_to_type<A: Aleo>(field: &Field<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(field.cast())),
-        LiteralType::Boolean => Ok(Literal::Boolean(field.cast())),
-        LiteralType::Field => Ok(Literal::Field(field.clone())),
-        LiteralType::Group => Ok(Literal::Group(field.cast())),
-        LiteralType::I8 => Ok(Literal::I8(field.cast())),
-        LiteralType::I16 => Ok(Literal::I16(field.cast())),
-        LiteralType::I32 => Ok(Literal::I32(field.cast())),
-        LiteralType::I64 => Ok(Literal::I64(field.cast())),
-        LiteralType::I128 => Ok(Literal::I128(field.cast())),
-        LiteralType::U8 => Ok(Literal::U8(field.cast())),
-        LiteralType::U16 => Ok(Literal::U16(field.cast())),
-        LiteralType::U32 => Ok(Literal::U32(field.cast())),
-        LiteralType::U64 => Ok(Literal::U64(field.cast())),
-        LiteralType::U128 => Ok(Literal::U128(field.cast())),
-        LiteralType::Scalar => Ok(Literal::Scalar(field.cast())),
-        LiteralType::Signature => bail!("Cannot cast a field literal to a signature type."),
-        LiteralType::String => bail!("Cannot cast a field literal to a string type."),
-    }
-}
-
-/// Casts a field literal to the given literal type, with lossy truncation.
-fn cast_lossy_field_to_type<A: Aleo>(field: &Field<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(field.cast_lossy())),
-        LiteralType::Boolean => Ok(Literal::Boolean(field.cast_lossy())),
-        LiteralType::Field => Ok(Literal::Field(field.clone())),
-        LiteralType::Group => Ok(Literal::Group(field.cast_lossy())),
-        LiteralType::I8 => Ok(Literal::I8(field.cast_lossy())),
-        LiteralType::I16 => Ok(Literal::I16(field.cast_lossy())),
-        LiteralType::I32 => Ok(Literal::I32(field.cast_lossy())),
-        LiteralType::I64 => Ok(Literal::I64(field.cast_lossy())),
-        LiteralType::I128 => Ok(Literal::I128(field.cast_lossy())),
-        LiteralType::U8 => Ok(Literal::U8(field.cast_lossy())),
-        LiteralType::U16 => Ok(Literal::U16(field.cast_lossy())),
-        LiteralType::U32 => Ok(Literal::U32(field.cast_lossy())),
-        LiteralType::U64 => Ok(Literal::U64(field.cast_lossy())),
-        LiteralType::U128 => Ok(Literal::U128(field.cast_lossy())),
-        LiteralType::Scalar => Ok(Literal::Scalar(field.cast_lossy())),
-        LiteralType::Signature => bail!("Cannot cast a field literal to a signature type."),
-        LiteralType::String => bail!("Cannot cast a field literal to a string type."),
-    }
-}
+impl_cast_to_type!(Boolean<A>, boolean);
+impl_cast_to_type!(Field<A>, field);
+impl_cast_to_type!(Scalar<A>, scalar);
 
 /// Casts a group literal to the given literal type.
 fn cast_group_to_type<A: Aleo>(group: &Group<A>, to_type: LiteralType) -> Result<Literal<A>> {
@@ -237,51 +200,5 @@ fn cast_lossy_integer_to_type<A: Aleo, I: IntegerType>(
         LiteralType::Scalar => Ok(Literal::Scalar(integer.cast_lossy())),
         LiteralType::Signature => bail!("Cannot cast an integer literal to a signature type."),
         LiteralType::String => bail!("Cannot cast an integer literal to a string type."),
-    }
-}
-
-/// Casts a scalar literal to the given literal type.
-fn cast_scalar_to_type<A: Aleo>(scalar: &Scalar<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(scalar.cast())),
-        LiteralType::Boolean => Ok(Literal::Boolean(scalar.cast())),
-        LiteralType::Field => Ok(Literal::Field(scalar.cast())),
-        LiteralType::Group => Ok(Literal::Group(scalar.cast())),
-        LiteralType::I8 => Ok(Literal::I8(scalar.cast())),
-        LiteralType::I16 => Ok(Literal::I16(scalar.cast())),
-        LiteralType::I32 => Ok(Literal::I32(scalar.cast())),
-        LiteralType::I64 => Ok(Literal::I64(scalar.cast())),
-        LiteralType::I128 => Ok(Literal::I128(scalar.cast())),
-        LiteralType::U8 => Ok(Literal::U8(scalar.cast())),
-        LiteralType::U16 => Ok(Literal::U16(scalar.cast())),
-        LiteralType::U32 => Ok(Literal::U32(scalar.cast())),
-        LiteralType::U64 => Ok(Literal::U64(scalar.cast())),
-        LiteralType::U128 => Ok(Literal::U128(scalar.cast())),
-        LiteralType::Scalar => Ok(Literal::Scalar(scalar.clone())),
-        LiteralType::Signature => bail!("Cannot cast a scalar literal to a signature type."),
-        LiteralType::String => bail!("Cannot cast a scalar literal to a string type."),
-    }
-}
-
-/// Casts a scalar literal to the given literal type, with lossy truncation.
-fn cast_lossy_scalar_to_type<A: Aleo>(scalar: &Scalar<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(scalar.cast_lossy())),
-        LiteralType::Boolean => Ok(Literal::Boolean(scalar.cast_lossy())),
-        LiteralType::Field => Ok(Literal::Field(scalar.cast_lossy())),
-        LiteralType::Group => Ok(Literal::Group(scalar.cast_lossy())),
-        LiteralType::I8 => Ok(Literal::I8(scalar.cast_lossy())),
-        LiteralType::I16 => Ok(Literal::I16(scalar.cast_lossy())),
-        LiteralType::I32 => Ok(Literal::I32(scalar.cast_lossy())),
-        LiteralType::I64 => Ok(Literal::I64(scalar.cast_lossy())),
-        LiteralType::I128 => Ok(Literal::I128(scalar.cast_lossy())),
-        LiteralType::U8 => Ok(Literal::U8(scalar.cast_lossy())),
-        LiteralType::U16 => Ok(Literal::U16(scalar.cast_lossy())),
-        LiteralType::U32 => Ok(Literal::U32(scalar.cast_lossy())),
-        LiteralType::U64 => Ok(Literal::U64(scalar.cast_lossy())),
-        LiteralType::U128 => Ok(Literal::U128(scalar.cast_lossy())),
-        LiteralType::Scalar => Ok(Literal::Scalar(scalar.clone())),
-        LiteralType::Signature => bail!("Cannot cast a scalar literal to a signature type."),
-        LiteralType::String => bail!("Cannot cast a scalar literal to a string type."),
     }
 }

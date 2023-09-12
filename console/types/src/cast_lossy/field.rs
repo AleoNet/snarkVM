@@ -18,15 +18,7 @@ impl<E: Environment> CastLossy<Address<E>> for Field<E> {
     /// Casts a `Field` to an `Address`, with lossy truncation.
     #[inline]
     fn cast_lossy(&self) -> Result<Address<E>> {
-        Address::from_field(self)
-    }
-}
-
-impl<E: Environment> CastLossy<Group<E>> for Field<E> {
-    /// Casts a `Field` to a `Group`, with lossy truncation.
-    #[inline]
-    fn cast_lossy(&self) -> Result<Group<E>> {
-        Group::from_field(self)
+        self.cast()
     }
 }
 
@@ -38,6 +30,22 @@ impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
             Some(bit) => Ok(Boolean::new(bit)),
             None => bail!("Failed to retrieve the LSB from the field element."),
         }
+    }
+}
+
+impl<E: Environment> CastLossy<Field<E>> for Field<E> {
+    /// Casts a `Field` to a `Field`, with lossy truncation.
+    #[inline]
+    fn cast_lossy(&self) -> Result<Field<E>> {
+        self.cast()
+    }
+}
+
+impl<E: Environment> CastLossy<Group<E>> for Field<E> {
+    /// Casts a `Field` to a `Group`, with lossy truncation.
+    #[inline]
+    fn cast_lossy(&self) -> Result<Group<E>> {
+        self.cast()
     }
 }
 

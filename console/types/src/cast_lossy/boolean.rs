@@ -28,6 +28,7 @@ macro_rules! impl_cast_lossy {
 }
 
 impl_cast_lossy!(Address<E>);
+impl_cast_lossy!(Boolean<E>);
 impl_cast_lossy!(Field<E>);
 impl_cast_lossy!(Group<E>);
 impl_cast_lossy!(I8<E>);

@@ -2645,6 +2645,7 @@ name = "snarkvm-circuit-program"
 version = "0.14.6"
 dependencies = [
  "anyhow",
+ "paste",
  "rand",
  "snarkvm-circuit-account",
  "snarkvm-circuit-collections",
@@ -2851,6 +2852,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
+ "paste",
  "serde_json",
  "snarkvm-console-account",
  "snarkvm-console-collections",

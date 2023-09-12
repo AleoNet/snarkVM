@@ -23,6 +23,14 @@ impl<E: Environment> Cast<Address<E>> for Boolean<E> {
     }
 }
 
+impl<E: Environment> Cast<Boolean<E>> for Boolean<E> {
+    /// Casts a `Boolean` to a `Boolean`.
+    #[inline]
+    fn cast(&self) -> Boolean<E> {
+        self.clone()
+    }
+}
+
 impl<E: Environment> Cast<Field<E>> for Boolean<E> {
     /// Casts a `Boolean` to a `Field`.
     #[inline]
@@ -82,6 +90,13 @@ mod tests {
     }
 
     #[test]
+    fn test_boolean_to_boolean() {
+        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
+        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
+        check_cast::<Boolean<Circuit>, console::types::Boolean<Testnet3>>(Mode::Private, count_is!(0, 0, 0, 0));
+    }
+
+    #[test]
     fn test_boolean_to_field() {
         check_cast::<Field<Circuit>, console::types::Field<Testnet3>>(Mode::Constant, count_is!(0, 0, 0, 0));
         check_cast::<Field<Circuit>, console::types::Field<Testnet3>>(Mode::Public, count_is!(0, 0, 0, 0));
@@ -124,17 +139,17 @@ mod tests {
     }
 
     #[test]
-    fn test_boolean_to_scalar() {
-        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Constant, count_is!(2, 0, 0, 0));
-        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Public, count_is!(2, 0, 0, 0));
-        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Private, count_is!(2, 0, 0, 0));
-    }
-
-    #[test]
     fn test_boolean_to_i128() {
         check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Constant, count_is!(256, 0, 0, 0));
         check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Public, count_is!(256, 0, 0, 0));
         check_cast::<I128<Circuit>, console::types::I128<Testnet3>>(Mode::Private, count_is!(256, 0, 0, 0));
+    }
+
+    #[test]
+    fn test_boolean_to_scalar() {
+        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Constant, count_is!(2, 0, 0, 0));
+        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Public, count_is!(2, 0, 0, 0));
+        check_cast::<Scalar<Circuit>, console::types::Scalar<Testnet3>>(Mode::Private, count_is!(2, 0, 0, 0));
     }
 
     #[test]

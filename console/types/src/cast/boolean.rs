@@ -23,6 +23,14 @@ impl<E: Environment> Cast<Address<E>> for Boolean<E> {
     }
 }
 
+impl<E: Environment> Cast<Boolean<E>> for Boolean<E> {
+    /// Casts a `Boolean` to a `Boolean`.
+    #[inline]
+    fn cast(&self) -> Result<Boolean<E>> {
+        Ok(*self)
+    }
+}
+
 impl<E: Environment> Cast<Field<E>> for Boolean<E> {
     /// Casts a `Boolean` to a `Field`.
     #[inline]

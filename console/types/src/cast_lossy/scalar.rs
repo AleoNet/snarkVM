@@ -58,3 +58,11 @@ impl<E: Environment, I: IntegerType> CastLossy<Integer<E, I>> for Scalar<E> {
         Integer::<E, I>::from_bits_le(&bits_le[0..usize::try_from(I::BITS)?])
     }
 }
+
+impl<E: Environment> CastLossy<Scalar<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Scalar`, with lossy truncation.
+    #[inline]
+    fn cast_lossy(&self) -> Result<Scalar<E>> {
+        self.cast()
+    }
+}

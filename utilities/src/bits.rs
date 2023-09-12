@@ -148,13 +148,11 @@ macro_rules! impl_bits_for_integer {
             fn from_bits_le(bits: &[bool]) -> Result<Self> {
                 // If the number of bits exceeds the size of the integer, ensure that the upper bits are all zero.
                 // Note that because the input bits are little-endian, these are the bits at the end of slice.
-                if bits.len() > (<$int>::BITS as usize) {
-                    for bit in bits[<$int>::BITS as usize..].iter() {
-                        ensure!(!bit, "upper bits are not zero");
-                    }
+                for bit in bits.iter().skip(<$int>::BITS as usize) {
+                    ensure!(!bit, "upper bits are not zero");
                 }
                 // Construct the integer from the bits.
-                Ok(bits.iter().rev().fold(0, |value, bit| match bit {
+                Ok(bits.iter().take(<$int>::BITS as usize).rev().fold(0, |value, bit| match bit {
                     true => (value.wrapping_shl(1)) ^ 1,
                     false => (value.wrapping_shl(1)) ^ 0,
                 }))
@@ -165,13 +163,11 @@ macro_rules! impl_bits_for_integer {
             fn from_bits_be(bits: &[bool]) -> Result<Self> {
                 // If the number of bits exceeds the size of the integer, ensure that the upper bits are all zero.
                 // Note that because the input bits are big-endian, these are the bits at the beginning of slice.
-                if bits.len() > (<$int>::BITS as usize) {
-                    for bit in bits[0..(bits.len() - (<$int>::BITS as usize))].iter() {
-                        ensure!(!bit, "upper bits are not zero");
-                    }
+                for bit in bits.iter().take(bits.len().saturating_sub(<$int>::BITS as usize)) {
+                    ensure!(!bit, "upper bits are not zero");
                 }
                 // Construct the integer from the bits.
-                Ok(bits.iter().fold(0, |value, bit| match bit {
+                Ok(bits.iter().skip(bits.len().saturating_sub(<$int>::BITS as usize)).fold(0, |value, bit| match bit {
                     true => (value.wrapping_shl(1)) ^ 1,
                     false => (value.wrapping_shl(1)) ^ 0,
                 }))

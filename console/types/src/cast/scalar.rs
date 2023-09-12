@@ -62,3 +62,11 @@ impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Scalar<E> {
         Integer::<E, I>::from_bits_le(&bits_le)
     }
 }
+
+impl<E: Environment> Cast<Scalar<E>> for Scalar<E> {
+    /// Casts a `Scalar` to a `Scalar`.
+    #[inline]
+    fn cast(&self) -> Result<Scalar<E>> {
+        Ok(*self)
+    }
+}

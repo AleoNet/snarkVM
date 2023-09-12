@@ -28,6 +28,14 @@ impl<E: Environment> Cast<Boolean<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Cast<Field<E>> for Field<E> {
+    /// Casts a `Field` to a `Field`.
+    #[inline]
+    fn cast(&self) -> Result<Field<E>> {
+        Ok(*self)
+    }
+}
+
 // A simple macro to implement `Cast` on types that implement `FromField`.
 macro_rules! impl_cast {
     ($type:ty) => {
