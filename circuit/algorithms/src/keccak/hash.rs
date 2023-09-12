@@ -271,8 +271,8 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     /// Performs a rotate left operation on the given `u64` value.
     fn rotate_left(value: &U64<E>, n: usize) -> U64<E> {
         // Perform the rotation.
-        let bits_le = value.to_bits_le();
-        let bits_le = bits_le.iter().skip(n).chain(bits_le.iter()).take(64).cloned().collect::<Vec<_>>();
+        let mut bits_le = value.to_bits_le();
+        bits_le.rotate_left(n);
         // Return the rotated value.
         U64::from_bits_le(&bits_le)
     }
