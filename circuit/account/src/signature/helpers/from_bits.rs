@@ -22,19 +22,25 @@ impl<A: Aleo> FromBits for Signature<A> {
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         let scalar_size_in_bits = console::Scalar::<A::Network>::size_in_bits();
         let compute_key_size_in_bits = console::ComputeKey::<A::Network>::size_in_bits();
+
         let (challenge_start, challenge_end) = (0, scalar_size_in_bits);
         let (response_start, response_end) = (challenge_end, challenge_end + scalar_size_in_bits);
         let (compute_key_start, compute_key_end) = (response_end, response_end + compute_key_size_in_bits);
+
+        let Some(challenge_bits) = bits_le.get(challenge_start..challenge_end) else {
+            A::halt("Unable to recover the signature challenge from (LE) bits")
+        };
+        let Some(response_bits) = bits_le.get(response_start..response_end) else {
+            A::halt("Unable to recover the signature response from (LE) bits")
+        };
+        let Some(compute_key_bits) = bits_le.get(compute_key_start..compute_key_end) else {
+            A::halt("Unable to recover the signature compute key from (LE) bits")
+        };
+
         Self {
-            challenge: Scalar::from_bits_le(
-                bits_le.get(challenge_start..challenge_end).unwrap_or_else(|| A::halt("Invalid challenge")),
-            ),
-            response: Scalar::from_bits_le(
-                bits_le.get(response_start..response_end).unwrap_or_else(|| A::halt("Invalid response")),
-            ),
-            compute_key: ComputeKey::from_bits_le(
-                bits_le.get(compute_key_start..compute_key_end).unwrap_or_else(|| A::halt("Invalid compute key")),
-            ),
+            challenge: Scalar::from_bits_le(challenge_bits),
+            response: Scalar::from_bits_le(response_bits),
+            compute_key: ComputeKey::from_bits_le(compute_key_bits),
         }
     }
 
@@ -42,19 +48,25 @@ impl<A: Aleo> FromBits for Signature<A> {
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         let scalar_size_in_bits = console::Scalar::<A::Network>::size_in_bits();
         let compute_key_size_in_bits = console::ComputeKey::<A::Network>::size_in_bits();
+
         let (challenge_start, challenge_end) = (0, scalar_size_in_bits);
         let (response_start, response_end) = (challenge_end, challenge_end + scalar_size_in_bits);
         let (compute_key_start, compute_key_end) = (response_end, response_end + compute_key_size_in_bits);
+
+        let Some(challenge_bits) = bits_be.get(challenge_start..challenge_end) else {
+            A::halt("Unable to recover the signature challenge from (BE) bits")
+        };
+        let Some(response_bits) = bits_be.get(response_start..response_end) else {
+            A::halt("Unable to recover the signature response from (BE) bits")
+        };
+        let Some(compute_key_bits) = bits_be.get(compute_key_start..compute_key_end) else {
+            A::halt("Unable to recover the signature compute key from (BE) bits")
+        };
+
         Self {
-            challenge: Scalar::from_bits_be(
-                bits_be.get(challenge_start..challenge_end).unwrap_or_else(|| A::halt("Invalid challenge")),
-            ),
-            response: Scalar::from_bits_be(
-                bits_be.get(response_start..response_end).unwrap_or_else(|| A::halt("Invalid response")),
-            ),
-            compute_key: ComputeKey::from_bits_be(
-                bits_be.get(compute_key_start..compute_key_end).unwrap_or_else(|| A::halt("Invalid compute key")),
-            ),
+            challenge: Scalar::from_bits_be(challenge_bits),
+            response: Scalar::from_bits_be(response_bits),
+            compute_key: ComputeKey::from_bits_be(compute_key_bits),
         }
     }
 }

@@ -21,23 +21,35 @@ impl<A: Aleo> FromBits for ComputeKey<A> {
     /// Initializes a new compute key from a list of **little-endian** bits.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         let group_size_in_bits = console::Group::<A::Network>::size_in_bits();
+
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
-        Self::from((
-            Group::from_bits_le(bits_le.get(pk_sig_start..pk_sig_end).unwrap_or_else(|| A::halt("Invalid group"))),
-            Group::from_bits_le(bits_le.get(pr_sig_start..pr_sig_end).unwrap_or_else(|| A::halt("Invalid group"))),
-        ))
+
+        let Some(pk_sig_bits) = bits_le.get(pk_sig_start..pk_sig_end) else {
+            A::halt("Unable to recover the 'pk_sig' (LE) bits for the compute key")
+        };
+        let Some(pr_sig_bits) = bits_le.get(pr_sig_start..pr_sig_end) else {
+            A::halt("Unable to recover the 'pr_sig' (LE) bits for the compute key")
+        };
+
+        Self::from((Group::from_bits_le(pk_sig_bits), Group::from_bits_le(pr_sig_bits)))
     }
 
     /// Initializes a new compute key from a list of **big-endian** bits.
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         let group_size_in_bits = console::Group::<A::Network>::size_in_bits();
+
         let (pk_sig_start, pk_sig_end) = (0, group_size_in_bits);
         let (pr_sig_start, pr_sig_end) = (pk_sig_end, pk_sig_end + group_size_in_bits);
-        Self::from((
-            Group::from_bits_be(bits_be.get(pk_sig_start..pk_sig_end).unwrap_or_else(|| A::halt("Invalid group"))),
-            Group::from_bits_be(bits_be.get(pr_sig_start..pr_sig_end).unwrap_or_else(|| A::halt("Invalid group"))),
-        ))
+
+        let Some(pk_sig_bits) = bits_be.get(pk_sig_start..pk_sig_end) else {
+            A::halt("Unable to recover the 'pk_sig' (BE) bits for the compute key")
+        };
+        let Some(pr_sig_bits) = bits_be.get(pr_sig_start..pr_sig_end) else {
+            A::halt("Unable to recover the 'pr_sig' (BE) bits for the compute key")
+        };
+
+        Self::from((Group::from_bits_be(pk_sig_bits), Group::from_bits_be(pr_sig_bits)))
     }
 }
 
