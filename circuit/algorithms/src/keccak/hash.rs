@@ -75,7 +75,8 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
             z.extend(s.iter().take(bitrate).cloned());
         }
         // return Z[0..l-1]
-        z.into_iter().take(VARIANT).collect()
+        z.truncate(VARIANT);
+        z
     }
 }
 
@@ -167,7 +168,9 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
             a = Self::round(a, round_constant, rotl);
         }
         // Return the permuted input.
-        a.into_iter().flat_map(|e| e.to_bits_le()).collect()
+        let mut bits = Vec::with_capacity(input.len());
+        a.iter().for_each(|e| e.write_bits_le(&mut bits));
+        bits
     }
 
     /// The round function `R` is defined as follows:
