@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> MultiArityMerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, ARITY> {
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
     pub fn verify<LH: LeafHash<E, Hash = PH::Hash>, PH: PathHash<E, Hash = Field<E>>>(
         &self,
@@ -131,19 +131,18 @@ mod tests {
                     .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>())
                     .collect::<Vec<_>>();
                 // Compute the Merkle tree.
-                let merkle_tree =
-                    console::multi_arity_merkle_tree::MultiArityMerkleTree::<_, _, _, $depth, $arity>::new(
-                        &native_leaf_hasher,
-                        &native_path_hasher,
-                        &leaves,
-                    )?;
+                let merkle_tree = console::k_ary_merkle_tree::KAryMerkleTree::<_, _, _, $depth, $arity>::new(
+                    &native_leaf_hasher,
+                    &native_path_hasher,
+                    &leaves,
+                )?;
 
                 for (index, merkle_leaf) in leaves.iter().enumerate() {
                     // Compute the Merkle path.
                     let merkle_path = merkle_tree.prove(index, merkle_leaf)?;
 
                     // Initialize the Merkle path.
-                    let path = MultiArityMerklePath::<Circuit, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
+                    let path = KAryMerklePath::<Circuit, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
 
                     assert_eq!(merkle_path, path.eject_value());
                     // Initialize the Merkle root.

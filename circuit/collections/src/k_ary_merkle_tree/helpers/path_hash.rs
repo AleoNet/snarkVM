@@ -87,7 +87,7 @@ mod tests {
                 let children = (0..ARITY).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>();
 
                 // Compute the expected hash.
-                let expected = console::multi_arity_merkle_tree::PathHash::hash_children(&native, &children)?;
+                let expected = console::k_ary_merkle_tree::PathHash::hash_children(&native, &children)?;
 
                 // Prepare the circuit input.
                 let children = children.into_iter().map(|child| Field::new(Mode::$mode, child)).collect::<Vec<_>>();

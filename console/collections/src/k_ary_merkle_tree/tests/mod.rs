@@ -30,7 +30,7 @@ use run_tests;
 /// Runs the following test:
 /// 1. Construct the Merkle tree for the leaves.
 /// 2. Check that the Merkle proof for every leaf is valid.
-fn check_multi_arity_merkle_tree<
+fn check_k_ary_merkle_tree<
     E: Environment,
     LH: LeafHash<Hash = PH::Hash>,
     PH: PathHash<Hash = Field<E>>,
@@ -42,7 +42,7 @@ fn check_multi_arity_merkle_tree<
     leaves: &[LH::Leaf],
 ) -> Result<()> {
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MultiArityMerkleTree::<E, LH, PH, DEPTH, ARITY>::new(leaf_hasher, path_hasher, leaves)?;
+    let merkle_tree = KAryMerkleTree::<E, LH, PH, DEPTH, ARITY>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
 
     let mut rng = TestRng::default();
@@ -75,7 +75,7 @@ fn check_merkle_tree_depth_2_arity_3<E: Environment, LH: LeafHash<Hash = PH::Has
     assert_eq!(9, leaves.len(), "Depth-2 test requires 9 leaves");
 
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MultiArityMerkleTree::<E, LH, PH, 2, 3>::new(leaf_hasher, path_hasher, leaves)?;
+    let merkle_tree = KAryMerkleTree::<E, LH, PH, 2, 3>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(13, merkle_tree.tree.len());
     assert_eq!(9, merkle_tree.number_of_leaves);
 
@@ -133,7 +133,7 @@ fn check_merkle_tree_depth_3_arity_3_padded<
     const ARITY: u8 = 3;
 
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MultiArityMerkleTree::<E, LH, PH, 3, ARITY>::new(leaf_hasher, path_hasher, leaves)?;
+    let merkle_tree = KAryMerkleTree::<E, LH, PH, 3, ARITY>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(13, merkle_tree.tree.len());
     assert_eq!(9, merkle_tree.number_of_leaves);
 
@@ -183,7 +183,7 @@ fn check_merkle_tree_depth_3_arity_3_padded<
     let leaves = [leaves, additional_leaves].concat();
 
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MultiArityMerkleTree::<E, LH, PH, 3, ARITY>::new(leaf_hasher, path_hasher, &leaves)?;
+    let merkle_tree = KAryMerkleTree::<E, LH, PH, 3, ARITY>::new(leaf_hasher, path_hasher, &leaves)?;
     assert_eq!(40, merkle_tree.tree.len());
     assert_eq!(10, merkle_tree.number_of_leaves);
 
@@ -274,7 +274,7 @@ fn check_merkle_tree_depth_3_arity_3_padded<
 }
 
 #[test]
-fn test_multi_arity_merkle_tree_bhp() -> Result<()> {
+fn test_k_ary_merkle_tree_bhp() -> Result<()> {
     fn run_test<const DEPTH: u8, const ARITY: u8>(rng: &mut TestRng) -> Result<()> {
         type LH = BHP1024<CurrentEnvironment>;
         type PH = BHP512<CurrentEnvironment>;
@@ -288,7 +288,7 @@ fn test_multi_arity_merkle_tree_bhp() -> Result<()> {
             let num_leaves = core::cmp::min((ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(i), i);
 
             // Check the Merkle tree.
-            check_multi_arity_merkle_tree::<CurrentEnvironment, LH, PH, DEPTH, ARITY>(
+            check_k_ary_merkle_tree::<CurrentEnvironment, LH, PH, DEPTH, ARITY>(
                 &leaf_hasher,
                 &path_hasher,
                 &(0..num_leaves)
@@ -318,7 +318,7 @@ fn test_multi_arity_merkle_tree_bhp() -> Result<()> {
 }
 
 #[test]
-fn test_multi_arity_merkle_tree_poseidon() -> Result<()> {
+fn test_k_ary_merkle_tree_poseidon() -> Result<()> {
     fn run_test<const DEPTH: u8, const ARITY: u8>(rng: &mut TestRng) -> Result<()> {
         type LH = Poseidon<CurrentEnvironment, 4>;
         type PH = Poseidon<CurrentEnvironment, 2>;
@@ -330,7 +330,7 @@ fn test_multi_arity_merkle_tree_poseidon() -> Result<()> {
             // Determine the number of leaves.
             let num_leaves = core::cmp::min((ARITY as u128).pow(DEPTH as u32), i);
             // Check the Merkle tree.
-            check_multi_arity_merkle_tree::<CurrentEnvironment, LH, PH, DEPTH, ARITY>(
+            check_k_ary_merkle_tree::<CurrentEnvironment, LH, PH, DEPTH, ARITY>(
                 &leaf_hasher,
                 &path_hasher,
                 &(0..num_leaves).map(|_| vec![Uniform::rand(rng)]).collect::<Vec<_>>(),

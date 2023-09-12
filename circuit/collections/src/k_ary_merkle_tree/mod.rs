@@ -22,7 +22,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U64};
 
-pub struct MultiArityMerklePath<E: Environment, const DEPTH: u8, const ARITY: u8> {
+pub struct KAryMerklePath<E: Environment, const DEPTH: u8, const ARITY: u8> {
     /// The leaf index for the path.
     leaf_index: U64<E>,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
@@ -30,8 +30,8 @@ pub struct MultiArityMerklePath<E: Environment, const DEPTH: u8, const ARITY: u8
 }
 
 #[cfg(console)]
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> Inject for MultiArityMerklePath<E, DEPTH, ARITY> {
-    type Primitive = console::multi_arity_merkle_tree::MultiArityMerklePath<E::Network, DEPTH, ARITY>;
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> Inject for KAryMerklePath<E, DEPTH, ARITY> {
+    type Primitive = console::k_ary_merkle_tree::KAryMerklePath<E::Network, DEPTH, ARITY>;
 
     /// Initializes a Merkle path from the given mode and native Merkle path.
     fn new(mode: Mode, merkle_path: Self::Primitive) -> Self {
@@ -60,8 +60,8 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> Inject for MultiArityMerk
 }
 
 #[cfg(console)]
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> Eject for MultiArityMerklePath<E, DEPTH, ARITY> {
-    type Primitive = console::multi_arity_merkle_tree::MultiArityMerklePath<E::Network, DEPTH, ARITY>;
+impl<E: Environment, const DEPTH: u8, const ARITY: u8> Eject for KAryMerklePath<E, DEPTH, ARITY> {
+    type Primitive = console::k_ary_merkle_tree::KAryMerklePath<E::Network, DEPTH, ARITY>;
 
     /// Ejects the mode of the Merkle path.
     fn eject_mode(&self) -> Mode {
@@ -109,7 +109,7 @@ mod tests {
             let leaves = create_leaves(num_leaves);
             // Compute the Merkle tree.
             let merkle_tree =
-                <<Circuit as Environment>::Network as snarkvm_console_network::Network>::multi_arity_merkle_tree_bhp::<
+                <<Circuit as Environment>::Network as snarkvm_console_network::Network>::k_ary_merkle_tree_bhp::<
                     DEPTH,
                     ARITY,
                 >(&leaves)?;
@@ -122,7 +122,7 @@ mod tests {
                 // let leaf: Vec<Boolean<_>> = Inject::new(mode, leaf.clone());
 
                 Circuit::scope(format!("New {mode}"), || {
-                    let candidate = MultiArityMerklePath::<Circuit, DEPTH, ARITY>::new(mode, merkle_path.clone());
+                    let candidate = KAryMerklePath::<Circuit, DEPTH, ARITY>::new(mode, merkle_path.clone());
                     assert_eq!(merkle_path, candidate.eject_value());
                     assert_scope!(num_constants, num_public, num_private, num_constraints);
                 });

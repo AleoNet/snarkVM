@@ -19,5 +19,5 @@
 
 pub use snarkvm_console_types::prelude::*;
 
+pub mod k_ary_merkle_tree;
 pub mod merkle_tree;
-pub mod multi_arity_merkle_tree;
