@@ -75,7 +75,8 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
             z.extend(s.iter().take(bitrate).cloned());
         }
         // return Z[0..l-1]
-        z.into_iter().take(VARIANT).collect()
+        z.truncate(VARIANT);
+        z
     }
 }
 
