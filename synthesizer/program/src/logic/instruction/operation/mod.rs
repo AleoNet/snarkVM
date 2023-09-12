@@ -42,9 +42,10 @@ mod sign_verify;
 pub use sign_verify::*;
 
 use crate::Opcode;
+use console::network::prelude::*;
+
 #[allow(unused)]
 use console::account::Signature;
-use console::network::prelude::*;
 
 pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
     /// The opcode of the operation.
