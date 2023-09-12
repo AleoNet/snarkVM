@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_console_algorithms::{Poseidon, BHP};
+use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
 
 #[cfg(not(feature = "serial"))]
@@ -61,5 +61,24 @@ impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
         input.extend(leaf);
         // Hash the input.
         Hash::hash(self, &input)
+    }
+}
+
+impl<const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<TYPE, VARIANT> {
+    type Hash = Field<Console>;
+    type Leaf = Vec<bool>;
+
+    /// Returns the hash of the given leaf node.
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<Self::Hash> {
+        // Prepend the leaf with a `false` bit.
+        let mut input = vec![false];
+        input.extend(leaf);
+        // Hash the input.
+        let output = Hash::hash(self, &input)?;
+
+        // TODO (raychu86): Mae the `Hash` Type generic instead to avoid this conversion.
+        // Convert the bits to a field element, truncating if necessary.
+        let bits: Vec<_> = output.iter().take(Self::Hash::size_in_data_bits()).copied().collect();
+        Self::Hash::from_bits_le(&bits)
     }
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_console_algorithms::{Poseidon, BHP};
+use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
 
 #[cfg(not(feature = "serial"))]
@@ -68,5 +68,25 @@ impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
         }
         // Hash the input.
         Hash::hash(self, &input)
+    }
+}
+
+impl<const TYPE: u8, const VARIANT: usize> PathHash for Keccak<TYPE, VARIANT> {
+    type Hash = Field<Console>;
+
+    /// Returns the hash of the given child nodes.
+    fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
+        // Prepend the nodes with a `true` bit.
+        let mut input = vec![true];
+        for child in children {
+            child.write_bits_le(&mut input);
+        }
+        // Hash the input.
+        let output = Hash::hash(self, &input)?;
+
+        // TODO (raychu86): Use the generic `Hash` type to avoid this conversion.
+        // Convert the bits to a field element, truncating if necessary.
+        let bits: Vec<_> = output.iter().take(Self::Hash::size_in_data_bits()).copied().collect();
+        Self::Hash::from_bits_le(&bits)
     }
 }
