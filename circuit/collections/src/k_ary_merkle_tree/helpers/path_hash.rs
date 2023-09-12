@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_circuit_algorithms::{Hash, Poseidon, BHP};
+use snarkvm_circuit_algorithms::{Hash, Keccak, Poseidon, BHP};
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash<E: Environment> {
@@ -56,6 +56,26 @@ impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
         }
         // Hash the input.
         Hash::hash(self, &input)
+    }
+}
+
+impl<E: Environment, const TYPE: u8, const VARIANT: usize> PathHash<E> for Keccak<E, TYPE, VARIANT> {
+    type Hash = Field<E>;
+
+    /// Returns the hash of the given child nodes.
+    fn hash_children(&self, children: &[Self::Hash]) -> Self::Hash {
+        // Prepend the nodes with a `true` bit.
+        let mut input = vec![Boolean::constant(true)];
+        for child in children {
+            child.write_bits_le(&mut input);
+        }
+        // Hash the input.
+        let output = Hash::hash(self, &input);
+
+        // TODO (raychu86): Use the generic `Hash` type to avoid this conversion.
+        // Convert the bits to a field element, truncating if necessary.
+        let bits: Vec<_> = output.iter().take(E::BaseField::size_in_data_bits()).cloned().collect();
+        Self::Hash::from_bits_le(&bits)
     }
 }
 
@@ -133,4 +153,6 @@ mod tests {
     fn test_hash_children_poseidon2_private() -> Result<()> {
         check_hash_children!(Poseidon2, Private, (1, 0, 540, 540))
     }
+
+    // TODO (raychu86): Add tests for Keccak and Sha3.
 }
