@@ -570,11 +570,17 @@ impl<N: Network> RegisterTypes<N> {
             "hash.bhp512",
             "hash.bhp768",
             "hash.bhp1024",
+            "hash.keccak256",
+            "hash.keccak384",
+            "hash.keccak512",
             "hash.ped64",
             "hash.ped128",
             "hash.psd2",
             "hash.psd4",
             "hash.psd8",
+            "hash.sha3_256",
+            "hash.sha3_384",
+            "hash.sha3_512",
             "hash_many.psd2",
             "hash_many.psd4",
             "hash_many.psd8",
@@ -601,6 +607,18 @@ impl<N: Network> RegisterTypes<N> {
                 matches!(instruction, Instruction::HashBHP1024(..)),
                 "Instruction '{instruction}' is not for opcode '{opcode}'."
             ),
+            "hash.keccak256" => ensure!(
+                matches!(instruction, Instruction::HashKeccak256(..)),
+                "Instruction '{instruction}' is not for opcode '{opcode}'."
+            ),
+            "hash.keccak384" => ensure!(
+                matches!(instruction, Instruction::HashKeccak384(..)),
+                "Instruction '{instruction}' is not for opcode '{opcode}'."
+            ),
+            "hash.keccak512" => ensure!(
+                matches!(instruction, Instruction::HashKeccak512(..)),
+                "Instruction '{instruction}' is not for opcode '{opcode}'."
+            ),
             "hash.ped64" => ensure!(
                 matches!(instruction, Instruction::HashPED64(..)),
                 "Instruction '{instruction}' is not for opcode '{opcode}'."
@@ -619,6 +637,18 @@ impl<N: Network> RegisterTypes<N> {
             ),
             "hash.psd8" => ensure!(
                 matches!(instruction, Instruction::HashPSD8(..)),
+                "Instruction '{instruction}' is not for opcode '{opcode}'."
+            ),
+            "hash.sha3_256" => ensure!(
+                matches!(instruction, Instruction::HashSha3_256(..)),
+                "Instruction '{instruction}' is not for opcode '{opcode}'."
+            ),
+            "hash.sha3_384" => ensure!(
+                matches!(instruction, Instruction::HashSha3_384(..)),
+                "Instruction '{instruction}' is not for opcode '{opcode}'."
+            ),
+            "hash.sha3_512" => ensure!(
+                matches!(instruction, Instruction::HashSha3_512(..)),
                 "Instruction '{instruction}' is not for opcode '{opcode}'."
             ),
             "hash_many.psd2" => ensure!(
