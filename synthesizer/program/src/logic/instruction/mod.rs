@@ -113,6 +113,14 @@ pub enum Instruction<N: Network> {
     HashBHP768(HashBHP768<N>),
     /// Performs a BHP hash on inputs of 1024-bit chunks.
     HashBHP1024(HashBHP1024<N>),
+    /// Performs a Keccak hash, outputting 224 bits.
+    HashKeccak224(HashKeccak224<N>),
+    /// Performs a Keccak hash, outputting 256 bits.
+    HashKeccak256(HashKeccak256<N>),
+    /// Performs a Keccak hash, outputting 384 bits.
+    HashKeccak384(HashKeccak384<N>),
+    /// Performs a Keccak hash, outputting 512 bits.
+    HashKeccak512(HashKeccak512<N>),
     /// Performs a Pedersen hash on up to a 64-bit input.
     HashPED64(HashPED64<N>),
     /// Performs a Pedersen hash on up to a 128-bit input.
@@ -123,6 +131,14 @@ pub enum Instruction<N: Network> {
     HashPSD4(HashPSD4<N>),
     /// Performs a Poseidon hash with an input rate of 8.
     HashPSD8(HashPSD8<N>),
+    /// Performs a SHA3 hash, outputting 224 bits.
+    HashSha3_224(HashSha3_224<N>),
+    /// Performs a SHA3 hash, outputting 256 bits.
+    HashSha3_256(HashSha3_256<N>),
+    /// Performs a SHA3 hash, outputting 384 bits.
+    HashSha3_384(HashSha3_384<N>),
+    /// Performs a SHA3 hash, outputting 512 bits.
+    HashSha3_512(HashSha3_512<N>),
     /// Performs a Poseidon hash with an input rate of 2.
     HashManyPSD2(HashManyPSD2<N>),
     /// Performs a Poseidon hash with an input rate of 4.
@@ -240,11 +256,19 @@ macro_rules! instruction {
             HashBHP512,
             HashBHP768,
             HashBHP1024,
+            HashKeccak224,
+            HashKeccak256,
+            HashKeccak384,
+            HashKeccak512,
             HashPED64,
             HashPED128,
             HashPSD2,
             HashPSD4,
             HashPSD8,
+            HashSha3_224,
+            HashSha3_256,
+            HashSha3_384,
+            HashSha3_512,
             HashManyPSD2,
             HashManyPSD4,
             HashManyPSD8,
@@ -445,7 +469,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            60,
+            68,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

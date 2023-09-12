@@ -21,6 +21,9 @@ pub use bhp::*;
 pub mod elligator2;
 pub use elligator2::Elligator2;
 
+pub mod keccak;
+pub use keccak::*;
+
 pub mod pedersen;
 pub use pedersen::*;
 
