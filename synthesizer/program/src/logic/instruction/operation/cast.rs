@@ -609,12 +609,16 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(struct_name)?;
-                // Ensure that the input types length is at least the minimum.
-                ensure!(
-                    input_types.len() >= N::MIN_STRUCT_ENTRIES,
-                    "Casting to a struct requires at least {} operand",
-                    N::MIN_STRUCT_ENTRIES
-                );
+
+                // Ensure the input types length is at least the minimum.
+                if input_types.len() < N::MIN_STRUCT_ENTRIES {
+                    bail!("Casting to a struct requires at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
+                }
+                // Ensure the number of members does not exceed the maximum.
+                if input_types.len() > N::MAX_STRUCT_ENTRIES {
+                    bail!("Casting to struct '{struct_}' cannot exceed {} members", N::MAX_STRUCT_ENTRIES)
+                }
+
                 // Ensure that the number of input types is equal to the number of struct members.
                 ensure!(
                     input_types.len() == struct_.members().len(),
@@ -645,12 +649,14 @@ impl<N: Network> Cast<N> {
                 }
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
-                // Ensure that the number of input types is at least the minimum.
-                ensure!(
-                    input_types.len() >= N::MIN_ARRAY_ELEMENTS,
-                    "Casting to an array requires at least {} operand",
-                    N::MIN_ARRAY_ELEMENTS
-                );
+                // Ensure the input types length is at least the minimum.
+                if input_types.len() < N::MIN_ARRAY_ELEMENTS {
+                    bail!("Casting to an array requires at least {} operand(s)", N::MIN_ARRAY_ELEMENTS)
+                }
+                // Ensure the number of elements does not exceed the maximum.
+                if input_types.len() > N::MAX_ARRAY_ELEMENTS {
+                    bail!("Casting to array '{array_type}' cannot exceed {} elements", N::MAX_ARRAY_ELEMENTS)
+                }
 
                 // Ensure that the number of input types is equal to the number of array entries.
                 if input_types.len() != **array_type.length() as usize {
@@ -691,11 +697,14 @@ impl<N: Network> Cast<N> {
                 let record = stack.program().get_record(record_name)?;
 
                 // Ensure the input types length is at least the minimum.
-                ensure!(
-                    input_types.len() >= N::MIN_RECORD_ENTRIES,
-                    "Casting to a record requires at least {} operands",
-                    N::MIN_RECORD_ENTRIES
-                );
+                if input_types.len() < N::MIN_RECORD_ENTRIES {
+                    bail!("Casting to a record requires at least {} operand(s)", N::MIN_RECORD_ENTRIES)
+                }
+                // Ensure the number of entries does not exceed the maximum.
+                if input_types.len() > N::MAX_RECORD_ENTRIES {
+                    bail!("Casting to record '{record_name}' cannot exceed {} members", N::MAX_RECORD_ENTRIES)
+                }
+
                 // Ensure that the number of input types is equal to the number of record entries, including the `owner`.
                 ensure!(
                     input_types.len() == record.entries().len() + 1,
