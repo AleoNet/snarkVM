@@ -91,8 +91,8 @@ macro_rules! operation {
         paste::paste! {
             #[cfg(test)]
             mod [<test _ $operate>] {
-                use super::$name;
-                use console::{network::prelude::*, types::*};
+                use super::*;
+                use console::types::*;
 
                 // Prepare the environment.
                 type CurrentNetwork = console::network::Testnet3;
@@ -146,8 +146,8 @@ macro_rules! operation {
         paste::paste! {
             #[cfg(test)]
             mod [<test _ $operate>] {
-                use super::$name;
-                use console::{network::prelude::*, types::*};
+                use super::*;
+                use console::types::*;
 
                 // Prepare the environment.
                 type CurrentNetwork = console::network::Testnet3;
@@ -883,7 +883,7 @@ mod tests {
 
                     // Check the operation on randomly-sampled values.
                     for i in 0..num_iterations {
-                        // Sample the first and second value.
+                        // Sample the first, second, and third values.
                         #[allow(deprecated)]
                         let (a, b, c) = match i {
                             0 => ($input_a::zero(), $input_b::zero(), $input_c::zero()),
@@ -902,7 +902,7 @@ mod tests {
 
                         // If `should_succeed` is `true`, compute the expected output.
                         let expected = match should_succeed {
-                            true => Some(console::program::Literal::$output($operator::$operate(&a, &b, &c))),
+                            true => Some(console::program::Literal::from_str(&format!("{}", $operator::$operate(&a, &b, &c)))?),
                             false => None
                         };
 
