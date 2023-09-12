@@ -60,7 +60,7 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
 
     /// Returns the finalize input types.
     pub fn input_types(&self) -> Vec<PlaintextType<N>> {
-        self.inputs.iter().map(|input| *input.plaintext_type()).collect()
+        self.inputs.iter().map(|input| input.plaintext_type()).cloned().collect()
     }
 
     /// Returns the finalize commands.

@@ -18,6 +18,7 @@ mod matches;
 use console::{
     network::prelude::*,
     program::{
+        Access,
         EntryType,
         Identifier,
         LiteralType,
@@ -25,7 +26,7 @@ use console::{
         RecordType,
         Register,
         RegisterType,
-        Struct,
+        StructType,
         ValueType,
     },
 };
@@ -103,88 +104,110 @@ impl<N: Network> RegisterTypes<N> {
         register: &Register<N>,
     ) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
-        let mut register_type = if self.is_input(register) {
+        let register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+            self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         } else {
             // Retrieve the destination register type.
-            *self
-                .destinations
-                .get(&register.locator())
-                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+            self.destinations.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         };
 
-        // Retrieve the member path if the register is a member. Otherwise, return the register type.
-        let path = match &register {
+        // Retrieve the path if the register is an access. Otherwise, return the register type.
+        let mut path_iter = match &register {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => return Ok(register_type),
-            // If the register is a member, then traverse the member path to output the register type.
-            Register::Member(_, path) => {
-                // Ensure the member path is valid.
-                ensure!(!path.is_empty(), "Register '{register}' references no members.");
-                // Output the member path.
+            Register::Locator(..) => return Ok(register_type.clone()),
+            // If the register is an access, then traverse the path to output the register type.
+            Register::Access(_, path) => {
+                // Ensure the path is valid.
+                ensure!(!path.is_empty(), "Register '{register}' references no accesses.");
+                // Output the path.
                 path
+            }
+        }
+        .iter();
+
+        // Because the register is an access, the accessed type must be a plaintext type.
+        // We perform a single access, if the register type is a record.
+        // This is done to minimize the number of `clone` operations.
+        let mut plaintext_type = &match register_type {
+            RegisterType::Plaintext(plaintext_type) => plaintext_type.clone(),
+            RegisterType::Record(record_name) => {
+                // Ensure the record type exists.
+                ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");
+                // Retrieve the first access.
+                // Note: this unwrap is safe since the path is checked to be non-empty above.
+                let access = path_iter.next().unwrap();
+                // Retrieve the member type from the record.
+                if access == &Access::Member(Identifier::from_str("owner")?) {
+                    // If the member is the owner, then output the address type.
+                    PlaintextType::Literal(LiteralType::Address)
+                } else {
+                    // Retrieve the path name.
+                    let path_name = match access {
+                        Access::Member(path_name) => path_name,
+                        Access::Index(_) => bail!("Attempted to index into a record"),
+                    };
+                    // Retrieve the entry type from the record.
+                    match stack.program().get_record(record_name)?.entries().get(path_name) {
+                        // Retrieve the plaintext type.
+                        Some(entry_type) => entry_type.plaintext_type().clone(),
+                        None => bail!("'{path_name}' does not exist in record '{record_name}'"),
+                    }
+                }
+            }
+            RegisterType::ExternalRecord(locator) => {
+                // Ensure the external record type exists.
+                ensure!(stack.contains_external_record(locator), "External record '{locator}' does not exist");
+                // Retrieve the first access.
+                // Note: this unwrap is safe since the path is checked to be non-empty above.
+                let access = path_iter.next().unwrap();
+                // Retrieve the member type from the external record.
+                if access == &Access::Member(Identifier::from_str("owner")?) {
+                    // If the member is the owner, then output the address type.
+                    PlaintextType::Literal(LiteralType::Address)
+                } else {
+                    // Retrieve the path name.
+                    let path_name = match access {
+                        Access::Member(path_name) => path_name,
+                        Access::Index(_) => bail!("Attempted to index into an external record"),
+                    };
+                    // Retrieve the entry type from the external record.
+                    match stack.get_external_record(locator)?.entries().get(path_name) {
+                        // Retrieve the plaintext type.
+                        Some(entry_type) => entry_type.plaintext_type().clone(),
+                        None => bail!("'{path_name}' does not exist in external record '{locator}'"),
+                    }
+                }
             }
         };
 
-        // Traverse the member path to find the register type.
-        for path_name in path.iter() {
-            // Update the register type at each step.
-            register_type = match &register_type {
-                // Ensure the plaintext type is not a literal, as the register references a member.
-                RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
-                // Traverse the member path to output the register type.
-                RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+        // Traverse the path to find the register type.
+        for access in path_iter {
+            // Update the plaintext type at each step.
+            match (plaintext_type, access) {
+                // Ensure the plaintext type is not a literal, as the register references an access.
+                (PlaintextType::Literal(..), _) => bail!("'{register}' references a literal."),
+                // Traverse the path to output the register type.
+                (PlaintextType::Struct(struct_name), Access::Member(identifier)) => {
                     // Retrieve the member type from the struct.
-                    match stack.program().get_struct(struct_name)?.members().get(path_name) {
+                    match stack.program().get_struct(struct_name)?.members().get(identifier) {
                         // Update the member type.
-                        Some(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                        None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
+                        Some(member_type) => plaintext_type = member_type,
+                        None => bail!("'{identifier}' does not exist in struct '{struct_name}'"),
                     }
                 }
-                RegisterType::Record(record_name) => {
-                    // Ensure the record type exists.
-                    ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");
-                    // Retrieve the member type from the record.
-                    if path_name == &Identifier::from_str("owner")? {
-                        // If the member is the owner, then output the address type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else {
-                        // Retrieve the entry type from the record.
-                        match stack.program().get_record(record_name)?.entries().get(path_name) {
-                            // Update the entry type.
-                            Some(entry_type) => match entry_type {
-                                EntryType::Constant(plaintext_type)
-                                | EntryType::Public(plaintext_type)
-                                | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                            },
-                            None => bail!("'{path_name}' does not exist in record '{record_name}'"),
-                        }
-                    }
-                }
-                RegisterType::ExternalRecord(locator) => {
-                    // Ensure the external record type exists.
-                    ensure!(stack.contains_external_record(locator), "External record '{locator}' does not exist");
-                    // Retrieve the member type from the external record.
-                    if path_name == &Identifier::from_str("owner")? {
-                        // If the member is the owner, then output the address type.
-                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else {
-                        // Retrieve the entry type from the external record.
-                        match stack.get_external_record(locator)?.entries().get(path_name) {
-                            // Update the entry type.
-                            Some(entry_type) => match entry_type {
-                                EntryType::Constant(plaintext_type)
-                                | EntryType::Public(plaintext_type)
-                                | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                            },
-                            None => bail!("'{path_name}' does not exist in external record '{locator}'"),
-                        }
-                    }
+                // Traverse the path to output the register type.
+                (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
+                    true => plaintext_type = array_type.next_element_type(),
+                    false => bail!("'{index}' is out of bounds for '{register}'"),
+                },
+                (PlaintextType::Struct(..), Access::Index(..)) | (PlaintextType::Array(..), Access::Member(..)) => {
+                    bail!("Invalid access `{access}`")
                 }
             }
         }
-        // Output the member type.
-        Ok(register_type)
+
+        // Output the register type.
+        Ok(RegisterType::Plaintext(plaintext_type.clone()))
     }
 }

@@ -224,8 +224,7 @@ where
         Ok(circuit_keys.pop().unwrap())
     }
 
-    /// Prove that the verifying key indeed includes a part of the reference string,
-    /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
+    /// Prove that the verifying key commitments commit to the indexed circuit's polynomials
     fn prove_vk(
         universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
@@ -273,8 +272,8 @@ where
         Ok(Self::Certificate::new(certificate))
     }
 
-    /// Verify that the verifying key indeed includes a part of the reference string,
-    /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
+    /// Verify that the verifying key commitments commit to the indexed circuit's polynomials
+    /// Verify that the verifying key's circuit_info is correct
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
         universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
@@ -282,36 +281,45 @@ where
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
+        // Ensure the VerifyingKey encodes the expected circuit.
         let circuit_id = &verifying_key.id;
-        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(std::iter::once(circuit_id));
+        let state = AHPForR1CS::<E::Fr, MM>::index_helper(circuit)?;
+        if state.index_info != verifying_key.circuit_info {
+            return Err(SNARKError::CircuitNotFound);
+        }
+        if state.id != *circuit_id {
+            return Err(SNARKError::CircuitNotFound);
+        }
+
         // Initialize sponge.
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
+
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
         // The linear combination requires `num_polynomials - 1` coefficients
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().unwrap();
-
-        let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, circuit_id, point)?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
+        let poly_info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(std::iter::once(circuit_id));
+        let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(state, circuit_id, point)?;
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
         let mut evaluation = E::Fr::zero();
-        for ((label, &c), eval) in info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
+        for ((label, &c), eval) in poly_info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
             lc.add(c, label.as_str());
             evaluation += c * eval;
         }
 
-        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(info.values())
+            .zip_eq(poly_info.values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
         let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
+        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
 
         SonicKZG10::<E, FS>::check_combinations(
             universal_verifier,
@@ -328,7 +336,7 @@ where
     #[allow(clippy::only_used_in_recursion)]
     /// This is the main entrypoint for creating proofs.
     /// You can find a specification of the prover algorithm in:
-    /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
+    /// https://github.com/AleoHQ/protocol-docs/tree/main/snark/varuna
     fn prove_batch<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,

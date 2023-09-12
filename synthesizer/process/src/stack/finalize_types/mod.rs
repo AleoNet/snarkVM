@@ -17,7 +17,7 @@ mod matches;
 
 use console::{
     network::prelude::*,
-    program::{Identifier, LiteralType, PlaintextType, Register, RegisterType, Struct},
+    program::{Identifier, LiteralType, PlaintextType, Register, RegisterType, StructType},
 };
 use synthesizer_program::{
     Command,
@@ -31,6 +31,7 @@ use synthesizer_program::{
     StackProgram,
 };
 
+use console::program::Access;
 use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -89,46 +90,54 @@ impl<N: Network> FinalizeTypes<N> {
         // Initialize a tracker for the type of the register.
         let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+            self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         } else {
             // Retrieve the destination register type.
-            *self
-                .destinations
-                .get(&register.locator())
-                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+            self.destinations.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         };
 
-        // Retrieve the member path if the register is a member. Otherwise, return the type.
+        // Retrieve the path if the register is an access. Otherwise, return the type.
         let path = match &register {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => return Ok(plaintext_type),
-            // If the register is a member, then traverse the member path to output the register type.
-            Register::Member(_, path) => {
-                // Ensure the member path is valid.
-                ensure!(!path.is_empty(), "Register '{register}' references no members.");
-                // Output the member path.
+            Register::Locator(..) => return Ok(plaintext_type.clone()),
+            // If the register is an access, then traverse the path to output the register type.
+            Register::Access(_, path) => {
+                // Ensure the path is valid.
+                ensure!(!path.is_empty(), "Register '{register}' references no accesses.");
+                // Output the path.
                 path
             }
         };
 
-        // Traverse the member path to find the register type.
-        for path_name in path.iter() {
-            // Update the register type at each step.
-            plaintext_type = match &plaintext_type {
-                // Ensure the plaintext type is not a literal, as the register references a member.
-                PlaintextType::Literal(..) => bail!("'{register}' references a literal."),
-                // Traverse the member path to output the register type.
-                PlaintextType::Struct(struct_name) => {
-                    // Retrieve the member type from the struct.
-                    match stack.program().get_struct(struct_name)?.members().get(path_name) {
-                        // Update the member type.
-                        Some(plaintext_type) => *plaintext_type,
-                        None => bail!("'{path_name}' does not exist in struct '{struct_name}'"),
+        // Traverse the path to find the register type.
+        for access in path.iter() {
+            match (&plaintext_type, access) {
+                // Ensure the plaintext type is not a literal, as the register references an access.
+                (PlaintextType::Literal(..), _) => bail!("'{register}' references a literal."),
+                // Access the member on the path to output the register type.
+                (PlaintextType::Struct(struct_name), Access::Member(identifier)) => {
+                    // Retrieve the member type from the struct and check that it exists.
+                    match stack.program().get_struct(struct_name)?.members().get(identifier) {
+                        // Retrieve the member and update `plaintext_type` for the next iteration.
+                        Some(member_type) => plaintext_type = member_type,
+                        // Halts if the member does not exist.
+                        None => bail!("'{identifier}' does not exist in struct '{struct_name}'"),
                     }
+                }
+                // Access the member on the path to output the register type and check that it is in bounds.
+                (PlaintextType::Array(array_type), Access::Index(index)) => match index < array_type.length() {
+                    // Retrieve the element type and update `plaintext_type` for the next iteration.
+                    true => plaintext_type = array_type.next_element_type(),
+                    // Halts if the index is out of bounds.
+                    false => bail!("Index out of bounds"),
+                },
+                (PlaintextType::Struct(..), Access::Index(..)) | (PlaintextType::Array(..), Access::Member(..)) => {
+                    bail!("Invalid access `{access}`")
                 }
             }
         }
-        // Output the member type.
-        Ok(plaintext_type)
+
+        // Return the output type.
+        Ok(plaintext_type.clone())
     }
 }

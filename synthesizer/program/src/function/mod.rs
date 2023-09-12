@@ -65,7 +65,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
 
     /// Returns the function input types.
     pub fn input_types(&self) -> Vec<ValueType<N>> {
-        self.inputs.iter().map(|input| *input.value_type()).collect()
+        self.inputs.iter().map(|input| input.value_type()).cloned().collect()
     }
 
     /// Returns the function instructions.
@@ -80,7 +80,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
 
     /// Returns the function output types.
     pub fn output_types(&self) -> Vec<ValueType<N>> {
-        self.outputs.iter().map(|output| *output.value_type()).collect()
+        self.outputs.iter().map(|output| output.value_type()).cloned().collect()
     }
 
     /// Returns the function finalize logic.

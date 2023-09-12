@@ -20,7 +20,7 @@ mod serialize;
 mod to_bits;
 mod to_fields;
 
-use crate::{Entry, Identifier, Literal, Plaintext, Record};
+use crate::{Access, Entry, Literal, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::ArrayType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
@@ -72,7 +73,7 @@ impl<N: Network> RegisterTypes<N> {
             ensure!(!matches!(input.value_type(), ValueType::Constant(..)), "Constant inputs are not supported");
 
             // Check the input register type.
-            register_types.check_input(stack, input.register(), &RegisterType::from(*input.value_type()))?;
+            register_types.check_input(stack, input.register(), &RegisterType::from(input.value_type().clone()))?;
         }
 
         // Step 2. Check the instructions are well-formed.
@@ -84,7 +85,7 @@ impl<N: Network> RegisterTypes<N> {
         // Step 3. Check the outputs are well-formed.
         for output in function.outputs() {
             // Check the output operand type.
-            register_types.check_output(stack, output.operand(), &RegisterType::from(*output.value_type()))?;
+            register_types.check_output(stack, output.operand(), &RegisterType::from(output.value_type().clone()))?;
         }
 
         // Step 4. If the function has a finalize command, check that its operands are all defined.
@@ -105,6 +106,7 @@ impl<N: Network> RegisterTypes<N> {
                 match register_type {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
                     RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => (),
                     RegisterType::Record(..) => {
                         bail!(
                             "'{}/{}' attempts to pass a 'record' into 'finalize'",
@@ -148,8 +150,8 @@ impl<N: Network> RegisterTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 
@@ -171,8 +173,8 @@ impl<N: Network> RegisterTypes<N> {
                     None => Ok(()),
                 }
             }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
         }
     }
 }
@@ -189,12 +191,8 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the struct is defined in the program.
-                if !stack.program().contains_struct(struct_name) {
-                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
+            RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -210,7 +208,7 @@ impl<N: Network> RegisterTypes<N> {
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), *register_type)?;
+        self.add_input(register.clone(), register_type.clone())?;
 
         // Ensure the register type and the input type match.
         if *register_type != self.get_type(stack, register)? {
@@ -222,7 +220,7 @@ impl<N: Network> RegisterTypes<N> {
     /// Ensure the given output register is well-formed.
     #[inline]
     fn check_output(
-        &mut self,
+        &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         operand: &Operand<N>,
         register_type: &RegisterType<N>,
@@ -243,12 +241,8 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the register type is defined in the program.
         match register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                // Ensure the struct is defined in the program.
-                if !stack.program().contains_struct(struct_name) {
-                    bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-                }
-            }
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
+            RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -300,7 +294,7 @@ impl<N: Network> RegisterTypes<N> {
         for (destination, destination_type) in
             instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
         {
-            // Ensure the destination register is a locator (and does not reference a member).
+            // Ensure the destination register is a locator (and does not reference an access).
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
             // Insert the destination register.
             self.add_destination(destination, destination_type)?;
@@ -312,7 +306,7 @@ impl<N: Network> RegisterTypes<N> {
     /// This method is called when adding a new closure or function to the program.
     #[inline]
     fn check_instruction_opcode(
-        &mut self,
+        &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
@@ -426,7 +420,10 @@ impl<N: Network> RegisterTypes<N> {
                         // Retrieve the struct.
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
-                        self.matches_struct(stack, instruction.operands(), &struct_)?;
+                        self.matches_struct(stack, instruction.operands(), struct_)?;
+                    }
+                    RegisterType::Plaintext(PlaintextType::Array(..)) => {
+                        bail!("Illegal operation: Cannot cast to an array yet.")
                     }
                     RegisterType::Record(record_name) => {
                         // Ensure the record type is defined in the program.
@@ -436,7 +433,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Retrieve the record type.
                         let record_type = stack.program().get_record(record_name)?;
                         // Ensure the operand types match the record type.
-                        self.matches_record(stack, instruction.operands(), &record_type)?;
+                        self.matches_record(stack, instruction.operands(), record_type)?;
                     }
                     RegisterType::ExternalRecord(_locator) => {
                         bail!("Illegal operation: Cannot cast to an external record.")
@@ -486,6 +483,42 @@ impl<N: Network> RegisterTypes<N> {
 }
 
 impl<N: Network> RegisterTypes<N> {
+    /// Ensures the struct exists in the program, and recursively-checks for array members.
+    pub(crate) fn check_struct(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        struct_name: &Identifier<N>,
+    ) -> Result<()> {
+        // Retrieve the struct from the program.
+        let Ok(struct_) = stack.program().get_struct(struct_name) else {
+            bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+        };
+
+        // If the struct contains arrays, ensure their base element types are defined in the program.
+        for member in struct_.members().values() {
+            match member {
+                PlaintextType::Literal(..) => (),
+                PlaintextType::Struct(struct_name) => Self::check_struct(stack, struct_name)?,
+                PlaintextType::Array(array_type) => Self::check_array(stack, array_type)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Ensure the base element type of the array is defined in the program.
+    pub(crate) fn check_array(
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        array_type: &ArrayType<N>,
+    ) -> Result<()> {
+        // If the base element type is a struct, check that it is defined in the program.
+        if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+            // Ensure the struct is defined in the program.
+            if !stack.program().contains_struct(struct_name) {
+                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
+            }
+        }
+        Ok(())
+    }
+
     /// Ensures the opcode is a valid opcode and corresponds to the `commit` instruction.
     #[inline]
     pub(crate) fn check_commit_opcode(opcode: &str, instruction: &Instruction<N>) -> Result<()> {

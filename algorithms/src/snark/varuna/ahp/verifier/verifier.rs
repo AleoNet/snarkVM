@@ -152,7 +152,7 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
-        assert!(!state.max_constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        assert!(!state.max_variable_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
         let message = ThirdMessage { beta };
         state.third_round_message = Some(message);
@@ -192,6 +192,7 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
     ) -> Result<State<TargetField, MM>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
+        assert!(!state.max_non_zero_domain.evaluate_vanishing_polynomial(gamma).is_zero());
 
         state.gamma = Some(gamma);
         Ok(state)

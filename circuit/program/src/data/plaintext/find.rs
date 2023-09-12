@@ -16,52 +16,50 @@ use super::*;
 
 impl<A: Aleo> Plaintext<A> {
     /// Returns the plaintext member from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Plaintext<A>> {
+    pub fn find<A0: Into<Access<A>> + Clone + Debug>(&self, path: &[A0]) -> Result<Plaintext<A>> {
         // Ensure the path is not empty.
         if path.is_empty() {
             A::halt("Attempted to find member with an empty path.")
         }
 
         match self {
-            // Halts if the value is not a struct.
-            Self::Literal(..) => A::halt("Literal is not a struct"),
+            // Halts if the value is not a struct or an array.
+            Self::Literal(..) => A::halt("A literal is not a struct or an array"),
             // Retrieve the value of the member (from the value).
-            Self::Struct(members, ..) => {
-                // Initialize the members starting from the top-level.
-                let mut submembers = members;
-
-                // Initialize the output.
-                let mut output = None;
+            Self::Struct(..) | Self::Array(..) => {
+                // Initialize the plaintext starting from the top-level.
+                let mut plaintext = self;
 
                 // Iterate through the path to retrieve the value.
-                for (i, identifier) in path.iter().enumerate() {
-                    // If this is not the last item in the path, ensure the value is a struct.
-                    if i != path.len() - 1 {
-                        match submembers.get(identifier) {
-                            // Halts if the member is not a struct.
-                            Some(Self::Literal(..)) => bail!("'{identifier}' must be a struct"),
-                            // Retrieve the member and update `submembers` for the next iteration.
-                            Some(Self::Struct(members, ..)) => submembers = members,
-                            // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in struct"),
+                for access in path.iter() {
+                    let access = access.clone().into();
+                    match (plaintext, &access) {
+                        (Self::Struct(members, ..), Access::Member(identifier)) => {
+                            match members.get(identifier) {
+                                // Retrieve the member and update `plaintext` for the next iteration.
+                                Some(member) => plaintext = member,
+                                // Halts if the member does not exist.
+                                None => bail!("Failed to locate member '{identifier}'"),
+                            }
                         }
-                    }
-                    // Otherwise, return the final member.
-                    else {
-                        match submembers.get(identifier) {
-                            // Return the plaintext member.
-                            Some(plaintext) => output = Some(plaintext.clone()),
-                            // Halts if the member does not exist.
-                            None => bail!("Failed to locate member '{identifier}' in struct"),
+                        (Self::Array(array, ..), Access::Index(index)) => {
+                            let index = match index.eject_mode() {
+                                Mode::Constant => index.eject_value(),
+                                _ => bail!("'{index}' must be a constant"),
+                            };
+                            match array.get(*index as usize) {
+                                // Retrieve the element and update `plaintext` for the next iteration.
+                                Some(element) => plaintext = element,
+                                // Halts if the element does not exist.
+                                None => bail!("Failed to locate element '{index}'"),
+                            }
                         }
+                        _ => bail!("Invalid access `{access}``"),
                     }
                 }
 
                 // Return the output.
-                match output {
-                    Some(output) => Ok(output),
-                    None => A::halt("Failed to locate member in struct from path"),
-                }
+                Ok(plaintext.clone())
             }
         }
     }

@@ -19,7 +19,7 @@ use crate::{
     TransactionStore,
     TransitionStore,
 };
-use console::prelude::*;
+use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
 use ledger_block::{Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
@@ -39,6 +39,8 @@ pub struct BlockMemory<N: Network> {
     header_map: MemoryMap<N::BlockHash, Header<N>>,
     /// The authority map.
     authority_map: MemoryMap<N::BlockHash, Authority<N>>,
+    /// The certificate map.
+    certificate_map: MemoryMap<Field<N>, (u32, u64)>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The confirmed transactions map.
@@ -61,6 +63,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
     type AuthorityMap = MemoryMap<N::BlockHash, Authority<N>>;
+    type CertificateMap = MemoryMap<Field<N>, (u32, u64)>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;
@@ -83,6 +86,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             reverse_id_map: MemoryMap::default(),
             header_map: MemoryMap::default(),
             authority_map: MemoryMap::default(),
+            certificate_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
@@ -115,6 +119,11 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the header map.
     fn header_map(&self) -> &Self::HeaderMap {
         &self.header_map
+    }
+
+    /// Returns the certificate map.
+    fn certificate_map(&self) -> &Self::CertificateMap {
+        &self.certificate_map
     }
 
     /// Returns the authority map.

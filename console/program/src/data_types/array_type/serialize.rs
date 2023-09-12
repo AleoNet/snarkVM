@@ -14,8 +14,8 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Struct<N> {
-    /// Serializes the struct into string or bytes.
+impl<N: Network> Serialize for ArrayType<N> {
+    /// Serializes the array type into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
@@ -24,25 +24,48 @@ impl<N: Network> Serialize for Struct<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Struct<N> {
-    /// Deserializes the struct from a string or bytes.
+impl<'de, N: Network> Deserialize<'de> for ArrayType<N> {
+    /// Deserializes the array type from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "struct"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "array type"),
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
 
-    type CurrentNetwork = Testnet3;
-
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &["struct message: owner as address; is_new as boolean; total_supply as u64;"];
+    pub(crate) const TEST_CASES: &[&str] = &[
+        "[boolean; 31u32]",
+        "[field; 32u32]",
+        "[group; 32u32]",
+        "[scalar; 32u32]",
+        "[u8; 1u32]",
+        "[u16; 1u32]",
+        "[u32; 1u32]",
+        "[u64; 1u32]",
+        "[u128; 1u32]",
+        "[i8; 1u32]",
+        "[i16; 1u32]",
+        "[i32; 1u32]",
+        "[i64; 1u32]",
+        "[i128; 1u32]",
+        "[signature; 1u32]",
+        "[foo; 4u32]",
+        "[bar; 4u32]",
+        "[[u8; 1u32]; 2u32]",
+        "[[[u8; 1u32]; 2u32]; 3u32]",
+        "[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]",
+        "[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]",
+        "[[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]; 6u32]",
+        "[[[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]; 6u32]; 7u32]",
+        "[[[[[[[[u8; 1u32]; 2u32]; 3u32]; 4u32]; 5u32]; 6u32]; 7u32]; 8u32]",
+    ];
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
@@ -77,14 +100,14 @@ mod tests {
     #[test]
     fn test_serde_json() {
         for case in TEST_CASES.iter() {
-            check_serde_json(Struct::<CurrentNetwork>::from_str(case).unwrap());
+            check_serde_json(ArrayType::<Testnet3>::from_str(case).unwrap());
         }
     }
 
     #[test]
     fn test_bincode() {
         for case in TEST_CASES.iter() {
-            check_bincode(Struct::<CurrentNetwork>::from_str(case).unwrap());
+            check_bincode(ArrayType::<Testnet3>::from_str(case).unwrap());
         }
     }
 }
