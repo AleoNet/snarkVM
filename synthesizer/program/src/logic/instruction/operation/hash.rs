@@ -20,6 +20,7 @@ use crate::{
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
+    types::Field,
 };
 
 /// BHP256 is a collision-resistant hash function that processes inputs in 256-bit chunks.
@@ -206,9 +207,9 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (1, _) => Literal::Group(N::hash_to_group_bhp512(&input.to_bits_le())?),
             (2, _) => Literal::Group(N::hash_to_group_bhp768(&input.to_bits_le())?),
             (3, _) => Literal::Group(N::hash_to_group_bhp1024(&input.to_bits_le())?),
-            (4, _) => bail!("'hash.keccak256' is not yet implemented"),
-            (5, _) => bail!("'hash.keccak384' is not yet implemented"),
-            (6, _) => bail!("'hash.keccak512' is not yet implemented"),
+            (4, _) => Literal::Group(N::hash_to_group_bhp256(&N::hash_keccak256(&input.to_bits_le())?)?),
+            (5, _) => Literal::Group(N::hash_to_group_bhp512(&N::hash_keccak384(&input.to_bits_le())?)?),
+            (6, _) => Literal::Group(N::hash_to_group_bhp512(&N::hash_keccak512(&input.to_bits_le())?)?),
             (7, _) => Literal::Group(N::hash_to_group_ped64(&input.to_bits_le())?),
             (8, _) => Literal::Group(N::hash_to_group_ped128(&input.to_bits_le())?),
             (9, LiteralType::Address) | (9, LiteralType::Group) => {
@@ -223,9 +224,9 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
                 Literal::Group(N::hash_to_group_psd8(&input.to_fields()?)?)
             }
             (11, _) => Literal::Field(N::hash_psd8(&input.to_fields()?)?),
-            (12, _) => bail!("'hash.sha3_256' is not yet implemented"),
-            (13, _) => bail!("'hash.sha3_384' is not yet implemented"),
-            (14, _) => bail!("'hash.sha3_512' is not yet implemented"),
+            (12, _) => Literal::Group(N::hash_to_group_bhp256(&N::hash_sha3_256(&input.to_bits_le())?)?),
+            (13, _) => Literal::Group(N::hash_to_group_bhp512(&N::hash_sha3_384(&input.to_bits_le())?)?),
+            (14, _) => Literal::Group(N::hash_to_group_bhp512(&N::hash_sha3_512(&input.to_bits_le())?)?),
             (15, _) => bail!("'hash_many.psd2' is not yet implemented"),
             (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
             (17, _) => bail!("'hash_many.psd8' is not yet implemented"),
@@ -259,9 +260,9 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (1, _) => circuit::Literal::Group(A::hash_to_group_bhp512(&input.to_bits_le())),
             (2, _) => circuit::Literal::Group(A::hash_to_group_bhp768(&input.to_bits_le())),
             (3, _) => circuit::Literal::Group(A::hash_to_group_bhp1024(&input.to_bits_le())),
-            (4, _) => bail!("'hash.keccak256' is not yet implemented"),
-            (5, _) => bail!("'hash.keccak384' is not yet implemented"),
-            (6, _) => bail!("'hash.keccak512' is not yet implemented"),
+            (4, _) => circuit::Literal::Group(A::hash_to_group_bhp256(&A::hash_keccak256(&input.to_bits_le()))),
+            (5, _) => circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_keccak384(&input.to_bits_le()))),
+            (6, _) => circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_keccak512(&input.to_bits_le()))),
             (7, _) => circuit::Literal::Group(A::hash_to_group_ped64(&input.to_bits_le())),
             (8, _) => circuit::Literal::Group(A::hash_to_group_ped128(&input.to_bits_le())),
             (9, LiteralType::Address) | (9, LiteralType::Group) => {
@@ -276,9 +277,9 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
                 circuit::Literal::Group(A::hash_to_group_psd8(&input.to_fields()))
             }
             (11, _) => circuit::Literal::Field(A::hash_psd8(&input.to_fields())),
-            (12, _) => bail!("'hash.sha3_256' is not yet implemented"),
-            (13, _) => bail!("'hash.sha3_384' is not yet implemented"),
-            (14, _) => bail!("'hash.sha3_512' is not yet implemented"),
+            (12, _) => circuit::Literal::Group(A::hash_to_group_bhp256(&A::hash_sha3_256(&input.to_bits_le()))),
+            (13, _) => circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_sha3_384(&input.to_bits_le()))),
+            (14, _) => circuit::Literal::Group(A::hash_to_group_bhp512(&A::hash_sha3_512(&input.to_bits_le()))),
             (15, _) => bail!("'hash_many.psd2' is not yet implemented"),
             (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
             (17, _) => bail!("'hash_many.psd8' is not yet implemented"),

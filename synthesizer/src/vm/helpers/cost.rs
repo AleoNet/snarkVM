@@ -118,19 +118,13 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Double(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThan(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThanOrEqual(_)) => Ok(2_000),
-        Command::Instruction(Instruction::HashBHP256(_)) => Ok(200_000),
+        Command::Instruction(Instruction::HashBHP256(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP512(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP768(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP1024(_)) => Ok(100_000),
-        Command::Instruction(Instruction::HashKeccak256(_)) => {
-            bail!("`hash.keccak256` is not supported in finalize yet.")
-        }
-        Command::Instruction(Instruction::HashKeccak384(_)) => {
-            bail!("`hash.keccak384` is not supported in finalize yet.")
-        }
-        Command::Instruction(Instruction::HashKeccak512(_)) => {
-            bail!("`hash.keccak512` is not supported in finalize yet.")
-        }
+        Command::Instruction(Instruction::HashKeccak256(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashKeccak384(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashKeccak512(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashPED64(_)) => Ok(20_000),
         Command::Instruction(Instruction::HashPED128(_)) => Ok(30_000),
         Command::Instruction(Instruction::HashPSD2(hash)) => match hash.destination_type() {
@@ -145,15 +139,9 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
             LiteralType::Address | LiteralType::Group => Ok(800_000),
             _ => Ok(200_000),
         },
-        Command::Instruction(Instruction::HashSha3_256(_)) => {
-            bail!("`hash.sha3_256` is not supported in finalize yet.")
-        }
-        Command::Instruction(Instruction::HashSha3_384(_)) => {
-            bail!("`hash.sha3_384` is not supported in finalize yet.")
-        }
-        Command::Instruction(Instruction::HashSha3_512(_)) => {
-            bail!("`hash.sha3_512` is not supported in finalize yet.")
-        }
+        Command::Instruction(Instruction::HashSha3_256(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashSha3_384(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashSha3_512(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashManyPSD2(_)) => {
             bail!("`hash_many.psd2` is not supported in finalize.")
         }

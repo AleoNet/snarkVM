@@ -28,11 +28,17 @@ use snarkvm_synthesizer_program::{
     HashBHP512,
     HashBHP768,
     HashInstruction,
+    HashKeccak256,
+    HashKeccak384,
+    HashKeccak512,
     HashPED128,
     HashPED64,
     HashPSD2,
     HashPSD4,
     HashPSD8,
+    HashSha3_256,
+    HashSha3_384,
+    HashSha3_512,
     Opcode,
     Operand,
     Program,
@@ -226,9 +232,17 @@ test_hash!(hash_bhp512, HashBHP512);
 test_hash!(hash_bhp768, HashBHP768);
 test_hash!(hash_bhp1024, HashBHP1024);
 
+test_hash!(hash_keccak256, HashKeccak256);
+test_hash!(hash_keccak384, HashKeccak384);
+test_hash!(hash_keccak512, HashKeccak512);
+
 test_hash!(hash_psd2, HashPSD2);
 test_hash!(hash_psd4, HashPSD4);
 test_hash!(hash_psd8, HashPSD8);
+
+test_hash!(hash_sha3_256, HashSha3_256);
+test_hash!(hash_sha3_384, HashSha3_384);
+test_hash!(hash_sha3_512, HashSha3_512);
 
 // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
 #[test]
