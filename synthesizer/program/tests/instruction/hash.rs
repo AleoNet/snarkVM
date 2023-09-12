@@ -20,7 +20,7 @@ use circuit::{AleoV0, Eject};
 use console::{
     network::Testnet3,
     prelude::*,
-    program::{Identifier, Literal, LiteralType, Plaintext, Register, Value},
+    program::{Identifier, Literal, LiteralType, Plaintext, PlaintextType, Register, Value},
 };
 use snarkvm_synthesizer_program::{
     HashBHP1024,
@@ -53,22 +53,22 @@ type CurrentAleo = AleoV0;
 const ITERATIONS: usize = 100;
 
 /// **Attention**: When changing this, also update in `src/logic/instruction/hash.rs`.
-fn valid_destination_types() -> &'static [LiteralType] {
+fn valid_destination_types<N: Network>() -> &'static [PlaintextType<N>] {
     &[
-        LiteralType::Address,
-        LiteralType::Field,
-        LiteralType::Group,
-        LiteralType::I8,
-        LiteralType::I16,
-        LiteralType::I32,
-        LiteralType::I64,
-        LiteralType::I128,
-        LiteralType::U8,
-        LiteralType::U16,
-        LiteralType::U32,
-        LiteralType::U64,
-        LiteralType::U128,
-        LiteralType::Scalar,
+        PlaintextType::Literal(LiteralType::Address),
+        PlaintextType::Literal(LiteralType::Field),
+        PlaintextType::Literal(LiteralType::Group),
+        PlaintextType::Literal(LiteralType::I8),
+        PlaintextType::Literal(LiteralType::I16),
+        PlaintextType::Literal(LiteralType::I32),
+        PlaintextType::Literal(LiteralType::I64),
+        PlaintextType::Literal(LiteralType::I128),
+        PlaintextType::Literal(LiteralType::U8),
+        PlaintextType::Literal(LiteralType::U16),
+        PlaintextType::Literal(LiteralType::U32),
+        PlaintextType::Literal(LiteralType::U64),
+        PlaintextType::Literal(LiteralType::U128),
+        PlaintextType::Literal(LiteralType::Scalar),
     ]
 }
 
@@ -78,7 +78,7 @@ fn sample_stack(
     opcode: Opcode,
     type_: LiteralType,
     mode: circuit::Mode,
-    destination_type: LiteralType,
+    destination_type: PlaintextType<CurrentNetwork>,
 ) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>, Register<CurrentNetwork>)> {
     // Initialize the opcode.
     let opcode = opcode.to_string();
@@ -116,12 +116,12 @@ fn check_hash<const VARIANT: u8>(
     operation: impl FnOnce(
         Vec<Operand<CurrentNetwork>>,
         Register<CurrentNetwork>,
-        LiteralType,
+        PlaintextType<CurrentNetwork>,
     ) -> HashInstruction<CurrentNetwork, VARIANT>,
     opcode: Opcode,
     literal: &Literal<CurrentNetwork>,
     mode: &circuit::Mode,
-    destination_type: LiteralType,
+    destination_type: PlaintextType<CurrentNetwork>,
 ) {
     println!("Checking '{opcode}' for '{literal}.{mode}'");
 
@@ -129,10 +129,10 @@ fn check_hash<const VARIANT: u8>(
     let type_ = literal.to_type();
 
     // Initialize the stack.
-    let (stack, operands, destination) = sample_stack(opcode, type_, *mode, destination_type).unwrap();
+    let (stack, operands, destination) = sample_stack(opcode, type_, *mode, destination_type.clone()).unwrap();
 
     // Initialize the operation.
-    let operation = operation(operands, destination.clone(), destination_type);
+    let operation = operation(operands, destination.clone(), destination_type.clone());
     // Initialize the function name.
     let function_name = Identifier::from_str("run").unwrap();
     // Initialize a destination operand.
@@ -177,7 +177,7 @@ fn check_hash<const VARIANT: u8>(
         match output_a {
             Value::Plaintext(Plaintext::Literal(literal, _)) => {
                 assert_eq!(
-                    literal.to_type(),
+                    PlaintextType::Literal(literal.to_type()),
                     destination_type,
                     "The output type is inconsistent with the declared type"
                 );
@@ -216,7 +216,7 @@ macro_rules! test_hash {
                                         opcode,
                                         literal,
                                         mode,
-                                        *destination_type,
+                                        destination_type.clone(),
                                     );
                                 }
                             }
@@ -275,7 +275,7 @@ fn test_hash_ped64_is_consistent() {
                                 $operation::<CurrentNetwork>::opcode(),
                                 literal,
                                 mode,
-                                *destination_type,
+                                destination_type.clone(),
                             );
                         }
                     }
@@ -319,7 +319,7 @@ fn test_hash_ped128_is_consistent() {
                                 $operation::<CurrentNetwork>::opcode(),
                                 literal,
                                 mode,
-                                *destination_type,
+                                destination_type.clone(),
                             );
                         }
                     }
