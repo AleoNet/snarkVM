@@ -54,6 +54,8 @@ pub enum LiteralType {
     U128,
     /// The scalar type (scalar field).
     Scalar,
+    /// The signature type.
+    Signature,
     /// The string type.
     String,
 }
@@ -77,6 +79,7 @@ impl LiteralType {
             Self::U64 => "u64",
             Self::U128 => "u128",
             Self::Scalar => "scalar",
+            Self::Signature => "signature",
             Self::String => "string",
         }
     }

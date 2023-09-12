@@ -33,6 +33,7 @@ impl<N: Network> Literal<N> {
             Self::U64(..) => LiteralType::U64,
             Self::U128(..) => LiteralType::U128,
             Self::Scalar(..) => LiteralType::Scalar,
+            Self::Signature(..) => LiteralType::Signature,
             Self::String(..) => LiteralType::String,
         }
     }

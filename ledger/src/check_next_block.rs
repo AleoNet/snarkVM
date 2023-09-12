@@ -65,25 +65,25 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // TODO (howardwu): Remove this after moving the total supply into credits.aleo.
         {
-            // Retrieve the latest total supply.
-            let latest_total_supply = self.latest_total_supply_in_microcredits();
-            // Retrieve the block reward from the first block ratification.
-            let block_reward = match block.ratifications()[0] {
-                Ratify::BlockReward(block_reward) => block_reward,
-                _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
-            };
-            // Retrieve the puzzle reward from the second block ratification.
-            let puzzle_reward = match block.ratifications()[1] {
-                Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
-                _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
-            };
-            // Compute the next total supply in microcredits.
-            let next_total_supply_in_microcredits =
-                update_total_supply(latest_total_supply, block_reward, puzzle_reward, block.transactions())?;
-            // Ensure the total supply in microcredits is correct.
-            if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
-                bail!("Invalid total supply in microcredits")
-            }
+            // // Retrieve the latest total supply.
+            // let latest_total_supply = self.latest_total_supply_in_microcredits();
+            // // Retrieve the block reward from the first block ratification.
+            // let block_reward = match block.ratifications()[0] {
+            //     Ratify::BlockReward(block_reward) => block_reward,
+            //     _ => bail!("Block {height} is invalid - the first ratification must be a block reward"),
+            // };
+            // // Retrieve the puzzle reward from the second block ratification.
+            // let puzzle_reward = match block.ratifications()[1] {
+            //     Ratify::PuzzleReward(puzzle_reward) => puzzle_reward,
+            //     _ => bail!("Block {height} is invalid - the second ratification must be a puzzle reward"),
+            // };
+            // // Compute the next total supply in microcredits.
+            // let next_total_supply_in_microcredits =
+            //     update_total_supply(latest_total_supply, block_reward, puzzle_reward, block.transactions())?;
+            // // Ensure the total supply in microcredits is correct.
+            // if next_total_supply_in_microcredits != block.total_supply_in_microcredits() {
+            //     bail!("Invalid total supply in microcredits")
+            // }
         }
 
         // Construct the finalize state.
@@ -108,7 +108,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                 ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
                     rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
                     rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
-                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee"))?,
+                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee transition"))?,
                 ),
                 // Reconstruct the unconfirmed execution transaction.
                 ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
@@ -118,10 +118,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        // Speculate over the unconfirmed transactions.
+        let (confirmed_transactions, _) =
+            self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?;
+
         // Ensure the transactions after speculation match.
-        if block.transactions()
-            != &self.vm.speculate(state, block.ratifications(), block.coinbase(), unconfirmed_transactions.iter())?
-        {
+        if block.transactions() != &confirmed_transactions {
             bail!("The transactions after speculation do not match the transactions in the block");
         }
 

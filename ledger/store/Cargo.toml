@@ -53,6 +53,11 @@ package = "snarkvm-ledger-committee"
 path = "../committee"
 version = "=0.14.6"
 
+[dependencies.ledger-narwhal-batch-certificate]
+package = "snarkvm-ledger-narwhal-batch-certificate"
+path = "../narwhal/batch-certificate"
+version = "=0.14.6"
+
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"
 path = "../../synthesizer/program"
@@ -115,7 +120,7 @@ path = "../../ledger/test-helpers"
 version = "2"
 
 [dev-dependencies.tempfile]
-version = "3.7"
+version = "3.8"
 
 [dev-dependencies.tracing-test]
 version = "0.2"

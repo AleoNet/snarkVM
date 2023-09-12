@@ -43,29 +43,77 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             .collect::<Result<Vec<_>>>()?;
         lap!(timer, "Prepare inputs");
 
-        // Compute the core logic.
+        // Authorize the call.
+        let result = self.authorize_raw(private_key, program_id, function_name, inputs, rng);
+        finish!(timer, "Authorize the call");
+        result
+    }
+
+    /// Authorizes the fee given the credits record, the fee amount (in microcredits),
+    /// and the deployment or execution ID.
+    #[inline]
+    pub fn authorize_fee_private<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        credits: Record<N, Plaintext<N>>,
+        fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
+        rng: &mut R,
+    ) -> Result<Authorization<N>> {
+        // Compute the authorization.
+        self.process.read().authorize_fee_private(
+            private_key,
+            credits,
+            fee_in_microcredits,
+            deployment_or_execution_id,
+            rng,
+        )
+    }
+
+    /// Authorizes the fee given the the fee amount (in microcredits) and the deployment or execution ID.
+    #[inline]
+    pub fn authorize_fee_public<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        fee_in_microcredits: u64,
+        deployment_or_execution_id: Field<N>,
+        rng: &mut R,
+    ) -> Result<Authorization<N>> {
+        // Compute the authorization.
+        self.process.read().authorize_fee_public(private_key, fee_in_microcredits, deployment_or_execution_id, rng)
+    }
+}
+
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
+    /// Authorizes a call to the program function for the given inputs.
+    #[inline]
+    fn authorize_raw<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        program_id: ProgramID<N>,
+        function_name: Identifier<N>,
+        inputs: Vec<Value<N>>,
+        rng: &mut R,
+    ) -> Result<Authorization<N>> {
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
-                let inputs = inputs.to_vec();
-
-                // Prepare the inputs.
-                let private_key = cast_ref!(&private_key as PrivateKey<$network>);
-                let program_id = cast_ref!(program_id as ProgramID<$network>);
-                let function_name = cast_ref!(function_name as Identifier<$network>);
-                let inputs = cast_ref!(inputs as Vec<Value<$network>>);
-
                 // Compute the authorization.
-                let authorization =
-                    $process.authorize::<$aleo, _>(private_key, program_id, function_name, inputs.iter(), rng)?;
-                lap!(timer, "Compute authorization");
-
-                finish!(timer);
-
-                // Return the authorization.
+                let authorization = $process.authorize::<$aleo, _>(
+                    cast_ref!(&private_key as PrivateKey<$network>),
+                    cast_ref!(program_id as ProgramID<$network>),
+                    cast_ref!(function_name as Identifier<$network>),
+                    cast_ref!(inputs as Vec<Value<$network>>).iter(),
+                    rng,
+                )?;
+                // Prepare the authorization.
                 Ok(cast_ref!(authorization as Authorization<N>).clone())
             }};
         }
-        // Process the logic.
-        process!(self, logic)
+
+        // Compute the authorization.
+        let timer = timer!("VM::authorize_raw");
+        let result = process!(self, logic);
+        finish!(timer, "Compute the authorization");
+        result
     }
 }

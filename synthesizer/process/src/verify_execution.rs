@@ -55,12 +55,16 @@ impl<N: Network> Process<N> {
         for transition in execution.transitions() {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
+            // Debug-mode only, as the `Transition` constructor recomputes the transition ID at initialization.
+            debug_assert_eq!(
+                **transition.id(),
+                N::hash_bhp512(&(transition.to_root()?, *transition.tcm()).to_bits_le())?,
+                "The transition ID is incorrect"
+            );
 
             // Ensure the transition is not a fee transition.
-            ensure!(!transition.is_fee(), "Fee transitions are not allowed in executions");
-
-            // Ensure the transition ID is correct.
-            ensure!(**transition.id() == transition.to_root()?, "The transition ID is incorrect");
+            let is_fee_transition = transition.is_fee_private() || transition.is_fee_public();
+            ensure!(!is_fee_transition, "Fee transitions are not allowed in executions");
             // Ensure the number of inputs is within the allowed range.
             ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
             // Ensure the number of outputs is within the allowed range.

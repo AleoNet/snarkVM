@@ -253,11 +253,6 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         *self.current_block.read().header()
     }
 
-    /// Returns the latest total supply in microcredits.
-    pub fn latest_total_supply_in_microcredits(&self) -> u64 {
-        self.current_block.read().header().total_supply_in_microcredits()
-    }
-
     /// Returns the latest block cumulative weight.
     pub fn latest_cumulative_weight(&self) -> u128 {
         self.current_block.read().cumulative_weight()
@@ -288,9 +283,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.current_block.read().last_coinbase_target()
     }
 
-    /// Returns the last coinbase height.
-    pub fn last_coinbase_height(&self) -> u32 {
-        self.current_block.read().last_coinbase_height()
+    /// Returns the last coinbase timestamp.
+    pub fn last_coinbase_timestamp(&self) -> i64 {
+        self.current_block.read().last_coinbase_timestamp()
     }
 
     /// Returns the latest block timestamp.
@@ -338,12 +333,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Initialize an RNG.
         let rng = &mut ::rand::thread_rng();
 
-        // Prepare the fee.
-        let fee_record = records.next().unwrap().clone();
-        let fee = (fee_record, priority_fee_in_microcredits);
+        // Prepare the fee record.
+        let fee_record = Some(records.next().unwrap().clone());
 
         // Create a new deploy transaction.
-        self.vm.deploy(private_key, program, fee, query, rng)
+        self.vm.deploy(private_key, program, fee_record, priority_fee_in_microcredits, query, rng)
     }
 
     /// Creates a transfer transaction.
@@ -373,11 +367,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         ];
 
         // Prepare the fee.
-        let fee_record = records.next().unwrap().clone();
-        let fee = Some((fee_record, priority_fee_in_microcredits));
+        let fee_record = Some(records.next().unwrap().clone());
 
         // Create a new execute transaction.
-        self.vm.execute(private_key, ("credits.aleo", "transfer_private"), inputs.iter(), fee, query, rng)
+        self.vm.execute(
+            private_key,
+            ("credits.aleo", "transfer_private"),
+            inputs.iter(),
+            fee_record,
+            priority_fee_in_microcredits,
+            query,
+            rng,
+        )
     }
 }
 

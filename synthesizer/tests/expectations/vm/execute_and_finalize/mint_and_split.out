@@ -1,11 +1,11 @@
 - execute:
     mint_and_split.aleo/mint:
       outputs:
-      - '{"type":"record","id":"6798870324509454244889747913155652074230983649490264906298965812874457453320field","checksum":"529929875542982039096535673348389015373664732252371606600475317354226875454field","value":"record1qyqsq4xmpx82trf0hc3xmrgn7uu4p9tpnldxuwqjkwtxe48j6pvgztssqyxx66trwfhkxun9v35hguerqqpqzqyjjvqjckdq482e2uv348kthzrt4603myclkhcyhh0e3enxslnypqrx0tft7rrrr3er5ry42m84xrgy70peqwna5ep4wav8zcxch3hqk8dnlgq"}'
+      - '{"type":"record","id":"7636508513753843688255477046613755926717864376364314808857555307422986366583field","checksum":"2724303349197854838397688958932042996013299317300510410551052639216931686578field","value":"record1qyqspznunw4usdtcqwznvpm3f73dlfxcmg07emews5rxsvfp8jelaqs3qyxx66trwfhkxun9v35hguerqqpqzqqjmj4kl3w0fh0dhqy67c47xgw7ftfdkhplztykwwr7mgnn8cm3q50aufvdjh84e3325vgsq98uzgdxyscfrymgz6j5p6txj0u06ngskkug8kd"}'
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4786601307955281656394443437255302938840126576083152363641245664637334033252field","checksum":"6895791286448785213129716567466089936293950604029951839374797665126774348675field","value":"record1qyqspsntq9lyrn2603ehf82uglnfp6390jhs0zjrqezkf2z8xyzk58qgqyxx66trwfhkxun9v35hguerqqpqzq89e2h24eu2k8l2tj48ustgznta22lkhkmt42kpzvpyj9lfwpwkqushlg633z9rt7ygwxkygacnjdq8wvutqfcjeu43et30jahzl88pq7azyp5"}'
+      - '{"type":"record","id":"3003819283955589038983072236083841903504975474051796935082714237669913637363field","checksum":"6440914470708448104097912912824466163110393894701234596744814889347424299071field","value":"record1qyqsq50ffm6tzf7q3z553quhrp773gjvntv3htpc3s7zfkdpndaqx3cxqyxx66trwfhkxun9v35hguerqqpqzq9qwkczwd6ka5ngvfsz3m8dzypc7h984709ffwcj2f452zwhc3wq3gz2rjx9tgewnzxeyaurzdrunjpevr505mk8suj2p7y0dp6xxuquhz3u0u"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.

@@ -25,6 +25,25 @@ pub struct FinalizeGlobalState {
 }
 
 impl FinalizeGlobalState {
+    /// Initializes a new genesis global state.
+    #[inline]
+    pub fn new_genesis<N: Network>() -> Result<Self> {
+        // Initialize the parameters.
+        let block_round = 0;
+        let block_height = 0;
+        let block_cumulative_weight = 0;
+        let block_cumulative_proof_target = 0;
+        let previous_block_hash = N::BlockHash::default();
+        // Return the new global state.
+        Self::new::<N>(
+            block_round,
+            block_height,
+            block_cumulative_weight,
+            block_cumulative_proof_target,
+            previous_block_hash,
+        )
+    }
+
     /// Initializes a new global state from the given inputs.
     #[inline]
     pub fn new<N: Network>(

@@ -21,7 +21,7 @@ use snarkvm_console_network::prelude::*;
 
 use enum_index::EnumIndex;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
+#[derive(Clone, PartialEq, Eq, Hash, EnumIndex)]
 pub enum ValueType<N: Network> {
     /// A constant type.
     Constant(PlaintextType<N>),

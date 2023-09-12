@@ -25,6 +25,7 @@ mod to_type;
 mod variant;
 
 use crate::LiteralType;
+use snarkvm_console_account::{ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
 
@@ -61,6 +62,8 @@ pub enum Literal<N: Network> {
     U128(U128<N>),
     /// The scalar type.
     Scalar(Scalar<N>),
+    /// The signature type.
+    Signature(Box<Signature<N>>),
     /// The string type.
     String(StringType<N>),
 }

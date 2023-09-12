@@ -10,9 +10,9 @@
       - 7i64
       - 8u128
       - 10field
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4690434529858372297216218602724220752843133729074654073042743228011368536476field","checksum":"4934664862398260205374211142263468485259197348289565825488838729190272874320field","value":"record1qyqspdtuas7xpngj4z7rzq3vutjmzxx8kwfpw0l8sd5mttw52rxd5rg9qyxx66trwfhkxun9v35hguerqqpqzqxfjsyz2xljnzed0u24gfqaf356mk3x2gsrjy36g2nxqs20p2tnpf0j6cnqrysxxf7mdh2jhe4fgpeud7dw5j9dagp03ayggazlvw0sstjmljw"}'
+      - '{"type":"record","id":"3472186409303077066237018585328322601253270839712500932267769401205533207698field","checksum":"7014357398738404462732001899291900700096012313415284224344694601653297526564field","value":"record1qyqspqgrj0f99jd9hc24k4tlye4e50ggza7vezwng4jg5upfrfrm79q9qyxx66trwfhkxun9v35hguerqqpqzq9zq3m63q527fhc0lp3py9f5xhkysmaqwj2dgesz9352ccnnglkprqa5c8wld49ey9l9wjkv0uuuwtzuzlamswyj9udt8y86c07kdzsjazuz7k"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -28,9 +28,9 @@
           fourth: 0field,
           fifth: 0field
         }
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"6294175323881659340061588133757308662003146844588299742660330033996430320537field","checksum":"4357057780490763043327404179788523841530149852564125532546444012284388702202field","value":"record1qyqsqu02lgu06kat3uq6ajmtffhn0gst4j80ahrt7zjrrq0cgpkpedgrqyxx66trwfhkxun9v35hguerqqpqzqykcg2pd86nmxlamal3nk2qeu98r6etavtrj52l9m64up0vp0j2q8wl4hap6f0zpcyau6cv5z3a7jv7wxcqr5mrs43jufnlmn7kpc6pzf5agsr"}'
+      - '{"type":"record","id":"7227417933957868865138061773118540015003610277298132008373417009193880563642field","checksum":"2179958313697120353642110536007384714336253089745792536670970036661750878264field","value":"record1qyqsqve6es35jjn7njhp60aeqrn2vy044pk4yrjpantynxrngmhxckc9qyxx66trwfhkxun9v35hguerqqpqzqxfrsx3eyja78e2h8ey6xwaqpfj7ugq85ysh4ym5h7lshlkmkfxqtr7p928u97ctwzrvatugnflesmz0ype7uqstkgz48l3t4vkd3ks65mhx5j"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
@@ -39,22 +39,22 @@
       outputs: []
       finalize:
       - 0field
-      - 'true'
-    credits.aleo/fee:
+      - 'false'
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"1930807833239891597558266244843806315757365370192277018045211893099287451025field","checksum":"806673872190416061168942650433027586905022070636283233373521919115959133547field","value":"record1qyqsqy26dhdkfuj8n70v8wv7uyr6m4dg0zkjhd26cevcjm2vrsjkwwc2qyxx66trwfhkxun9v35hguerqqpqzqphltxgzyjxk8m0h6per29vyvf0lsz8djj2rakmpwcnt9qjz8phpvwtrqx3epu3hk4f56e7dnxyjz6cagmkgty6gpgvwtpm3a620unqxxueg7k"}'
+      - '{"type":"record","id":"303004276342090357821977667015895323353902804387888818729334589647621600509field","checksum":"8373408082833929298353246021789819686446463046896079639790998234853530403591field","value":"record1qyqsp7xl8q6sdp07tev3nvdu4xnd4v9erj7x8c7yzgugj62u3zu7yzcrqyxx66trwfhkxun9v35hguerqqpqzqyz2lz2gtqk3u655w9x69z5ru5tyr9msqdg2fxfzsfeeezwlyyrzpenpws9xxrljh4jmh6ejed5n7z7ufk6q2ws3d3g3zgmpvl0a4eqyx0ft3j"}'
       finalize: []
-  speculate: the execution was accepted
+  speculate: the execution was rejected
   add_next_block: succeeded.
 - execute:
     test_rand.aleo/rand_chacha_check:
       outputs: []
       finalize:
       - 1field
-      - 'false'
-    credits.aleo/fee:
+      - 'true'
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"7393075560667462932228445526523815064117532456259901391879320918363476371812field","checksum":"694815795049196892664847520235186663696181395447757923101700704468232929818field","value":"record1qyqsp249v9rv3g6re8d0apfr8vfrmmm00kwt68nn7pzvvj0ugnv38zcsqyxx66trwfhkxun9v35hguerqqpqzqzv54s2s8t0a4efe0ar3nd0s97yc3f3lmcyuhl97ltc79slp2n8z29lzdgzcg4mwzsc7dtr64t57rpyvgswpvq0xdeeznxy7tzz7a9pzh9j54h"}'
+      - '{"type":"record","id":"4157514551570108997872728987003577682055425864981733910887064028654539376638field","checksum":"3625436013477864627536848756258403730952397125736544732632973040806276354797field","value":"record1qyqsp7lvh3d9gtwr0dnd220305xz6phdh98pf96xdmyj7jvw0trrgds2qyxx66trwfhkxun9v35hguerqqpqzqqhkhduev2847kccrawv3jlplr67ng82yuryytm0740gqa6g9rnqgv3ztcjlykgll2t2pf4xfp7l029kmalseku6cn0mqad0p79nl0qy4220ar"}'
       finalize: []
-  speculate: the execution was rejected
+  speculate: the execution was accepted
   add_next_block: succeeded.
