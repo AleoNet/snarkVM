@@ -21,11 +21,17 @@ use snarkvm_circuit_algorithms::{
     HashToGroup,
     HashToScalar,
     HashUncompressed,
+    Keccak256,
+    Keccak384,
+    Keccak512,
     Pedersen128,
     Pedersen64,
     Poseidon2,
     Poseidon4,
     Poseidon8,
+    Sha3_256,
+    Sha3_384,
+    Sha3_512,
     BHP1024,
     BHP256,
     BHP512,
@@ -64,6 +70,13 @@ thread_local! {
     /// The BHP hash function, which can take an input of up to 1024 bits.
     static BHP_1024: BHP1024<AleoV0> = BHP1024::<AleoV0>::constant(console::BHP_1024.clone());
 
+    /// The Keccak hash function, which outputs 256 bits.
+    static KECCAK_256: Keccak256<AleoV0> = Keccak256::<AleoV0>::new();
+    /// The Keccak hash function, which outputs 384 bits.
+    static KECCAK_384: Keccak384<AleoV0> = Keccak384::<AleoV0>::new();
+    /// The Keccak hash function, which outputs 512 bits.
+    static KECCAK_512: Keccak512<AleoV0> = Keccak512::<AleoV0>::new();
+
     /// The Pedersen hash function, which can take an input of up to 64 bits.
     static PEDERSEN_64: Pedersen64<AleoV0> = Pedersen64::<AleoV0>::constant(console::PEDERSEN_64.clone());
     /// The Pedersen hash function, which can take an input of up to 128 bits.
@@ -75,6 +88,13 @@ thread_local! {
     static POSEIDON_4: Poseidon4<AleoV0> = Poseidon4::<AleoV0>::constant(console::POSEIDON_4.clone());
     /// The Poseidon hash function, using a rate of 8.
     static POSEIDON_8: Poseidon8<AleoV0> = Poseidon8::<AleoV0>::constant(console::POSEIDON_8.clone());
+
+    /// The SHA-3 hash function, which outputs 256 bits.
+    static SHA3_256: Sha3_256<AleoV0> = Sha3_256::<AleoV0>::new();
+    /// The SHA-3 hash function, which outputs 384 bits.
+    static SHA3_384: Sha3_384<AleoV0> = Sha3_384::<AleoV0>::new();
+    /// The SHA-3 hash function, which outputs 512 bits.
+    static SHA3_512: Sha3_512<AleoV0> = Sha3_512::<AleoV0>::new();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -187,6 +207,21 @@ impl Aleo for AleoV0 {
         BHP_1024.with(|bhp| bhp.hash(input))
     }
 
+    /// Returns the Keccak hash with a 256-bit output.
+    fn hash_keccak256(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
+        KECCAK_256.with(|keccak| keccak.hash(input))
+    }
+
+    /// Returns the Keccak hash with a 384-bit output.
+    fn hash_keccak384(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
+        KECCAK_384.with(|keccak| keccak.hash(input))
+    }
+
+    /// Returns the Keccak hash with a 512-bit output.
+    fn hash_keccak512(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
+        KECCAK_512.with(|keccak| keccak.hash(input))
+    }
+
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[Boolean<Self>]) -> Field<Self> {
         PEDERSEN_64.with(|pedersen| pedersen.hash(input))
@@ -210,6 +245,21 @@ impl Aleo for AleoV0 {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self> {
         POSEIDON_8.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns the SHA-3 hash with a 256-bit output.
+    fn hash_sha3_256(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
+        SHA3_256.with(|sha3| sha3.hash(input))
+    }
+
+    /// Returns the SHA-3 hash with a 384-bit output.
+    fn hash_sha3_384(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
+        SHA3_384.with(|sha3| sha3.hash(input))
+    }
+
+    /// Returns the SHA-3 hash with a 512-bit output.
+    fn hash_sha3_512(input: &[Boolean<Self>]) -> Vec<Boolean<Self>> {
+        SHA3_512.with(|sha3| sha3.hash(input))
     }
 
     /// Returns the extended Poseidon hash with an input rate of 2.
