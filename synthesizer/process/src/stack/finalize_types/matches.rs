@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use console::program::ArrayType;
 
 impl<N: Network> FinalizeTypes<N> {
     /// Checks that the given operands matches the layout of the struct. The ordering of the operands matters.

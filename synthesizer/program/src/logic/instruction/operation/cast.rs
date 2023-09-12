@@ -29,6 +29,7 @@ use crate::{
 use console::{
     network::prelude::*,
     program::{
+        ArrayType,
         Entry,
         EntryType,
         Identifier,
@@ -46,7 +47,6 @@ use console::{
     types::Field,
 };
 
-use console::program::ArrayType;
 use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -352,7 +352,11 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_))) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_STRUCT_ENTRIES {
-                    bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+                    bail!("Casting to a struct requires at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
+                }
+                // Ensure the number of members does not exceed the maximum.
+                if inputs.len() > N::MAX_STRUCT_ENTRIES {
+                    bail!("Casting to struct '{struct_}' cannot exceed {} members", N::MAX_STRUCT_ENTRIES)
                 }
 
                 // Retrieve the struct and ensure it is defined in the program.
@@ -396,7 +400,11 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_ARRAY_ELEMENTS {
-                    bail!("Casting to an array requires at least {} operand", N::MIN_ARRAY_ELEMENTS)
+                    bail!("Casting to an array requires at least {} operand(s)", N::MIN_ARRAY_ELEMENTS)
+                }
+                // Ensure the number of elements does not exceed the maximum.
+                if inputs.len() > N::MAX_ARRAY_ELEMENTS {
+                    bail!("Casting to array '{array_type}' cannot exceed {} elements", N::MAX_ARRAY_ELEMENTS)
                 }
 
                 // Ensure that the number of operands is equal to the number of array entries.
@@ -435,7 +443,11 @@ impl<N: Network> Cast<N> {
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
-                    bail!("Casting to a record requires at least {} operand", N::MIN_RECORD_ENTRIES)
+                    bail!("Casting to a record requires at least {} operand(s)", N::MIN_RECORD_ENTRIES)
+                }
+                // Ensure the number of entries does not exceed the maximum.
+                if inputs.len() > N::MAX_RECORD_ENTRIES {
+                    bail!("Casting to record '{record_name}' cannot exceed {} members", N::MAX_RECORD_ENTRIES)
                 }
 
                 // Retrieve the struct and ensure it is defined in the program.

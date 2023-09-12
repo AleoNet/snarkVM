@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use super::*;
-use console::program::ArrayType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
