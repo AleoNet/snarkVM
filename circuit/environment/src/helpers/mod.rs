@@ -40,3 +40,6 @@ pub use variable::*;
 
 pub mod r1cs;
 pub use r1cs::*;
+
+pub mod updatable_count;
+pub use updatable_count::*;

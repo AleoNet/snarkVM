@@ -127,7 +127,7 @@ pub fn proving_rewards<N: Network>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{prelude::TestRng, types::Group};
+    use console::prelude::TestRng;
 
     use indexmap::indexmap;
 
@@ -256,7 +256,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random address.
-            let address = Address::new(Group::rand(rng));
+            let address = Address::rand(rng);
             // Sample a random puzzle reward.
             let puzzle_reward = rng.gen_range(0..MAX_COINBASE_REWARD);
 
@@ -275,7 +275,7 @@ mod tests {
         // Ensure a proving reward that is too large, renders no rewards.
         for _ in 0..ITERATIONS {
             // Sample a random address.
-            let address = Address::new(Group::rand(rng));
+            let address = Address::rand(rng);
             // Sample a random overly-large puzzle reward.
             let puzzle_reward = rng.gen_range(MAX_COINBASE_REWARD..u64::MAX);
             // Sample a random proof target.
@@ -290,7 +290,7 @@ mod tests {
     fn test_proving_rewards_is_empty() {
         let rng = &mut TestRng::default();
         // Sample a random address.
-        let address = Address::new(Group::rand(rng));
+        let address = Address::rand(rng);
 
         // Compute the proving rewards (empty).
         let rewards = proving_rewards::<CurrentNetwork>(vec![], rng.gen());
