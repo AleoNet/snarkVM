@@ -40,7 +40,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let expected = Address::<CurrentEnvironment>::rand(&mut rng);
 
             let given_bits = expected.to_bits_le();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), given_bits.len());
@@ -63,7 +63,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let expected = Address::<CurrentEnvironment>::rand(&mut rng);
 
             let given_bits = expected.to_bits_be();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), given_bits.len());

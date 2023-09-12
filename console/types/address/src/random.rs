@@ -14,10 +14,10 @@
 
 use super::*;
 
-impl<E: Environment> Address<E> {
-    /// Returns the address as a group element.
-    pub const fn to_group(&self) -> &Group<E> {
-        &self.address
+impl<E: Environment> Distribution<Address<E>> for Standard {
+    #[inline]
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Address<E> {
+        Address::new(Uniform::rand(rng))
     }
 }
 
@@ -26,25 +26,27 @@ mod tests {
     use super::*;
     use snarkvm_console_network_environment::Console;
 
+    use std::collections::HashSet;
+
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 10_000;
+    const ITERATIONS: usize = 100;
 
     #[test]
-    fn test_to_group() -> Result<()> {
+    fn test_random() {
+        // Initialize a set to store all seen random elements.
+        let mut set = HashSet::with_capacity(ITERATIONS);
+
         let mut rng = TestRng::default();
 
+        // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let address = Address::<CurrentEnvironment>::rand(&mut rng);
+            let address: Address<CurrentEnvironment> = Uniform::rand(&mut rng);
+            assert!(!set.contains(&address));
 
-            let candidate = address.to_group();
-
-            let expected = address.to_bits_le();
-            for (index, candidate_bit) in candidate.to_bits_le().iter().enumerate() {
-                assert_eq!(expected[index], *candidate_bit);
-            }
+            // Add the new random value to the set.
+            set.insert(address);
         }
-        Ok(())
     }
 }
