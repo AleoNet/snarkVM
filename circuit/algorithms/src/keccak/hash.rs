@@ -178,8 +178,6 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>> {
         debug_assert_eq!(a.len(), MODULO * MODULO, "The input vector 'a' must have {} elements", MODULO * MODULO);
 
-        const WEIGHT: usize = MODULO - 1;
-
         /* The first part of Algorithm 3, θ:
          *
          * for x = 0 to 4 do
@@ -189,7 +187,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          *   end for
          * end for
          */
-        let mut c = Vec::with_capacity(WEIGHT);
+        let mut c = Vec::with_capacity(MODULO);
         for x in 0..MODULO {
             c.push(&a[x] ^ &a[x + MODULO] ^ &a[x + (2 * MODULO)] ^ &a[x + (3 * MODULO)] ^ &a[x + (4 * MODULO)]);
         }
@@ -203,11 +201,11 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          *   end for
          * end for
          */
-        let mut d = Vec::with_capacity(WEIGHT);
+        let mut d = Vec::with_capacity(MODULO);
         for x in 0..MODULO {
             d.push(&c[(x + 4) % MODULO] ^ Self::rotate_left(&c[(x + 1) % MODULO], 63));
         }
-        let mut a_1 = Vec::with_capacity(WEIGHT * WEIGHT);
+        let mut a_1 = Vec::with_capacity(MODULO * MODULO);
         for y in 0..MODULO {
             for x in 0..MODULO {
                 a_1.push(&a[x + (y * MODULO)] ^ &d[x]);
@@ -249,7 +247,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          *   end for
          * end for
          */
-        let mut a_3 = Vec::with_capacity(WEIGHT * WEIGHT);
+        let mut a_3 = Vec::with_capacity(MODULO * MODULO);
         for y in 0..MODULO {
             for x in 0..MODULO {
                 let a = &a_2[x + (y * MODULO)];
