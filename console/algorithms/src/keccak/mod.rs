@@ -22,23 +22,25 @@ use snarkvm_console_types::environment::prelude::*;
 
 use tiny_keccak::{Hasher, Keccak as TinyKeccak, Sha3 as TinySha3};
 
+use std::marker::PhantomData;
+
 /// The Keccak-224 hash function.
-pub type Keccak224 = Keccak<{ KeccakType::Keccak as u8 }, 224>;
+pub type Keccak224<E> = Keccak<E, { KeccakType::Keccak as u8 }, 224>;
 /// The Keccak-256 hash function.
-pub type Keccak256 = Keccak<{ KeccakType::Keccak as u8 }, 256>;
+pub type Keccak256<E> = Keccak<E, { KeccakType::Keccak as u8 }, 256>;
 /// The Keccak-384 hash function.
-pub type Keccak384 = Keccak<{ KeccakType::Keccak as u8 }, 384>;
+pub type Keccak384<E> = Keccak<E, { KeccakType::Keccak as u8 }, 384>;
 /// The Keccak-512 hash function.
-pub type Keccak512 = Keccak<{ KeccakType::Keccak as u8 }, 512>;
+pub type Keccak512<E> = Keccak<E, { KeccakType::Keccak as u8 }, 512>;
 
 /// The SHA3-224 hash function.
-pub type Sha3_224 = Keccak<{ KeccakType::Sha3 as u8 }, 224>;
+pub type Sha3_224<E> = Keccak<E, { KeccakType::Sha3 as u8 }, 224>;
 /// The SHA3-256 hash function.
-pub type Sha3_256 = Keccak<{ KeccakType::Sha3 as u8 }, 256>;
+pub type Sha3_256<E> = Keccak<E, { KeccakType::Sha3 as u8 }, 256>;
 /// The SHA3-384 hash function.
-pub type Sha3_384 = Keccak<{ KeccakType::Sha3 as u8 }, 384>;
+pub type Sha3_384<E> = Keccak<E, { KeccakType::Sha3 as u8 }, 384>;
 /// The SHA3-512 hash function.
-pub type Sha3_512 = Keccak<{ KeccakType::Sha3 as u8 }, 512>;
+pub type Sha3_512<E> = Keccak<E, { KeccakType::Sha3 as u8 }, 512>;
 
 /// A helper to specify the hash type.
 enum KeccakType {
@@ -65,4 +67,12 @@ enum KeccakType {
 ///
 /// In addition, the capacity is defined as `c := b - r`.
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Keccak<const TYPE: u8, const VARIANT: usize>;
+pub struct Keccak<E, const TYPE: u8, const VARIANT: usize> {
+    _engine: PhantomData<E>,
+}
+
+impl<E, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIANT> {
+    pub fn new() -> Self {
+        Self { _engine: PhantomData }
+    }
+}

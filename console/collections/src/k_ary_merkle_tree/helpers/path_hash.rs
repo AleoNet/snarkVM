@@ -71,8 +71,8 @@ impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
     }
 }
 
-impl<const TYPE: u8, const VARIANT: usize> PathHash for Keccak<TYPE, VARIANT> {
-    type Hash = Field<Console>;
+impl<E: Environment, const TYPE: u8, const VARIANT: usize> PathHash for Keccak<E, TYPE, VARIANT> {
+    type Hash = Field<E>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {

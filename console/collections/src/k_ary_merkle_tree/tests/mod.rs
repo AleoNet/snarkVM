@@ -359,11 +359,11 @@ fn test_k_ary_merkle_tree_poseidon() -> Result<()> {
 #[test]
 fn test_k_ary_merkle_tree_keccak() -> Result<()> {
     fn run_test<const DEPTH: u8, const ARITY: u8>(rng: &mut TestRng) -> Result<()> {
-        type LH = Keccak256;
-        type PH = Keccak256;
+        type LH = Keccak256<CurrentEnvironment>;
+        type PH = Keccak256<CurrentEnvironment>;
 
-        let leaf_hasher = Keccak256::default();
-        let path_hasher = Keccak256::default();
+        let leaf_hasher = LH::new();
+        let path_hasher = PH::new();
 
         for i in 0..ITERATIONS {
             println!("Running test for depth {DEPTH} arity {ARITY} and iteration {i}");
@@ -403,11 +403,11 @@ fn test_k_ary_merkle_tree_keccak() -> Result<()> {
 #[test]
 fn test_k_ary_merkle_tree_sha3() -> Result<()> {
     fn run_test<const DEPTH: u8, const ARITY: u8>(rng: &mut TestRng) -> Result<()> {
-        type LH = Sha3_256;
-        type PH = Sha3_256;
+        type LH = Sha3_256<CurrentEnvironment>;
+        type PH = Sha3_256<CurrentEnvironment>;
 
-        let leaf_hasher = Sha3_256::default();
-        let path_hasher = Sha3_256::default();
+        let leaf_hasher = LH::new();
+        let path_hasher = PH::new();
 
         for i in 0..ITERATIONS {
             println!("Running test for depth {DEPTH} arity {ARITY} and iteration {i}");
@@ -482,11 +482,11 @@ fn test_merkle_tree_depth_2_arity_3_poseidon() -> Result<()> {
 
 #[test]
 fn test_merkle_tree_depth_2_arity_3_keccak() -> Result<()> {
-    type LH = Keccak256;
-    type PH = Keccak256;
+    type LH = Keccak256<CurrentEnvironment>;
+    type PH = Keccak256<CurrentEnvironment>;
 
-    let leaf_hasher = Keccak256::default();
-    let path_hasher = Keccak256::default();
+    let leaf_hasher = LH::new();
+    let path_hasher = PH::new();
 
     let mut rng = TestRng::default();
 
@@ -500,11 +500,11 @@ fn test_merkle_tree_depth_2_arity_3_keccak() -> Result<()> {
 
 #[test]
 fn test_merkle_tree_depth_2_arity_3_sha3() -> Result<()> {
-    type LH = Sha3_256;
-    type PH = Sha3_256;
+    type LH = Sha3_256<CurrentEnvironment>;
+    type PH = Sha3_256<CurrentEnvironment>;
 
-    let leaf_hasher = Sha3_256::default();
-    let path_hasher = Sha3_256::default();
+    let leaf_hasher = LH::new();
+    let path_hasher = PH::new();
 
     let mut rng = TestRng::default();
 
@@ -556,11 +556,11 @@ fn test_merkle_tree_depth_3_arity_3_poseidon() -> Result<()> {
 
 #[test]
 fn test_merkle_tree_depth_3_arity_3_keccak() -> Result<()> {
-    type LH = Keccak256;
-    type PH = Keccak256;
+    type LH = Keccak256<CurrentEnvironment>;
+    type PH = Keccak256<CurrentEnvironment>;
 
-    let leaf_hasher = Keccak256::default();
-    let path_hasher = Keccak256::default();
+    let leaf_hasher = LH::new();
+    let path_hasher = PH::new();
 
     let mut rng = TestRng::default();
 
@@ -575,11 +575,11 @@ fn test_merkle_tree_depth_3_arity_3_keccak() -> Result<()> {
 
 #[test]
 fn test_merkle_tree_depth_3_arity_3_sha3() -> Result<()> {
-    type LH = Sha3_256;
-    type PH = Sha3_256;
+    type LH = Sha3_256<CurrentEnvironment>;
+    type PH = Sha3_256<CurrentEnvironment>;
 
-    let leaf_hasher = Sha3_256::default();
-    let path_hasher = Sha3_256::default();
+    let leaf_hasher = LH::new();
+    let path_hasher = PH::new();
 
     let mut rng = TestRng::default();
 

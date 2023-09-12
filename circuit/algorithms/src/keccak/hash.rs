@@ -280,7 +280,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use console::Rng;
+    use console::{Console, Rng};
     use snarkvm_circuit_types::environment::Circuit;
 
     const ITERATIONS: usize = 3;
@@ -323,7 +323,7 @@ mod tests {
     ) {
         use console::Hash as H;
 
-        let native = console::Keccak256::default();
+        let native = console::Keccak256::<Console>::new();
         let keccak = Keccak256::<Circuit>::new();
 
         for i in 0..ITERATIONS {
@@ -414,41 +414,41 @@ mod tests {
 
     #[test]
     fn test_keccak_224_equivalence() {
-        check_equivalence!(console::Keccak224::default(), Keccak224::<Circuit>::new());
+        check_equivalence!(console::Keccak224::<Console>::new(), Keccak224::<Circuit>::new());
     }
 
     #[test]
     fn test_keccak_256_equivalence() {
-        check_equivalence!(console::Keccak256::default(), Keccak256::<Circuit>::new());
+        check_equivalence!(console::Keccak256::<Console>::new(), Keccak256::<Circuit>::new());
     }
 
     #[test]
     fn test_keccak_384_equivalence() {
-        check_equivalence!(console::Keccak384::default(), Keccak384::<Circuit>::new());
+        check_equivalence!(console::Keccak384::<Console>::new(), Keccak384::<Circuit>::new());
     }
 
     #[test]
     fn test_keccak_512_equivalence() {
-        check_equivalence!(console::Keccak512::default(), Keccak512::<Circuit>::new());
+        check_equivalence!(console::Keccak512::<Console>::new(), Keccak512::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_224_equivalence() {
-        check_equivalence!(console::Sha3_224::default(), Sha3_224::<Circuit>::new());
+        check_equivalence!(console::Sha3_224::<Console>::new(), Sha3_224::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_256_equivalence() {
-        check_equivalence!(console::Sha3_256::default(), Sha3_256::<Circuit>::new());
+        check_equivalence!(console::Sha3_256::<Console>::new(), Sha3_256::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_384_equivalence() {
-        check_equivalence!(console::Sha3_384::default(), Sha3_384::<Circuit>::new());
+        check_equivalence!(console::Sha3_384::<Console>::new(), Sha3_384::<Circuit>::new());
     }
 
     #[test]
     fn test_sha3_512_equivalence() {
-        check_equivalence!(console::Sha3_512::default(), Sha3_512::<Circuit>::new());
+        check_equivalence!(console::Sha3_512::<Console>::new(), Sha3_512::<Circuit>::new());
     }
 }

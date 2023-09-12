@@ -15,7 +15,7 @@
 use super::*;
 use snarkvm_utilities::{bits_from_bytes_le, bytes_from_bits_le};
 
-impl<const TYPE: u8, const VARIANT: usize> Hash for Keccak<TYPE, VARIANT> {
+impl<E, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TYPE, VARIANT> {
     type Input = bool;
     type Output = Vec<bool>;
 
@@ -149,41 +149,41 @@ mod tests {
 
     #[test]
     fn test_keccak_224_equivalence() {
-        check_equivalence!(Keccak224::default(), keccak_224_native);
+        check_equivalence!(Keccak224::<Console>::new(), keccak_224_native);
     }
 
     #[test]
     fn test_keccak_256_equivalence() {
-        check_equivalence!(Keccak256::default(), keccak_256_native);
+        check_equivalence!(Keccak256::<Console>::new(), keccak_256_native);
     }
 
     #[test]
     fn test_keccak_384_equivalence() {
-        check_equivalence!(Keccak384::default(), keccak_384_native);
+        check_equivalence!(Keccak384::<Console>::new(), keccak_384_native);
     }
 
     #[test]
     fn test_keccak_512_equivalence() {
-        check_equivalence!(Keccak512::default(), keccak_512_native);
+        check_equivalence!(Keccak512::<Console>::new(), keccak_512_native);
     }
 
     #[test]
     fn test_sha3_224_equivalence() {
-        check_equivalence!(Sha3_224::default(), sha3_224_native);
+        check_equivalence!(Sha3_224::<Console>::new(), sha3_224_native);
     }
 
     #[test]
     fn test_sha3_256_equivalence() {
-        check_equivalence!(Sha3_256::default(), sha3_256_native);
+        check_equivalence!(Sha3_256::<Console>::new(), sha3_256_native);
     }
 
     #[test]
     fn test_sha3_384_equivalence() {
-        check_equivalence!(Sha3_384::default(), sha3_384_native);
+        check_equivalence!(Sha3_384::<Console>::new(), sha3_384_native);
     }
 
     #[test]
     fn test_sha3_512_equivalence() {
-        check_equivalence!(Sha3_512::default(), sha3_512_native);
+        check_equivalence!(Sha3_512::<Console>::new(), sha3_512_native);
     }
 }

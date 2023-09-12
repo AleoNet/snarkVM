@@ -64,8 +64,8 @@ impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
     }
 }
 
-impl<const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<TYPE, VARIANT> {
-    type Hash = Field<Console>;
+impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<E, TYPE, VARIANT> {
+    type Hash = Field<E>;
     type Leaf = Vec<bool>;
 
     /// Returns the hash of the given leaf node.
