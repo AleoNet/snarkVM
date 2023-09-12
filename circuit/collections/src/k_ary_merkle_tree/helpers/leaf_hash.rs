@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use super::*;
-use snarkvm_circuit_algorithms::{Hash, Poseidon, BHP};
+use snarkvm_circuit_algorithms::{Hash, Keccak, Poseidon, BHP};
 
 /// A trait for a Merkle leaf hash function.
 pub trait LeafHash<E: Environment> {
@@ -49,6 +49,26 @@ impl<E: Environment, const RATE: usize> LeafHash<E> for Poseidon<E, RATE> {
         input.extend_from_slice(leaf);
         // Hash the input.
         Hash::hash(self, &input)
+    }
+}
+
+impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash<E> for Keccak<E, TYPE, VARIANT> {
+    type Hash = Field<E>;
+    type Leaf = Vec<Boolean<E>>;
+
+    /// Returns the hash of the given leaf node.
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash {
+        // Prepend the leaf with a `false` bit.
+        let mut input = vec![Boolean::constant(false)];
+        input.extend_from_slice(leaf);
+
+        // Hash the input.
+        let output = Hash::hash(self, &input);
+
+        // TODO (raychu86): Use the generic `Hash` type to avoid this conversion.
+        // Convert the bits to a field element, truncating if necessary.
+        let bits: Vec<_> = output.iter().take(E::BaseField::size_in_data_bits()).cloned().collect();
+        Self::Hash::from_bits_le(&bits)
     }
 }
 
@@ -123,4 +143,6 @@ mod tests {
     fn test_hash_leaf_poseidon4_private() -> Result<()> {
         check_hash_leaf!(Poseidon4, Private, 4, (1, 0, 700, 700))
     }
+
+    // TODO (raychu86): Add tests for Keccak and Sha3.
 }
