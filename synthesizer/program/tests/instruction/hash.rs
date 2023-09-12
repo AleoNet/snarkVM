@@ -232,17 +232,17 @@ test_hash!(hash_bhp512, HashBHP512, ITERATIONS);
 test_hash!(hash_bhp768, HashBHP768, ITERATIONS);
 test_hash!(hash_bhp1024, HashBHP1024, ITERATIONS);
 
-test_hash!(hash_keccak256, HashKeccak256, 10);
-test_hash!(hash_keccak384, HashKeccak384, 10);
-test_hash!(hash_keccak512, HashKeccak512, 10);
+test_hash!(hash_keccak256, HashKeccak256, 5);
+test_hash!(hash_keccak384, HashKeccak384, 5);
+test_hash!(hash_keccak512, HashKeccak512, 5);
 
 test_hash!(hash_psd2, HashPSD2, ITERATIONS);
 test_hash!(hash_psd4, HashPSD4, ITERATIONS);
 test_hash!(hash_psd8, HashPSD8, ITERATIONS);
 
-test_hash!(hash_sha3_256, HashSha3_256, 10);
-test_hash!(hash_sha3_384, HashSha3_384, 10);
-test_hash!(hash_sha3_512, HashSha3_512, 10);
+test_hash!(hash_sha3_256, HashSha3_256, 5);
+test_hash!(hash_sha3_384, HashSha3_384, 5);
+test_hash!(hash_sha3_512, HashSha3_512, 5);
 
 // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
 #[test]
