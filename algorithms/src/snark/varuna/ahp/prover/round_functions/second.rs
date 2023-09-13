@@ -148,7 +148,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
         let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
         let poly = evals.interpolate_with_pc_by_ref(&circuit.ifft_precomputation);
-        println!("poly z_m {label}: {:?}", poly.coeffs);
 
         debug_assert!(
             poly.evaluate_over_domain_by_ref(constraint_domain)
@@ -305,9 +304,9 @@ mod tests {
 
         let max_degree = AHPForR1CS::<Fr, MM>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinSonicInst::universal_setup(max_degree).unwrap();
-        let mul_depth = 1;
-        let num_constraints = 5;
-        let num_variables = 4;
+        let mul_depth = 3;
+        let num_constraints = 7;
+        let num_variables = 7;
         // TODO: pass the right randomness in
         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         println!("public_inputs: {:?}", public_inputs);
@@ -318,6 +317,7 @@ mod tests {
 
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&keys_to_constraints, rng).unwrap();
         let prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, rng).unwrap();
+        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
 
         let assignments = AHPForR1CS::<_, MM>::calculate_assignments(&prover_state).unwrap();
         let constraint_domain = EvaluationDomain::<Fr>::new(num_constraints).unwrap();
@@ -331,15 +331,92 @@ mod tests {
         for el in non_zero_domain.elements() {
             println!("element of K: {:?}", el);
         }
-        // TODO: the uneven indices are not consistent with the Sage tests
-
-        // TODO: I could test the witness poly and the mask poly. Is z_lde sufficient? And the Sage tests don't use a mask poly...
 
         let combiners = verifier::BatchCombiners::<Fr> { circuit_combiner, instance_combiners };
         let batch_combiners = BTreeMap::from_iter([(index_pk.circuit.id, combiners)]);
-        let verifier_message = verifier::FirstMessage::<Fr> { batch_combiners };
+        let verifier_first_msg = verifier::FirstMessage::<Fr> { batch_combiners };
         let (second_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_second_round(&verifier_message, prover_state).unwrap();
+            AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_msg, prover_state).unwrap();
+
+        // TODO: hardcoding for testing purposes
+        let alpha = Fr::from_str("22").unwrap();
+        let eta_b = Fr::from_str("22").unwrap();
+        let eta_c = Fr::from_str("22").unwrap();
+        let beta = Fr::from_str("22").unwrap();
+        let delta_a = vec![Fr::from_str("22").unwrap()];
+        let delta_b = vec![Fr::from_str("22").unwrap()];
+        let delta_c = vec![Fr::from_str("22").unwrap()];
+        let gamma = Fr::from_str("22").unwrap();
+        let verifier_second_msg = verifier::SecondMessage::<Fr> { alpha, eta_b, eta_c };
+        let (prover_third_message, third_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_third_round(&verifier_first_msg, &verifier_second_msg, prover_state, rng)
+                .unwrap();
+
+        let verifier_third_msg = verifier::ThirdMessage::<Fr> { beta };
+
+        let (prover_fourth_message, fourth_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_second_msg, &verifier_third_msg, prover_state, rng)
+                .unwrap();
+
+        let verifier_fourth_msg = verifier::FourthMessage::<Fr> { delta_a, delta_b, delta_c };
+
+        let mut public_inputs = BTreeMap::new();
+        let public_input = prover_state.public_inputs(&index_pk.circuit).unwrap();
+        public_inputs.insert(index_pk.circuit.id, public_input);
+        let non_zero_a_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_non_zero_a).unwrap();
+        let non_zero_b_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_non_zero_b).unwrap();
+        let non_zero_c_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_non_zero_c).unwrap();
+        let variable_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_variables).unwrap();
+        let constraint_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_constraints).unwrap();
+        let input_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_public_inputs).unwrap();
+
+        let fifth_oracles =
+            AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg.clone(), prover_state, rng).unwrap();
+
+        use std::marker::PhantomData;
+        let mut circuit_specific_states = BTreeMap::new();
+        let circuit_specific_state = verifier::CircuitSpecificState {
+            input_domain,
+            variable_domain,
+            constraint_domain,
+            non_zero_a_domain,
+            non_zero_b_domain,
+            non_zero_c_domain,
+            batch_size: 1,
+        };
+        circuit_specific_states.insert(index_pk.circuit.id, circuit_specific_state);
+        let verifier_state = verifier::State {
+            circuit_specific_states,
+            max_constraint_domain: constraint_domain,
+            max_variable_domain: variable_domain,
+            max_non_zero_domain: non_zero_domain, // TODO: currently assuming same for three matrices but we should take the max
+            first_round_message: Some(verifier_first_msg),
+            second_round_message: Some(verifier_second_msg),
+            third_round_message: Some(verifier_third_msg),
+            fourth_round_message: Some(verifier_fourth_msg),
+            gamma: Some(gamma),
+            mode: PhantomData,
+        };
+
+        let polynomials: Vec<_> = index_pk
+            .circuit
+            .iter()
+            .chain(first_round_oracles.iter())
+            .chain(second_oracles.iter())
+            .chain(third_oracles.iter())
+            .chain(fourth_oracles.iter())
+            .chain(fifth_oracles.iter())
+            .collect();
+
+        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+            &public_inputs,
+            &polynomials,
+            &prover_third_message,
+            &prover_fourth_message,
+            &verifier_state,
+        )
+        .unwrap();
+
         // TODO: I can save space by using bytes instead of number characters, and allocating the right amount immediately
         let mut h_0 = String::new();
         for coeff in second_oracles.h_0.coeffs() {
