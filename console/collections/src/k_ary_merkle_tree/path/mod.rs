@@ -15,20 +15,16 @@
 use super::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct KAryMerklePath<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const ARITY: u8> {
+pub struct KAryMerklePath<PH: PathHash, const DEPTH: u8, const ARITY: u8> {
     /// The leaf index for the path.
-    leaf_index: U64<E>,
+    leaf_index: u64,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
-    siblings: Vec<Vec<H>>,
+    siblings: Vec<Vec<PH::Hash>>,
 }
 
-impl<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const ARITY: u8>
-    TryFrom<(U64<E>, Vec<Vec<H>>)> for KAryMerklePath<E, H, DEPTH, ARITY>
-{
-    type Error = Error;
-
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KAryMerklePath<PH, DEPTH, ARITY> {
     /// Returns a new instance of a Merkle path.
-    fn try_from((leaf_index, siblings): (U64<E>, Vec<Vec<H>>)) -> Result<Self> {
+    pub fn try_from((leaf_index, siblings): (u64, Vec<Vec<PH::Hash>>)) -> Result<Self> {
         // Ensure the Merkle tree depth is greater than 0.
         ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
         // Ensure the Merkle tree depth is less than or equal to 64.
@@ -36,7 +32,7 @@ impl<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const 
         // Ensure the Merkle tree arity is greater than 1.
         ensure!(ARITY > 1, "Merkle tree arity must be greater than 1");
         // Ensure the leaf index is within the tree depth.
-        ensure!((*leaf_index as u128) < (ARITY as u128).pow(DEPTH as u32), "Found an out of bounds Merkle leaf index");
+        ensure!((leaf_index as u128) < (ARITY as u128).pow(DEPTH as u32), "Found an out of bounds Merkle leaf index");
         // Ensure the Merkle path is the correct length.
         ensure!(siblings.len() == DEPTH as usize, "Found an incorrect Merkle path length");
         for sibling in &siblings {
@@ -47,21 +43,19 @@ impl<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const 
     }
 }
 
-impl<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const ARITY: u8>
-    KAryMerklePath<E, H, DEPTH, ARITY>
-{
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KAryMerklePath<PH, DEPTH, ARITY> {
     /// Returns the leaf index for the path.
-    pub fn leaf_index(&self) -> U64<E> {
+    pub fn leaf_index(&self) -> u64 {
         self.leaf_index
     }
 
     /// Returns the siblings for the path.
-    pub fn siblings(&self) -> &[Vec<H>] {
+    pub fn siblings(&self) -> &[Vec<PH::Hash>] {
         &self.siblings
     }
 
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
-    pub fn verify<LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = H>>(
+    pub fn verify<LH: LeafHash<Hash = PH::Hash>>(
         &self,
         leaf_hasher: &LH,
         path_hasher: &PH,
@@ -69,7 +63,7 @@ impl<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const 
         leaf: &LH::Leaf,
     ) -> bool {
         // Ensure the leaf index is within the tree depth.
-        if (*self.leaf_index as u128) >= (ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(u128::MAX) {
+        if (self.leaf_index as u128) >= (ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(u128::MAX) {
             eprintln!("Found an out of bounds Merkle leaf index");
             return false;
         }
@@ -91,7 +85,7 @@ impl<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const 
         // Compute the ordering of the current hash and sibling hashes on each level.
         // The indicator index determines which sibling the current hash is.
         let indicator_indexes: Vec<usize> = match (0..DEPTH)
-            .map(|i| usize::try_from(*self.leaf_index as u128 / (ARITY as u128).pow(i as u32) % ARITY as u128))
+            .map(|i| usize::try_from(self.leaf_index as u128 / (ARITY as u128).pow(i as u32) % ARITY as u128))
             .collect::<Result<Vec<_>, _>>()
         {
             Ok(indexes) => indexes,
@@ -123,45 +117,43 @@ impl<E: Environment, H: Clone + PartialEq + Send + Sync, const DEPTH: u8, const 
         current_hash == *root
     }
 }
-//
-// impl<E: Environment, const DEPTH: u8, const ARITY: u8> FromBytes for KAryMerklePath<E, DEPTH, ARITY> {
-//     /// Reads in a Merkle path from a buffer.
-//     #[inline]
-//     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-//         // Read the leaf index.
-//         let leaf_index = u64::read_le(&mut reader)?;
-//         // Read the Merkle path siblings.
-//         let siblings = (0..DEPTH)
-//             .map(|_| (0..ARITY).map(|_| Ok(Field::new(FromBytes::read_le(&mut reader)?))).collect::<IoResult<Vec<_>>>())
-//             .collect::<IoResult<Vec<_>>>()?;
-//         // Return the Merkle path.
-//         Self::try_from((U64::new(leaf_index), siblings)).map_err(|err| error(err.to_string()))
-//     }
-// }
-//
-// impl<E: Environment, const DEPTH: u8, const ARITY: u8> ToBytes for KAryMerklePath<E, DEPTH, ARITY> {
-//     /// Writes the Merkle path to a buffer.
-//     #[inline]
-//     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-//         // Write the leaf index.
-//         self.leaf_index.write_le(&mut writer)?;
-//         // Write the Merkle path siblings.
-//         self.siblings
-//             .iter()
-//             .try_for_each(|siblings| siblings.iter().try_for_each(|sibling| sibling.write_le(&mut writer)))
-//     }
-// }
-//
-// impl<E: Environment, const DEPTH: u8, const ARITY: u8> Serialize for KAryMerklePath<E, DEPTH, ARITY> {
-//     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-//         ToBytesSerializer::serialize(self, serializer)
-//     }
-// }
-//
-// impl<'de, E: Environment, const DEPTH: u8, const ARITY: u8> Deserialize<'de> for KAryMerklePath<E, DEPTH, ARITY> {
-//     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-//         // Compute the size for: u64 + (Field::SIZE_IN_BYTES * DEPTH * (ARITY - 1)).
-//         let size = 8 + DEPTH as usize * (ARITY.saturating_sub(1) as usize) * (Field::<E>::size_in_bits() + 7) / 8;
-//         FromBytesDeserializer::<Self>::deserialize(deserializer, "Merkle path", size)
-//     }
-// }
+
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> FromBytes for KAryMerklePath<PH, DEPTH, ARITY> {
+    /// Reads in a Merkle path from a buffer.
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the leaf index.
+        let leaf_index = u64::read_le(&mut reader)?;
+        // Read the Merkle path siblings.
+        let siblings = (0..DEPTH)
+            .map(|_| (0..ARITY).map(|_| Ok(FromBytes::read_le(&mut reader)?)).collect::<IoResult<Vec<_>>>())
+            .collect::<IoResult<Vec<_>>>()?;
+        // Return the Merkle path.
+        Self::try_from((leaf_index, siblings)).map_err(error)
+    }
+}
+
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> ToBytes for KAryMerklePath<PH, DEPTH, ARITY> {
+    /// Writes the Merkle path to a buffer.
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the leaf index.
+        self.leaf_index.write_le(&mut writer)?;
+        // Write the Merkle path siblings.
+        self.siblings
+            .iter()
+            .try_for_each(|siblings| siblings.iter().try_for_each(|sibling| sibling.write_le(&mut writer)))
+    }
+}
+
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> Serialize for KAryMerklePath<PH, DEPTH, ARITY> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        ToBytesSerializer::serialize_with_size_encoding(self, serializer)
+    }
+}
+
+impl<'de, PH: PathHash, const DEPTH: u8, const ARITY: u8> Deserialize<'de> for KAryMerklePath<PH, DEPTH, ARITY> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "K-ary Merkle path")
+    }
+}

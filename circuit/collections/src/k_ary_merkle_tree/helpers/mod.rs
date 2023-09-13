@@ -19,3 +19,81 @@ pub use leaf_hash::*;
 
 mod path_hash;
 pub use path_hash::*;
+
+#[derive(Clone, Debug)]
+pub struct BooleanHash<E: Environment, const VARIANT: usize>(pub [Boolean<E>; VARIANT]);
+
+impl<E: Environment, const VARIANT: usize> Default for BooleanHash<E, VARIANT> {
+    /// Initializes a new "empty" boolean hash.
+    fn default() -> Self {
+        Self::new(Mode::Constant, console::k_ary_merkle_tree::BooleanHash::new())
+    }
+}
+
+#[cfg(console)]
+impl<E: Environment, const VARIANT: usize> Inject for BooleanHash<E, VARIANT> {
+    type Primitive = console::k_ary_merkle_tree::BooleanHash<VARIANT>;
+
+    /// Initializes a boolean hash from the given mode and native boolean hash.
+    fn new(mode: Mode, hash: Self::Primitive) -> Self {
+        // Initialize the boolean hash.
+        let hash = hash.iter().map(|b| Boolean::new(mode, *b)).collect::<Vec<_>>();
+
+        // Return the boolean hash.
+        match hash.len() == VARIANT {
+            true => Self(hash.try_into().unwrap()),
+            false => E::halt("Boolean hash is not the correct length"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<E: Environment, const VARIANT: usize> Eject for BooleanHash<E, VARIANT> {
+    type Primitive = console::k_ary_merkle_tree::BooleanHash<VARIANT>;
+
+    /// Ejects the mode of the boolean hash.
+    fn eject_mode(&self) -> Mode {
+        self.0.eject_mode()
+    }
+
+    /// Ejects the Merkle path.
+    fn eject_value(&self) -> Self::Primitive {
+        console::k_ary_merkle_tree::BooleanHash::<VARIANT>(self.0.eject_value().try_into().unwrap())
+    }
+}
+
+impl<E: Environment, const VARIANT: usize> Equal<Self> for BooleanHash<E, VARIANT> {
+    type Output = Boolean<E>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        self.iter().zip_eq(other.iter()).map(|(a, b)| a.is_equal(b)).fold(Boolean::constant(true), Boolean::bitand)
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        !self.is_equal(other)
+    }
+}
+
+impl<E: Environment, const VARIANT: usize> Ternary for BooleanHash<E, VARIANT> {
+    type Boolean = Boolean<E>;
+    type Output = Self;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        let mut result = vec![Boolean::constant(false); VARIANT];
+        for (i, (a, b)) in first.iter().zip_eq(second.iter()).enumerate() {
+            result[i] = Self::Boolean::ternary(condition, a, b);
+        }
+        Self(result.try_into().unwrap())
+    }
+}
+
+impl<E: Environment, const VARIANT: usize> Deref for BooleanHash<E, VARIANT> {
+    type Target = [Boolean<E>; VARIANT];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

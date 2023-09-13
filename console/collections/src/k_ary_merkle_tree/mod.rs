@@ -25,11 +25,8 @@ use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
 
-use std::marker::PhantomData;
-
 #[derive(Clone)]
-pub struct KAryMerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8>
-{
+pub struct KAryMerkleTree<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8> {
     /// The leaf hasher for the Merkle tree.
     leaf_hasher: LH,
     /// The path hasher for the Merkle tree.
@@ -42,8 +39,6 @@ pub struct KAryMerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: Pat
     empty_hash: PH::Hash,
     /// The number of hashed leaves in the tree.
     number_of_leaves: usize,
-    /// PhantomData.
-    _phantom: PhantomData<E>,
 }
 
 /// Returns the next power of `n` that's greater than or equal to `base`.
@@ -60,8 +55,8 @@ fn checked_next_power_of_n(base: usize, n: usize) -> Option<usize> {
     Some(value)
 }
 
-impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8>
-    KAryMerkleTree<E, LH, PH, DEPTH, ARITY>
+impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8>
+    KAryMerkleTree<LH, PH, DEPTH, ARITY>
 {
     #[inline]
     /// Initializes a new Merkle tree with the given leaves.
@@ -146,7 +141,6 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u
             tree,
             empty_hash,
             number_of_leaves: leaves.len(),
-            _phantom: PhantomData,
         })
     }
 
@@ -243,7 +237,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u
 
     #[inline]
     /// Returns the Merkle path for the given leaf index and leaf.
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<KAryMerklePath<E, PH::Hash, DEPTH, ARITY>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<KAryMerklePath<PH, DEPTH, ARITY>> {
         // Ensure the leaf index is valid.
         ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
 
@@ -289,11 +283,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u
         path.resize(DEPTH as usize, empty_hashes);
 
         // Return the Merkle path.
-        KAryMerklePath::try_from((U64::new(leaf_index as u64), path))
+        KAryMerklePath::try_from((leaf_index as u64, path))
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
-    pub fn verify(&self, path: &KAryMerklePath<E, PH::Hash, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
+    pub fn verify(&self, path: &KAryMerklePath<PH, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
         path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
     }
 

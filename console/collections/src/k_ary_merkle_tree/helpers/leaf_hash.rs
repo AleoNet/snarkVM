@@ -14,14 +14,14 @@
 
 use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
-use snarkvm_utilities::bytes_from_bits_le;
 
+use crate::k_ary_merkle_tree::BooleanHash;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 /// A trait for a Merkle leaf hash function.
 pub trait LeafHash: Clone + Send + Sync {
-    type Hash: Clone + Send + Sync;
+    type Hash: Copy + Clone + Debug + Default + PartialEq + Eq + FromBytes + ToBytes + Send + Sync;
     type Leaf: Clone + Send + Sync;
 
     /// Returns the hash of the given leaf node.
@@ -66,7 +66,7 @@ impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
 }
 
 impl<const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<TYPE, VARIANT> {
-    type Hash = Vec<u8>;
+    type Hash = BooleanHash<VARIANT>;
     type Leaf = Vec<bool>;
 
     /// Returns the hash of the given leaf node.
@@ -75,8 +75,10 @@ impl<const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<TYPE, VARIANT> {
         let mut input = vec![false];
         input.extend(leaf);
         // Hash the input.
-        let bits = Hash::hash(self, &input)?;
-
-        Ok(bytes_from_bits_le(&bits))
+        let output = Hash::hash(self, &input)?;
+        // Read the first VARIANT bits.
+        let mut result = BooleanHash::new();
+        result.0.copy_from_slice(&output[..VARIANT]);
+        Ok(result)
     }
 }

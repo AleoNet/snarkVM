@@ -17,6 +17,7 @@
 #![warn(clippy::cast_possible_truncation)]
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
+pub use snarkvm_console_algorithms as algorithms;
 pub use snarkvm_console_types::prelude::*;
 
 pub mod k_ary_merkle_tree;

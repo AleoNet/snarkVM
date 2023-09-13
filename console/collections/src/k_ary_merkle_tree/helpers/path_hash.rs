@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::BooleanHash;
 use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
-use snarkvm_utilities::{bits_from_bytes_le, bytes_from_bits_le};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash: Clone + Send + Sync {
-    type Hash: Clone + PartialEq + Debug + Send + Sync;
+    type Hash: Copy + Clone + Debug + Default + PartialEq + Eq + FromBytes + ToBytes + Send + Sync;
 
-    /// Returns the empty hash.
-    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash>;
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash>;
+
+    /// Returns the empty hash.
+    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
+        let children = (0..ARITY).map(|_| Self::Hash::default()).collect::<Vec<_>>();
+        self.hash_children(&children)
+    }
 
     /// Returns the hash for each tuple of child nodes.
     fn hash_all_children(&self, child_nodes: &[Vec<Self::Hash>]) -> Result<Vec<Self::Hash>> {
@@ -81,24 +85,20 @@ impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
 }
 
 impl<const TYPE: u8, const VARIANT: usize> PathHash for Keccak<TYPE, VARIANT> {
-    type Hash = Vec<u8>;
-
-    /// Returns the empty hash.
-    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
-        let children = (0..ARITY).map(|_| Vec::new()).collect::<Vec<_>>();
-        self.hash_children(&children)
-    }
+    type Hash = BooleanHash<VARIANT>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![true];
         for child in children {
-            input.extend(bits_from_bytes_le(child));
+            input.extend_from_slice(child.as_slice());
         }
         // Hash the input.
-        let bits = Hash::hash(self, &input)?;
-
-        Ok(bytes_from_bits_le(&bits))
+        let output = Hash::hash(self, &input)?;
+        // Read the first VARIANT bits.
+        let mut result = BooleanHash::new();
+        result.0.copy_from_slice(&output[..VARIANT]);
+        Ok(result)
     }
 }
