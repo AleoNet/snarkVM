@@ -154,24 +154,20 @@ impl TestMockRng {
 
 impl rand::RngCore for TestMockRng {
     fn next_u32(&mut self) -> u32 {
-        println!("next_u32");
         self.state.pop().unwrap() as u32
     }
 
     fn next_u64(&mut self) -> u64 {
-        println!("next_u64");
         self.state.pop().unwrap()
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        println!("fill_bytes: {:?}", dest.len());
         for i in 0..dest.len() {
             dest[i] = self.state.pop().unwrap() as u8;
         }
     }
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        println!("try_fill_bytes: {:?}", dest.len());
         for i in 0..dest.len() {
             dest[i] = self.state.pop().unwrap() as u8; // TODO: use try_from and convert the Error
         }

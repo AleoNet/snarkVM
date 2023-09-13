@@ -15,16 +15,16 @@
 #[cfg(test)]
 mod tests {
     use crate::{
-        snark::marlin::{ahp::verifier, MarlinNonHidingMode, MarlinSNARK, TestCircuit},
+        snark::varuna::{ahp::verifier, TestCircuit, VarunaNonHidingMode, VarunaSNARK},
         traits::snark::SNARK,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::One;
     use std::ops::Deref;
     type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
-    type MM = MarlinNonHidingMode;
-    type MarlinSonicInst = MarlinSNARK<Bls12_377, FS, MM>;
-    use crate::snark::marlin::AHPForR1CS;
+    type MM = VarunaNonHidingMode;
+    type VarunaSonicInst = VarunaSNARK<Bls12_377, FS, MM>;
+    use crate::snark::varuna::AHPForR1CS;
     use std::{fmt::Debug, fs, str::FromStr};
 
     use crate::fft::EvaluationDomain;
@@ -36,7 +36,7 @@ mod tests {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("src");
         path.push("snark");
-        path.push("marlin");
+        path.push("varuna");
         path.push("resources");
 
         // Create the `resources` folder, if it does not exist.
@@ -75,21 +75,21 @@ mod tests {
     // TODO: make macros to use different hiding modes
     #[test]
     fn test_prover_sage_vectors() {
-        let input_path = "src/snark/marlin/resources/inputs.txt";
+        let input_path = "src/snark/varuna/resources/inputs.txt";
         let test_vectors_file = fs::read_to_string(input_path).expect("Could not read the file");
         let mut test_vectors = Vec::new(); // TODO: preallocate
         for line in test_vectors_file.lines() {
             test_vectors.push(line.to_string())
         }
 
-        let instance_path = "src/snark/marlin/resources/instance.input";
+        let instance_path = "src/snark/varuna/resources/instance.input";
         let instance_file = fs::read_to_string(instance_path).expect("Could not read the file");
         let mut instance = Vec::new(); // TODO: preallocate
         for line in instance_file.lines() {
             instance.push(line.to_string())
         }
 
-        let challenges_path = "src/snark/marlin/resources/challenges.input";
+        let challenges_path = "src/snark/varuna/resources/challenges.input";
         let challenges_file = fs::read_to_string(challenges_path).expect("Could not read the file");
         let mut challenges = Vec::new(); // TODO: preallocate
         for line in challenges_file.lines() {
@@ -140,7 +140,7 @@ mod tests {
         // println!("a: {:?}", a);
 
         let max_degree = AHPForR1CS::<Fr, MM>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinSonicInst::universal_setup(max_degree).unwrap();
+        let universal_srs = VarunaSonicInst::universal_setup(max_degree).unwrap();
         let mul_depth = 3;
         let num_constraints = 7;
         let num_variables = 7;
@@ -148,7 +148,7 @@ mod tests {
         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         println!("public_inputs: {:?}", public_inputs);
         println!("circ: {:?}", circ);
-        let (index_pk, _index_vk) = MarlinSonicInst::circuit_setup(&universal_srs, &circ).unwrap();
+        let (index_pk, _index_vk) = VarunaSonicInst::circuit_setup(&universal_srs, &circ).unwrap();
         let mut keys_to_constraints = BTreeMap::new();
         keys_to_constraints.insert(index_pk.circuit.deref(), std::slice::from_ref(&circ));
 
@@ -245,7 +245,7 @@ mod tests {
             .chain(fifth_oracles.iter())
             .collect();
 
-        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+        let _lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_inputs,
             &polynomials,
             &prover_third_message,
