@@ -14,13 +14,14 @@
 
 use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
+use snarkvm_utilities::bytes_from_bits_le;
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 /// A trait for a Merkle leaf hash function.
 pub trait LeafHash: Clone + Send + Sync {
-    type Hash: FieldTrait;
+    type Hash: Clone + Send + Sync;
     type Leaf: Clone + Send + Sync;
 
     /// Returns the hash of the given leaf node.
@@ -65,7 +66,7 @@ impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
 }
 
 impl<const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<TYPE, VARIANT> {
-    type Hash = Field<Console>;
+    type Hash = Vec<u8>;
     type Leaf = Vec<bool>;
 
     /// Returns the hash of the given leaf node.
@@ -74,11 +75,8 @@ impl<const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<TYPE, VARIANT> {
         let mut input = vec![false];
         input.extend(leaf);
         // Hash the input.
-        let output = Hash::hash(self, &input)?;
+        let bits = Hash::hash(self, &input)?;
 
-        // TODO (raychu86): Make the `Hash` Type generic instead to avoid this conversion.
-        // Convert the bits to a field element, truncating if necessary.
-        let bits: Vec<_> = output.iter().take(Self::Hash::size_in_data_bits()).copied().collect();
-        Self::Hash::from_bits_le(&bits)
+        Ok(bytes_from_bits_le(&bits))
     }
 }

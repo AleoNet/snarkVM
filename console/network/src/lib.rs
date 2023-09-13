@@ -375,7 +375,7 @@ pub trait Network:
     /// Returns `true` if the given k-ary Merkle path is valid for the given root and leaf.
     #[allow(clippy::ptr_arg)]
     fn verify_k_ary_merkle_path_bhp<const DEPTH: u8, const ARITY: u8>(
-        path: &KAryMerklePath<Self, DEPTH, ARITY>,
+        path: &KAryMerklePath<Self, Field<Self>, DEPTH, ARITY>,
         root: &Field<Self>,
         leaf: &Vec<bool>,
     ) -> bool;
@@ -383,7 +383,7 @@ pub trait Network:
     /// Returns `true` if the given k-ary Merkle path is valid for the given root and leaf.
     #[allow(clippy::ptr_arg)]
     fn verify_k_ary_merkle_path_psd<const DEPTH: u8, const ARITY: u8>(
-        path: &KAryMerklePath<Self, DEPTH, ARITY>,
+        path: &KAryMerklePath<Self, Field<Self>, DEPTH, ARITY>,
         root: &Field<Self>,
         leaf: &Vec<Field<Self>>,
     ) -> bool;

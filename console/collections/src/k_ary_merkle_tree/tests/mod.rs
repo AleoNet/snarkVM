@@ -33,7 +33,7 @@ use run_tests;
 fn check_k_ary_merkle_tree<
     E: Environment,
     LH: LeafHash<Hash = PH::Hash>,
-    PH: PathHash<Hash = Field<E>>,
+    PH: PathHash,
     const DEPTH: u8,
     const ARITY: u8,
 >(
@@ -45,8 +45,6 @@ fn check_k_ary_merkle_tree<
     let merkle_tree = KAryMerkleTree::<E, LH, PH, DEPTH, ARITY>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
 
-    let mut rng = TestRng::default();
-
     // Check each leaf in the Merkle tree.
     if !leaves.is_empty() {
         for (leaf_index, leaf) in leaves.iter().enumerate() {
@@ -56,9 +54,7 @@ fn check_k_ary_merkle_tree<
             // Verify the Merkle proof succeeds.
             assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
             // Verify the Merkle proof **fails** on an invalid root.
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::zero(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::one(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &PH::Hash::rand(&mut rng), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &path_hasher.hash_empty::<ARITY>().unwrap(), leaf));
         }
     }
     Ok(())
@@ -67,7 +63,7 @@ fn check_k_ary_merkle_tree<
 /// Runs the following test:
 /// 1. Construct a depth-2 arity-3 Merkle tree with 9 leaves.
 /// 2. Checks that every node hash and the Merkle root is correct.
-fn check_merkle_tree_depth_2_arity_3<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>>(
+fn check_merkle_tree_depth_2_arity_3<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash>(
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],
@@ -117,11 +113,7 @@ fn check_merkle_tree_depth_2_arity_3<E: Environment, LH: LeafHash<Hash = PH::Has
 /// Runs the following test:
 /// 1. Construct a depth-3 Merkle tree with 10 leaves (leaving 17 leaves empty).
 /// 2. Checks that every node hash and the Merkle root is correct.
-fn check_merkle_tree_depth_3_arity_3_padded<
-    E: Environment,
-    LH: LeafHash<Hash = PH::Hash>,
-    PH: PathHash<Hash = Field<E>>,
->(
+fn check_merkle_tree_depth_3_arity_3_padded<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash>(
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],

@@ -25,14 +25,11 @@ use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
 
+use std::marker::PhantomData;
+
 #[derive(Clone)]
-pub struct KAryMerkleTree<
-    E: Environment,
-    LH: LeafHash<Hash = PH::Hash>,
-    PH: PathHash<Hash = Field<E>>,
-    const DEPTH: u8,
-    const ARITY: u8,
-> {
+pub struct KAryMerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8>
+{
     /// The leaf hasher for the Merkle tree.
     leaf_hasher: LH,
     /// The path hasher for the Merkle tree.
@@ -42,9 +39,11 @@ pub struct KAryMerkleTree<
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
     tree: Vec<PH::Hash>,
     /// The canonical empty hash.
-    empty_hash: Field<E>,
+    empty_hash: PH::Hash,
     /// The number of hashed leaves in the tree.
     number_of_leaves: usize,
+    /// PhantomData.
+    _phantom: PhantomData<E>,
 }
 
 /// Returns the next power of `n` that's greater than or equal to `base`.
@@ -61,7 +60,7 @@ fn checked_next_power_of_n(base: usize, n: usize) -> Option<usize> {
     Some(value)
 }
 
-impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8, const ARITY: u8>
+impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8>
     KAryMerkleTree<E, LH, PH, DEPTH, ARITY>
 {
     #[inline]
@@ -95,10 +94,10 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         let empty_hash = path_hasher.hash_empty::<ARITY>()?;
 
         // Initialize the Merkle tree.
-        let mut tree = vec![empty_hash; tree_size];
+        let mut tree = vec![empty_hash.clone(); tree_size];
 
         // Compute and store each leaf hash.
-        tree[num_nodes..num_nodes + leaves.len()].copy_from_slice(&leaf_hasher.hash_leaves(leaves)?);
+        tree[num_nodes..num_nodes + leaves.len()].clone_from_slice(&leaf_hasher.hash_leaves(leaves)?);
         lap!(timer, "Hashed {} leaves", leaves.len());
 
         // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
@@ -111,23 +110,28 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
             // Construct the children for each node in the current level.
             let child_nodes = (start..end)
-                .map(|i| child_indexes::<ARITY>(i).into_iter().map(|child_index| tree[child_index]).collect::<Vec<_>>())
+                .map(|i| {
+                    child_indexes::<ARITY>(i)
+                        .into_iter()
+                        .map(|child_index| tree[child_index].clone())
+                        .collect::<Vec<_>>()
+                })
                 .collect::<Vec<_>>();
             // Compute and store the hashes for each node in the current level.
-            tree[start..end].copy_from_slice(&path_hasher.hash_all_children(&child_nodes)?);
+            tree[start..end].clone_from_slice(&path_hasher.hash_all_children(&child_nodes)?);
             // Update the start index for the next level.
             start_index = start;
         }
         lap!(timer, "Hashed {} levels", tree_depth);
 
         // Compute the root hash, by iterating from the root level up to `DEPTH`.
-        let mut root_hash = tree[0];
+        let mut root_hash = tree[0].clone();
         for _ in 0..padding_depth {
             // Update the root hash, by hashing the current root hash with the empty hashes.
 
             let mut input = vec![root_hash];
             // Resize the vector to ARITY length, filling with empty_hash if necessary.
-            input.resize(ARITY as usize, empty_hash);
+            input.resize(ARITY as usize, empty_hash.clone());
 
             root_hash = path_hasher.hash_children(&input)?;
         }
@@ -142,6 +146,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             tree,
             empty_hash,
             number_of_leaves: leaves.len(),
+            _phantom: PhantomData,
         })
     }
 
@@ -238,7 +243,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
     #[inline]
     /// Returns the Merkle path for the given leaf index and leaf.
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<KAryMerklePath<E, DEPTH, ARITY>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<KAryMerklePath<E, PH::Hash, DEPTH, ARITY>> {
         // Ensure the leaf index is valid.
         ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
 
@@ -266,7 +271,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
             // Compute the index of the sibling hash, if it exists.
             if let Some(siblings) = siblings::<ARITY>(index) {
                 // Append the sibling hashes to the path.
-                let sibling_hashes = siblings.iter().map(|index| self.tree[*index]).collect::<Vec<_>>();
+                let sibling_hashes = siblings.iter().map(|index| self.tree[*index].clone()).collect::<Vec<_>>();
 
                 path.push(sibling_hashes);
                 // Compute the index of the parent hash, if it exists.
@@ -280,7 +285,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         }
 
         // If the Merkle path length is not equal to `DEPTH`, pad the path with the empty hash.
-        let empty_hashes = (0..ARITY.saturating_sub(1)).map(|_| self.empty_hash).collect::<Vec<_>>();
+        let empty_hashes = (0..ARITY.saturating_sub(1)).map(|_| self.empty_hash.clone()).collect::<Vec<_>>();
         path.resize(DEPTH as usize, empty_hashes);
 
         // Return the Merkle path.
@@ -288,7 +293,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
-    pub fn verify(&self, path: &KAryMerklePath<E, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
+    pub fn verify(&self, path: &KAryMerklePath<E, PH::Hash, DEPTH, ARITY>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
         path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
     }
 

@@ -14,20 +14,17 @@
 
 use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
+use snarkvm_utilities::{bits_from_bytes_le, bytes_from_bits_le};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash: Clone + Send + Sync {
-    type Hash: FieldTrait;
+    type Hash: Clone + PartialEq + Debug + Send + Sync;
 
     /// Returns the empty hash.
-    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
-        let children = (0..ARITY).map(|_| Self::Hash::zero()).collect::<Vec<_>>();
-        self.hash_children(&children)
-    }
-
+    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash>;
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash>;
 
@@ -44,6 +41,12 @@ pub trait PathHash: Clone + Send + Sync {
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Hash = Field<E>;
 
+    /// Returns the empty hash.
+    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
+        let children = (0..ARITY).map(|_| Self::Hash::zero()).collect::<Vec<_>>();
+        self.hash_children(&children)
+    }
+
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
         // Prepend the nodes with a `true` bit.
@@ -59,6 +62,12 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for 
 impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
     type Hash = Field<E>;
 
+    /// Returns the empty hash.
+    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
+        let children = (0..ARITY).map(|_| Self::Hash::zero()).collect::<Vec<_>>();
+        self.hash_children(&children)
+    }
+
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
         // Prepend the nodes with a `1field` byte.
@@ -72,21 +81,24 @@ impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
 }
 
 impl<const TYPE: u8, const VARIANT: usize> PathHash for Keccak<TYPE, VARIANT> {
-    type Hash = Field<Console>;
+    type Hash = Vec<u8>;
+
+    /// Returns the empty hash.
+    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
+        let children = (0..ARITY).map(|_| Vec::new()).collect::<Vec<_>>();
+        self.hash_children(&children)
+    }
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![true];
         for child in children {
-            child.write_bits_le(&mut input);
+            input.extend(bits_from_bytes_le(child));
         }
         // Hash the input.
-        let output = Hash::hash(self, &input)?;
+        let bits = Hash::hash(self, &input)?;
 
-        // TODO (raychu86): Use the generic `Hash` type to avoid this conversion.
-        // Convert the bits to a field element, truncating if necessary.
-        let bits: Vec<_> = output.iter().take(Self::Hash::size_in_data_bits()).copied().collect();
-        Self::Hash::from_bits_le(&bits)
+        Ok(bytes_from_bits_le(&bits))
     }
 }
