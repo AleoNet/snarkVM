@@ -80,6 +80,11 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> Eject fo
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
+    use console::{
+        algorithms::{BHP1024 as NativeBHP1024, BHP512 as NativeBHP512},
+        k_ary_merkle_tree::KAryMerkleTree,
+    };
+    use snarkvm_circuit_algorithms::BHP512;
     use snarkvm_circuit_network::AleoV0 as Circuit;
     use snarkvm_utilities::{TestRng, Uniform};
 
@@ -96,6 +101,14 @@ mod tests {
     ) -> Result<()> {
         let mut rng = TestRng::default();
 
+        type PH = BHP512<Circuit>;
+
+        type NativeLH = NativeBHP1024<<Circuit as Environment>::Network>;
+        type NativePH = NativeBHP512<<Circuit as Environment>::Network>;
+
+        let leaf_hasher = NativeLH::setup("AleoMerklePathTest0")?;
+        let path_hasher = NativePH::setup("AleoMerklePathTest1")?;
+
         let mut create_leaves = |num_leaves| {
             (0..num_leaves)
                 .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(&mut rng).to_bits_le())
@@ -109,10 +122,7 @@ mod tests {
             let leaves = create_leaves(num_leaves);
             // Compute the Merkle tree.
             let merkle_tree =
-                <<Circuit as Environment>::Network as snarkvm_console_network::Network>::k_ary_merkle_tree_bhp::<
-                    DEPTH,
-                    ARITY,
-                >(&leaves)?;
+                KAryMerkleTree::<NativeLH, NativePH, DEPTH, ARITY>::new(&leaf_hasher, &path_hasher, &leaves)?;
 
             for (index, leaf) in leaves.iter().enumerate() {
                 // Compute the Merkle path.
@@ -122,7 +132,7 @@ mod tests {
                 // let leaf: Vec<Boolean<_>> = Inject::new(mode, leaf.clone());
 
                 Circuit::scope(format!("New {mode}"), || {
-                    let candidate = KAryMerklePath::<Circuit, _, DEPTH, ARITY>::new(mode, merkle_path.clone());
+                    let candidate = KAryMerklePath::<Circuit, PH, DEPTH, ARITY>::new(mode, merkle_path.clone());
                     assert_eq!(merkle_path, candidate.eject_value());
                     assert_scope!(num_constants, num_public, num_private, num_constraints);
                 });
