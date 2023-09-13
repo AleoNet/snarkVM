@@ -645,13 +645,43 @@ jobs:
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
-  synthesizer-program-integration:
+  synthesizer-program-integration-keccak:
     docker:
       - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --test '*'
+          flags: keccak --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-psd:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: psd --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-sha:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: sha --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-rest:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --test '*' -- --skip keccak --skip psd --skip sha
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
@@ -822,7 +852,10 @@ workflows:
       - synthesizer-integration
       - synthesizer-process
       - synthesizer-program
-      - synthesizer-program-integration
+      - synthesizer-program-integration-keccak
+      - synthesizer-program-integration-psd
+      - synthesizer-program-integration-sha
+      - synthesizer-program-integration-rest
       - synthesizer-snark
       - utilities
       - utilities-derives
