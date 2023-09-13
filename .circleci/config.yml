@@ -852,7 +852,10 @@ workflows:
       - synthesizer-integration
       - synthesizer-process
       - synthesizer-program
-      - synthesizer-program-integration
+      - synthesizer-program-integration-keccak
+      - synthesizer-program-integration-psd
+      - synthesizer-program-integration-sha
+      - synthesizer-program-integration-rest
       - synthesizer-snark
       - utilities
       - utilities-derives
