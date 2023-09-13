@@ -104,7 +104,7 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
         let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
         let mut max_num_constraints = 0;
         let mut max_num_variables = 0;
-        let mut total_instances = 0;
+        let mut total_instances = 0usize;
         let circuit_specific_states = indices_and_assignments
             .into_iter()
             .map(|(circuit, variable_assignments)| {
@@ -124,7 +124,8 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                 let first_padded_public_inputs = &variable_assignments[0].0;
                 let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
                 let batch_size = variable_assignments.len();
-                total_instances += batch_size;
+                total_instances =
+                    total_instances.checked_add(batch_size).ok_or_else(|| anyhow::anyhow!("Batch size too large"))?;
                 let mut z_as = Vec::with_capacity(batch_size);
                 let mut z_bs = Vec::with_capacity(batch_size);
                 let mut z_cs = Vec::with_capacity(batch_size);
