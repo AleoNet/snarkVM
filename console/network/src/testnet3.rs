@@ -424,20 +424,6 @@ impl Network for Testnet3 {
         MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
     }
 
-    /// Returns a k-ary Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn k_ary_merkle_tree_bhp<const DEPTH: u8, const ARITY: u8>(
-        leaves: &[Vec<bool>],
-    ) -> Result<KAryBHPMerkleTree<Self, DEPTH, ARITY>> {
-        KAryMerkleTree::new(&*BHP_1024, &*BHP_512, leaves)
-    }
-
-    /// Returns a k-ary Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn k_ary_merkle_tree_psd<const DEPTH: u8, const ARITY: u8>(
-        leaves: &[Vec<Field<Self>>],
-    ) -> Result<KAryPoseidonMerkleTree<Self, DEPTH, ARITY>> {
-        KAryMerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
-    }
-
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
     fn verify_merkle_path_bhp<const DEPTH: u8>(
         path: &MerklePath<Self, DEPTH>,
@@ -450,26 +436,6 @@ impl Network for Testnet3 {
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
     fn verify_merkle_path_psd<const DEPTH: u8>(
         path: &MerklePath<Self, DEPTH>,
-        root: &Field<Self>,
-        leaf: &Vec<Field<Self>>,
-    ) -> bool {
-        path.verify(&*POSEIDON_4, &*POSEIDON_2, root, leaf)
-    }
-
-    /// Returns `true` if the given k-ary Merkle path is valid for the given root and leaf.
-    #[allow(clippy::ptr_arg)]
-    fn verify_k_ary_merkle_path_bhp<const DEPTH: u8, const ARITY: u8>(
-        path: &KAryMerklePath<Self, DEPTH, ARITY>,
-        root: &Field<Self>,
-        leaf: &Vec<bool>,
-    ) -> bool {
-        path.verify(&*BHP_1024, &*BHP_512, root, leaf)
-    }
-
-    /// Returns `true` if the given k-ary Merkle path is valid for the given root and leaf.
-    #[allow(clippy::ptr_arg)]
-    fn verify_k_ary_merkle_path_psd<const DEPTH: u8, const ARITY: u8>(
-        path: &KAryMerklePath<Self, DEPTH, ARITY>,
         root: &Field<Self>,
         leaf: &Vec<Field<Self>>,
     ) -> bool {

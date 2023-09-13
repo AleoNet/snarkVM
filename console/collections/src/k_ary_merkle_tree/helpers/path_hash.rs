@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::BooleanHash;
 use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
 
@@ -20,16 +21,16 @@ use rayon::prelude::*;
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash: Clone + Send + Sync {
-    type Hash: FieldTrait;
-
-    /// Returns the empty hash.
-    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
-        let children = (0..ARITY).map(|_| Self::Hash::zero()).collect::<Vec<_>>();
-        self.hash_children(&children)
-    }
+    type Hash: Copy + Clone + Debug + Default + PartialEq + Eq + FromBytes + ToBytes + Send + Sync;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash>;
+
+    /// Returns the empty hash.
+    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
+        let children = (0..ARITY).map(|_| Self::Hash::default()).collect::<Vec<_>>();
+        self.hash_children(&children)
+    }
 
     /// Returns the hash for each tuple of child nodes.
     fn hash_all_children(&self, child_nodes: &[Vec<Self::Hash>]) -> Result<Vec<Self::Hash>> {
@@ -72,21 +73,20 @@ impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
 }
 
 impl<E: Environment, const TYPE: u8, const VARIANT: usize> PathHash for Keccak<E, TYPE, VARIANT> {
-    type Hash = Field<E>;
+    type Hash = BooleanHash<VARIANT>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![true];
         for child in children {
-            child.write_bits_le(&mut input);
+            input.extend_from_slice(child.as_slice());
         }
         // Hash the input.
         let output = Hash::hash(self, &input)?;
-
-        // TODO (raychu86): Use the generic `Hash` type to avoid this conversion.
-        // Convert the bits to a field element, truncating if necessary.
-        let bits: Vec<_> = output.iter().take(Self::Hash::size_in_data_bits()).copied().collect();
-        Self::Hash::from_bits_le(&bits)
+        // Read the first VARIANT bits.
+        let mut result = BooleanHash::new();
+        result.0.copy_from_slice(&output[..VARIANT]);
+        Ok(result)
     }
 }

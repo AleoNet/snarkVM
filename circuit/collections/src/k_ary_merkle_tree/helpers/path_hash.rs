@@ -17,20 +17,26 @@ use snarkvm_circuit_algorithms::{Hash, Keccak, Poseidon, BHP};
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash<E: Environment> {
-    type Hash: FieldTrait;
+    type Hash: Default
+        + Inject<Primitive = <Self::Primitive as console::k_ary_merkle_tree::PathHash>::Hash>
+        + Eject<Primitive = <Self::Primitive as console::k_ary_merkle_tree::PathHash>::Hash>
+        + Equal<Output = Boolean<E>>
+        + Ternary<Boolean = Boolean<E>, Output = Self::Hash>;
+    type Primitive: console::k_ary_merkle_tree::PathHash;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Self::Hash;
 
     /// Returns the empty hash.
     fn hash_empty<const ARITY: u8>(&self) -> Self::Hash {
-        let children = (0..ARITY).map(|_| Self::Hash::zero()).collect::<Vec<_>>();
+        let children = (0..ARITY).map(|_| Self::Hash::default()).collect::<Vec<_>>();
         self.hash_children(&children)
     }
 }
 
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<E> for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Hash = Field<E>;
+    type Primitive = console::algorithms::BHP<E::Network, NUM_WINDOWS, WINDOW_SIZE>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Self::Hash {
@@ -46,6 +52,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<E> f
 
 impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
     type Hash = Field<E>;
+    type Primitive = console::algorithms::Poseidon<E::Network, RATE>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Self::Hash {
@@ -60,7 +67,8 @@ impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
 }
 
 impl<E: Environment, const TYPE: u8, const VARIANT: usize> PathHash<E> for Keccak<E, TYPE, VARIANT> {
-    type Hash = Field<E>;
+    type Hash = BooleanHash<E, VARIANT>;
+    type Primitive = console::algorithms::Keccak<E::Network, TYPE, VARIANT>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Self::Hash {
@@ -71,11 +79,10 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> PathHash<E> for Kecca
         }
         // Hash the input.
         let output = Hash::hash(self, &input);
-
-        // TODO (raychu86): Use the generic `Hash` type to avoid this conversion.
-        // Convert the bits to a field element, truncating if necessary.
-        let bits: Vec<_> = output.iter().take(E::BaseField::size_in_data_bits()).cloned().collect();
-        Self::Hash::from_bits_le(&bits)
+        // Read the first VARIANT bits.
+        let mut result = BooleanHash::default();
+        result.0.clone_from_slice(&output[..VARIANT]);
+        result
     }
 }
 

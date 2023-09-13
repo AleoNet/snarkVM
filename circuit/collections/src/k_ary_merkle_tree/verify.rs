@@ -14,9 +14,9 @@
 
 use super::*;
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, PH, DEPTH, ARITY> {
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
-    pub fn verify<LH: LeafHash<E, Hash = PH::Hash>, PH: PathHash<E, Hash = Field<E>>>(
+    pub fn verify<LH: LeafHash<Hash = PH::Hash>>(
         &self,
         leaf_hasher: &LH,
         path_hasher: &PH,
@@ -51,14 +51,16 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, 
             })
             .collect();
 
+        let zero_index = U64::<E>::zero();
+
         // Check levels between leaf level and root.
         for (indicator_index, sibling_hashes) in indicator_indexes.iter().zip_eq(&self.siblings) {
-            // Assemble the children based on the ternary results
+            // Assemble the children based on the ternary results.
             let mut children = Vec::with_capacity(sibling_hashes.len() + 1);
 
             // Add the first child.
-            let zero_index = U64::<E>::new(Mode::Constant, console::U64::new(0u64));
-            let first_child = Field::ternary(&indicator_index.is_equal(&zero_index), &current_hash, &sibling_hashes[0]);
+            let first_child =
+                PH::Hash::ternary(&indicator_index.is_equal(&zero_index), &current_hash, &sibling_hashes[0]);
 
             children.push(first_child);
 
@@ -69,18 +71,18 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, 
 
                 // When the index is less than the indicator index, use the current index. Otherwise, use the previous index.
                 let option_a =
-                    Field::ternary(&index.is_less_than(indicator_index), &sibling_hashes[i], &sibling_hashes[i - 1]);
+                    PH::Hash::ternary(&index.is_less_than(indicator_index), &sibling_hashes[i], &sibling_hashes[i - 1]);
 
                 // When the index is equal to the indicator index, use the current hash.
-                let option_b = Field::ternary(&index.is_equal(indicator_index), &current_hash, &option_a);
+                let option_b = PH::Hash::ternary(&index.is_equal(indicator_index), &current_hash, &option_a);
 
                 // Push the final option to the children
                 children.push(option_b);
             }
 
             // Add the last child.
-            let last_index = U64::<E>::new(Mode::Constant, console::U64::new((sibling_hashes.len()) as u64));
-            let last_child = Field::ternary(
+            let last_index = U64::<E>::new(Mode::Constant, console::U64::new(DEPTH as u64));
+            let last_child = PH::Hash::ternary(
                 &indicator_index.is_equal(&last_index),
                 &current_hash,
                 &sibling_hashes[sibling_hashes.len() - 1],

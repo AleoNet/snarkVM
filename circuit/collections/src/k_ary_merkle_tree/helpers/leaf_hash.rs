@@ -16,15 +16,15 @@ use super::*;
 use snarkvm_circuit_algorithms::{Hash, Keccak, Poseidon, BHP};
 
 /// A trait for a Merkle leaf hash function.
-pub trait LeafHash<E: Environment> {
+pub trait LeafHash {
+    type Hash: Default + Inject + Eject + Ternary;
     type Leaf;
-    type Hash: FieldTrait;
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash;
 }
 
-impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<E> for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Hash = Field<E>;
     type Leaf = Vec<Boolean<E>>;
 
@@ -38,7 +38,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<E> f
     }
 }
 
-impl<E: Environment, const RATE: usize> LeafHash<E> for Poseidon<E, RATE> {
+impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
     type Hash = Field<E>;
     type Leaf = Vec<Field<E>>;
 
@@ -52,8 +52,8 @@ impl<E: Environment, const RATE: usize> LeafHash<E> for Poseidon<E, RATE> {
     }
 }
 
-impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash<E> for Keccak<E, TYPE, VARIANT> {
-    type Hash = Field<E>;
+impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<E, TYPE, VARIANT> {
+    type Hash = BooleanHash<E, VARIANT>;
     type Leaf = Vec<Boolean<E>>;
 
     /// Returns the hash of the given leaf node.
@@ -61,14 +61,12 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash<E> for Kecca
         // Prepend the leaf with a `false` bit.
         let mut input = vec![Boolean::constant(false)];
         input.extend_from_slice(leaf);
-
         // Hash the input.
         let output = Hash::hash(self, &input);
-
-        // TODO (raychu86): Use the generic `Hash` type to avoid this conversion.
-        // Convert the bits to a field element, truncating if necessary.
-        let bits: Vec<_> = output.iter().take(E::BaseField::size_in_data_bits()).cloned().collect();
-        Self::Hash::from_bits_le(&bits)
+        // Read the first VARIANT bits.
+        let mut result = BooleanHash::default();
+        result.0.clone_from_slice(&output[..VARIANT]);
+        result
     }
 }
 
@@ -97,7 +95,7 @@ mod tests {
                 let input = (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>();
 
                 // Compute the expected hash.
-                let expected = console::merkle_tree::LeafHash::hash_leaf(&native, &input)?;
+                let expected = console::k_ary_merkle_tree::LeafHash::hash_leaf(&native, &input)?;
 
                 // Prepare the circuit input.
                 let circuit_input: Vec<_> = Inject::new(Mode::$mode, input);

@@ -17,3 +17,49 @@ pub use leaf_hash::*;
 
 mod path_hash;
 pub use path_hash::*;
+
+use snarkvm_console_types::prelude::*;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct BooleanHash<const VARIANT: usize>(pub [bool; VARIANT]);
+
+impl<const VARIANT: usize> BooleanHash<VARIANT> {
+    /// Initializes a new "empty" boolean hash.
+    pub const fn new() -> Self {
+        Self([false; VARIANT])
+    }
+}
+
+impl<const VARIANT: usize> Default for BooleanHash<VARIANT> {
+    /// Initializes a new "empty" boolean hash.
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<const VARIANT: usize> FromBytes for BooleanHash<VARIANT> {
+    /// Reads `self` from `reader` in little-endian order.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the bits.
+        let bits = (0..VARIANT).map(|_| bool::read_le(&mut reader)).collect::<Result<Vec<bool>, _>>()?;
+        // Convert the Vec into a fixed-size array.
+        let mut array = [false; VARIANT];
+        array.copy_from_slice(&bits);
+        Ok(Self(array))
+    }
+}
+
+impl<const VARIANT: usize> ToBytes for BooleanHash<VARIANT> {
+    /// Writes `self` to `writer` in little-endian order.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.as_slice().write_le(&mut writer)
+    }
+}
+
+impl<const VARIANT: usize> Deref for BooleanHash<VARIANT> {
+    type Target = [bool; VARIANT];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
