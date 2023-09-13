@@ -254,7 +254,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         };
         // Cast the output to the destination type.
         let output = match self.destination_type {
-            PlaintextType::Literal(literal_type) => output.downcast_lossy(literal_type)?,
+            PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
             PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
             PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),
         };
@@ -325,7 +325,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         };
         // Cast the output to the destination type.
         let output = match self.destination_type {
-            PlaintextType::Literal(literal_type) => output.downcast_lossy(literal_type)?,
+            PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
             PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
             PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),
         };

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod bytes;
-mod downcast;
+mod cast;
 mod equal;
 mod from_bits;
 mod parse;

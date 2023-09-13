@@ -158,7 +158,7 @@ impl<N: Network> Committee<N> {
         // Hash the round seed.
         let hash = Literal::Field(N::hash_to_group_psd4(&seed)?.to_x_coordinate());
         // Compute the stake index from the hash output.
-        let stake_index = match hash.downcast_lossy(LiteralType::U64)? {
+        let stake_index = match hash.cast_lossy(LiteralType::U64)? {
             Literal::U64(output) => (*output) % total_stake,
             _ => bail!("BFT failed to downcast the hash output to a U64 literal"),
         };
