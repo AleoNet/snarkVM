@@ -29,3 +29,6 @@ pub use mode::*;
 
 #[cfg(test)]
 pub mod tests;
+
+#[cfg(test)]
+pub mod sage_test;

@@ -296,20 +296,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         // Instead of calculating L^C_col(κ)(c), we add val(k)*L^R_row(α) where we know L^C_col(k)(X) will be 1
         let m_at_alpha_evals_time = start_timer!(|| format!("Compute m_at_alpha_evals parallel for {_label}"));
         let l_at_alpha = constraint_domain.evaluate_all_lagrange_coefficients(alpha);
-        let constraint_domain_elements = constraint_domain.elements().collect_vec();
         let m_at_alpha_evals: Vec<_> = matrix_transpose
             .iter()
-            .map(|col| {
-                col.iter()
-                    .map(|(val, row_index)| {
-                        println!(
-                            "**{_label} val {:?} row_index {:?}, row(k) {:?}, l_at_alpha[*row_index] {}",
-                            val, row_index, constraint_domain_elements[*row_index], l_at_alpha[*row_index]
-                        );
-                        *val * l_at_alpha[*row_index]
-                    })
-                    .sum::<F>()
-            })
+            .map(|col| col.iter().map(|(val, row_index)| *val * l_at_alpha[*row_index]).sum::<F>())
             .collect();
         end_timer!(m_at_alpha_evals_time);
 
