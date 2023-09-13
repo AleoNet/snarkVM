@@ -126,7 +126,7 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> FromBytes for KAryMerklePat
         let leaf_index = u64::read_le(&mut reader)?;
         // Read the Merkle path siblings.
         let siblings = (0..DEPTH)
-            .map(|_| (0..ARITY).map(|_| Ok(FromBytes::read_le(&mut reader)?)).collect::<IoResult<Vec<_>>>())
+            .map(|_| (0..ARITY).map(|_| FromBytes::read_le(&mut reader)).collect::<IoResult<Vec<_>>>())
             .collect::<IoResult<Vec<_>>>()?;
         // Return the Merkle path.
         Self::try_from((leaf_index, siblings)).map_err(error)

@@ -89,7 +89,7 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         let empty_hash = path_hasher.hash_empty::<ARITY>()?;
 
         // Initialize the Merkle tree.
-        let mut tree = vec![empty_hash.clone(); tree_size];
+        let mut tree = vec![empty_hash; tree_size];
 
         // Compute and store each leaf hash.
         tree[num_nodes..num_nodes + leaves.len()].clone_from_slice(&leaf_hasher.hash_leaves(leaves)?);
@@ -105,12 +105,7 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
 
             // Construct the children for each node in the current level.
             let child_nodes = (start..end)
-                .map(|i| {
-                    child_indexes::<ARITY>(i)
-                        .into_iter()
-                        .map(|child_index| tree[child_index].clone())
-                        .collect::<Vec<_>>()
-                })
+                .map(|i| child_indexes::<ARITY>(i).into_iter().map(|child_index| tree[child_index]).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
             // Compute and store the hashes for each node in the current level.
             tree[start..end].clone_from_slice(&path_hasher.hash_all_children(&child_nodes)?);
@@ -120,13 +115,13 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         lap!(timer, "Hashed {} levels", tree_depth);
 
         // Compute the root hash, by iterating from the root level up to `DEPTH`.
-        let mut root_hash = tree[0].clone();
+        let mut root_hash = tree[0];
         for _ in 0..padding_depth {
             // Update the root hash, by hashing the current root hash with the empty hashes.
 
             let mut input = vec![root_hash];
             // Resize the vector to ARITY length, filling with empty_hash if necessary.
-            input.resize(ARITY as usize, empty_hash.clone());
+            input.resize(ARITY as usize, empty_hash);
 
             root_hash = path_hasher.hash_children(&input)?;
         }
@@ -265,7 +260,7 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
             // Compute the index of the sibling hash, if it exists.
             if let Some(siblings) = siblings::<ARITY>(index) {
                 // Append the sibling hashes to the path.
-                let sibling_hashes = siblings.iter().map(|index| self.tree[*index].clone()).collect::<Vec<_>>();
+                let sibling_hashes = siblings.iter().map(|index| self.tree[*index]).collect::<Vec<_>>();
 
                 path.push(sibling_hashes);
                 // Compute the index of the parent hash, if it exists.
@@ -279,7 +274,7 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         }
 
         // If the Merkle path length is not equal to `DEPTH`, pad the path with the empty hash.
-        let empty_hashes = (0..ARITY.saturating_sub(1)).map(|_| self.empty_hash.clone()).collect::<Vec<_>>();
+        let empty_hashes = (0..ARITY.saturating_sub(1)).map(|_| self.empty_hash).collect::<Vec<_>>();
         path.resize(DEPTH as usize, empty_hashes);
 
         // Return the Merkle path.
