@@ -64,23 +64,12 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 
-    /// Preload powers of \beta G and \beta \gamma G into memory prior to an execution. Useful for
-    /// environments such as WebAssembly where downloading powers in a blocking fashion is not
-    /// possible or not optimal
-    pub async fn preload_powers_async(&self, lower: usize, upper: usize) -> Result<()> {
-        ensure!(upper <= 28, "Upper bound must not exceed 2^28");
-        ensure!(lower <= upper && lower >= 16, "Lower bound must be less than or equal to upper bound and at least 15");
+    pub fn beta_h(&self) -> E::G2Affine {
+        self.powers.read().beta_h()
+    }
 
-        let range = (1usize << lower)..(1usize << upper);
-
-        // Download regular powers of \beta G
-        self.download_powers_for_async(&range).await?;
-
-        // Then download shifted powers of \beta \gamma G
-        let lowest_shift_degree = MAX_NUM_POWERS - range.end;
-        self.download_powers_for_async(&(lowest_shift_degree..(MAX_NUM_POWERS + 1))).await?;
-
-        Ok(())
+    pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
+        self.powers.write().download_powers_for(range)
     }
 
     async fn download_powers_for_async(&self, range: &Range<usize>) -> Result<()> {
@@ -111,14 +100,29 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(())
     }
 
-    pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
-        self.powers.write().download_powers_for(range)
-    }
-
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Result<Vec<E::G1Affine>> {
         let basis = domain
             .ifft(&self.powers_of_beta_g(0, domain.size())?.iter().map(|e| (*e).to_projective()).collect::<Vec<_>>());
         Ok(E::G1Projective::batch_normalization_into_affine(basis))
+    }
+
+    /// Preload powers of \beta G and \beta \gamma G into memory prior to an execution. Useful for
+    /// environments such as WebAssembly where downloading powers in a blocking fashion is not
+    /// possible or not optimal.
+    pub async fn preload_powers_async(&self, lower: usize, upper: usize) -> Result<()> {
+        ensure!(upper <= 28, "Upper bound must not exceed 2^28");
+        ensure!(lower <= upper && lower >= 16, "Lower bound must be less than or equal to upper bound and at least 16");
+
+        let range = (1usize << lower)..(1usize << upper);
+
+        // Download regular powers of \beta G
+        self.download_powers_for_async(&range).await?;
+
+        // Then download shifted powers of \beta \gamma G
+        let lowest_shift_degree = MAX_NUM_POWERS - range.end;
+        self.download_powers_for_async(&(lowest_shift_degree..(MAX_NUM_POWERS + 1))).await?;
+
+        Ok(())
     }
 
     pub fn power_of_beta_g(&self, index: usize) -> Result<E::G1Affine> {
@@ -131,10 +135,6 @@ impl<E: PairingEngine> UniversalParams<E> {
 
     pub fn powers_of_beta_times_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
         self.powers.read().powers_of_beta_gamma_g()
-    }
-
-    pub fn beta_h(&self) -> E::G2Affine {
-        self.powers.read().beta_h()
     }
 
     pub fn max_degree(&self) -> usize {

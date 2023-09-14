@@ -28,9 +28,6 @@ default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 
-[dependencies.async-trait]
-version = "0.1"
-
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"

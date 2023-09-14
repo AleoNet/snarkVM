@@ -96,7 +96,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Extend powers
-    pub fn extend_normal_powers_checked(&mut self, powers: &Vec<u8>, num_powers: usize) -> Result<()> {
+    pub fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
         self.powers_of_beta_g.extend_normal_powers_checked(powers, num_powers)
     }
 
@@ -115,11 +115,6 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
         self.powers_of_beta_g.estimate_powers_for(range)
-    }
-
-    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
-    pub fn num_powers(&self) -> usize {
-        self.powers_of_beta_g.num_powers()
     }
 
     /// Returns the maximum possible number of contiguous powers of beta G starting from the 0-th power.
@@ -144,6 +139,16 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     pub fn negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, E::G2Affine>> {
         self.negative_powers_of_beta_h.clone()
+    }
+
+    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
+    pub fn num_powers(&self) -> usize {
+        self.powers_of_beta_g.num_powers()
+    }
+
+    /// Returns the number of contiguous powers of beta G starting from the MAX power.
+    pub fn num_shifted_powers(&self) -> usize {
+        self.powers_of_beta_g.num_shifted_powers()
     }
 
     pub fn prepared_negative_powers_of_beta_h(&self) -> Arc<BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>> {
@@ -370,6 +375,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// of the powers needed, and a boolean that if `true` indicates that the shifted powers are
     /// needed and `false` if the normal powers are needed.
     pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
+        println!("Estimating powers for range: {:?}", range);
         if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
             return Ok((Vec::new(), false));
         }
@@ -441,7 +447,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// Extend normal powers in place with checks to ensure the bytes are valid and the extensions
     /// are contiguous with the existing powers.
-    pub fn extend_normal_powers_checked(&mut self, powers: &Vec<u8>, num_powers: usize) -> Result<()> {
+    pub(crate) fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
         let current_length = self.powers_of_beta_g.len();
         let expected_final_length =
             (current_length + 1).checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
@@ -458,7 +464,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Self::verify_bytes(powers, num_powers)?;
 
         // Deserialize the group elements and ensure the correct number of powers were downloaded/
-        let additional_powers = Vec::deserialize_uncompressed_unchecked(&**powers)?;
+        let additional_powers = Vec::deserialize_uncompressed_unchecked(powers)?;
 
         // Ensure the correct number of powers were downloaded prior to extending the powers.
         ensure!(
@@ -472,7 +478,11 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// Extend shifted powers in place with checks to ensure the bytes are valid and the extensions
     /// are contiguous with the existing powers.
-    pub fn extend_shifted_powers_checked(&mut self, shifted_powers: &[Vec<u8>], num_powers: &[usize]) -> Result<()> {
+    pub(crate) fn extend_shifted_powers_checked(
+        &mut self,
+        shifted_powers: &[Vec<u8>],
+        num_powers: &[usize],
+    ) -> Result<()> {
         let final_num_powers = *num_powers.first().ok_or_else(|| anyhow!("No powers to extend"))?;
 
         // Get the current size of the shifted powers.
@@ -586,10 +596,12 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
         let mut download_queue = Vec::with_capacity(14);
         let mut existing_num_powers = self.shifted_powers_of_beta_g.len();
+        println!("existing_num_powers = {}", existing_num_powers);
         while existing_num_powers < final_num_powers {
             existing_num_powers = existing_num_powers
                 .checked_mul(2)
                 .ok_or_else(|| anyhow!("Overflowed while requesting additional powers"))?;
+            println!("loop existing_num_powers = {}", existing_num_powers);
             download_queue.push(existing_num_powers);
         }
         download_queue.reverse(); // We want to download starting from the smallest power.
@@ -640,7 +652,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
     /// degree of normal powers.
-    pub fn verify_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+    pub(crate) fn verify_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
         let result = match num_powers {
             NUM_POWERS_16 => Degree16::verify_bytes(bytes),
             NUM_POWERS_17 => Degree17::verify_bytes(bytes),
@@ -662,7 +674,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
     /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
     /// degree of shifted powers.
-    pub fn verify_shifted_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+    pub(crate) fn verify_shifted_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
         let result = match num_powers {
             NUM_POWERS_16 => ShiftedDegree16::verify_bytes(bytes),
             NUM_POWERS_17 => ShiftedDegree17::verify_bytes(bytes),
@@ -693,5 +705,137 @@ impl<E: PairingEngine> ToBytes for PowersOfBetaG<E> {
     /// Writes the powers to the buffer.
     fn write_le<W: Write>(&self, writer: W) -> std::io::Result<()> {
         self.serialize_with_mode(writer, Compress::No).map_err(|e| e.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_curves::bls12_377::Bls12_377;
+
+    #[test]
+    fn test_checked_extensions_of_normal_powers() {
+        let mut powers = PowersOfG::<Bls12_377>::load().unwrap();
+        let incorrect_powers_16 = vec![0u8; NUM_POWERS_16];
+        let powers_16 = impl_download_powers!(NUM_POWERS_16, load_bytes).unwrap();
+        let powers_17 = impl_download_powers!(NUM_POWERS_17, load_bytes).unwrap();
+        let powers_18 = impl_download_powers!(NUM_POWERS_18, load_bytes).unwrap();
+
+        // Ensure powers can't be extended with incorrect bytes.
+        let result = powers.extend_normal_powers_checked(&incorrect_powers_16, NUM_POWERS_16);
+        assert!(result.is_err());
+        assert_eq!(powers.num_powers(), NUM_POWERS_15);
+
+        // Ensure powers can't be extended with powers of the wrong length.
+        let result = powers.extend_normal_powers_checked(&powers_17, NUM_POWERS_16);
+        assert!(result.is_err());
+        assert_eq!(powers.num_powers(), NUM_POWERS_15);
+
+        // Ensure contiguous powers CAN be extended.
+        powers.extend_normal_powers_checked(&powers_16, NUM_POWERS_16).unwrap();
+        assert_eq!(powers.num_powers(), NUM_POWERS_16);
+
+        // Ensure powers can't be overwritten.
+        let result = powers.extend_normal_powers_checked(&powers_16, NUM_POWERS_16);
+        assert!(result.is_err());
+        assert_eq!(powers.num_powers(), NUM_POWERS_16);
+
+        // Assert non-contiguous powers fail to extend powers.
+        let result = powers.extend_normal_powers_checked(&powers_18, NUM_POWERS_18);
+        assert!(result.is_err());
+        assert_eq!(powers.num_powers(), NUM_POWERS_16);
+
+        // Assert normal methods CAN extend powers after manual extension.
+        powers.download_powers_for(0..NUM_POWERS_17).unwrap();
+        assert_eq!(powers.num_powers(), NUM_POWERS_17);
+
+        // Assert powers CAN be extended with contiguous powers after normal power downloads.
+        powers.extend_normal_powers_checked(&powers_18, NUM_POWERS_18).unwrap();
+        assert_eq!(powers.num_powers(), NUM_POWERS_18);
+    }
+
+    #[test]
+    fn test_checked_extensions_of_shifted_powers() {
+        let mut powers = PowersOfG::<Bls12_377>::load().unwrap();
+        let shifted_powers_16 = impl_download_shifted_powers!(NUM_POWERS_16, load_bytes).unwrap();
+        let shifted_powers_17 = impl_download_shifted_powers!(NUM_POWERS_17, load_bytes).unwrap();
+        let shifted_powers_18 = impl_download_shifted_powers!(NUM_POWERS_18, load_bytes).unwrap();
+        let shifted_powers_19 = impl_download_shifted_powers!(NUM_POWERS_19, load_bytes).unwrap();
+
+        // Ensure bytes with incorrect length fail to extend powers.
+        let result = powers
+            .extend_shifted_powers_checked(&[shifted_powers_16.clone()[0..(NUM_POWERS_16 - 3)].to_vec()], &[
+                NUM_POWERS_16,
+            ]);
+        assert!(result.is_err());
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_15);
+
+        // Ensure non-contiguous bytes fail to extend powers.
+        let result = powers.extend_shifted_powers_checked(&[shifted_powers_18.clone(), shifted_powers_16.clone()], &[
+            NUM_POWERS_17,
+            NUM_POWERS_16,
+        ]);
+        assert!(result.is_err());
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_15);
+
+        // Ensure incorrect bytes fail to extend powers.
+        let result = powers.extend_shifted_powers_checked(&[vec![0; NUM_POWERS_17], vec![0; NUM_POWERS_16]], &[
+            NUM_POWERS_17,
+            NUM_POWERS_16,
+        ]);
+        assert!(result.is_err());
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_15);
+
+        // Ensure if powers are specified out of order that the extension fails to extend powers.
+        let result = powers.extend_shifted_powers_checked(&[vec![], vec![]], &[NUM_POWERS_17, NUM_POWERS_18]);
+        assert!(result.is_err());
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_15);
+
+        // Ensure a valid extension succeeds
+        powers.extend_shifted_powers_checked(&[shifted_powers_16], &[NUM_POWERS_16]).unwrap();
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_16);
+
+        // Ensure we can download bytes with a valid range.
+        powers.download_powers_for((NUM_POWERS_28 - NUM_POWERS_17)..(NUM_POWERS_28 - NUM_POWERS_16)).unwrap();
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_17);
+
+        // Ensure existing powers can't be overwritten with an overlapping range.
+        let result = powers.extend_shifted_powers_checked(&[shifted_powers_18.clone(), shifted_powers_17], &[
+            NUM_POWERS_18,
+            NUM_POWERS_18,
+        ]);
+        assert!(result.is_err());
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_18);
+
+        // Ensure powers can be extended after normal downloads.
+        powers
+            .extend_shifted_powers_checked(&[shifted_powers_19, shifted_powers_18], &[NUM_POWERS_19, NUM_POWERS_18])
+            .unwrap();
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_19);
+    }
+
+    #[test]
+    fn test_power_estimation() {
+        let mut powers = PowersOfG::<Bls12_377>::load().unwrap();
+        let initial_range = 0..NUM_POWERS_18;
+        let initial_shifted_range = (NUM_POWERS_28 - NUM_POWERS_18)..(NUM_POWERS_28 - NUM_POWERS_15);
+        let extended_range = 0..NUM_POWERS_20;
+        let extended_shifted_range = (NUM_POWERS_28 - NUM_POWERS_20)..(NUM_POWERS_28 - NUM_POWERS_18);
+
+        // Ensure initial power estimates are correct for shifted and non-shifted powers.
+        let normal_powers_estimate = powers.estimate_powers_for(&initial_range).unwrap();
+        let shifted_powers_estimate = powers.estimate_powers_for(&initial_shifted_range).unwrap();
+        assert_eq!(normal_powers_estimate, (vec![NUM_POWERS_16, NUM_POWERS_17, NUM_POWERS_18], false));
+        assert_eq!(shifted_powers_estimate, (vec![NUM_POWERS_18, NUM_POWERS_17, NUM_POWERS_16], true));
+
+        // Download parameters and ensure new range estimates are correct.
+        powers.download_powers_for(initial_range).unwrap();
+        powers.download_powers_for(initial_shifted_range.clone()).unwrap();
+
+        // Get extended estimates and ensure they are correct.
+        let normal_power_estimate = powers.estimate_powers_for(&extended_range).unwrap();
+        let extended_power_estimate = powers.estimate_powers_for(&extended_shifted_range).unwrap();
+        assert_eq!(normal_power_estimate, (vec![NUM_POWERS_19, NUM_POWERS_20], false));
+        assert_eq!(extended_power_estimate, (vec![NUM_POWERS_20, NUM_POWERS_19], true));
     }
 }

@@ -28,49 +28,6 @@ macro_rules! checksum_error {
 }
 
 #[macro_export]
-macro_rules! validate_bytes {
-    ($bytes:expr, $num_powers:expr, $shifted:tt) => {{
-        let metadata_string = match $num_powers {
-            NUM_POWERS_15 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-15", ".metadata"))),
-            NUM_POWERS_16 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-16", ".metadata"))),
-            NUM_POWERS_17 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-17", ".metadata"))),
-            NUM_POWERS_18 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-18", ".metadata"))),
-            NUM_POWERS_19 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-19", ".metadata"))),
-            NUM_POWERS_20 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-20", ".metadata"))),
-            NUM_POWERS_21 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-21", ".metadata"))),
-            NUM_POWERS_22 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-22", ".metadata"))),
-            NUM_POWERS_23 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-23", ".metadata"))),
-            NUM_POWERS_24 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-24", ".metadata"))),
-            NUM_POWERS_25 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-25", ".metadata"))),
-            NUM_POWERS_26 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-26", ".metadata"))),
-            NUM_POWERS_27 => Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-27", ".metadata"))),
-            NUM_POWERS_28 => {
-                if $shifted == "shifted-" {
-                    bail!("No shifted powers of beta 28");
-                } else {
-                    Ok(include_str!(concat!("resources/", $shifted, "powers-of-beta-28", ".metadata")))
-                }
-            }
-            _ => Err($crate::errors::ParameterError::Message("invalid degree".to_string())),
-        }?;
-
-        let metadata: serde_json::Value =
-            serde_json::from_str(metadata_string).expect("Metadata was not well-formatted");
-        let expected_checksum: String = metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
-        let expected_size: usize = metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
-
-        if expected_size != $bytes.len() {
-            bail!("byte lengths don't match".to_string());
-        }
-        let candidate_checksum = checksum!(&$bytes);
-        if expected_checksum != candidate_checksum {
-            bail!("Checksums did not match");
-        }
-        Ok::<(), anyhow::Error>(())
-    }};
-}
-
-#[macro_export]
 macro_rules! remove_file {
     ($filepath:expr) => {
         // Safely remove the corrupt file, if it exists.
@@ -376,14 +333,16 @@ macro_rules! impl_remote {
                 (expected_checksum, expected_size, filename)
             }
 
-            /// Ensure downloaded bytes are valid
+            /// Ensure bytes match the expected checksum and size for the power degree.
             pub fn verify_bytes(buffer: &[u8]) -> Result<(), $crate::errors::ParameterError> {
                 let (expected_checksum, expected_size, _) = Self::extract_metadata();
 
+                // Ensure the length of the bytes passed matches the expected length
                 if expected_size != buffer.len() {
                     return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
                 }
 
+                // Ensure the checksum of the bytes passed matches the expected checksum
                 let candidate_checksum = checksum!(buffer);
                 if expected_checksum != candidate_checksum {
                     return checksum_error!(expected_checksum, candidate_checksum);

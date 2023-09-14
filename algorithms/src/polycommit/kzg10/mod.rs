@@ -474,7 +474,6 @@ mod tests {
     use super::*;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{rand::TestRng, FromBytes, ToBytes};
-
     use std::borrow::Cow;
 
     type KZG_Bls12_377 = KZG10<Bls12_377>;
