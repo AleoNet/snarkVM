@@ -87,6 +87,7 @@ use console::{
     program::{Identifier, PlaintextType, ProgramID, RecordType, StructType},
 };
 
+use console::prelude::Itertools;
 use indexmap::IndexMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -512,6 +513,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     /// This method will halt if a destination register already exists in memory.
     /// This method will halt if an output register does not already exist.
     /// This method will halt if an output type references a non-existent definition.
+    /// This method will halt if the order `call.finalize`s do not match the order of `call.function`s.
     #[inline]
     fn add_function(&mut self, function: FunctionCore<N, Instruction, Command>) -> Result<()> {
         // Retrieve the function name.
@@ -533,6 +535,41 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
         // Ensure the number of outputs is within the allowed range.
         ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
+
+        // Check that the order of `call.finalize`s match the order of `call.function`s.
+        // Collect the function and finalize calls.
+        let function_calls = function
+            .instructions()
+            .iter()
+            .filter(|instruction| matches!(instruction.opcode(), Opcode::Call("function")))
+            .collect::<Vec<_>>();
+        let finalize_calls = function
+            .finalize()
+            .map(|(_, finalize_core)| {
+                finalize_core.commands().iter().filter(|command| command.is_finalize_call()).collect::<Vec<_>>()
+            })
+            .unwrap_or(Default::default());
+        // Check that the number of function and finalize calls match.
+        ensure!(
+            function_calls.len() == finalize_calls.len(),
+            "The number of `call.function`s and `call.finalize`s must match."
+        );
+        // Check that the order of the function and finalize calls match.
+        for (function_call, finalize_call) in function_calls.iter().zip_eq(finalize_calls.iter()) {
+            // Retrieve the function name.
+            let (function_call_operator, finalize_call_operator) =
+                match (function_call.call_to(), finalize_call.call_to()) {
+                    (Some(function_call_operator), Some(finalize_call_operator)) => {
+                        (function_call_operator, finalize_call_operator)
+                    }
+                    _ => bail!("Expected `call.function` and `call.finalize` to both have call operators."),
+                };
+            // Check that the operators match.
+            ensure!(
+                function_call_operator == finalize_call_operator,
+                "Expected the order of `call.function`s and `call.finalize`s to match. Found '{function_call_operator}' and '{finalize_call_operator}'."
+            );
+        }
 
         // Add the function name to the identifiers.
         if self.identifiers.insert(function_name, ProgramDefinition::Function).is_some() {

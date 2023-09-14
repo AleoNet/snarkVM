@@ -188,6 +188,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Xor(_)) => Ok(2_000),
         // TODO: The following 'finalize' commands are currently priced higher than expected.
         //  Expect these numbers to change as their usage is stabilized.
+        Command::CallFinalize(_) => Ok(2_000),
         Command::Contains(_) => Ok(250_000),
         Command::Get(_) => Ok(500_000),
         Command::GetOrUse(_) => Ok(500_000),

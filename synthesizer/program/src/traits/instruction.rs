@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::{CallOperator, Opcode};
 use console::{
     network::Network,
     prelude::{FromBytes, Parser, ToBytes},
@@ -21,6 +22,14 @@ use console::{
 pub trait InstructionTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
     /// Returns the destination registers of the instruction.
     fn destinations(&self) -> Vec<Register<N>>;
+    /// Returns the name of the closure or function being called, if the command is a call instruction.
+    fn call_to(&self) -> Option<&CallOperator<N>>;
+    /// Returns the opcode of the instruction.
+    fn opcode(&self) -> Opcode;
+    /// Returns `true` if the instruction is a closure call instruction, e.g `call.closure`.
+    fn is_closure_call(&self) -> bool;
+    /// Returns `true` if the instruction is a function call instruction, e.g `call.function`.
+    fn is_function_call(&self) -> bool;
     /// Returns `true` if the given name is a reserved opcode.
     fn is_reserved_opcode(name: &str) -> bool;
 }

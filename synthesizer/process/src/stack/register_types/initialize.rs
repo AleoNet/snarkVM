@@ -352,7 +352,7 @@ impl<N: Network> RegisterTypes<N> {
                 let (call_type, operator) = match instruction {
                     Instruction::CallClosure(call) => (CallType::Closure, call.operator()),
                     Instruction::CallFunction(call) => (CallType::Function, call.operator()),
-                    _ => bail!("Instruction '{instruction}' is not a call operation."),
+                    _ => bail!("Instruction '{instruction}' is not a valid call operation."),
                 };
 
                 // Check that the call is well-formed.
