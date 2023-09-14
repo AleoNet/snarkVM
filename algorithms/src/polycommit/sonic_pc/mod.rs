@@ -426,7 +426,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Commitment<E>: 'a,
     {
         let label_map =
-            polynomials.into_iter().zip_eq(rands).map(|(p, r)| (p.clone_label(), (p, r))).collect::<BTreeMap<_, _>>();
+            polynomials.into_iter().zip_eq(rands).map(|(p, r)| (p.to_label(), (p, r))).collect::<BTreeMap<_, _>>();
 
         let mut lc_polynomials = Vec::new();
         let mut lc_randomness = Vec::new();

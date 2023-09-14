@@ -98,7 +98,7 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 
     /// Return the label for `self`.
-    pub fn clone_label(&self) -> String {
+    pub fn to_label(&self) -> String {
         self.info.label.clone()
     }
 
