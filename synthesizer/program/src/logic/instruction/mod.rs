@@ -358,6 +358,34 @@ impl<N: Network> InstructionTrait<N> for Instruction<N> {
         instruction!(self, |instruction| instruction.destinations())
     }
 
+    /// Returns the name of the closure or function being called, if the command is a call instruction.
+    #[inline]
+    fn call_to(&self) -> Option<&CallOperator<N>> {
+        match self {
+            Self::CallClosure(call_closure) => Some(call_closure.operator()),
+            Self::CallFunction(call_function) => Some(call_function.operator()),
+            _ => None,
+        }
+    }
+
+    /// Returns the opcode of the instruction.
+    #[inline]
+    fn opcode(&self) -> Opcode {
+        instruction!(self, |InstructionMember| InstructionMember::<N>::opcode())
+    }
+
+    /// Returns `true` if the instruction is a closure call instruction, e.g `call_closure`.
+    #[inline]
+    fn is_closure_call(&self) -> bool {
+        matches!(self, Self::CallClosure(..))
+    }
+
+    /// Returns `true` if the instruction is a function call instruction, e.g `call.function`.
+    #[inline]
+    fn is_function_call(&self) -> bool {
+        matches!(self, Self::CallFunction(..))
+    }
+
     /// Returns `true` if the given name is a reserved opcode.
     #[inline]
     fn is_reserved_opcode(name: &str) -> bool {
@@ -369,12 +397,6 @@ impl<N: Network> InstructionTrait<N> for Instruction<N> {
 impl<N: Network> Instruction<N> {
     /// The list of all instruction opcodes.
     pub const OPCODES: &'static [Opcode] = &instruction!(opcodes, Instruction, |None| {});
-
-    /// Returns the opcode of the instruction.
-    #[inline]
-    pub const fn opcode(&self) -> Opcode {
-        instruction!(self, |InstructionMember| InstructionMember::<N>::opcode())
-    }
 
     /// Returns the operands of the instruction.
     #[inline]

@@ -116,7 +116,7 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         ensure!(self.num_writes < N::MAX_WRITES, "Cannot add more than {} 'set' commands", N::MAX_WRITES);
 
         // Ensure the command is not a call instruction.
-        ensure!(!command.is_call(), "Forbidden operation: Finalize cannot invoke a 'call'");
+        ensure!(!command.is_function_call(), "Forbidden operation: Finalize cannot invoke a 'call'");
         // Ensure the command is not a cast to record instruction.
         ensure!(!command.is_cast_to_record(), "Forbidden operation: Finalize cannot cast to a record");
 

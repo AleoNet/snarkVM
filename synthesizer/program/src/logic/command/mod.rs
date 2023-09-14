@@ -46,6 +46,8 @@ use crate::{
         StackMatches,
         StackProgram,
     },
+    CallFinalize,
+    CallOperator,
     FinalizeCommand,
     FinalizeOperation,
     FinalizeRegistersState,
@@ -60,6 +62,8 @@ use console::{
 pub enum Command<N: Network> {
     /// Evaluates the instruction.
     Instruction(Instruction<N>),
+    /// Calls a `finalize` block.
+    CallFinalize(CallFinalize<N>),
     /// Returns true if the `key` operand is present in `mapping`, and stores the result into `destination`.
     Contains(Contains<N>),
     /// Gets the value stored at the `key` operand in `mapping` and stores the result into `destination`.
@@ -93,7 +97,8 @@ impl<N: Network> CommandTrait<N> for Command<N> {
             Command::Get(get) => vec![get.destination().clone()],
             Command::GetOrUse(get_or_use) => vec![get_or_use.destination().clone()],
             Command::RandChaCha(rand_chacha) => vec![rand_chacha.destination().clone()],
-            Command::Remove(_)
+            Command::CallFinalize(_)
+            | Command::Remove(_)
             | Command::Set(_)
             | Command::BranchEq(_)
             | Command::BranchNeq(_)
@@ -112,6 +117,17 @@ impl<N: Network> CommandTrait<N> for Command<N> {
         }
     }
 
+    /// Returns the name of the closure, finalize, or function being called, if the command is a call instruction.
+    #[inline]
+    fn call_to(&self) -> Option<&CallOperator<N>> {
+        match self {
+            Command::Instruction(Instruction::CallClosure(call_closure)) => Some(call_closure.operator()),
+            Command::Instruction(Instruction::CallFunction(call_function)) => Some(call_function.operator()),
+            Command::CallFinalize(call_finalize) => Some(call_finalize.operator()),
+            _ => None,
+        }
+    }
+
     /// Returns the position name, if the command is a position command.
     /// Otherwise, returns `None`.
     #[inline]
@@ -122,13 +138,22 @@ impl<N: Network> CommandTrait<N> for Command<N> {
         }
     }
 
-    /// Returns `true` if the command is a call instruction.
+    /// Returns `true` if the command is a closure call instruction, e.g `call.closure`.
     #[inline]
-    fn is_call(&self) -> bool {
-        matches!(
-            self,
-            Command::Instruction(Instruction::CallClosure(_)) | Command::Instruction(Instruction::CallFunction(_))
-        )
+    fn is_closure_call(&self) -> bool {
+        matches!(self, Command::Instruction(Instruction::CallClosure(_)))
+    }
+
+    /// Returns `true` if the command is a finalize call instruction, e.g `call.finalize`.
+    #[inline]
+    fn is_finalize_call(&self) -> bool {
+        matches!(self, Command::CallFinalize(_))
+    }
+
+    /// Returns `true` if the command is a function call instruction, e.g `call.function`.
+    #[inline]
+    fn is_function_call(&self) -> bool {
+        matches!(self, Command::Instruction(Instruction::CallFunction(_)))
     }
 
     /// Returns `true` if the command is a cast to record instruction.
@@ -155,6 +180,10 @@ impl<N: Network> Command<N> {
         match self {
             // Finalize the instruction, and return no finalize operation.
             Command::Instruction(instruction) => instruction.finalize(stack, registers).map(|_| None),
+            // `call.finalize` instructions are processed by the caller of this method.
+            Command::CallFinalize(_) => {
+                bail!("`call.finalize` instructions are processed by the caller of this method.")
+            }
             // Finalize the 'contains' command, and return no finalize operation.
             Command::Contains(contains) => contains.finalize(stack, store, registers).map(|_| None),
             // Finalize the 'get' command, and return no finalize operation.
@@ -185,26 +214,28 @@ impl<N: Network> FromBytes for Command<N> {
         match variant {
             // Read the instruction.
             0 => Ok(Self::Instruction(Instruction::read_le(&mut reader)?)),
+            // Read the `call.finalize` operation.
+            1 => Ok(Self::CallFinalize(CallFinalize::read_le(&mut reader)?)),
             // Read the `contains` operation.
-            1 => Ok(Self::Contains(Contains::read_le(&mut reader)?)),
+            2 => Ok(Self::Contains(Contains::read_le(&mut reader)?)),
             // Read the `get` operation.
-            2 => Ok(Self::Get(Get::read_le(&mut reader)?)),
+            3 => Ok(Self::Get(Get::read_le(&mut reader)?)),
             // Read the `get.or_use` operation.
-            3 => Ok(Self::GetOrUse(GetOrUse::read_le(&mut reader)?)),
+            4 => Ok(Self::GetOrUse(GetOrUse::read_le(&mut reader)?)),
             // Read the `rand.chacha` operation.
-            4 => Ok(Self::RandChaCha(RandChaCha::read_le(&mut reader)?)),
+            5 => Ok(Self::RandChaCha(RandChaCha::read_le(&mut reader)?)),
             // Read the `remove` operation.
-            5 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
+            6 => Ok(Self::Remove(Remove::read_le(&mut reader)?)),
             // Read the `set` operation.
-            6 => Ok(Self::Set(Set::read_le(&mut reader)?)),
+            7 => Ok(Self::Set(Set::read_le(&mut reader)?)),
             // Read the `branch.eq` command.
-            7 => Ok(Self::BranchEq(BranchEq::read_le(&mut reader)?)),
+            8 => Ok(Self::BranchEq(BranchEq::read_le(&mut reader)?)),
             // Read the `branch.neq` command.
-            8 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
+            9 => Ok(Self::BranchNeq(BranchNeq::read_le(&mut reader)?)),
             // Read the `position` command.
-            9 => Ok(Self::Position(Position::read_le(&mut reader)?)),
+            10 => Ok(Self::Position(Position::read_le(&mut reader)?)),
             // Invalid variant.
-            10.. => Err(error(format!("Invalid command variant: {variant}"))),
+            11.. => Err(error(format!("Invalid command variant: {variant}"))),
         }
     }
 }
@@ -219,57 +250,63 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the instruction.
                 instruction.write_le(&mut writer)
             }
-            Self::Contains(contains) => {
+            Self::CallFinalize(call_finalize) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
+                // Write the `call.finalize` operation.
+                call_finalize.write_le(&mut writer)
+            }
+            Self::Contains(contains) => {
+                // Write the variant.
+                2u8.write_le(&mut writer)?;
                 // Write the `contains` operation.
                 contains.write_le(&mut writer)
             }
             Self::Get(get) => {
                 // Write the variant.
-                2u8.write_le(&mut writer)?;
+                3u8.write_le(&mut writer)?;
                 // Write the `get` operation.
                 get.write_le(&mut writer)
             }
             Self::GetOrUse(get_or_use) => {
                 // Write the variant.
-                3u8.write_le(&mut writer)?;
+                4u8.write_le(&mut writer)?;
                 // Write the defaulting `get` operation.
                 get_or_use.write_le(&mut writer)
             }
             Self::RandChaCha(rand_chacha) => {
                 // Write the variant.
-                4u8.write_le(&mut writer)?;
+                5u8.write_le(&mut writer)?;
                 // Write the `rand.chacha` operation.
                 rand_chacha.write_le(&mut writer)
             }
             Self::Remove(remove) => {
                 // Write the variant.
-                5u8.write_le(&mut writer)?;
+                6u8.write_le(&mut writer)?;
                 // Write the remove.
                 remove.write_le(&mut writer)
             }
             Self::Set(set) => {
                 // Write the variant.
-                6u8.write_le(&mut writer)?;
+                7u8.write_le(&mut writer)?;
                 // Write the set.
                 set.write_le(&mut writer)
             }
             Self::BranchEq(branch_eq) => {
                 // Write the variant.
-                7u8.write_le(&mut writer)?;
+                8u8.write_le(&mut writer)?;
                 // Write the `branch.eq` command.
                 branch_eq.write_le(&mut writer)
             }
             Self::BranchNeq(branch_neq) => {
                 // Write the variant.
-                8u8.write_le(&mut writer)?;
+                9u8.write_le(&mut writer)?;
                 // Write the `branch.neq` command.
                 branch_neq.write_le(&mut writer)
             }
             Self::Position(position) => {
                 // Write the variant.
-                9u8.write_le(&mut writer)?;
+                10u8.write_le(&mut writer)?;
                 // Write the position command.
                 position.write_le(&mut writer)
             }
@@ -285,6 +322,7 @@ impl<N: Network> Parser for Command<N> {
         // Note that the order of the parsers is important.
         alt((
             map(Contains::parse, |contains| Self::Contains(contains)),
+            map(CallFinalize::parse, |call_finalize| Self::CallFinalize(call_finalize)),
             map(GetOrUse::parse, |get_or_use| Self::GetOrUse(get_or_use)),
             map(Get::parse, |get| Self::Get(get)),
             map(RandChaCha::parse, |rand_chacha| Self::RandChaCha(rand_chacha)),
@@ -328,6 +366,7 @@ impl<N: Network> Display for Command<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
+            Self::CallFinalize(call_finalize) => Display::fmt(call_finalize, f),
             Self::Contains(contains) => Display::fmt(contains, f),
             Self::Get(get) => Display::fmt(get, f),
             Self::GetOrUse(get_or_use) => Display::fmt(get_or_use, f),
@@ -363,6 +402,12 @@ mod tests {
         // Increment
         let expected = "increment object[r0] by r1;";
         Command::<CurrentNetwork>::parse(expected).unwrap_err();
+
+        // CallFinalize
+        let expected = "call.finalize r0;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
 
         // Contains
         let expected = "contains object[r0] into r1;";
@@ -440,6 +485,12 @@ mod tests {
         // Increment
         let expected = "increment object[r0] by r1;";
         Command::<CurrentNetwork>::parse(expected).unwrap_err();
+
+        // CallFinalize
+        let expected = "call.finalize r0;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::CallFinalize(CallFinalize::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
 
         // Contains
         let expected = "contains object[r0] into r1;";
