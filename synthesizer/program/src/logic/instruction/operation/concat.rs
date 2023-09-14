@@ -242,6 +242,8 @@ impl<N: Network> Parser for Concat<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the "as" from the string.
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
