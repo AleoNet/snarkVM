@@ -344,7 +344,10 @@ mod tests {
         assert_eq!(concat.destination, Register::Locator(2), "The destination register is incorrect");
         assert_eq!(
             concat.target_type,
-            ArrayType::new(PlaintextType::Literal(LiteralType::Boolean), vec![console::program::U32::new(2)]),
+            ArrayType::new(PlaintextType::Literal(console::program::LiteralType::Boolean), vec![
+                console::program::U32::new(2)
+            ])
+            .unwrap(),
             "The target type is incorrect"
         );
     }

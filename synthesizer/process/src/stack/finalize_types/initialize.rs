@@ -466,12 +466,6 @@ impl<N: Network> FinalizeTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not a cast operation."),
                 };
 
-                // Ensure the instruction has one destination register.
-                ensure!(
-                    instruction.destinations().len() == 1,
-                    "Instruction '{instruction}' has multiple destinations."
-                );
-
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
@@ -479,9 +473,7 @@ impl<N: Network> FinalizeTypes<N> {
                     }
                     RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                         // Ensure the struct name exists in the program.
-                        if !stack.program().contains_struct(struct_name) {
-                            bail!("Struct '{struct_name}' is not defined.")
-                        }
+                        RegisterTypes::check_struct(stack, struct_name)?;
                         // Retrieve the struct.
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
@@ -503,6 +495,15 @@ impl<N: Network> FinalizeTypes<N> {
             }
             Opcode::Command(opcode) => {
                 bail!("Fatal error: Cannot check command '{opcode}' as an instruction in 'finalize {finalize_name}'.")
+            }
+            Opcode::Concat => {
+                // Retrieve the concat operation.
+                let operation = match instruction {
+                    Instruction::Concat(operation) => operation,
+                    _ => bail!("Instruction '{instruction}' is not a concat operation."),
+                };
+                // Check that the target type is defined.
+                RegisterTypes::check_array(stack, operation.target_type())?;
             }
             Opcode::Commit(opcode) => RegisterTypes::check_commit_opcode(opcode, instruction)?,
             Opcode::Finalize(opcode) => {
@@ -527,13 +528,7 @@ impl<N: Network> FinalizeTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
-            Opcode::Sign => {
-                // Ensure the instruction has one destination register.
-                ensure!(
-                    instruction.destinations().len() == 1,
-                    "Instruction '{instruction}' has multiple destinations."
-                );
-            }
+            Opcode::Sign => {}
         }
         Ok(())
     }

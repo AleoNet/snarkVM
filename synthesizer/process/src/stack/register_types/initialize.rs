@@ -400,12 +400,6 @@ impl<N: Network> RegisterTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not a cast operation."),
                 };
 
-                // Ensure the instruction has one destination register.
-                ensure!(
-                    instruction.destinations().len() == 1,
-                    "Instruction '{instruction}' has multiple destinations."
-                );
-
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
@@ -413,9 +407,7 @@ impl<N: Network> RegisterTypes<N> {
                     }
                     RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
                         // Ensure the struct name exists in the program.
-                        if !stack.program().contains_struct(struct_name) {
-                            bail!("Struct '{struct_name}' is not defined.")
-                        }
+                        Self::check_struct(stack, struct_name)?;
                         // Retrieve the struct.
                         let struct_ = stack.program().get_struct(struct_name)?;
                         // Ensure the operand types match the struct.
@@ -446,12 +438,17 @@ impl<N: Network> RegisterTypes<N> {
                 bail!("Forbidden operation: Instruction '{instruction}' cannot invoke command '{opcode}'.");
             }
             Opcode::Commit(opcode) => Self::check_commit_opcode(opcode, instruction)?,
+            Opcode::Concat => {
+                // Retrieve the concat operation.
+                let operation = match instruction {
+                    Instruction::Concat(operation) => operation,
+                    _ => bail!("Instruction '{instruction}' is not a concat operation."),
+                };
+                // Check that the target type is defined.
+                RegisterTypes::check_array(stack, operation.target_type())?;
+            }
             Opcode::Finalize(opcode) => {
                 bail!("Forbidden operation: Instruction '{instruction}' cannot invoke command '{opcode}'.");
-                // // Ensure the opcode is correct.
-                // if opcode != "finalize" {
-                //     bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                // }
             }
             Opcode::Hash(opcode) => Self::check_hash_opcode(opcode, instruction)?,
             Opcode::Is(opcode) => {
@@ -472,36 +469,21 @@ impl<N: Network> RegisterTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
-            Opcode::Sign => {
-                // Ensure the instruction has one destination register.
-                ensure!(
-                    instruction.destinations().len() == 1,
-                    "Instruction '{instruction}' has multiple destinations."
-                );
-            }
+            Opcode::Sign => {}
         }
         Ok(())
     }
 }
 
 impl<N: Network> RegisterTypes<N> {
-    /// Ensures the struct exists in the program, and recursively-checks for array members.
+    /// Ensures the struct exists in the program.
     pub(crate) fn check_struct(
         stack: &(impl StackMatches<N> + StackProgram<N>),
         struct_name: &Identifier<N>,
     ) -> Result<()> {
-        // Retrieve the struct from the program.
-        let Ok(struct_) = stack.program().get_struct(struct_name) else {
+        // Check that the struct exists in the program.
+        if !stack.program().contains_struct(struct_name) {
             bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-        };
-
-        // If the struct contains arrays, ensure their base element types are defined in the program.
-        for member in struct_.members().values() {
-            match member {
-                PlaintextType::Literal(..) => (),
-                PlaintextType::Struct(struct_name) => Self::check_struct(stack, struct_name)?,
-                PlaintextType::Array(array_type) => Self::check_array(stack, array_type)?,
-            }
         }
         Ok(())
     }
@@ -514,9 +496,7 @@ impl<N: Network> RegisterTypes<N> {
         // If the base element type is a struct, check that it is defined in the program.
         if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
             // Ensure the struct is defined in the program.
-            if !stack.program().contains_struct(struct_name) {
-                bail!("Struct '{struct_name}' in '{}' is not defined.", stack.program_id())
-            }
+            Self::check_struct(stack, struct_name)?;
         }
         Ok(())
     }

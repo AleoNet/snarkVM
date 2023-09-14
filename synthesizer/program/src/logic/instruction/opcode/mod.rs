@@ -27,6 +27,8 @@ pub enum Opcode {
     Command(&'static str),
     /// The opcode is for a commit operation (i.e. `commit.psd4`).
     Commit(&'static str),
+    /// The opcode is for a concat operation (i.e. `concat`).
+    Concat,
     /// The opcode is for a finalize operation (i.e. `finalize`).
     Finalize(&'static str),
     /// The opcode is for a hash operation (i.e. `hash.psd4`).
@@ -50,6 +52,7 @@ impl Deref for Opcode {
             Opcode::Cast => &"cast",
             Opcode::Command(opcode) => opcode,
             Opcode::Commit(opcode) => opcode,
+            Opcode::Concat => &"concat",
             Opcode::Finalize(opcode) => opcode,
             Opcode::Hash(opcode) => opcode,
             Opcode::Is(opcode) => opcode,
@@ -75,6 +78,7 @@ impl Display for Opcode {
             Self::Cast => write!(f, "{}", self.deref()),
             Self::Command(opcode) => write!(f, "{opcode}"),
             Self::Commit(opcode) => write!(f, "{opcode}"),
+            Self::Concat => write!(f, "{}", self.deref()),
             Self::Finalize(opcode) => write!(f, "{opcode}"),
             Self::Hash(opcode) => write!(f, "{opcode}"),
             Self::Is(opcode) => write!(f, "{opcode}"),

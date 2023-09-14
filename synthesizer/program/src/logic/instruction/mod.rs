@@ -95,6 +95,8 @@ pub enum Instruction<N: Network> {
     CommitPED64(CommitPED64<N>),
     /// Performs a Pedersen commitment on up to a 128-bit input.
     CommitPED128(CommitPED128<N>),
+    /// Concatenates `first` and `second`, storing the outcome in `destination`.
+    Concat(Concat<N>),
     /// Divides `first` by `second`, storing the outcome in `destination`.
     Div(Div<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -243,6 +245,7 @@ macro_rules! instruction {
             CommitBHP1024,
             CommitPED64,
             CommitPED128,
+            Concat,
             Div,
             DivWrapped,
             Double,
@@ -463,7 +466,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            66,
+            67,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
