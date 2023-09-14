@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_verify_keccak256_constant() -> Result<()> {
-        check_verify_keccak!(Keccak256, Keccak256, Constant, 10, 4, 256, (6964, 0, 0, 0))
+        check_verify_keccak!(Keccak256, Keccak256, Constant, 10, 4, 256, (6388, 0, 0, 0))
     }
 
     #[test]
