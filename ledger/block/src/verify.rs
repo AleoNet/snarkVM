@@ -426,6 +426,9 @@ impl<N: Network> Block<N> {
     }
 }
 impl<N: Network> Block<N> {
+    /// The maximum number of ratifications allowed in a block.
+    pub const MAX_RATIFICATIONS: usize = usize::pow(2, RATIFICATIONS_DEPTH as u32);
+
     /// Computes the transactions root for the block.
     fn compute_transactions_root(&self) -> Result<Field<N>> {
         match self.transactions.to_transactions_root() {
@@ -444,6 +447,13 @@ impl<N: Network> Block<N> {
 
     /// Computes the ratifications root for the block.
     fn compute_ratifications_root(&self) -> Result<Field<N>> {
+        ensure!(
+            self.ratifications.len() <= Self::MAX_RATIFICATIONS,
+            "Block cannot exceed {} ratifications, found {}",
+            Self::MAX_RATIFICATIONS,
+            self.ratifications.len()
+        );
+
         let leaves =
             self.ratifications.iter().map(|r| Ok(r.to_bytes_le()?.to_bits_le())).collect::<Result<Vec<_>, Error>>()?;
 

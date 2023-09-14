@@ -40,6 +40,13 @@ impl<N: Network> FromBytes for Block<N> {
 
         // Read the ratifications.
         let num_ratifications = u32::read_le(&mut reader)?;
+        if num_ratifications > u32::try_from(Self::MAX_RATIFICATIONS).map_err(|e| error(e.to_string()))? {
+            return Err(error(format!(
+                "Block cannot exceed {} ratifications, found {}",
+                Self::MAX_RATIFICATIONS,
+                num_ratifications
+            )));
+        }
         let mut ratifications = Vec::with_capacity(num_ratifications as usize);
         for _ in 0..num_ratifications {
             ratifications.push(FromBytes::read_le(&mut reader)?);
