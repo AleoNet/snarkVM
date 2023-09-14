@@ -743,10 +743,12 @@ jobs:
       - run:
           no_output_timeout: 30m
           command: |
-            sudo apt-get install nodejs
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+            export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm install 20.3.1
+            nvm use 20.3.1
             curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
             cd wasm && wasm-pack test --node
-            # cargo test --target wasm32-unknown-unknown
       - clear_environment:
           cache_key: snarkvm-wasm-cache
 
