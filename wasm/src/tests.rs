@@ -15,12 +15,10 @@
 const NUM_POWERS_16: usize = 1 << 16;
 const NUM_POWERS_18: usize = 1 << 18;
 
-use snarkvm_algorithms::polycommit::kzg10::UniversalParams;
 use snarkvm_circuit_network::AleoV0;
 use snarkvm_console::{
     account::{Address, PrivateKey, ViewKey},
-    network::{Console, Environment, Testnet3},
-    program::ProgramID,
+    network::Testnet3,
 };
 use snarkvm_utilities::TestRng;
 

@@ -29,11 +29,10 @@ use snarkvm_utilities::{
 };
 
 use crate::srs::{UniversalProver, UniversalVerifier};
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{ensure, Result};
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
-use snarkvm_parameters::*;
 use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
 
 const MAX_POWER_OF_TWO: usize = 28;
@@ -65,9 +64,9 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 
-    // Preload powers of \beta G and \beta \gamma G into memory prior to an execution. Useful for
-    // environments such as WebAssembly where downloading powers in a blocking fashion is not optimal
-    // or not possible.
+    /// Preload powers of \beta G and \beta \gamma G into memory prior to an execution. Useful for
+    /// environments such as WebAssembly where downloading powers in a blocking fashion is not
+    /// possible or not optimal
     pub async fn preload_powers_async(&self, lower: usize, upper: usize) -> Result<()> {
         ensure!(upper <= 28, "Upper bound must not exceed 2^28");
         ensure!(lower <= upper && lower >= 16, "Lower bound must be less than or equal to upper bound and at least 15");
@@ -85,7 +84,7 @@ impl<E: PairingEngine> UniversalParams<E> {
     }
 
     async fn download_powers_for_async(&self, range: &Range<usize>) -> Result<()> {
-        let (powers, shifted_powers) = self.powers.read().estimate_powers_for(&range)?;
+        let (powers, shifted_powers) = self.powers.read().estimate_powers_for(range)?;
         if shifted_powers {
             let mut final_powers = vec![];
             for num_powers in &powers {

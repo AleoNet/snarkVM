@@ -101,16 +101,16 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Extend shifted powers
-    pub fn extend_shifted_powers_checked(&mut self, powers: &Vec<Vec<u8>>, num_powers: &[usize]) -> Result<()> {
+    pub fn extend_shifted_powers_checked(&mut self, powers: &[Vec<u8>], num_powers: &[usize]) -> Result<()> {
         self.powers_of_beta_g.extend_shifted_powers_checked(powers, num_powers)
     }
 
     pub async fn download_powers_async(num_powers: usize) -> Result<Vec<u8>> {
-        impl_get_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
+        impl_download_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
     }
 
     pub async fn download_shifted_powers_async(num_powers: usize) -> Result<Vec<u8>> {
-        impl_get_shifted_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
+        impl_download_shifted_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
     }
 
     pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
@@ -152,6 +152,18 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     pub fn beta_h(&self) -> E::G2Affine {
         self.beta_h
+    }
+
+    /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
+    /// degree of normal powers.
+    pub fn verify_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+        PowersOfBetaG::<E>::verify_bytes(bytes, num_powers)
+    }
+
+    /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
+    /// degree of shifted powers.
+    pub fn verify_shifted_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+        PowersOfBetaG::<E>::verify_shifted_bytes(bytes, num_powers)
     }
 }
 
@@ -306,7 +318,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         (range.start as isize - self.available_powers().1.start as isize).unsigned_abs()
     }
 
-    /// Assumes that we have the requisite powers.
+    // Assumes that we have the requisite powers.
     fn shifted_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
         ensure!(
             self.contains_in_shifted_powers(&range),
@@ -326,18 +338,18 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         }
     }
 
-    /// Assumes that we have the requisite powers.
+    // Assumes that we have the requisite powers.
     fn normal_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
         ensure!(self.contains_in_normal_powers(&range), "Requested range is not contained in the available powers");
         Ok(&self.powers_of_beta_g[range])
     }
 
-    /// Returns the power of beta times G specified by `target`.
+    // Returns the power of beta times G specified by `target`.
     fn power(&mut self, target: usize) -> Result<E::G1Affine> {
         self.powers(target..(target + 1)).map(|s| s[0])
     }
 
-    /// Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
+    // Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
     fn powers(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
         if range.is_empty() {
             return Ok(&self.powers_of_beta_g[0..0]);
@@ -354,6 +366,9 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         }
     }
 
+    /// Estimate the powers required to satisfy the range of the powers requested. Returns a vector
+    /// of the powers needed, and a boolean that if `true` indicates that the shifted powers are
+    /// needed and `false` if the normal powers are needed.
     pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
         if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
             return Ok((Vec::new(), false));
@@ -392,7 +407,121 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(())
     }
 
-    /// Get needed powers for a given degree.
+    /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
+    /// and updates `Self` in place with the new powers.
+    fn download_powers_up_to(&mut self, end: usize) -> Result<()> {
+        let final_power_of_two =
+            end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+
+        // Get download queue
+        let download_queue = self.get_powers_download_queue(end)?;
+
+        // Reserve capacity for the new powers of two.
+        let additional_size = final_power_of_two
+            .checked_sub(self.powers_of_beta_g.len())
+            .ok_or_else(|| anyhow!("final_power_of_two is smaller than existing powers"))?;
+        self.powers_of_beta_g.reserve(additional_size);
+
+        // Download the powers of two.
+        for num_powers in &download_queue {
+            #[cfg(debug_assertions)]
+            println!("Loading {num_powers} powers");
+
+            // Download the universal SRS powers if they're not already on disk.
+            let additional_bytes = impl_download_powers!(*num_powers, load_bytes)?;
+
+            // Deserialize the group elements.
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
+            // Extend the powers.
+            self.powers_of_beta_g.extend(&additional_powers);
+        }
+        ensure!(self.powers_of_beta_g.len() == final_power_of_two, "Loaded an incorrect number of powers");
+        Ok(())
+    }
+
+    /// Extend normal powers in place with checks to ensure the bytes are valid and the extensions
+    /// are contiguous with the existing powers.
+    pub fn extend_normal_powers_checked(&mut self, powers: &Vec<u8>, num_powers: usize) -> Result<()> {
+        let current_length = self.powers_of_beta_g.len();
+        let expected_final_length =
+            (current_length + 1).checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+
+        // Check that the attempted power extension is the next power of two.
+        ensure!(
+            expected_final_length == num_powers,
+            "The next increment of {} powers does match the number of powers specified {}",
+            expected_final_length,
+            num_powers,
+        );
+
+        // Ensure the bytes being passed in evaluate to the correct checksum.
+        Self::verify_bytes(powers, num_powers)?;
+
+        // Deserialize the group elements and ensure the correct number of powers were downloaded/
+        let additional_powers = Vec::deserialize_uncompressed_unchecked(&**powers)?;
+
+        // Ensure the correct number of powers were downloaded prior to extending the powers.
+        ensure!(
+            expected_final_length == current_length + additional_powers.len(),
+            "Downloaded an incorrect number of powers"
+        );
+
+        self.powers_of_beta_g.extend(&additional_powers);
+        Ok(())
+    }
+
+    /// Extend shifted powers in place with checks to ensure the bytes are valid and the extensions
+    /// are contiguous with the existing powers.
+    pub fn extend_shifted_powers_checked(&mut self, shifted_powers: &[Vec<u8>], num_powers: &[usize]) -> Result<()> {
+        let final_num_powers = *num_powers.first().ok_or_else(|| anyhow!("No powers to extend"))?;
+
+        // Get the current size of the shifted powers.
+        let mut last_power = self.shifted_powers_of_beta_g.len() + 1;
+
+        // Ensure that the powers being passed in are contiguous.
+        for shifted_power in num_powers.iter().rev() {
+            let expected_next_shifted_power =
+                last_power.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
+            ensure!(
+                *shifted_power == expected_next_shifted_power,
+                "Cannot insert new powers not in the existing shifted power range shifted: {}, expected shifted: {} num_powers: {:?}, last power: {}",
+                shifted_power,
+                expected_next_shifted_power,
+                num_powers,
+                last_power
+            );
+            last_power = *shifted_power + 1;
+        }
+
+        let mut final_powers = Vec::with_capacity(final_num_powers);
+        for (power, size) in shifted_powers.iter().zip_eq(num_powers) {
+            // Ensure the shifted powers are of the correct size and evaluate to the correct checksum.
+            Self::verify_shifted_bytes(power, *size)?;
+
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&**power)?;
+
+            // Ensure the specified powers are of the intended size.
+            let expected_size = size.checked_div(2).ok_or_else(|| anyhow!("Invalid power size"))?;
+            ensure!(additional_powers.len() == expected_size, "Downloaded an incorrect number of powers");
+
+            if final_powers.is_empty() {
+                final_powers = additional_powers;
+            } else {
+                final_powers.extend(additional_powers);
+            }
+        }
+
+        // Extend the powers.
+        final_powers.extend(self.shifted_powers_of_beta_g.iter());
+
+        // Ensure the correct number of powers are present before extending the powers.
+        ensure!(final_powers.len() == final_num_powers, "Downloaded an incorrect number of powers");
+
+        self.shifted_powers_of_beta_g = final_powers;
+        Ok(())
+    }
+
+    // Get the download queue for the normal powers of beta g that should be downloaded
     fn get_powers_download_queue(&self, end: usize) -> Result<Vec<usize>> {
         // Determine the new power of two.
         let final_power_of_two =
@@ -422,95 +551,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(download_queue)
     }
 
-    /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
-    /// and updates `Self` in place with the new powers.
-    fn download_powers_up_to(&mut self, end: usize) -> Result<()> {
-        let final_power_of_two =
-            end.checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
-
-        // Get download queue
-        let download_queue = self.get_powers_download_queue(end)?;
-
-        // Reserve capacity for the new powers of two.
-        let additional_size = final_power_of_two
-            .checked_sub(self.powers_of_beta_g.len())
-            .ok_or_else(|| anyhow!("final_power_of_two is smaller than existing powers"))?;
-        self.powers_of_beta_g.reserve(additional_size);
-
-        // Download the powers of two.
-        for num_powers in &download_queue {
-            #[cfg(debug_assertions)]
-            println!("Loading {num_powers} powers");
-
-            // Download the universal SRS powers if they're not already on disk.
-            let additional_bytes = impl_get_powers!(*num_powers, load_bytes)?;
-
-            // Deserialize the group elements.
-            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
-            // Extend the powers.
-            self.powers_of_beta_g.extend(&additional_powers);
-        }
-        ensure!(self.powers_of_beta_g.len() == final_power_of_two, "Loaded an incorrect number of powers");
-        Ok(())
-    }
-
-    pub fn extend_normal_powers_checked(&mut self, powers: &Vec<u8>, num_powers: usize) -> Result<()> {
-        let current_length = self.powers_of_beta_g.len();
-        let expected_final_length =
-            (current_length + 1).checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
-
-        // Check that the attempted power extension is the next power of two
-        ensure!(
-            expected_final_length == num_powers,
-            "The next increment of {} powers does match the number of powers specified {}",
-            expected_final_length,
-            num_powers,
-        );
-
-        // Ensure the bytes being passed in evaluate to the correct checksum
-        validate_bytes!(powers, num_powers, "")?;
-
-        // Deserialize the group elements and ensure the correct number of powers were downloaded
-        let additional_powers = Vec::deserialize_uncompressed_unchecked(&**powers)?;
-
-        ensure!(
-            expected_final_length == current_length + additional_powers.len(),
-            "Downloaded an incorrect number of powers"
-        );
-
-        // Check the new length to sanity check we've created the correct extension
-        self.powers_of_beta_g.extend(&additional_powers);
-        Ok(())
-    }
-
-    pub fn extend_shifted_powers_checked(&mut self, shifted_powers: &Vec<Vec<u8>>, num_powers: &[usize]) -> Result<()> {
-        let final_num_powers = *num_powers.first().ok_or_else(|| anyhow!("No powers to extend"))?;
-        let mut final_powers = Vec::with_capacity(final_num_powers);
-        for (power, size) in shifted_powers.iter().zip_eq(num_powers) {
-            validate_bytes!(power, *size, "shifted-")?;
-
-            let additional_powers = Vec::deserialize_uncompressed_unchecked(&**power)?;
-
-            ensure!(
-                additional_powers.len() == size.checked_div(2).ok_or_else(|| anyhow!("Invalid power size"))?,
-                "Downloaded an incorrect number of powers len {} - size {} num_powers {:?} - vec bytes size {}",
-                additional_powers.len(),
-                *size,
-                num_powers,
-                power.len()
-            );
-
-            if final_powers.is_empty() {
-                final_powers = additional_powers;
-            } else {
-                final_powers.extend(additional_powers);
-            }
-        }
-        self.shifted_powers_of_beta_g = final_powers;
-
-        Ok(())
-    }
-
+    // Get the download queue for the shifted powers of beta g that should be downloaded.
     fn get_shifted_powers_download_queue(&self, start: usize) -> Result<Vec<usize>> {
         // Ensure the total number of powers is less than the maximum number of powers.
         ensure!(start <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
@@ -567,16 +608,17 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             .checked_next_power_of_two()
             .ok_or_else(|| anyhow!("Requesting too many powers"))?; // Calculated k.next_power_of_two().
 
+        // Get the download queue for the shifted powers.
         let download_queue = self.get_shifted_powers_download_queue(start)?;
 
-        let mut final_powers = Vec::with_capacity(final_num_powers);
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
+        let mut final_powers = Vec::with_capacity(final_num_powers);
         for num_powers in &download_queue {
             #[cfg(debug_assertions)]
             println!("Loading {num_powers} shifted powers");
 
             // Download the universal SRS powers if they're not already on disk.
-            let additional_bytes = impl_get_shifted_powers!(*num_powers, load_bytes).map_err(|e| anyhow!(e))?;
+            let additional_bytes = impl_download_shifted_powers!(*num_powers, load_bytes).map_err(|e| anyhow!(e))?;
 
             // Deserialize the group elements.
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
@@ -588,13 +630,55 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             }
         }
         final_powers.extend(self.shifted_powers_of_beta_g.iter());
+
+        // Ensure the correct number of powers were loaded before extending the powers.
+        ensure!(final_powers.len() == final_num_powers, "Loaded an incorrect number of shifted powers");
         self.shifted_powers_of_beta_g = final_powers;
 
-        ensure!(
-            self.shifted_powers_of_beta_g.len() == final_num_powers,
-            "Loaded an incorrect number of shifted powers"
-        );
         Ok(())
+    }
+
+    /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
+    /// degree of normal powers.
+    pub fn verify_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+        let result = match num_powers {
+            NUM_POWERS_16 => Degree16::verify_bytes(bytes),
+            NUM_POWERS_17 => Degree17::verify_bytes(bytes),
+            NUM_POWERS_18 => Degree18::verify_bytes(bytes),
+            NUM_POWERS_19 => Degree19::verify_bytes(bytes),
+            NUM_POWERS_20 => Degree20::verify_bytes(bytes),
+            NUM_POWERS_21 => Degree21::verify_bytes(bytes),
+            NUM_POWERS_22 => Degree22::verify_bytes(bytes),
+            NUM_POWERS_23 => Degree23::verify_bytes(bytes),
+            NUM_POWERS_24 => Degree24::verify_bytes(bytes),
+            NUM_POWERS_25 => Degree25::verify_bytes(bytes),
+            NUM_POWERS_26 => Degree26::verify_bytes(bytes),
+            NUM_POWERS_27 => Degree27::verify_bytes(bytes),
+            NUM_POWERS_28 => Degree28::verify_bytes(bytes),
+            _ => bail!("Invalid number of powers"),
+        };
+        result.map_err(|e| anyhow!(e))
+    }
+
+    /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
+    /// degree of shifted powers.
+    pub fn verify_shifted_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+        let result = match num_powers {
+            NUM_POWERS_16 => ShiftedDegree16::verify_bytes(bytes),
+            NUM_POWERS_17 => ShiftedDegree17::verify_bytes(bytes),
+            NUM_POWERS_18 => ShiftedDegree18::verify_bytes(bytes),
+            NUM_POWERS_19 => ShiftedDegree19::verify_bytes(bytes),
+            NUM_POWERS_20 => ShiftedDegree20::verify_bytes(bytes),
+            NUM_POWERS_21 => ShiftedDegree21::verify_bytes(bytes),
+            NUM_POWERS_22 => ShiftedDegree22::verify_bytes(bytes),
+            NUM_POWERS_23 => ShiftedDegree23::verify_bytes(bytes),
+            NUM_POWERS_24 => ShiftedDegree24::verify_bytes(bytes),
+            NUM_POWERS_25 => ShiftedDegree25::verify_bytes(bytes),
+            NUM_POWERS_26 => ShiftedDegree26::verify_bytes(bytes),
+            NUM_POWERS_27 => ShiftedDegree27::verify_bytes(bytes),
+            _ => bail!("Invalid number of shifted powers"),
+        };
+        result.map_err(|e| anyhow!(e))
     }
 }
 
