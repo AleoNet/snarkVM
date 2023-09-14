@@ -127,7 +127,7 @@ mod tests {
         ($console:expr, $native:expr) => {
             let rng = &mut TestRng::default();
 
-            let mut input_sizes = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 32, 64, 128, 256, 512, 1024];
+            let mut input_sizes = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16, 32, 64, 128, 256, 512, 1024];
             input_sizes.extend((0..100).map(|_| rng.gen_range(1..1024)));
 
             for num_inputs in input_sizes {
@@ -165,6 +165,51 @@ mod tests {
     #[test]
     fn test_keccak_512_equivalence() {
         check_equivalence!(Keccak512::default(), keccak_512_native);
+    }
+
+    // Show that you can call keccak on an empty string of bits.
+    #[test]
+    fn test_keccak_256_on_constants_empty() {
+        let input = vec![];
+        // This is the tiny-keccak (native) result, which is the same as the console version:
+        // let result = keccak_256_native(&bytes_from_bits_le(&input));
+        let resultbits = Keccak256::default().hash(&input).unwrap();
+        let result = bytes_from_bits_le(&resultbits);
+        println!("{:?}", result);  // This result has been checked against ACL2.
+    }
+
+    // Show collisions from different bit lengths.  This is why it is misleading to call the function keccak.
+    // Standard keccak gives different results on different bit lengths.
+    // The function should really be called something like byteify_then_keccak.
+    // For 
+    // In the case of sha3, not supporting other bit lengths might be too limiting.
+    #[test]
+    fn test_keccak_256_on_constants_0_00() {
+        let input0 = vec![false];
+        let input00 = vec![false, false];
+        // let result0 = keccak_256_native(&bytes_from_bits_le(&input0));
+        // let result00 = keccak_256_native(&bytes_from_bits_le(&input00));
+        let result0bits = Keccak256::default().hash(&input0).unwrap();
+        let result00bits = Keccak256::default().hash(&input00).unwrap();
+        let result0 = bytes_from_bits_le(&result0bits);
+        let result00 = bytes_from_bits_le(&result00bits);
+        assert_eq!(result0, result00);
+    }
+
+    // Show another collision.
+    #[test]
+    fn test_keccak_256_on_constants_1_10() {
+        let input1 = vec![true];
+        let input10 = vec![true, false];
+        // let result1 = keccak_256_native(&bytes_from_bits_le(&input1));
+        // let result10 = keccak_256_native(&bytes_from_bits_le(&input10));
+        let result1bits = Keccak256::default().hash(&input1).unwrap();
+        let result10bits = Keccak256::default().hash(&input10).unwrap();
+        let result1 = bytes_from_bits_le(&result1bits);
+        let result10 = bytes_from_bits_le(&result10bits);
+        // println!("{:?}", result1);
+        // println!("{:?}", result10);
+        assert_eq!(result1, result10);
     }
 
     #[test]
