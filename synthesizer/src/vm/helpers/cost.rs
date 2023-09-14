@@ -116,6 +116,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::CommitBHP1024(_)) => Ok(200_000),
         Command::Instruction(Instruction::CommitPED64(_)) => Ok(100_000),
         Command::Instruction(Instruction::CommitPED128(_)) => Ok(100_000),
+        Command::Instruction(Instruction::Concat(_)) => Ok(2_000),
         Command::Instruction(Instruction::Div(_)) => Ok(10_000),
         Command::Instruction(Instruction::DivWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Double(_)) => Ok(2_000),
