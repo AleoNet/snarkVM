@@ -29,12 +29,15 @@ use snarkvm_utilities::{
 };
 
 use crate::srs::{UniversalProver, UniversalVerifier};
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
 use snarkvm_parameters::*;
 use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
+
+const MAX_POWER_OF_TWO: usize = 28;
+const MAX_NUM_POWERS: usize = 1 << MAX_POWER_OF_TWO;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Clone, Debug)]
@@ -62,20 +65,48 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 
-    pub async fn download_powers_for_async(&self, range: Range<usize>) -> Result<()> {
+    // Preload powers of \beta G and \beta \gamma G into memory prior to an execution. Useful for
+    // environments such as WebAssembly where downloading powers in a blocking fashion is not optimal
+    // or not possible.
+    pub async fn preload_powers_async(&self, lower: usize, upper: usize) -> Result<()> {
+        ensure!(upper <= 28, "Upper bound must not exceed 2^28");
+        ensure!(lower <= upper && lower >= 16, "Lower bound must be less than or equal to upper bound and at least 15");
+
+        let range = (1usize << lower)..(1usize << upper);
+
+        // Download regular powers of \beta G
+        self.download_powers_for_async(&range).await?;
+
+        // Then download shifted powers of \beta \gamma G
+        let lowest_shift_degree = MAX_NUM_POWERS - range.end;
+        self.download_powers_for_async(&(lowest_shift_degree..(MAX_NUM_POWERS + 1))).await?;
+
+        Ok(())
+    }
+
+    async fn download_powers_for_async(&self, range: &Range<usize>) -> Result<()> {
         let (powers, shifted_powers) = self.powers.read().estimate_powers_for(&range)?;
-        let mut downloaded_powers = vec![];
         if shifted_powers {
-            println!("Powers and stuff");
+            let mut final_powers = vec![];
+            for num_powers in &powers {
+                #[cfg(debug_assertions)]
+                println!("Loading {num_powers} shifted powers");
+
+                let downloaded_powers = PowersOfG::<E>::download_shifted_powers_async(*num_powers).await?;
+                final_powers.push(downloaded_powers);
+            }
+            self.powers.write().extend_shifted_powers_checked(&final_powers, &powers)?;
         } else {
             // Download the powers of two.
             for num_powers in &powers {
                 #[cfg(debug_assertions)]
                 println!("Loading {num_powers} powers");
 
-                downloaded_powers.push(PowersOfG::<E>::download_additional_powers_async(*num_powers).await?);
+                let downloaded_powers = PowersOfG::<E>::download_powers_async(*num_powers).await?;
+
+                // Attempt to extend the powers
+                self.powers.write().extend_normal_powers_checked(&downloaded_powers, *num_powers)?;
             }
-            self.powers.write().extend_powers(&downloaded_powers)?;
         }
 
         Ok(())

@@ -28,6 +28,7 @@ use snarkvm_utilities::{
 };
 
 use anyhow::{anyhow, bail, ensure, Result};
+use itertools::Itertools;
 use std::{collections::BTreeMap, ops::Range, sync::Arc};
 
 /// The maximum degree supported by the SRS.
@@ -95,15 +96,20 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Extend powers
-    pub fn extend_powers(&mut self, num_powers: &Vec<Vec<u8>>) -> Result<()> {
-        self.powers_of_beta_g.extend_powers(num_powers)
+    pub fn extend_normal_powers_checked(&mut self, powers: &Vec<u8>, num_powers: usize) -> Result<()> {
+        self.powers_of_beta_g.extend_normal_powers_checked(powers, num_powers)
     }
 
-    pub async fn download_additional_powers_async(num_powers: usize) -> Result<Vec<u8>> {
+    /// Extend shifted powers
+    pub fn extend_shifted_powers_checked(&mut self, powers: &Vec<Vec<u8>>, num_powers: &[usize]) -> Result<()> {
+        self.powers_of_beta_g.extend_shifted_powers_checked(powers, num_powers)
+    }
+
+    pub async fn download_powers_async(num_powers: usize) -> Result<Vec<u8>> {
         impl_get_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
     }
 
-    pub async fn download_additional_shifted_powers_async(num_powers: usize) -> Result<Vec<u8>> {
+    pub async fn download_shifted_powers_async(num_powers: usize) -> Result<Vec<u8>> {
         impl_get_shifted_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
     }
 
@@ -362,7 +368,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             Ok((self.get_shifted_powers_download_queue(range.start)?, true))
         } else {
             // Otherwise, we download the normal powers.
-            Ok((self.get_powers_download_queue(range.start)?, false))
+            Ok((self.get_powers_download_queue(range.end)?, false))
         }
     }
 
@@ -448,24 +454,60 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(())
     }
 
-    pub fn extend_powers(&mut self, powers: &Vec<Vec<u8>>) -> Result<()> {
+    pub fn extend_normal_powers_checked(&mut self, powers: &Vec<u8>, num_powers: usize) -> Result<()> {
         let current_length = self.powers_of_beta_g.len();
-        let final_power_of_two = powers
-            .last()
-            .ok_or(anyhow!("No powers to extend"))?
-            .len()
-            .checked_next_power_of_two()
-            .ok_or(anyhow!("Adding too many powers"))?;
+        let expected_final_length =
+            (current_length + 1).checked_next_power_of_two().ok_or_else(|| anyhow!("Requesting too many powers"))?;
 
-        let powers_length = powers.iter().fold(0, |acc, x| acc + x.len());
-        ensure!((powers_length + current_length) == final_power_of_two, "Incorrect number of powers to extend");
+        // Check that the attempted power extension is the next power of two
+        ensure!(
+            expected_final_length == num_powers,
+            "The next increment of {} powers does match the number of powers specified {}",
+            expected_final_length,
+            num_powers,
+        );
 
-        for power in powers {
-            // TODO: Check checksum
+        // Ensure the bytes being passed in evaluate to the correct checksum
+        validate_bytes!(powers, num_powers, "")?;
+
+        // Deserialize the group elements and ensure the correct number of powers were downloaded
+        let additional_powers = Vec::deserialize_uncompressed_unchecked(&**powers)?;
+
+        ensure!(
+            expected_final_length == current_length + additional_powers.len(),
+            "Downloaded an incorrect number of powers"
+        );
+
+        // Check the new length to sanity check we've created the correct extension
+        self.powers_of_beta_g.extend(&additional_powers);
+        Ok(())
+    }
+
+    pub fn extend_shifted_powers_checked(&mut self, shifted_powers: &Vec<Vec<u8>>, num_powers: &[usize]) -> Result<()> {
+        let final_num_powers = *num_powers.first().ok_or_else(|| anyhow!("No powers to extend"))?;
+        let mut final_powers = Vec::with_capacity(final_num_powers);
+        for (power, size) in shifted_powers.iter().zip_eq(num_powers) {
+            validate_bytes!(power, *size, "shifted-")?;
+
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&**power)?;
-            self.powers_of_beta_g.extend(&additional_powers);
+
+            ensure!(
+                additional_powers.len() == size.checked_div(2).ok_or_else(|| anyhow!("Invalid power size"))?,
+                "Downloaded an incorrect number of powers len {} - size {} num_powers {:?} - vec bytes size {}",
+                additional_powers.len(),
+                *size,
+                num_powers,
+                power.len()
+            );
+
+            if final_powers.is_empty() {
+                final_powers = additional_powers;
+            } else {
+                final_powers.extend(additional_powers);
+            }
         }
-        ensure!(self.powers_of_beta_g.len() == final_power_of_two, "Loaded an incorrect number of powers");
+        self.shifted_powers_of_beta_g = final_powers;
+
         Ok(())
     }
 
@@ -534,7 +576,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             println!("Loading {num_powers} shifted powers");
 
             // Download the universal SRS powers if they're not already on disk.
-            let additional_bytes = impl_get_shifted_powers!(*num_powers, load_bytes)?;
+            let additional_bytes = impl_get_shifted_powers!(*num_powers, load_bytes).map_err(|e| anyhow!(e))?;
 
             // Deserialize the group elements.
             let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;

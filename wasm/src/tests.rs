@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+const NUM_POWERS_16: usize = 1 << 16;
+const NUM_POWERS_18: usize = 1 << 18;
+
+use snarkvm_algorithms::polycommit::kzg10::UniversalParams;
+use snarkvm_circuit_network::AleoV0;
 use snarkvm_console::{
     account::{Address, PrivateKey, ViewKey},
-    network::Testnet3,
+    network::{Console, Environment, Testnet3},
+    program::ProgramID,
 };
 use snarkvm_utilities::TestRng;
 
 use core::str::FromStr;
+use snarkvm_console::program::Identifier;
+use snarkvm_synthesizer::{Process, Program};
 use wasm_bindgen_test::*;
 
 const ITERATIONS: usize = 1000;
@@ -57,4 +65,21 @@ fn test_account_sign() {
         let result = signature.verify_bytes(&address, "hello world!".as_bytes());
         assert!(result, "Failed to execute signature verification");
     }
+}
+
+#[wasm_bindgen_test]
+async fn preload_powers_async() {
+    let mut process = Process::<Testnet3>::load_web().unwrap();
+    let srs = process.universal_srs();
+    srs.preload_powers_async(16, 18).await.unwrap();
+    // Pre-downloading powers should not trigger further downloads
+    let powers_of_beta = srs.powers_of_beta_g(NUM_POWERS_16, NUM_POWERS_18).unwrap();
+    assert_eq!(powers_of_beta.len(), NUM_POWERS_18 - NUM_POWERS_16);
+
+    let hello = Program::from_str("program hello_hello.aleo;\n\nfunction hello:\n    input r0 as u32.public;\n    input r1 as u32.private;\n    add r0 r1 into r2;\n    output r2 as u32.private;\n").unwrap();
+    process.add_program(&hello).unwrap();
+    let function_name = Identifier::from_str("hello").unwrap();
+
+    // Attempt to synthesize a new key without triggering further downloads (this runs an execution once)
+    process.synthesize_key::<AleoV0, _>(hello.id(), &function_name, &mut TestRng::default()).unwrap();
 }
