@@ -151,6 +151,9 @@ pub trait Network:
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 16;
 
+    /// The maximum number of nodes that can be in a committee.
+    const MAX_COMMITTEE_SIZE: u16 = 200;
+
     /// The state root type.
     type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
