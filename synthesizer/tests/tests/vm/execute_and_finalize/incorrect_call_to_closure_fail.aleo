@@ -1,6 +1,7 @@
 /*
 cases: []
 */
+
 program incorrect_call_to_closure_fail.aleo;
 
 closure foo:
@@ -14,5 +15,3 @@ function hello:
     input r1 as u32.private;
     call.function foo r0 r1 into r2;
     output r2 as u32.private;
-
-
