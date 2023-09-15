@@ -71,24 +71,17 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
         let mut circuit_keys = Vec::with_capacity(circuits.len());
         for circuit in circuits {
             let mut indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
+            let degree_info = indexed_circuit.index_info.degree_info::<E::Fr, MM>();
             // TODO: Add check that c is in the correct mode.
             // Ensure the universal SRS supports the circuit size.
             universal_srs
-                .download_powers_for(0..indexed_circuit.max_degree())
-                .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree()))?;
+                .download_powers_for(0..degree_info.max_degree)
+                .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", degree_info.max_degree))?;
 
-            let max_degree = indexed_circuit.max_degree();
-            let max_domain_size = indexed_circuit.max_domain_size();
-            let coefficient_support = indexed_circuit.index_info.get_degree_bounds::<E::Fr>();
             let supported_lagrange_sizes = None; // TODO: optionally use either lagrange or monomial basis
             let hiding_bound = AHPForR1CS::<E::Fr, MM>::zk_bound().unwrap_or(0);
-            let universal_prover = &universal_srs.to_universal_prover(
-                max_degree,
-                max_domain_size,
-                Some(&coefficient_support),
-                supported_lagrange_sizes,
-                hiding_bound,
-            )?;
+            let universal_prover =
+                &universal_srs.to_universal_prover(degree_info, supported_lagrange_sizes, hiding_bound)?;
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments

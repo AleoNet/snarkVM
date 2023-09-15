@@ -340,12 +340,8 @@ mod tests {
 
         let (index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &assignment).unwrap();
         println!("Called circuit setup");
-        let max_degree = index_pk.circuit.max_degree();
-        let max_domain_size = index_pk.circuit.max_domain_size();
-        let coefficient_support = index_pk.circuit.index_info.get_degree_bounds::<Fr>();
-        let universal_prover = &universal_srs
-            .to_universal_prover(max_degree, max_domain_size, Some(&coefficient_support), None, hiding_bound)
-            .unwrap();
+        let degree_info = index_pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
         let proof = VarunaInst::prove(universal_prover, &fs_pp, &index_pk, &assignment, rng).unwrap();
         println!("Called prover");

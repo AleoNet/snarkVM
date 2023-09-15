@@ -18,7 +18,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct ProvingKey<N: Network> {
@@ -43,11 +43,8 @@ impl<N: Network> ProvingKey<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the proving parameters.
-        let max_degree = self.circuit.max_degree();
-        let max_domain_size = self.circuit.max_domain_size();
-        let coefficient_support = self.circuit.index_info.get_degree_bounds::<N::Field>();
-
-        let universal_prover = N::varuna_universal_prover(max_degree, max_domain_size, &coefficient_support);
+        let degree_info = self.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
+        let universal_prover = N::varuna_universal_prover(degree_info);
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the proof.
@@ -75,18 +72,11 @@ impl<N: Network> ProvingKey<N> {
             .collect();
 
         // Retrieve the proving parameters.
-        let mut max_domain_size = 0;
-        let mut max_degree = 0;
-        let mut coefficient_support = HashSet::new();
+        let mut degree_info = DegreeInfo::default();
         for (pk, _) in assignments {
-            max_degree = max_degree.max(pk.circuit.max_degree());
-            max_domain_size = max_domain_size.max(pk.circuit.max_domain_size());
-            for bound in pk.circuit.index_info.get_degree_bounds::<N::Field>() {
-                coefficient_support.insert(bound);
-            }
+            degree_info.union(&pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>());
         }
-        let coefficient_support = coefficient_support.drain().collect_vec();
-        let universal_prover = N::varuna_universal_prover(max_degree, max_domain_size, &coefficient_support);
+        let universal_prover = N::varuna_universal_prover(degree_info);
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the proof.

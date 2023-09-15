@@ -35,6 +35,7 @@ pub mod prelude {
 use crate::environment::prelude::*;
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
+    polycommit::kzg10::DegreeInfo,
     snark::varuna::{CircuitProvingKey, CircuitVerifyingKey, VarunaHidingMode},
     srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
@@ -187,11 +188,7 @@ pub trait Network:
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns the Varuna universal prover.
-    fn varuna_universal_prover(
-        max_degree: usize,
-        max_domain_size: usize,
-        coefficient_support: &[usize],
-    ) -> UniversalProver<Self::PairingCurve>;
+    fn varuna_universal_prover(degree_info: DegreeInfo) -> UniversalProver<Self::PairingCurve>;
 
     /// Returns the Varuna universal verifier.
     fn varuna_universal_verifier() -> &'static UniversalVerifier<Self::PairingCurve>;

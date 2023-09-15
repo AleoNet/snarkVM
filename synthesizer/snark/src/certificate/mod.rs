@@ -40,10 +40,8 @@ impl<N: Network> Certificate<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the proving parameters.
-        let max_degree = proving_key.circuit.max_degree();
-        let max_domain_size = proving_key.circuit.max_domain_size();
-        let coefficient_support = proving_key.circuit.index_info.get_degree_bounds::<N::Field>();
-        let universal_prover = N::varuna_universal_prover(max_degree, max_domain_size, &coefficient_support);
+        let degree_info = proving_key.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
+        let universal_prover = N::varuna_universal_prover(degree_info);
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the certificate.

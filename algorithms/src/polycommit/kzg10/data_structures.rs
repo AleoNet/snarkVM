@@ -24,6 +24,7 @@ use crate::{
     AlgebraicSponge,
 };
 use anyhow::{bail, Result};
+use itertools::Itertools;
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField, Zero};
 use snarkvm_parameters::testnet3::PowersOfG;
@@ -40,6 +41,8 @@ use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
 use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
+
+use super::DegreeInfo;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Clone, Debug)]
@@ -99,17 +102,17 @@ impl<E: PairingEngine> UniversalParams<E> {
 
     pub fn to_universal_prover(
         &self,
-        max_degree: usize,
-        max_domain_size: usize,
-        coefficient_support: Option<&[usize]>,
+        mut degree_info: DegreeInfo,
         supported_lagrange_sizes: Option<&[usize]>,
         hiding_bound: usize,
     ) -> Result<UniversalProver<E>> {
+        let coefficient_support = degree_info.degree_bounds.drain().collect_vec();
+        let coefficient_support = (!coefficient_support.is_empty()).then_some(coefficient_support.as_slice());
         let committer_key =
-            self.to_committer_key(max_degree, supported_lagrange_sizes, coefficient_support, hiding_bound)?;
+            self.to_committer_key(degree_info.max_degree, supported_lagrange_sizes, coefficient_support, hiding_bound)?;
 
         let (fft_precomputation, ifft_precomputation) =
-            Self::fft_precomputation(max_domain_size).ok_or(SerializationError::InvalidData)?;
+            Self::fft_precomputation(degree_info.max_fft_size).ok_or(SerializationError::InvalidData)?;
 
         Ok(UniversalProver::<E> {
             committer_key,

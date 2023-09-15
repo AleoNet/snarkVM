@@ -20,24 +20,25 @@ use std::collections::BTreeMap;
 
 mod varuna {
     use super::*;
-    use crate::snark::varuna::{
-        mode::SNARKMode,
-        AHPForR1CS,
-        CircuitVerifyingKey,
-        VarunaHidingMode,
-        VarunaNonHidingMode,
-        VarunaSNARK,
+    use crate::{
+        polycommit::kzg10::DegreeInfo,
+        snark::varuna::{
+            mode::SNARKMode,
+            AHPForR1CS,
+            CircuitVerifyingKey,
+            VarunaHidingMode,
+            VarunaNonHidingMode,
+            VarunaSNARK,
+        },
     };
-    use itertools::Itertools;
+
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
         rand::{TestRng, Uniform},
         ToBytes,
     };
-    use std::collections::HashSet;
 
     type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
-
     type VarunaSonicInst = VarunaSNARK<Bls12_377, FS, VarunaHidingMode>;
     type VarunaSonicPoSWInst = VarunaSNARK<Bls12_377, FS, VarunaNonHidingMode>;
 
@@ -65,13 +66,9 @@ mod varuna {
                         let (index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
 
-                        let max_domain_size = index_pk.circuit.max_domain_size();
-                        let max_degree = index_pk.circuit.max_degree();
-                        let coefficient_support = index_pk.circuit.index_info.get_degree_bounds::<Fr>();
+                        let degree_info = index_pk.circuit.index_info.degree_info::<Fr, $snark_mode>();
                         let universal_prover = &universal_srs.to_universal_prover(
-                            max_degree,
-                            max_domain_size,
-                            Some(&coefficient_support),
+                            degree_info,
                             None,
                             hiding_bound,
                         ).unwrap();
@@ -99,9 +96,7 @@ mod varuna {
                             println!("running test with circuit_batch_size: {circuit_batch_size} and instance_batch_size: {instance_batch_size}");
                             let mut constraints = BTreeMap::new();
                             let mut inputs = BTreeMap::new();
-                            let mut max_degree = 0;
-                            let mut max_domain_size = 0;
-                            let mut coefficient_support = HashSet::new();
+                            let mut degree_info = DegreeInfo::default();
 
                             for i in 0..circuit_batch_size {
                                 let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
@@ -125,13 +120,10 @@ mod varuna {
                             let mut vks_to_inputs = BTreeMap::new();
 
                             for (index_pk, index_vk) in index_keys.iter() {
-                                let max_degree_i = index_pk.circuit.max_degree();
-                                let max_domain_size_i = index_pk.circuit.max_domain_size();
-                                let coefficient_support_i = index_pk.circuit.index_info.get_degree_bounds::<Fr>();
+                                let degree_info_i = index_pk.circuit.index_info.degree_info::<Fr, $snark_mode>();
+                                degree_info.union(&degree_info_i); // collect max degree and domain size and union of coefficient supports
                                 let universal_prover = &universal_srs.to_universal_prover(
-                                    max_degree_i,
-                                    max_domain_size_i,
-                                    Some(&coefficient_support_i),
+                                    degree_info_i,
                                     None,
                                     hiding_bound,
                                 ).unwrap();
@@ -141,21 +133,11 @@ mod varuna {
                                 assert!($snark_inst::verify_vk(universal_verifier, &fs_parameters, &circuits[0], &index_vk, &certificate).unwrap());
                                 pks_to_constraints.insert(index_pk, circuits);
                                 vks_to_inputs.insert(index_vk, inputs[&index_pk.circuit.id].as_slice());
-
-                                // collect max degree and domain size and union of coefficient supports
-                                max_degree = max_degree.max(max_degree_i);
-                                max_domain_size = max_domain_size.max(max_domain_size_i);
-                                for coeff in coefficient_support_i {
-                                    coefficient_support.insert(coeff);
-                                }
                             }
                             println!("verified vks");
 
-                            let coefficient_support = coefficient_support.drain().collect_vec();
                             let universal_prover = &universal_srs.to_universal_prover(
-                                max_degree,
-                                max_domain_size,
-                                Some(coefficient_support.as_ref()),
+                                degree_info,
                                 None,
                                 hiding_bound,
                             ).unwrap();
@@ -374,12 +356,8 @@ mod varuna_hiding {
             let (index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
 
-            let max_degree = index_pk.circuit.max_degree();
-            let max_domain_size = index_pk.circuit.max_domain_size();
-            let coefficient_support = index_pk.circuit.index_info.get_degree_bounds::<Fr>();
-            let universal_prover = &universal_srs
-                .to_universal_prover(max_degree, max_domain_size, Some(&coefficient_support), None, hiding_bound)
-                .unwrap();
+            let degree_info = index_pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
+            let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
             let proof = VarunaInst::prove(universal_prover, &fs_parameters, &index_pk, &circuit, rng).unwrap();
             println!("Called prover");
@@ -524,12 +502,8 @@ mod varuna_hiding {
         let (index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
 
-        let max_degree = index_pk.circuit.max_degree();
-        let max_domain_size = index_pk.circuit.max_domain_size();
-        let coefficient_support = index_pk.circuit.index_info.get_degree_bounds::<Fr>();
-        let universal_prover = &universal_srs
-            .to_universal_prover(max_degree, max_domain_size, Some(&coefficient_support), None, hiding_bound)
-            .unwrap();
+        let degree_info = index_pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
         let proof = VarunaInst::prove(universal_prover, &fs_parameters, &index_pk, &circuit, rng).unwrap();
         println!("Called prover");
@@ -562,12 +536,8 @@ mod varuna_hiding {
         let (pk1, vk1) = VarunaInst::circuit_setup(&universal_srs, &circuit1).unwrap();
         println!("Called circuit setup");
 
-        let max_degree = pk1.circuit.max_degree();
-        let max_domain_size = pk1.circuit.max_domain_size();
-        let coefficient_support = pk1.circuit.index_info.get_degree_bounds::<Fr>();
-        let universal_prover = &universal_srs
-            .to_universal_prover(max_degree, max_domain_size, Some(&coefficient_support), None, hiding_bound)
-            .unwrap();
+        let degree_info = pk1.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
         let proof1 = VarunaInst::prove(universal_prover, &fs_parameters, &pk1, &circuit1, rng).unwrap();
         println!("Called prover");
@@ -583,12 +553,8 @@ mod varuna_hiding {
         let (pk2, vk2) = VarunaInst::circuit_setup(&universal_srs, &circuit2).unwrap();
         println!("Called circuit setup");
 
-        let max_degree = pk2.circuit.max_degree();
-        let max_domain_size = pk2.circuit.max_domain_size();
-        let coefficient_support = pk2.circuit.index_info.get_degree_bounds::<Fr>();
-        let universal_prover = &universal_srs
-            .to_universal_prover(max_degree, max_domain_size, Some(&coefficient_support), None, hiding_bound)
-            .unwrap();
+        let degree_info = pk2.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
         let proof2 = VarunaInst::prove(universal_prover, &fs_parameters, &pk2, &circuit2, rng).unwrap();
         println!("Called prover");

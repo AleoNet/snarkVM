@@ -25,6 +25,7 @@ use super::sonic_pc::{
 use crate::{
     fft::DensePolynomial,
     polycommit::{
+        kzg10::DegreeInfo,
         sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, LinearCombination},
         PCError,
     },
@@ -34,6 +35,7 @@ use crate::{
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::{TestRng, Uniform};
+use std::collections::HashSet;
 
 use itertools::Itertools;
 use rand::{
@@ -77,7 +79,7 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
 
         let mut labels = Vec::new();
         let mut polynomials = Vec::new();
-        let mut degree_bounds = Vec::new();
+        let mut degree_bounds = HashSet::new();
 
         for i in 0..10 {
             let label = format!("Test{i}");
@@ -85,14 +87,13 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
             let poly = DensePolynomial::rand(supported_degree, rng);
 
             let degree_bound = 1usize;
-            degree_bounds.push(degree_bound);
+            degree_bounds.insert(degree_bound);
 
             polynomials.push(LabeledPolynomial::new(label, poly, Some(degree_bound), Some(hiding_bound)))
         }
 
-        let universal_prover = &pp
-            .to_universal_prover(max_degree, supported_degree, Some(degree_bounds.as_slice()), None, hiding_bound)
-            .unwrap();
+        let degree_info = DegreeInfo { max_degree, max_fft_size: supported_degree, degree_bounds };
+        let universal_prover = &pp.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
         let (comms, rands) =
             SonicKZG10::<E, S>::commit(universal_prover, polynomials.iter().map(Into::into), Some(rng))?;
@@ -135,7 +136,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         let mut polynomials = Vec::new();
         let mut lagrange_polynomials = Vec::new();
         let mut supported_lagrange_sizes = Vec::new();
-        let degree_bounds = None;
+        let degree_bounds = HashSet::new();
         let hiding_bound = 1;
 
         let mut labels = Vec::new();
@@ -163,15 +164,9 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         }
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
-        let universal_prover = &pp
-            .to_universal_prover(
-                max_degree,
-                supported_degree,
-                degree_bounds,
-                Some(&supported_lagrange_sizes),
-                hiding_bound,
-            )
-            .unwrap();
+        let degree_info = DegreeInfo { max_degree, max_fft_size: supported_degree, degree_bounds };
+        let universal_prover =
+            &pp.to_universal_prover(degree_info, Some(&supported_lagrange_sizes), hiding_bound).unwrap();
 
         let (comms, rands) = SonicKZG10::<E, S>::commit(universal_prover, lagrange_polynomials, Some(rng)).unwrap();
 
@@ -246,7 +241,7 @@ where
             supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
-        let mut degree_bounds = if enforce_degree_bounds { Some(Vec::new()) } else { None };
+        let mut degree_bounds = HashSet::new();
 
         let mut labels = Vec::new();
         println!("Sampled supported degree");
@@ -265,28 +260,22 @@ where
                 .filter(|x| *x >= degree && *x < supported_degree)
                 .collect::<Vec<usize>>();
 
-            let degree_bound = if let Some(degree_bounds) = &mut degree_bounds {
-                if !supported_degree_bounds_after_trimmed.is_empty() && rng.gen() {
-                    let range = distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
-                    let idx = range.sample(rng);
-
-                    let degree_bound = supported_degree_bounds_after_trimmed[idx];
-                    degree_bounds.push(degree_bound);
-                    Some(degree_bound)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
+            let compute_degree_bound =
+                enforce_degree_bounds && !supported_degree_bounds_after_trimmed.is_empty() && rng.gen();
+            let degree_bound = compute_degree_bound.then(|| {
+                let range = distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
+                let idx = range.sample(rng);
+                supported_degree_bounds_after_trimmed[idx]
+            });
+            if let Some(degree_bound) = degree_bound {
+                degree_bounds.insert(degree_bound);
+            }
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, Some(hiding_bound)))
         }
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
-        let universal_prover = &pp
-            .to_universal_prover(max_degree, supported_degree, degree_bounds.as_deref(), None, hiding_bound)
-            .unwrap();
+        let degree_info = DegreeInfo { max_degree, max_fft_size: supported_degree, degree_bounds };
+        let universal_prover = &pp.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
         let (comms, rands) =
             SonicKZG10::<E, S>::commit(universal_prover, polynomials.iter().map(Into::into), Some(rng))?;
@@ -360,7 +349,7 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
             supported_degree.unwrap_or_else(|| distributions::Uniform::from(4..=max_degree).sample(rng));
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
-        let mut degree_bounds = if enforce_degree_bounds { Some(Vec::new()) } else { None };
+        let mut degree_bounds = HashSet::new();
 
         let mut labels = Vec::new();
         println!("Sampled supported degree");
@@ -379,28 +368,23 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
                 .filter(|x| *x >= degree && *x < supported_degree)
                 .collect::<Vec<usize>>();
 
-            let degree_bound = if let Some(degree_bounds) = &mut degree_bounds {
-                if !supported_degree_bounds_after_trimmed.is_empty() && rng.gen() {
-                    let range = distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
-                    let idx = range.sample(rng);
-
-                    let degree_bound = supported_degree_bounds_after_trimmed[idx];
-                    degree_bounds.push(degree_bound);
-                    Some(degree_bound)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
+            let compute_degree_bound =
+                enforce_degree_bounds && !supported_degree_bounds_after_trimmed.is_empty() && rng.gen();
+            let degree_bound = compute_degree_bound.then(|| {
+                let range = distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
+                let idx = range.sample(rng);
+                supported_degree_bounds_after_trimmed[idx]
+            });
+            if let Some(degree_bound) = degree_bound {
+                degree_bounds.insert(degree_bound);
+            }
 
             polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, Some(hiding_bound)))
         }
         let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
         assert_eq!(supported_hiding_bound, 1);
-        let universal_prover = &pp
-            .to_universal_prover(max_degree, supported_degree, degree_bounds.as_deref(), None, hiding_bound)
-            .unwrap();
+        let degree_info = DegreeInfo { max_degree, max_fft_size: supported_degree, degree_bounds };
+        let universal_prover = &pp.to_universal_prover(degree_info, None, hiding_bound).unwrap();
 
         let (comms, rands) =
             SonicKZG10::<E, S>::commit(universal_prover, polynomials.iter().map(Into::into), Some(rng))?;

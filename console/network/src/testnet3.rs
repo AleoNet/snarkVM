@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_algorithms::polycommit::kzg10::DegreeInfo;
 use snarkvm_console_algorithms::{
     Blake2Xs,
     Keccak256,
@@ -199,15 +200,11 @@ impl Network for Testnet3 {
     }
 
     /// Returns the Varuna universal prover.
-    fn varuna_universal_prover(
-        max_degree: usize,
-        max_domain_size: usize,
-        coefficient_support: &[usize],
-    ) -> UniversalProver<Self::PairingCurve> {
+    fn varuna_universal_prover(degree_info: DegreeInfo) -> UniversalProver<Self::PairingCurve> {
         let hiding_bound = 1; // We always use a hiding bound in Testnet3.
         snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
             .expect("Failed to load universal SRS (KZG10).")
-            .to_universal_prover(max_degree, max_domain_size, Some(coefficient_support), None, hiding_bound)
+            .to_universal_prover(degree_info, None, hiding_bound)
             .expect("Failed to convert universal SRS (KZG10) to the prover.")
     }
 

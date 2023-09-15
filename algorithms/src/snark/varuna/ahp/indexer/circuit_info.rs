@@ -14,6 +14,7 @@
 
 use crate::{
     fft::EvaluationDomain,
+    polycommit::kzg10::DegreeInfo,
     snark::varuna::{ahp::AHPForR1CS, SNARKMode},
 };
 use snarkvm_fields::PrimeField;
@@ -40,27 +41,46 @@ pub struct CircuitInfo {
 }
 
 impl CircuitInfo {
+    /// The max degrees and bounds required to represent polynomials of this circuit.
+    pub fn degree_info<F: PrimeField, MM: SNARKMode>(&self) -> DegreeInfo {
+        let max_degree = self.max_degree::<F, MM>();
+        let max_fft_size = self.max_fft_size::<F>();
+        let degree_bounds = self.degree_bounds::<F>().into_iter().collect();
+        DegreeInfo { max_degree, max_fft_size, degree_bounds }
+    }
+
     /// The maximum degree of polynomial required to represent this index in the AHP.
     pub fn max_degree<F: PrimeField, MM: SNARKMode>(&self) -> usize {
         let max_non_zero = self.num_non_zero_a.max(self.num_non_zero_b).max(self.num_non_zero_c);
         AHPForR1CS::<F, MM>::max_degree(self.num_constraints, self.num_variables, max_non_zero).unwrap()
     }
 
+    /// The maximum size of polynomials we need to do (i)fft for
+    pub fn max_fft_size<F: PrimeField>(&self) -> usize {
+        let size = [
+            2 * self.num_constraints, // zerocheck poly degree
+            2 * self.num_variables,   // lineval sumcheck poly degree
+            2 * self.num_non_zero_a,  // matrix sumcheck poly degree
+            2 * self.num_non_zero_b,  // matrix sumcheck poly degree
+            2 * self.num_non_zero_c,  // matrix sumcheck poly degree
+        ]
+        .into_iter()
+        .max()
+        .unwrap();
+        crate::fft::EvaluationDomain::<F>::compute_size_of_domain(size).unwrap()
+    }
+
     /// Get all the strict degree bounds enforced in the AHP.
-    pub fn get_degree_bounds<F: PrimeField>(&self) -> [usize; 4] {
-        let num_variables = self.num_variables;
-        let num_non_zero_a = self.num_non_zero_a;
-        let num_non_zero_b = self.num_non_zero_b;
-        let num_non_zero_c = self.num_non_zero_c;
+    pub fn degree_bounds<F: PrimeField>(&self) -> [usize; 4] {
         [
             // The degree bound for g_1
-            EvaluationDomain::<F>::compute_size_of_domain(num_variables).unwrap() - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(self.num_variables).unwrap() - 2,
             // The degree bound for g_A
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_a).unwrap() - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(self.num_non_zero_a).unwrap() - 2,
             // The degree bound for g_B
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_b).unwrap() - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(self.num_non_zero_b).unwrap() - 2,
             // The degree bound for g_C
-            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero_c).unwrap() - 2,
+            EvaluationDomain::<F>::compute_size_of_domain(self.num_non_zero_c).unwrap() - 2,
         ]
     }
 }
