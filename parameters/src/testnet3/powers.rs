@@ -375,7 +375,6 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
     /// of the powers needed, and a boolean that if `true` indicates that the shifted powers are
     /// needed and `false` if the normal powers are needed.
     pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
-        println!("Estimating powers for range: {:?}", range);
         if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
             return Ok((Vec::new(), false));
         }
@@ -596,12 +595,10 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
         let mut download_queue = Vec::with_capacity(14);
         let mut existing_num_powers = self.shifted_powers_of_beta_g.len();
-        println!("existing_num_powers = {}", existing_num_powers);
         while existing_num_powers < final_num_powers {
             existing_num_powers = existing_num_powers
                 .checked_mul(2)
                 .ok_or_else(|| anyhow!("Overflowed while requesting additional powers"))?;
-            println!("loop existing_num_powers = {}", existing_num_powers);
             download_queue.push(existing_num_powers);
         }
         download_queue.reverse(); // We want to download starting from the smallest power.
