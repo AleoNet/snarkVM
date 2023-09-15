@@ -1,12 +1,1 @@
-0: at line 8, in MapRes:
-    branch.eq true true to foo;
-                               ^
-
-1: at line 1, in Alt:
-program backwards_branch.aleo;
-                              ^
-
-2: at line 1, in Many1:
-program backwards_branch.aleo;
-                              ^
-
+Failed to parse program: Failed to parse string. Parsing Error: VerboseError { errors: [("\n", Nom(MapRes)), ("\n\nfunction compute:\n    finalize;\n\nfinalize compute:\n    position foo;\n    branch.eq true true to foo;\n", Nom(Alt)), ("\n\nfunction compute:\n    finalize;\n\nfinalize compute:\n    position foo;\n    branch.eq true true to foo;\n", Nom(Many1))] }

@@ -1,162 +1,18 @@
-- |+
-  0: at line 1, in Tag:
-  assert.eq Self.caller self.caller;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq Self.caller self.caller;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq Self.callee self.caller;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq Self.callee self.caller;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq self_caller self.caller;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq self_caller self.caller;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq block_height block.height;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq block_height block.height;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq block.length block.height;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq block.length block.height;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq r_88 r101;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq r_88 r101;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq r88 r.101;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq r88 r.101;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq hello::aleo goodbye.aleo;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq hello::aleo goodbye.aleo;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq aleo2dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j aleo1dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq aleo2dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j aleo1dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq t false;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq t false;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq True false;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq True false;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq 1.field -2field;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq 1.field -2field;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq group::gen group::GEN;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq group::gen group::GEN;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq group::generator group::GEN;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq group::generator group::GEN;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq GROUP::gen group::GEN;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq GROUP::gen group::GEN;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq 1.scalar -2scalar;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq 1.scalar -2scalar;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq 1 2i8;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq 1 2i8;
-  ^
-
-- |+
-  0: at line 1, in Tag:
-  assert.eq 100,000,000field 0field;
-  ^
-
-  1: at line 1, in Alt:
-  assert.eq 100,000,000field 0field;
-  ^
-
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq Self.caller self.caller;", Nom(Tag)), ("assert.eq Self.caller self.caller;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq Self.callee self.caller;", Nom(Tag)), ("assert.eq Self.callee self.caller;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq self_caller self.caller;", Nom(Tag)), ("assert.eq self_caller self.caller;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq block_height block.height;", Nom(Tag)), ("assert.eq block_height block.height;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq block.length block.height;", Nom(Tag)), ("assert.eq block.length block.height;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq r_88 r101;", Nom(Tag)), ("assert.eq r_88 r101;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq r88 r.101;", Nom(Tag)), ("assert.eq r88 r.101;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq hello::aleo goodbye.aleo;", Nom(Tag)), ("assert.eq hello::aleo goodbye.aleo;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq aleo2dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j aleo1dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j;", Nom(Tag)), ("assert.eq aleo2dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j aleo1dg722m22fzpz6xjdrvl9tzu5t68zmypj5p74khlqcac0gvednygqxaax0j;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq t false;", Nom(Tag)), ("assert.eq t false;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq True false;", Nom(Tag)), ("assert.eq True false;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq 1.field -2field;", Nom(Tag)), ("assert.eq 1.field -2field;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq group::gen group::GEN;", Nom(Tag)), ("assert.eq group::gen group::GEN;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq group::generator group::GEN;", Nom(Tag)), ("assert.eq group::generator group::GEN;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq GROUP::gen group::GEN;", Nom(Tag)), ("assert.eq GROUP::gen group::GEN;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq 1.scalar -2scalar;", Nom(Tag)), ("assert.eq 1.scalar -2scalar;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq 1 2i8;", Nom(Tag)), ("assert.eq 1 2i8;", Nom(Alt))] }'
+- 'Failed to parse instruction: Failed to parse string. Parsing Error: VerboseError { errors: [("assert.eq 100,000,000field 0field;", Nom(Tag)), ("assert.eq 100,000,000field 0field;", Nom(Alt))] }'
