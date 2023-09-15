@@ -1,3 +1,0 @@
-errors:
-- 'Failed to run `VM::deploy: Cannot call a function ''foo'' from ''hello''. Call a closure instead.'
-outputs: []

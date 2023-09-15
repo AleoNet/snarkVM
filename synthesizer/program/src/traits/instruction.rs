@@ -28,6 +28,8 @@ pub trait InstructionTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
     fn opcode(&self) -> Opcode;
     /// Returns `true` if the instruction is a closure call instruction, e.g `call.closure`.
     fn is_closure_call(&self) -> bool;
+    /// Returns `true` if the instruction is a finalize call instruction, e.g `call.finalize`.
+    fn is_finalize_call(&self) -> bool;
     /// Returns `true` if the instruction is a function call instruction, e.g `call.function`.
     fn is_function_call(&self) -> bool;
     /// Returns `true` if the given name is a reserved opcode.

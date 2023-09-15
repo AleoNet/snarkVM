@@ -352,6 +352,7 @@ impl<N: Network> RegisterTypes<N> {
                 let (call_type, operator) = match instruction {
                     Instruction::CallClosure(call) => (CallType::Closure, call.operator()),
                     Instruction::CallFunction(call) => (CallType::Function, call.operator()),
+                    Instruction::CallFinalize(_) => bail!("Cannot call `finalize` in a closure or function."),
                     _ => bail!("Instruction '{instruction}' is not a valid call operation."),
                 };
 

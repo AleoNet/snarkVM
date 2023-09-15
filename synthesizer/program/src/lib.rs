@@ -71,6 +71,7 @@ use console::{
         FromBytesDeserializer,
         FromStr,
         IoResult,
+        Itertools,
         Network,
         Parser,
         ParserResult,
@@ -87,7 +88,6 @@ use console::{
     program::{Identifier, PlaintextType, ProgramID, RecordType, StructType},
 };
 
-use console::prelude::Itertools;
 use indexmap::IndexMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -538,11 +538,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
 
         // Check that the order of `call.finalize`s match the order of `call.function`s.
         // Collect the function and finalize calls.
-        let function_calls = function
-            .instructions()
-            .iter()
-            .filter(|instruction| matches!(instruction.opcode(), Opcode::Call("function")))
-            .collect::<Vec<_>>();
+        let function_calls =
+            function.instructions().iter().filter(|instruction| instruction.is_function_call()).collect::<Vec<_>>();
         let finalize_calls = function
             .finalize()
             .map(|(_, finalize_core)| {

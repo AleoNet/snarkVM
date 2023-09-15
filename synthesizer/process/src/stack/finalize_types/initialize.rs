@@ -14,17 +14,7 @@
 
 use super::*;
 use crate::RegisterTypes;
-use synthesizer_program::{
-    Branch,
-    CallFinalize,
-    Contains,
-    Get,
-    GetOrUse,
-    RandChaCha,
-    Remove,
-    Set,
-    MAX_ADDITIONAL_SEEDS,
-};
+use synthesizer_program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -139,7 +129,6 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize.name(), instruction)?,
-            Command::CallFinalize(call_finalize) => self.check_call_finalize(stack, finalize.name(), call_finalize)?,
             Command::Contains(contains) => self.check_contains(stack, finalize.name(), contains)?,
             Command::Get(get) => self.check_get(stack, finalize.name(), get)?,
             Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize.name(), get_or_use)?,
@@ -182,17 +171,6 @@ impl<N: Network> FinalizeTypes<N> {
             branch.position()
         );
         Ok(())
-    }
-
-    /// Ensures the given `call.finalize` command is well-formed.
-    #[inline]
-    fn check_call_finalize(
-        &mut self,
-        stack: &(impl StackMatches<N> + StackProgram<N>),
-        finalize_name: &Identifier<N>,
-        call_finalize: &CallFinalize<N>,
-    ) -> Result<()> {
-        todo!()
     }
 
     /// Ensures the given `contains` command is well-formed.
@@ -479,6 +457,7 @@ impl<N: Network> FinalizeTypes<N> {
                 }
             }
             Opcode::Call(_) => {
+                todo!("Check call.finalize");
                 bail!("Instruction 'call' is not allowed in 'finalize'");
             }
             Opcode::Cast => {
