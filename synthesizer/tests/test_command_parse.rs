@@ -30,7 +30,10 @@ fn test_command_parse() {
         let outputs = test
             .test_strings()
             .iter()
-            .map(|test_string| convert_result(Command::<CurrentNetwork>::parse(test_string), test_string))
+            .map(|test_string| match Command::<CurrentNetwork>::from_str(test_string) {
+                Ok(_) => "Parsed command successfully.".to_string(),
+                Err(err) => format!("Failed to parse command: {err}"),
+            })
             .collect::<Vec<_>>();
         // Check against the expected output.
         test.check(&outputs).unwrap();
