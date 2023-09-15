@@ -25,6 +25,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
 
         // Read the inputs.
         let num_inputs = u16::read_le(&mut reader)?;
+        if num_inputs > u16::try_from(N::MAX_INPUTS).map_err(|e| error(e.to_string()))? {
+            return Err(error(format!("Failed to deserialize a function: too many inputs ({num_inputs})")));
+        }
         let mut inputs = Vec::with_capacity(num_inputs as usize);
         for _ in 0..num_inputs {
             inputs.push(Input::read_le(&mut reader)?);
@@ -42,6 +45,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
 
         // Read the outputs.
         let num_outputs = u16::read_le(&mut reader)?;
+        if num_outputs > u16::try_from(N::MAX_OUTPUTS).map_err(|e| error(e.to_string()))? {
+            return Err(error(format!("Failed to deserialize a function: too many outputs ({num_outputs})")));
+        }
         let mut outputs = Vec::with_capacity(num_outputs as usize);
         for _ in 0..num_outputs {
             outputs.push(Output::read_le(&mut reader)?);

@@ -23,6 +23,9 @@ impl<N: Network, Command: CommandTrait<N>> FromBytes for FinalizeCore<N, Command
 
         // Read the inputs.
         let num_inputs = u16::read_le(&mut reader)?;
+        if num_inputs > u16::try_from(N::MAX_INPUTS).map_err(|e| error(e.to_string()))? {
+            return Err(error(format!("Failed to deserialize finalize: too many inputs ({num_inputs})")));
+        }
         let mut inputs = Vec::with_capacity(num_inputs as usize);
         for _ in 0..num_inputs {
             inputs.push(Input::read_le(&mut reader)?);
