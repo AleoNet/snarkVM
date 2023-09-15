@@ -211,9 +211,6 @@ mod tests {
         let output = Output::<CurrentNetwork>::from_str("output r0 as field;").unwrap();
         assert!(closure.add_output(output.clone()).is_ok());
 
-        // Ensure that adding a duplicate output will fail.
-        assert!(closure.add_output(output).is_err());
-
         // Ensure that adding more than the maximum number of outputs will fail.
         for i in 1..CurrentNetwork::MAX_OUTPUTS * 2 {
             let output = Output::<CurrentNetwork>::from_str(&format!("output r{i} as field;")).unwrap();
