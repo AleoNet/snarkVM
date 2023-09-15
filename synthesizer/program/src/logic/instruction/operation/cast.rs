@@ -350,6 +350,10 @@ impl<N: Network> Cast<N> {
                 if inputs.len() < N::MIN_STRUCT_ENTRIES {
                     bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
                 }
+                // Ensure the operands length does not exceed the maximum.
+                if inputs.len() > N::MAX_STRUCT_ENTRIES {
+                    bail!("Casting to a struct cannot exceed {} operands", N::MAX_STRUCT_ENTRIES)
+                }
 
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(&struct_)?;
@@ -668,6 +672,10 @@ impl<N: Network> Cast<N> {
         // Ensure the operands length is at least the minimum.
         if inputs.len() < N::MIN_STRUCT_ENTRIES {
             bail!("Casting to a struct requires at least {} operand", N::MIN_STRUCT_ENTRIES)
+        }
+        // Ensure the operands length does not exceed the maximum.
+        if inputs.len() > N::MAX_STRUCT_ENTRIES {
+            bail!("Casting to a struct cannot exceed {} operands", N::MAX_STRUCT_ENTRIES)
         }
 
         // Retrieve the struct and ensure it is defined in the program.
