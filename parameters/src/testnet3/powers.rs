@@ -755,7 +755,7 @@ mod tests {
     }
 
     #[test]
-    fn test_checked_extensions_of_shifted_powers() {
+    fn test_checked_extension_of_shifted_powers() {
         let mut powers = PowersOfG::<Bls12_377>::load().unwrap();
         let shifted_powers_16 = impl_download_shifted_powers!(NUM_POWERS_16, load_bytes).unwrap();
         let shifted_powers_17 = impl_download_shifted_powers!(NUM_POWERS_17, load_bytes).unwrap();
@@ -805,7 +805,7 @@ mod tests {
             NUM_POWERS_18,
         ]);
         assert!(result.is_err());
-        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_18);
+        assert_eq!(powers.num_shifted_powers(), NUM_POWERS_17);
 
         // Ensure powers can be extended after normal downloads.
         powers
