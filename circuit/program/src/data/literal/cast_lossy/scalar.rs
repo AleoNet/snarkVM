@@ -116,15 +116,15 @@ mod tests {
     fn test_scalar_to_address() {
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Constant,
-            count_less_than!(11, 0, 0, 0),
+            count_less_than!(298, 0, 0, 0),
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Public,
-            count_is!(4, 0, 15, 13),
+            count_is!(277, 0, 396, 400),
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Private,
-            count_is!(4, 0, 15, 13),
+            count_is!(277, 0, 396, 400),
         );
     }
 
@@ -132,15 +132,15 @@ mod tests {
     fn test_scalar_to_boolean() {
         check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
             Mode::Constant,
-            count_is!(251, 0, 0, 0),
+            count_is!(2, 0, 0, 0),
         );
         check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
             Mode::Public,
-            count_is!(0, 0, 501, 503),
+            count_is!(1, 0, 2, 3),
         );
         check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
             Mode::Private,
-            count_is!(0, 0, 501, 503),
+            count_is!(1, 0, 2, 3),
         );
     }
 
@@ -155,12 +155,15 @@ mod tests {
     fn test_scalar_to_group() {
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
             Mode::Constant,
-            count_less_than!(11, 0, 0, 0),
+            count_less_than!(298, 0, 0, 0),
         );
-        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
+        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
+            Mode::Public,
+            count_is!(277, 0, 396, 400),
+        );
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
             Mode::Private,
-            count_is!(4, 0, 15, 13),
+            count_is!(277, 0, 396, 400),
         );
     }
 

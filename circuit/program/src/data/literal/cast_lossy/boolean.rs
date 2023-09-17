@@ -98,15 +98,15 @@ mod tests {
     fn test_boolean_to_address() {
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Constant,
-            count_is!(5, 0, 0, 0),
+            count_is!(10, 0, 0, 0),
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Public,
-            count_is!(4, 0, 15, 13),
+            count_is!(10, 0, 0, 0),
         );
         check_cast_lossy::<Address<Circuit>, console_root::types::Address<Testnet3>>(
             Mode::Private,
-            count_is!(4, 0, 15, 13),
+            count_is!(10, 0, 0, 0),
         );
     }
 
@@ -135,12 +135,12 @@ mod tests {
 
     #[test]
     fn test_boolean_to_group() {
-        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Constant, count_is!(5, 0, 0, 0));
-        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(4, 0, 15, 13));
         check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(
-            Mode::Private,
-            count_is!(4, 0, 15, 13),
+            Mode::Constant,
+            count_is!(10, 0, 0, 0),
         );
+        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Public, count_is!(10, 0, 0, 0));
+        check_cast_lossy::<Group<Circuit>, console_root::types::Group<Testnet3>>(Mode::Private, count_is!(10, 0, 0, 0));
     }
 
     #[test]
