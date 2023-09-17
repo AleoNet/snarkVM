@@ -123,14 +123,13 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         write_local(&format!("{function_name}.verifier"), &verifying_key_bytes)?;
 
         commands.push(format!(
-            "snarkup upload \"{}\"",
+            "upload \"{}\"",
             versioned_filename(&format!("{function_name}.prover"), &proving_key_checksum)
         ));
     }
 
     // Print the commands.
-    println!("\nNow, run the following commands:\n");
-    println!("snarkup remove provers");
+    println!("\nNow, perform the following operations:\n");
     for command in commands {
         println!("{command}");
     }
