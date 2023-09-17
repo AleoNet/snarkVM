@@ -32,7 +32,10 @@ impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
     /// This operation returns the least significant bit of the field.
     #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
-        self.is_one()
+        // Note: This is a cheaper operation that is equivalent to `self.is_one()`.
+        let bits_le = self.to_bits_le();
+        debug_assert!(!bits_le.is_empty(), "An integer must have at least one bit");
+        bits_le[0].clone()
     }
 }
 
@@ -144,7 +147,7 @@ mod tests {
         fn test_i8_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(8, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -320,7 +323,7 @@ mod tests {
         fn test_i16_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(16, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -496,7 +499,7 @@ mod tests {
         fn test_i32_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(32, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -672,7 +675,7 @@ mod tests {
         fn test_i64_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(64, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -848,7 +851,7 @@ mod tests {
         fn test_i128_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(128, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -1020,7 +1023,7 @@ mod tests {
         fn test_u8_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(8, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -1196,7 +1199,7 @@ mod tests {
         fn test_u16_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(16, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -1372,7 +1375,7 @@ mod tests {
         fn test_u32_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(32, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -1548,7 +1551,7 @@ mod tests {
         fn test_u64_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(64, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
@@ -1724,7 +1727,7 @@ mod tests {
         fn test_u128_to_boolean() {
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Constant,
-                count_is!(128, 0, 0, 0),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
