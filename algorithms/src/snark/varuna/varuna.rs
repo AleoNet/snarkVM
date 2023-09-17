@@ -358,7 +358,7 @@ where
         let mut batch_sizes = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut inputs_and_batch_sizes = BTreeMap::new();
-        let mut total_instances = 0;
+        let mut total_instances = 0usize;
         let mut public_inputs = BTreeMap::new(); // inputs need to live longer than the rest of prover_state
         let num_unique_circuits = keys_to_constraints.len();
         let mut circuit_ids = Vec::with_capacity(num_unique_circuits);
@@ -371,8 +371,9 @@ where
             batch_sizes.insert(circuit_id, batch_size);
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             inputs_and_batch_sizes.insert(circuit_id, (batch_size, padded_public_input));
-            total_instances += batch_size;
             public_inputs.insert(circuit_id, public_input);
+            total_instances = total_instances.saturating_add(batch_size);
+
             circuit_ids.push(circuit_id);
         }
         assert_eq!(prover_state.total_instances, total_instances);

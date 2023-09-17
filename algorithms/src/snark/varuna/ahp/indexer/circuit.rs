@@ -155,7 +155,6 @@ impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
 }
 
 impl<F: PrimeField, MM: SNARKMode> CanonicalSerialize for Circuit<F, MM> {
-    #[allow(unused_mut, unused_variables)]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.index_info.serialize_with_mode(&mut writer, compress)?;
         self.a.serialize_with_mode(&mut writer, compress)?;
@@ -167,17 +166,15 @@ impl<F: PrimeField, MM: SNARKMode> CanonicalSerialize for Circuit<F, MM> {
         Ok(())
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn serialized_size(&self, mode: Compress) -> usize {
-        let mut size = 0;
-        size += self.index_info.serialized_size(mode);
-        size += self.a.serialized_size(mode);
-        size += self.b.serialized_size(mode);
-        size += self.c.serialized_size(mode);
-        size += self.a_arith.serialized_size(mode);
-        size += self.b_arith.serialized_size(mode);
-        size += self.c_arith.serialized_size(mode);
-        size
+        self.index_info
+            .serialized_size(mode)
+            .saturating_add(self.a.serialized_size(mode))
+            .saturating_add(self.b.serialized_size(mode))
+            .saturating_add(self.c.serialized_size(mode))
+            .saturating_add(self.a_arith.serialized_size(mode))
+            .saturating_add(self.b_arith.serialized_size(mode))
+            .saturating_add(self.c_arith.serialized_size(mode))
     }
 }
 
@@ -186,10 +183,7 @@ impl<F: PrimeField, MM: SNARKMode> snarkvm_utilities::Valid for Circuit<F, MM> {
         Ok(())
     }
 
-    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
-    where
-        Self: 'a,
-    {
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError> {
         Ok(())
     }
 }
