@@ -147,7 +147,7 @@ mod tests {
                     // Perform the operation.
                     let candidate: Boolean<CurrentEnvironment> = integer.cast_lossy();
                     // Compare the result against the least significant bit of the integer.
-                    let expected = Boolean::new(integer.is_one());
+                    let expected = Boolean::new(integer.to_bits_be().pop().unwrap());
                     assert_eq!(expected, candidate);
                 }
             };

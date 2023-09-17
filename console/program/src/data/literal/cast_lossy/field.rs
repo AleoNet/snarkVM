@@ -145,7 +145,7 @@ mod tests {
             // Perform the operation.
             let candidate: Boolean<CurrentEnvironment> = field.cast_lossy();
             // Compare the result against the least significant bit of the field.
-            let expected = Boolean::new(field.is_one());
+            let expected = Boolean::new(field.to_bits_be().pop().unwrap());
             assert_eq!(expected, candidate);
         }
     }

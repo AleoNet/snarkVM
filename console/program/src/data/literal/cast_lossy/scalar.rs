@@ -139,7 +139,7 @@ mod tests {
             // Perform the operation.
             let candidate = scalar.cast_lossy();
             // Compare the result against the least significant bit of the scalar.
-            let expected = Boolean::new(scalar.is_one());
+            let expected = Boolean::new(scalar.to_bits_be().pop().unwrap());
             assert_eq!(expected, candidate);
         }
     }
