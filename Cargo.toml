@@ -22,7 +22,7 @@ categories = [
 include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.70"
 
 [workspace]
 members = [
@@ -203,8 +203,8 @@ version = "1.0.73"
 optional = true
 
 [dependencies.clap]
-version = "4.3"
-features = [ "derive", "color", "unstable-styles" ]
+version = "4.4"
+features = [ "derive", "color" ]
 optional = true
 
 [dependencies.colored]
@@ -236,7 +236,7 @@ optional = true
 version = "1"
 
 [dependencies.self_update]
-version = "0.37"
+version = "0.38"
 optional = true
 
 [dependencies.serde_json]

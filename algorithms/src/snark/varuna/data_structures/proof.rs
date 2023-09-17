@@ -71,17 +71,15 @@ impl<E: PairingEngine> Commitments<E> {
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        let mut size = 0;
-        size += serialized_vec_size_without_len(&self.witness_commitments, compress);
-        size += CanonicalSerialize::serialized_size(&self.mask_poly, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_0, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_1, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_1, compress);
-        size += serialized_vec_size_without_len(&self.g_a_commitments, compress);
-        size += serialized_vec_size_without_len(&self.g_b_commitments, compress);
-        size += serialized_vec_size_without_len(&self.g_c_commitments, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_2, compress);
-        size
+        serialized_vec_size_without_len(&self.witness_commitments, compress)
+            .saturating_add(CanonicalSerialize::serialized_size(&self.mask_poly, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_0, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.g_1, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_1, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_a_commitments, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_b_commitments, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_c_commitments, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_2, compress))
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
@@ -140,12 +138,10 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        let mut size = 0;
-        size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
-        size += serialized_vec_size_without_len(&self.g_a_evals, compress);
-        size += serialized_vec_size_without_len(&self.g_b_evals, compress);
-        size += serialized_vec_size_without_len(&self.g_c_evals, compress);
-        size
+        CanonicalSerialize::serialized_size(&self.g_1_eval, compress)
+            .saturating_add(serialized_vec_size_without_len(&self.g_a_evals, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_b_evals, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_c_evals, compress))
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(

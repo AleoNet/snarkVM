@@ -84,7 +84,7 @@ use console::{
         TypeName,
         Write,
     },
-    program::{EntryType, Identifier, PlaintextType, ProgramID, RecordType, StructType},
+    program::{Identifier, PlaintextType, ProgramID, RecordType, StructType},
 };
 
 use indexmap::IndexMap;
@@ -224,9 +224,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     }
 
     /// Returns the struct with the given name.
-    pub fn get_struct(&self, name: &Identifier<N>) -> Result<StructType<N>> {
+    pub fn get_struct(&self, name: &Identifier<N>) -> Result<&StructType<N>> {
         // Attempt to retrieve the struct.
-        let struct_ = self.structs.get(name).cloned().ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
+        let struct_ = self.structs.get(name).ok_or_else(|| anyhow!("Struct '{name}' is not defined."))?;
         // Ensure the struct name matches.
         ensure!(struct_.name() == name, "Expected struct '{name}', but found struct '{}'", struct_.name());
         // Ensure the struct contains members.
@@ -236,9 +236,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
     }
 
     /// Returns the record with the given name.
-    pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
+    pub fn get_record(&self, name: &Identifier<N>) -> Result<&RecordType<N>> {
         // Attempt to retrieve the record.
-        let record = self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
+        let record = self.records.get(name).ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
         // Ensure the record name matches.
         ensure!(record.name() == name, "Expected record '{name}', but found record '{}'", record.name());
         // Return the record.
@@ -371,11 +371,19 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
             ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match plaintext_type {
-                PlaintextType::Literal(..) => continue,
+                PlaintextType::Literal(_) => continue,
                 PlaintextType::Struct(member_identifier) => {
                     // Ensure the member struct name exists in the program.
                     if !self.structs.contains_key(member_identifier) {
                         bail!("'{member_identifier}' in struct '{}' is not defined.", struct_name)
+                    }
+                }
+                PlaintextType::Array(array_type) => {
+                    if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+                        // Ensure the member struct name exists in the program.
+                        if !self.structs.contains_key(struct_name) {
+                            bail!("'{struct_name}' in array '{array_type}' is not defined.")
+                        }
                     }
                 }
             }
@@ -417,18 +425,21 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
             // Ensure the member name is not a reserved keyword.
             ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
-            match entry_type {
-                // Ensure the plaintext type is already defined.
-                EntryType::Constant(plaintext_type)
-                | EntryType::Public(plaintext_type)
-                | EntryType::Private(plaintext_type) => match plaintext_type {
-                    PlaintextType::Literal(..) => continue,
-                    PlaintextType::Struct(identifier) => {
-                        if !self.structs.contains_key(identifier) {
-                            bail!("Struct '{identifier}' in record '{record_name}' is not defined.")
+            match entry_type.plaintext_type() {
+                PlaintextType::Literal(_) => continue,
+                PlaintextType::Struct(identifier) => {
+                    if !self.structs.contains_key(identifier) {
+                        bail!("Struct '{identifier}' in record '{record_name}' is not defined.")
+                    }
+                }
+                PlaintextType::Array(array_type) => {
+                    if let PlaintextType::Struct(struct_name) = array_type.base_element_type() {
+                        // Ensure the member struct name exists in the program.
+                        if !self.structs.contains_key(struct_name) {
+                            bail!("'{struct_name}' in array '{array_type}' is not defined.")
                         }
                     }
-                },
+                }
             }
         }
 
@@ -680,7 +691,7 @@ struct message:
         // Ensure the struct was added.
         assert!(program.contains_struct(&Identifier::from_str("message")?));
         // Ensure the retrieved struct matches.
-        assert_eq!(struct_, program.get_struct(&Identifier::from_str("message")?)?);
+        assert_eq!(&struct_, program.get_struct(&Identifier::from_str("message")?)?);
 
         Ok(())
     }
@@ -701,7 +712,7 @@ record foo:
         // Ensure the record was added.
         assert!(program.contains_record(&Identifier::from_str("foo")?));
         // Ensure the retrieved record matches.
-        assert_eq!(record, program.get_record(&Identifier::from_str("foo")?)?);
+        assert_eq!(&record, program.get_record(&Identifier::from_str("foo")?)?);
 
         Ok(())
     }

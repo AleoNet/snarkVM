@@ -42,7 +42,7 @@ use snarkvm_utilities::println;
 use super::Matrix;
 
 impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
-    /// Generate the index for this constraint system.
+    /// Generate the index polynomials for this constraint system.
     pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>> {
         let IndexerState {
             constraint_domain,
@@ -61,8 +61,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             c_arith,
 
             index_info,
+            id,
         } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
-        let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
 
         end_timer!(joint_arithmetization_time);
@@ -120,7 +120,9 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         })
     }
 
-    fn index_helper<C: ConstraintSynthesizer<F>>(c: &C) -> Result<IndexerState<F>, AHPError> {
+    /// Generate the indexed circuit evaluations for this constraint system.
+    /// Used by both the Prover and Verifier
+    pub(crate) fn index_helper<C: ConstraintSynthesizer<F>>(c: &C) -> Result<IndexerState<F>, AHPError> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -204,6 +206,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                 .try_into()
                 .unwrap();
 
+        let id = Circuit::<F, MM>::hash(&index_info, &a, &b, &c).unwrap();
+
         let result = Ok(IndexerState {
             constraint_domain,
             variable_domain,
@@ -221,17 +225,17 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             c_arith,
 
             index_info,
+            id,
         });
         end_timer!(index_time);
         result
     }
 
-    pub fn evaluate_index_polynomials<C: ConstraintSynthesizer<F>>(
-        c: &C,
+    pub(crate) fn evaluate_index_polynomials(
+        state: IndexerState<F>,
         id: &CircuitId,
         point: F,
     ) -> Result<impl Iterator<Item = F>, AHPError> {
-        let state = Self::index_helper(c)?;
         let mut evals = [
             (state.a_arith, state.non_zero_a_domain),
             (state.b_arith, state.non_zero_b_domain),
@@ -249,7 +253,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     }
 }
 
-struct IndexerState<F: PrimeField> {
+pub(crate) struct IndexerState<F: PrimeField> {
     constraint_domain: EvaluationDomain<F>,
     variable_domain: EvaluationDomain<F>,
 
@@ -265,5 +269,6 @@ struct IndexerState<F: PrimeField> {
     non_zero_c_domain: EvaluationDomain<F>,
     c_arith: MatrixEvals<F>,
 
-    index_info: CircuitInfo,
+    pub(crate) index_info: CircuitInfo,
+    pub(crate) id: CircuitId,
 }
