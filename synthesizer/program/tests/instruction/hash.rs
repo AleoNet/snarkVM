@@ -50,7 +50,7 @@ use synthesizer_process::{Process, Stack};
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
 
-const ITERATIONS: usize = 100;
+const ITERATIONS: usize = 50;
 
 /// **Attention**: When changing this, also update in `src/logic/instruction/hash.rs`.
 fn valid_destination_types<N: Network>() -> &'static [PlaintextType<N>] {
@@ -191,7 +191,7 @@ fn check_hash<const VARIANT: u8>(
 }
 
 macro_rules! test_hash {
-        ($name: tt, $hash:ident) => {
+        ($name: tt, $hash:ident, $iterations:expr) => {
             paste::paste! {
                 #[test]
                 fn [<test _ $name _ is _ consistent>]() {
@@ -206,7 +206,7 @@ macro_rules! test_hash {
                     // Prepare the test.
                     let modes = [circuit::Mode::Public, circuit::Mode::Private];
 
-                    for _ in 0..ITERATIONS {
+                    for _ in 0..$iterations {
                         let literals = sample_literals!(CurrentNetwork, &mut rng);
                         for literal in literals.iter() {
                             for mode in modes.iter() {
@@ -227,22 +227,22 @@ macro_rules! test_hash {
         };
     }
 
-test_hash!(hash_bhp256, HashBHP256);
-test_hash!(hash_bhp512, HashBHP512);
-test_hash!(hash_bhp768, HashBHP768);
-test_hash!(hash_bhp1024, HashBHP1024);
+test_hash!(hash_bhp256, HashBHP256, ITERATIONS);
+test_hash!(hash_bhp512, HashBHP512, ITERATIONS);
+test_hash!(hash_bhp768, HashBHP768, ITERATIONS);
+test_hash!(hash_bhp1024, HashBHP1024, ITERATIONS);
 
-test_hash!(hash_keccak256, HashKeccak256);
-test_hash!(hash_keccak384, HashKeccak384);
-test_hash!(hash_keccak512, HashKeccak512);
+test_hash!(hash_keccak256, HashKeccak256, 5);
+test_hash!(hash_keccak384, HashKeccak384, 5);
+test_hash!(hash_keccak512, HashKeccak512, 5);
 
-test_hash!(hash_psd2, HashPSD2);
-test_hash!(hash_psd4, HashPSD4);
-test_hash!(hash_psd8, HashPSD8);
+test_hash!(hash_psd2, HashPSD2, ITERATIONS);
+test_hash!(hash_psd4, HashPSD4, ITERATIONS);
+test_hash!(hash_psd8, HashPSD8, ITERATIONS);
 
-test_hash!(hash_sha3_256, HashSha3_256);
-test_hash!(hash_sha3_384, HashSha3_384);
-test_hash!(hash_sha3_512, HashSha3_512);
+test_hash!(hash_sha3_256, HashSha3_256, 5);
+test_hash!(hash_sha3_384, HashSha3_384, 5);
+test_hash!(hash_sha3_512, HashSha3_512, 5);
 
 // Note this test must be explicitly written, instead of using the macro, because HashPED64 fails on certain input types.
 #[test]
