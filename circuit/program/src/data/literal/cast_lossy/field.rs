@@ -34,7 +34,9 @@ impl<E: Environment> CastLossy<Boolean<E>> for Field<E> {
     /// This operation returns the least significant bit of the field.
     #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
-        self.is_one()
+        let bits_le = self.to_bits_le();
+        debug_assert!(!bits_le.is_empty(), "An integer must have at least one bit");
+        bits_le[0].clone()
     }
 }
 
@@ -171,15 +173,15 @@ mod tests {
     fn test_field_to_boolean() {
         check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
             Mode::Constant,
-            count_is!(1, 0, 0, 0),
+            count_is!(253, 0, 0, 0),
         );
         check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
             Mode::Public,
-            count_is!(0, 0, 2, 3),
+            count_is!(0, 0, 505, 507),
         );
         check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
             Mode::Private,
-            count_is!(0, 0, 2, 3),
+            count_is!(0, 0, 505, 507),
         );
     }
 

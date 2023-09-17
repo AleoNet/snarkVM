@@ -32,7 +32,9 @@ impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
     /// This operation returns the least significant bit of the field.
     #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
-        Boolean::new(self.is_one())
+        let bits_le = self.to_bits_le();
+        debug_assert!(!bits_le.is_empty(), "An integer must have at least one bit");
+        Boolean::new(bits_le[0])
     }
 }
 

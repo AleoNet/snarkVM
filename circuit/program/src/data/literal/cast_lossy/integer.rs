@@ -32,7 +32,6 @@ impl<E: Environment, I: IntegerType> CastLossy<Boolean<E>> for Integer<E, I> {
     /// This operation returns the least significant bit of the field.
     #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
-        // Note: This is a cheaper operation that is equivalent to `self.is_one()`.
         let bits_le = self.to_bits_le();
         debug_assert!(!bits_le.is_empty(), "An integer must have at least one bit");
         bits_le[0].clone()
@@ -151,11 +150,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(8, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(8, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -327,11 +326,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(16, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(16, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -503,11 +502,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(32, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(32, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -679,11 +678,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(64, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(64, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -855,11 +854,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(128, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(128, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -1027,11 +1026,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(8, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(8, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -1203,11 +1202,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(16, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(16, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -1379,11 +1378,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(32, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(32, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -1555,11 +1554,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(64, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(64, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
@@ -1731,11 +1730,11 @@ mod tests {
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Public,
-                count_is!(128, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
             check_cast_lossy::<Boolean<Circuit>, console_root::types::Boolean<Testnet3>>(
                 Mode::Private,
-                count_is!(128, 0, 2, 3),
+                count_is!(0, 0, 0, 0),
             );
         }
 
