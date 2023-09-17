@@ -22,8 +22,11 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
     #[inline]
     fn hash(&self, input: &[Self::Input]) -> Self::Output {
         // The bitrate `r`.
-        let bitrate = (200 - (VARIANT / 4)) * 8;
+        // The capacity is twice the digest length (i.e. twice the variant, where the variant is in {224, 256, 384, 512}),
+        // and the bit rate is the width (1600 in our case) minus the capacity.
+        let bitrate = PERMUTATION_WIDTH - 2 * VARIANT;
         debug_assert!(bitrate < PERMUTATION_WIDTH, "The bitrate must be less than the permutation width");
+        debug_assert!(bitrate % 8 == 0, "The bitrate must be a multiple of 8");
 
         // Ensure the input is not empty.
         if input.is_empty() {
