@@ -62,18 +62,23 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
         // This is used by the ternary below, which uses 'is_one' to determine whether to return the generator.
         debug_assert!(console::Group::from_x_coordinate(<console::Field<E::Network> as console::One>::one()).is_err());
 
+        // Determine if the field element is zero.
+        let is_x_zero = self.is_zero();
         // Determine if the field element is one.
-        let is_one = self.is_one();
+        let is_x_one = self.is_one();
 
         // Initialize the group generator.
         let generator = Group::generator();
+
+        // Determine the input to Elligator-2, based on the x-coordinate.
+        let elligator_input = Field::ternary(&is_x_zero, &Field::one(), &self);
         // Perform Elligator-2 on the field element, to recover a group element.
-        let elligator = Elligator2::encode(self);
+        let elligator = Elligator2::encode(&elligator_input);
 
         // Determine the initial x-coordinate, if the given field element is one.
-        let initial_x = Field::ternary(&is_one, &generator.to_x_coordinate(), &elligator.to_x_coordinate());
+        let initial_x = Field::ternary(&is_x_one, &generator.to_x_coordinate(), &elligator.to_x_coordinate());
         // Determine the initial y-coordinate, if the given field element is one.
-        let initial_y = Field::ternary(&is_one, &generator.to_y_coordinate(), &elligator.to_y_coordinate());
+        let initial_y = Field::ternary(&is_x_one, &generator.to_y_coordinate(), &elligator.to_y_coordinate());
 
         // Determine the y-coordinate, if the x-coordinate is valid.
         let possible_y: Field<E> = {
