@@ -14,7 +14,7 @@
 
 use crate::Vec;
 
-use anyhow::Result;
+use anyhow::{ensure, Result};
 
 /// Takes as input a sequence of objects, and converts them to a series of little-endian bits.
 /// All traits that implement `ToBits` can be automatically converted to bits in this manner.
@@ -146,7 +146,13 @@ macro_rules! impl_bits_for_integer {
             /// Reads `Self` from a boolean array in little-endian order.
             #[inline]
             fn from_bits_le(bits: &[bool]) -> Result<Self> {
-                Ok(bits.iter().rev().fold(0, |value, bit| match bit {
+                // If the number of bits exceeds the size of the integer, ensure that the upper bits are all zero.
+                // Note that because the input bits are little-endian, these are the bits at the end of slice.
+                for bit in bits.iter().skip(<$int>::BITS as usize) {
+                    ensure!(!bit, "upper bits are not zero");
+                }
+                // Construct the integer from the bits.
+                Ok(bits.iter().take(<$int>::BITS as usize).rev().fold(0, |value, bit| match bit {
                     true => (value.wrapping_shl(1)) ^ 1,
                     false => (value.wrapping_shl(1)) ^ 0,
                 }))
@@ -155,7 +161,13 @@ macro_rules! impl_bits_for_integer {
             /// Reads `Self` from a boolean array in big-endian order.
             #[inline]
             fn from_bits_be(bits: &[bool]) -> Result<Self> {
-                Ok(bits.iter().fold(0, |value, bit| match bit {
+                // If the number of bits exceeds the size of the integer, ensure that the upper bits are all zero.
+                // Note that because the input bits are big-endian, these are the bits at the beginning of slice.
+                for bit in bits.iter().take(bits.len().saturating_sub(<$int>::BITS as usize)) {
+                    ensure!(!bit, "upper bits are not zero");
+                }
+                // Construct the integer from the bits.
+                Ok(bits.iter().skip(bits.len().saturating_sub(<$int>::BITS as usize)).fold(0, |value, bit| match bit {
                     true => (value.wrapping_shl(1)) ^ 1,
                     false => (value.wrapping_shl(1)) ^ 0,
                 }))

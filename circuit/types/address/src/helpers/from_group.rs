@@ -58,21 +58,21 @@ mod tests {
 
     #[test]
     fn test_from_group_constant() {
-        let expected = console::Address::new(Uniform::rand(&mut TestRng::default()));
+        let expected = console::Address::rand(&mut TestRng::default());
         let candidate = Group::<Circuit>::new(Mode::Constant, *expected);
         check_from_group("Constant", expected, &candidate);
     }
 
     #[test]
     fn test_from_group_public() {
-        let expected = console::Address::new(Uniform::rand(&mut TestRng::default()));
+        let expected = console::Address::rand(&mut TestRng::default());
         let candidate = Group::<Circuit>::new(Mode::Public, *expected);
         check_from_group("Public", expected, &candidate);
     }
 
     #[test]
     fn test_from_group_private() {
-        let expected = console::Address::new(Uniform::rand(&mut TestRng::default()));
+        let expected = console::Address::rand(&mut TestRng::default());
         let candidate = Group::<Circuit>::new(Mode::Private, *expected);
         check_from_group("Private", expected, &candidate);
     }
