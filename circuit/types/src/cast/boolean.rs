@@ -70,7 +70,7 @@ mod tests {
     use crate::{test_helpers::impl_check_cast, Cast as CircuitCast};
     use snarkvm_circuit_environment::{count_is, Circuit, Eject, Inject, Mode, UpdatableCount};
 
-    use console::{network::Testnet3, prelude::TestRng, types::Cast as ConsoleCast};
+    use console::{network::Testnet3, prelude::TestRng, program::Cast as ConsoleCast};
 
     use std::fmt::Debug;
 

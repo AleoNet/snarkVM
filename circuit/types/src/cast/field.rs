@@ -73,7 +73,7 @@ mod tests {
     use console::{
         network::Testnet3,
         prelude::{One, TestRng, Uniform, Zero},
-        types::Cast as ConsoleCast,
+        program::Cast as ConsoleCast,
     };
     use snarkvm_circuit_environment::{count_is, count_less_than, Circuit, Eject, Inject, Mode, UpdatableCount};
 

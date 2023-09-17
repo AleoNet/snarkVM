@@ -19,7 +19,7 @@ impl<E: Environment> Scalar<E> {
     ///
     /// This method is commonly-used by hash-to-scalar algorithms,
     /// where the hash output does not need to preserve the full base field.
-    pub fn from_field_lossy(field: &Field<E>) -> Result<Self> {
+    pub fn from_field_lossy(field: &Field<E>) -> Self {
         // Note: We are reconstituting the base field into a scalar field.
         // This is safe as the scalar field modulus is less than the base field modulus,
         // and thus will always fit within a single base field element.
@@ -27,7 +27,9 @@ impl<E: Environment> Scalar<E> {
 
         // Truncate the field to the size in data bits (1 bit less than the MODULUS) of the scalar.
         // Slicing here is safe as the base field is larger than the scalar field.
-        Self::from_bits_le(&field.to_bits_le()[..Scalar::<E>::size_in_data_bits()])
+        let result = Self::from_bits_le(&field.to_bits_le()[..Scalar::<E>::size_in_data_bits()]);
+        debug_assert!(result.is_ok(), "A lossy integer should always be able to be constructed from scalar bits");
+        result.unwrap()
     }
 }
 
@@ -50,13 +52,13 @@ mod tests {
             let prepare = &Scalar::<CurrentEnvironment>::rand(&mut rng).to_bits_le()[0..size_in_data_bits];
             let expected = Scalar::<CurrentEnvironment>::from_bits_le(prepare)?;
             // Perform the operation.
-            let candidate = Scalar::from_field_lossy(&expected.to_field()?)?;
+            let candidate = Scalar::from_field_lossy(&expected.to_field()?);
             assert_eq!(expected, candidate);
 
             // Sample a random field.
             let expected = Field::<CurrentEnvironment>::rand(&mut rng);
-            // Perform the operation.
-            assert!(Scalar::from_field_lossy(&expected).is_ok());
+            // Perform the operation (should not fail).
+            let _result = Scalar::from_field_lossy(&expected);
         }
         Ok(())
     }

@@ -16,6 +16,12 @@ use super::*;
 
 impl<E: Environment> Cast<Address<E>> for Scalar<E> {
     /// Casts a `Scalar` to an `Address`.
+    ///
+    /// This operation converts the scalar to a field element, and then attempts to recover
+    /// the group element by treating the field element as an x-coordinate. The group element
+    /// is then converted to an address.
+    ///
+    /// To cast arbitrary scalars to addresses, use `Scalar::cast_lossy`.
     #[inline]
     fn cast(&self) -> Result<Address<E>> {
         let field: Field<E> = self.cast()?;
@@ -24,7 +30,9 @@ impl<E: Environment> Cast<Address<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Cast<Boolean<E>> for Scalar<E> {
-    /// Casts a `Scalar` to a `Boolean`.
+    /// Casts a `Scalar` to a `Boolean`, if the scalar is zero or one.
+    ///
+    /// To cast arbitrary scalars to booleans, use `Scalar::cast_lossy`.
     #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {
@@ -39,6 +47,11 @@ impl<E: Environment> Cast<Boolean<E>> for Scalar<E> {
 
 impl<E: Environment> Cast<Group<E>> for Scalar<E> {
     /// Casts a `Scalar` to a `Group`.
+    ///
+    /// This operation converts the scalar to a field element, and then attempts to recover
+    /// the group element by treating the field element as an x-coordinate.
+    ///
+    /// To cast arbitrary scalars to groups, use `Scalar::cast_lossy`.
     #[inline]
     fn cast(&self) -> Result<Group<E>> {
         let field: Field<E> = self.cast()?;
@@ -55,7 +68,9 @@ impl<E: Environment> Cast<Field<E>> for Scalar<E> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Integer<E, I>> for Scalar<E> {
-    /// Casts a `Scalar` to an `Integer`.
+    /// Casts a `Scalar` to an `Integer`, if the scalar is in the range of the integer.
+    ///
+    /// To cast arbitrary scalars to integers, via truncation, use `Scalar::cast_lossy`.
     #[inline]
     fn cast(&self) -> Result<Integer<E, I>> {
         let bits_le = self.to_bits_le();

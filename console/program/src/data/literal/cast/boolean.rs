@@ -13,13 +13,13 @@
 // limitations under the License.
 
 use super::*;
+use crate::data::literal::cast_lossy::CastLossy;
 
 impl<E: Environment> Cast<Address<E>> for Boolean<E> {
     /// Casts a `Boolean` to an `Address`.
     #[inline]
     fn cast(&self) -> Result<Address<E>> {
-        let field: Field<E> = self.cast()?;
-        field.cast()
+        Ok(self.cast_lossy())
     }
 }
 
@@ -27,7 +27,7 @@ impl<E: Environment> Cast<Boolean<E>> for Boolean<E> {
     /// Casts a `Boolean` to a `Boolean`.
     #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
-        Ok(*self)
+        Ok(self.cast_lossy())
     }
 }
 
@@ -35,10 +35,7 @@ impl<E: Environment> Cast<Field<E>> for Boolean<E> {
     /// Casts a `Boolean` to a `Field`.
     #[inline]
     fn cast(&self) -> Result<Field<E>> {
-        match **self {
-            true => Ok(Field::one()),
-            false => Ok(Field::zero()),
-        }
+        Ok(self.cast_lossy())
     }
 }
 
@@ -46,8 +43,7 @@ impl<E: Environment> Cast<Group<E>> for Boolean<E> {
     /// Casts a `Boolean` to a `Group`.
     #[inline]
     fn cast(&self) -> Result<Group<E>> {
-        let field: Field<E> = self.cast()?;
-        field.cast()
+        Ok(self.cast_lossy())
     }
 }
 
@@ -66,9 +62,6 @@ impl<E: Environment> Cast<Scalar<E>> for Boolean<E> {
     /// Casts a `Boolean` to a `Scalar`.
     #[inline]
     fn cast(&self) -> Result<Scalar<E>> {
-        match **self {
-            true => Ok(Scalar::one()),
-            false => Ok(Scalar::zero()),
-        }
+        Ok(self.cast_lossy())
     }
 }
