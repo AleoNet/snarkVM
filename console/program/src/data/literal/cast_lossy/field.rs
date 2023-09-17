@@ -64,7 +64,7 @@ impl<E: Environment> CastLossy<Group<E>> for Field<E> {
                 true => Group::generator(),
                 false => {
                     // Perform Elligator-2 on the field element, to recover a group element.
-                    let result = Elligator2::encode_without_cofactor_clear(self);
+                    let result = Elligator2::encode(self);
                     debug_assert!(result.is_ok(), "Elligator-2 should never fail to encode a field element");
                     result.unwrap().0
                 }

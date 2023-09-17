@@ -22,7 +22,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         // and thus will always fit within a single scalar field element.
         debug_assert!(I::BITS < Scalar::<E>::size_in_bits() as u64);
 
-        // Reconstruct the bits as a linear combination representing the original field value.
+        // Reconstruct the bits as a linear combination representing the original value.
         let result = Scalar::from_bits_le(&self.to_bits_le());
         debug_assert!(result.is_ok(), "An integer should always be able to be constructed from scalar bits");
         result.unwrap()
@@ -48,7 +48,7 @@ mod tests {
             // Perform the operation.
             let candidate = expected.to_scalar();
 
-            // Extract the bits from the base field representation.
+            // Extract the bits from the scalar field representation.
             let candidate_bits_le = candidate.to_bits_le();
             assert_eq!(Scalar::<CurrentEnvironment>::size_in_bits(), candidate_bits_le.len());
 
