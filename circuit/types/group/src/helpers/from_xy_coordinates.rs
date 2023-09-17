@@ -16,7 +16,7 @@ use super::*;
 
 impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x- and y-coordinate field element.
-    /// For safety, the resulting point is always enforced to be on the curve.
+    /// For safety, the resulting point is always enforced to be on the curve and in the subgroup.
     pub fn from_xy_coordinates(x: Field<E>, y: Field<E>) -> Self {
         // Recover point from the `(x, y)` coordinates as a witness.
         //
