@@ -110,6 +110,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::AssertNeq(_)) => Ok(2_000),
         Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
         Command::Instruction(Instruction::Cast(_)) => Ok(2_000),
+        Command::Instruction(Instruction::CastLossy(_)) => Ok(2_000),
         Command::Instruction(Instruction::CommitBHP256(_)) => Ok(200_000),
         Command::Instruction(Instruction::CommitBHP512(_)) => Ok(200_000),
         Command::Instruction(Instruction::CommitBHP768(_)) => Ok(200_000),

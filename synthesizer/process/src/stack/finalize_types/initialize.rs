@@ -14,7 +14,17 @@
 
 use super::*;
 use crate::RegisterTypes;
-use synthesizer_program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
+use synthesizer_program::{
+    Branch,
+    CastOperation,
+    Contains,
+    Get,
+    GetOrUse,
+    RandChaCha,
+    Remove,
+    Set,
+    MAX_ADDITIONAL_SEEDS,
+};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -438,69 +448,31 @@ impl<N: Network> FinalizeTypes<N> {
                     "Instruction '{instruction}' has multiple destinations."
                 );
             }
-            Opcode::Assert(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if !["assert.eq", "assert.neq"].contains(&opcode) {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
-                // Ensure the instruction is the correct one.
-                match opcode {
-                    "assert.eq" => ensure!(
-                        matches!(instruction, Instruction::AssertEq(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "assert.neq" => ensure!(
-                        matches!(instruction, Instruction::AssertNeq(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
-                }
-            }
+            Opcode::Assert(opcode) => match opcode {
+                "assert.eq" => ensure!(
+                    matches!(instruction, Instruction::AssertEq(..)),
+                    "Instruction '{instruction}' is not for opcode '{opcode}'."
+                ),
+                "assert.neq" => ensure!(
+                    matches!(instruction, Instruction::AssertNeq(..)),
+                    "Instruction '{instruction}' is not for opcode '{opcode}'."
+                ),
+                _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
+            },
             Opcode::Call => {
                 bail!("Instruction 'call' is not allowed in 'finalize'");
             }
-            Opcode::Cast => {
-                // Retrieve the cast operation.
-                let operation = match instruction {
-                    Instruction::Cast(operation) => operation,
-                    _ => bail!("Instruction '{instruction}' is not a cast operation."),
-                };
-
-                // Ensure the instruction has one destination register.
-                ensure!(
-                    instruction.destinations().len() == 1,
-                    "Instruction '{instruction}' has multiple destinations."
-                );
-
-                // Ensure the casted register type is defined.
-                match operation.register_type() {
-                    RegisterType::Plaintext(PlaintextType::Literal(..)) => {
-                        ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
-                    }
-                    RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
-                        // Ensure the struct name exists in the program.
-                        if !stack.program().contains_struct(struct_name) {
-                            bail!("Struct '{struct_name}' is not defined.")
-                        }
-                        // Retrieve the struct.
-                        let struct_ = stack.program().get_struct(struct_name)?;
-                        // Ensure the operand types match the struct.
-                        self.matches_struct(stack, instruction.operands(), struct_)?;
-                    }
-                    RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
-                        // Ensure that the array type is valid.
-                        RegisterTypes::check_array(stack, array_type)?;
-                        // Ensure the operand types match the element type.
-                        self.matches_array(stack, instruction.operands(), array_type)?;
-                    }
-                    RegisterType::Record(..) => {
-                        bail!("Illegal operation: Cannot cast to a record.")
-                    }
-                    RegisterType::ExternalRecord(_locator) => {
-                        bail!("Illegal operation: Cannot cast to an external record.")
-                    }
-                }
-            }
+            Opcode::Cast(opcode) => match opcode {
+                "cast" => match instruction {
+                    Instruction::Cast(operation) => self.check_cast_operation(stack, operation)?,
+                    _ => bail!("Instruction '{instruction}' is not a 'cast' operation."),
+                },
+                "cast.lossy" => match instruction {
+                    Instruction::CastLossy(operation) => self.check_cast_operation(stack, operation)?,
+                    _ => bail!("Instruction '{instruction}' is not a 'cast.lossy' operation."),
+                },
+                _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
+            },
             Opcode::Command(opcode) => {
                 bail!("Fatal error: Cannot check command '{opcode}' as an instruction in 'finalize {finalize_name}'.")
             }
@@ -509,30 +481,62 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Forbidden operation: Cannot invoke '{opcode}' in a `finalize` scope.");
             }
             Opcode::Hash(opcode) => RegisterTypes::check_hash_opcode(opcode, instruction)?,
-            Opcode::Is(opcode) => {
-                // Ensure the instruction belongs to the defined set.
-                if !["is.eq", "is.neq"].contains(&opcode) {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
-                // Ensure the instruction is the correct one.
-                match opcode {
-                    "is.eq" => ensure!(
-                        matches!(instruction, Instruction::IsEq(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    "is.neq" => ensure!(
-                        matches!(instruction, Instruction::IsNeq(..)),
-                        "Instruction '{instruction}' is not for opcode '{opcode}'."
-                    ),
-                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
-                }
-            }
+            Opcode::Is(opcode) => match opcode {
+                "is.eq" => ensure!(
+                    matches!(instruction, Instruction::IsEq(..)),
+                    "Instruction '{instruction}' is not for opcode '{opcode}'."
+                ),
+                "is.neq" => ensure!(
+                    matches!(instruction, Instruction::IsNeq(..)),
+                    "Instruction '{instruction}' is not for opcode '{opcode}'."
+                ),
+                _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
+            },
             Opcode::Sign => {
                 // Ensure the instruction has one destination register.
                 ensure!(
                     instruction.destinations().len() == 1,
                     "Instruction '{instruction}' has multiple destinations."
                 );
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks the cast operation is well-formed.
+    fn check_cast_operation<const VARIANT: u8>(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operation: &CastOperation<N, VARIANT>,
+    ) -> Result<()> {
+        // Ensure the operation has one destination register.
+        ensure!(operation.destinations().len() == 1, "Instruction '{operation}' has multiple destinations.");
+        // Ensure the casted register type is defined.
+        match operation.register_type() {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => {
+                ensure!(operation.operands().len() == 1, "Expected 1 operand.");
+            }
+            RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                // Ensure the struct name exists in the program.
+                if !stack.program().contains_struct(struct_name) {
+                    bail!("Struct '{struct_name}' is not defined.")
+                }
+                // Retrieve the struct.
+                let struct_ = stack.program().get_struct(struct_name)?;
+                // Ensure the operand types match the struct.
+                self.matches_struct(stack, operation.operands(), struct_)?;
+            }
+            RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
+                // Ensure that the array type is valid.
+                RegisterTypes::check_array(stack, array_type)?;
+                // Ensure the operand types match the element type.
+                self.matches_array(stack, operation.operands(), array_type)?;
+            }
+            RegisterType::Record(..) => {
+                bail!("Illegal operation: Cannot cast to a record.")
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
         Ok(())
