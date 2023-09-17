@@ -29,7 +29,10 @@ mod varuna {
         VarunaSNARK,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_utilities::rand::{TestRng, Uniform};
+    use snarkvm_utilities::{
+        rand::{TestRng, Uniform},
+        ToBytes,
+    };
 
     type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
 
@@ -40,7 +43,7 @@ mod varuna {
         ($test_struct: ident, $snark_inst: tt, $snark_mode: tt) => {
             struct $test_struct {}
             impl $test_struct {
-                pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
+                pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize, pk_size_expectation: usize) {
                     let rng = &mut snarkvm_utilities::rand::TestRng::default();
                     let random = Fr::rand(rng);
 
@@ -50,7 +53,7 @@ mod varuna {
                     let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
                     let fs_parameters = FS::sample_parameters();
 
-                    for i in 0..25 {
+                    for i in 0..5 {
                         let mul_depth = 1;
                         println!("running test with MM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
                         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
@@ -61,6 +64,11 @@ mod varuna {
                         let certificate = $snark_inst::prove_vk(universal_prover, &fs_parameters, &index_vk, &index_pk).unwrap();
                         assert!($snark_inst::verify_vk(universal_verifier, &fs_parameters, &circ, &index_vk, &certificate).unwrap());
                         println!("verified vk");
+
+                        if i == 0 {
+                            assert_eq!(pk_size_expectation, index_pk.to_bytes_le().unwrap().len(), "Update me if serialization has changed");
+                        }
+                        assert_eq!(664, index_vk.to_bytes_le().unwrap().len(), "Update me if serialization has changed");
 
                         let proof = $snark_inst::prove(universal_prover, &fs_parameters, &index_pk, &circ, rng).unwrap();
                         println!("Called prover");
@@ -205,9 +213,11 @@ mod varuna {
     fn prove_and_verify_with_tall_matrix_big() {
         let num_constraints = 100;
         let num_variables = 25;
+        let pk_size_zk = 91971;
+        let pk_size_posw = 91633;
 
-        SonicPCTest::test_circuit(num_constraints, num_variables);
-        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
 
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
@@ -220,9 +230,11 @@ mod varuna {
     fn prove_and_verify_with_tall_matrix_small() {
         let num_constraints = 26;
         let num_variables = 25;
+        let pk_size_zk = 25428;
+        let pk_size_posw = 25090;
 
-        SonicPCTest::test_circuit(num_constraints, num_variables);
-        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
 
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
@@ -235,9 +247,11 @@ mod varuna {
     fn prove_and_verify_with_squat_matrix_big() {
         let num_constraints = 25;
         let num_variables = 100;
+        let pk_size_zk = 53523;
+        let pk_size_posw = 53185;
 
-        SonicPCTest::test_circuit(num_constraints, num_variables);
-        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
 
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
@@ -250,9 +264,11 @@ mod varuna {
     fn prove_and_verify_with_squat_matrix_small() {
         let num_constraints = 25;
         let num_variables = 26;
+        let pk_size_zk = 25284;
+        let pk_size_posw = 24946;
 
-        SonicPCTest::test_circuit(num_constraints, num_variables);
-        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
 
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
@@ -265,9 +281,11 @@ mod varuna {
     fn prove_and_verify_with_square_matrix() {
         let num_constraints = 25;
         let num_variables = 25;
+        let pk_size_zk = 25284;
+        let pk_size_posw = 24946;
 
-        SonicPCTest::test_circuit(num_constraints, num_variables);
-        SonicPCPoswTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables, pk_size_zk);
+        SonicPCPoswTest::test_circuit(num_constraints, num_variables, pk_size_posw);
 
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);

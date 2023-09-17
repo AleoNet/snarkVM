@@ -466,14 +466,8 @@ mod test {
                 let evaluations: Evaluations<Fr> = rand_evaluations(rng, i);
                 let third_msg = ThirdMessage::<Fr> { sums: vec![vec![rand_sums(rng); j]; i] };
                 let fourth_msg = FourthMessage::<Fr> { sums: vec![rand_sums(rng); i] };
-                let mut proof_evaluations = None;
-                if !test_with_none {
-                    proof_evaluations = Some(vec![Fr::rand(rng); i]);
-                }
-                let pc_proof = sonic_pc::BatchLCProof {
-                    proof: BatchProof(vec![rand_kzg_proof(rng, test_with_none); j]),
-                    evaluations: proof_evaluations,
-                };
+                let pc_proof =
+                    sonic_pc::BatchLCProof { proof: BatchProof(vec![rand_kzg_proof(rng, test_with_none); j]) };
                 let proof = Proof { batch_sizes, commitments, evaluations, third_msg, fourth_msg, pc_proof };
                 let combinations = modes();
                 for (compress, validate) in combinations {
