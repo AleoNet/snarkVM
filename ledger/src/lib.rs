@@ -109,10 +109,10 @@ pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
     coinbase_puzzle: CoinbasePuzzle<N>,
     /// The current epoch challenge.
     current_epoch_challenge: Arc<RwLock<Option<EpochChallenge<N>>>>,
-    /// The current block.
-    current_block: Arc<RwLock<Block<N>>>,
     /// The current committee.
     current_committee: Arc<RwLock<Option<Committee<N>>>>,
+    /// The current block.
+    current_block: Arc<RwLock<Block<N>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
@@ -163,6 +163,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let vm = VM::from(store)?;
         lap!(timer, "Initialize a new VM");
 
+        // Retrieve the current committee.
         let current_committee = vm.finalize_store().committee_store().current_committee().ok();
 
         // Initialize the ledger.
@@ -171,8 +172,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             genesis_block: genesis_block.clone(),
             coinbase_puzzle: CoinbasePuzzle::<N>::load()?,
             current_epoch_challenge: Default::default(),
-            current_block: Arc::new(RwLock::new(genesis_block.clone())),
             current_committee: Arc::new(RwLock::new(current_committee)),
+            current_block: Arc::new(RwLock::new(genesis_block.clone())),
         };
 
         // If the block store is empty, initialize the genesis block.
@@ -192,11 +193,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Set the current block.
         ledger.current_block = Arc::new(RwLock::new(block));
+        // Set the current committee (and ensures the latest committee exists).
+        ledger.current_committee = Arc::new(RwLock::new(Some(ledger.latest_committee()?)));
         // Set the current epoch challenge.
         ledger.current_epoch_challenge = Arc::new(RwLock::new(Some(ledger.get_epoch_challenge(latest_height)?)));
-        lap!(timer, "Initialize ledger");
 
-        finish!(timer);
+        finish!(timer, "Initialize ledger");
         Ok(ledger)
     }
 
@@ -212,7 +214,10 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
     /// Returns the latest committee.
     pub fn latest_committee(&self) -> Result<Committee<N>> {
-        self.current_committee.read().clone().ok_or(anyhow!("Committee is not set"))
+        match self.current_committee.read().as_ref() {
+            Some(committee) => Ok(committee.clone()),
+            None => self.vm.finalize_store().committee_store().current_committee(),
+        }
     }
 
     /// Returns the latest state root.
