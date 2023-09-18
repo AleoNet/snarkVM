@@ -45,12 +45,6 @@ pub trait PathHash: Clone + Send + Sync {
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Hash = Field<E>;
 
-    /// Returns the empty hash.
-    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
-        let children = (0..ARITY).map(|_| Self::Hash::zero()).collect::<Vec<_>>();
-        self.hash_children(&children)
-    }
-
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
         // Prepend the nodes with a `true` bit.
@@ -65,12 +59,6 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for 
 
 impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
     type Hash = Field<E>;
-
-    /// Returns the empty hash.
-    fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
-        let children = (0..ARITY).map(|_| Self::Hash::zero()).collect::<Vec<_>>();
-        self.hash_children(&children)
-    }
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Result<Self::Hash> {
