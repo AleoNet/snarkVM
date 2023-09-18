@@ -2801,6 +2801,7 @@ dependencies = [
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
  "snarkvm-console-types",
+ "snarkvm-utilities",
 ]
 
 [[package]]

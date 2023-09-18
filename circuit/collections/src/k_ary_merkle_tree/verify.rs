@@ -14,9 +14,9 @@
 
 use super::*;
 
-impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, ARITY> {
+impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, PH, DEPTH, ARITY> {
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
-    pub fn verify<LH: LeafHash<E, Hash = PH::Hash>, PH: PathHash<E, Hash = Field<E>>>(
+    pub fn verify<LH: LeafHash<Hash = PH::Hash>>(
         &self,
         leaf_hasher: &LH,
         path_hasher: &PH,
@@ -51,14 +51,19 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, 
             })
             .collect();
 
+        // Initialize the zero index.
+        let zero_index = U64::<E>::zero();
+        // Initialize the last index.
+        let last_index = U64::<E>::new(Mode::Constant, console::U64::new(ARITY.saturating_sub(1) as u64));
+
         // Check levels between leaf level and root.
         for (indicator_index, sibling_hashes) in indicator_indexes.iter().zip_eq(&self.siblings) {
-            // Assemble the children based on the ternary results
+            // Assemble the children based on the ternary results.
             let mut children = Vec::with_capacity(sibling_hashes.len() + 1);
 
             // Add the first child.
-            let zero_index = U64::<E>::new(Mode::Constant, console::U64::new(0u64));
-            let first_child = Field::ternary(&indicator_index.is_equal(&zero_index), &current_hash, &sibling_hashes[0]);
+            let first_child =
+                PH::Hash::ternary(&indicator_index.is_equal(&zero_index), &current_hash, &sibling_hashes[0]);
 
             children.push(first_child);
 
@@ -69,18 +74,17 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, 
 
                 // When the index is less than the indicator index, use the current index. Otherwise, use the previous index.
                 let option_a =
-                    Field::ternary(&index.is_less_than(indicator_index), &sibling_hashes[i], &sibling_hashes[i - 1]);
+                    PH::Hash::ternary(&index.is_less_than(indicator_index), &sibling_hashes[i], &sibling_hashes[i - 1]);
 
                 // When the index is equal to the indicator index, use the current hash.
-                let option_b = Field::ternary(&index.is_equal(indicator_index), &current_hash, &option_a);
+                let option_b = PH::Hash::ternary(&index.is_equal(indicator_index), &current_hash, &option_a);
 
                 // Push the final option to the children
                 children.push(option_b);
             }
 
             // Add the last child.
-            let last_index = U64::<E>::new(Mode::Constant, console::U64::new((sibling_hashes.len()) as u64));
-            let last_child = Field::ternary(
+            let last_child = PH::Hash::ternary(
                 &indicator_index.is_equal(&last_index),
                 &current_hash,
                 &sibling_hashes[sibling_hashes.len() - 1],
@@ -100,7 +104,7 @@ impl<E: Environment, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, DEPTH, 
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
+    use snarkvm_circuit_algorithms::{Keccak256, Poseidon2, Poseidon4, Sha3_256, BHP1024, BHP512};
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{TestRng, Uniform};
 
@@ -131,7 +135,7 @@ mod tests {
                     .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>())
                     .collect::<Vec<_>>();
                 // Compute the Merkle tree.
-                let merkle_tree = console::k_ary_merkle_tree::KAryMerkleTree::<_, _, _, $depth, $arity>::new(
+                let merkle_tree = console::k_ary_merkle_tree::KAryMerkleTree::<_, _, $depth, $arity>::new(
                     &native_leaf_hasher,
                     &native_path_hasher,
                     &leaves,
@@ -142,7 +146,8 @@ mod tests {
                     let merkle_path = merkle_tree.prove(index, merkle_leaf)?;
 
                     // Initialize the Merkle path.
-                    let path = KAryMerklePath::<Circuit, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
+                    let path =
+                        KAryMerklePath::<Circuit, $ph<Circuit>, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
 
                     assert_eq!(merkle_path, path.eject_value());
                     // Initialize the Merkle root.
@@ -187,33 +192,141 @@ mod tests {
         }};
     }
 
+    macro_rules! check_verify_keccak {
+        ($lh:ident, $ph:ident, $mode:ident, $depth:expr, $arity:expr, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
+            // Initialize the leaf hasher.
+            let native_leaf_hasher = snarkvm_console_algorithms::$lh::default();
+            let circuit_leaf_hasher = $lh::<Circuit>::new();
+
+            let mut rng = TestRng::default();
+
+            // Initialize the path hasher.
+            let native_path_hasher = snarkvm_console_algorithms::$ph::default();
+            let circuit_path_hasher = $ph::<Circuit>::new();
+
+            for i in 0..ITERATIONS {
+                // Determine the number of leaves.
+                let num_leaves = core::cmp::min(($arity as u128).pow($depth as u32), i);
+                // Compute the leaves.
+                let leaves = (0..num_leaves)
+                    .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>())
+                    .collect::<Vec<_>>();
+                // Compute the Merkle tree.
+                let merkle_tree = console::k_ary_merkle_tree::KAryMerkleTree::<_, _, $depth, $arity>::new(
+                    &native_leaf_hasher,
+                    &native_path_hasher,
+                    &leaves,
+                )?;
+
+                for (index, merkle_leaf) in leaves.iter().enumerate() {
+                    // Compute the Merkle path.
+                    let merkle_path = merkle_tree.prove(index, merkle_leaf)?;
+
+                    // Initialize the Merkle path.
+                    let path =
+                        KAryMerklePath::<Circuit, $ph<Circuit>, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
+
+                    assert_eq!(merkle_path, path.eject_value());
+                    // Initialize the Merkle root.
+                    let root = <$ph<Circuit> as PathHash<Circuit>>::Hash::new(Mode::$mode, *merkle_tree.root());
+                    // Initialize the Merkle leaf.
+                    let leaf: Vec<_> = Inject::new(Mode::$mode, merkle_leaf.clone());
+
+                    Circuit::scope(format!("Verify {}", Mode::$mode), || {
+                        let candidate = path.verify(&circuit_leaf_hasher, &circuit_path_hasher, &root, &leaf);
+                        assert!(candidate.eject_value());
+                        assert_scope!($num_constants, $num_public, $num_private, $num_constraints);
+                    });
+                    Circuit::reset();
+
+                    // Initialize an incorrect Merkle root.
+                    let incorrect_root =
+                        <$ph<Circuit> as PathHash<Circuit>>::Hash::new(Mode::$mode, Default::default());
+
+                    Circuit::scope(format!("Verify (Incorrect Root) {}", Mode::$mode), || {
+                        let candidate = path.verify(&circuit_leaf_hasher, &circuit_path_hasher, &incorrect_root, &leaf);
+                        assert!(!candidate.eject_value());
+                        assert_scope!($num_constants, $num_public, $num_private, $num_constraints);
+                    });
+                    Circuit::reset();
+
+                    // Initialize an incorrect Merkle leaf.
+                    let mut incorrect_leaf = leaf.clone();
+                    let mut incorrect_value = Uniform::rand(&mut rng);
+                    while incorrect_value == incorrect_leaf[0].eject_value() {
+                        incorrect_value = Uniform::rand(&mut rng);
+                    }
+                    incorrect_leaf[0] = Inject::new(Mode::$mode, incorrect_value);
+
+                    Circuit::scope(format!("Verify (Incorrect Leaf) {}", Mode::$mode), || {
+                        let candidate = path.verify(&circuit_leaf_hasher, &circuit_path_hasher, &root, &incorrect_leaf);
+                        assert!(!candidate.eject_value());
+                        assert_scope!($num_constants, $num_public, $num_private, $num_constraints);
+                    });
+                    Circuit::reset();
+                }
+            }
+            Ok(())
+        }};
+    }
+
     #[test]
     fn test_verify_bhp512_constant() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Constant, 10, 4, 1024, (40386, 0, 0, 0))
+        check_verify!(BHP1024, BHP512, Constant, 10, 4, 1024, (39234, 0, 0, 0))
     }
 
     #[test]
     fn test_verify_bhp512_public() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Public, 10, 4, 1024, (10617, 0, 53876, 54097))
+        check_verify!(BHP1024, BHP512, Public, 10, 4, 1024, (9465, 0, 53876, 54097))
     }
 
     #[test]
     fn test_verify_bhp512_private() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Private, 10, 4, 1024, (10617, 0, 53876, 54097))
+        check_verify!(BHP1024, BHP512, Private, 10, 4, 1024, (9465, 0, 53876, 54097))
     }
 
     #[test]
     fn test_verify_poseidon2_constant() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Constant, 10, 4, 4, (4736, 0, 0, 0))
+        check_verify!(Poseidon4, Poseidon2, Constant, 10, 4, 4, (3584, 0, 0, 0))
     }
 
     #[test]
     fn test_verify_poseidon2_public() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Public, 10, 4, 4, (5995, 0, 14152, 14273))
+        check_verify!(Poseidon4, Poseidon2, Public, 10, 4, 4, (4843, 0, 14152, 14273))
     }
 
     #[test]
     fn test_verify_poseidon2_private() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, Private, 10, 4, 4, (5995, 0, 14152, 14273))
+        check_verify!(Poseidon4, Poseidon2, Private, 10, 4, 4, (4843, 0, 14152, 14273))
+    }
+
+    #[test]
+    fn test_verify_keccak256_constant() -> Result<()> {
+        check_verify_keccak!(Keccak256, Keccak256, Constant, 10, 4, 256, (6388, 0, 0, 0))
+    }
+
+    #[test]
+    fn test_verify_keccak256_public() -> Result<()> {
+        check_verify_keccak!(Keccak256, Keccak256, Public, 10, 4, 256, (7648, 0, 1696439, 1696559))
+    }
+
+    #[test]
+    fn test_verify_keccak256_private() -> Result<()> {
+        check_verify_keccak!(Keccak256, Keccak256, Private, 10, 4, 256, (7648, 0, 1696439, 1696559))
+    }
+
+    #[test]
+    fn test_verify_sha3_256_constant() -> Result<()> {
+        check_verify_keccak!(Sha3_256, Sha3_256, Constant, 10, 4, 256, (6388, 0, 0, 0))
+    }
+
+    #[test]
+    fn test_verify_sha3_256_public() -> Result<()> {
+        check_verify_keccak!(Sha3_256, Sha3_256, Public, 10, 4, 256, (7648, 0, 1696439, 1696559))
+    }
+
+    #[test]
+    fn test_verify_sha3_256_private() -> Result<()> {
+        check_verify_keccak!(Sha3_256, Sha3_256, Private, 10, 4, 256, (7648, 0, 1696439, 1696559))
     }
 }
