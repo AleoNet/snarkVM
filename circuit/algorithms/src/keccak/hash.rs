@@ -184,7 +184,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>> {
         debug_assert_eq!(a.len(), MODULO * MODULO, "The input vector 'a' must have {} elements", MODULO * MODULO);
 
-        /* The first part of Algorithm 3, θ:
+        /* The first part of Algorithm 1, θ:
          *
          * for x = 0 to 4 do
          *   C[x] = a[x, 0]
@@ -198,7 +198,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
             c.push(&a[x] ^ &a[x + MODULO] ^ &a[x + (2 * MODULO)] ^ &a[x + (3 * MODULO)] ^ &a[x + (4 * MODULO)]);
         }
 
-        /* The second part of Algorithm 3, θ:
+        /* The second part of Algorithm 1, θ:
          *
          * for x = 0 to 4 do
          *   D[x] = C[x−1] ⊕ ROT(C[x+1],1)
@@ -218,7 +218,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
             }
         }
 
-        /* Algorithm 4, π:
+        /* Algorithm 3, π:
          *
          * for x = 0 to 4 do
          *   for y = 0 to 4 do
@@ -227,7 +227,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          *   end for
          * end for
          *
-         * Algorithm 5, ρ:
+         * Algorithm 2, ρ:
          *
          * A[0, 0] = a[0, 0]
          * (x, y) = (1, 0)
@@ -245,7 +245,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
             }
         }
 
-        /* Algorithm 2, χ:
+        /* Algorithm 4, χ:
          *
          * for y = 0 to 4 do
          *   for x = 0 to 4 do
@@ -263,7 +263,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
             }
         }
 
-        /* ι:
+        /* Algorithm 5, ι:
          *
          * A[0, 0] = A[0, 0] ⊕ RC
          */
