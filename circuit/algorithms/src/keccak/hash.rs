@@ -45,7 +45,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
 
         /* The first part of the sponge construction (the absorbing phase):
          *
-         * for i = 0 to |P|_r − 1 do
+         * for i = 0 to |P| − 1 do
          *   s = s ⊕ (P_i || 0^c) # Note: |P_i| + c == b, since |P_i| == r
          *   s = f(s)
          * end for
@@ -62,7 +62,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
         /* The second part of the sponge construction (the squeezing phase):
          *
          * Z = s[0..r-1]
-         * while |Z|_r < l do
+         * while |Z| < l do
          *   s = f(s)
          *   Z = Z || s[0..r-1]
          * end while
@@ -70,7 +70,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
          */
         // Z = s[0..r-1]
         let mut z = s[..bitrate].to_vec();
-        // while |Z|_r < l do
+        // while |Z| < l do
         while z.len() < VARIANT {
             // s = f(s)
             s = Self::permutation_f::<PERMUTATION_WIDTH, NUM_ROUNDS>(s, &self.round_constants, &self.rotl);
