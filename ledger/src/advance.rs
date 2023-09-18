@@ -75,11 +75,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Drop the write lock on the current block.
         drop(current_block);
 
+        // Update the cached committee from storage.
+        if let Ok(current_committee) = self.vm.finalize_store().committee_store().current_committee() {
+            *self.current_committee.write() = Some(current_committee);
+        }
+
         // If the block is the start of a new epoch, or the epoch challenge has not been set, update the current epoch challenge.
         if block.height() % N::NUM_BLOCKS_PER_EPOCH == 0 || self.current_epoch_challenge.read().is_none() {
             // Update the current epoch challenge.
             self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
         }
+
         Ok(())
     }
 }
