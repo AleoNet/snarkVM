@@ -263,7 +263,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
             }
         }
 
-        /* Algorithm 5, ι:
+        /* ι:
          *
          * A[0, 0] = A[0, 0] ⊕ RC
          */
