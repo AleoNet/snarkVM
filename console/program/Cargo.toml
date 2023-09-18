@@ -48,6 +48,9 @@ version = "0.2"
 [dependencies.once_cell]
 version = "1.18.0"
 
+[dependencies.paste]
+version = "1.0"
+
 [dependencies.serde_json]
 version = "1.0"
 features = [ "preserve_order" ]

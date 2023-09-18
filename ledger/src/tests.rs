@@ -120,7 +120,7 @@ fn test_insufficient_fees() {
     {
         // Prepare an execution without a fee.
         let inputs = [
-            Value::Record(record_1.clone()),
+            Value::Record(record_1),
             Value::from_str(&format!("{address}")).unwrap(),
             Value::from_str("100u64").unwrap(),
         ];
