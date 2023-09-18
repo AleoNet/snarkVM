@@ -151,7 +151,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     /// defined as `f = Keccak-f[b]`, where `b := 25 * 2^l` is the width of the permutation,
     /// and `l` is the log width of the permutation.
     ///
-    /// The round function `R` is applied `12 + 2l` times, where `l` is the log width of the permutation.
+    /// The round function `Rnd` is applied `12 + 2l` times, where `l` is the log width of the permutation.
     fn permutation_f<const WIDTH: usize, const NUM_ROUNDS: usize>(
         input: Vec<Boolean<E>>,
         round_constants: &[U64<E>],
@@ -176,9 +176,9 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
         bits
     }
 
-    /// The round function `R` is defined as follows:
+    /// The round function `Rnd` is defined as follows:
     /// ```text
-    /// R = ι ◦ χ ◦ π ◦ ρ ◦ θ
+    /// Rnd = ι ◦ χ ◦ π ◦ ρ ◦ θ
     /// ```
     /// where `◦` denotes function composition.
     fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>> {
