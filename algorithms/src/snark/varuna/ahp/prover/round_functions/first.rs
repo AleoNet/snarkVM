@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
@@ -95,7 +95,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         assert!(oracles.matches_info(&Self::first_round_polynomial_info(
             state.circuit_specific_states.iter().map(|(c, s)| (&c.id, &s.batch_size))
         )));
-        state.first_round_oracles = Some(Arc::new(oracles));
+        state.first_round_oracles = Some(oracles);
         Ok(state)
     }
 

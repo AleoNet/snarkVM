@@ -113,15 +113,8 @@ pub fn bad_degree_bound_test<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>() -
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof = SonicKZG10::batch_open(
-            universal_prover,
-            &ck,
-            &polynomials,
-            &comms,
-            &query_set,
-            &rands,
-            &mut sponge_for_open,
-        )?;
+        let proof =
+            SonicKZG10::batch_open(universal_prover, &ck, &polynomials, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         assert!(result, "proof was incorrect, Query set: {query_set:#?}");
@@ -210,15 +203,8 @@ pub fn lagrange_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>()
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof = SonicKZG10::batch_open(
-            universal_prover,
-            &ck,
-            &polynomials,
-            &comms,
-            &query_set,
-            &rands,
-            &mut sponge_for_open,
-        )?;
+        let proof =
+            SonicKZG10::batch_open(universal_prover, &ck, &polynomials, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
@@ -341,15 +327,8 @@ where
         println!("Generated query set");
 
         let mut sponge_for_open = S::new();
-        let proof = SonicKZG10::batch_open(
-            universal_prover,
-            &ck,
-            &polynomials,
-            &comms,
-            &query_set,
-            &rands,
-            &mut sponge_for_open,
-        )?;
+        let proof =
+            SonicKZG10::batch_open(universal_prover, &ck, &polynomials, &query_set, &rands, &mut sponge_for_open)?;
         let mut sponge_for_check = S::new();
         let result = SonicKZG10::batch_check(&vk, &comms, &query_set, &values, &proof, &mut sponge_for_check)?;
         if !result {
@@ -507,10 +486,9 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
             universal_prover,
             &ck,
             &linear_combinations,
-            &polynomials,
-            &comms,
-            &query_set,
+            polynomials,
             &rands,
+            &query_set,
             &mut sponge_for_open,
         )?;
         println!("Generated proof");
@@ -526,10 +504,6 @@ fn equation_test_template<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>>(
         )?;
         if !result {
             println!("Failed with {num_polynomials} polynomials, num_points_in_query_set: {num_points_in_query_set:?}");
-            println!("Degree of polynomials:");
-            for poly in polynomials {
-                println!("Degree: {:?}", poly.degree());
-            }
         }
         assert!(result, "proof was incorrect, equations: {linear_combinations:#?}");
 

@@ -111,22 +111,15 @@ impl<F: PrimeField> MatrixEvals<F> {
             self.row_col_val.evaluate_with_coeffs(lagrange_coefficients_at_point),
         ])
     }
-}
 
-/// Contains information about the arithmetization of the matrices, as per the Aleo protocol docs
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
-pub struct MatrixArithmetization<F: PrimeField> {
-    /// LDE of the row indices of M^*.
-    pub row: LabeledPolynomial<F>,
-    /// LDE of the column indices of M^*.
-    pub col: LabeledPolynomial<F>,
-    /// LDE of the vector containing entry-wise products of `row` and `col`.
-    pub row_col: LabeledPolynomial<F>,
-    /// LDE of the vector containing entry-wise products of `row`, `col` and the non-zero entries of M.
-    pub row_col_val: LabeledPolynomial<F>,
-
-    /// Evaluation of the above polynomials on the domain `K`.
-    pub evals_on_K: MatrixEvals<F>,
+    pub(crate) fn domain(&self) -> Result<EvaluationDomain<F>> {
+        ensure!(self.row.domain() == self.col.domain());
+        if let Some(row_col) = self.row_col.as_ref() {
+            ensure!(self.row.domain() == row_col.domain());
+        }
+        ensure!(self.row.domain() == self.row_col_val.domain());
+        Ok(self.row.domain())
+    }
 }
 
 pub(crate) fn matrix_evals<F: PrimeField>(
@@ -189,30 +182,54 @@ pub(crate) fn matrix_evals<F: PrimeField>(
 }
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
-pub(crate) fn arithmetize_matrix<F: PrimeField>(
-    id: &CircuitId,
-    label: &str,
-    matrix_evals: MatrixEvals<F>,
-) -> Result<MatrixArithmetization<F>> {
-    ensure!(matrix_evals.row_col.is_some(), "row_col evaluations are not available");
+/// Contains information about the arithmetization of the matrices
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, PartialEq, Eq)]
+pub struct MatrixArithmetization<F: PrimeField> {
+    /// LDE of the row indices of M^*.
+    pub row: LabeledPolynomial<F>,
+    /// LDE of the column indices of M^*.
+    pub col: LabeledPolynomial<F>,
+    /// LDE of the vector containing entry-wise products of `row` and `col`.
+    pub row_col: LabeledPolynomial<F>,
+    /// LDE of the vector containing entry-wise products of `row`, `col` and the non-zero entries of M.
+    pub row_col_val: LabeledPolynomial<F>,
+}
 
-    let interpolate_time = start_timer!(|| "Interpolating on K");
-    let row = matrix_evals.row.clone().interpolate();
-    let col = matrix_evals.col.clone().interpolate();
-    let row_col = matrix_evals.row_col.as_ref().unwrap().clone().interpolate();
-    let row_col_val = matrix_evals.row_col_val.clone().interpolate();
-    end_timer!(interpolate_time);
+impl<F: PrimeField> MatrixArithmetization<F> {
+    /// Create a new MatrixArithmetization
+    pub fn new(id: &CircuitId, label: &str, matrix_evals: &MatrixEvals<F>) -> Result<MatrixArithmetization<F>> {
+        let interpolate_time = start_timer!(|| "Interpolating on K");
+        let non_zero_domain = matrix_evals.domain()?;
+        let row = matrix_evals.row.clone().interpolate();
+        let col = matrix_evals.col.clone().interpolate();
+        let row_col = if let Some(row_col) = matrix_evals.row_col.as_ref() {
+            row_col.clone().interpolate()
+        } else {
+            let row_col_evals: Vec<F> = cfg_iter!(matrix_evals.row.evaluations)
+                .zip_eq(&matrix_evals.col.evaluations)
+                .map(|(&r, &c)| r * c)
+                .collect();
+            EvaluationsOnDomain::<F>::from_vec_and_domain(row_col_evals, non_zero_domain).interpolate()
+        };
+        let row_col_val = matrix_evals.row_col_val.clone().interpolate();
+        end_timer!(interpolate_time);
 
-    let label = &[label];
-    let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels(label, std::iter::once(id));
+        let label = &[label];
+        let mut labels = AHPForR1CS::<F, VarunaHidingMode>::index_polynomial_labels(label, std::iter::once(id));
 
-    Ok(MatrixArithmetization {
-        row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
-        col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
-        row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
-        row_col_val: LabeledPolynomial::new(labels.next().unwrap(), row_col_val, None, None),
-        evals_on_K: matrix_evals,
-    })
+        Ok(MatrixArithmetization {
+            row: LabeledPolynomial::new(labels.next().unwrap(), row, None, None),
+            col: LabeledPolynomial::new(labels.next().unwrap(), col, None, None),
+            row_col: LabeledPolynomial::new(labels.next().unwrap(), row_col, None, None),
+            row_col_val: LabeledPolynomial::new(labels.next().unwrap(), row_col_val, None, None),
+        })
+    }
+
+    /// Iterate over the indexed polynomials.
+    pub fn into_iter(self) -> impl Iterator<Item = LabeledPolynomial<F>> {
+        // Alphabetical order
+        [self.col, self.row, self.row_col, self.row_col_val].into_iter()
+    }
 }
 
 /// Compute the transpose of a sparse matrix
@@ -301,7 +318,7 @@ mod tests {
             )
             .unwrap();
             let dummy_id = CircuitId([0; 32]);
-            let arith = arithmetize_matrix(&dummy_id, label, evals).unwrap();
+            let arith = MatrixArithmetization::new(&dummy_id, label, &evals).unwrap();
 
             for (k_index, k) in interpolation_domain.elements().enumerate() {
                 let row_val = arith.row.evaluate(k);
@@ -309,9 +326,6 @@ mod tests {
                 let row_col = arith.row_col.evaluate(k);
 
                 let row_col_val = arith.row_col_val.evaluate(k);
-                assert_eq!(arith.evals_on_K.row[k_index], row_val);
-                assert_eq!(arith.evals_on_K.col[k_index], col_val);
-                assert_eq!(arith.evals_on_K.row_col_val[k_index], row_col_val);
                 if k_index < num_non_zero {
                     let col = *dbg!(reindexed_inverse_map.get(&col_val).unwrap());
                     let row = *dbg!(inverse_map.get(&row_val).unwrap());
