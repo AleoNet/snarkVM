@@ -297,9 +297,9 @@ fn test_kary_merkle_tree_bhp() -> Result<()> {
     assert!(run_test::<32, 4>(&mut rng).is_ok());
     assert!(run_test::<32, 14>(&mut rng).is_ok());
 
-    // TODO (raychu86): Limit the size of depth and arity combinations to prevent overflows.
-    // assert!(run_test::<48, 48>(&mut rng).is_ok());
-
+    // Limit the size of depth and arity combinations to prevent overflows.
+    assert!(run_test::<32, 16>(&mut rng).is_err());
+    assert!(run_test::<48, 48>(&mut rng).is_err());
     Ok(())
 }
 
@@ -314,7 +314,7 @@ fn test_kary_merkle_tree_poseidon() -> Result<()> {
 
         for i in 0..ITERATIONS {
             // Determine the number of leaves.
-            let num_leaves = core::cmp::min((ARITY as u128).pow(DEPTH as u32), i);
+            let num_leaves = core::cmp::min((ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(i), i);
             // Check the Merkle tree.
             check_kary_merkle_tree::<LH, PH, DEPTH, ARITY>(
                 &leaf_hasher,
@@ -337,8 +337,9 @@ fn test_kary_merkle_tree_poseidon() -> Result<()> {
     assert!(run_test::<32, 4>(&mut rng).is_ok());
     assert!(run_test::<32, 14>(&mut rng).is_ok());
 
-    // TODO (raychu86): Limit the size of depth and arity combinations to prevent overflows.
-    // assert!(run_test::<48, 48>(&mut rng).is_ok());
+    // Limit the size of depth and arity combinations to prevent overflows.
+    assert!(run_test::<32, 16>(&mut rng).is_err());
+    assert!(run_test::<48, 48>(&mut rng).is_err());
     Ok(())
 }
 
@@ -380,9 +381,9 @@ fn test_kary_merkle_tree_keccak() -> Result<()> {
     assert!(run_test::<32, 4>(&mut rng).is_ok());
     assert!(run_test::<32, 14>(&mut rng).is_ok());
 
-    // TODO (raychu86): Limit the size of depth and arity combinations to prevent overflows.
-    // assert!(run_test::<48, 48>(&mut rng).is_ok());
-
+    // Limit the size of depth and arity combinations to prevent overflows.
+    assert!(run_test::<32, 16>(&mut rng).is_err());
+    assert!(run_test::<48, 48>(&mut rng).is_err());
     Ok(())
 }
 
@@ -424,9 +425,9 @@ fn test_kary_merkle_tree_sha3() -> Result<()> {
     assert!(run_test::<32, 4>(&mut rng).is_ok());
     assert!(run_test::<32, 14>(&mut rng).is_ok());
 
-    // TODO (raychu86): Limit the size of depth and arity combinations to prevent overflows.
-    // assert!(run_test::<48, 48>(&mut rng).is_ok());
-
+    // Limit the size of depth and arity combinations to prevent overflows.
+    assert!(run_test::<32, 16>(&mut rng).is_err());
+    assert!(run_test::<48, 48>(&mut rng).is_err());
     Ok(())
 }
 

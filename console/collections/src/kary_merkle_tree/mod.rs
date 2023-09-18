@@ -69,11 +69,12 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         ensure!(DEPTH <= 64u8, "Merkle tree depth must be less than or equal to 64");
         // Ensure the Merkle tree arity is greater than 1.
         ensure!(ARITY > 1, "Merkle tree arity must be greater than 1");
+        // Ensure the Merkle tree does not overflow a u128.
+        ensure!((ARITY as u128).checked_pow(DEPTH as u32).is_some(), "Merkle tree size overflowed");
 
         // Compute the maximum number of leaves.
-        let max_leaves = match checked_next_power_of_n(leaves.len(), ARITY as usize) {
-            Some(num_leaves) => num_leaves,
-            None => bail!("Integer overflow when computing the maximum number of leaves in the Merkle tree"),
+        let Some(max_leaves) = checked_next_power_of_n(leaves.len(), ARITY as usize) else {
+            bail!("Integer overflow when computing the maximum number of leaves in the Merkle tree");
         };
 
         // Compute the number of nodes.

@@ -31,12 +31,15 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KaryMerklePath<PH, DEPTH, A
         ensure!(DEPTH <= 64u8, "Merkle tree depth must be less than or equal to 64");
         // Ensure the Merkle tree arity is greater than 1.
         ensure!(ARITY > 1, "Merkle tree arity must be greater than 1");
+        // Ensure the Merkle tree does not overflow a u128.
+        ensure!((ARITY as u128).checked_pow(DEPTH as u32).is_some(), "Merkle tree size overflowed");
         // Ensure the leaf index is within the tree depth.
-        ensure!((leaf_index as u128) < (ARITY as u128).pow(DEPTH as u32), "Found an out of bounds Merkle leaf index");
+        ensure!((leaf_index as u128) < (ARITY as u128).saturating_pow(DEPTH as u32), "Out of bounds Merkle leaf index");
         // Ensure the Merkle path is the correct length.
         ensure!(siblings.len() == DEPTH as usize, "Found an incorrect Merkle path length");
         for sibling in &siblings {
-            ensure!(sibling.len() == ARITY.saturating_sub(1) as usize, "Found an incorrect Merkle path arity");
+            // Note: The ARITY is guaranteed to be greater than 1 (by the above check).
+            ensure!(sibling.len() == (ARITY - 1) as usize, "Found an incorrect Merkle path arity");
         }
         // Return the Merkle path.
         Ok(Self { leaf_index, siblings })
@@ -63,7 +66,7 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KaryMerklePath<PH, DEPTH, A
         leaf: &LH::Leaf,
     ) -> bool {
         // Ensure the leaf index is within the tree depth.
-        if (self.leaf_index as u128) >= (ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(u128::MAX) {
+        if (self.leaf_index as u128) >= (ARITY as u128).saturating_pow(DEPTH as u32) {
             eprintln!("Found an out of bounds Merkle leaf index");
             return false;
         }
@@ -84,15 +87,14 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KaryMerklePath<PH, DEPTH, A
 
         // Compute the ordering of the current hash and sibling hashes on each level.
         // The indicator index determines which sibling the current hash is.
-        let indicator_indexes: Vec<usize> = match (0..DEPTH)
-            .map(|i| usize::try_from(self.leaf_index as u128 / (ARITY as u128).pow(i as u32) % ARITY as u128))
+        let Ok(indicator_indexes) = (0..DEPTH)
+            .map(|i| {
+                usize::try_from(self.leaf_index as u128 / (ARITY as u128).saturating_pow(i as u32) % (ARITY as u128))
+            })
             .collect::<Result<Vec<_>, _>>()
-        {
-            Ok(indexes) => indexes,
-            _ => {
-                eprintln!("Found an incorrect Merkle leaf index");
-                return false;
-            }
+        else {
+            eprintln!("Found an incorrect Merkle leaf index");
+            return false;
         };
 
         // Check levels between leaf level and root.
