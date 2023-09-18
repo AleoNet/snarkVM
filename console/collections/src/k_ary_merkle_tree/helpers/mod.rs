@@ -37,6 +37,18 @@ impl<const VARIANT: usize> Default for BooleanHash<VARIANT> {
     }
 }
 
+impl<const VARIANT: usize> Distribution<BooleanHash<VARIANT>> for Standard {
+    /// Returns a random boolean hash.
+    #[inline]
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> BooleanHash<VARIANT> {
+        let mut array = [false; VARIANT];
+        for i in 0..VARIANT {
+            array[i] = rng.gen();
+        }
+        BooleanHash(array)
+    }
+}
+
 impl<const VARIANT: usize> FromBytes for BooleanHash<VARIANT> {
     /// Reads `self` from `reader` in little-endian order.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
