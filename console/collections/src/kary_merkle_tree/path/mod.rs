@@ -15,14 +15,14 @@
 use super::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct KAryMerklePath<PH: PathHash, const DEPTH: u8, const ARITY: u8> {
+pub struct KaryMerklePath<PH: PathHash, const DEPTH: u8, const ARITY: u8> {
     /// The leaf index for the path.
     leaf_index: u64,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
     siblings: Vec<Vec<PH::Hash>>,
 }
 
-impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KAryMerklePath<PH, DEPTH, ARITY> {
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KaryMerklePath<PH, DEPTH, ARITY> {
     /// Returns a new instance of a Merkle path.
     pub fn try_from((leaf_index, siblings): (u64, Vec<Vec<PH::Hash>>)) -> Result<Self> {
         // Ensure the Merkle tree depth is greater than 0.
@@ -43,7 +43,7 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KAryMerklePath<PH, DEPTH, A
     }
 }
 
-impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KAryMerklePath<PH, DEPTH, ARITY> {
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KaryMerklePath<PH, DEPTH, ARITY> {
     /// Returns the leaf index for the path.
     pub fn leaf_index(&self) -> u64 {
         self.leaf_index
@@ -118,7 +118,7 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> KAryMerklePath<PH, DEPTH, A
     }
 }
 
-impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> FromBytes for KAryMerklePath<PH, DEPTH, ARITY> {
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> FromBytes for KaryMerklePath<PH, DEPTH, ARITY> {
     /// Reads in a Merkle path from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -133,7 +133,7 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> FromBytes for KAryMerklePat
     }
 }
 
-impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> ToBytes for KAryMerklePath<PH, DEPTH, ARITY> {
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> ToBytes for KaryMerklePath<PH, DEPTH, ARITY> {
     /// Writes the Merkle path to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -146,13 +146,13 @@ impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> ToBytes for KAryMerklePath<
     }
 }
 
-impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> Serialize for KAryMerklePath<PH, DEPTH, ARITY> {
+impl<PH: PathHash, const DEPTH: u8, const ARITY: u8> Serialize for KaryMerklePath<PH, DEPTH, ARITY> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         ToBytesSerializer::serialize_with_size_encoding(self, serializer)
     }
 }
 
-impl<'de, PH: PathHash, const DEPTH: u8, const ARITY: u8> Deserialize<'de> for KAryMerklePath<PH, DEPTH, ARITY> {
+impl<'de, PH: PathHash, const DEPTH: u8, const ARITY: u8> Deserialize<'de> for KaryMerklePath<PH, DEPTH, ARITY> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "K-ary Merkle path")
     }

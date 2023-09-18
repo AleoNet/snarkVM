@@ -91,7 +91,7 @@ mod tests {
                 let input = (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>();
 
                 // Compute the expected hash.
-                let expected = console::k_ary_merkle_tree::LeafHash::hash_leaf(&$native, &input)?;
+                let expected = console::kary_merkle_tree::LeafHash::hash_leaf(&$native, &input)?;
 
                 // Prepare the circuit input.
                 let circuit_input: Vec<_> = Inject::new(Mode::$mode, input);

@@ -18,11 +18,11 @@ use snarkvm_circuit_algorithms::{Hash, Keccak, Poseidon, BHP};
 /// A trait for a Merkle path hash function.
 pub trait PathHash<E: Environment> {
     type Hash: Default
-        + Inject<Primitive = <Self::Primitive as console::k_ary_merkle_tree::PathHash>::Hash>
-        + Eject<Primitive = <Self::Primitive as console::k_ary_merkle_tree::PathHash>::Hash>
+        + Inject<Primitive = <Self::Primitive as console::kary_merkle_tree::PathHash>::Hash>
+        + Eject<Primitive = <Self::Primitive as console::kary_merkle_tree::PathHash>::Hash>
         + Equal<Output = Boolean<E>>
         + Ternary<Boolean = Boolean<E>, Output = Self::Hash>;
-    type Primitive: console::k_ary_merkle_tree::PathHash;
+    type Primitive: console::kary_merkle_tree::PathHash;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Self::Hash;
@@ -107,7 +107,7 @@ mod tests {
                 let children = (0..$arity).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>();
 
                 // Compute the expected hash.
-                let expected = console::k_ary_merkle_tree::PathHash::hash_children(&$native, &children)?;
+                let expected = console::kary_merkle_tree::PathHash::hash_children(&$native, &children)?;
 
                 // Prepare the circuit input.
                 let children = children.into_iter().map(|child| Inject::new(Mode::$mode, child)).collect::<Vec<_>>();

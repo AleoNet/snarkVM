@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KAryMerklePath<E, PH, DEPTH, ARITY> {
+impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerklePath<E, PH, DEPTH, ARITY> {
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
     pub fn verify<LH: LeafHash<Hash = PH::Hash>>(
         &self,
@@ -135,7 +135,7 @@ mod tests {
                     .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>())
                     .collect::<Vec<_>>();
                 // Compute the Merkle tree.
-                let merkle_tree = console::k_ary_merkle_tree::KAryMerkleTree::<_, _, $depth, $arity>::new(
+                let merkle_tree = console::kary_merkle_tree::KaryMerkleTree::<_, _, $depth, $arity>::new(
                     &native_leaf_hasher,
                     &native_path_hasher,
                     &leaves,
@@ -147,7 +147,7 @@ mod tests {
 
                     // Initialize the Merkle path.
                     let path =
-                        KAryMerklePath::<Circuit, $ph<Circuit>, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
+                        KaryMerklePath::<Circuit, $ph<Circuit>, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
 
                     assert_eq!(merkle_path, path.eject_value());
                     // Initialize the Merkle root.
@@ -212,7 +212,7 @@ mod tests {
                     .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut rng)).collect::<Vec<_>>())
                     .collect::<Vec<_>>();
                 // Compute the Merkle tree.
-                let merkle_tree = console::k_ary_merkle_tree::KAryMerkleTree::<_, _, $depth, $arity>::new(
+                let merkle_tree = console::kary_merkle_tree::KaryMerkleTree::<_, _, $depth, $arity>::new(
                     &native_leaf_hasher,
                     &native_path_hasher,
                     &leaves,
@@ -224,7 +224,7 @@ mod tests {
 
                     // Initialize the Merkle path.
                     let path =
-                        KAryMerklePath::<Circuit, $ph<Circuit>, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
+                        KaryMerklePath::<Circuit, $ph<Circuit>, $depth, $arity>::new(Mode::$mode, merkle_path.clone());
 
                     assert_eq!(merkle_path, path.eject_value());
                     // Initialize the Merkle root.

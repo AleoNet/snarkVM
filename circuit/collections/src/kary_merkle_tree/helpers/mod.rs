@@ -26,13 +26,13 @@ pub struct BooleanHash<E: Environment, const VARIANT: usize>(pub [Boolean<E>; VA
 impl<E: Environment, const VARIANT: usize> Default for BooleanHash<E, VARIANT> {
     /// Initializes a new "empty" boolean hash.
     fn default() -> Self {
-        Self::new(Mode::Constant, console::k_ary_merkle_tree::BooleanHash::new())
+        Self::new(Mode::Constant, console::kary_merkle_tree::BooleanHash::new())
     }
 }
 
 #[cfg(console)]
 impl<E: Environment, const VARIANT: usize> Inject for BooleanHash<E, VARIANT> {
-    type Primitive = console::k_ary_merkle_tree::BooleanHash<VARIANT>;
+    type Primitive = console::kary_merkle_tree::BooleanHash<VARIANT>;
 
     /// Initializes a boolean hash from the given mode and native boolean hash.
     fn new(mode: Mode, hash: Self::Primitive) -> Self {
@@ -49,7 +49,7 @@ impl<E: Environment, const VARIANT: usize> Inject for BooleanHash<E, VARIANT> {
 
 #[cfg(console)]
 impl<E: Environment, const VARIANT: usize> Eject for BooleanHash<E, VARIANT> {
-    type Primitive = console::k_ary_merkle_tree::BooleanHash<VARIANT>;
+    type Primitive = console::kary_merkle_tree::BooleanHash<VARIANT>;
 
     /// Ejects the mode of the boolean hash.
     fn eject_mode(&self) -> Mode {
@@ -58,7 +58,7 @@ impl<E: Environment, const VARIANT: usize> Eject for BooleanHash<E, VARIANT> {
 
     /// Ejects the Merkle path.
     fn eject_value(&self) -> Self::Primitive {
-        console::k_ary_merkle_tree::BooleanHash::<VARIANT>(self.0.eject_value().try_into().unwrap())
+        console::kary_merkle_tree::BooleanHash::<VARIANT>(self.0.eject_value().try_into().unwrap())
     }
 }
 

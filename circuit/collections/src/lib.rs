@@ -15,5 +15,5 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod k_ary_merkle_tree;
+pub mod kary_merkle_tree;
 pub mod merkle_tree;

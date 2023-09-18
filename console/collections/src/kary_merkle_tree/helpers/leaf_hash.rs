@@ -15,7 +15,7 @@
 use snarkvm_console_algorithms::{Keccak, Poseidon, BHP};
 use snarkvm_console_types::prelude::*;
 
-use crate::k_ary_merkle_tree::BooleanHash;
+use crate::kary_merkle_tree::BooleanHash;
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 

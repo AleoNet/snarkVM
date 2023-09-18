@@ -22,7 +22,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U64};
 
-pub struct KAryMerklePath<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> {
+pub struct KaryMerklePath<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> {
     /// The leaf index for the path.
     leaf_index: U64<E>,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
@@ -30,8 +30,8 @@ pub struct KAryMerklePath<E: Environment, PH: PathHash<E>, const DEPTH: u8, cons
 }
 
 #[cfg(console)]
-impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> Inject for KAryMerklePath<E, PH, DEPTH, ARITY> {
-    type Primitive = console::k_ary_merkle_tree::KAryMerklePath<PH::Primitive, DEPTH, ARITY>;
+impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> Inject for KaryMerklePath<E, PH, DEPTH, ARITY> {
+    type Primitive = console::kary_merkle_tree::KaryMerklePath<PH::Primitive, DEPTH, ARITY>;
 
     /// Initializes a Merkle path from the given mode and native Merkle path.
     fn new(mode: Mode, merkle_path: Self::Primitive) -> Self {
@@ -60,8 +60,8 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> Inject f
 }
 
 #[cfg(console)]
-impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> Eject for KAryMerklePath<E, PH, DEPTH, ARITY> {
-    type Primitive = console::k_ary_merkle_tree::KAryMerklePath<PH::Primitive, DEPTH, ARITY>;
+impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> Eject for KaryMerklePath<E, PH, DEPTH, ARITY> {
+    type Primitive = console::kary_merkle_tree::KaryMerklePath<PH::Primitive, DEPTH, ARITY>;
 
     /// Ejects the mode of the Merkle path.
     fn eject_mode(&self) -> Mode {
@@ -82,7 +82,7 @@ mod tests {
     use super::*;
     use console::{
         algorithms::{BHP1024 as NativeBHP1024, BHP512 as NativeBHP512},
-        k_ary_merkle_tree::KAryMerkleTree,
+        kary_merkle_tree::KaryMerkleTree,
     };
     use snarkvm_circuit_algorithms::BHP512;
     use snarkvm_circuit_network::AleoV0 as Circuit;
@@ -122,7 +122,7 @@ mod tests {
             let leaves = create_leaves(num_leaves);
             // Compute the Merkle tree.
             let merkle_tree =
-                KAryMerkleTree::<NativeLH, NativePH, DEPTH, ARITY>::new(&leaf_hasher, &path_hasher, &leaves)?;
+                KaryMerkleTree::<NativeLH, NativePH, DEPTH, ARITY>::new(&leaf_hasher, &path_hasher, &leaves)?;
 
             for (index, leaf) in leaves.iter().enumerate() {
                 // Compute the Merkle path.
@@ -132,7 +132,7 @@ mod tests {
                 // let leaf: Vec<Boolean<_>> = Inject::new(mode, leaf.clone());
 
                 Circuit::scope(format!("New {mode}"), || {
-                    let candidate = KAryMerklePath::<Circuit, PH, DEPTH, ARITY>::new(mode, merkle_path.clone());
+                    let candidate = KaryMerklePath::<Circuit, PH, DEPTH, ARITY>::new(mode, merkle_path.clone());
                     assert_eq!(merkle_path, candidate.eject_value());
                     assert_scope!(num_constants, num_public, num_private, num_constraints);
                 });
