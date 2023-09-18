@@ -62,11 +62,11 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
         /* The second part of the sponge construction (the squeezing phase):
          *
          * Z = s[0..r-1]
-         * while |Z| < l do
+         * while |Z| < d do // d is the digest length
          *   s = f(s)
          *   Z = Z || s[0..r-1]
          * end while
-         * return Z[0..l-1]
+         * return Z[0..d-1]
          */
         // Z = s[0..r-1]
         let mut z = s[..bitrate].to_vec();
@@ -77,7 +77,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
             // Z = Z || s[0..r-1]
             z.extend(s.iter().take(bitrate).cloned());
         }
-        // return Z[0..l-1]
+        // return Z[0..d-1]
         z.truncate(VARIANT);
         z
     }
