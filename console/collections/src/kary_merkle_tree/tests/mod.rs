@@ -18,7 +18,7 @@ use snarkvm_console_types::prelude::Console;
 
 type CurrentEnvironment = Console;
 
-const ITERATIONS: u128 = 20;
+const ITERATIONS: u128 = 10;
 
 macro_rules! run_tests {
     ($rng:expr, [$($i:expr),*]) => {
@@ -268,10 +268,12 @@ fn test_kary_merkle_tree_bhp() -> Result<()> {
         let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
         let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
 
+        let max_leaves = (ARITY as u128).saturating_pow(DEPTH as u32);
+
         for i in 0..ITERATIONS {
-            println!("Running test for depth {DEPTH} arity {ARITY} and iteration {i}");
             // Determine the number of leaves.
-            let num_leaves = core::cmp::min((ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(i), i);
+            let num_leaves = rng.gen_range(0..100u128).min(max_leaves);
+            println!("Iteration {i} - Testing a depth {DEPTH} arity {ARITY} tree with {num_leaves} leaves");
 
             // Check the Merkle tree.
             check_kary_merkle_tree::<LH, PH, DEPTH, ARITY>(
@@ -312,9 +314,13 @@ fn test_kary_merkle_tree_poseidon() -> Result<()> {
         let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
         let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
 
+        let max_leaves = (ARITY as u128).saturating_pow(DEPTH as u32);
+
         for i in 0..ITERATIONS {
             // Determine the number of leaves.
-            let num_leaves = core::cmp::min((ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(i), i);
+            let num_leaves = rng.gen_range(0..100u128).min(max_leaves);
+            println!("Iteration {i} - Testing a depth {DEPTH} arity {ARITY} tree with {num_leaves} leaves");
+
             // Check the Merkle tree.
             check_kary_merkle_tree::<LH, PH, DEPTH, ARITY>(
                 &leaf_hasher,
@@ -352,10 +358,12 @@ fn test_kary_merkle_tree_keccak() -> Result<()> {
         let leaf_hasher = Keccak256::default();
         let path_hasher = Keccak256::default();
 
+        let max_leaves = (ARITY as u128).saturating_pow(DEPTH as u32);
+
         for i in 0..ITERATIONS {
-            println!("Running test for depth {DEPTH} arity {ARITY} and iteration {i}");
             // Determine the number of leaves.
-            let num_leaves = core::cmp::min((ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(i), i);
+            let num_leaves = rng.gen_range(0..10_000u128).min(max_leaves);
+            println!("Iteration {i} - Testing a depth {DEPTH} arity {ARITY} tree with {num_leaves} leaves");
 
             // Check the Merkle tree.
             check_kary_merkle_tree::<LH, PH, DEPTH, ARITY>(
@@ -396,10 +404,12 @@ fn test_kary_merkle_tree_sha3() -> Result<()> {
         let leaf_hasher = Sha3_256::default();
         let path_hasher = Sha3_256::default();
 
+        let max_leaves = (ARITY as u128).saturating_pow(DEPTH as u32);
+
         for i in 0..ITERATIONS {
-            println!("Running test for depth {DEPTH} arity {ARITY} and iteration {i}");
             // Determine the number of leaves.
-            let num_leaves = core::cmp::min((ARITY as u128).checked_pow(DEPTH as u32).unwrap_or(i), i);
+            let num_leaves = rng.gen_range(0..10_000u128).min(max_leaves);
+            println!("Iteration {i} - Testing a depth {DEPTH} arity {ARITY} tree with {num_leaves} leaves");
 
             // Check the Merkle tree.
             check_kary_merkle_tree::<LH, PH, DEPTH, ARITY>(
@@ -577,4 +587,38 @@ fn test_merkle_tree_depth_3_arity_3_sha3() -> Result<()> {
         &(0..9).map(|_| vec![Uniform::rand(&mut rng)]).collect::<Vec<_>>(),
         &(0..1).map(|_| vec![Uniform::rand(&mut rng)]).collect::<Vec<_>>(),
     )
+}
+
+#[test]
+fn test_kary_merkle_tree_size_is_within_bounds() -> Result<()> {
+    fn run_test<const DEPTH: u8, const ARITY: u8>(num_leaves: u128, rng: &mut TestRng) -> Result<()> {
+        type LH = BHP1024<CurrentEnvironment>;
+        type PH = BHP512<CurrentEnvironment>;
+
+        println!("Testing a depth {DEPTH} arity {ARITY} tree with {num_leaves} leaves");
+        // Check the Merkle tree.
+        check_kary_merkle_tree::<LH, PH, DEPTH, ARITY>(
+            &LH::setup("AleoMerkleTreeTest0")?,
+            &PH::setup("AleoMerkleTreeTest1")?,
+            &(0..num_leaves).map(|_| Field::<CurrentEnvironment>::rand(rng).to_bits_le()).collect::<Vec<Vec<bool>>>(),
+        )
+    }
+
+    let mut rng = TestRng::default();
+
+    // Ensure DEPTH = 0 fails.
+    assert!(run_test::<0, 2>(0, &mut rng).is_err());
+    // Ensure ARITY = 1 fails.
+    assert!(run_test::<1, 1>(1, &mut rng).is_err());
+    // Ensure DEPTH = 2, ARITY = 2 with more than 4 leaves fails.
+    assert!(run_test::<2, 2>(4, &mut rng).is_ok());
+    for num_leaves in 5..100 {
+        assert!(run_test::<2, 2>(num_leaves, &mut rng).is_err());
+    }
+    // Ensure DEPTH = 4, ARITY = 3 with more than 81 leaves fails.
+    assert!(run_test::<4, 3>(81, &mut rng).is_ok());
+    for num_leaves in 82..1000 {
+        assert!(run_test::<4, 3>(num_leaves, &mut rng).is_err());
+    }
+    Ok(())
 }
