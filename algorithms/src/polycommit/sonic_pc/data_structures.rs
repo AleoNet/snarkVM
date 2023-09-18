@@ -523,7 +523,7 @@ impl<B: Borrow<String>> PartialEq<B> for LCTerm {
 pub struct LinearCombination<F> {
     /// The label.
     pub label: String,
-    /// The linear combination of `(coeff, poly_label)` pairs.
+    /// The linear combination of `(poly_label, coeff)` pairs.
     pub terms: BTreeMap<LCTerm, F>,
 }
 
@@ -660,8 +660,6 @@ pub fn evaluate_query_set<'a, F: PrimeField>(
 pub struct BatchLCProof<E: PairingEngine> {
     /// Evaluation proof.
     pub proof: BatchProof<E>,
-    /// Evaluations required to verify the proof.
-    pub evaluations: Option<Vec<E::Fr>>,
 }
 
 impl<E: PairingEngine> BatchLCProof<E> {

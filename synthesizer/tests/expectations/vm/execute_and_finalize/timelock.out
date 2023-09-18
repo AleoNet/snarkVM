@@ -4,7 +4,7 @@
       finalize: []
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"3136577677495521282545661861403057240732487854259448967596734495987373428854field","checksum":"651980376224882979469682091293592253925292894943020556401496947779271991382field","value":"record1qyqspmxa6hf672z4g02lsyr39dza2ewvwlzl80lh9eh3d3vyyhe08vs2qyxx66trwfhkxun9v35hguerqqpqzqxk3u4y8tzkd93ykrlc7syrx68zz509h6nkfn4mtw0php83nl4upftd0nnhpkll5z5zu5q6u4xk9zhx8sneztwswkedqg946rlak2fpq2zzzv7"}'
+      - '{"type":"record","id":"606610680608538673585347185908183921995855578399338099501020504926851544401field","checksum":"8354300254440337109293352979609844747371776294724958450883155487192870151371field","value":"record1qyqspmxa6hf672z4g02lsyr39dza2ewvwlzl80lh9eh3d3vyyhe08vs2qyxx66trwfhkxun9v35hguerqqpqzqxk3u4y0tzkd93ykrlc7syrx68zz509h6nkfn4mtw0php83nl4upftd0nnhpkll5z5zu5q6u4xk9zhx8sneztwswkedqg946rlak2fpqcdul2s"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.
@@ -14,7 +14,7 @@
       finalize: []
     credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"2075853995151469721522969948157527933953893487615129161386071358759473701244field","checksum":"7590013800060194483114290526468399173095010050391665704688241552680710646436field","value":"record1qyqsqdy4cnc0h9efy44m295jgeyg5407ga0e0728s0rehz47wjlet4cwqyxx66trwfhkxun9v35hguerqqpqzqq4vj690ry2t8lw20yr6ddxceqwslx5sjkcv70frksvu00xddu2zyas8035g5rxsw7pny6954txf4ncgjsy60h3ujtuqnlje3ezc203yf8qm9d"}'
+      - '{"type":"record","id":"1369155708549175707092010604495514131581865074848570880686757620205845787620field","checksum":"7236089381828729602036743009048901010863660500714883214591035639191496556867field","value":"record1qyqsqdy4cnc0h9efy44m295jgeyg5407ga0e0728s0rehz47wjlet4cwqyxx66trwfhkxun9v35hguerqqpqzqq4vj69hry2t8lw20yr6ddxceqwslx5sjkcv70frksvu00xddu2zyas8035g5rxsw7pny6954txf4ncgjsy60h3ujtuqnlje3ezc203ykkt40l"}'
       finalize: []
   speculate: the execution was rejected
   add_next_block: succeeded.

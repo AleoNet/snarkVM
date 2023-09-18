@@ -333,50 +333,34 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
-        for (i, (&id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
-            let v_R_i_at_alpha_time = start_timer!(|| format!("v_R_i_at_alpha {id}"));
-            let v_R_i_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(alpha);
-            end_timer!(v_R_i_at_alpha_time);
-
-            let v_C_i_at_beta_time = start_timer!(|| format!("v_C_i_at_beta {id}"));
-            let v_C_i_at_beta = circuit_state.variable_domain.evaluate_vanishing_polynomial(beta);
-            end_timer!(v_C_i_at_beta_time);
-
+        for (i, (&id, state_i)) in state.circuit_specific_states.iter().enumerate() {
+            let v_R_i_at_alpha = state_i.constraint_domain.evaluate_vanishing_polynomial(alpha);
+            let v_C_i_at_beta = state_i.variable_domain.evaluate_vanishing_polynomial(beta);
             let v_rc = v_R_i_at_alpha * v_C_i_at_beta;
-            let RC = circuit_state.constraint_domain.size_as_field_element
-                * circuit_state.variable_domain.size_as_field_element;
+            let rc = state_i.constraint_domain.size_as_field_element * state_i.variable_domain.size_as_field_element;
 
-            let s_a = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
-            let s_b = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
-            let s_c = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
+            let matrices = ["a", "b", "c"];
+            let deltas = [delta_a[i], delta_b[i], delta_c[i]];
+            let non_zero_domains = [&state_i.non_zero_a_domain, &state_i.non_zero_b_domain, &state_i.non_zero_c_domain];
+            let sums = sums_fourth_msg[i].iter();
 
-            let challenges = VerifierChallenges { alpha, beta, gamma };
+            for (((m, sum), delta), non_zero_domain) in
+                matrices.into_iter().zip_eq(sums).zip_eq(deltas).zip_eq(non_zero_domains)
+            {
+                let selector_at_gamma = selector_evals(&mut selectors, &max_non_zero_domain, non_zero_domain, gamma);
+                let label = "g_".to_string() + m;
+                let g_m_label = witness_label(id, &label, 0);
+                let g_m = LinearCombination::new(g_m_label.clone(), [(F::one(), g_m_label)]);
+                let g_m_at_gamma = evals.get_lc_eval(&g_m, gamma)?;
+                let challenges = VerifierChallenges { alpha, beta, gamma };
 
-            let d_a = delta_a[i];
-            let d_b = delta_b[i];
-            let d_c = delta_c[i];
+                let (a_poly, b_poly) = Self::construct_matrix_linear_combinations(evals, id, m, v_rc, challenges, rc);
+                let g_m_term = Self::construct_g_m_term(gamma, g_m_at_gamma, sum, selector_at_gamma, a_poly, b_poly);
 
-            let g_a_label = witness_label(id, "g_a", 0);
-            let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
-            let g_a_at_gamma = evals.get_lc_eval(&g_a, challenges.gamma)?;
-            let g_b_label = witness_label(id, "g_b", 0);
-            let g_b = LinearCombination::new(g_b_label.clone(), [(F::one(), g_b_label)]);
-            let g_b_at_gamma = evals.get_lc_eval(&g_b, challenges.gamma)?;
-            let g_c_label = witness_label(id, "g_c", 0);
-            let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
-            let g_c_at_gamma = evals.get_lc_eval(&g_c, challenges.gamma)?;
+                matrix_sumcheck += (delta, &g_m_term);
 
-            let sum_a = sums_fourth_msg[i].sum_a;
-            let sum_b = sums_fourth_msg[i].sum_b;
-            let sum_c = sums_fourth_msg[i].sum_c;
-
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", challenges, g_a_at_gamma, v_rc, d_a, sum_a, s_a, RC)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", challenges, g_b_at_gamma, v_rc, d_b, sum_b, s_b, RC)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", challenges, g_c_at_gamma, v_rc, d_c, sum_c, s_c, RC)?;
-
-            linear_combinations.insert(g_a.label.clone(), g_a);
-            linear_combinations.insert(g_b.label.clone(), g_b);
-            linear_combinations.insert(g_c.label.clone(), g_c);
+                linear_combinations.insert(g_m.label.clone(), g_m);
+            }
         }
 
         matrix_sumcheck -= &LinearCombination::new("h_2", [(v_K_at_gamma, "h_2")]);
@@ -387,61 +371,60 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         Ok(linear_combinations)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn add_g_m_term(
-        matrix_sumcheck: &mut LinearCombination<F>,
-        id: CircuitId,
-        m: &str,
-        challenges: VerifierChallenges<F>,
-        g_at_gamma: F,
-        v_rc_at_alpha_beta: F,
-        delta: F,
+    fn construct_g_m_term(
+        gamma: F,
+        g_m_at_gamma: F,
         sum: F,
         selector_at_gamma: F,
-        rc_size: F,
-    ) -> Result<(), AHPError> {
-        let b_term = challenges.gamma * g_at_gamma + sum; // Xg_m(\gamma) + sum_m/|K_M|
-
-        let lhs = Self::construct_lhs(id, m, challenges, v_rc_at_alpha_beta, b_term, selector_at_gamma, rc_size);
-        *matrix_sumcheck += (delta, &lhs);
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn construct_lhs(
-        id: CircuitId,
-        m: &str,
-        challenges: VerifierChallenges<F>,
-        v_rc_at_alpha_beta: F,
-        b_term: F,
-        selector_at_gamma: F,
-        rc_size: F,
+        a_poly: LinearCombination<F>,
+        mut b_poly: LinearCombination<F>,
     ) -> LinearCombination<F> {
-        let label_row = format!("circuit_{id}_row_{m}");
-        let label_col = format!("circuit_{id}_col_{m}");
-        let label_row_col_val = format!("circuit_{id}_row_col_val_{m}");
-        let label_row_col = format!("circuit_{id}_row_col_{m}");
-        let label_a_poly = format!("circuit_{id}_a_poly_{m}");
-        let label_denom = format!("circuit_{id}_denom_{m}");
+        let b_term = gamma * g_m_at_gamma + sum; // Xg_m(\gamma) + sum_m/|K_M|
+        b_poly *= b_term;
 
-        // recall that row_col_val(X) is M_{i,j}*rowcol(X)
-        let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
-
-        let alpha_beta = challenges.alpha * challenges.beta;
-        let mut b = LinearCombination::new(label_denom, [
-            (alpha_beta, LCTerm::One),
-            (-challenges.alpha, (label_col).into()),
-            (-challenges.beta, (label_row).into()),
-            (F::one(), (label_row_col).into()),
-        ]);
-
-        b *= rc_size;
-        b *= b_term; // Xg_m(X) + sum_m
-
-        let mut lhs = a;
-        lhs -= &b;
+        let mut lhs = a_poly;
+        lhs -= &b_poly;
         lhs *= selector_at_gamma;
         lhs
+    }
+
+    fn construct_matrix_linear_combinations<E: EvaluationsProvider<F>>(
+        evals: &E,
+        id: CircuitId,
+        matrix: &str,
+        v_rc_at_alpha_beta: F,
+        challenges: VerifierChallenges<F>,
+        rc_size: F,
+    ) -> (LinearCombination<F>, LinearCombination<F>) {
+        let label_a_poly = format!("circuit_{id}_a_poly_{matrix}");
+        let label_b_poly = format!("circuit_{id}_b_poly_{matrix}");
+        let VerifierChallenges { alpha, beta, gamma } = challenges;
+
+        // When running as the prover, who has access to a(X) and b(X), we directly return those
+        let a_poly = LinearCombination::new(label_a_poly.clone(), [(F::one(), label_a_poly.clone())]);
+        let a_poly_eval_available = evals.get_lc_eval(&a_poly, gamma).is_ok();
+        let b_poly = LinearCombination::new(label_b_poly.clone(), [(F::one(), label_b_poly.clone())]);
+        let b_poly_eval_available = evals.get_lc_eval(&b_poly, gamma).is_ok();
+        assert_eq!(a_poly_eval_available, b_poly_eval_available);
+        if a_poly_eval_available && b_poly_eval_available {
+            return (a_poly, b_poly);
+        };
+
+        // When running as the verifier, we need to construct a(X) and b(X) from the indexing polynomials
+        let label_col = format!("circuit_{id}_col_{matrix}");
+        let label_row = format!("circuit_{id}_row_{matrix}");
+        let label_row_col = format!("circuit_{id}_row_col_{matrix}");
+        // recall that row_col_val(X) is M_{i,j}*rowcol(X)
+        let label_row_col_val = format!("circuit_{id}_row_col_val_{matrix}");
+        let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
+        let mut b = LinearCombination::new(label_b_poly, [
+            (alpha * beta, LCTerm::One),
+            (-alpha, (label_col).into()),
+            (-beta, (label_row).into()),
+            (F::one(), (label_row_col).into()),
+        ]);
+        b *= rc_size;
+        (a, b)
     }
 }
 
