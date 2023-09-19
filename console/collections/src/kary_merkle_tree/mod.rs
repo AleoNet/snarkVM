@@ -169,7 +169,7 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
             // Compute the index of the sibling hash, if it exists.
             if let Some(siblings) = siblings::<ARITY>(index) {
                 // Append the sibling hashes to the path.
-                let sibling_hashes = siblings.iter().map(|index| self.tree[*index]).collect::<Vec<_>>();
+                let sibling_hashes = siblings.map(|index| self.tree[index]).collect::<Vec<_>>();
 
                 path.push(sibling_hashes);
                 // Compute the index of the parent hash, if it exists.
@@ -245,7 +245,7 @@ fn child_indexes<const ARITY: u8>(index: usize) -> impl Iterator<Item = usize> {
 
 /// Returns the index of the siblings, given an index.
 #[inline]
-fn siblings<const ARITY: u8>(index: usize) -> Option<Vec<usize>> {
+fn siblings<const ARITY: u8>(index: usize) -> Option<impl Iterator<Item = usize>> {
     if is_root(index) {
         None
     } else {
@@ -253,7 +253,7 @@ fn siblings<const ARITY: u8>(index: usize) -> Option<Vec<usize>> {
         let left_most_sibling = ((index - 1) / ARITY as usize) * ARITY as usize + 1;
 
         // Add all the siblings except for the given index.
-        Some((left_most_sibling..left_most_sibling + ARITY as usize).filter(|&i| index != i).collect::<Vec<_>>())
+        Some((left_most_sibling..left_most_sibling + ARITY as usize).filter(move |&i| index != i))
     }
 }
 
