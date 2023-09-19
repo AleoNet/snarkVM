@@ -24,11 +24,12 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "batch-certificate", "batch-header", "compact-batch-header", "data", "subdag", "transmission", "transmission-id" ]
+default = [ "batch-certificate", "batch-header", "compact-batch-certificate", "compact-batch-header", "data", "subdag", "transmission", "transmission-id" ]
 async = [ "narwhal-data/async" ]
 serial = [
     "narwhal-batch-certificate/serial",
     "narwhal-batch-header/serial",
+    "narwhal-compact-batch-certificate/serial",
     "narwhal-compact-batch-header/serial",
     "narwhal-subdag/serial",
     "narwhal-transmission/serial",
@@ -37,6 +38,7 @@ serial = [
 wasm = [
     "narwhal-batch-certificate/wasm",
     "narwhal-batch-header/wasm",
+    "narwhal-compact-batch-certificate/wasm",
     "narwhal-compact-batch-header/wasm",
     "narwhal-subdag/wasm",
     "narwhal-transmission/wasm",
@@ -45,6 +47,7 @@ wasm = [
 test-helpers = [
     "narwhal-batch-certificate/test-helpers",
     "narwhal-batch-header/test-helpers",
+    "narwhal-compact-batch-certificate/test-helpers",
     "narwhal-compact-batch-header/test-helpers",
     "narwhal-subdag/test-helpers",
     "narwhal-transmission/test-helpers",
@@ -53,6 +56,7 @@ test-helpers = [
 
 batch-certificate = [ "narwhal-batch-certificate" ]
 batch-header = [ "narwhal-batch-header" ]
+compact-batch-certificate = [ "narwhal-compact-batch-certificate" ]
 compact-batch-header = [ "narwhal-compact-batch-header" ]
 data = [ "narwhal-data" ]
 subdag = [ "narwhal-subdag" ]
@@ -68,6 +72,12 @@ optional = true
 [dependencies.narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "./batch-header"
+version = "=0.14.6"
+optional = true
+
+[dependencies.narwhal-compact-batch-certificate]
+package = "snarkvm-ledger-narwhal-compact-batch-certificate"
+path = "./compact-batch-certificate"
 version = "=0.14.6"
 optional = true
 
