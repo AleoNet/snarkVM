@@ -101,12 +101,11 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         // Compute the start index of the current level.
         while let Some(start) = parent::<ARITY>(start_index) {
             // Compute the end index of the current level.
-            let end =
-                child_indexes::<ARITY>(start).first().cloned().ok_or_else(|| anyhow!("Missing left-most child"))?;
+            let end = child_indexes::<ARITY>(start).next().ok_or_else(|| anyhow!("Missing left-most child"))?;
 
             // Construct the children for each node in the current level.
             let child_nodes = (start..end)
-                .map(|i| child_indexes::<ARITY>(i).into_iter().map(|child_index| tree[child_index]).collect::<Vec<_>>())
+                .map(|i| child_indexes::<ARITY>(i).map(|child_index| tree[child_index]).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
             // Compute and store the hashes for each node in the current level.
             tree[start..end].clone_from_slice(&path_hasher.hash_all_children(&child_nodes)?);
@@ -239,9 +238,9 @@ fn tree_depth<const DEPTH: u8, const ARITY: u8>(tree_size: usize) -> Result<u8> 
 }
 
 /// Returns the indexes of the children, given an index.
-fn child_indexes<const ARITY: u8>(index: usize) -> Vec<usize> {
+fn child_indexes<const ARITY: u8>(index: usize) -> impl Iterator<Item = usize> {
     let start = index * ARITY as usize + 1;
-    (start..start + ARITY as usize).collect()
+    start..start + ARITY as usize
 }
 
 /// Returns the index of the siblings, given an index.
