@@ -27,16 +27,16 @@ edition = "2021"
 default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
-test-helpers = [ "narwhal-subdag/test-helpers" ]
+test-helpers = [ "narwhal-compact-subdag/test-helpers" ]
 
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
 version = "=0.14.6"
 
-[dependencies.narwhal-subdag]
-package = "snarkvm-ledger-narwhal-subdag"
-path = "../narwhal/subdag"
+[dependencies.narwhal-compact-subdag]
+package = "snarkvm-ledger-narwhal-compact-subdag"
+path = "../narwhal/compact-subdag"
 version = "=0.14.6"
 
 [dependencies.anyhow]

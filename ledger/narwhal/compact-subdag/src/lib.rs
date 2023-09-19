@@ -170,8 +170,8 @@ pub mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    /// Returns a sample subdag, sampled at random.
-    pub fn sample_subdag(rng: &mut TestRng) -> CompactSubdag<CurrentNetwork> {
+    /// Returns a sample compact subdag, sampled at random.
+    pub fn sample_compact_subdag(rng: &mut TestRng) -> CompactSubdag<CurrentNetwork> {
         const F: usize = 1;
         const AVAILABILITY_THRESHOLD: usize = F + 1;
         const QUORUM_THRESHOLD: usize = 2 * F + 1;
@@ -223,13 +223,13 @@ pub mod test_helpers {
         CompactSubdag::from(subdag).unwrap()
     }
 
-    /// Returns a list of sample subdags, sampled at random.
-    pub fn sample_subdags(rng: &mut TestRng) -> Vec<CompactSubdag<CurrentNetwork>> {
+    /// Returns a list of sample compact subdags, sampled at random.
+    pub fn sample_compact_subdags(rng: &mut TestRng) -> Vec<CompactSubdag<CurrentNetwork>> {
         // Initialize a sample vector.
         let mut sample = Vec::with_capacity(10);
         // Append sample subdags.
         for _ in 0..10 {
-            sample.push(sample_subdag(rng));
+            sample.push(sample_compact_subdag(rng));
         }
         // Return the sample vector.
         sample

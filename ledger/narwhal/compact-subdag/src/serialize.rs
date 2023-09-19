@@ -83,7 +83,7 @@ mod tests {
     fn test_serde_json() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::test_helpers::sample_subdags(rng) {
+        for expected in crate::test_helpers::sample_compact_subdags(rng) {
             check_serde_json(expected);
         }
     }
@@ -92,7 +92,7 @@ mod tests {
     fn test_bincode() {
         let rng = &mut TestRng::default();
 
-        for expected in crate::test_helpers::sample_subdags(rng) {
+        for expected in crate::test_helpers::sample_compact_subdags(rng) {
             check_bincode(expected);
         }
     }

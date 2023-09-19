@@ -48,7 +48,7 @@ use console::{
     },
     types::Field,
 };
-use narwhal_subdag::Subdag;
+use narwhal_compact_subdag::CompactSubdag;
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -56,7 +56,7 @@ use rand::{CryptoRng, Rng};
 #[derive(Clone, PartialEq, Eq)]
 pub enum Authority<N: Network> {
     Beacon(Signature<N>),
-    Quorum(Subdag<N>),
+    Quorum(CompactSubdag<N>),
 }
 
 impl<N: Network> Authority<N> {
@@ -73,7 +73,7 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub fn new_quorum(subdag: Subdag<N>) -> Self {
+    pub fn new_quorum(subdag: CompactSubdag<N>) -> Self {
         Self::Quorum(subdag)
     }
 }
@@ -85,7 +85,7 @@ impl<N: Network> Authority<N> {
     }
 
     /// Initializes a new quorum authority.
-    pub const fn from_quorum(subdag: Subdag<N>) -> Self {
+    pub const fn from_quorum(subdag: CompactSubdag<N>) -> Self {
         Self::Quorum(subdag)
     }
 }
@@ -129,7 +129,7 @@ pub mod test_helpers {
     /// Returns a sample quorum authority.
     pub fn sample_quorum_authority(rng: &mut TestRng) -> Authority<CurrentNetwork> {
         // Return the quorum authority.
-        Authority::new_quorum(narwhal_subdag::test_helpers::sample_subdag(rng))
+        Authority::new_quorum(narwhal_compact_subdag::test_helpers::sample_compact_subdag(rng))
     }
 
     /// Returns a list of sample authorities.

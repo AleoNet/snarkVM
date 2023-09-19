@@ -49,7 +49,6 @@ package = "snarkvm-ledger-narwhal-transmission-id"
 path = "../transmission-id"
 version = "=0.14.6"
 
-
 [dependencies.indexmap]
 version = "2.0"
 features = [ "serde" ]
