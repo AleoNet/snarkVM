@@ -150,10 +150,10 @@ jobs:
       - run_serial:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
-      - run: # This runs a single test with profiler enabled
-          command: |
-            cd algorithms
-            cargo test snark::varuna::tests::varuna::prove_and_verify_with_square_matrix --features profiler
+      - run_serial: # This runs a single test with profiler enabled
+          workspace_member: algorithms
+          cache_key: snarkvm-algorithms-cache
+          flags: varuna::prove_and_verify_with_square_matrix --features profiler
 
   circuit:
     docker:
