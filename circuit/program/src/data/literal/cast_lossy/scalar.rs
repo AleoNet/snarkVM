@@ -29,7 +29,7 @@ impl<E: Environment> CastLossy<Address<E>> for Scalar<E> {
 
 impl<E: Environment> CastLossy<Boolean<E>> for Scalar<E> {
     /// Casts a `Scalar` to a `Boolean`, with lossy truncation.
-    /// This operation returns the least significant bit of the field.
+    /// This operation returns the least significant bit of the scalar.
     #[inline]
     fn cast_lossy(&self) -> Boolean<E> {
         let bits_le = self.to_bits_le();
