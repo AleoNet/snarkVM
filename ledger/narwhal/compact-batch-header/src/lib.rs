@@ -25,9 +25,26 @@ use console::{
     prelude::*,
     types::Field,
 };
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use narwhal_batch_header::BatchHeader;
 use narwhal_transmission_id::{TransmissionID, TransmissionType};
+
+/// Returns `true` if the transmission id indexes are properly formatted.
+fn sanity_check_indexes(transmission_ids_map: &IndexSet<(TransmissionType, u32)>) -> bool {
+    // Track the indexes for each transmission type.
+    let mut indices = IndexMap::new();
+
+    // Ensure that the index increments properly for each transmission type.
+    for (transmission_type, index) in transmission_ids_map {
+        let current_index = indices.entry(transmission_type).or_insert(0);
+        if *index != *current_index {
+            return false;
+        }
+        *current_index = current_index.saturating_add(1);
+    }
+
+    true
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct CompactBatchHeader<N: Network> {
@@ -97,6 +114,8 @@ impl<N: Network> CompactBatchHeader<N> {
         if !signature.verify(&author, &[batch_id]) {
             bail!("Invalid signature for the batch header");
         }
+        // Ensure the transmission id indexes are properly constructed.
+        ensure!(sanity_check_indexes(&transmission_ids_map), "Transmission id indexes are not properly constructed");
 
         // Return the batch header.
         Ok(Self { author, batch_id, round, timestamp, transmission_ids_map, previous_certificate_ids, signature })

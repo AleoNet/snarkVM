@@ -35,6 +35,11 @@ pub use narwhal_compact_batch_header as compact_batch_header;
 #[cfg(feature = "compact-batch-header")]
 pub use narwhal_compact_batch_header::CompactBatchHeader;
 
+#[cfg(feature = "compact-subdag")]
+pub use narwhal_compact_subdag as compact_subdag;
+#[cfg(feature = "compact-subdag")]
+pub use narwhal_compact_subdag::CompactSubdag;
+
 #[cfg(feature = "data")]
 pub use narwhal_data as data;
 #[cfg(feature = "data")]
