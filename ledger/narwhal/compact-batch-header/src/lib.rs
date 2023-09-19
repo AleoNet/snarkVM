@@ -115,7 +115,7 @@ impl<N: Network> CompactBatchHeader<N> {
             batch_header.timestamp(),
             transmission_ids_map,
             batch_header.previous_certificate_ids().clone(),
-            batch_header.signature().clone(),
+            *batch_header.signature(),
         )
     }
 
@@ -266,7 +266,7 @@ pub mod tests {
             let compact_batch_header = CompactBatchHeader::from_batch_header(&batch_header).unwrap();
 
             // Check that the transmission IDs map is correct.
-            let expected_transmission_ids_map = CompactBatchHeader::to_map(&batch_header.transmission_ids());
+            let expected_transmission_ids_map = CompactBatchHeader::to_map(batch_header.transmission_ids());
             assert_eq!(compact_batch_header.transmission_ids_map(), &expected_transmission_ids_map);
 
             // Check that the rest of the fields are correct.
