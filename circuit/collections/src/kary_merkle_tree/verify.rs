@@ -56,7 +56,7 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerk
         let last_index = U64::<E>::new(Mode::Constant, console::U64::new(ARITY.saturating_sub(1) as u64));
 
         // Check levels between leaf level and root.
-        for (indicator_index, sibling_hashes) in indicator_indexes.iter().zip_eq(&self.siblings) {
+        for (indicator_index, sibling_hashes) in indicator_indexes.zip_eq(&self.siblings) {
             // Assemble the children based on the ternary results.
             let mut children = Vec::with_capacity(sibling_hashes.len() + 1);
 
