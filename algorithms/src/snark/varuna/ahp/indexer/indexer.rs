@@ -46,9 +46,6 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>> {
         let IndexerState { a, a_arith, b, b_arith, c, c_arith, index_info, id, .. } =
             Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
-        let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
-
-        end_timer!(joint_arithmetization_time);
 
         Ok(Circuit { index_info, a, b, c, a_arith, b_arith, c_arith, id, _mode: PhantomData })
     }
