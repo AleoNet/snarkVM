@@ -44,12 +44,11 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerk
 
         let arity = U64::<E>::new(Mode::Constant, console::U64::new(ARITY as u64));
 
-        let indicator_indexes: Vec<_> = (0..DEPTH)
+        let indicator_indexes = (0..DEPTH)
             .map(|i| {
                 let index = U16::<E>::new(Mode::Constant, console::U16::new(i as u16));
                 &self.leaf_index / (arity.clone().pow(index)) % arity.clone()
-            })
-            .collect();
+            });
 
         // Initialize the zero index.
         let zero_index = U64::<E>::zero();
