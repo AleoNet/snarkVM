@@ -29,7 +29,7 @@ pub trait PathHash<E: Environment> {
 
     /// Returns the empty hash.
     fn hash_empty<const ARITY: u8>(&self) -> Self::Hash {
-        let children = (0..ARITY).map(|_| Self::Hash::default()).collect::<Vec<_>>();
+        let children = vec![Self::Hash::default(); ARITY];
         self.hash_children(&children)
     }
 }
