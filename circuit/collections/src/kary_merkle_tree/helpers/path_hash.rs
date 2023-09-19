@@ -17,7 +17,8 @@ use snarkvm_circuit_algorithms::{Hash, Keccak, Poseidon, BHP};
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash<E: Environment> {
-    type Hash: Default
+    type Hash: Clone
+        + Default
         + Inject<Primitive = <Self::Primitive as console::kary_merkle_tree::PathHash>::Hash>
         + Eject<Primitive = <Self::Primitive as console::kary_merkle_tree::PathHash>::Hash>
         + Equal<Output = Boolean<E>>
@@ -29,7 +30,7 @@ pub trait PathHash<E: Environment> {
 
     /// Returns the empty hash.
     fn hash_empty<const ARITY: u8>(&self) -> Self::Hash {
-        let children = vec![Self::Hash::default(); ARITY];
+        let children = vec![Self::Hash::default(); ARITY as usize];
         self.hash_children(&children)
     }
 }
