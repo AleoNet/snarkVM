@@ -22,8 +22,11 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
     #[inline]
     fn hash(&self, input: &[Self::Input]) -> Self::Output {
         // The bitrate `r`.
-        let bitrate = (200 - (VARIANT / 4)) * 8;
+        // The capacity is twice the digest length (i.e. twice the variant, where the variant is in {224, 256, 384, 512}),
+        // and the bit rate is the width (1600 in our case) minus the capacity.
+        let bitrate = PERMUTATION_WIDTH - 2 * VARIANT;
         debug_assert!(bitrate < PERMUTATION_WIDTH, "The bitrate must be less than the permutation width");
+        debug_assert!(bitrate % 8 == 0, "The bitrate must be a multiple of 8");
 
         // Ensure the input is not empty.
         if input.is_empty() {
@@ -75,7 +78,8 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Hash for Keccak<E, TY
             z.extend(s.iter().take(bitrate).cloned());
         }
         // return Z[0..l-1]
-        z.into_iter().take(VARIANT).collect()
+        z.truncate(VARIANT);
+        z
     }
 }
 
@@ -167,7 +171,9 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
             a = Self::round(a, round_constant, rotl);
         }
         // Return the permuted input.
-        a.into_iter().flat_map(|e| e.to_bits_le()).collect()
+        let mut bits = Vec::with_capacity(input.len());
+        a.iter().for_each(|e| e.write_bits_le(&mut bits));
+        bits
     }
 
     /// The round function `R` is defined as follows:
@@ -178,8 +184,6 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>> {
         debug_assert_eq!(a.len(), MODULO * MODULO, "The input vector 'a' must have {} elements", MODULO * MODULO);
 
-        const WEIGHT: usize = MODULO - 1;
-
         /* The first part of Algorithm 3, θ:
          *
          * for x = 0 to 4 do
@@ -189,7 +193,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          *   end for
          * end for
          */
-        let mut c = Vec::with_capacity(WEIGHT);
+        let mut c = Vec::with_capacity(MODULO);
         for x in 0..MODULO {
             c.push(&a[x] ^ &a[x + MODULO] ^ &a[x + (2 * MODULO)] ^ &a[x + (3 * MODULO)] ^ &a[x + (4 * MODULO)]);
         }
@@ -203,11 +207,11 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          *   end for
          * end for
          */
-        let mut d = Vec::with_capacity(WEIGHT);
+        let mut d = Vec::with_capacity(MODULO);
         for x in 0..MODULO {
             d.push(&c[(x + 4) % MODULO] ^ Self::rotate_left(&c[(x + 1) % MODULO], 63));
         }
-        let mut a_1 = Vec::with_capacity(WEIGHT * WEIGHT);
+        let mut a_1 = Vec::with_capacity(MODULO * MODULO);
         for y in 0..MODULO {
             for x in 0..MODULO {
                 a_1.push(&a[x + (y * MODULO)] ^ &d[x]);
@@ -249,7 +253,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
          *   end for
          * end for
          */
-        let mut a_3 = Vec::with_capacity(WEIGHT * WEIGHT);
+        let mut a_3 = Vec::with_capacity(MODULO * MODULO);
         for y in 0..MODULO {
             for x in 0..MODULO {
                 let a = &a_2[x + (y * MODULO)];
@@ -270,8 +274,8 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     /// Performs a rotate left operation on the given `u64` value.
     fn rotate_left(value: &U64<E>, n: usize) -> U64<E> {
         // Perform the rotation.
-        let bits_le = value.to_bits_le();
-        let bits_le = bits_le.iter().skip(n).chain(bits_le.iter()).take(64).cloned().collect::<Vec<_>>();
+        let mut bits_le = value.to_bits_le();
+        bits_le.rotate_left(n);
         // Return the rotated value.
         U64::from_bits_le(&bits_le)
     }

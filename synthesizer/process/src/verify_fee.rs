@@ -22,16 +22,59 @@ impl<N: Network> Process<N> {
         let timer = timer!("Process::verify_fee");
 
         #[cfg(debug_assertions)]
-        println!("Verifying fee from {}/{}...", fee.program_id(), fee.function_name());
+        {
+            println!("Verifying fee from {}/{}...", fee.program_id(), fee.function_name());
+            // Retrieve the stack.
+            let stack = self.get_stack(fee.program_id())?;
+            // Retrieve the function from the stack.
+            let function = stack.get_function(fee.function_name())?;
+            // Ensure the number of function calls in this function is 1.
+            if stack.get_number_of_calls(function.name())? != 1 {
+                bail!("The number of function calls in '{}/{}' should be 1", stack.program_id(), function.name())
+            }
+            // Debug-mode only, as the `Transition` constructor recomputes the transition ID at initialization.
+            debug_assert_eq!(
+                **fee.id(),
+                N::hash_bhp512(&(fee.to_root()?, *fee.tcm()).to_bits_le())?,
+                "Transition ID of the fee is incorrect"
+            );
+        }
 
+        // Determine if the fee is private.
+        let is_fee_private = fee.is_fee_private();
+        // Determine if the fee is public.
+        let is_fee_public = fee.is_fee_public();
         // Ensure the fee has the correct program ID and function.
-        ensure!(fee.transition().is_fee(), "Incorrect program ID or function name for fee");
-        // Ensure the transition ID of the fee is correct.
-        ensure!(**fee.id() == fee.to_root()?, "Transition ID of the fee is incorrect");
+        ensure!(is_fee_private || is_fee_public, "Incorrect program ID or function name for fee transition");
         // Ensure the number of inputs is within the allowed range.
         ensure!(fee.inputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of inputs");
         // Ensure the number of outputs is within the allowed range.
         ensure!(fee.outputs().len() <= N::MAX_INPUTS, "Fee exceeded maximum number of outputs");
+
+        // Retrieve the candidate deployment or execution ID.
+        let Ok(candidate_id) = fee.deployment_or_execution_id() else {
+            bail!("Failed to get the deployment or execution ID in the fee transition")
+        };
+        // Ensure the candidate ID is the deployment or execution ID.
+        if candidate_id != deployment_or_execution_id {
+            bail!("Incorrect deployment or execution ID in the fee transition")
+        }
+        lap!(timer, "Verify the deployment or execution ID");
+
+        // Verify the fee transition is well-formed.
+        match is_fee_private {
+            true => self.verify_fee_private(&fee)?,
+            false => self.verify_fee_public(&fee)?,
+        }
+        finish!(timer, "Verify the fee transition");
+        Ok(())
+    }
+}
+
+impl<N: Network> Process<N> {
+    /// Verifies the transition for `credits.aleo/fee_private` is well-formed.
+    fn verify_fee_private(&self, fee: &&Fee<N>) -> Result<()> {
+        let timer = timer!("Process::verify_fee_private");
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = N::hash_bhp1024(
@@ -39,25 +82,27 @@ impl<N: Network> Process<N> {
                 .to_bits_le(),
         )?;
 
-        // Ensure there are exactly 3 inputs.
-        ensure!(fee.inputs().len() == 3, "Incorrect number of inputs to the fee transition");
+        // Ensure the fee contains 1 input record.
+        ensure!(
+            fee.inputs().iter().filter(|input| matches!(input, Input::Record(..))).count() == 1,
+            "The fee transition must contain *1* input record"
+        );
+        // Ensure the number of inputs is correct.
+        let num_inputs = fee.inputs().len();
+        ensure!(num_inputs == 3, "The number of inputs in the fee transition should be 3, found {num_inputs}",);
         // Ensure each input is valid.
         if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
             bail!("Failed to verify a fee input")
         }
-        // Retrieve the 3rd input as the candidate ID.
-        let candidate_id = match fee.inputs().get(2) {
-            Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(candidate_id), _)))) => *candidate_id,
-            _ => bail!("Failed to get the deployment or execution ID in the fee transition"),
-        };
-        // Ensure the candidate ID is the deployment or execution ID.
-        if candidate_id != deployment_or_execution_id {
-            bail!("Incorrect deployment or execution ID in the fee transition")
-        }
         lap!(timer, "Verify the inputs");
 
+        // Ensure the number of outputs is correct.
+        ensure!(
+            fee.outputs().len() == 1,
+            "The number of outputs in the fee transition should be 1, found {}",
+            fee.outputs().len()
+        );
         // Ensure each output is valid.
-        let num_inputs = fee.inputs().len();
         if fee
             .outputs()
             .iter()
@@ -79,36 +124,89 @@ impl<N: Network> Process<N> {
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
         lap!(timer, "Construct the verifier inputs");
 
-        // Retrieve the stack.
-        let stack = self.get_stack(fee.program_id())?;
-        // Retrieve the function from the stack.
-        let function = stack.get_function(fee.function_name())?;
-        // Ensure the number of function calls in this function is 1.
-        if stack.get_number_of_calls(function.name())? != 1 {
-            bail!("The number of function calls in '{}/{}' should be 1", stack.program_id(), function.name())
-        }
-
         #[cfg(debug_assertions)]
         println!("Fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
-
-        // Ensure the fee contains input records.
-        ensure!(
-            fee.inputs().iter().any(|input| matches!(input, Input::Record(..))),
-            "The fee proof is the wrong type (found *no* input records)"
-        );
 
         // Ensure the fee transition does not contain a finalize scope.
         ensure!(fee.finalize().is_none(), "The fee transition should not contain finalize inputs");
 
         // Retrieve the verifying key.
-        let verifying_key = self.get_verifying_key(stack.program_id(), function.name())?;
+        let verifying_key = self.get_verifying_key(fee.program_id(), fee.function_name())?;
 
         // Ensure the fee proof is valid.
         Trace::verify_fee_proof((verifying_key, vec![inputs]), fee)?;
-        lap!(timer, "Verify the fee proof");
+        finish!(timer, "Verify the fee proof");
+        Ok(())
+    }
 
-        finish!(timer);
+    /// Verifies the transition for `credits.aleo/fee_public` is well-formed.
+    /// Attention: This method does *not* verify the account balance is sufficient.
+    fn verify_fee_public(&self, fee: &&Fee<N>) -> Result<()> {
+        let timer = timer!("Process::verify_fee_public");
 
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id = N::hash_bhp1024(
+            &(U16::<N>::new(N::ID), fee.program_id().name(), fee.program_id().network(), fee.function_name())
+                .to_bits_le(),
+        )?;
+
+        // Ensure the fee contains all public inputs.
+        ensure!(
+            fee.inputs().iter().all(|input| matches!(input, Input::Public(..))),
+            "The fee transition must contain *only* public inputs"
+        );
+        // Ensure the number of inputs is correct.
+        let num_inputs = fee.inputs().len();
+        ensure!(num_inputs == 2, "The number of inputs in the fee transition should be 2, found {num_inputs}",);
+        // Ensure each input is valid.
+        if fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(function_id, fee.tcm(), index)) {
+            bail!("Failed to verify a fee input")
+        }
+        lap!(timer, "Verify the inputs");
+
+        // Ensure there are no outputs.
+        ensure!(
+            fee.outputs().is_empty(),
+            "The number of outputs in the fee transition should be 0, found {}",
+            fee.outputs().len()
+        );
+        lap!(timer, "Verify there are no outputs");
+
+        // Compute the x- and y-coordinate of `tpk`.
+        let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
+
+        // Construct the public inputs to verify the proof.
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
+        // Extend the inputs with the input IDs.
+        inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
+        lap!(timer, "Construct the verifier inputs");
+
+        // Ensure the fee transition contains finalize inputs.
+        match fee.finalize() {
+            Some(finalize) => {
+                // Ensure the number of inputs for finalize matches in the finalize logic.
+                ensure!(finalize.len() == 2, "The number of inputs for finalize is incorrect");
+
+                // Convert the finalize inputs into concatenated bits.
+                let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
+                // Compute the checksum of the finalize inputs.
+                let checksum = N::hash_bhp1024(&finalize_bits)?;
+
+                // [Inputs] Extend the verifier inputs with the inputs for finalize.
+                inputs.push(*checksum);
+            }
+            None => bail!("The fee transition is missing inputs for 'finalize'"),
+        }
+
+        #[cfg(debug_assertions)]
+        println!("Fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
+
+        // Retrieve the verifying key.
+        let verifying_key = self.get_verifying_key(fee.program_id(), fee.function_name())?;
+
+        // Ensure the fee proof is valid.
+        Trace::verify_fee_proof((verifying_key, vec![inputs]), fee)?;
+        finish!(timer, "Verify the fee proof");
         Ok(())
     }
 }
@@ -122,20 +220,39 @@ mod tests {
     #[test]
     fn test_verify_fee() {
         let rng = &mut TestRng::default();
-        // Fetch a deployment transaction.
-        let deployment_transaction = ledger_test_helpers::sample_deployment_transaction(rng);
+
+        // Fetch transactions.
+        let transactions = [
+            ledger_test_helpers::sample_deployment_transaction(true, rng),
+            ledger_test_helpers::sample_deployment_transaction(false, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(true, rng),
+            ledger_test_helpers::sample_execution_transaction_with_fee(false, rng),
+            ledger_test_helpers::sample_fee_private_transaction(rng),
+            ledger_test_helpers::sample_fee_public_transaction(rng),
+        ];
 
         // Construct a new process.
         let process = Process::load().unwrap();
 
-        match deployment_transaction {
-            Transaction::Deploy(_, _, deployment, fee) => {
-                // Compute the deployment ID.
-                let deployment_id = deployment.to_deployment_id().unwrap();
-
-                assert!(process.verify_fee(&fee, deployment_id).is_ok());
+        for transaction in transactions {
+            match transaction {
+                Transaction::Deploy(_, _, deployment, fee) => {
+                    // Compute the deployment ID.
+                    let deployment_id = deployment.to_deployment_id().unwrap();
+                    // Verify the fee.
+                    assert!(process.verify_fee(&fee, deployment_id).is_ok());
+                }
+                Transaction::Execute(_, execution, fee) => {
+                    // Compute the execution ID.
+                    let execution_id = execution.to_execution_id().unwrap();
+                    // Verify the fee.
+                    assert!(process.verify_fee(&fee.unwrap(), execution_id).is_ok());
+                }
+                Transaction::Fee(_, fee) => match fee.is_fee_private() {
+                    true => assert!(process.verify_fee_private(&&fee).is_ok()),
+                    false => assert!(process.verify_fee_public(&&fee).is_ok()),
+                },
             }
-            _ => panic!("Expected a deployment transaction"),
         }
     }
 }

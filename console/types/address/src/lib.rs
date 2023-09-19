@@ -21,6 +21,7 @@ mod from_bits;
 mod from_field;
 mod from_fields;
 mod parse;
+mod random;
 mod serialize;
 mod size_in_bits;
 mod size_in_bytes;
@@ -58,15 +59,8 @@ impl<E: Environment> Address<E> {
     }
 
     /// Initializes a `zero` address.
-    #[deprecated(since = "0.1.0", note = "This is used for **testing** purposes")]
     pub fn zero() -> Self {
         Self::new(Group::zero())
-    }
-
-    /// Initializes a "random" address.
-    #[deprecated(since = "0.1.0", note = "This is used for **testing** purposes")]
-    pub fn rand<R: Rng>(rng: &mut R) -> Self {
-        Self::new(Group::rand(rng))
     }
 }
 
@@ -103,7 +97,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let expected = Address::<CurrentEnvironment>::rand(&mut rng);
 
             // Check the group representation.
             let candidate = *expected;

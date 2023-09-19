@@ -2,9 +2,9 @@
     unused_position.aleo/foo:
       outputs: []
       finalize: []
-    credits.aleo/fee:
+    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"4405412969979748713687622614887095062065862147848725730837553955769374546030field","checksum":"3935486712275565497056860190174405782973170569136893665121289773153554294466field","value":"record1qyqsp0uzqu4j8reqcv6n2ck60xnnlqhtm9t5w3qppskgdh5hxer5rqqwqyxx66trwfhkxun9v35hguerqqpqzqqf3qg3e3waud458vt60pghec3a4wx9a8h0njxnlvs6nnrt5xzvqc6dd8g9z06j6erg7xty4gpq9zgry9vaql3sc2k95ul5qk0nvvfq2js2mkv"}'
+      - '{"type":"record","id":"6076567446434386408327862683979995892258106148284008177184296452060141749477field","checksum":"3426211014728878231108795538930445450144523379659389092980845866090680741109field","value":"record1qyqspmxa6hf672z4g02lsyr39dza2ewvwlzl80lh9eh3d3vyyhe08vs2qyxx66trwfhkxun9v35hguerqqpqzqxk3u4qlk6kd93ykrlc7syrx68zz509h6nkfn4mtw0php83nl4upftd0nnhpkll5z5zu5q6u4xk9zhx8sneztwswkedqg946rlak2fpqdldvh3"}'
       finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.

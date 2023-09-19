@@ -113,8 +113,6 @@ pub enum Instruction<N: Network> {
     HashBHP768(HashBHP768<N>),
     /// Performs a BHP hash on inputs of 1024-bit chunks.
     HashBHP1024(HashBHP1024<N>),
-    /// Performs a Keccak hash, outputting 224 bits.
-    HashKeccak224(HashKeccak224<N>),
     /// Performs a Keccak hash, outputting 256 bits.
     HashKeccak256(HashKeccak256<N>),
     /// Performs a Keccak hash, outputting 384 bits.
@@ -131,13 +129,11 @@ pub enum Instruction<N: Network> {
     HashPSD4(HashPSD4<N>),
     /// Performs a Poseidon hash with an input rate of 8.
     HashPSD8(HashPSD8<N>),
-    /// Performs a SHA3 hash, outputting 224 bits.
-    HashSha3_224(HashSha3_224<N>),
-    /// Performs a SHA3 hash, outputting 256 bits.
+    /// Performs a SHA-3 hash, outputting 256 bits.
     HashSha3_256(HashSha3_256<N>),
-    /// Performs a SHA3 hash, outputting 384 bits.
+    /// Performs a SHA-3 hash, outputting 384 bits.
     HashSha3_384(HashSha3_384<N>),
-    /// Performs a SHA3 hash, outputting 512 bits.
+    /// Performs a SHA-3 hash, outputting 512 bits.
     HashSha3_512(HashSha3_512<N>),
     /// Performs a Poseidon hash with an input rate of 2.
     HashManyPSD2(HashManyPSD2<N>),
@@ -187,6 +183,8 @@ pub enum Instruction<N: Network> {
     Shr(Shr<N>),
     /// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
     ShrWrapped(ShrWrapped<N>),
+    /// Computes whether `signature` is valid for the given `address` and `message`.
+    SignVerify(SignVerify<N>),
     /// Squares 'first', storing the outcome in `destination`.
     Square(Square<N>),
     /// Compute the square root of 'first', storing the outcome in `destination`.
@@ -254,7 +252,6 @@ macro_rules! instruction {
             HashBHP512,
             HashBHP768,
             HashBHP1024,
-            HashKeccak224,
             HashKeccak256,
             HashKeccak384,
             HashKeccak512,
@@ -263,7 +260,6 @@ macro_rules! instruction {
             HashPSD2,
             HashPSD4,
             HashPSD8,
-            HashSha3_224,
             HashSha3_256,
             HashSha3_384,
             HashSha3_512,
@@ -291,6 +287,7 @@ macro_rules! instruction {
             ShlWrapped,
             Shr,
             ShrWrapped,
+            SignVerify,
             Square,
             SquareRoot,
             Sub,
@@ -466,7 +463,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            67,
+            66,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

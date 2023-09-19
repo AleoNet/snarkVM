@@ -137,9 +137,15 @@ impl<N: Network> CallTrait<N> for Call<N> {
         let (substack, resource) = match self.operator() {
             // Retrieve the call stack and resource from the locator.
             CallOperator::Locator(locator) => {
-                // Ensure the external call is not to 'credits.aleo/fee'.
-                if &locator.program_id().to_string() == "credits.aleo" && &locator.resource().to_string() == "fee" {
-                    bail!("Cannot perform an external call to 'credits.aleo/fee'.")
+                // Check the external call locator.
+                let function_name = locator.name().to_string();
+                let is_credits_program = &locator.program_id().to_string() == "credits.aleo";
+                let is_fee_private = &function_name == "fee_private";
+                let is_fee_public = &function_name == "fee_public";
+
+                // Ensure the external call is not to 'credits.aleo/fee_private' or 'credits.aleo/fee_public'.
+                if is_credits_program && (is_fee_private || is_fee_public) {
+                    bail!("Cannot perform an external call to 'credits.aleo/fee_private' or 'credits.aleo/fee_public'.")
                 } else {
                     (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
                 }

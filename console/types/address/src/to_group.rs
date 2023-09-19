@@ -36,7 +36,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let address = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let address = Address::<CurrentEnvironment>::rand(&mut rng);
 
             let candidate = address.to_group();
 

@@ -34,7 +34,7 @@ macro_rules! ensure_is_unique {
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if the transaction is valid.
     pub fn verify_transaction(&self, transaction: &Transaction<N>, rejected_id: Option<Field<N>>) -> bool {
-        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{}", error)).is_ok()
+        self.check_transaction(transaction, rejected_id).map_err(|error| warn!("{error}")).is_ok()
     }
 
     /// Returns `true` if the deployment is valid.
@@ -140,9 +140,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     self.check_fee(fee, execution_id)?;
                 } else {
                     // If the transaction contains only 1 transition, and the transition is a split, then the fee can be skipped.
-                    // TODO (howardwu): Remove support for 'mint'.
-                    let can_skip_fee =
-                        (transaction.contains_mint() || transaction.contains_split()) && execution.len() == 1;
+                    let can_skip_fee = execution.len() == 1 && transaction.contains_split();
                     ensure!(can_skip_fee, "Transaction is missing a fee (execution)");
                 }
                 // Verify the execution.
@@ -151,14 +149,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             Transaction::Fee(_, fee) => {
                 // Ensure the fee is nonzero.
                 ensure!(!fee.is_zero()?, "Invalid fee (zero)");
-                // Retrieve the rejected ID.
-                let Some(rejected_id) = rejected_id else {
-                    bail!("Transaction is missing a rejected ID (fee)");
-                };
                 // Verify the fee.
-                self.check_fee(fee, rejected_id)?;
+                match rejected_id {
+                    Some(rejected_id) => self.check_fee(fee, rejected_id)?,
+                    None => bail!("Transaction is missing a rejected ID (fee)"),
+                }
             }
-        };
+        }
 
         finish!(timer, "Verify the transaction");
         Ok(())
@@ -190,9 +187,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Verify the execution.
         let verification = self.process.read().verify_execution(execution);
-        finish!(timer);
+        lap!(timer, "Verify the execution");
 
-        match verification {
+        // Ensure the global state root exists in the block store.
+        let result = match verification {
             // Ensure the global state root exists in the block store.
             Ok(()) => match self.block_store().contains_state_root(&execution.global_state_root()) {
                 Ok(true) => Ok(()),
@@ -200,7 +198,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Err(error) => bail!("Execution verification failed: {error}"),
             },
             Err(error) => bail!("Execution verification failed: {error}"),
-        }
+        };
+        finish!(timer, "Check the global state root");
+        result
     }
 
     /// Verifies the given fee. On failure, returns an error.
@@ -209,21 +209,46 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::check_fee");
 
         // Ensure the fee does not exceed the limit.
-        ensure!(*fee.amount()? < N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
+        let fee_amount = fee.amount()?;
+        ensure!(*fee_amount < N::MAX_FEE, "Fee verification failed: fee exceeds the maximum limit");
 
         // Verify the fee.
         let verification = self.process.read().verify_fee(fee, deployment_or_execution_id);
-        finish!(timer);
+        lap!(timer, "Verify the fee");
 
-        match verification {
-            // Ensure the global state root exists in the block store.
+        // TODO (howardwu): This check is technically insufficient. Consider moving this upstream
+        //  to the speculation layer.
+        // If the fee is public, speculatively check the account balance.
+        if fee.is_fee_public() {
+            // Retrieve the payer.
+            let Some(payer) = fee.payer() else {
+                bail!("Fee verification failed: fee is public, but the payer is missing");
+            };
+            // Retrieve the account balance of the payer.
+            let Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) =
+                self.finalize_store().get_value_speculative(
+                    &ProgramID::from_str("credits.aleo")?,
+                    &Identifier::from_str("account")?,
+                    &Plaintext::from(Literal::Address(payer)),
+                )?
+            else {
+                bail!("Fee verification failed: fee is public, but the payer account balance is missing");
+            };
+            // Ensure the balance is sufficient.
+            ensure!(balance >= fee_amount, "Fee verification failed: insufficient balance");
+        }
+
+        // Ensure the global state root exists in the block store.
+        let result = match verification {
             Ok(()) => match self.block_store().contains_state_root(&fee.global_state_root()) {
                 Ok(true) => Ok(()),
                 Ok(false) => bail!("Fee verification failed: global state root not found"),
                 Err(error) => bail!("Fee verification failed: {error}"),
             },
             Err(error) => bail!("Fee verification failed: {error}"),
-        }
+        };
+        finish!(timer, "Check the global state root");
+        result
     }
 }
 
@@ -252,7 +277,13 @@ mod tests {
         assert!(vm.verify_transaction(&deployment_transaction, None));
 
         // Fetch an execution transaction.
-        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
+        // Ensure the transaction verifies.
+        assert!(vm.check_transaction(&execution_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&execution_transaction, None));
+
+        // Fetch an execution transaction.
+        let execution_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
         // Ensure the transaction verifies.
         assert!(vm.check_transaction(&execution_transaction, None).is_ok());
         assert!(vm.verify_transaction(&execution_transaction, None));
@@ -285,25 +316,30 @@ mod tests {
         let rng = &mut TestRng::default();
         let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
-        // Fetch a execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        // Fetch execution transactions.
+        let transactions = [
+            crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng),
+        ];
 
-        match transaction {
-            Transaction::Execute(_, execution, _) => {
-                // Ensure the proof exists.
-                assert!(execution.proof().is_some());
-                // Verify the execution.
-                assert!(vm.check_execution(&execution).is_ok());
-                assert!(vm.verify_execution(&execution));
+        for transaction in transactions {
+            match transaction {
+                Transaction::Execute(_, execution, _) => {
+                    // Ensure the proof exists.
+                    assert!(execution.proof().is_some());
+                    // Verify the execution.
+                    assert!(vm.check_execution(&execution).is_ok());
+                    assert!(vm.verify_execution(&execution));
 
-                // Ensure that deserialization doesn't break the transaction verification.
-                let serialized_execution = execution.to_string();
-                let recovered_execution: Execution<CurrentNetwork> =
-                    serde_json::from_str(&serialized_execution).unwrap();
-                assert!(vm.check_execution(&recovered_execution).is_ok());
-                assert!(vm.verify_execution(&recovered_execution));
+                    // Ensure that deserialization doesn't break the transaction verification.
+                    let serialized_execution = execution.to_string();
+                    let recovered_execution: Execution<CurrentNetwork> =
+                        serde_json::from_str(&serialized_execution).unwrap();
+                    assert!(vm.check_execution(&recovered_execution).is_ok());
+                    assert!(vm.verify_execution(&recovered_execution));
+                }
+                _ => panic!("Expected an execution transaction"),
             }
-            _ => panic!("Expected an execution transaction"),
         }
     }
 
@@ -312,31 +348,36 @@ mod tests {
         let rng = &mut TestRng::default();
         let vm = crate::vm::test_helpers::sample_vm_with_genesis_block(rng);
 
-        // Fetch a execution transaction.
-        let transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        // Fetch execution transactions.
+        let transactions = [
+            crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng),
+            crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng),
+        ];
 
-        match transaction {
-            Transaction::Execute(_, execution, Some(fee)) => {
-                let execution_id = execution.to_execution_id().unwrap();
+        for transaction in transactions {
+            match transaction {
+                Transaction::Execute(_, execution, Some(fee)) => {
+                    let execution_id = execution.to_execution_id().unwrap();
 
-                // Ensure the proof exists.
-                assert!(fee.proof().is_some());
-                // Verify the fee.
-                assert!(vm.check_fee(&fee, execution_id).is_ok());
-                assert!(vm.verify_fee(&fee, execution_id));
+                    // Ensure the proof exists.
+                    assert!(fee.proof().is_some());
+                    // Verify the fee.
+                    assert!(vm.check_fee(&fee, execution_id).is_ok());
+                    assert!(vm.verify_fee(&fee, execution_id));
 
-                // Ensure that deserialization doesn't break the transaction verification.
-                let serialized_fee = fee.to_string();
-                let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
-                assert!(vm.check_fee(&recovered_fee, execution_id).is_ok());
-                assert!(vm.verify_fee(&recovered_fee, execution_id));
+                    // Ensure that deserialization doesn't break the transaction verification.
+                    let serialized_fee = fee.to_string();
+                    let recovered_fee: Fee<CurrentNetwork> = serde_json::from_str(&serialized_fee).unwrap();
+                    assert!(vm.check_fee(&recovered_fee, execution_id).is_ok());
+                    assert!(vm.verify_fee(&recovered_fee, execution_id));
+                }
+                _ => panic!("Expected an execution with a fee"),
             }
-            _ => panic!("Expected an execution with a fee"),
         }
     }
 
     #[test]
-    fn test_check_transaction_execution() -> Result<()> {
+    fn test_check_transaction_execution() {
         let rng = &mut TestRng::default();
 
         // Initialize the VM.
@@ -346,17 +387,20 @@ mod tests {
         // Update the VM.
         vm.add_next_block(&genesis).unwrap();
 
-        // Fetch a valid execution transaction.
-        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_fee(rng);
+        // Fetch a valid execution transaction with a private fee.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_private_fee(rng);
         assert!(vm.check_transaction(&valid_transaction, None).is_ok());
         assert!(vm.verify_transaction(&valid_transaction, None));
 
-        // Fetch an invalid execution transaction.
-        let invalid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
-        assert!(vm.check_transaction(&invalid_transaction, None).is_err());
-        assert!(!vm.verify_transaction(&invalid_transaction, None));
+        // Fetch a valid execution transaction with a public fee.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_with_public_fee(rng);
+        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction, None));
 
-        Ok(())
+        // Fetch an valid execution transaction with no fee.
+        let valid_transaction = crate::vm::test_helpers::sample_execution_transaction_without_fee(rng);
+        assert!(vm.check_transaction(&valid_transaction, None).is_ok());
+        assert!(vm.verify_transaction(&valid_transaction, None));
     }
 
     #[test]
@@ -377,7 +421,6 @@ mod tests {
 
         // Prepare the fee.
         let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let fee = (credits, 10);
 
         // Initialize the VM.
         let vm = crate::vm::test_helpers::sample_vm();
@@ -386,23 +429,23 @@ mod tests {
 
         // Deploy.
         let program = crate::vm::test_helpers::sample_program();
-        let deployment_transaction = vm.deploy(&caller_private_key, &program, fee, None, rng).unwrap();
+        let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
-        let transactions = vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
+        let (transactions, _) =
+            vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
 
         // Construct the metadata associated with the block.
         let deployment_metadata = Metadata::new(
             CurrentNetwork::ID,
             1,
             1,
-            CurrentNetwork::STARTING_SUPPLY,
             0,
             0,
             CurrentNetwork::GENESIS_COINBASE_TARGET,
             CurrentNetwork::GENESIS_PROOF_TARGET,
             genesis.last_coinbase_target(),
-            genesis.last_coinbase_height(),
+            genesis.last_coinbase_timestamp(),
             CurrentNetwork::GENESIS_TIMESTAMP + 1,
         )
         .unwrap();
@@ -436,12 +479,11 @@ mod tests {
         .into_iter();
 
         // Prepare the fee.
-        let credits = records.values().next().unwrap().decrypt(&caller_view_key).unwrap();
-        let fee_in_microcredits = 10;
-        let fee = Some((credits, fee_in_microcredits));
+        let credits = Some(records.values().next().unwrap().decrypt(&caller_view_key).unwrap());
 
         // Execute.
-        let transaction = vm.execute(&caller_private_key, ("testing.aleo", "mint"), inputs, fee, None, rng).unwrap();
+        let transaction =
+            vm.execute(&caller_private_key, ("testing.aleo", "initialize"), inputs, credits, 10, None, rng).unwrap();
 
         // Verify.
         assert!(vm.check_transaction(&transaction, None).is_ok());

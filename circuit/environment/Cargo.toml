@@ -76,5 +76,8 @@ path = "../../console/types"
 [dev-dependencies.criterion]
 version = "0.5"
 
+[dev-dependencies.serial_test]
+version = "2.0.0"
+
 [features]
 default = [ "snarkvm-curves/default" ]

@@ -79,7 +79,7 @@ pub struct Keccak<E: Environment, const TYPE: u8, const VARIANT: usize> {
     /// output of a linear feedback shift register (LFSR).
     round_constants: Vec<U64<E>>,
     /// Precomputations for the ρ step.
-    rotl: Vec<usize>,
+    rotl: [usize; MODULO * MODULO],
 }
 
 impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIANT> {
@@ -136,8 +136,8 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     /// ```
     ///
     /// This method transposes the offsets to match the access pattern (i.e. for y, then for x).
-    fn rotl_offsets<const NUM_ROUNDS: usize>() -> Vec<usize> {
-        let mut rotl = vec![0; MODULO * MODULO];
+    fn rotl_offsets<const NUM_ROUNDS: usize>() -> [usize; MODULO * MODULO] {
+        let mut rotl = [0; MODULO * MODULO];
         let mut x: usize = 1;
         let mut y: usize = 0;
 

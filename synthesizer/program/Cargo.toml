@@ -60,6 +60,11 @@ features = [ "preserve_order" ]
 [dev-dependencies.bincode]
 version = "1"
 
+[dev-dependencies.console]
+package = "snarkvm-console"
+path = "../../console"
+features = [ "test" ]
+
 [dev-dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"
 path = "../process"

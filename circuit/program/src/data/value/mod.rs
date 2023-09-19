@@ -17,7 +17,7 @@ mod find;
 mod to_bits;
 mod to_fields;
 
-use crate::{Entry, Identifier, Plaintext, Record};
+use crate::{Access, Entry, Plaintext, Record};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 

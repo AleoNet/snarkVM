@@ -44,6 +44,7 @@ impl<A: Aleo> ToFields for &Literal<A> {
             Literal::U64(literal) => vec![literal.to_field()],
             Literal::U128(literal) => vec![literal.to_field()],
             Literal::Scalar(literal) => vec![literal.to_field()],
+            Literal::Signature(literal) => literal.to_fields(),
             Literal::String(literal) => literal.to_fields(),
         }
     }

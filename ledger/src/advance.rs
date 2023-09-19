@@ -123,6 +123,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         };
         // Compute the next height.
         let next_height = previous_block.height().saturating_add(1);
+        // Determine the timestamp for the next block.
+        let next_timestamp = match subdag {
+            Some(subdag) => subdag.timestamp(),
+            None => OffsetDateTime::now_utc().unix_timestamp(),
+        };
         // Compute the next cumulative weight.
         let next_cumulative_weight = previous_block.cumulative_weight().saturating_add(combined_proof_target);
         // Compute the next cumulative proof target.
@@ -137,19 +142,19 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Construct the next coinbase target.
         let next_coinbase_target = coinbase_target(
             previous_block.last_coinbase_target(),
-            previous_block.last_coinbase_height(),
-            next_height,
-            N::ANCHOR_HEIGHT,
+            previous_block.last_coinbase_timestamp(),
+            next_timestamp,
+            N::ANCHOR_TIME,
             N::NUM_BLOCKS_PER_EPOCH,
             N::GENESIS_COINBASE_TARGET,
         )?;
         // Construct the next proof target.
         let next_proof_target = proof_target(next_coinbase_target, N::GENESIS_PROOF_TARGET);
 
-        // Construct the next last coinbase target and next last coinbase height.
-        let (next_last_coinbase_target, next_last_coinbase_height) = match is_coinbase_target_reached {
-            true => (next_coinbase_target, next_height),
-            false => (previous_block.last_coinbase_target(), previous_block.last_coinbase_height()),
+        // Construct the next last coinbase target and next last coinbase timestamp.
+        let (next_last_coinbase_target, next_last_coinbase_timestamp) = match is_coinbase_target_reached {
+            true => (next_coinbase_target, next_timestamp),
+            false => (previous_block.last_coinbase_target(), previous_block.last_coinbase_timestamp()),
         };
 
         // Calculate the coinbase reward.
@@ -195,35 +200,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             previous_block.hash(),
         )?;
         // Select the transactions from the memory pool.
-        let transactions =
+        let (transactions, _aborted) =
             self.vm.speculate(state, &ratifications, solutions.as_ref(), candidate_transactions.iter())?;
-
-        // Compute the next total supply in microcredits.
-        let next_total_supply_in_microcredits = update_total_supply(
-            previous_block.total_supply_in_microcredits(),
-            block_reward,
-            puzzle_reward,
-            &transactions,
-        )?;
-
-        // Determine the timestamp for the next block.
-        let next_timestamp = match subdag {
-            Some(subdag) => subdag.timestamp(),
-            None => OffsetDateTime::now_utc().unix_timestamp(),
-        };
 
         // Construct the metadata.
         let metadata = Metadata::new(
             N::ID,
             next_round,
             next_height,
-            next_total_supply_in_microcredits,
             next_cumulative_weight,
             next_cumulative_proof_target,
             next_coinbase_target,
             next_proof_target,
             next_last_coinbase_target,
-            next_last_coinbase_height,
+            next_last_coinbase_timestamp,
             next_timestamp,
         )?;
 

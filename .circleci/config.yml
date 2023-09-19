@@ -533,6 +533,15 @@ jobs:
           workspace_member: ledger/narwhal/batch-header
           cache_key: snarkvm-ledger-narwhal-batch-header-cache
 
+  ledger-narwhal-data:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          workspace_member: ledger/narwhal/data
+          cache_key: snarkvm-ledger-narwhal-data-cache
+
   ledger-narwhal-subdag:
     docker:
       - image: cimg/rust:1.71.1
@@ -632,6 +641,47 @@ jobs:
     resource_class: 2xlarge
     steps:
       - run_serial:
+          flags: --lib --bins
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-keccak:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: keccak --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-psd:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: psd --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-sha:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: sha --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-rest:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --test '*' -- --skip keccak --skip psd --skip sha
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
@@ -790,6 +840,7 @@ workflows:
       - ledger-narwhal
       - ledger-narwhal-batch-certificate
       - ledger-narwhal-batch-header
+      - ledger-narwhal-data
       - ledger-narwhal-subdag
       - ledger-narwhal-transmission
       - ledger-narwhal-transmission-id
@@ -801,6 +852,10 @@ workflows:
       - synthesizer-integration
       - synthesizer-process
       - synthesizer-program
+      - synthesizer-program-integration-keccak
+      - synthesizer-program-integration-psd
+      - synthesizer-program-integration-sha
+      - synthesizer-program-integration-rest
       - synthesizer-snark
       - utilities
       - utilities-derives

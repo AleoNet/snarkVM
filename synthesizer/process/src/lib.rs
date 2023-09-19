@@ -31,7 +31,6 @@ mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
-mod execute_fee;
 mod finalize;
 mod verify_deployment;
 mod verify_execution;
@@ -43,7 +42,19 @@ mod tests;
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Literal, Locator, Plaintext, ProgramID, Record, Request, Response, Value},
+    program::{
+        Identifier,
+        Literal,
+        LiteralType,
+        Locator,
+        Plaintext,
+        ProgramID,
+        Record,
+        Request,
+        Response,
+        Value,
+        ValueType,
+    },
     types::{Field, U16, U64},
 };
 use ledger_block::{Deployment, Execution, Fee, Input, Transition};
