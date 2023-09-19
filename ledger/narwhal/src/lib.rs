@@ -25,6 +25,11 @@ pub use narwhal_batch_header as batch_header;
 #[cfg(feature = "batch-header")]
 pub use narwhal_batch_header::BatchHeader;
 
+#[cfg(feature = "compact-batch-header")]
+pub use narwhal_compact_batch_header as compact_batch_header;
+#[cfg(feature = "compact-batch-header")]
+pub use narwhal_compact_batch_header::CompactBatchHeader;
+
 #[cfg(feature = "data")]
 pub use narwhal_data as data;
 #[cfg(feature = "data")]
