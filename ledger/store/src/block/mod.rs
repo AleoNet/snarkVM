@@ -30,7 +30,7 @@ use console::{
 use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
-use ledger_narwhal_batch_certificate::BatchCertificate;
+use ledger_narwhal_compact_batch_certificate::CompactBatchCertificate;
 use synthesizer_program::Program;
 
 use anyhow::Result;
@@ -619,8 +619,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the certificate for the given `certificate ID`.
-    fn get_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
+    /// Returns the compact certificate for the given `certificate ID`.
+    fn get_certificate(&self, certificate_id: &Field<N>) -> Result<Option<CompactBatchCertificate<N>>> {
         // Retrieve the height and round for the given certificate ID.
         let (block_height, round) = match self.certificate_map().get_confirmed(certificate_id)? {
             Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
@@ -649,7 +649,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
                 }
             }
             _ => bail!(
-                "Cannot fetch batch certificate '{certificate_id}' - The authority for block '{block_height}' is not a subdag"
+                "Cannot fetch compact batch certificate '{certificate_id}' - The authority for block '{block_height}' is not a subdag"
             ),
         }
     }

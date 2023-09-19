@@ -3019,7 +3019,7 @@ dependencies = [
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-authority",
- "snarkvm-ledger-narwhal-subdag",
+ "snarkvm-ledger-narwhal-compact-subdag",
 ]
 
 [[package]]
@@ -3036,6 +3036,7 @@ dependencies = [
  "snarkvm-ledger-authority",
  "snarkvm-ledger-coinbase",
  "snarkvm-ledger-committee",
+ "snarkvm-ledger-narwhal-compact-subdag",
  "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-transmission-id",
  "snarkvm-ledger-query",
@@ -3248,7 +3249,7 @@ dependencies = [
  "snarkvm-ledger-block",
  "snarkvm-ledger-coinbase",
  "snarkvm-ledger-committee",
- "snarkvm-ledger-narwhal-batch-certificate",
+ "snarkvm-ledger-narwhal-compact-batch-certificate",
  "snarkvm-ledger-test-helpers",
  "snarkvm-synthesizer-program",
  "snarkvm-synthesizer-snark",

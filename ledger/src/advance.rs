@@ -28,9 +28,18 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let (ratifications, solutions, transactions) = decouple_transmissions(transmissions.into_iter())?;
         // Currently, we do not support ratifications from the memory pool.
         ensure!(ratifications.is_empty(), "Ratifications are currently unsupported from the memory pool");
+
+        // Construct the compact subdag.
+        let compact_subdag = CompactSubdag::from_subdag(&subdag)?;
+
         // Construct the block template.
-        let (header, ratifications, solutions, transactions) =
-            self.construct_block_template(&previous_block, Some(&subdag), ratifications, solutions, transactions)?;
+        let (header, ratifications, solutions, transactions) = self.construct_block_template(
+            &previous_block,
+            Some(&compact_subdag),
+            ratifications,
+            solutions,
+            transactions,
+        )?;
 
         // Construct the new quorum block.
         Block::new_quorum(previous_block.hash(), header, subdag, ratifications, solutions, transactions)
@@ -90,7 +99,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     fn construct_block_template(
         &self,
         previous_block: &Block<N>,
-        subdag: Option<&Subdag<N>>,
+        subdag: Option<&CompactSubdag<N>>,
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
