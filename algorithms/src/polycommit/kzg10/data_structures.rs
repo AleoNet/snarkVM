@@ -100,16 +100,12 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.read().max_num_powers() - 1
     }
 
-    pub fn to_universal_prover(
-        &self,
-        mut degree_info: DegreeInfo,
-        supported_lagrange_sizes: Option<&[usize]>,
-        hiding_bound: usize,
-    ) -> Result<UniversalProver<E>> {
-        let coefficient_support = degree_info.degree_bounds.drain().collect_vec();
-        let coefficient_support = (!coefficient_support.is_empty()).then_some(coefficient_support.as_slice());
-        let committer_key =
-            self.to_committer_key(degree_info.max_degree, supported_lagrange_sizes, coefficient_support, hiding_bound)?;
+    pub fn to_universal_prover(&self, degree_info: DegreeInfo) -> Result<UniversalProver<E>> {
+        let max_degree = degree_info.max_degree;
+        let l_sizes = degree_info.lagrange_sizes.map(|mut s| s.drain().collect_vec());
+        let coefficient_support = degree_info.degree_bounds.map(|mut s| s.drain().collect_vec());
+        let hiding_bound = degree_info.hiding_bound;
+        let committer_key = self.to_committer_key(max_degree, l_sizes, coefficient_support, hiding_bound)?;
 
         let (fft_precomputation, ifft_precomputation) =
             Self::fft_precomputation(degree_info.max_fft_size).ok_or(SerializationError::InvalidData)?;
@@ -140,8 +136,8 @@ impl<E: PairingEngine> UniversalParams<E> {
     pub fn to_committer_key(
         &self,
         supported_degree: usize,
-        supported_lagrange_sizes: Option<&[usize]>,
-        enforced_degree_bounds: Option<&[usize]>,
+        supported_lagrange_sizes: Option<Vec<usize>>,
+        enforced_degree_bounds: Option<Vec<usize>>,
         supported_hiding_bound: usize,
     ) -> Result<CommitterKey<E>> {
         let trim_time = start_timer!(|| "Trimming public parameters");
@@ -215,13 +211,13 @@ impl<E: PairingEngine> UniversalParams<E> {
                 if !size.is_power_of_two() {
                     bail!("The Lagrange basis size ({size}) is not a power of two")
                 }
-                if *size > self.max_degree() + 1 {
+                if size > self.max_degree() + 1 {
                     bail!(
                         "The Lagrange basis size ({size}) is larger than the supported degree ({})",
                         self.max_degree() + 1
                     )
                 }
-                let domain = crate::fft::EvaluationDomain::new(*size).unwrap();
+                let domain = crate::fft::EvaluationDomain::new(size).unwrap();
                 let lagrange_basis_at_beta_g = self.lagrange_basis(domain)?;
                 assert!(lagrange_basis_at_beta_g.len().is_power_of_two());
                 lagrange_bases_at_beta_g.insert(domain.size(), lagrange_basis_at_beta_g);

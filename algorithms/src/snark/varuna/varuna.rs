@@ -78,10 +78,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
                 .download_powers_for(0..degree_info.max_degree)
                 .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", degree_info.max_degree))?;
 
-            let supported_lagrange_sizes = None; // TODO: optionally use either lagrange or monomial basis
-            let hiding_bound = AHPForR1CS::<E::Fr, MM>::zk_bound().unwrap_or(0);
-            let universal_prover =
-                &universal_srs.to_universal_prover(degree_info, supported_lagrange_sizes, hiding_bound)?;
+            let universal_prover = &universal_srs.to_universal_prover(degree_info)?;
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments

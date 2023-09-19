@@ -45,8 +45,9 @@ impl CircuitInfo {
     pub fn degree_info<F: PrimeField, MM: SNARKMode>(&self) -> DegreeInfo {
         let max_degree = self.max_degree::<F, MM>();
         let max_fft_size = self.max_fft_size::<F>();
-        let degree_bounds = self.degree_bounds::<F>().into_iter().collect();
-        DegreeInfo { max_degree, max_fft_size, degree_bounds }
+        let degree_bounds = Some(self.degree_bounds::<F>().into_iter().collect());
+        let hiding_bound = AHPForR1CS::<F, MM>::zk_bound().unwrap_or(0);
+        DegreeInfo { max_degree, max_fft_size, degree_bounds, hiding_bound, lagrange_sizes: None }
     }
 
     /// The maximum degree of polynomial required to represent this index in the AHP.

@@ -201,10 +201,9 @@ impl Network for Testnet3 {
 
     /// Returns the Varuna universal prover.
     fn varuna_universal_prover(degree_info: DegreeInfo) -> UniversalProver<Self::PairingCurve> {
-        let hiding_bound = 1; // We always use a hiding bound in Testnet3.
         snarkvm_algorithms::polycommit::kzg10::UniversalParams::load()
             .expect("Failed to load universal SRS (KZG10).")
-            .to_universal_prover(degree_info, None, hiding_bound)
+            .to_universal_prover(degree_info)
             .expect("Failed to convert universal SRS (KZG10) to the prover.")
     }
 

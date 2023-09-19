@@ -62,6 +62,7 @@ impl<N: Network> ProvingKey<N> {
         assignments: &[(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)],
         rng: &mut R,
     ) -> Result<Proof<N>> {
+        ensure!(!assignments.is_empty());
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
@@ -72,11 +73,16 @@ impl<N: Network> ProvingKey<N> {
             .collect();
 
         // Retrieve the proving parameters.
-        let mut degree_info = DegreeInfo::default();
+        let mut degree_info: Option<DegreeInfo> = None;
         for (pk, _) in assignments {
-            degree_info.union(&pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>());
+            let degree_info_i = pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
+            degree_info = if let Some(degree_info) = degree_info {
+                Some(degree_info.union(&degree_info_i)?)
+            } else {
+                Some(degree_info_i)
+            };
         }
-        let universal_prover = N::varuna_universal_prover(degree_info);
+        let universal_prover = N::varuna_universal_prover(degree_info.unwrap());
         let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the proof.

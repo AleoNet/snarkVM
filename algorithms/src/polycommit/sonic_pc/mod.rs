@@ -599,7 +599,7 @@ mod tests {
         let pp = PC_Bls12_377::load_srs(max_degree).unwrap();
         let hiding_bound = 0;
         let ck = pp
-            .to_committer_key(supported_degree, Some(&[lagrange_size(supported_degree)]), None, hiding_bound)
+            .to_committer_key(supported_degree, Some(vec![lagrange_size(supported_degree)]), None, hiding_bound)
             .unwrap();
 
         let ck_bytes = ck.to_bytes_le().unwrap();

@@ -56,8 +56,6 @@ mod varuna {
                     let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
                     let fs_parameters = FS::sample_parameters();
 
-                    let hiding_bound = AHPForR1CS::<Fr, $snark_mode>::zk_bound().unwrap_or(0);
-
                     for i in 0..5 {
                         let mul_depth = 1;
                         println!("running test with MM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
@@ -67,11 +65,7 @@ mod varuna {
                         println!("Called circuit setup");
 
                         let degree_info = index_pk.circuit.index_info.degree_info::<Fr, $snark_mode>();
-                        let universal_prover = &universal_srs.to_universal_prover(
-                            degree_info,
-                            None,
-                            hiding_bound,
-                        ).unwrap();
+                        let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
 
                         let certificate = $snark_inst::prove_vk(universal_prover, &fs_parameters, &index_vk, &index_pk).unwrap();
                         assert!($snark_inst::verify_vk(universal_verifier, &fs_parameters, &circ, &index_vk, &certificate).unwrap());
@@ -96,7 +90,7 @@ mod varuna {
                             println!("running test with circuit_batch_size: {circuit_batch_size} and instance_batch_size: {instance_batch_size}");
                             let mut constraints = BTreeMap::new();
                             let mut inputs = BTreeMap::new();
-                            let mut degree_info = DegreeInfo::default();
+                            let mut degree_info = None;
 
                             for i in 0..circuit_batch_size {
                                 let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..instance_batch_size)
@@ -121,11 +115,9 @@ mod varuna {
 
                             for (index_pk, index_vk) in index_keys.iter() {
                                 let degree_info_i = index_pk.circuit.index_info.degree_info::<Fr, $snark_mode>();
-                                degree_info.union(&degree_info_i); // collect max degree and domain size and union of coefficient supports
+                                degree_info = degree_info.map(|i: DegreeInfo|i.union(&degree_info_i).unwrap()).or(Some(degree_info_i.clone()));
                                 let universal_prover = &universal_srs.to_universal_prover(
-                                    degree_info_i,
-                                    None,
-                                    hiding_bound,
+                                    degree_info_i
                                 ).unwrap();
 
                                 let certificate = $snark_inst::prove_vk(universal_prover, &fs_parameters, &index_vk, &index_pk).unwrap();
@@ -137,9 +129,7 @@ mod varuna {
                             println!("verified vks");
 
                             let universal_prover = &universal_srs.to_universal_prover(
-                                degree_info,
-                                None,
-                                hiding_bound,
+                                degree_info.unwrap()
                             ).unwrap();
 
                             let proof =
@@ -347,7 +337,6 @@ mod varuna_hiding {
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
-        let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
         for _ in 0..num_times {
             let mul_depth = 2;
@@ -357,7 +346,7 @@ mod varuna_hiding {
             println!("Called circuit setup");
 
             let degree_info = index_pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-            let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+            let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
 
             let proof = VarunaInst::prove(universal_prover, &fs_parameters, &index_pk, &circuit, rng).unwrap();
             println!("Called prover");
@@ -497,13 +486,12 @@ mod varuna_hiding {
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
-        let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
         let (index_pk, index_vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
 
         let degree_info = index_pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
 
         let proof = VarunaInst::prove(universal_prover, &fs_parameters, &index_pk, &circuit, rng).unwrap();
         println!("Called prover");
@@ -526,7 +514,6 @@ mod varuna_hiding {
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
-        let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
         // Indexing, proving, and verifying for a circuit with 1 << 15 constraints and 1 << 15 variables.
         let mul_depth = 2;
@@ -537,7 +524,7 @@ mod varuna_hiding {
         println!("Called circuit setup");
 
         let degree_info = pk1.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
 
         let proof1 = VarunaInst::prove(universal_prover, &fs_parameters, &pk1, &circuit1, rng).unwrap();
         println!("Called prover");
@@ -554,7 +541,7 @@ mod varuna_hiding {
         println!("Called circuit setup");
 
         let degree_info = pk2.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
 
         let proof2 = VarunaInst::prove(universal_prover, &fs_parameters, &pk2, &circuit2, rng).unwrap();
         println!("Called prover");

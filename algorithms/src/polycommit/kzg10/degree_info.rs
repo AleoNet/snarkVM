@@ -12,24 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use anyhow::{ensure, Result};
 use std::collections::HashSet;
 
-#[derive(Default)]
+#[derive(Clone)]
 pub struct DegreeInfo {
     /// max degree of the required SRS to commit to the polynomials
     pub max_degree: usize,
     /// max IOP poly degree used for (i)fft_precomputation
     pub max_fft_size: usize,
     /// degree bounds on IOP polynomials
-    pub degree_bounds: HashSet<usize>,
+    pub degree_bounds: Option<HashSet<usize>>,
+    /// hiding bound for polynomial queries
+    pub hiding_bound: usize,
+    /// supported lagrange-basis SRS
+    pub lagrange_sizes: Option<HashSet<usize>>,
 }
 
 impl DegreeInfo {
-    pub fn union(&mut self, other: &Self) {
-        self.max_degree = self.max_degree.max(other.max_degree);
-        self.max_fft_size = self.max_fft_size.max(other.max_fft_size);
-        for &coeff in &other.degree_bounds {
-            self.degree_bounds.insert(coeff);
+    pub fn union(self, other: &Self) -> Result<Self> {
+        ensure!(self.hiding_bound == other.hiding_bound);
+        let hiding_bound = self.hiding_bound;
+        let max_degree = self.max_degree.max(other.max_degree);
+        let max_fft_size = self.max_fft_size.max(other.max_fft_size);
+        let mut new_bounds = self.degree_bounds.unwrap_or_default();
+        if let Some(other_bounds) = &other.degree_bounds {
+            new_bounds = new_bounds.union(other_bounds).copied().collect();
         }
+        let degree_bounds = (!new_bounds.is_empty()).then_some(new_bounds);
+        let mut new_l_sizes = self.lagrange_sizes.unwrap_or_default();
+        if let Some(other_l_sizes) = &other.lagrange_sizes {
+            new_l_sizes = new_l_sizes.union(other_l_sizes).copied().collect();
+        }
+        let lagrange_sizes = (!new_l_sizes.is_empty()).then_some(new_l_sizes);
+        Ok(Self { max_degree, max_fft_size, degree_bounds, lagrange_sizes, hiding_bound })
     }
 }

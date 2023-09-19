@@ -68,13 +68,12 @@ fn snark_prove(c: &mut Criterion) {
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(1000, 1000, 1000).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
-        let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
         let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let (pk, _) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
         let degree_info = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
         b.iter(|| VarunaInst::prove(universal_prover, &fs_parameters, &pk, &circuit, rng).unwrap())
     });
 }
@@ -89,7 +88,6 @@ fn snark_batch_prove(c: &mut Criterion) {
         let max_degree = AHPForR1CS::<Fr, VarunaHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
         let fs_parameters = FS::sample_parameters();
-        let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
         let circuit_batch_size = 5;
         let instance_batch_size = 5;
@@ -98,7 +96,7 @@ fn snark_batch_prove(c: &mut Criterion) {
         let mut all_circuits = Vec::with_capacity(circuit_batch_size);
         let mut keys_to_constraints = BTreeMap::new();
 
-        let mut degree_info = DegreeInfo::default();
+        let mut degree_info = None;
 
         for i in 0..circuit_batch_size {
             let num_constraints = num_constraints_base + i;
@@ -112,14 +110,15 @@ fn snark_batch_prove(c: &mut Criterion) {
             }
             let (pk, _) = VarunaInst::circuit_setup(&universal_srs, &circuits[0]).unwrap();
             all_circuits.push(circuits);
-            degree_info.union(&pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>());
+            let degree_info_i = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
+            degree_info = degree_info.map(|i: DegreeInfo| i.union(&degree_info_i).unwrap()).or(Some(degree_info_i));
             pks.push(pk);
         }
 
         for i in 0..circuit_batch_size {
             keys_to_constraints.insert(&pks[i], all_circuits[i].as_slice());
         }
-        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info.unwrap()).unwrap();
 
         b.iter(|| VarunaInst::prove_batch(universal_prover, &fs_parameters, &keys_to_constraints, rng).unwrap())
     });
@@ -136,13 +135,12 @@ fn snark_verify(c: &mut Criterion) {
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
-        let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
         let (circuit, public_inputs) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
 
         let (pk, vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
         let degree_info = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
 
         let proof = VarunaInst::prove(universal_prover, &fs_parameters, &pk, &circuit, rng).unwrap();
         b.iter(|| {
@@ -163,12 +161,11 @@ fn snark_batch_verify(c: &mut Criterion) {
         let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
         let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
         let fs_parameters = FS::sample_parameters();
-        let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
         let circuit_batch_size = 5;
         let instance_batch_size = 5;
 
-        let mut degree_info = DegreeInfo::default();
+        let mut degree_info = None;
 
         let mut pks = Vec::with_capacity(circuit_batch_size);
         let mut vks = Vec::with_capacity(circuit_batch_size);
@@ -191,7 +188,7 @@ fn snark_batch_verify(c: &mut Criterion) {
             all_circuits.push(circuits);
             all_inputs.push(inputs);
             let degree_info_i = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-            degree_info.union(&degree_info_i);
+            degree_info = degree_info.map(|i: DegreeInfo| i.union(&degree_info_i).unwrap()).or(Some(degree_info_i));
             pks.push(pk);
             vks.push(vk);
         }
@@ -200,7 +197,7 @@ fn snark_batch_verify(c: &mut Criterion) {
             keys_to_constraints.insert(&pks[i], all_circuits[i].as_slice());
             keys_to_inputs.insert(&vks[i], all_inputs[i].as_slice());
         }
-        let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+        let universal_prover = &universal_srs.to_universal_prover(degree_info.unwrap()).unwrap();
 
         let proof = VarunaInst::prove_batch(universal_prover, &fs_parameters, &keys_to_constraints, rng).unwrap();
         b.iter(|| {
@@ -284,7 +281,6 @@ fn snark_certificate_prove(c: &mut Criterion) {
     let universal_srs = VarunaInst::universal_setup(max_degree).unwrap();
     let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;
-    let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
     for size in [100, 1_000, 10_000, 100_000] {
         c.bench_function(&format!("snark_certificate_prove_{size}"), |b| {
@@ -294,7 +290,7 @@ fn snark_certificate_prove(c: &mut Criterion) {
             let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
             let (pk, vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
             let degree_info = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-            let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+            let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
 
             b.iter(|| VarunaInst::prove_vk(universal_prover, fs_p, &vk, &pk).unwrap())
         });
@@ -309,7 +305,6 @@ fn snark_certificate_verify(c: &mut Criterion) {
     let universal_verifier = &universal_srs.to_universal_verifier().unwrap();
     let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;
-    let hiding_bound = AHPForR1CS::<Fr, VarunaHidingMode>::zk_bound().unwrap_or(0);
 
     for size in [100, 1_000, 10_000, 100_000] {
         c.bench_function(&format!("snark_certificate_verify_{size}"), |b| {
@@ -319,7 +314,7 @@ fn snark_certificate_verify(c: &mut Criterion) {
             let (circuit, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
             let (pk, vk) = VarunaInst::circuit_setup(&universal_srs, &circuit).unwrap();
             let degree_info = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-            let universal_prover = &universal_srs.to_universal_prover(degree_info, None, hiding_bound).unwrap();
+            let universal_prover = &universal_srs.to_universal_prover(degree_info).unwrap();
             let certificate = VarunaInst::prove_vk(universal_prover, fs_p, &vk, &pk).unwrap();
 
             b.iter(|| VarunaInst::verify_vk(universal_verifier, fs_p, &circuit, &vk, &certificate).unwrap())
