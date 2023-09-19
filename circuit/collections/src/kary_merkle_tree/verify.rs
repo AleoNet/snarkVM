@@ -44,11 +44,10 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerk
 
         let arity = U64::<E>::new(Mode::Constant, console::U64::new(ARITY as u64));
 
-        let indicator_indexes = (0..DEPTH)
-            .map(|i| {
-                let index = U16::<E>::new(Mode::Constant, console::U16::new(i as u16));
-                &self.leaf_index / (arity.clone().pow(index)) % arity.clone()
-            });
+        let indicator_indexes = (0..DEPTH).map(|i| {
+            let index = U16::<E>::new(Mode::Constant, console::U16::new(i as u16));
+            &self.leaf_index / (arity.clone().pow(index)) % arity.clone()
+        });
 
         // Initialize the zero index.
         let zero_index = U64::<E>::zero();
@@ -72,8 +71,11 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerk
                 let index = U64::<E>::new(Mode::Constant, console::U64::new(i as u64));
 
                 // When the index is less than the indicator index, use the current index. Otherwise, use the previous index.
-                let option_a =
-                    PH::Hash::ternary(&index.is_less_than(&indicator_index), &sibling_hashes[i], &sibling_hashes[i - 1]);
+                let option_a = PH::Hash::ternary(
+                    &index.is_less_than(&indicator_index),
+                    &sibling_hashes[i],
+                    &sibling_hashes[i - 1],
+                );
 
                 // When the index is equal to the indicator index, use the current hash.
                 let option_b = PH::Hash::ternary(&index.is_equal(&indicator_index), &current_hash, &option_a);
