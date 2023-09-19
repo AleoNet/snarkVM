@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use anyhow::{ensure, Result};
 use std::collections::HashSet;
 
 #[derive(Clone)]
@@ -30,9 +29,8 @@ pub struct DegreeInfo {
 }
 
 impl DegreeInfo {
-    pub fn union(self, other: &Self) -> Result<Self> {
-        ensure!(self.hiding_bound == other.hiding_bound);
-        let hiding_bound = self.hiding_bound;
+    pub fn union(self, other: &Self) -> Self {
+        let hiding_bound = self.hiding_bound.max(other.hiding_bound);
         let max_degree = self.max_degree.max(other.max_degree);
         let max_fft_size = self.max_fft_size.max(other.max_fft_size);
         let mut new_bounds = self.degree_bounds.unwrap_or_default();
@@ -45,6 +43,6 @@ impl DegreeInfo {
             new_l_sizes = new_l_sizes.union(other_l_sizes).copied().collect();
         }
         let lagrange_sizes = (!new_l_sizes.is_empty()).then_some(new_l_sizes);
-        Ok(Self { max_degree, max_fft_size, degree_bounds, lagrange_sizes, hiding_bound })
+        Self { max_degree, max_fft_size, degree_bounds, lagrange_sizes, hiding_bound }
     }
 }

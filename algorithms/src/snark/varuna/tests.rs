@@ -115,7 +115,7 @@ mod varuna {
 
                             for (index_pk, index_vk) in index_keys.iter() {
                                 let degree_info_i = index_pk.circuit.index_info.degree_info::<Fr, $snark_mode>();
-                                degree_info = degree_info.map(|i: DegreeInfo|i.union(&degree_info_i).unwrap()).or(Some(degree_info_i.clone()));
+                                degree_info = degree_info.map(|i: DegreeInfo|i.union(&degree_info_i)).or(Some(degree_info_i.clone()));
                                 let universal_prover = &universal_srs.to_universal_prover(
                                     degree_info_i
                                 ).unwrap();

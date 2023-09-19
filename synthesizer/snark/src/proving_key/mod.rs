@@ -77,7 +77,7 @@ impl<N: Network> ProvingKey<N> {
         for (pk, _) in assignments {
             let degree_info_i = pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
             degree_info = if let Some(degree_info) = degree_info {
-                Some(degree_info.union(&degree_info_i)?)
+                Some(degree_info.union(&degree_info_i))
             } else {
                 Some(degree_info_i)
             };

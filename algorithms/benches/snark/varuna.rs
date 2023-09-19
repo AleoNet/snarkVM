@@ -111,7 +111,7 @@ fn snark_batch_prove(c: &mut Criterion) {
             let (pk, _) = VarunaInst::circuit_setup(&universal_srs, &circuits[0]).unwrap();
             all_circuits.push(circuits);
             let degree_info_i = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-            degree_info = degree_info.map(|i: DegreeInfo| i.union(&degree_info_i).unwrap()).or(Some(degree_info_i));
+            degree_info = degree_info.map(|i: DegreeInfo| i.union(&degree_info_i)).or(Some(degree_info_i));
             pks.push(pk);
         }
 
@@ -188,7 +188,7 @@ fn snark_batch_verify(c: &mut Criterion) {
             all_circuits.push(circuits);
             all_inputs.push(inputs);
             let degree_info_i = pk.circuit.index_info.degree_info::<Fr, VarunaHidingMode>();
-            degree_info = degree_info.map(|i: DegreeInfo| i.union(&degree_info_i).unwrap()).or(Some(degree_info_i));
+            degree_info = degree_info.map(|i: DegreeInfo| i.union(&degree_info_i)).or(Some(degree_info_i));
             pks.push(pk);
             vks.push(vk);
         }
