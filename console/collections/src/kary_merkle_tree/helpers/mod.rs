@@ -53,10 +53,10 @@ impl<const VARIANT: usize> FromBytes for BooleanHash<VARIANT> {
     /// Reads `self` from `reader` in little-endian order.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the bits.
-        let bits = (0..VARIANT).map(|_| bool::read_le(&mut reader)).collect::<Result<Vec<bool>, _>>()?;
-        // Convert the Vec into a fixed-size array.
         let mut array = [false; VARIANT];
-        array.copy_from_slice(&bits);
+        for bit in array.iter_mut() {
+            *bit = bool::read_le(&mut reader)?;
+        }
         Ok(Self(array))
     }
 }
