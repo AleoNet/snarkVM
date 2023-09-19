@@ -58,8 +58,8 @@ fn checked_next_power_of_n(base: usize, n: usize) -> Option<usize> {
 impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: u8>
     KaryMerkleTree<LH, PH, DEPTH, ARITY>
 {
-    #[inline]
     /// Initializes a new Merkle tree with the given leaves.
+    #[inline]
     pub fn new(leaf_hasher: &LH, path_hasher: &PH, leaves: &[LH::Leaf]) -> Result<Self> {
         let timer = timer!("MerkleTree::new");
 
