@@ -141,7 +141,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
         let mut x: usize = 1;
         let mut y: usize = 0;
 
-        for t in 0..24 {
+        for t in 0..=23 {
             let rotr = ((t + 1) * (t + 2) / 2) % 64;
             rotl[x + (y * MODULO)] = (64 - rotr) % 64;
 
