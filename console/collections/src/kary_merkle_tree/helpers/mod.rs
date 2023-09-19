@@ -42,7 +42,7 @@ impl<const VARIANT: usize> Distribution<BooleanHash<VARIANT>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> BooleanHash<VARIANT> {
         let mut array = [false; VARIANT];
-        for entry in array.iter_mut().take(VARIANT) {
+        for entry in array.iter_mut() {
             *entry = rng.gen();
         }
         BooleanHash(array)
