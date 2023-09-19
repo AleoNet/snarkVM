@@ -3137,6 +3137,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-ledger-narwhal-compact-batch-certificate",
  "snarkvm-ledger-narwhal-compact-batch-header",
+ "snarkvm-ledger-narwhal-transmission-id",
  "time",
 ]
 
@@ -3171,7 +3172,7 @@ dependencies = [
  "indexmap 2.0.0",
  "serde_json",
  "snarkvm-console",
- "snarkvm-ledger-narwhal-batch-certificate",
+ "snarkvm-ledger-narwhal-compact-batch-certificate",
  "snarkvm-ledger-narwhal-subdag",
  "snarkvm-ledger-narwhal-transmission-id",
 ]

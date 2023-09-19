@@ -15,9 +15,6 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::cast_possible_truncation)]
 
-pub mod transmission_type;
-pub use transmission_type::*;
-
 mod bytes;
 mod serialize;
 mod string;
@@ -29,7 +26,7 @@ use console::{
     types::Field,
 };
 use indexmap::IndexSet;
-use narwhal_transmission_id::TransmissionID;
+use narwhal_transmission_id::{TransmissionID, TransmissionType};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct CompactBatchHeader<N: Network> {

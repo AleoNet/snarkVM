@@ -24,7 +24,8 @@ use console::{
     prelude::*,
     types::Field,
 };
-use narwhal_compact_batch_header::{CompactBatchHeader, TransmissionType};
+use narwhal_compact_batch_header::CompactBatchHeader;
+use narwhal_transmission_id::TransmissionType;
 
 use core::hash::{Hash, Hasher};
 use indexmap::{IndexMap, IndexSet};
