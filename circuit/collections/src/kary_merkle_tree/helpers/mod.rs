@@ -82,9 +82,9 @@ impl<E: Environment, const VARIANT: usize> Ternary for BooleanHash<E, VARIANT> {
 
     /// Returns `first` if `condition` is `true`, otherwise returns `second`.
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
-        let mut result = vec![Boolean::constant(false); VARIANT];
-        for (i, (a, b)) in first.iter().zip_eq(second.iter()).enumerate() {
-            result[i] = Self::Boolean::ternary(condition, a, b);
+        let mut result = Vec::with_capacity(VARIANT);
+        for (a, b) in first.iter().zip_eq(second.iter()) {
+            result.push(Self::Boolean::ternary(condition, a, b));
         }
         Self(result.try_into().unwrap())
     }
