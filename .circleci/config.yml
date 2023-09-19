@@ -150,6 +150,10 @@ jobs:
       - run_serial:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
+      - run:
+          command: |
+            cd algorithms
+            cargo test snark::varuna::tests::varuna::prove_and_verify_with_square_matrix --features profiler
 
   circuit:
     docker:
