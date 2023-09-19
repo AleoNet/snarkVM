@@ -28,7 +28,7 @@ pub trait PathHash: Clone + Send + Sync {
 
     /// Returns the empty hash.
     fn hash_empty<const ARITY: u8>(&self) -> Result<Self::Hash> {
-        let children = vec![Self::Hash::default(); ARITY];
+        let children = vec![Self::Hash::default(); ARITY as usize];
         self.hash_children(&children)
     }
 
