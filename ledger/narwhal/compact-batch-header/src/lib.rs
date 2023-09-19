@@ -26,6 +26,7 @@ use console::{
     types::Field,
 };
 use indexmap::IndexSet;
+use narwhal_batch_header::BatchHeader;
 use narwhal_transmission_id::{TransmissionID, TransmissionType};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -99,6 +100,23 @@ impl<N: Network> CompactBatchHeader<N> {
 
         // Return the batch header.
         Ok(Self { author, batch_id, round, timestamp, transmission_ids_map, previous_certificate_ids, signature })
+    }
+
+    /// Initializes a new compact batch header from a batch header.
+    pub fn from_batch_header(batch_header: &BatchHeader<N>) -> Result<Self> {
+        // Construct the transmission IDs map.
+        let transmission_ids_map = Self::to_map(batch_header.transmission_ids());
+
+        // Return the compact batch header.
+        Self::from(
+            batch_header.batch_id(),
+            batch_header.author(),
+            batch_header.round(),
+            batch_header.timestamp(),
+            transmission_ids_map,
+            batch_header.previous_certificate_ids().clone(),
+            batch_header.signature().clone(),
+        )
     }
 
     /// Returns the mapped indexes for the given set of transmission ids.
@@ -229,5 +247,35 @@ pub mod test_helpers {
         }
         // Return the sample vector.
         sample
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_batch_header() {
+        let rng = &mut TestRng::default();
+
+        // Sample batch headers
+        let batch_headers = narwhal_batch_header::test_helpers::sample_batch_headers(rng);
+
+        for batch_header in batch_headers {
+            // Convert the batch header to a compact batch header.
+            let compact_batch_header = CompactBatchHeader::from_batch_header(&batch_header).unwrap();
+
+            // Check that the transmission IDs map is correct.
+            let expected_transmission_ids_map = CompactBatchHeader::to_map(&batch_header.transmission_ids());
+            assert_eq!(compact_batch_header.transmission_ids_map(), &expected_transmission_ids_map);
+
+            // Check that the rest of the fields are correct.
+            assert_eq!(compact_batch_header.batch_id(), batch_header.batch_id());
+            assert_eq!(compact_batch_header.author(), batch_header.author());
+            assert_eq!(compact_batch_header.round(), batch_header.round());
+            assert_eq!(compact_batch_header.timestamp(), batch_header.timestamp());
+            assert_eq!(compact_batch_header.previous_certificate_ids(), batch_header.previous_certificate_ids());
+            assert_eq!(compact_batch_header.signature(), batch_header.signature());
+        }
     }
 }

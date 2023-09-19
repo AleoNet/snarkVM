@@ -24,6 +24,7 @@ use console::{
     prelude::*,
     types::Field,
 };
+use narwhal_batch_certificate::BatchCertificate;
 use narwhal_compact_batch_header::CompactBatchHeader;
 use narwhal_transmission_id::TransmissionType;
 
@@ -83,6 +84,21 @@ impl<N: Network> CompactBatchCertificate<N> {
         ensure!(!signatures.is_empty(), "Batch certificate must contain signatures");
         // Return the compact batch certificate.
         Ok(Self { certificate_id, compact_batch_header, signatures })
+    }
+
+    /// Initializes a new compact batch certificate from a batch certificate.
+    pub fn from_batch_certificate(batch_certificate: &BatchCertificate<N>) -> Result<Self> {
+        // Construct the compact batch header.
+        let compact_batch_header = CompactBatchHeader::from_batch_header(batch_certificate.batch_header())?;
+
+        // Construct the signatures.
+        let signatures = batch_certificate
+            .signatures()
+            .zip_eq(batch_certificate.timestamps())
+            .map(|(signature, timestamp)| (*signature, timestamp))
+            .collect::<IndexMap<_, _>>();
+
+        Self::from(batch_certificate.certificate_id(), compact_batch_header, signatures)
     }
 }
 
@@ -229,5 +245,41 @@ pub mod test_helpers {
         }
         // Return the sample vector.
         sample
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_batch_certificate() {
+        let rng = &mut TestRng::default();
+
+        // Sample batch certificates.
+        let batch_certificates = narwhal_batch_certificate::test_helpers::sample_batch_certificates(rng);
+
+        for batch_certificate in batch_certificates {
+            // Convert the batch certificate to a compact batch certificate.
+            let compact_batch_certificate =
+                CompactBatchCertificate::from_batch_certificate(&batch_certificate).unwrap();
+
+            // Ensure that the compact batch header is correct.
+            let expected_compact_batch_header =
+                CompactBatchHeader::from_batch_header(batch_certificate.batch_header()).unwrap();
+            assert_eq!(compact_batch_certificate.compact_batch_header(), &expected_compact_batch_header);
+
+            // Ensure that the signatures and timestamps are correct.
+            for (expected_signature, signature) in
+                batch_certificate.signatures().zip_eq(compact_batch_certificate.signatures())
+            {
+                assert_eq!(expected_signature, signature);
+            }
+            for (expected_timestamp, timestamp) in
+                batch_certificate.timestamps().zip_eq(compact_batch_certificate.timestamps())
+            {
+                assert_eq!(expected_timestamp, timestamp);
+            }
+        }
     }
 }
