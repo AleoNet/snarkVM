@@ -86,7 +86,7 @@ impl<E: Environment, PH: PathHash<E>, const DEPTH: u8, const ARITY: u8> KaryMerk
             let last_child = PH::Hash::ternary(
                 &indicator_index.is_equal(&last_index),
                 &current_hash,
-                &sibling_hashes[sibling_hashes.len() - 1],
+                sibling_hashes.last().unwrap(),
             );
 
             children.push(last_child);
