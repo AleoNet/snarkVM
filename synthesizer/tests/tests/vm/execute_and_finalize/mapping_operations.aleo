@@ -1,13 +1,17 @@
 /*
 randomness: 904820
 cases:
-  - function: empty_remove
+  - program: mapping_operations.aleo
+    function: empty_remove
     inputs: [10u8]
-  - function: insert_contains_remove
+  - program: mapping_operations.aleo
+    function: insert_contains_remove
     inputs: [0u8, 0u8]
-  - function: insert_contains_remove
+  - program: mapping_operations.aleo
+    function: insert_contains_remove
     inputs: [0u8, 0u8]
-  - function: insert_contains_remove
+  - program: mapping_operations.aleo
+    function: insert_contains_remove
     inputs: [0u8, 1u8]
 */
 

@@ -32,7 +32,7 @@ use std::{
 // Note: We use YAML for `cases` and `expected` to allow for flexible definitions across various types of tests.
 pub struct ProgramTest {
     /// The program.
-    program: Program<CurrentNetwork>,
+    programs: Vec<Program<CurrentNetwork>>,
     /// The set of test cases.
     cases: Vec<Value>,
     /// The expected output of the test.
@@ -47,8 +47,8 @@ pub struct ProgramTest {
 
 impl ProgramTest {
     /// Returns the program.
-    pub fn program(&self) -> &Program<CurrentNetwork> {
-        &self.program
+    pub fn programs(&self) -> &[Program<CurrentNetwork>] {
+        &self.programs
     }
 
     /// Returns the test cases.
@@ -79,6 +79,7 @@ impl ExpectedTest for ProgramTest {
         let comment = &source[first_comment_start + 2..first_comment_start + 2 + end_first_comment];
 
         // Parse the comment into the test configuration.
+        println!("source: {}", source);
         let test_config = serde_yaml::from_str::<Mapping>(comment).expect("invalid test configuration");
 
         // If the `randomness` field is present in the config, parse it as a `u64`.
@@ -93,8 +94,10 @@ impl ExpectedTest for ProgramTest {
             .clone();
 
         // Parse the remainder of the test file into a program.
-        let program = Program::<CurrentNetwork>::from_str(&source[first_comment_start + 2 + end_first_comment + 2..])
-            .expect("Failed to parse program.");
+        let programs = source[first_comment_start + 2 + end_first_comment + 2..]
+            .split("/////////////////////////////////////////////////")
+            .map(|string| Program::<CurrentNetwork>::from_str(string).expect("Failed to parse program."))
+            .collect::<Vec<_>>();
 
         // Construct the path to the expectation file.
         let path = get_expectation_path(&test_path, &expectation_dir);
@@ -107,7 +110,7 @@ impl ExpectedTest for ProgramTest {
             }
         };
 
-        Self { program, cases, expected, path, rewrite, randomness }
+        Self { programs, cases, expected, path, rewrite, randomness }
     }
 
     fn check(&self, output: &Self::Output) -> Result<()> {

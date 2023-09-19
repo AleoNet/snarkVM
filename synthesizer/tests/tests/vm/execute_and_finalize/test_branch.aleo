@@ -1,11 +1,14 @@
 /*
 randomness: 98372
 cases:
-  - function: run_test
+  - program: test_branch.aleo
+    function: run_test
     inputs: [1u8, 1u8]
-  - function: run_test
+  - program: test_branch.aleo
+    function: run_test
     inputs: [0u8, 1u8]
-  - function: run_test
+  - program: test_branch.aleo
+    function: run_test
     inputs: [0u8, 0u8]
 */
 

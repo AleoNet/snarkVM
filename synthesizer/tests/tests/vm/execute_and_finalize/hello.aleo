@@ -1,13 +1,17 @@
 /*
 randomness: 12345
 cases:
-  - function: hello
+  - program: hello.aleo
+    function: hello
     inputs: [0u32, 1u32]
-  - function: hello
+  - program: hello.aleo
+    function: hello
     inputs: [1u32, 2u32]
-  - function: goodbye
+  - program: hello.aleo
+    function: goodbye
     inputs: [0u32, 1u32]
-  - function: goodbye
+  - program: hello.aleo
+    function: goodbye
     inputs: [1u32, 0u32]
 */
 

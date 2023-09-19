@@ -1,0 +1,26 @@
+Successfully added foo.aleo.
+Successfully added function_and_finalize_match.aleo.
+Failed to add call_in_closure.aleo: A 'call' instruction is not allowed in closures
+Successfully added special_constants.aleo.
+Successfully added unused_position.aleo.
+Successfully added max_positions.aleo.
+Successfully added hello.aleo.
+Successfully added finalize_entry.aleo.
+Successfully added linalg.aleo.
+Successfully added group_operations.aleo.
+Successfully added arrays.aleo.
+Successfully added abs.aleo.
+Successfully added absw.aleo.
+Successfully added casts.aleo.
+Successfully added add.aleo.
+Successfully added sign_verify.aleo.
+Successfully added addw.aleo.
+Failed to add unused_position.aleo: Program 'unused_position.aleo' already exists
+Successfully added test_branch.aleo.
+Failed to add hello.aleo: Program 'hello.aleo' already exists
+Successfully added timelock.aleo.
+Successfully added mint_and_split.aleo.
+Successfully added test_rand.aleo.
+Successfully added correct_call_to_closure.aleo.
+Successfully added arrays_in_finalize.aleo.
+Successfully added mapping_operations.aleo.

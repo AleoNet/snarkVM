@@ -23,7 +23,7 @@ use utilities::*;
 use console::{
     account::{PrivateKey, ViewKey},
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, Record, Value, RATIFICATIONS_DEPTH, U64},
+    program::{Entry, Identifier, Literal, Plaintext, ProgramID, Record, Value, RATIFICATIONS_DEPTH, U64},
     types::{Boolean, Field},
 };
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Transaction, Transactions, Transition};
@@ -63,31 +63,36 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
     let (vm, records) = initialize_vm(&genesis_private_key, rng);
 
     // Pre-construct the necessary fee records.
-    let num_fee_records = 1 + test.cases().len();
+    let num_fee_records = test.programs().len() + test.cases().len();
     let mut fee_records = construct_fee_records(&vm, &genesis_private_key, records, num_fee_records, rng);
 
-    // Deploy the program.
-    let transaction =
-        match vm.deploy(&genesis_private_key, test.program(), Some(fee_records.pop().unwrap().0), 0, None, rng) {
-            Ok(transaction) => transaction,
-            Err(error) => {
-                let mut output = serde_yaml::Mapping::new();
-                output.insert(
-                    serde_yaml::Value::String("errors".to_string()),
-                    serde_yaml::Value::Sequence(vec![serde_yaml::Value::String(format!(
-                        "Failed to run `VM::deploy: {}",
-                        error
-                    ))]),
-                );
-                output
-                    .insert(serde_yaml::Value::String("outputs".to_string()), serde_yaml::Value::Sequence(Vec::new()));
-                return output;
-            }
-        };
-    let (transactions, _) =
-        vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
-    let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
-    vm.add_next_block(&block).unwrap();
+    // Deploy the programs.
+    for program in test.programs() {
+        let transaction =
+            match vm.deploy(&genesis_private_key, program, Some(fee_records.pop().unwrap().0), 0, None, rng) {
+                Ok(transaction) => transaction,
+                Err(error) => {
+                    let mut output = serde_yaml::Mapping::new();
+                    output.insert(
+                        serde_yaml::Value::String("errors".to_string()),
+                        serde_yaml::Value::Sequence(vec![serde_yaml::Value::String(format!(
+                            "Failed to run `VM::deploy for program {}: {}",
+                            program.id(),
+                            error
+                        ))]),
+                    );
+                    output.insert(
+                        serde_yaml::Value::String("outputs".to_string()),
+                        serde_yaml::Value::Sequence(Vec::new()),
+                    );
+                    return output;
+                }
+            };
+        let (transactions, _) =
+            vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
+        let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
+        vm.add_next_block(&block).unwrap();
+    }
 
     // Run each test case, aggregating the errors and outputs.
     let mut outputs = Vec::with_capacity(test.cases().len());
@@ -95,6 +100,14 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
         // TODO: Dedup from other integration tests.
         // Extract the function name, inputs, and optional private key.
         let value = value.as_mapping().expect("expected mapping for test case");
+        let program_id = ProgramID::<CurrentNetwork>::from_str(
+            value
+                .get("program")
+                .expect("expected program name for test case")
+                .as_str()
+                .expect("expected string for program name"),
+        )
+        .expect("unable to parse program name");
         let function_name = Identifier::<CurrentNetwork>::from_str(
             value
                 .get("function")
@@ -131,7 +144,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
             // Execute the function, extracting the transaction.
             let transaction = match vm.execute(
                 &private_key,
-                (test.program().id(), function_name),
+                (program_id, function_name),
                 inputs.iter(),
                 Some(fee_records.pop().unwrap().0),
                 0u64,

@@ -1,7 +1,8 @@
 /*
 randomness: 2937849
 cases:
-  - function: test_arrays
+  - program: arrays_in_finalize.aleo
+    function: test_arrays
     inputs:
     - "[[true, false, true, false]]"
     - "[[false, true, false, true]]"

@@ -5,8 +5,8 @@ program function_and_finalize_match.aleo;
 function test:
     input r0 as u8.public;
     input r1 as u8.public;
-    call.function foo.aleo/bar r0 r1;
-    call.function foo.aleo/baz r1 r2;
+    call.function foo.aleo/bar r0 r1 into r2;
+    call.function foo.aleo/baz r1 r2 into r3;
     finalize r0 r1;
 
 finalize test:

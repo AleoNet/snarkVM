@@ -1,8 +1,10 @@
 /*
 cases:
-  - function: lock
+  - program: timelock.aleo
+    function: lock
     inputs: []
-  - function: lock
+  - program: timelock.aleo
+    function: lock
     inputs: []
 */
 

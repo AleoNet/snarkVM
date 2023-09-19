@@ -1,8 +1,10 @@
 /*
 cases:
-  - function: hello
+  - program: correct_call_to_closure.aleo
+    function: hello
     inputs: [0u32, 1u32]
-  - function: hello
+  - program: correct_call_to_closure.aleo
+    function: hello
     inputs: [1u32, 2u32]
 */
 program correct_call_to_closure.aleo;

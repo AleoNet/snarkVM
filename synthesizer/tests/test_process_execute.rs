@@ -25,6 +25,7 @@ use console::{
 };
 use synthesizer_process::Process;
 
+use console::program::ProgramID;
 use rayon::prelude::*;
 
 #[test]
@@ -36,10 +37,11 @@ fn test_process_execute() {
 
     // Run each test and compare it against its corresponding expectation.
     tests.par_iter().for_each(|test| {
-        // Add the program into the process.
+        // Add the programs into the process.
         let mut process = process.clone();
-        let program = test.program();
-        process.add_program(program).unwrap();
+        for program in test.programs() {
+            process.add_program(program).unwrap()
+        }
 
         // Initialize the RNG.
         let rng = &mut match test.randomness() {
@@ -60,6 +62,14 @@ fn test_process_execute() {
                     .map(|value| {
                         // Extract the function name, inputs, and optional private key.
                         let value = value.as_mapping().expect("expected mapping for test case");
+                        let program_id = ProgramID::<CurrentNetwork>::from_str(
+                            value
+                                .get("program")
+                                .expect("expected program name for test case")
+                                .as_str()
+                                .expect("expected string for program name"),
+                        )
+                        .expect("unable to parse program name");
                         let function_name = Identifier::<CurrentNetwork>::from_str(
                             value
                                 .get("function")
@@ -96,7 +106,7 @@ fn test_process_execute() {
                             // Authorize the execution.
                             let authorization = match process.authorize::<CurrentAleo, _>(
                                 &private_key,
-                                program.id(),
+                                program_id,
                                 function_name,
                                 inputs.iter(),
                                 rng,
