@@ -183,8 +183,10 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8, const ARITY: 
         }
 
         // If the Merkle path length is not equal to `DEPTH`, pad the path with the empty hash.
-        let empty_hashes = (0..ARITY.saturating_sub(1)).map(|_| self.empty_hash).collect::<Vec<_>>();
-        path.resize(DEPTH as usize, empty_hashes);
+        if path.len() != DEPTH as usize {
+            let empty_hashes = (0..ARITY.saturating_sub(1)).map(|_| self.empty_hash).collect::<Vec<_>>();
+            path.resize(DEPTH as usize, empty_hashes);
+        }
 
         // Return the Merkle path.
         KaryMerklePath::try_from((leaf_index as u64, path))
