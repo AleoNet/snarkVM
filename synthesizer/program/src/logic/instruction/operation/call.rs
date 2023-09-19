@@ -237,33 +237,58 @@ impl<N: Network, const VARIANT: u8> Call<N, VARIANT> {
             // Return the output register types.
             Ok(closure.outputs().iter().map(|output| output.register_type()).cloned().collect())
         }
-        // If the operator is a function, retrieve the function and compute the output types.
+        // If the operator is a function or finalize, retrieve the corresponding information and compute the output types.
         else if let Ok(function) = program.get_function(resource) {
-            // Ensure the number of operands matches the number of input statements.
-            if function.inputs().len() != self.operands.len() {
-                bail!("Expected {} inputs, found {}", function.inputs().len(), self.operands.len())
+            // If the operator is a finalize call, get the associated finalize block and compute the output types.
+            if VARIANT == Variant::CallFinalize as u8 {
+                let finalize = match function.finalize() {
+                    Some((_, finalize)) => finalize,
+                    None => bail!("Function '{resource}' does not have a finalize block"),
+                };
+                // Ensure the number of operands matches the number of input statements.
+                if finalize.inputs().len() != self.operands.len() {
+                    bail!("Expected {} inputs, found {}", finalize.inputs().len(), self.operands.len())
+                }
+                // Ensure the number of inputs matches the number of input statements.
+                if finalize.inputs().len() != input_types.len() {
+                    bail!("Expected {} input types, found {}", finalize.inputs().len(), input_types.len())
+                }
+                // Return the output register types.
+                // Note that these are empty because the finalize block does not have any outputs.
+                Ok(vec![])
             }
-            // Ensure the number of inputs matches the number of input statements.
-            if function.inputs().len() != input_types.len() {
-                bail!("Expected {} input types, found {}", function.inputs().len(), input_types.len())
+            // Otherwise, get the function and compute the output types.
+            else if VARIANT == Variant::CallFunction as u8 {
+                // Ensure the number of operands matches the number of input statements.
+                if function.inputs().len() != self.operands.len() {
+                    bail!("Expected {} inputs, found {}", function.inputs().len(), self.operands.len())
+                }
+                // Ensure the number of inputs matches the number of input statements.
+                if function.inputs().len() != input_types.len() {
+                    bail!("Expected {} input types, found {}", function.inputs().len(), input_types.len())
+                }
+                // Ensure the number of destinations matches the number of output statements.
+                if function.outputs().len() != self.destinations.len() {
+                    bail!("Expected {} outputs, found {}", function.outputs().len(), self.destinations.len())
+                }
+                // Return the output register types.
+                function
+                    .output_types()
+                    .into_iter()
+                    .map(|output_type| match (is_external, output_type) {
+                        // If the output is a record and the function is external, return the external record type.
+                        (true, ValueType::Record(record_name)) => Ok(RegisterType::ExternalRecord(Locator::from_str(
+                            &format!("{}/{}", program.id(), record_name),
+                        )?)),
+                        // Else, return the register type.
+                        (_, output_type) => Ok(RegisterType::from(output_type)),
+                    })
+                    .collect::<Result<Vec<_>>>()
             }
-            // Ensure the number of destinations matches the number of output statements.
-            if function.outputs().len() != self.destinations.len() {
-                bail!("Expected {} outputs, found {}", function.outputs().len(), self.destinations.len())
+            // Else, throw an error.
+            else {
+                bail!("Call variant '{}' is invalid or unsupported.", VARIANT)
             }
-            // Return the output register types.
-            function
-                .output_types()
-                .into_iter()
-                .map(|output_type| match (is_external, output_type) {
-                    // If the output is a record and the function is external, return the external record type.
-                    (true, ValueType::Record(record_name)) => Ok(RegisterType::ExternalRecord(Locator::from_str(
-                        &format!("{}/{}", program.id(), record_name),
-                    )?)),
-                    // Else, return the register type.
-                    (_, output_type) => Ok(RegisterType::from(output_type)),
-                })
-                .collect::<Result<Vec<_>>>()
         }
         // Else, throw an error.
         else {

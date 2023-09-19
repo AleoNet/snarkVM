@@ -457,8 +457,74 @@ impl<N: Network> FinalizeTypes<N> {
                 }
             }
             Opcode::Call(_) => {
-                todo!("Check call.finalize");
-                bail!("Instruction 'call' is not allowed in 'finalize'");
+                // enum CallType {
+                //     Closure,
+                //     Finalize,
+                // }
+                // // Retrieve the call operator.
+                // let (call_type, operator) = match instruction {
+                //     Instruction::CallClosure(call) => (CallType::Closure, call.operator()),
+                //     Instruction::CallFunction(call) => (CallType::Function, call.operator()),
+                //     Instruction::CallFinalize(_) => bail!("Cannot call `function` in a closure or function."),
+                //     _ => bail!("Instruction '{instruction}' is not a valid call operation."),
+                // };
+                //
+                // // Check that the call is well-formed.
+                // match operator {
+                //     CallOperator::Locator(locator) => {
+                //         // Retrieve the program ID.
+                //         let program_id = locator.program_id();
+                //         // Retrieve the resource from the locator.
+                //         let resource = locator.resource();
+                //
+                //         // Ensure the locator does not reference the current program.
+                //         if stack.program_id() == program_id {
+                //             bail!("Locator '{locator}' does not reference an external program.");
+                //         }
+                //         // Ensure the current program contains an import for this external program.
+                //         if !stack.program().imports().keys().contains(program_id) {
+                //             bail!("External program '{}' is not imported by '{program_id}'.", locator.program_id());
+                //         }
+                //
+                //         // Retrieve the program.
+                //         let external = stack.get_external_program(program_id)?;
+                //         // Ensure the closure or function exists in the program.
+                //         match call_type {
+                //             CallType::Closure => {
+                //                 if !external.contains_closure(resource) {
+                //                     bail!("Closure '{resource}' is not defined in '{}'.", external.id())
+                //                 }
+                //             }
+                //             CallType::Function => {
+                //                 if !external.contains_function(resource) {
+                //                     bail!("Function '{resource}' is not defined in '{}'.", external.id())
+                //                 }
+                //             }
+                //         }
+                //     }
+                //     CallOperator::Resource(resource) => {
+                //         // Ensure the resource does not reference this closure or function.
+                //         if resource == closure_or_function_name {
+                //             bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.")
+                //         }
+                //
+                //         // Ensure that the call is valid.
+                //         match call_type {
+                //             CallType::Closure => {
+                //                 // Ensure the closure exists in the program.
+                //                 if !stack.program().contains_closure(resource) {
+                //                     bail!("Closure '{resource}' is not defined in '{}'.", stack.program_id())
+                //                 }
+                //             }
+                //             // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
+                //             //  But there are legitimate uses for passing a record through to an internal function.
+                //             //  We could invoke the internal function without a state transition, but need to match visibility.
+                //             CallType::Function => bail!(
+                //                 "Cannot call a function '{resource}' from '{closure_or_function_name}'. Call a closure instead."
+                //             ),
+                //         }
+                //     }
+                // }
             }
             Opcode::Cast => {
                 // Retrieve the cast operation.
