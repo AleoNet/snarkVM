@@ -30,6 +30,12 @@ use snarkvm_circuit_algorithms::{
     BHP256,
     BHP512,
     BHP768,
+    Keccak256,
+    Keccak384,
+    Keccak512,
+    Sha3_256,
+    Sha3_384,
+    Sha3_512,
 };
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
@@ -63,6 +69,16 @@ thread_local! {
     static BHP_768: BHP768<FormalV0> = BHP768::<FormalV0>::constant(console::BHP_768.clone());
     /// The BHP hash function, which can take an input of up to 1024 bits.
     static BHP_1024: BHP1024<FormalV0> = BHP1024::<FormalV0>::constant(console::BHP_1024.clone());
+
+    /// The Keccak hash function.
+    static KECCAK_256: Keccak256<FormalV0> = Keccak256::<FormalV0>::new();
+    static KECCAK_384: Keccak384<FormalV0> = Keccak384::<FormalV0>::new();
+    static KECCAK_512: Keccak512<FormalV0> = Keccak512::<FormalV0>::new();
+
+    /// The SHA-3 hash function.
+    static SHA_3_256: Sha3_256<FormalV0> = Sha3_256::<FormalV0>::new();
+    static SHA_3_384: Sha3_384<FormalV0> = Sha3_384::<FormalV0>::new();
+    static SHA_3_512: Sha3_512<FormalV0> = Sha3_512::<FormalV0>::new();
 
     /// The Pedersen hash function, which can take an input of up to 64 bits.
     static PEDERSEN_64: Pedersen64<FormalV0> = Pedersen64::<FormalV0>::constant(console::PEDERSEN_64.clone());
@@ -185,6 +201,36 @@ impl Aleo for FormalV0 {
     /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.hash(input))
+    }
+
+    /// Returns the KECCAK hash with an output of 256-bits.
+    fn hash_keccak256(input: &[Boolean<Self>]) -> Vec<Boolean<FormalV0>> {
+        KECCAK_256.with(|keccak| keccak.hash(input))
+    }
+
+    /// Returns the KECCAK hash with an output of 256-bits.
+    fn hash_keccak384(input: &[Boolean<Self>]) -> Vec<Boolean<FormalV0>> {
+        KECCAK_384.with(|keccak| keccak.hash(input))
+    }
+
+    /// Returns the KECCAK hash with an output of 512-bits.
+    fn hash_keccak512(input: &[Boolean<Self>]) -> Vec<Boolean<FormalV0>> {
+        KECCAK_512.with(|keccak| keccak.hash(input))
+    }
+
+    /// Returns the SHA-3 hash with an output of 256-bits.
+    fn hash_sha3_256(input: &[Boolean<Self>]) -> Vec<Boolean<FormalV0>> {
+        SHA_3_256.with(|sha3| sha3.hash(input))
+    }
+
+    /// Returns the SHA-3 hash with an output of 256-bits.
+    fn hash_sha3_384(input: &[Boolean<Self>]) -> Vec<Boolean<FormalV0>> {
+        SHA_3_384.with(|sha3| sha3.hash(input))
+    }
+
+    /// Returns the SHA-3 hash with an output of 512-bits.
+    fn hash_sha3_512(input: &[Boolean<Self>]) -> Vec<Boolean<FormalV0>> {
+        SHA_3_512.with(|sha3| sha3.hash(input))
     }
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
