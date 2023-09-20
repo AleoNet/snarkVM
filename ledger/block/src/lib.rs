@@ -49,8 +49,9 @@ use console::{
 use ledger_authority::Authority;
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 use ledger_committee::Committee;
+use ledger_narwhal_compact_subdag::CompactSubdag;
 use ledger_narwhal_subdag::Subdag;
-use ledger_narwhal_transmission_id::TransmissionID;
+use ledger_narwhal_transmission_id::TransmissionType;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -100,8 +101,10 @@ impl<N: Network> Block<N> {
         solutions: Option<CoinbaseSolution<N>>,
         transactions: Transactions<N>,
     ) -> Result<Self> {
+        // Construct the compact subdag.
+        let compact_subdag = CompactSubdag::from_subdag(&subdag)?;
         // Construct the beacon authority.
-        let authority = Authority::new_quorum(subdag);
+        let authority = Authority::new_quorum(compact_subdag);
         // Construct the block.
         Self::from(previous_hash, header, authority, transactions, ratifications, solutions)
     }

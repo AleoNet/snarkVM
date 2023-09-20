@@ -53,9 +53,9 @@ package = "snarkvm-ledger-committee"
 path = "../committee"
 version = "=0.14.6"
 
-[dependencies.ledger-narwhal-batch-certificate]
-package = "snarkvm-ledger-narwhal-batch-certificate"
-path = "../narwhal/batch-certificate"
+[dependencies.ledger-narwhal-compact-batch-certificate]
+package = "snarkvm-ledger-narwhal-compact-batch-certificate"
+path = "../narwhal/compact-batch-certificate"
 version = "=0.14.6"
 
 [dependencies.synthesizer-program]

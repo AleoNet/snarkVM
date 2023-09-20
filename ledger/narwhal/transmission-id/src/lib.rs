@@ -15,6 +15,9 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::cast_possible_truncation)]
 
+pub mod transmission_type;
+pub use transmission_type::*;
+
 mod bytes;
 mod serialize;
 mod string;

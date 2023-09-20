@@ -461,9 +461,9 @@ impl<N: Network> Block<N> {
         }
     }
 
-    /// Checks that the transmission IDs in the given subdag matches the solutions and transactions in the block.
+    /// Checks that the transmission ID indexes in the given subdag matches the solutions and transactions in the block.
     pub(super) fn check_subdag_transmissions(
-        subdag: &Subdag<N>,
+        subdag: &CompactSubdag<N>,
         solutions: &Option<CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
     ) -> Result<()> {
@@ -472,29 +472,40 @@ impl<N: Network> Block<N> {
         // Prepare an iterator over the transaction IDs.
         let mut transaction_ids = transactions.transaction_ids();
 
-        // Initialize a list of rejected transmission IDs.
-        let mut rejected_transmission_ids = Vec::new();
+        // Initialize a list of rejected solutions and transactions.
+        let mut rejected_solutions = Vec::new();
+        let mut rejected_transactions = Vec::new();
 
-        // Iterate over the transmission IDs.
-        for transmission_id in subdag.transmission_ids() {
+        // Track the current solution and transaction indexes.
+        let mut solution_index: u32 = 0;
+        let mut transaction_index: u32 = 0;
+
+        // TODO (raychu86): The compact certificates do not have references to the aborted transactions/solutions,
+        //   so we must check them in the Ratify::RejectedTransmissions.
+        // Iterate over the transmission ID indexes.
+        for (transmission_type, index) in subdag.transmission_ids_map() {
             // Process the transmission ID.
-            match transmission_id {
-                TransmissionID::Ratification => {}
-                TransmissionID::Solution(commitment) => {
-                    match solutions.next() {
-                        // Check the next solution matches the expected commitment.
-                        Some(solution) if solution.commitment() == *commitment => {}
-                        // Otherwise, add the transmission ID to the rejected list.
-                        _ => rejected_transmission_ids.push(transmission_id),
-                    }
-                }
-                TransmissionID::Transaction(transaction_id) => {
+            match transmission_type {
+                TransmissionType::Ratification => {}
+                TransmissionType::Transaction => {
                     match transaction_ids.next() {
-                        // Check the next transaction matches the expected transaction.
-                        Some(expected_id) if transaction_id == expected_id => {}
-                        // Otherwise, add the transmission ID to the rejected list.
-                        _ => rejected_transmission_ids.push(transmission_id),
+                        // Check the next transaction index matches the expected index.
+                        Some(_) if transaction_index == *index => {}
+                        // Otherwise, add the transaction ID to the rejected list.
+                        _ => rejected_transactions.push(*index),
                     }
+
+                    transaction_index = transaction_index.saturating_add(1);
+                }
+                TransmissionType::Solution => {
+                    match solutions.next() {
+                        // Check the next solution index matches the expected index.
+                        Some(_) if solution_index == *index => {}
+                        // Otherwise, add the solution ID to the rejected list.
+                        _ => rejected_solutions.push(*index),
+                    }
+
+                    solution_index = solution_index.saturating_add(1);
                 }
             }
         }
