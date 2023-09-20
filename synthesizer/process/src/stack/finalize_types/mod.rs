@@ -42,6 +42,9 @@ pub struct FinalizeTypes<N: Network> {
     /// The mapping of all destination registers to their defined types.
     /// Note that in a finalize context, all registers are plaintext types.
     destinations: IndexMap<u64, PlaintextType<N>>,
+    /// The mapping of all callee registers to their defined types.
+    /// Note that in a finalize context, all registers are plaintext types.
+    callees: IndexMap<u64, PlaintextType<N>>,
 }
 
 impl<N: Network> FinalizeTypes<N> {
@@ -56,14 +59,26 @@ impl<N: Network> FinalizeTypes<N> {
     pub fn contains(&self, register: &Register<N>) -> bool {
         // Retrieve the register locator.
         let locator = &register.locator();
-        // The input and destination registers represent the full set of registers.
+        // The input, destination, and callee registers represent the full set of registers.
         // The output registers represent a subset of registers that are returned by the function.
-        self.inputs.contains_key(locator) || self.destinations.contains_key(locator)
+        self.inputs.contains_key(locator)
+            || self.destinations.contains_key(locator)
+            || self.callees.contains_key(locator)
     }
 
     /// Returns `true` if the given register corresponds to an input register.
     pub fn is_input(&self, register: &Register<N>) -> bool {
         self.inputs.contains_key(&register.locator())
+    }
+
+    /// Returns `true` if the given register corresponds to a destination register.
+    pub fn is_destination(&self, register: &Register<N>) -> bool {
+        self.destinations.contains_key(&register.locator())
+    }
+
+    /// Returns `true` if the given register corresponds to a callee register.
+    pub fn is_callee(&self, register: &Register<N>) -> bool {
+        self.callees.contains_key(&register.locator())
     }
 
     /// Returns the type of the given operand.
@@ -91,9 +106,12 @@ impl<N: Network> FinalizeTypes<N> {
         let mut plaintext_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
             self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
-        } else {
+        } else if self.is_destination(register) {
             // Retrieve the destination register type.
             self.destinations.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
+        } else {
+            // Retrieve the callee register type.
+            self.callees.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         };
 
         // Retrieve the path if the register is an access. Otherwise, return the type.

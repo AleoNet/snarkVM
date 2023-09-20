@@ -104,7 +104,6 @@ impl<N: Network> Process<N> {
             let mut finalize_operations = Vec::new();
 
             /* Finalize the execution. */
-
             // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
             //  Currently this loop assumes a linearly execution stack.
             // Finalize each transition, starting from the last one.
@@ -126,7 +125,6 @@ impl<N: Network> Process<N> {
             }
 
             /* Finalize the fee. */
-
             if let Some(fee) = fee {
                 // Retrieve the fee stack.
                 let fee_stack = self.get_stack(fee.program_id())?;

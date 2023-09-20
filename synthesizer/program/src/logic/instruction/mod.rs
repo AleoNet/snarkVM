@@ -81,8 +81,6 @@ pub enum Instruction<N: Network> {
     AssertNeq(AssertNeq<N>),
     /// Calls a closure on the operands.
     CallClosure(CallClosure<N>),
-    /// Calls a finalize on the operands.
-    CallFinalize(CallFinalize<N>),
     /// Calls a function on the operands.
     CallFunction(CallFunction<N>),
     /// Casts the operands into the declared type.
@@ -240,7 +238,6 @@ macro_rules! instruction {
             AssertEq,
             AssertNeq,
             CallClosure,
-            CallFinalize,
             CallFunction,
             Cast,
             CommitBHP256,
@@ -385,7 +382,6 @@ impl<N: Network> InstructionTrait<N> for Instruction<N> {
         match self {
             Self::CallClosure(call_closure) => Some(call_closure.operator()),
             Self::CallFunction(call_function) => Some(call_function.operator()),
-            Self::CallFinalize(call_finalize) => Some(call_finalize.operator()),
             _ => None,
         }
     }
@@ -400,12 +396,6 @@ impl<N: Network> InstructionTrait<N> for Instruction<N> {
     #[inline]
     fn is_closure_call(&self) -> bool {
         matches!(self, Self::CallClosure(..))
-    }
-
-    /// Returns `true` if the instruction is a finalize call instruction, e.g `call_finalize`.
-    #[inline]
-    fn is_finalize_call(&self) -> bool {
-        matches!(self, Self::CallFinalize(..))
     }
 
     /// Returns `true` if the instruction is a function call instruction, e.g `call.function`.
@@ -498,7 +488,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            68,
+            67,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

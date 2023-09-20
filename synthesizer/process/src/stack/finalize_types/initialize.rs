@@ -14,7 +14,18 @@
 
 use super::*;
 use crate::RegisterTypes;
-use synthesizer_program::{Branch, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
+use synthesizer_program::{
+    Branch,
+    CallFinalize,
+    CallOperator,
+    Contains,
+    Get,
+    GetOrUse,
+    RandChaCha,
+    Remove,
+    Set,
+    MAX_ADDITIONAL_SEEDS,
+};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -25,7 +36,8 @@ impl<N: Network> FinalizeTypes<N> {
         finalize: &Finalize<N>,
     ) -> Result<Self> {
         // Initialize a map of registers to their types.
-        let mut finalize_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
+        let mut finalize_types =
+            Self { inputs: IndexMap::new(), destinations: IndexMap::new(), callees: IndexMap::new() };
 
         // Step 1. Check the inputs are well-formed.
         for input in finalize.inputs() {
@@ -49,6 +61,8 @@ impl<N: Network> FinalizeTypes<N> {
     fn add_input(&mut self, register: Register<N>, plaintext_type: PlaintextType<N>) -> Result<()> {
         // Ensure there are no destination registers set yet.
         ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
+        // Ensure there are no callee registers set yet.
+        ensure!(self.callees.is_empty(), "Cannot add input registers after callee registers.");
 
         // Check the input register.
         match register {
@@ -76,11 +90,36 @@ impl<N: Network> FinalizeTypes<N> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the registers are monotonically increasing.
-                let expected_locator = (self.inputs.len() as u64) + self.destinations.len() as u64;
+                let expected_locator =
+                    (self.inputs.len() as u64) + (self.destinations.len() as u64) + (self.callees.len() as u64);
                 ensure!(expected_locator == locator, "Register '{register}' is out of order");
 
                 // Insert the destination register and type.
                 match self.destinations.insert(locator, plaintext_type) {
+                    // If the register already exists, throw an error.
+                    Some(..) => bail!("Destination '{register}' already exists"),
+                    // If the register does not exist, return success.
+                    None => Ok(()),
+                }
+            }
+            // Ensure the register is a locator, and not an access.
+            Register::Access(..) => bail!("Register '{register}' must be a locator."),
+        }
+    }
+
+    /// Inserts the given callee register and type into the registers.
+    /// Note: The given callee register must be a `Register::Locator`.
+    fn add_callee(&mut self, register: Register<N>, plaintext_type: PlaintextType<N>) -> Result<()> {
+        // Check the destination register.
+        match register {
+            Register::Locator(locator) => {
+                // Ensure the registers are monotonically increasing.
+                let expected_locator =
+                    (self.inputs.len() as u64) + (self.destinations.len() as u64) + (self.callees.len() as u64);
+                ensure!(expected_locator == locator, "Register '{register}' is out of order");
+
+                // Insert the callee register and type.
+                match self.callees.insert(locator, plaintext_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Destination '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -129,6 +168,7 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize.name(), instruction)?,
+            Command::CallFinalize(call_finalize) => self.check_call_finalize(stack, call_finalize)?,
             Command::Contains(contains) => self.check_contains(stack, finalize.name(), contains)?,
             Command::Get(get) => self.check_get(stack, finalize.name(), get)?,
             Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize.name(), get_or_use)?,
@@ -171,6 +211,52 @@ impl<N: Network> FinalizeTypes<N> {
             branch.position()
         );
         Ok(())
+    }
+
+    /// Ensures the given `call.finalize` command is well-formed.
+    #[inline]
+    fn check_call_finalize(
+        &mut self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        call_finalize: &CallFinalize<N>,
+    ) -> Result<()> {
+        // Retrieve the program and resource.
+        let (program, resource) = match &call_finalize.operator() {
+            // Retrieve the program and resource from the locator.
+            CallOperator::Locator(locator) => (stack.get_external_program(locator.program_id())?, locator.resource()),
+            CallOperator::Resource(resource) => {
+                // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
+                //  But there are legitimate uses for passing a record through to an internal function.
+                //  We could invoke the internal function without a state transition, but need to match visibility.
+                if stack.program().contains_function(resource) {
+                    bail!("Cannot call a local finalize block.")
+                }
+                (stack.program(), resource)
+            }
+        };
+
+        // If the operator is a function, retrieve its corresponding finalize and compute the output types.
+        if let Ok(function) = program.get_function(resource) {
+            // Get the associated finalize block and compute the output types.
+            let finalize = match function.finalize() {
+                Some((_, finalize)) => finalize,
+                None => bail!("Function '{resource}' does not have a finalize block"),
+            };
+            // Ensure the number of callee input registers matches the number of input statements.
+            if finalize.inputs().len() != call_finalize.inputs().len() {
+                bail!("Expected {} inputs, found {}", finalize.inputs().len(), call_finalize.inputs().len())
+            }
+            // Initialize the callee input registers with their corresponding input types.
+            for (input, register) in finalize.inputs().iter().zip_eq(call_finalize.inputs()) {
+                // Add the callee register.
+                self.add_callee(register.clone(), input.plaintext_type().clone())?
+            }
+            Ok(())
+        }
+        // Else, throw an error.
+        else {
+            bail!("Call operator '{}' is invalid or unsupported.", call_finalize.operator())
+        }
     }
 
     /// Ensures the given `contains` command is well-formed.
@@ -457,74 +543,7 @@ impl<N: Network> FinalizeTypes<N> {
                 }
             }
             Opcode::Call(_) => {
-                // enum CallType {
-                //     Closure,
-                //     Finalize,
-                // }
-                // // Retrieve the call operator.
-                // let (call_type, operator) = match instruction {
-                //     Instruction::CallClosure(call) => (CallType::Closure, call.operator()),
-                //     Instruction::CallFunction(call) => (CallType::Function, call.operator()),
-                //     Instruction::CallFinalize(_) => bail!("Cannot call `function` in a closure or function."),
-                //     _ => bail!("Instruction '{instruction}' is not a valid call operation."),
-                // };
-                //
-                // // Check that the call is well-formed.
-                // match operator {
-                //     CallOperator::Locator(locator) => {
-                //         // Retrieve the program ID.
-                //         let program_id = locator.program_id();
-                //         // Retrieve the resource from the locator.
-                //         let resource = locator.resource();
-                //
-                //         // Ensure the locator does not reference the current program.
-                //         if stack.program_id() == program_id {
-                //             bail!("Locator '{locator}' does not reference an external program.");
-                //         }
-                //         // Ensure the current program contains an import for this external program.
-                //         if !stack.program().imports().keys().contains(program_id) {
-                //             bail!("External program '{}' is not imported by '{program_id}'.", locator.program_id());
-                //         }
-                //
-                //         // Retrieve the program.
-                //         let external = stack.get_external_program(program_id)?;
-                //         // Ensure the closure or function exists in the program.
-                //         match call_type {
-                //             CallType::Closure => {
-                //                 if !external.contains_closure(resource) {
-                //                     bail!("Closure '{resource}' is not defined in '{}'.", external.id())
-                //                 }
-                //             }
-                //             CallType::Function => {
-                //                 if !external.contains_function(resource) {
-                //                     bail!("Function '{resource}' is not defined in '{}'.", external.id())
-                //                 }
-                //             }
-                //         }
-                //     }
-                //     CallOperator::Resource(resource) => {
-                //         // Ensure the resource does not reference this closure or function.
-                //         if resource == closure_or_function_name {
-                //             bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.")
-                //         }
-                //
-                //         // Ensure that the call is valid.
-                //         match call_type {
-                //             CallType::Closure => {
-                //                 // Ensure the closure exists in the program.
-                //                 if !stack.program().contains_closure(resource) {
-                //                     bail!("Closure '{resource}' is not defined in '{}'.", stack.program_id())
-                //                 }
-                //             }
-                //             // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
-                //             //  But there are legitimate uses for passing a record through to an internal function.
-                //             //  We could invoke the internal function without a state transition, but need to match visibility.
-                //             CallType::Function => bail!(
-                //                 "Cannot call a function '{resource}' from '{closure_or_function_name}'. Call a closure instead."
-                //             ),
-                //         }
-                //     }
-                // }
+                bail!("Instruction 'call' is not allowed in 'finalize'");
             }
             Opcode::Cast => {
                 // Retrieve the cast operation.
