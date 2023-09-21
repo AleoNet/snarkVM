@@ -459,43 +459,23 @@ mod tests {
     #[test]
     // from above: fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>>
     fn formal_sample_round() {
-     // first make a vector of size MODULO * MODULO of U64<FormalCiruit>
-     // let mut v = Vec<U64<FormalCircuit>>
+        // first make a vector of size MODULO * MODULO of U64<FormalCicruit>
+        let v = (0..MODULO * MODULO).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
 
-        let a = vec![
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-            U64::new(Mode::Private, console::U64::zero()),
-        ];
         let round_constant = &U64::<FormalCircuit>::new(Mode::Private, console::U64::zero());
-        let rotl = &[0, 0, 0, 0, 0, 0, 0, 0];
+        // initialize a Keccak Circuit with new() in order to generate the rotl
+        let k = Keccak::<Circuit, { KeccakType::Keccak as u8 }, 256>::new();
 
-        FormalCircuit::reset();
-        let _candidate = Keccak256::round(a, round_constant, rotl);
+        // print the entries of rotl
+        println!("// rotl: {:?}", k.rotl);
+
+        // Push the vector of U64::<FormalCircuit> through the round() function
+        let _candidate = Keccak256::round(v, round_constant, &k.rotl);
+
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
-        println!("TRANSCRIPT\n{output}");
+
+        println!("// keccak256::round");
+        println!("{}", output);
     }
 }
