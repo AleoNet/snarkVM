@@ -285,7 +285,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
 mod tests {
     use super::*;
     use console::Rng;
-    use snarkvm_circuit_types::environment::Circuit;
+    use snarkvm_circuit_types::environment::{Circuit, FormalCircuit};
 
     const ITERATIONS: usize = 3;
 
@@ -455,4 +455,11 @@ mod tests {
     fn test_sha3_512_equivalence() {
         check_equivalence!(console::Sha3_512::default(), Sha3_512::<Circuit>::new());
     }
+
+    // #[test]
+    // // from above: fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>>
+    // fn formal_sample_round() {
+        // first make a vector of size MODULO * MODULO of U64<FormalCiruit>
+        // let mut v = Vec<U64<FormalCircuit>>
+    // ... }
 }
