@@ -32,6 +32,9 @@ default-features = false
 path = "../../utilities"
 default-features = false
 
+[dev-dependencies.serde_json]
+version = "1.0"
+
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]

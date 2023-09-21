@@ -2590,6 +2590,7 @@ name = "snarkvm-circuit-algorithms"
 version = "0.14.6"
 dependencies = [
  "anyhow",
+ "serde_json",
  "snarkvm-circuit-types",
  "snarkvm-console-algorithms",
  "snarkvm-curves",

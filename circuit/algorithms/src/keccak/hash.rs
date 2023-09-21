@@ -285,7 +285,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
 mod tests {
     use super::*;
     use console::Rng;
-    use snarkvm_circuit_types::environment::{Circuit, FormalCircuit};
+    use snarkvm_circuit_types::environment::{Circuit, FormalCircuit, Transcribe};
 
     const ITERATIONS: usize = 3;
 
@@ -456,10 +456,46 @@ mod tests {
         check_equivalence!(console::Sha3_512::default(), Sha3_512::<Circuit>::new());
     }
 
-    // #[test]
-    // // from above: fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>>
-    // fn formal_sample_round() {
-        // first make a vector of size MODULO * MODULO of U64<FormalCiruit>
-        // let mut v = Vec<U64<FormalCircuit>>
-    // ... }
+    #[test]
+    // from above: fn round(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>>
+    fn formal_sample_round() {
+     // first make a vector of size MODULO * MODULO of U64<FormalCiruit>
+     // let mut v = Vec<U64<FormalCircuit>>
+
+        let a = vec![
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+            U64::new(Mode::Private, console::U64::zero()),
+        ];
+        let round_constant = &U64::<FormalCircuit>::new(Mode::Private, console::U64::zero());
+        let rotl = &[0, 0, 0, 0, 0, 0, 0, 0];
+
+        FormalCircuit::reset();
+        let _candidate = Keccak256::round(a, round_constant, rotl);
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("TRANSCRIPT\n{output}");
+    }
 }
