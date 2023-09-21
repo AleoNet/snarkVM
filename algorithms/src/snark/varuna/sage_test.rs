@@ -155,6 +155,7 @@ mod tests {
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&keys_to_constraints, rng).unwrap();
         let prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, rng).unwrap();
         let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
+        println!("first_round_oracles: {:?}", first_round_oracles);
 
         let assignments = AHPForR1CS::<_, MM>::calculate_assignments(&prover_state).unwrap();
         let constraint_domain = EvaluationDomain::<Fr>::new(num_constraints).unwrap();
@@ -172,8 +173,11 @@ mod tests {
         let combiners = verifier::BatchCombiners::<Fr> { circuit_combiner, instance_combiners };
         let batch_combiners = BTreeMap::from_iter([(index_pk.circuit.id, combiners)]);
         let verifier_first_msg = verifier::FirstMessage::<Fr> { batch_combiners };
+        println!("verifier_first_msg: {:?}", verifier_first_msg);
+
         let (second_oracles, prover_state) =
             AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_msg, prover_state).unwrap();
+        println!("second_oracles: {:?}", second_oracles);
 
         // TODO: hardcoding for testing purposes
         let alpha = Fr::from_str("22").unwrap();
@@ -189,13 +193,31 @@ mod tests {
             AHPForR1CS::<_, MM>::prover_third_round(&verifier_first_msg, &verifier_second_msg, prover_state, rng)
                 .unwrap();
 
+        println!("\n");
+        println!("prover_third_message\n:{:?}", prover_third_message);
+        println!("\n");
+        println!("third_oracles g1 polynomial\n:{:?}", third_oracles.g_1);
+        println!("\n");
+        println!("third_oracles h1 polynomial\n:{:?}", third_oracles.h_1);
+        println!("\n");
+
         let verifier_third_msg = verifier::ThirdMessage::<Fr> { beta };
+
+        println!("verifier_third_msg\n:{:?}", verifier_third_msg);
+        println!("\n");
 
         let (prover_fourth_message, fourth_oracles, prover_state) =
             AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_second_msg, &verifier_third_msg, prover_state, rng)
                 .unwrap();
 
+        println!("prover_fourth_message: {:?}", prover_fourth_message);
+        println!("\n");
+        println!("fourth_oracles\n:{:?}", fourth_oracles);
+        println!("\n");
+
         let verifier_fourth_msg = verifier::FourthMessage::<Fr> { delta_a, delta_b, delta_c };
+        println!("verifier_fourth_msg\n:{:?}", verifier_fourth_msg);
+        println!("\n");
 
         let mut public_inputs = BTreeMap::new();
         let public_input = prover_state.public_inputs(&index_pk.circuit).unwrap();
@@ -209,6 +231,10 @@ mod tests {
 
         let fifth_oracles =
             AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg.clone(), prover_state, rng).unwrap();
+
+        println!("fifth_oracles\n:{:?}", fifth_oracles);
+        println!("\n");
+        println!("fifth_oracles h_2polynomial\n:{:?}", fifth_oracles.h_2);
 
         use std::marker::PhantomData;
         let mut circuit_specific_states = BTreeMap::new();
@@ -234,6 +260,7 @@ mod tests {
             gamma: Some(gamma),
             mode: PhantomData,
         };
+        println!("verifier_state: {:?}", verifier_state);
 
         let polynomials: Vec<_> = index_pk
             .circuit
@@ -245,6 +272,9 @@ mod tests {
             .chain(fifth_oracles.iter())
             .collect();
 
+        println!("polynomials: {:?}", polynomials);
+        println!("\n");
+
         let _lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_inputs,
             &polynomials,
@@ -253,6 +283,9 @@ mod tests {
             &verifier_state,
         )
         .unwrap();
+
+        println!("lc_s: {:?}", _lc_s);
+        println!("\n");
 
         // TODO: I can save space by using bytes instead of number characters, and allocating the right amount immediately
         let mut h_0 = String::new();
