@@ -99,15 +99,27 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the number of transitions");
 
+        // Construct the call graph for the execution.
+        let call_graph = self.construct_call_graph(execution)?;
+
         atomic_batch_scope!(store, {
             // Initialize a list for finalize operations.
             let mut finalize_operations = Vec::new();
 
-            /* Finalize the execution. */
-            // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
-            //  Currently this loop assumes a linearly execution stack.
-            // Finalize each transition, starting from the last one.
-            for transition in execution.transitions() {
+            // Initialize a stack for the transitions that need to be finalized.
+            let mut stack = Vec::new();
+
+            // Get the starting transition.
+            let transition = execution.peek()?;
+            // Initialize the transition state and add it to the stack.
+            let state = self.initialize_transition_state(state, transition)?;
+            stack.push();
+
+            // Push the starting transition and the program counter onto the queue.
+            stack.push((transition, 0));
+
+            // Finalize each transition, until the stack is empty.
+            while let Some((transition, counter)) = stack.pop() {
                 // Retrieve the program ID.
                 let program_id = transition.program_id();
                 // Retrieve the function name.
@@ -178,6 +190,39 @@ fn finalize_fee_transition<N: Network, P: FinalizeStorage<N>>(
         Err(error) => bail!("'finalize' failed on '{}/{}' - {error}", fee.program_id(), fee.function_name()),
     }
 }
+
+/// Metadata for a transition as it is being finalized.
+struct TransitionState<'a, N: Network> {
+    counter: usize,
+    registers: FinalizeRegisters<N>,
+    stack: &'a Stack<N>,
+    transition: &'a Transition<N>,
+}
+
+impl<N: Network> Process<N> {
+    /// Initializes the transition state.
+    fn initialize_transition_state(&self, state: FinalizeGlobalState, transition: &Transition<N>) -> TransitionState<N> {
+        // Retrieve the stack.
+        let stack = self.get_stack(transition.program_id()).unwrap();
+        // Initialize the finalize registers.
+        let registers = FinalizeRegisters::<N>::new(
+            state,
+            *transition.id(),
+            *transition.function_name(),
+            stack.get_finalize_types(finalize.name())?.clone(),
+        );
+        // Initialize the transition state.
+        TransitionState {
+            counter: 0,
+            registers,
+            stack,
+            transition,
+        }
+    }
+}
+
+
+
 
 /// Finalizes the given transition.
 fn finalize_transition<N: Network, P: FinalizeStorage<N>>(

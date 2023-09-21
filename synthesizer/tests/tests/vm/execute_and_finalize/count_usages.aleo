@@ -3,11 +3,10 @@ randomness: 904282498
 cases:
   - program: count_usages.aleo
     function: add_and_subtract
-    inputs:
-    - [1i64, 1i64]
+    inputs: [1i64, 1i64]
 */
 
-program math.aleo;
+program basic_math.aleo;
 
 mapping add_uses:
     key owner as address.public;
@@ -46,20 +45,35 @@ finalize sub_and_count:
 
 /////////////////////////////////////////////////
 
-import math.aleo;
+import basic_math.aleo;
 
 program count_usages.aleo;
 
 function add_and_subtract:
     input r0 as i64.private;
     input r1 as i64.private;
-    call.function math.aleo/add_and_count r0 r1 into r2;
-    call.function math.aleo/sub_and_count r0 r1 into r3;
+    call.function basic_math.aleo/add_and_count r0 r1 into r2 then r3;
+    call.function basic_math.aleo/sub_and_count r2 r1 into r3 then r4;
     assert.eq r0 r3;
-    finalize;
+    finalize r0;
 
 
 finalize add_and_subtract:
-    call.finalize math.aleo/add_and_count r0;
-    call.finalize math.aleo/sub_and_count r1;
+    input r0 as i64.public;
+    call.finalize basic_math.aleo/add_and_count r1;
+    call.finalize basic_math.aleo/sub_and_count r2;
+    assert.eq r1 r2;
+
+
+
+function add_and_subtract:
+    input r0 as i64.private;
+    input r1 as i64.private;
+    call.function basic_math.aleo/add_and_count r0 r1 into r2 then r3;
+    call.function basic_math.aleo/sub_and_count r2 r1 into r4 then r5;
+    assert.eq r0 r4;
+finalize;
+    call.finalize basic_math.aleo/add_and_count with r3
+    call.finalize basic_math.aleo/sub_and_count r5;
+    assert.eq r3 r5;
 
