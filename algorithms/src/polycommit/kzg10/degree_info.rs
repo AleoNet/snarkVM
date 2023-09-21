@@ -33,16 +33,16 @@ impl DegreeInfo {
         let hiding_bound = self.hiding_bound.max(other.hiding_bound);
         let max_degree = self.max_degree.max(other.max_degree);
         let max_fft_size = self.max_fft_size.max(other.max_fft_size);
-        let mut new_bounds = self.degree_bounds.unwrap_or_default();
-        if let Some(other_bounds) = &other.degree_bounds {
-            new_bounds = &new_bounds | other_bounds;
-        }
-        let degree_bounds = (!new_bounds.is_empty()).then_some(new_bounds);
-        let mut new_l_sizes = self.lagrange_sizes.unwrap_or_default();
-        if let Some(other_l_sizes) = &other.lagrange_sizes {
-            new_l_sizes = &new_l_sizes | other_l_sizes;
-        }
-        let lagrange_sizes = (!new_l_sizes.is_empty()).then_some(new_l_sizes);
+        let degree_bounds = match (&self.degree_bounds, &other.degree_bounds) {
+            (Some(a), Some(b)) => Some(a | b),
+            (Some(a), None) | (None, Some(a)) => Some(&HashSet::new() | a),
+            (None, None) => None,
+        };
+        let lagrange_sizes = match (&self.lagrange_sizes, &other.lagrange_sizes) {
+            (Some(a), Some(b)) => Some(a | b),
+            (Some(a), None) | (None, Some(a)) => Some(&HashSet::new() | a),
+            (None, None) => None,
+        };
         Self { max_degree, max_fft_size, degree_bounds, lagrange_sizes, hiding_bound }
     }
 }
