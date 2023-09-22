@@ -30,7 +30,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Step 1. Check the inputs are well-formed.
         for input in finalize.inputs() {
             // Check the input register type.
-            finalize_types.check_input(stack, input.register(), input.plaintext_type())?;
+            finalize_types.check_input(stack, input.register(), input.finalize_type())?;
         }
 
         // Step 2. Check the commands are well-formed.
@@ -46,7 +46,7 @@ impl<N: Network> FinalizeTypes<N> {
 impl<N: Network> FinalizeTypes<N> {
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
-    fn add_input(&mut self, register: Register<N>, plaintext_type: PlaintextType<N>) -> Result<()> {
+    fn add_input(&mut self, register: Register<N>, finalize_type: FinalizeType<N>) -> Result<()> {
         // Ensure there are no destination registers set yet.
         ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
 
@@ -57,7 +57,7 @@ impl<N: Network> FinalizeTypes<N> {
                 ensure!(self.inputs.len() as u64 == locator, "Register '{register}' is out of order");
 
                 // Insert the input register and type.
-                match self.inputs.insert(locator, plaintext_type) {
+                match self.inputs.insert(locator, finalize_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Input '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -71,7 +71,7 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Inserts the given destination register and type into the registers.
     /// Note: The given destination register must be a `Register::Locator`.
-    fn add_destination(&mut self, register: Register<N>, plaintext_type: PlaintextType<N>) -> Result<()> {
+    fn add_destination(&mut self, register: Register<N>, finalize_type: FinalizeType<N>) -> Result<()> {
         // Check the destination register.
         match register {
             Register::Locator(locator) => {
@@ -80,7 +80,7 @@ impl<N: Network> FinalizeTypes<N> {
                 ensure!(expected_locator == locator, "Register '{register}' is out of order");
 
                 // Insert the destination register and type.
-                match self.destinations.insert(locator, plaintext_type) {
+                match self.destinations.insert(locator, finalize_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Destination '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -100,22 +100,26 @@ impl<N: Network> FinalizeTypes<N> {
         &mut self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         register: &Register<N>,
-        plaintext_type: &PlaintextType<N>,
+        finalize_type: &FinalizeType<N>,
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
-        match plaintext_type {
-            PlaintextType::Literal(..) => (),
-            PlaintextType::Struct(struct_name) => RegisterTypes::check_struct(stack, struct_name)?,
-            PlaintextType::Array(array_type) => RegisterTypes::check_array(stack, array_type)?,
+        match finalize_type {
+            FinalizeType::Plaintext(PlaintextType::Literal(..)) => (),
+            FinalizeType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                RegisterTypes::check_struct(stack, struct_name)?
+            }
+            FinalizeType::Plaintext(PlaintextType::Array(array_type)) => RegisterTypes::check_array(stack, array_type)?,
+            FinalizeType::Future => todo!(),
         };
 
         // Insert the input register.
-        self.add_input(register.clone(), plaintext_type.clone())?;
+        self.add_input(register.clone(), finalize_type.clone())?;
 
         // Ensure the register type and the input type match.
-        if plaintext_type != &self.get_type(stack, register)? {
+        if finalize_type != &self.get_type(stack, register)? {
             bail!("Input '{register}' does not match the expected input register type.")
         }
+
         Ok(())
     }
 
@@ -152,9 +156,19 @@ impl<N: Network> FinalizeTypes<N> {
         branch: &Branch<N, VARIANT>,
     ) -> Result<()> {
         // Get the type of the first operand.
-        let first_type = self.get_type_from_operand(stack, branch.first())?;
+        let first_type = match self.get_type_from_operand(stack, branch.first())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Get the type of the second operand.
-        let second_type = self.get_type_from_operand(stack, branch.second())?;
+        let second_type = match self.get_type_from_operand(stack, branch.second())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Check that the operands have the same type.
         ensure!(
             first_type == second_type,
@@ -191,7 +205,12 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, contains.key())?;
+        let key_type = match self.get_type_from_operand(stack, contains.key())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Check that the key type in the mapping matches the key type in the instruction.
         if *mapping_key_type != key_type {
             bail!(
@@ -203,7 +222,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, PlaintextType::Literal(LiteralType::Boolean))?;
+        self.add_destination(destination, FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Boolean)))?;
         Ok(())
     }
 
@@ -227,7 +246,12 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, get.key())?;
+        let key_type = match self.get_type_from_operand(stack, get.key())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Check that the key type in the mapping matches the key type in the instruction.
         if *mapping_key_type != key_type {
             bail!("Key type in `get` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
@@ -237,7 +261,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, mapping_value_type.clone())?;
+        self.add_destination(destination, FinalizeType::Plaintext(mapping_value_type.clone()))?;
         Ok(())
     }
 
@@ -261,7 +285,12 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, get_or_use.key())?;
+        let key_type = match self.get_type_from_operand(stack, get_or_use.key())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
             bail!(
@@ -269,7 +298,12 @@ impl<N: Network> FinalizeTypes<N> {
             )
         }
         // Retrieve the register type of the default value.
-        let default_value_type = self.get_type_from_operand(stack, get_or_use.default())?;
+        let default_value_type = match self.get_type_from_operand(stack, get_or_use.default())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Mapping default value cannot be a future"),
+        };
         // Check that the value type in the mapping matches the default value type.
         if mapping_value_type != &default_value_type {
             bail!(
@@ -281,7 +315,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Ensure the destination register is a locator (and does not reference an access).
         ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
         // Insert the destination register.
-        self.add_destination(destination, default_value_type)?;
+        self.add_destination(destination, FinalizeType::Plaintext(default_value_type))?;
         Ok(())
     }
 
@@ -312,7 +346,7 @@ impl<N: Network> FinalizeTypes<N> {
         );
 
         // Insert the destination register.
-        self.add_destination(destination, PlaintextType::from(destination_type))?;
+        self.add_destination(destination, FinalizeType::Plaintext(PlaintextType::from(destination_type)))?;
         Ok(())
     }
 
@@ -336,13 +370,23 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping value type.
         let mapping_value_type = mapping.value().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, set.key())?;
+        let key_type = match self.get_type_from_operand(stack, set.key())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
             bail!("Key type in `set` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
         }
         // Retrieve the type of the value.
-        let value_type = self.get_type_from_operand(stack, set.value())?;
+        let value_type = match self.get_type_from_operand(stack, set.value())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Check that the value type in the mapping matches the type of the value.
         if mapping_value_type != &value_type {
             bail!(
@@ -370,7 +414,12 @@ impl<N: Network> FinalizeTypes<N> {
         // Get the mapping key type.
         let mapping_key_type = mapping.key().plaintext_type();
         // Retrieve the register type of the key.
-        let key_type = self.get_type_from_operand(stack, remove.key())?;
+        let key_type = match self.get_type_from_operand(stack, remove.key())? {
+            // If the register is a plaintext type, return it.
+            FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+            // If the register is a future, throw an error.
+            FinalizeType::Future => bail!("Array element cannot be a future"),
+        };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
             bail!("Key type in `remove` '{key_type}' does not match the key type in the mapping '{mapping_key_type}'.")
@@ -394,7 +443,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Iterate over the operands, and retrieve the register type of each operand.
         for operand in instruction.operands() {
             // Retrieve and append the register type.
-            operand_types.push(RegisterType::Plaintext(self.get_type_from_operand(stack, operand)?));
+            operand_types.push(RegisterType::from(self.get_type_from_operand(stack, operand)?));
         }
 
         // Compute the destination register types.
@@ -408,7 +457,8 @@ impl<N: Network> FinalizeTypes<N> {
             ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
             // Ensure that the destination type is a plaintext type.
             let destination_type = match destination_type {
-                RegisterType::Plaintext(destination_type) => destination_type,
+                RegisterType::Plaintext(destination_type) => FinalizeType::Plaintext(destination_type),
+                RegisterType::Future => FinalizeType::Future,
                 _ => bail!("Destination type '{destination_type}' must be a plaintext type."),
             };
             // Insert the destination register.

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::FinalizeType;
 
 impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
     /// Assigns the given value to the given register, assuming the register is not already assigned.
@@ -47,7 +48,11 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
                 // Ensure the type of the register is valid.
                 match self.finalize_types.get_type(stack, register) {
                     // Ensure the plaintext value matches the plaintext type.
-                    Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
+                    Ok(FinalizeType::Plaintext(plaintext_type)) => {
+                        stack.matches_plaintext(&plaintext_value, &plaintext_type)?
+                    }
+                    // TODO (@d0cd)
+                    Ok(FinalizeType::Future) => todo!(),
                     // Ensure the register is defined.
                     Err(error) => bail!("Register '{register}' is missing a type definition: {error}"),
                 };
