@@ -34,6 +34,9 @@ impl<N: Network> ArrayType<N> {
     /// Initializes a new multi-dimensional array type.
     /// Note that the dimensions must be specified from the outermost to the innermost.
     pub fn new(plaintext_type: PlaintextType<N>, mut dimensions: Vec<U32<N>>) -> Result<Self> {
+        // Ensure that the type is not a future.
+        ensure!(plaintext_type != PlaintextType::Future, "A 'future' cannot be an array element.");
+
         // Check that the number of dimensions are valid.
         ensure!(!dimensions.is_empty(), "An array must have at least one dimension");
         ensure!(dimensions.len() <= N::MAX_DATA_DEPTH, "An array can have at most {} dimensions", N::MAX_DATA_DEPTH);
@@ -162,6 +165,9 @@ mod tests {
 
     #[test]
     fn test_array_type_fails() {
+        let type_ = ArrayType::<CurrentNetwork>::from_str("[future; 0u32]");
+        assert!(type_.is_err());
+
         let type_ = ArrayType::<CurrentNetwork>::from_str("[field; 0u32]");
         assert!(type_.is_err());
 

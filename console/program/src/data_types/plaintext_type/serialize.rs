@@ -43,6 +43,8 @@ mod tests {
 
     /// Add test cases here to be checked for serialization.
     const TEST_CASES: &[&str] = &[
+        // Future
+        "future",
         // Literal
         "address",
         "boolean",

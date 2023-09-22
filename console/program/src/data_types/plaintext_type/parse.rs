@@ -20,6 +20,7 @@ impl<N: Network> Parser for PlaintextType<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the plaintext type (order matters).
         alt((
+            map(tag("future"), |_| Self::Future),
             map(ArrayType::parse, |type_| Self::Array(type_)),
             map(LiteralType::parse, |type_| Self::Literal(type_)),
             map(Identifier::parse, |identifier| Self::Struct(identifier)),
@@ -55,6 +56,8 @@ impl<N: Network> Display for PlaintextType<N> {
     /// Prints the plaintext type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
+            // Prints the keyword `future`
+            Self::Future => Display::fmt("future", f),
             // Prints the literal, i.e. field
             Self::Literal(literal) => Display::fmt(literal, f),
             // Prints the struct, i.e. signature
@@ -74,6 +77,7 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
+        assert_eq!(PlaintextType::parse("future"), Ok(("", PlaintextType::<CurrentNetwork>::Future)));
         assert_eq!(
             PlaintextType::parse("field"),
             Ok(("", PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field)))
@@ -171,6 +175,7 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
+        assert_eq!(PlaintextType::<CurrentNetwork>::Future.to_string(), "future");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Boolean).to_string(), "boolean");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Signature).to_string(), "signature");

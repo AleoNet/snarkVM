@@ -22,6 +22,8 @@ use snarkvm_console_network::prelude::*;
 /// A `PlaintextType` defines the type parameter for a literal, struct, or array.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum PlaintextType<N: Network> {
+    /// A future type.
+    Future,
     /// A literal type contains its type name.
     /// The format of the type is `<type_name>`.
     Literal(LiteralType),
