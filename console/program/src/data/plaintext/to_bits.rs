@@ -18,10 +18,20 @@ impl<N: Network> ToBits for Plaintext<N> {
     /// Returns this plaintext as a list of **little-endian** bits.
     fn write_bits_le(&self, vec: &mut Vec<bool>) {
         match self {
-            Self::Literal(literal, bits_le) => {
+            Self::Future(future, bits_le) => {
                 // Compute the bits.
                 let bits = bits_le.get_or_init(|| {
                     let mut bits_le = vec![false, false]; // Variant bits.
+                    future.write_bits_le(&mut bits_le);
+                    bits_le
+                });
+                // Extend the vector with the bits.
+                vec.extend_from_slice(bits)
+            }
+            Self::Literal(literal, bits_le) => {
+                // Compute the bits.
+                let bits = bits_le.get_or_init(|| {
+                    let mut bits_le = vec![false, true]; // Variant bits.
                     literal.variant().write_bits_le(&mut bits_le);
                     literal.size_in_bits().write_bits_le(&mut bits_le);
                     literal.write_bits_le(&mut bits_le);
@@ -33,7 +43,7 @@ impl<N: Network> ToBits for Plaintext<N> {
             Self::Struct(struct_, bits_le) => {
                 // Compute the bits.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![false, true]; // Variant bits.
+                    let mut bits_le = vec![true, false]; // Variant bits.
 
                     // Write the length of the struct.
                     u8::try_from(struct_.len())
@@ -61,7 +71,7 @@ impl<N: Network> ToBits for Plaintext<N> {
             Self::Array(array, bits_le) => {
                 // Compute the bits.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![true, false]; // Variant bits.
+                    let mut bits_le = vec![true, true]; // Variant bits.
 
                     // Write the length of the array.
                     u32::try_from(array.len())
@@ -91,10 +101,20 @@ impl<N: Network> ToBits for Plaintext<N> {
     /// Returns this plaintext as a list of **big-endian** bits.
     fn write_bits_be(&self, vec: &mut Vec<bool>) {
         match self {
-            Self::Literal(literal, bits_be) => {
+            Self::Future(future, bits_be) => {
                 // Compute the bits.
                 let bits = bits_be.get_or_init(|| {
                     let mut bits_be = vec![false, false]; // Variant bits.
+                    future.write_bits_be(&mut bits_be);
+                    bits_be
+                });
+                // Extend the vector with the bits.
+                vec.extend_from_slice(bits)
+            }
+            Self::Literal(literal, bits_be) => {
+                // Compute the bits.
+                let bits = bits_be.get_or_init(|| {
+                    let mut bits_be = vec![false, true]; // Variant bits.
                     literal.variant().write_bits_be(&mut bits_be);
                     literal.size_in_bits().write_bits_be(&mut bits_be);
                     literal.write_bits_be(&mut bits_be);
@@ -106,7 +126,7 @@ impl<N: Network> ToBits for Plaintext<N> {
             Self::Struct(struct_, bits_be) => {
                 // Compute the bits.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![false, true]; // Variant bits.
+                    let mut bits_be = vec![true, false]; // Variant bits.
 
                     // Write the length of the struct.
                     u8::try_from(struct_.len())
@@ -135,7 +155,7 @@ impl<N: Network> ToBits for Plaintext<N> {
             Self::Array(array, bits_be) => {
                 // Compute the bits.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![true, false]; // Variant bits.
+                    let mut bits_be = vec![true, true]; // Variant bits.
 
                     // Write the length of the array.
                     u32::try_from(array.len())

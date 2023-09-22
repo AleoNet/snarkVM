@@ -25,7 +25,7 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Access, Ciphertext, Identifier, Literal};
+use crate::{Access, Ciphertext, Future, Identifier, Literal};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -34,6 +34,8 @@ use once_cell::sync::OnceCell;
 
 #[derive(Clone)]
 pub enum Plaintext<N: Network> {
+    /// A future.
+    Future(Future<N>, OnceCell<Vec<bool>>),
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),
     /// A struct.

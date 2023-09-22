@@ -22,6 +22,8 @@ impl<N: Network> Plaintext<N> {
 
         match self {
             // Halts if the value is not a struct.
+            Self::Future(..) => bail!("A 'future' is not a struct"),
+            // Halts if the value is not a struct.
             Self::Literal(..) => bail!("'{self}' is not a struct"),
             // Retrieve the value of the member (from the value).
             Self::Struct(..) | Self::Array(..) => {

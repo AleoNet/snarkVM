@@ -21,8 +21,9 @@ impl<N: Network> FromBytes for Plaintext<N> {
         let index = u8::read_le(&mut reader)?;
         // Read the plaintext.
         let plaintext = match index {
-            0 => Self::Literal(Literal::read_le(&mut reader)?, Default::default()),
-            1 => {
+            0 => Self::Future(Future::read_le(&mut reader)?, Default::default()),
+            1 => Self::Literal(Literal::read_le(&mut reader)?, Default::default()),
+            2 => {
                 // Read the number of members in the struct.
                 let num_members = u8::read_le(&mut reader)?;
                 // Read the members.
@@ -42,7 +43,7 @@ impl<N: Network> FromBytes for Plaintext<N> {
                 // Return the struct.
                 Self::Struct(members, Default::default())
             }
-            2 => {
+            3 => {
                 // Read the length of the array.
                 let num_elements = u32::read_le(&mut reader)?;
                 if num_elements as usize > N::MAX_ARRAY_ELEMENTS {
@@ -63,7 +64,7 @@ impl<N: Network> FromBytes for Plaintext<N> {
                 // Return the array.
                 Self::Array(elements, Default::default())
             }
-            3.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
+            4.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
         };
         Ok(plaintext)
     }
@@ -73,12 +74,16 @@ impl<N: Network> ToBytes for Plaintext<N> {
     /// Writes the plaintext to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
-            Self::Literal(literal, ..) => {
+            Self::Future(future, ..) => {
                 0u8.write_le(&mut writer)?;
+                future.write_le(&mut writer)
+            }
+            Self::Literal(literal, ..) => {
+                1u8.write_le(&mut writer)?;
                 literal.write_le(&mut writer)
             }
             Self::Struct(struct_, ..) => {
-                1u8.write_le(&mut writer)?;
+                2u8.write_le(&mut writer)?;
 
                 // Write the number of members in the struct.
                 u8::try_from(struct_.len()).map_err(error)?.write_le(&mut writer)?;
@@ -98,7 +103,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
                 Ok(())
             }
             Self::Array(array, ..) => {
-                2u8.write_le(&mut writer)?;
+                3u8.write_le(&mut writer)?;
 
                 // Write the length of the array.
                 u32::try_from(array.len()).map_err(error)?.write_le(&mut writer)?;
