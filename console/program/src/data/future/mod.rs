@@ -32,6 +32,12 @@ pub struct Future<N: Network> {
 }
 
 impl<N: Network> Future<N> {
+    /// Initializes a new future.
+    #[inline]
+    pub fn new(program_id: ProgramID<N>, function_name: Identifier<N>, inputs: Vec<Plaintext<N>>) -> Self {
+        Self { program_id, function_name, inputs }
+    }
+
     /// Returns the program ID.
     #[inline]
     pub const fn program_id(&self) -> &ProgramID<N> {

@@ -25,12 +25,14 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Access, Ciphertext, Identifier, Literal, Visibility};
+use crate::{Access, Ciphertext, Future, Identifier, Literal, Visibility};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar, U16, U32, U8};
 
 #[derive(Clone)]
 pub enum Plaintext<A: Aleo> {
+    /// A plaintext future.
+    Future(Future<A>, OnceCell<Vec<Boolean<A>>>),
     /// A plaintext literal.
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
     /// A plaintext struct.
@@ -46,6 +48,7 @@ impl<A: Aleo> Inject for Plaintext<A> {
     /// Initializes a new plaintext circuit from a primitive.
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
+            Self::Primitive::Future(future, _) => Self::Future(Inject::new(mode, future), Default::default()),
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
             Self::Primitive::Struct(struct_, _) => Self::Struct(Inject::new(mode, struct_), Default::default()),
             Self::Primitive::Array(array, _) => Self::Array(Inject::new(mode, array), Default::default()),
@@ -60,6 +63,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
     /// Ejects the mode of the plaintext value.
     fn eject_mode(&self) -> Mode {
         match self {
+            Self::Future(future, _) => future.eject_mode(),
             Self::Literal(literal, _) => literal.eject_mode(),
             Self::Struct(struct_, _) => struct_
                 .iter()
@@ -73,6 +77,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
     /// Ejects the plaintext value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
+            Self::Future(future, _) => console::Plaintext::Future(future.eject_value(), Default::default()),
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
             Self::Struct(struct_, _) => {
                 console::Plaintext::Struct(struct_.iter().map(|pair| pair.eject_value()).collect(), Default::default())

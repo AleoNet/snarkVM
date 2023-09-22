@@ -43,7 +43,9 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(false),
             },
-            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::constant(false),
+            (Self::Future(..), _) | (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => {
+                Boolean::constant(false)
+            }
         }
     }
 
@@ -73,7 +75,9 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                 }
                 false => Boolean::constant(true),
             },
-            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => Boolean::constant(true),
+            (Self::Future(..), _) | (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => {
+                Boolean::constant(true)
+            }
         }
     }
 }
