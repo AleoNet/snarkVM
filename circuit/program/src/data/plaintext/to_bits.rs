@@ -68,8 +68,8 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                 // Compute the bits of the future.
                 let bits = bits_le.get_or_init(|| {
                     let mut bits_le = vec![Boolean::constant(true), Boolean::constant(true)]; // Variant bit.
-                    future.write_bits_le(&mut bits_le);
-                    bits_le
+
+
                 });
                 // Extend the vector with the bits of the future.
                 vec.extend_from_slice(bits);

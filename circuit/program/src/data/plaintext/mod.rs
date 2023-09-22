@@ -31,14 +31,14 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Sc
 
 #[derive(Clone)]
 pub enum Plaintext<A: Aleo> {
-    /// A plaintext future.
-    Future(Future<A>, OnceCell<Vec<Boolean<A>>>),
     /// A plaintext literal.
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
     /// A plaintext struct.
     Struct(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
     /// A plaintext array.
     Array(Vec<Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
+    /// A plaintext future.
+    Future(Future<A>, OnceCell<Vec<Boolean<A>>>),
 }
 
 #[cfg(console)]
@@ -410,6 +410,20 @@ mod tests {
                 ),
             ],
             OnceCell::new(),
+        ));
+
+        // Test a random future.
+        run_test(Plaintext::<Circuit>::Future(
+            Future::<Circuit>::new(Mode::Public, console::Future::new(
+                console::ProgramID::from_str("credits.aleo")?,
+                console::Identifier::from_str("transfer_public")?,
+                vec![
+                    console::Plaintext::from_str("aleo1wr5rezwrpg3vd3phcsvltuhnar0rcn4wfregx6qp793nd8jmtszs0c2zrv")?,
+                    console::Plaintext::from_str("aleo1av9vmj8w0x803xvwks3ea9jkuslcx8qv9gy2m922ha6xafkfjqyskhwthj")?,
+                    console::Plaintext::from_str("100u64")?,
+                ],
+            )),
+            Default::default(),
         ));
 
         Ok(())

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use crate::ProgramID;
 
 impl<A: Aleo> FromBits for Plaintext<A> {
     type Boolean = Boolean<A>;
@@ -85,6 +86,42 @@ impl<A: Aleo> FromBits for Plaintext<A> {
 
             // Cache the plaintext bits, and return the array.
             Self::Array(elements, OnceCell::with_value(bits_le.to_vec()))
+        }
+        // Future
+        else if variant == [true, true] {
+            // Read the program ID name.
+            let program_id_name_size = U8::from_bits_le(next_bits(8)).eject_value();
+            let program_id_name = Identifier::from_bits_le(next_bits(*program_id_name_size as usize));
+            // Read the program ID network.
+            let program_id_network_size = U8::from_bits_le(next_bits(8)).eject_value();
+            let program_id_network = Identifier::from_bits_le(next_bits(*program_id_network_size as usize));
+            // Initialize the program ID.
+            let program_id =
+                match console::ProgramID::try_from((program_id_name.eject_value(), program_id_network.eject_value())) {
+                    Ok(program_id) => ProgramID::<A>::new(Mode::Constant, program_id),
+                    Err(_) => A::halt("Invalid program ID."),
+                };
+
+            // Read the function name.
+            let function_name_size = U8::from_bits_le(next_bits(8)).eject_value();
+            let function_name = Identifier::from_bits_le(next_bits(*function_name_size as usize));
+
+            // Read the inputs.
+            let num_inputs = U8::from_bits_le(next_bits(8)).eject_value();
+            let mut inputs = Vec::with_capacity(*num_inputs as usize);
+            for _ in 0..*num_inputs {
+                let input_size = U16::from_bits_le(next_bits(16)).eject_value();
+                let input = Plaintext::from_bits_le(next_bits(*input_size as usize));
+                inputs.push(input);
+            }
+            // Cache the plaintext bits, and return the future.
+            Self::Future(
+                Future::new(
+                    Mode::Public,
+                    console::Future::new(program_id.eject_value(), function_name.eject_value(), inputs.eject_value()),
+                ),
+                OnceCell::with_value(bits_le.to_vec()),
+            )
         }
         // Unknown variant.
         else {
@@ -160,6 +197,44 @@ impl<A: Aleo> FromBits for Plaintext<A> {
 
             // Cache the plaintext bits, and return the array.
             Self::Array(elements, OnceCell::with_value(bits_be.to_vec()))
+        }
+        // Future
+        else if variant == [true, true] {
+            // Read the program ID name.
+            let program_id_name_size = U8::from_bits_be(next_bits(8)).eject_value();
+            let program_id_name = Identifier::from_bits_be(next_bits(*program_id_name_size as usize));
+            // Read the program ID network.
+            let program_id_network_size = U8::from_bits_be(next_bits(8)).eject_value();
+            let program_id_network = Identifier::from_bits_be(next_bits(*program_id_network_size as usize));
+            // Initialize the program ID.
+            let program_id =
+                match console::ProgramID::try_from((program_id_name.eject_value(), program_id_network.eject_value())) {
+                    Ok(program_id) => ProgramID::<A>::new(Mode::Constant, program_id),
+                    Err(_) => A::halt("Invalid program ID."),
+                };
+
+            // Read the function name.
+            let function_name_size = U8::from_bits_be(next_bits(8)).eject_value();
+            let function_name = Identifier::from_bits_be(next_bits(*function_name_size as usize));
+
+            // Read the inputs.
+            let num_inputs = U8::from_bits_be(next_bits(8)).eject_value();
+            let mut inputs = Vec::with_capacity(*num_inputs as usize);
+
+            for _ in 0..*num_inputs {
+                let input_size = U16::from_bits_be(next_bits(16)).eject_value();
+                let input = Plaintext::from_bits_be(next_bits(*input_size as usize));
+                inputs.push(input);
+            }
+
+            // Cache the plaintext bits, and return the future.
+            Self::Future(
+                Future::new(
+                    Mode::Public,
+                    console::Future::new(program_id.eject_value(), function_name.eject_value(), inputs.eject_value()),
+                ),
+                OnceCell::with_value(bits_be.to_vec()),
+            )
         }
         // Unknown variant.
         else {

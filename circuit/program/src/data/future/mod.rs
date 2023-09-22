@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod to_bits;
-
-use crate::{Boolean, Identifier, Plaintext, ProgramID, ToBits};
+use crate::{Identifier, Plaintext, ProgramID};
 
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::environment::{Eject, Inject, Mode};
@@ -35,11 +33,11 @@ impl<A: Aleo> Inject for Future<A> {
     type Primitive = console::Future<A::Network>;
 
     /// Initializes a plaintext future from a primitive.
-    /// Note that a plaintext future is **always** in public mode.
+    /// Note that the inputs to a future are always public.
     fn new(_: Mode, future: Self::Primitive) -> Self {
         Self {
-            program_id: Inject::new(Mode::Public, future.program_id().clone()),
-            function_name: Inject::new(Mode::Public, future.function_name().clone()),
+            program_id: Inject::new(Mode::Constant, future.program_id().clone()),
+            function_name: Inject::new(Mode::Constant, future.function_name().clone()),
             inputs: Inject::new(Mode::Public, future.inputs().to_vec()),
         }
     }
@@ -55,12 +53,7 @@ impl<A: Aleo> Eject for Future<A> {
         let program_id = self.program_id.eject_mode();
         let function_name = self.function_name.eject_mode();
         let inputs = self.inputs.iter().map(|input| input.eject_mode()).collect::<Vec<_>>().eject_mode();
-        let mode = Mode::combine(program_id, [function_name, inputs]);
-        // Check that the mode is public and return it.
-        match mode.is_public() {
-            true => Mode::Public,
-            false => A::halt("Future::eject_mode: mode is not public"),
-        }
+        Mode::combine(program_id, [function_name, inputs])
     }
 
     /// Ejects the future.
