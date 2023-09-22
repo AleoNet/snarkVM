@@ -48,10 +48,10 @@ impl<A: Aleo> Inject for Plaintext<A> {
     /// Initializes a new plaintext circuit from a primitive.
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
-            Self::Primitive::Future(future, _) => Self::Future(Inject::new(mode, future), Default::default()),
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
             Self::Primitive::Struct(struct_, _) => Self::Struct(Inject::new(mode, struct_), Default::default()),
             Self::Primitive::Array(array, _) => Self::Array(Inject::new(mode, array), Default::default()),
+            Self::Primitive::Future(future, _) => Self::Future(Inject::new(mode, future), Default::default()),
         }
     }
 }
@@ -63,7 +63,6 @@ impl<A: Aleo> Eject for Plaintext<A> {
     /// Ejects the mode of the plaintext value.
     fn eject_mode(&self) -> Mode {
         match self {
-            Self::Future(future, _) => future.eject_mode(),
             Self::Literal(literal, _) => literal.eject_mode(),
             Self::Struct(struct_, _) => struct_
                 .iter()
@@ -71,13 +70,13 @@ impl<A: Aleo> Eject for Plaintext<A> {
                 .collect::<Vec<_>>()
                 .eject_mode(),
             Self::Array(array, _) => array.iter().map(Eject::eject_mode).collect::<Vec<_>>().eject_mode(),
+            Self::Future(future, _) => future.eject_mode(),
         }
     }
 
     /// Ejects the plaintext value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Self::Future(future, _) => console::Plaintext::Future(future.eject_value(), Default::default()),
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
             Self::Struct(struct_, _) => {
                 console::Plaintext::Struct(struct_.iter().map(|pair| pair.eject_value()).collect(), Default::default())
@@ -85,6 +84,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
             Self::Array(array, _) => {
                 console::Plaintext::Array(array.iter().map(Eject::eject_value).collect(), Default::default())
             }
+            Self::Future(future, _) => console::Plaintext::Future(future.eject_value(), Default::default()),
         }
     }
 }

@@ -137,9 +137,9 @@ pub trait RegistersLoad<N: Network> {
     ) -> Result<Literal<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            Value::Plaintext(Plaintext::Future(..))
-            | Value::Plaintext(Plaintext::Struct(..))
+            Value::Plaintext(Plaintext::Struct(..))
             | Value::Plaintext(Plaintext::Array(..))
+            | Value::Plaintext(Plaintext::Future(..))
             | Value::Record(..) => {
                 bail!("Operand must be a literal")
             }
@@ -191,9 +191,9 @@ pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     ) -> Result<circuit::Literal<A>> {
         match self.load_circuit(stack, operand)? {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
-            circuit::Value::Plaintext(circuit::Plaintext::Future(..))
-            | circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
+            circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
             | circuit::Value::Plaintext(circuit::Plaintext::Array(..))
+            | circuit::Value::Plaintext(circuit::Plaintext::Future(..))
             | circuit::Value::Record(..) => bail!("Operand must be a literal"),
         }
     }

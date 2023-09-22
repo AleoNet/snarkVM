@@ -180,10 +180,7 @@ impl<N: Network> Stack<N> {
 
         // Ensure the plaintext matches the plaintext definition in the program.
         match plaintext_type {
-            PlaintextType::Future => todo!(),
             PlaintextType::Literal(literal_type) => match plaintext {
-                // If `plaintext` is a future, this is a mismatch.
-                Plaintext::Future(..) => bail!("'{plaintext_type}' is invalid: expected literal, found future"),
                 // If `plaintext` is a literal, it must match the literal type.
                 Plaintext::Literal(literal, ..) => {
                     // Ensure the literal type matches.
@@ -196,6 +193,8 @@ impl<N: Network> Stack<N> {
                 Plaintext::Struct(..) => bail!("'{plaintext_type}' is invalid: expected literal, found struct"),
                 // If `plaintext` is an array, this is a mismatch.
                 Plaintext::Array(..) => bail!("'{plaintext_type}' is invalid: expected literal, found array"),
+                // If `plaintext` is a future, this is a mismatch.
+                Plaintext::Future(..) => bail!("'{plaintext_type}' is invalid: expected literal, found future"),
             },
             PlaintextType::Struct(struct_name) => {
                 // Ensure the struct name is valid.
@@ -213,10 +212,10 @@ impl<N: Network> Stack<N> {
 
                 // Retrieve the struct members.
                 let members = match plaintext {
-                    Plaintext::Future(..) => bail!("'{struct_name}' is invalid: expected struct, found future"),
                     Plaintext::Literal(..) => bail!("'{struct_name}' is invalid: expected struct, found literal"),
                     Plaintext::Struct(members, ..) => members,
                     Plaintext::Array(..) => bail!("'{struct_name}' is invalid: expected struct, found array"),
+                    Plaintext::Future(..) => bail!("'{struct_name}' is invalid: expected struct, found future"),
                 };
 
                 // Ensure the number of struct members does not exceed the maximum.
@@ -252,8 +251,6 @@ impl<N: Network> Stack<N> {
                 Ok(())
             }
             PlaintextType::Array(array_type) => match plaintext {
-                // If `plaintext` is a future, this is a mismatch.
-                Plaintext::Future(..) => bail!("'{plaintext_type}' is invalid: expected array, found future"),
                 // If `plaintext` is a literal, this is a mismatch.
                 Plaintext::Literal(..) => bail!("'{plaintext_type}' is invalid: expected array, found literal"),
                 // If `plaintext` is a struct, this is a mismatch.
@@ -273,7 +270,10 @@ impl<N: Network> Stack<N> {
                     }
                     Ok(())
                 }
+                // If `plaintext` is a future, this is a mismatch.
+                Plaintext::Future(..) => bail!("'{plaintext_type}' is invalid: expected array, found future"),
             },
+            PlaintextType::Future => todo!(),
         }
     }
 }

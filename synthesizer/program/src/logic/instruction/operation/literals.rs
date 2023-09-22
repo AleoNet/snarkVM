@@ -173,9 +173,9 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
             .iter()
             .map(|input_type| match input_type {
                 RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(*literal_type),
-                RegisterType::Plaintext(PlaintextType::Future)
-                | RegisterType::Plaintext(PlaintextType::Struct(..))
+                RegisterType::Plaintext(PlaintextType::Struct(..))
                 | RegisterType::Plaintext(PlaintextType::Array(..))
+                | RegisterType::Plaintext(PlaintextType::Future)
                 | RegisterType::Record(..)
                 | RegisterType::ExternalRecord(..) => {
                     bail!("Expected literal type, found '{input_type}'")

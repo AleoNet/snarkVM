@@ -20,20 +20,10 @@ impl<A: Aleo> ToBits for Plaintext<A> {
     /// Returns this plaintext as a list of **little-endian** bits.
     fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Future(future, bits_le) => {
-                // Compute the bits of the future.
-                let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
-                    future.write_bits_le(&mut bits_le);
-                    bits_le
-                });
-                // Extend the vector with the bits of the future.
-                vec.extend_from_slice(bits);
-            }
             Self::Literal(literal, bits_le) => {
                 // Compute the bits of the literal.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
                     literal.variant().write_bits_le(&mut bits_le);
                     literal.size_in_bits().write_bits_le(&mut bits_le);
                     literal.write_bits_le(&mut bits_le);
@@ -45,7 +35,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Struct(members, bits_le) => {
                 // Compute the bits of the struct.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
+                    let mut bits_le = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
                     U8::constant(console::U8::new(members.len() as u8)).write_bits_le(&mut bits_le);
                     for (identifier, value) in members {
                         let value_bits = value.to_bits_le();
@@ -62,7 +52,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Array(elements, bits_le) => {
                 // Compute the bits of the array.
                 let bits = bits_le.get_or_init(|| {
-                    let mut bits_le = vec![Boolean::constant(true), Boolean::constant(true)]; // Variant bit.
+                    let mut bits_le = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
                     U32::constant(console::U32::new(elements.len() as u32)).write_bits_le(&mut bits_le);
                     for value in elements {
                         let value_bits = value.to_bits_le();
@@ -74,26 +64,26 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                 // Extend the vector with the bits of the array.
                 vec.extend_from_slice(bits);
             }
+            Self::Future(future, bits_le) => {
+                // Compute the bits of the future.
+                let bits = bits_le.get_or_init(|| {
+                    let mut bits_le = vec![Boolean::constant(true), Boolean::constant(true)]; // Variant bit.
+                    future.write_bits_le(&mut bits_le);
+                    bits_le
+                });
+                // Extend the vector with the bits of the future.
+                vec.extend_from_slice(bits);
+            }
         }
     }
 
     /// Returns this plaintext as a list of **big-endian** bits.
     fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
-            Self::Future(future, bits_be) => {
-                // Compute the bits of the future.
-                let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
-                    future.write_bits_be(&mut bits_be);
-                    bits_be
-                });
-                // Extend the vector with the bits of the future.
-                vec.extend_from_slice(bits);
-            }
             Self::Literal(literal, bits_be) => {
                 // Compute the bits of the literal.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
+                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(false)]; // Variant bit.
                     literal.variant().write_bits_be(&mut bits_be);
                     literal.size_in_bits().write_bits_be(&mut bits_be);
                     literal.write_bits_be(&mut bits_be);
@@ -105,7 +95,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Struct(members, bits_be) => {
                 // Compute the bits of the struct.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
+                    let mut bits_be = vec![Boolean::constant(false), Boolean::constant(true)]; // Variant bit.
                     U8::constant(console::U8::new(members.len() as u8)).write_bits_be(&mut bits_be);
                     for (identifier, value) in members {
                         let value_bits = value.to_bits_be();
@@ -122,7 +112,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Array(elements, bits_be) => {
                 // Compute the bits of the array.
                 let bits = bits_be.get_or_init(|| {
-                    let mut bits_be = vec![Boolean::constant(true), Boolean::constant(true)]; // Variant bit.
+                    let mut bits_be = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
                     U32::constant(console::U32::new(elements.len() as u32)).write_bits_be(&mut bits_be);
                     for value in elements {
                         let value_bits = value.to_bits_be();
@@ -133,6 +123,16 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                 });
                 // Extend the vector with the bits of the array.
                 vec.extend_from_slice(bits)
+            }
+            Self::Future(future, bits_be) => {
+                // Compute the bits of the future.
+                let bits = bits_be.get_or_init(|| {
+                    let mut bits_be = vec![Boolean::constant(true), Boolean::constant(true)]; // Variant bit.
+                    future.write_bits_be(&mut bits_be);
+                    bits_be
+                });
+                // Extend the vector with the bits of the future.
+                vec.extend_from_slice(bits);
             }
         }
     }

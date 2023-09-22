@@ -204,9 +204,6 @@ impl<N: Network> Cast<N> {
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(field))))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
-                bail!("Illegal operation: Cannot cast into a future")
-            }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
@@ -220,6 +217,9 @@ impl<N: Network> Cast<N> {
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
+            }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
+                bail!("Illegal operation: Cannot cast into a future")
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
@@ -338,9 +338,7 @@ impl<N: Network> Cast<N> {
                     circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Field(field))),
                 )
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
-                bail!("Illegal operation: Cannot cast to a future.")
-            }
+
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
@@ -445,6 +443,9 @@ impl<N: Network> Cast<N> {
                 let array = circuit::Plaintext::Array(elements, Default::default());
                 // Store the array.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(array))
+            }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
+                bail!("Illegal operation: Cannot cast to a future.")
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Ensure the operands length is at least the minimum.
@@ -560,9 +561,7 @@ impl<N: Network> Cast<N> {
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(field))))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
-                bail!("Illegal operation: Cannot cast to a future.")
-            }
+
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
@@ -576,6 +575,9 @@ impl<N: Network> Cast<N> {
             }
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
+            }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
+                bail!("Illegal operation: Cannot cast to a future.")
             }
             CastType::RegisterType(RegisterType::Record(_record_name)) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
@@ -612,9 +614,7 @@ impl<N: Network> Cast<N> {
                     input_types[0]
                 );
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
-                bail!("Illegal operation: Cannot cast to a future.")
-            }
+
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(..))) => {
                 ensure!(input_types.len() == 1, "Casting to a literal requires exactly 1 operand");
             }
@@ -703,6 +703,9 @@ impl<N: Network> Cast<N> {
                         ),
                     }
                 }
+            }
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
+                bail!("Illegal operation: Cannot cast to a future.")
             }
             CastType::RegisterType(RegisterType::Record(record_name)) => {
                 // Retrieve the record type and ensure is defined in the program.
@@ -910,9 +913,9 @@ impl<N: Network> Parser for Cast<N> {
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => todo!(),
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => todo!(),
         };
         match !operands.is_empty() && (operands.len() <= max_operands) {
             true => Ok((string, Self { operands, destination, cast_type })),
@@ -960,9 +963,9 @@ impl<N: Network> Display for Cast<N> {
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
+            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => return Err(fmt::Error),
             CastType::RegisterType(RegisterType::Record(_))
             | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => return Err(fmt::Error),
         };
         if self.operands.is_empty() || self.operands.len() > max_operands {
             return Err(fmt::Error);
@@ -1007,11 +1010,11 @@ impl<N: Network> FromBytes for Cast<N> {
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
-            CastType::RegisterType(RegisterType::Record(_))
-            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
                 return Err(error("Cannot cast into a future."));
             }
+            CastType::RegisterType(RegisterType::Record(_))
+            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
         if num_operands.is_zero() || num_operands > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
@@ -1032,11 +1035,11 @@ impl<N: Network> ToBytes for Cast<N> {
             | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
-            CastType::RegisterType(RegisterType::Record(_))
-            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
             CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Future)) => {
                 return Err(error("Cannot cast into a future."));
             }
+            CastType::RegisterType(RegisterType::Record(_))
+            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
         };
         if self.operands.is_empty() || self.operands.len() > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));

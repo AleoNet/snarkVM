@@ -103,10 +103,10 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the register type is a literal or a struct.
                 // See `Stack::execute_function()` for the same set of checks.
                 match register_type {
-                    RegisterType::Plaintext(PlaintextType::Future) => (),
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
                     RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
                     RegisterType::Plaintext(PlaintextType::Array(..)) => (),
+                    RegisterType::Plaintext(PlaintextType::Future) => (),
                     RegisterType::Record(..) => {
                         bail!(
                             "'{}/{}' attempts to pass a 'record' into 'finalize'",
@@ -190,10 +190,10 @@ impl<N: Network> RegisterTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match register_type {
-            RegisterType::Plaintext(PlaintextType::Future) => (),
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
+            RegisterType::Plaintext(PlaintextType::Future) => todo!(),
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -241,10 +241,10 @@ impl<N: Network> RegisterTypes<N> {
 
         // Ensure the register type is defined in the program.
         match register_type {
-            RegisterType::Plaintext(PlaintextType::Future) => todo!(),
             RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
             RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => Self::check_struct(stack, struct_name)?,
             RegisterType::Plaintext(PlaintextType::Array(array_type)) => Self::check_array(stack, array_type)?,
+            RegisterType::Plaintext(PlaintextType::Future) => todo!(),
             RegisterType::Record(identifier) => {
                 // Ensure the record type is defined in the program.
                 if !stack.program().contains_record(identifier) {
@@ -411,7 +411,6 @@ impl<N: Network> RegisterTypes<N> {
 
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
-                    RegisterType::Plaintext(PlaintextType::Future) => todo!(),
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }
@@ -431,6 +430,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the operand types match the element type.
                         self.matches_array(stack, instruction.operands(), array_type)?;
                     }
+                    RegisterType::Plaintext(PlaintextType::Future) => todo!(),
                     RegisterType::Record(record_name) => {
                         // Ensure the record type is defined in the program.
                         if !stack.program().contains_record(record_name) {
@@ -502,10 +502,10 @@ impl<N: Network> RegisterTypes<N> {
         // If the struct contains arrays, ensure their base element types are defined in the program.
         for member in struct_.members().values() {
             match member {
-                PlaintextType::Future => todo!(),
                 PlaintextType::Literal(..) => (),
                 PlaintextType::Struct(struct_name) => Self::check_struct(stack, struct_name)?,
                 PlaintextType::Array(array_type) => Self::check_array(stack, array_type)?,
+                PlaintextType::Future => todo!(),
             }
         }
         Ok(())

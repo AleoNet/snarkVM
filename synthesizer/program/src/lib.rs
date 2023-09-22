@@ -371,7 +371,6 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
             ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match plaintext_type {
-                PlaintextType::Future => bail!("A 'future' is not allowed in a struct."),
                 PlaintextType::Literal(_) => continue,
                 PlaintextType::Struct(member_identifier) => {
                     // Ensure the member struct name exists in the program.
@@ -387,6 +386,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
                         }
                     }
                 }
+                PlaintextType::Future => bail!("A 'future' is not allowed in a struct."),
             }
         }
 
@@ -427,7 +427,6 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
             ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match entry_type.plaintext_type() {
-                PlaintextType::Future => bail!("A 'future' is not allowed in a record."),
                 PlaintextType::Literal(_) => continue,
                 PlaintextType::Struct(identifier) => {
                     if !self.structs.contains_key(identifier) {
@@ -442,6 +441,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
                         }
                     }
                 }
+                PlaintextType::Future => bail!("A 'future' is not allowed in a record."),
             }
         }
 

@@ -24,8 +24,6 @@ impl<A: Aleo> Plaintext<A> {
 
         match self {
             // Halts if the value is not a struct or an array.
-            Self::Future(..) => A::halt("A future is not a struct or an array"),
-            // Halts if the value is not a struct or an array.
             Self::Literal(..) => A::halt("A literal is not a struct or an array"),
             // Retrieve the value of the member (from the value).
             Self::Struct(..) | Self::Array(..) => {
@@ -63,6 +61,8 @@ impl<A: Aleo> Plaintext<A> {
                 // Return the output.
                 Ok(plaintext.clone())
             }
+            // Halts if the value is not a struct or an array.
+            Self::Future(..) => A::halt("A future is not a struct or an array"),
         }
     }
 }

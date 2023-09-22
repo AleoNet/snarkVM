@@ -186,8 +186,6 @@ impl<N: Network> RegisterTypes<N> {
         for access in path_iter {
             // Update the plaintext type at each step.
             match (plaintext_type, access) {
-                // TODO (d0cd)
-                (PlaintextType::Future, _) => todo!(),
                 // Ensure the plaintext type is not a literal, as the register references an access.
                 (PlaintextType::Literal(..), _) => bail!("'{register}' references a literal."),
                 // Traverse the path to output the register type.
@@ -204,6 +202,8 @@ impl<N: Network> RegisterTypes<N> {
                     true => plaintext_type = array_type.next_element_type(),
                     false => bail!("'{index}' is out of bounds for '{register}'"),
                 },
+                // TODO (d0cd)
+                (PlaintextType::Future, _) => todo!(),
                 (PlaintextType::Struct(..), Access::Index(..)) | (PlaintextType::Array(..), Access::Member(..)) => {
                     bail!("Invalid access `{access}`")
                 }
