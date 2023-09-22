@@ -12,26 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod array_type;
-pub use array_type::ArrayType;
+mod bytes;
+mod parse;
+mod serialize;
 
-mod finalize_type;
-pub use finalize_type::FinalizeType;
+use crate::PlaintextType;
 
-mod literal_type;
-pub use literal_type::LiteralType;
+use snarkvm_console_network::prelude::*;
 
-mod plaintext_type;
-pub use plaintext_type::PlaintextType;
+use enum_index::EnumIndex;
 
-mod record_type;
-pub use record_type::{EntryType, RecordType};
-
-mod register_type;
-pub use register_type::RegisterType;
-
-mod struct_type;
-pub use struct_type::StructType;
-
-mod value_type;
-pub use value_type::ValueType;
+#[derive(Clone, PartialEq, Eq, Hash, EnumIndex)]
+pub enum FinalizeType<N: Network> {
+    /// A plaintext type.
+    Plaintext(PlaintextType<N>),
+    /// A future.
+    Future,
+}
