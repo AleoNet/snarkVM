@@ -91,11 +91,14 @@ impl<N: Network> ToBits for Plaintext<N> {
                     let mut bits_le = vec![true, true]; // Variant bits.
 
                     // Write the program ID name.
+                    future.program_id().name().size_in_bits().write_bits_le(&mut bits_le);
                     future.program_id().name().write_bits_le(&mut bits_le);
                     // Write the program ID network.
+                    future.program_id().network().size_in_bits().write_bits_le(&mut bits_le);
                     future.program_id().network().write_bits_le(&mut bits_le);
 
                     // Write the function name.
+                    future.function_name().size_in_bits().write_bits_le(&mut bits_le);
                     future.function_name().write_bits_le(&mut bits_le);
 
                     // Write the number of inputs.
@@ -200,11 +203,14 @@ impl<N: Network> ToBits for Plaintext<N> {
                     let mut bits_be = vec![true, true]; // Variant bits.
 
                     // Write the program ID name.
+                    future.program_id().name().size_in_bits().write_bits_be(&mut bits_be);
                     future.program_id().name().write_bits_be(&mut bits_be);
                     // Write the program ID network.
+                    future.program_id().network().size_in_bits().write_bits_be(&mut bits_be);
                     future.program_id().network().write_bits_be(&mut bits_be);
 
                     // Write the function name.
+                    future.function_name().size_in_bits().write_bits_be(&mut bits_be);
                     future.function_name().write_bits_be(&mut bits_be);
 
                     // Write the number of inputs.
