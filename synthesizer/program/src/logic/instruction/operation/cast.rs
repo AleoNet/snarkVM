@@ -35,6 +35,7 @@ use console::{
         Identifier,
         Literal,
         LiteralType,
+        Locator,
         Owner,
         Plaintext,
         PlaintextType,
@@ -54,7 +55,9 @@ use indexmap::IndexMap;
 pub enum CastType<N: Network> {
     GroupXCoordinate,
     GroupYCoordinate,
-    RegisterType(RegisterType<N>),
+    Plaintext(PlaintextType<N>),
+    Record(Identifier<N>),
+    ExternalRecord(Locator<N>),
 }
 
 impl<N: Network> Parser for CastType<N> {
@@ -63,7 +66,9 @@ impl<N: Network> Parser for CastType<N> {
         alt((
             map(tag("group.x"), |_| Self::GroupXCoordinate),
             map(tag("group.y"), |_| Self::GroupYCoordinate),
-            map(RegisterType::parse, |register_type| Self::RegisterType(register_type)),
+            map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
+            map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
+            map(PlaintextType::parse, |plaintext_type| Self::Plaintext(plaintext_type)),
         ))(string)
     }
 }
@@ -73,7 +78,9 @@ impl<N: Network> Display for CastType<N> {
         match self {
             Self::GroupXCoordinate => write!(f, "group.x"),
             Self::GroupYCoordinate => write!(f, "group.y"),
-            Self::RegisterType(register_type) => write!(f, "{}", register_type),
+            Self::Plaintext(plaintext_type) => write!(f, "{}", plaintext_type),
+            Self::Record(identifier) => write!(f, "{}.record", identifier),
+            Self::ExternalRecord(locator) => write!(f, "{}.record", locator),
         }
     }
 }
@@ -108,8 +115,17 @@ impl<N: Network> ToBytes for CastType<N> {
         match self {
             Self::GroupXCoordinate => 0u8.write_le(&mut writer),
             Self::GroupYCoordinate => 1u8.write_le(&mut writer),
-            Self::RegisterType(register_type) => {
-                2u8.write_le(&mut writer).and_then(|_| register_type.write_le(&mut writer))
+            CastType::Plaintext(plaintext_type) => {
+                2u8.write_le(&mut writer)?;
+                plaintext_type.write_le(&mut writer)
+            }
+            CastType::Record(identifier) => {
+                3u8.write_le(&mut writer)?;
+                identifier.write_le(&mut writer)
+            }
+            CastType::ExternalRecord(locator) => {
+                4u8.write_le(&mut writer)?;
+                locator.write_le(&mut writer)
             }
         }
     }
@@ -122,8 +138,10 @@ impl<N: Network> FromBytes for CastType<N> {
         match variant {
             0 => Ok(Self::GroupXCoordinate),
             1 => Ok(Self::GroupYCoordinate),
-            2 => Ok(Self::RegisterType(RegisterType::read_le(&mut reader)?)),
-            3.. => Err(error(format!("Failed to deserialize cast type variant {variant}"))),
+            2 => Ok(Self::Plaintext(PlaintextType::read_le(&mut reader)?)),
+            3 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
+            4 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
+            5.. => Err(error(format!("Failed to deserialize cast type variant {variant}"))),
         }
     }
 }
@@ -156,17 +174,6 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn destinations(&self) -> Vec<Register<N>> {
         vec![self.destination.clone()]
-    }
-
-    /// Returns the register type.
-    #[inline]
-    pub fn register_type(&self) -> &RegisterType<N> {
-        match &self.cast_type {
-            CastType::GroupXCoordinate | CastType::GroupYCoordinate => {
-                &RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))
-            }
-            CastType::RegisterType(register_type) => register_type,
-        }
     }
 
     /// Returns the cast type.
@@ -204,7 +211,7 @@ impl<N: Network> Cast<N> {
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(field))))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
+            CastType::Plaintext(PlaintextType::Literal(literal_type)) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
                     Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(*literal_type)?,
@@ -212,13 +219,13 @@ impl<N: Network> Cast<N> {
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
+            CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 self.cast_to_struct(stack, registers, *struct_name, inputs)
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+            CastType::Plaintext(PlaintextType::Array(array_type)) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
             }
-            CastType::RegisterType(RegisterType::Record(record_name)) => {
+            CastType::Record(record_name) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
                     bail!("Casting to a record requires at least {} operand", N::MIN_RECORD_ENTRIES)
@@ -287,7 +294,7 @@ impl<N: Network> Cast<N> {
                 // Store the record.
                 registers.store(stack, &self.destination, Value::Record(record))
             }
-            CastType::RegisterType(RegisterType::ExternalRecord(_locator)) => {
+            CastType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
@@ -335,7 +342,7 @@ impl<N: Network> Cast<N> {
                     circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Field(field))),
                 )
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
+            CastType::Plaintext(PlaintextType::Literal(literal_type)) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
                     circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
@@ -349,7 +356,7 @@ impl<N: Network> Cast<N> {
                     circuit::Value::Plaintext(circuit::Plaintext::from(value)),
                 )
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_))) => {
+            CastType::Plaintext(PlaintextType::Struct(struct_)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_STRUCT_ENTRIES {
                     bail!("Casting to a struct requires at least {} operand(s)", N::MIN_STRUCT_ENTRIES)
@@ -397,7 +404,7 @@ impl<N: Network> Cast<N> {
                 // Store the struct.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(struct_))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+            CastType::Plaintext(PlaintextType::Array(array_type)) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_ARRAY_ELEMENTS {
                     bail!("Casting to an array requires at least {} operand(s)", N::MIN_ARRAY_ELEMENTS)
@@ -440,7 +447,7 @@ impl<N: Network> Cast<N> {
                 // Store the array.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(array))
             }
-            CastType::RegisterType(RegisterType::Record(record_name)) => {
+            CastType::Record(record_name) => {
                 // Ensure the operands length is at least the minimum.
                 if inputs.len() < N::MIN_RECORD_ENTRIES {
                     bail!("Casting to a record requires at least {} operand(s)", N::MIN_RECORD_ENTRIES)
@@ -521,7 +528,7 @@ impl<N: Network> Cast<N> {
                 // Store the record.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Record(record))
             }
-            CastType::RegisterType(RegisterType::ExternalRecord(_locator)) => {
+            CastType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
@@ -554,7 +561,7 @@ impl<N: Network> Cast<N> {
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(field))))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(literal_type))) => {
+            CastType::Plaintext(PlaintextType::Literal(literal_type)) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
                     Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(*literal_type)?,
@@ -562,16 +569,16 @@ impl<N: Network> Cast<N> {
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
+            CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 self.cast_to_struct(stack, registers, *struct_name, inputs)
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+            CastType::Plaintext(PlaintextType::Array(array_type)) => {
                 self.cast_to_array(stack, registers, array_type, inputs)
             }
-            CastType::RegisterType(RegisterType::Record(_record_name)) => {
+            CastType::Record(_record_name) => {
                 bail!("Illegal operation: Cannot cast to a record in a finalize block.")
             }
-            CastType::RegisterType(RegisterType::ExternalRecord(_locator)) => {
+            CastType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
@@ -603,10 +610,10 @@ impl<N: Network> Cast<N> {
                     input_types[0]
                 );
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(..))) => {
+            CastType::Plaintext(PlaintextType::Literal(..)) => {
                 ensure!(input_types.len() == 1, "Casting to a literal requires exactly 1 operand");
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(struct_name))) => {
+            CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
                 // Retrieve the struct and ensure it is defined in the program.
                 let struct_ = stack.program().get_struct(struct_name)?;
 
@@ -645,10 +652,14 @@ impl<N: Network> Cast<N> {
                         RegisterType::ExternalRecord(locator) => bail!(
                             "Struct '{struct_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
                         ),
+                        // Ensure the input type cannot be a future (this is unsupported behavior).
+                        RegisterType::Future => {
+                            bail!("Struct '{struct_name}' member type mismatch: expected '{member_type}', found future")
+                        }
                     }
                 }
             }
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(array_type))) => {
+            CastType::Plaintext(PlaintextType::Array(array_type)) => {
                 // Ensure the input types length is at least the minimum.
                 if input_types.len() < N::MIN_ARRAY_ELEMENTS {
                     bail!("Casting to an array requires at least {} operand(s)", N::MIN_ARRAY_ELEMENTS)
@@ -689,10 +700,15 @@ impl<N: Network> Cast<N> {
                             "Array element type mismatch: expected '{}', found external record '{locator}'",
                             array_type.next_element_type()
                         ),
+                        // Ensure the input type cannot be a future (this is unsupported behavior).
+                        RegisterType::Future => bail!(
+                            "Array element type mismatch: expected '{}', found future",
+                            array_type.next_element_type()
+                        ),
                     }
                 }
             }
-            CastType::RegisterType(RegisterType::Record(record_name)) => {
+            CastType::Record(record_name) => {
                 // Retrieve the record type and ensure is defined in the program.
                 let record = stack.program().get_record(record_name)?;
 
@@ -743,19 +759,24 @@ impl<N: Network> Cast<N> {
                         RegisterType::ExternalRecord(locator) => bail!(
                             "Record '{record_name}' entry type mismatch: expected '{entry_type}', found external record '{locator}'"
                         ),
+                        // Ensure the input type cannot be a future (this is unsupported behavior).
+                        RegisterType::Future => {
+                            bail!("Record '{record_name}' entry type mismatch: expected '{entry_type}', found future",)
+                        }
                     }
                 }
             }
-            CastType::RegisterType(RegisterType::ExternalRecord(_locator)) => {
+            CastType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
 
         Ok(vec![match &self.cast_type {
-            CastType::GroupXCoordinate | CastType::GroupYCoordinate => {
-                RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))
-            }
-            CastType::RegisterType(register_type) => register_type.clone(),
+            CastType::GroupXCoordinate => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field)),
+            CastType::GroupYCoordinate => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field)),
+            CastType::Plaintext(plaintext_type) => RegisterType::Plaintext(plaintext_type.clone()),
+            CastType::Record(identifier) => RegisterType::Record(*identifier),
+            CastType::ExternalRecord(locator) => RegisterType::ExternalRecord(*locator),
         }])
     }
 }
@@ -895,11 +916,10 @@ impl<N: Network> Parser for Cast<N> {
         let max_operands = match cast_type {
             CastType::GroupXCoordinate
             | CastType::GroupYCoordinate
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
-            CastType::RegisterType(RegisterType::Record(_))
-            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
+            | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
+            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
+            CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         match !operands.is_empty() && (operands.len() <= max_operands) {
             true => Ok((string, Self { operands, destination, cast_type })),
@@ -944,11 +964,10 @@ impl<N: Network> Display for Cast<N> {
         let max_operands = match self.cast_type {
             CastType::GroupYCoordinate
             | CastType::GroupXCoordinate
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
-            CastType::RegisterType(RegisterType::Record(_))
-            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
+            | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
+            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
+            CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if self.operands.is_empty() || self.operands.len() > max_operands {
             return Err(fmt::Error);
@@ -990,11 +1009,10 @@ impl<N: Network> FromBytes for Cast<N> {
         let max_operands = match cast_type {
             CastType::GroupYCoordinate
             | CastType::GroupXCoordinate
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
-            CastType::RegisterType(RegisterType::Record(_))
-            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
+            | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
+            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
+            CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if num_operands.is_zero() || num_operands > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
@@ -1012,11 +1030,10 @@ impl<N: Network> ToBytes for Cast<N> {
         let max_operands = match self.cast_type {
             CastType::GroupYCoordinate
             | CastType::GroupXCoordinate
-            | CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Literal(_))) => 1,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(_))) => N::MAX_STRUCT_ENTRIES,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Array(_))) => N::MAX_ARRAY_ELEMENTS,
-            CastType::RegisterType(RegisterType::Record(_))
-            | CastType::RegisterType(RegisterType::ExternalRecord(_)) => N::MAX_RECORD_ENTRIES,
+            | CastType::Plaintext(PlaintextType::Literal(_)) => 1,
+            CastType::Plaintext(PlaintextType::Struct(_)) => N::MAX_STRUCT_ENTRIES,
+            CastType::Plaintext(PlaintextType::Array(_)) => N::MAX_ARRAY_ELEMENTS,
+            CastType::Record(_) | CastType::ExternalRecord(_) => N::MAX_RECORD_ENTRIES,
         };
         if self.operands.is_empty() || self.operands.len() > max_operands {
             return Err(error(format!("The number of operands must be nonzero and <= {max_operands}")));
@@ -1062,7 +1079,7 @@ mod tests {
         assert_eq!(cast.destination, Register::Locator(1), "The destination register is incorrect");
         assert_eq!(
             cast.cast_type,
-            CastType::RegisterType(RegisterType::Record(Identifier::from_str("token").unwrap())),
+            CastType::Record(Identifier::from_str("token").unwrap()),
             "The value type is incorrect"
         );
     }
@@ -1087,9 +1104,7 @@ mod tests {
         );
         assert_eq!(
             cast.cast_type,
-            CastType::RegisterType(RegisterType::Plaintext(PlaintextType::Struct(
-                Identifier::from_str("foo").unwrap()
-            ))),
+            CastType::Plaintext(PlaintextType::Struct(Identifier::from_str("foo").unwrap())),
             "The value type is incorrect"
         );
     }
@@ -1114,7 +1129,7 @@ mod tests {
         );
         assert_eq!(
             cast.cast_type,
-            CastType::RegisterType(RegisterType::Record(Identifier::from_str("token").unwrap())),
+            CastType::Record(Identifier::from_str("token").unwrap()),
             "The value type is incorrect"
         );
     }

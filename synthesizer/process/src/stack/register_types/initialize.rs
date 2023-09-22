@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use synthesizer_program::CastType;
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes` for the given closure.
@@ -120,6 +121,7 @@ impl<N: Network> RegisterTypes<N> {
                             function.name()
                         );
                     }
+                    RegisterType::Future => todo!(),
                 }
             }
         }
@@ -204,6 +206,7 @@ impl<N: Network> RegisterTypes<N> {
                     bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
+            RegisterType::Future => bail!("Input '{register}' cannot be a future."),
         };
 
         // Insert the input register.
@@ -254,6 +257,7 @@ impl<N: Network> RegisterTypes<N> {
                     bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
+            RegisterType::Future => todo!(),
         };
 
         // Ensure the operand type and the output type match.
@@ -407,11 +411,13 @@ impl<N: Network> RegisterTypes<N> {
                 );
 
                 // Ensure the casted register type is defined.
-                match operation.register_type() {
-                    RegisterType::Plaintext(PlaintextType::Literal(..)) => {
+                match operation.cast_type() {
+                    CastType::GroupXCoordinate
+                    | CastType::GroupYCoordinate
+                    | CastType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }
-                    RegisterType::Plaintext(PlaintextType::Struct(struct_name)) => {
+                    CastType::Plaintext(PlaintextType::Struct(struct_name)) => {
                         // Ensure the struct name exists in the program.
                         if !stack.program().contains_struct(struct_name) {
                             bail!("Struct '{struct_name}' is not defined.")
@@ -421,13 +427,13 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the operand types match the struct.
                         self.matches_struct(stack, instruction.operands(), struct_)?;
                     }
-                    RegisterType::Plaintext(PlaintextType::Array(array_type)) => {
+                    CastType::Plaintext(PlaintextType::Array(array_type)) => {
                         // Ensure that the array type is valid.
                         RegisterTypes::check_array(stack, array_type)?;
                         // Ensure the operand types match the element type.
                         self.matches_array(stack, instruction.operands(), array_type)?;
                     }
-                    RegisterType::Record(record_name) => {
+                    CastType::Record(record_name) => {
                         // Ensure the record type is defined in the program.
                         if !stack.program().contains_record(record_name) {
                             bail!("Record '{record_name}' is not defined.")
@@ -437,7 +443,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the operand types match the record type.
                         self.matches_record(stack, instruction.operands(), record_type)?;
                     }
-                    RegisterType::ExternalRecord(_locator) => {
+                    CastType::ExternalRecord(_locator) => {
                         bail!("Illegal operation: Cannot cast to an external record.")
                     }
                 }

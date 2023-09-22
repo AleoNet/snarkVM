@@ -46,6 +46,7 @@ use crate::{
         StackMatches,
         StackProgram,
     },
+    CastType,
     FinalizeCommand,
     FinalizeOperation,
     FinalizeRegistersState,
@@ -53,7 +54,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, Register, RegisterType},
+    program::{Identifier, Register},
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -130,7 +131,7 @@ impl<N: Network> CommandTrait<N> for Command<N> {
 
     /// Returns `true` if the command is a cast to record instruction.
     fn is_cast_to_record(&self) -> bool {
-        matches!(self, Command::Instruction(Instruction::Cast(cast)) if !matches!(cast.register_type(), &RegisterType::Plaintext(_)))
+        matches!(self, Command::Instruction(Instruction::Cast(cast)) if matches!(cast.cast_type(), CastType::Record(_) | CastType::ExternalRecord(_)))
     }
 
     /// Returns `true` if the command is a write operation.
