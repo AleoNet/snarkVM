@@ -186,6 +186,8 @@ impl<N: Network> RegisterTypes<N> {
         for access in path_iter {
             // Update the plaintext type at each step.
             match (plaintext_type, access) {
+                // TODO (d0cd)
+                (PlaintextType::Future, _) => todo!(),
                 // Ensure the plaintext type is not a literal, as the register references an access.
                 (PlaintextType::Literal(..), _) => bail!("'{register}' references a literal."),
                 // Traverse the path to output the register type.

@@ -358,7 +358,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     // Ensure the value is a literal, struct, or array.
                     // See `RegisterTypes::initialize_function_types()` for the same set of checks.
                     match value {
-                        circuit::Value::Plaintext(circuit::Plaintext::Literal(..))
+                        circuit::Value::Plaintext(circuit::Plaintext::Future(..))
+                        | circuit::Value::Plaintext(circuit::Plaintext::Literal(..))
                         | circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
                         | circuit::Value::Plaintext(circuit::Plaintext::Array(..)) => (),
                         circuit::Value::Record(..) => {

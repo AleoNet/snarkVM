@@ -104,6 +104,7 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         // Ensure the register type is defined in the program.
         match plaintext_type {
+            PlaintextType::Future => todo!(),
             PlaintextType::Literal(..) => (),
             PlaintextType::Struct(struct_name) => RegisterTypes::check_struct(stack, struct_name)?,
             PlaintextType::Array(array_type) => RegisterTypes::check_array(stack, array_type)?,
@@ -474,6 +475,7 @@ impl<N: Network> FinalizeTypes<N> {
 
                 // Ensure the casted register type is defined.
                 match operation.register_type() {
+                    RegisterType::Plaintext(PlaintextType::Future) => todo!(),
                     RegisterType::Plaintext(PlaintextType::Literal(..)) => {
                         ensure!(instruction.operands().len() == 1, "Expected 1 operand.");
                     }

@@ -249,11 +249,13 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
             (17, _) => bail!("'hash_many.psd8' is not yet implemented"),
             (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (_, PlaintextType::Future) => bail!("Cannot hash into a future"),
             (_, PlaintextType::Struct(..)) => bail!("Cannot hash into a struct"),
             (_, PlaintextType::Array(..)) => bail!("Cannot hash into an array (yet)"),
         };
         // Cast the output to the destination type.
         let output = match self.destination_type {
+            PlaintextType::Future => bail!("Cannot hash into a future"),
             PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
             PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
             PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),
@@ -320,11 +322,13 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             (16, _) => bail!("'hash_many.psd4' is not yet implemented"),
             (17, _) => bail!("'hash_many.psd8' is not yet implemented"),
             (18.., _) => bail!("Invalid 'hash' variant: {VARIANT}"),
+            (_, PlaintextType::Future) => bail!("Cannot hash into a future"),
             (_, PlaintextType::Struct(..)) => bail!("Cannot hash into a struct"),
             (_, PlaintextType::Array(..)) => bail!("Cannot hash into an array (yet)"),
         };
         // Cast the output to the destination type.
         let output = match self.destination_type {
+            PlaintextType::Future => bail!("Cannot hash into a future"),
             PlaintextType::Literal(literal_type) => output.cast_lossy(literal_type)?,
             PlaintextType::Struct(..) => bail!("Cannot hash into a struct"),
             PlaintextType::Array(..) => bail!("Cannot hash into an array (yet)"),

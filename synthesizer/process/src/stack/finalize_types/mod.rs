@@ -112,6 +112,8 @@ impl<N: Network> FinalizeTypes<N> {
         // Traverse the path to find the register type.
         for access in path.iter() {
             match (&plaintext_type, access) {
+                // TODO (@d0cd)
+                (PlaintextType::Future, _) => todo!(),
                 // Ensure the plaintext type is not a literal, as the register references an access.
                 (PlaintextType::Literal(..), _) => bail!("'{register}' references a literal."),
                 // Access the member on the path to output the register type.
