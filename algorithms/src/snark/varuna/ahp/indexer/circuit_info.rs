@@ -19,8 +19,7 @@ use snarkvm_utilities::{serialize::*, ToBytes};
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero
 /// entries in any of the constraint matrices.
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitInfo {
     /// The number of public inputs after padding.
     pub num_public_inputs: usize,

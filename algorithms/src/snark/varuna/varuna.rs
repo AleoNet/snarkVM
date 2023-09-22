@@ -334,7 +334,6 @@ where
         .map_err(Into::into)
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     /// This is the main entrypoint for creating proofs.
     /// You can find a specification of the prover algorithm in:
     /// https://github.com/AleoHQ/protocol-docs/tree/main/snark/varuna
