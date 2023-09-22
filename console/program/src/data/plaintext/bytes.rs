@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use crate::ProgramID;
 
 impl<N: Network> FromBytes for Plaintext<N> {
     /// Reads the plaintext from a buffer.
@@ -21,9 +22,8 @@ impl<N: Network> FromBytes for Plaintext<N> {
         let index = u8::read_le(&mut reader)?;
         // Read the plaintext.
         let plaintext = match index {
-            0 => Self::Future(Future::read_le(&mut reader)?, Default::default()),
-            1 => Self::Literal(Literal::read_le(&mut reader)?, Default::default()),
-            2 => {
+            0 => Self::Literal(Literal::read_le(&mut reader)?, Default::default()),
+            1 => {
                 // Read the number of members in the struct.
                 let num_members = u8::read_le(&mut reader)?;
                 // Read the members.
@@ -43,7 +43,7 @@ impl<N: Network> FromBytes for Plaintext<N> {
                 // Return the struct.
                 Self::Struct(members, Default::default())
             }
-            3 => {
+            2 => {
                 // Read the length of the array.
                 let num_elements = u32::read_le(&mut reader)?;
                 if num_elements as usize > N::MAX_ARRAY_ELEMENTS {
@@ -64,6 +64,31 @@ impl<N: Network> FromBytes for Plaintext<N> {
                 // Return the array.
                 Self::Array(elements, Default::default())
             }
+            3 => {
+                // Read the program identifier.
+                let program_id = ProgramID::read_le(&mut reader)?;
+                // Read the function name.
+                let function_name = Identifier::<N>::read_le(&mut reader)?;
+                // Read the number of inputs.
+                let num_inputs = u8::read_le(&mut reader)?;
+                if num_inputs as usize > N::MAX_INPUTS {
+                    return Err(error("Failed to deserialize plaintext: Future exceeds maximum number of inputs"));
+                }
+                // Read the inputs.
+                let mut inputs = Vec::with_capacity(num_inputs as usize);
+                for _ in 0..inputs.len() {
+                    // Read the plaintext value (in 2 steps to prevent infinite recursion).
+                    let num_bytes = u16::read_le(&mut reader)?;
+                    // Read the plaintext bytes.
+                    let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+                    // Recover the plaintext value.
+                    let plaintext = Plaintext::read_le(&mut bytes.as_slice())?;
+                    // Add the input.
+                    inputs.push(plaintext);
+                }
+                // Return the future.
+                Self::Future(Future::new(program_id, function_name, inputs), Default::default())
+            }
             4.. => return Err(error(format!("Failed to decode plaintext variant {index}"))),
         };
         Ok(plaintext)
@@ -74,16 +99,12 @@ impl<N: Network> ToBytes for Plaintext<N> {
     /// Writes the plaintext to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
-            Self::Future(future, ..) => {
-                0u8.write_le(&mut writer)?;
-                future.write_le(&mut writer)
-            }
             Self::Literal(literal, ..) => {
-                1u8.write_le(&mut writer)?;
+                0u8.write_le(&mut writer)?;
                 literal.write_le(&mut writer)
             }
             Self::Struct(struct_, ..) => {
-                2u8.write_le(&mut writer)?;
+                1u8.write_le(&mut writer)?;
 
                 // Write the number of members in the struct.
                 u8::try_from(struct_.len()).map_err(error)?.write_le(&mut writer)?;
@@ -103,7 +124,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
                 Ok(())
             }
             Self::Array(array, ..) => {
-                3u8.write_le(&mut writer)?;
+                2u8.write_le(&mut writer)?;
 
                 // Write the length of the array.
                 u32::try_from(array.len()).map_err(error)?.write_le(&mut writer)?;
@@ -119,6 +140,29 @@ impl<N: Network> ToBytes for Plaintext<N> {
                 }
                 Ok(())
             }
+            Self::Future(future, ..) => {
+                3u8.write_le(&mut writer)?;
+
+                // Write the program ID.
+                future.program_id().write_le(&mut writer)?;
+
+                // Write the function name.
+                future.function_name().write_le(&mut writer)?;
+
+                // Write the number of inputs.
+                u8::try_from(future.inputs().len()).map_err(error)?.write_le(&mut writer)?;
+
+                // Write each input.
+                for input in future.inputs() {
+                    // Write the element (performed in 2 steps to prevent infinite recursion).
+                    let bytes = input.to_bytes_le().map_err(error)?;
+                    // Write the number of bytes.
+                    u16::try_from(bytes.len()).map_err(error)?.write_le(&mut writer)?;
+                    // Write the bytes.
+                    bytes.write_le(&mut writer)?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -126,6 +170,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ProgramID;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -234,6 +279,25 @@ mod tests {
 
         // Check the array manually.
         let expected = Plaintext::<CurrentNetwork>::from_str("[ 1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 9u8, 10u8 ]")?;
+
+        // Check the byte representation.
+        let expected_bytes = expected.to_bytes_le()?;
+        assert_eq!(expected, Plaintext::read_le(&expected_bytes[..])?);
+        assert!(Plaintext::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+
+        // Check the future manually.
+        let expected = Plaintext::Future(
+            Future::<CurrentNetwork>::new(
+                ProgramID::from_str("credits.aleo")?,
+                Identifier::from_str("transfer_public")?,
+                vec![
+                    Plaintext::from_str("aleo1wr5rezwrpg3vd3phcsvltuhnar0rcn4wfregx6qp793nd8jmtszs0c2zrv")?,
+                    Plaintext::from_str("aleo1av9vmj8w0x803xvwks3ea9jkuslcx8qv9gy2m922ha6xafkfjqyskhwthj")?,
+                    Plaintext::from_str("100u64")?,
+                ],
+            ),
+            Default::default(),
+        );
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

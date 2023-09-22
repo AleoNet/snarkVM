@@ -46,7 +46,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                 ),
                 false => Boolean::new(false),
             },
-            (Self::Future(..), _) | (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => {
+            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) | (Self::Future(..), _) => {
                 Boolean::new(false)
             }
         }
@@ -72,7 +72,7 @@ impl<N: Network> Equal<Self> for Plaintext<N> {
                 ),
                 false => Boolean::new(true),
             },
-            (Self::Future(..), _) | (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) => {
+            (Self::Literal(..), _) | (Self::Struct(..), _) | (Self::Array(..), _) | (Self::Future(..), _) => {
                 Boolean::new(true)
             }
         }

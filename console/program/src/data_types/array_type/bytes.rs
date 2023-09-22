@@ -56,12 +56,12 @@ impl<N: Network> ToBytes for ArrayType<N> {
         // Note that the lengths are in the order of the outermost dimension to the innermost dimension.
         for _ in 1..N::MAX_DATA_DEPTH {
             element_type = match element_type {
-                PlaintextType::Future => return Err(error("A 'future' cannot be an array element.")),
                 PlaintextType::Literal(_) | PlaintextType::Struct(_) => break,
                 PlaintextType::Array(array_type) => {
                     lengths.push(*array_type.length());
                     array_type.next_element_type().clone()
                 }
+                PlaintextType::Future => return Err(error("A 'future' cannot be an array element.")),
             };
         }
 
@@ -72,7 +72,6 @@ impl<N: Network> ToBytes for ArrayType<N> {
 
         // Write the innermost element type.
         match element_type {
-            PlaintextType::Future => return Err(error("A 'future' cannot be an array element.")),
             PlaintextType::Literal(literal_type) => {
                 0u8.write_le(&mut writer)?;
                 literal_type.write_le(&mut writer)?;
@@ -85,6 +84,11 @@ impl<N: Network> ToBytes for ArrayType<N> {
                 // This is technically unreachable by definition, however we return an error
                 // out of an abundance of caution.
                 return Err(error(format!("Array type exceeds the maximum depth of {}.", N::MAX_DATA_DEPTH)));
+            }
+            PlaintextType::Future => {
+                // This is technically unreachable by definition, however we return an error
+                // out of an abundance of caution.
+                return Err(error("A 'future' cannot be an array element."));
             }
         }
 

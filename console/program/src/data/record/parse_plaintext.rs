@@ -151,10 +151,6 @@ impl<N: Network> Record<N, Plaintext<N>> {
             write!(f, "\n{:indent$}{identifier}: ", "", indent = (depth + 1) * INDENT)?;
             // Print the entry.
             match entry {
-                // If the entry is a future, return an error.
-                Entry::Constant(Plaintext::Future(..))
-                | Entry::Public(Plaintext::Future(..))
-                | Entry::Private(Plaintext::Future(..)) => return Err(fmt::Error),
                 // If the entry is a literal, print the entry without indentation.
                 Entry::Constant(Plaintext::Literal(..))
                 | Entry::Public(Plaintext::Literal(..))
@@ -166,6 +162,10 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 | Entry::Constant(Plaintext::Array(..))
                 | Entry::Public(Plaintext::Array(..))
                 | Entry::Private(Plaintext::Array(..)) => entry.fmt_internal(f, depth + 1)?,
+                // If the entry is a future, return an error.
+                Entry::Constant(Plaintext::Future(..))
+                | Entry::Public(Plaintext::Future(..))
+                | Entry::Private(Plaintext::Future(..)) => return Err(fmt::Error),
             }
             // Print the comma.
             write!(f, ",")?;

@@ -128,8 +128,6 @@ impl<N: Network> Plaintext<N> {
         const INDENT: usize = 2;
 
         match self {
-            // Returns an error if the plaintext is a future.
-            Self::Future(..) => Err(fmt::Error),
             // Prints the literal, i.e. 10field
             Self::Literal(literal, ..) => write!(f, "{:indent$}{literal}", "", indent = depth * INDENT),
             // Prints the struct, i.e. { first: 10i64, second: 198u64 }
@@ -139,7 +137,6 @@ impl<N: Network> Plaintext<N> {
                 // Print the members.
                 struct_.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
                     match plaintext {
-                        Self::Future(..) => Err(fmt::Error),
                         Self::Literal(literal, ..) => match i == struct_.len() - 1 {
                             true => {
                                 // Print the last member without a comma.
@@ -163,6 +160,7 @@ impl<N: Network> Plaintext<N> {
                                 false => write!(f, ","),
                             }
                         }
+                        Self::Future(..) => Err(fmt::Error),
                     }
                 })
             }
@@ -173,7 +171,6 @@ impl<N: Network> Plaintext<N> {
                 // Print the members.
                 array.iter().enumerate().try_for_each(|(i, plaintext)| {
                     match plaintext {
-                        Self::Future(..) => Err(fmt::Error),
                         Self::Literal(literal, ..) => match i == array.len() - 1 {
                             true => {
                                 // Print the last member without a comma.
@@ -197,9 +194,12 @@ impl<N: Network> Plaintext<N> {
                                 false => write!(f, ","),
                             }
                         }
+                        Self::Future(..) => Err(fmt::Error),
                     }
                 })
             }
+            // Returns an error if the plaintext is a future.
+            Self::Future(..) => Err(fmt::Error),
         }
     }
 }

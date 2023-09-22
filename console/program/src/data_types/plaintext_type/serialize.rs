@@ -43,8 +43,6 @@ mod tests {
 
     /// Add test cases here to be checked for serialization.
     const TEST_CASES: &[&str] = &[
-        // Future
-        "future",
         // Literal
         "address",
         "boolean",
@@ -69,6 +67,8 @@ mod tests {
         "passport",
         "object",
         "array",
+        // Future
+        "future",
     ];
 
     fn check_serde_json<

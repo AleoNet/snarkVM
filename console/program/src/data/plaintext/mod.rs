@@ -34,14 +34,14 @@ use once_cell::sync::OnceCell;
 
 #[derive(Clone)]
 pub enum Plaintext<N: Network> {
-    /// A future.
-    Future(Future<N>, OnceCell<Vec<bool>>),
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),
     /// A struct.
     Struct(IndexMap<Identifier<N>, Plaintext<N>>, OnceCell<Vec<bool>>),
     /// An array.
     Array(Vec<Plaintext<N>>, OnceCell<Vec<bool>>),
+    /// A future.
+    Future(Future<N>, OnceCell<Vec<bool>>),
 }
 
 impl<N: Network> From<Literal<N>> for Plaintext<N> {
@@ -64,6 +64,7 @@ mod tests {
     use snarkvm_console_network::Testnet3;
     use snarkvm_console_types::Field;
 
+    use crate::ProgramID;
     use core::str::FromStr;
 
     type CurrentNetwork = Testnet3;
@@ -226,6 +227,20 @@ mod tests {
                 Plaintext::<CurrentNetwork>::from_str("{ x: 4field, y: 1u8 }")?,
             ],
             OnceCell::new(),
+        ));
+
+        // Test a future.
+        run_test(Plaintext::Future(
+            Future::<CurrentNetwork>::new(
+                ProgramID::from_str("credits.aleo")?,
+                Identifier::from_str("transfer_public")?,
+                vec![
+                    Plaintext::from_str("aleo1wr5rezwrpg3vd3phcsvltuhnar0rcn4wfregx6qp793nd8jmtszs0c2zrv")?,
+                    Plaintext::from_str("aleo1av9vmj8w0x803xvwks3ea9jkuslcx8qv9gy2m922ha6xafkfjqyskhwthj")?,
+                    Plaintext::from_str("100u64")?,
+                ],
+            ),
+            Default::default(),
         ));
 
         Ok(())

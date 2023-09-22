@@ -37,6 +37,7 @@ impl<'de, N: Network> Deserialize<'de> for Plaintext<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ProgramID;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -65,6 +66,20 @@ mod tests {
 
         // Test array.
         run_test(Plaintext::<CurrentNetwork>::from_str("[ 0field, 1field, 2field, 3field, 4field ]")?);
+
+        // Test future.
+        run_test(Plaintext::Future(
+            Future::<CurrentNetwork>::new(
+                ProgramID::from_str("credits.aleo")?,
+                Identifier::from_str("transfer_public")?,
+                vec![
+                    Plaintext::from_str("aleo1wr5rezwrpg3vd3phcsvltuhnar0rcn4wfregx6qp793nd8jmtszs0c2zrv")?,
+                    Plaintext::from_str("aleo1av9vmj8w0x803xvwks3ea9jkuslcx8qv9gy2m922ha6xafkfjqyskhwthj")?,
+                    Plaintext::from_str("100u64")?,
+                ],
+            ),
+            Default::default(),
+        ));
 
         Ok(())
     }

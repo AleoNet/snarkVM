@@ -56,14 +56,14 @@ impl<N: Network> Display for PlaintextType<N> {
     /// Prints the plaintext type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            // Prints the keyword `future`
-            Self::Future => Display::fmt("future", f),
             // Prints the literal, i.e. field
             Self::Literal(literal) => Display::fmt(literal, f),
             // Prints the struct, i.e. signature
             Self::Struct(struct_) => Display::fmt(struct_, f),
             // Prints the array type, i.e. [field; 2u32]
             Self::Array(array) => Display::fmt(array, f),
+            // Prints the keyword `future`
+            Self::Future => Display::fmt("future", f),
         }
     }
 }
@@ -77,7 +77,6 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        assert_eq!(PlaintextType::parse("future"), Ok(("", PlaintextType::<CurrentNetwork>::Future)));
         assert_eq!(
             PlaintextType::parse("field"),
             Ok(("", PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field)))
@@ -94,6 +93,7 @@ mod tests {
             PlaintextType::parse("[field; 1u32]"),
             Ok(("", PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 1u32]")?)))
         );
+        assert_eq!(PlaintextType::parse("future"), Ok(("", PlaintextType::<CurrentNetwork>::Future)));
         Ok(())
     }
 
@@ -141,6 +141,20 @@ mod tests {
             PlaintextType::<CurrentNetwork>::parse("[field; 1u32].private")
         );
 
+        // Future type must not contain visibility.
+        assert_eq!(
+            Ok((".constant", PlaintextType::<CurrentNetwork>::Future)),
+            PlaintextType::<CurrentNetwork>::parse("future.constant")
+        );
+        assert_eq!(
+            Ok((".public", PlaintextType::<CurrentNetwork>::Future)),
+            PlaintextType::<CurrentNetwork>::parse("future.public")
+        );
+        assert_eq!(
+            Ok((".private", PlaintextType::<CurrentNetwork>::Future)),
+            PlaintextType::<CurrentNetwork>::parse("future.private")
+        );
+
         // Must be non-empty.
         assert!(PlaintextType::<CurrentNetwork>::parse("").is_err());
         assert!(PlaintextType::<CurrentNetwork>::parse("{}").is_err());
@@ -175,7 +189,6 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        assert_eq!(PlaintextType::<CurrentNetwork>::Future.to_string(), "future");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Boolean).to_string(), "boolean");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
         assert_eq!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Signature).to_string(), "signature");
@@ -185,6 +198,7 @@ mod tests {
             PlaintextType::<CurrentNetwork>::Array(ArrayType::from_str("[field; 8u32]")?).to_string(),
             "[field; 8u32]"
         );
+        assert_eq!(PlaintextType::<CurrentNetwork>::Future.to_string(), "future");
         Ok(())
     }
 }

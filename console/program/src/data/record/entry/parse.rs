@@ -199,8 +199,6 @@ impl<N: Network> Entry<N, Plaintext<N>> {
         };
 
         match plaintext {
-            // Returns an error if the plaintext is a future.
-            Plaintext::Future(..) => Err(fmt::Error),
             // Prints the literal, i.e. 10field.public
             Plaintext::Literal(literal, ..) => {
                 write!(f, "{:indent$}{literal}.{visibility}", "", indent = depth * INDENT)
@@ -212,7 +210,6 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                 // Print the members.
                 struct_.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
                     match plaintext {
-                        Plaintext::Future(..) => Err(fmt::Error),
                         #[rustfmt::skip]
                         Plaintext::Literal(literal, ..) => match i == struct_.len() - 1 {
                             true => {
@@ -241,6 +238,7 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                                 false => write!(f, ","),
                             }
                         },
+                        Plaintext::Future(..) => Err(fmt::Error),
                     }
                 })
             }
@@ -251,7 +249,6 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                 // Print the members.
                 array.iter().enumerate().try_for_each(|(i, plaintext)| {
                     match plaintext {
-                        Plaintext::Future(..) => return Err(fmt::Error),
                         #[rustfmt::skip]
                         Plaintext::Literal(literal, ..) => match i == array.len() - 1 {
                             true => {
@@ -280,9 +277,12 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                                 false => write!(f, ","),
                             }
                         },
+                        Plaintext::Future(..) => Err(fmt::Error),
                     }
                 })
             }
+            // Returns an error if the plaintext is a future.
+            Plaintext::Future(..) => Err(fmt::Error),
         }
     }
 }

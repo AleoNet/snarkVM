@@ -12,13 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod bytes;
-mod to_bits;
-
 use crate::{Identifier, Plaintext, ProgramID};
 
 use snarkvm_console_network::Network;
-use snarkvm_console_types::prelude::*;
 
 /// A future.
 #[derive(Clone)]

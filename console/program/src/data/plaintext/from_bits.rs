@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use crate::ProgramID;
 
 impl<N: Network> FromBits for Plaintext<N> {
     /// Initializes a new plaintext from a list of little-endian bits *without* trailing zeros.
@@ -89,6 +90,39 @@ impl<N: Network> FromBits for Plaintext<N> {
 
             // Cache the plaintext bits, and return the array.
             Ok(Self::Array(elements, OnceCell::with_value(bits_le.to_vec())))
+        }
+        // Future
+        else if variant == [true, true] {
+            // Read the program ID name.
+            let program_id_name_size = u8::from_bits_le(next_bits(8)?)?;
+            let program_id_name = Identifier::from_bits_le(next_bits(program_id_name_size as usize)?)?;
+            // Read the program ID network.
+            let program_id_network_size = u8::from_bits_le(next_bits(8)?)?;
+            let program_id_network = Identifier::from_bits_le(next_bits(program_id_network_size as usize)?)?;
+            // Initialize the program ID.
+            let program_id = ProgramID::try_from((program_id_name, program_id_network))?;
+
+            // Read the function name.
+            let function_name_size = u8::from_bits_le(next_bits(8)?)?;
+            let function_name = Identifier::from_bits_le(next_bits(function_name_size as usize)?)?;
+
+            // Read the number of inputs.
+            let num_inputs = u8::from_bits_le(next_bits(8)?)?;
+            if num_inputs as usize > N::MAX_INPUTS {
+                bail!("Future exceeds maximum of inputs.");
+            }
+
+            // Read the inputs.
+            let mut inputs = Vec::with_capacity(num_inputs as usize);
+            for _ in 0..num_inputs {
+                let input_size = u16::from_bits_le(next_bits(16)?)?;
+                let input = Plaintext::from_bits_le(next_bits(input_size as usize)?)?;
+
+                inputs.push(input);
+            }
+
+            // Cache the plaintext bits, and return the future.
+            Ok(Self::Future(Future::new(program_id, function_name, inputs), OnceCell::with_value(bits_le.to_vec())))
         }
         // Unknown variant.
         else {
@@ -170,6 +204,39 @@ impl<N: Network> FromBits for Plaintext<N> {
 
             // Cache the plaintext bits, and return the array.
             Ok(Self::Array(elements, OnceCell::with_value(bits_be.to_vec())))
+        }
+        // Future
+        else if variant == [true, true] {
+            // Read the program ID name.
+            let program_id_name_size = u8::from_bits_be(next_bits(8)?)?;
+            let program_id_name = Identifier::from_bits_be(next_bits(program_id_name_size as usize)?)?;
+            // Read the program ID network.
+            let program_id_network_size = u8::from_bits_be(next_bits(8)?)?;
+            let program_id_network = Identifier::from_bits_be(next_bits(program_id_network_size as usize)?)?;
+            // Initialize the program ID.
+            let program_id = ProgramID::try_from((program_id_name, program_id_network))?;
+
+            // Read the function name.
+            let function_name_size = u8::from_bits_be(next_bits(8)?)?;
+            let function_name = Identifier::from_bits_be(next_bits(function_name_size as usize)?)?;
+
+            // Read the number of inputs.
+            let num_inputs = u8::from_bits_be(next_bits(8)?)?;
+            if num_inputs as usize > N::MAX_INPUTS {
+                bail!("Future exceeds maximum of inputs.");
+            }
+
+            // Read the inputs.
+            let mut inputs = Vec::with_capacity(num_inputs as usize);
+            for _ in 0..num_inputs {
+                let input_size = u16::from_bits_be(next_bits(16)?)?;
+                let input = Plaintext::from_bits_be(next_bits(input_size as usize)?)?;
+
+                inputs.push(input);
+            }
+
+            // Cache the plaintext bits, and return the future.
+            Ok(Self::Future(Future::new(program_id, function_name, inputs), OnceCell::with_value(bits_be.to_vec())))
         }
         // Unknown variant.
         else {
