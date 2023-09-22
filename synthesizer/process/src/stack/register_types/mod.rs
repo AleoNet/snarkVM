@@ -180,6 +180,7 @@ impl<N: Network> RegisterTypes<N> {
                     }
                 }
             }
+            RegisterType::Future => bail!("Attempted to access a 'future' register."),
         };
 
         // Traverse the path to find the register type.

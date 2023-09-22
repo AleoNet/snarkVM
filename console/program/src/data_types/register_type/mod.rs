@@ -29,6 +29,8 @@ pub enum RegisterType<N: Network> {
     Record(Identifier<N>),
     /// A record locator.
     ExternalRecord(Locator<N>),
+    /// A future.
+    Future,
 }
 
 impl<N: Network> From<ValueType<N>> for RegisterType<N> {
