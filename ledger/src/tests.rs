@@ -17,7 +17,7 @@ use crate::{
     RecordsFilter,
 };
 use console::{
-    account::PrivateKey,
+    account::{Address, PrivateKey},
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Value},
 };
@@ -388,4 +388,68 @@ finalize failed_assert:
 
     // Add the block with the rejected transaction to the ledger.
     ledger.advance_to_next_block(&next_block).unwrap();
+}
+
+#[test]
+fn test_new_committee_member() {
+    let rng = &mut TestRng::default();
+
+    // Initialize the test environment.
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
+
+    // Sample new account for the new committee member.
+    let new_member_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    let new_member_address = Address::try_from(&new_member_private_key).unwrap();
+
+    // Fund the new committee member.
+    let inputs = [
+        Value::from_str(&format!("{new_member_address}")).unwrap(),
+        Value::from_str("10000000000000u64").unwrap(), // 10 million credits.
+    ];
+    let transfer_transaction = ledger
+        .vm
+        .execute(&private_key, ("credits.aleo", "transfer_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Construct the next block.
+    let transfer_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![transfer_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&transfer_block).unwrap();
+
+    // Add the deployment block to the ledger.
+    ledger.advance_to_next_block(&transfer_block).unwrap();
+
+    // Construct the bond public
+    let bond_amount = 1000000000000u64; // 1 million credits.
+    let inputs = [
+        Value::from_str(&format!("{new_member_address}")).unwrap(),
+        Value::from_str(&format!("{bond_amount}u64")).unwrap(),
+    ];
+    let bond_public_transaction = ledger
+        .vm
+        .execute(&new_member_private_key, ("credits.aleo", "bond_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Construct the next block.
+    let bond_public_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![bond_public_transaction], rng)
+        .unwrap();
+
+    // Check that the committee does not include the new member.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(!committee.is_committee_member(new_member_address));
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&bond_public_block).unwrap();
+
+    // Add the bond public block to the ledger.
+    ledger.advance_to_next_block(&bond_public_block).unwrap();
+
+    // Check that the committee is updated with the new member.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(committee.is_committee_member(new_member_address));
+    assert_eq!(committee.get_stake(new_member_address), bond_amount);
 }
