@@ -22,7 +22,7 @@ impl<N: Network> FromBytes for Input<N> {
 
         // Ensure the register is not a register member.
         match matches!(register, Register::Locator(..)) {
-            true => Ok(Self { register, plaintext_type }),
+            true => Ok(Self { register, finalize_type: plaintext_type }),
             false => Err(error(format!("Input '{register}' cannot be a register member"))),
         }
     }
@@ -36,6 +36,6 @@ impl<N: Network> ToBytes for Input<N> {
             return Err(error(format!("Input '{}' cannot be a register member", self.register)));
         }
         self.register.write_le(&mut writer)?;
-        self.plaintext_type.write_le(&mut writer)
+        self.finalize_type.write_le(&mut writer)
     }
 }

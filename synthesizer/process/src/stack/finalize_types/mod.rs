@@ -31,17 +31,17 @@ use synthesizer_program::{
     StackProgram,
 };
 
-use console::program::Access;
+use console::program::{Access, FinalizeType};
 use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct FinalizeTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
-    /// Note that in a finalize context, all registers are plaintext types.
-    inputs: IndexMap<u64, PlaintextType<N>>,
+    /// Note that in a finalize context, all registers are finalize types.
+    inputs: IndexMap<u64, FinalizeType<N>>,
     /// The mapping of all destination registers to their defined types.
-    /// Note that in a finalize context, all registers are plaintext types.
-    destinations: IndexMap<u64, PlaintextType<N>>,
+    /// Note that in a finalize context, all registers are finalize types.
+    destinations: IndexMap<u64, FinalizeType<N>>,
 }
 
 impl<N: Network> FinalizeTypes<N> {
@@ -71,13 +71,13 @@ impl<N: Network> FinalizeTypes<N> {
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         operand: &Operand<N>,
-    ) -> Result<PlaintextType<N>> {
+    ) -> Result<FinalizeType<N>> {
         Ok(match operand {
-            Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
+            Operand::Literal(literal) => FinalizeType::Plaintext(PlaintextType::from(literal.to_type())),
             Operand::Register(register) => self.get_type(stack, register)?,
-            Operand::ProgramID(_) => PlaintextType::Literal(LiteralType::Address),
+            Operand::ProgramID(_) => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
             Operand::Caller => bail!("'self.caller' is not a valid operand in a finalize context."),
-            Operand::BlockHeight => PlaintextType::Literal(LiteralType::U32),
+            Operand::BlockHeight => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U32)),
         })
     }
 
@@ -86,9 +86,9 @@ impl<N: Network> FinalizeTypes<N> {
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         register: &Register<N>,
-    ) -> Result<PlaintextType<N>> {
+    ) -> Result<FinalizeType<N>> {
         // Initialize a tracker for the type of the register.
-        let mut plaintext_type = if self.is_input(register) {
+        let finalize_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
             self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         } else {
@@ -97,16 +97,18 @@ impl<N: Network> FinalizeTypes<N> {
         };
 
         // Retrieve the path if the register is an access. Otherwise, return the type.
-        let path = match &register {
+        let (mut plaintext_type, path) = match (finalize_type, register) {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => return Ok(plaintext_type.clone()),
+            (_, Register::Locator(..)) => return Ok(finalize_type.clone()),
             // If the register is an access, then traverse the path to output the register type.
-            Register::Access(_, path) => {
+            (FinalizeType::Plaintext(plaintext_type), Register::Access(_, path)) => {
                 // Ensure the path is valid.
                 ensure!(!path.is_empty(), "Register '{register}' references no accesses.");
-                // Output the path.
-                path
+                // Output the plaintext type and path.
+                (plaintext_type, path)
             }
+            // TODO (@d0cd)
+            (FinalizeType::Future, _) => todo!(),
         };
 
         // Traverse the path to find the register type.
@@ -138,6 +140,6 @@ impl<N: Network> FinalizeTypes<N> {
         }
 
         // Return the output type.
-        Ok(plaintext_type.clone())
+        Ok(FinalizeType::Plaintext(plaintext_type.clone()))
     }
 }

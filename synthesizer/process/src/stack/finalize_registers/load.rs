@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::FinalizeType;
 
 impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
     /// Loads the value of a given operand from the registers.
@@ -55,7 +56,11 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
         // Retrieve the type of the register.
         match self.finalize_types.get_type(stack, register) {
             // Ensure the plaintext value matches the register type.
-            Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
+            Ok(FinalizeType::Plaintext(plaintext_type)) => {
+                stack.matches_plaintext(&plaintext_value, &plaintext_type)?
+            }
+            // TODO (@d0cd)
+            Ok(FinalizeType::Future) => todo!(),
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
         };
