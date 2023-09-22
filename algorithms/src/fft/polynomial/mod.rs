@@ -44,8 +44,7 @@ pub enum Polynomial<'a, F: Field> {
 }
 
 impl<'a, F: Field> CanonicalSerialize for Polynomial<'a, F> {
-    #[allow(unused_mut, unused_variables)]
-    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+    fn serialize_with_mode<W: Write>(&self, writer: W, compress: Compress) -> Result<(), SerializationError> {
         match self {
             Sparse(p) => {
                 let p: DensePolynomial<F> = p.clone().into_owned().into();
@@ -55,7 +54,6 @@ impl<'a, F: Field> CanonicalSerialize for Polynomial<'a, F> {
         }
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn serialized_size(&self, mode: Compress) -> usize {
         match self {
             Sparse(p) => {
@@ -74,7 +72,6 @@ impl<'a, F: Field> Valid for Polynomial<'a, F> {
 }
 
 impl<'a, F: Field> CanonicalDeserialize for Polynomial<'a, F> {
-    #[allow(unused_mut, unused_variables)]
     fn deserialize_with_mode<R: Read>(
         reader: R,
         compress: Compress,

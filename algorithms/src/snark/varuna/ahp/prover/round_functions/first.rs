@@ -57,7 +57,6 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the first round message and the next state.
-    #[allow(clippy::type_complexity)]
     pub fn prover_first_round<'a, R: RngCore>(
         mut state: prover::State<'a, F, MM>,
         rng: &mut R,
