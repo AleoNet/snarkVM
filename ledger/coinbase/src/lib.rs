@@ -27,7 +27,7 @@ mod tests;
 
 use console::{
     account::Address,
-    prelude::{anyhow, bail, ensure, has_duplicates, Network, Result, ToBytes},
+    prelude::{anyhow, bail, cfg_iter, ensure, has_duplicates, Network, Result, ToBytes},
 };
 use snarkvm_algorithms::{
     fft::{DensePolynomial, EvaluationDomain},
@@ -38,8 +38,10 @@ use snarkvm_fields::Zero;
 use snarkvm_synthesizer_snark::UniversalSRS;
 
 use aleo_std::prelude::*;
-
 use std::sync::Arc;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 #[derive(Clone)]
 pub enum CoinbasePuzzle<N: Network> {
@@ -198,12 +200,11 @@ impl<N: Network> CoinbasePuzzle<N> {
         }
         lap!(timer, "Perform initial checks");
 
-        // Compute the prover polynomials.
-        for solution in solutions.values() {
-            // TODO: check if this operation requires a blocking task.
-            if !solution.verify(self.coinbase_verifying_key(), epoch_challenge, proof_target)? {
-                bail!("Invalid prover solution '{}' was detected", solution.commitment());
-            }
+        // Verify each prover solution.
+        if !cfg_iter!(solutions).all(|(_, solution)| {
+            solution.verify(self.coinbase_verifying_key(), epoch_challenge, proof_target).unwrap_or(false)
+        }) {
+            bail!("An invalid prover solution was detected in the coinbase solution");
         }
         finish!(timer, "Verify each solution");
 
