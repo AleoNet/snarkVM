@@ -90,10 +90,13 @@ impl<N: Network> Response<N> {
                         // Return the output ID.
                         Ok(OutputID::Constant(output_hash))
                     }
-                    // For a public output, compute the hash (using `tcm`) of the output.
-                    ValueType::Public(..) => {
+                    // For a public or future output, compute the hash (using `tcm`) of the output.
+                    ValueType::Public(..) | ValueType::Future => {
                         // Ensure the output is a plaintext.
-                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
+                        ensure!(
+                            matches!(output, Value::Plaintext(..) | Value::Future(..)),
+                            "Expected a plaintext or future output"
+                        );
 
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(

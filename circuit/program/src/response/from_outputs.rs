@@ -58,8 +58,8 @@ impl<A: Aleo> Response<A> {
                             Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
-                    // For a public output, compute the hash (using `tcm`) of the output.
-                    console::ValueType::Public(..) => {
+                    // For a public or future output, compute the hash (using `tcm`) of the output.
+                    console::ValueType::Public(..) | console::ValueType::Future => {
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Construct the preimage as `(function ID || output || tcm || index)`.
@@ -71,10 +71,9 @@ impl<A: Aleo> Response<A> {
                         // Hash the output to a field element.
                         match &output {
                             // Return the output ID.
-                            Value::Plaintext(..) => OutputID::public(A::hash_psd8(&preimage)),
+                            Value::Plaintext(..) | Value::Future(..) => OutputID::public(A::hash_psd8(&preimage)),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
-                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
                     // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.

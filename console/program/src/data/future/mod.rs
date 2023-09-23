@@ -21,17 +21,23 @@ mod to_bits;
 mod to_fields;
 
 use crate::{
+    bail,
+    ensure,
+    error,
     Access,
     Debug,
     Field,
+    FromBits,
     FromBytes,
     Identifier,
     IoResult,
     Network,
+    OrHalt,
     Plaintext,
     ProgramID,
     Read,
     Result,
+    SizeInDataBits,
     ToBits,
     ToBytes,
     ToFields,

@@ -17,14 +17,56 @@ use super::*;
 impl<N: Network> FromBytes for Future<N> {
     /// Reads in a future from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        todo!()
+        // Read the program ID.
+        let program_id = ProgramID::read_le(&mut reader)?;
+        // Read the function name.
+        let function_name = Identifier::<N>::read_le(&mut reader)?;
+        // Read the number of arguments to the future.
+        let num_arguments = u8::read_le(&mut reader)? as usize;
+        if num_arguments > N::MAX_INPUTS {
+            return Err(error("Failed to read future: too many arguments"));
+        };
+        // Read the arguments.
+        let mut arguments = Vec::with_capacity(num_arguments);
+        for _ in 0..num_arguments {
+            // Read the argument (in 2 steps to prevent infinite recursion).
+            let num_bytes = u16::read_le(&mut reader)?;
+            // Read the argument bytes.
+            let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+            // Recover the argument.
+            let entry = Argument::read_le(&mut bytes.as_slice())?;
+            // Add the argument.
+            arguments.push(entry);
+        }
+        // Return the future.
+        Ok(Self::new(program_id, function_name, arguments))
     }
 }
 
 impl<N: Network> ToBytes for Future<N> {
     /// Writes a future to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        todo!()
+        // Write the program ID.
+        self.program_id.write_le(&mut writer)?;
+        // Write the function name.
+        self.function_name.write_le(&mut writer)?;
+        // Write the number of arguments.
+        if self.arguments.len() > N::MAX_INPUTS {
+            return Err(error("Failed to write future: too many arguments"));
+        };
+        u8::try_from(self.arguments.len()).or_halt_with::<N>("Record length exceeds u8::MAX").write_le(&mut writer)?;
+        // Write each argument.
+        for argument in &self.arguments {
+            // Write the argument (performed in 2 steps to prevent infinite recursion).
+            let bytes = argument.to_bytes_le().map_err(|e| error(e.to_string()))?;
+            // Write the number of bytes.
+            u16::try_from(bytes.len())
+                .or_halt_with::<N>("Record entry exceeds u16::MAX bytes")
+                .write_le(&mut writer)?;
+            // Write the bytes.
+            bytes.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
 

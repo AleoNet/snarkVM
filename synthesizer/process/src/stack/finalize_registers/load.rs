@@ -56,7 +56,7 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
         match (self.finalize_types.get_type(stack, register), &value) {
             // Ensure the plaintext value matches the register type.
             (Ok(FinalizeType::Plaintext(plaintext_type)), Value::Plaintext(plaintext_value)) => {
-                stack.matches_plaintext(&plaintext_value, &plaintext_type)?
+                stack.matches_plaintext(plaintext_value, &plaintext_type)?
             }
             // TODO (@d0cd)
             // Ensure the future value matches the register type.
