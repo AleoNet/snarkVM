@@ -25,7 +25,7 @@ use crate::{
 use circuit::{Eject, Inject, Mode};
 use console::{
     network::prelude::*,
-    program::{Argument, Future, Identifier, Register, RegisterType, Value},
+    program::{Argument, FinalizeType, Future, Identifier, Register, RegisterType, Value},
 };
 
 /// Invokes the asynchronous call on the operands, producing a future.
@@ -37,13 +37,6 @@ pub struct Async<N: Network> {
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
-}
-
-impl<N: Network> Async<N> {
-    /// Returns the number of operands.
-    fn num_operands(&self) -> usize {
-        self.operands.len()
-    }
 }
 
 impl<N: Network> Async<N> {
@@ -158,7 +151,53 @@ impl<N: Network> Async<N> {
         stack: &impl StackProgram<N>,
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
-        todo!()
+        // Ensure that an associated finalize block exists.
+        let function = stack.get_function(self.function_name())?;
+        let finalize = match function.finalize_logic() {
+            Some(finalize) => finalize,
+            None => bail!("'{}/{}' does not have a finalize block", stack.program_id(), self.function_name()),
+        };
+
+        // Check that the number of inputs matches the number of arguments.
+        if input_types.len() != finalize.input_types().len() {
+            bail!(
+                "'{}/{}' finalize expects {} arguments, found {} arguments",
+                stack.program_id(),
+                self.function_name(),
+                finalize.input_types().len(),
+                input_types.len()
+            );
+        }
+
+        // Check the type of each operand.
+        for (input_type, finalize_type) in input_types.iter().zip_eq(finalize.input_types()) {
+            match (input_type, finalize_type) {
+                (RegisterType::Plaintext(input_type), FinalizeType::Plaintext(finalize_type)) => {
+                    ensure!(
+                        input_type == &finalize_type,
+                        "'{}/{}' finalize expects a '{}' argument, found a '{}' argument",
+                        stack.program_id(),
+                        self.function_name(),
+                        finalize_type,
+                        input_type
+                    );
+                }
+                (RegisterType::Record(..), _) => bail!("Attempted to pass a 'record' into 'finalize'"),
+                (RegisterType::ExternalRecord(..), _) => {
+                    bail!("Attempted to pass an 'external record' into 'finalize'")
+                }
+                (RegisterType::Future, FinalizeType::Future) => (),
+                (input_type, finalize_type) => bail!(
+                    "'{}/{}' finalize expects a '{}' argument, found a '{}' argument",
+                    stack.program_id(),
+                    self.function_name(),
+                    finalize_type,
+                    input_type
+                ),
+            }
+        }
+
+        Ok(vec![RegisterType::Future])
     }
 }
 
@@ -196,8 +235,6 @@ impl<N: Network> Parser for Async<N> {
         let (string, destination) = Register::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the ';' from the string.
-        let (string, _) = tag(";")(string)?;
 
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
         match operands.len() <= N::MAX_INPUTS {
@@ -242,9 +279,9 @@ impl<N: Network> Display for Async<N> {
             return Err(fmt::Error);
         }
         // Print the operation.
-        write!(f, "{}", Self::opcode())?;
+        write!(f, "{} {}", Self::opcode(), self.function_name)?;
         self.operands.iter().try_for_each(|operand| write!(f, " {operand}"))?;
-        write!(f, ";")
+        write!(f, " into {}", self.destination)
     }
 }
 
@@ -452,9 +489,9 @@ mod tests {
     // #[test]
     // fn test_finalize_eq_succeeds() {
     //     // Initialize the operation.
-    //     let operation = |operands| FinalizeCommand::<CurrentNetwork> { operands };
+    //     let operation = |operands| Async::<CurrentNetwork> { operands };
     //     // Initialize the opcode.
-    //     let opcode = FinalizeCommand::<CurrentNetwork>::opcode();
+    //     let opcode = Async::<CurrentNetwork>::opcode();
     //
     //     let mut rng = TestRng::default();
     //
@@ -479,7 +516,7 @@ mod tests {
     //     use rayon::prelude::*;
     //
     //     // Initialize the opcode.
-    //     let opcode = FinalizeCommand::<CurrentNetwork>::opcode();
+    //     let opcode = Async::<CurrentNetwork>::opcode();
     //
     //     let mut rng = TestRng::default();
     //
@@ -505,12 +542,13 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let expected = "finalize r0 r1;";
-        let (string, finalize) = FinalizeCommand::<CurrentNetwork>::parse(expected).unwrap();
+        let expected = "async foo r0 r1 into r3;";
+        let (string, async_) = Async::<CurrentNetwork>::parse(expected).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(expected, finalize.to_string(), "Display.fmt() did not match expected: '{string}'");
-        assert_eq!(finalize.operands.len(), 2, "The number of operands is incorrect");
-        assert_eq!(finalize.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(finalize.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(expected, async_.to_string(), "Display.fmt() did not match expected: '{string}'");
+        assert_eq!(async_.operands.len(), 2, "The number of operands is incorrect");
+        assert_eq!(async_.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(async_.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(async_.destination, Register::Locator(3), "The destination is incorrect");
     }
 }

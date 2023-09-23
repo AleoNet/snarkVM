@@ -41,16 +41,25 @@ pub struct FunctionCore<N: Network, Instruction: InstructionTrait<N>, Command: C
     inputs: IndexSet<Input<N>>,
     /// The instructions, in order of execution.
     instructions: Vec<Instruction>,
+    /// The async instruction, if any.
+    async_instruction: Option<Instruction>,
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
     /// The optional finalize logic.
-    finalize: Option<FinalizeCore<N, Command>>,
+    finalize_logic: Option<FinalizeCore<N, Command>>,
 }
 
 impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FunctionCore<N, Instruction, Command> {
     /// Initializes a new function with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new(), finalize: None }
+        Self {
+            name,
+            inputs: IndexSet::new(),
+            instructions: Vec::new(),
+            async_instruction: None,
+            outputs: IndexSet::new(),
+            finalize_logic: None,
+        }
     }
 
     /// Returns the name of the function.
@@ -83,9 +92,15 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
         self.outputs.iter().map(|output| output.value_type()).cloned().collect()
     }
 
+    // TODO (@d0cd) Renaming finalize to async when this code is approved.
+    /// Returns the finalize command, if any.
+    pub fn finalize_command(&self) -> Option<&Instruction> {
+        self.async_instruction.as_ref()
+    }
+
     /// Returns the function finalize logic.
-    pub const fn finalize(&self) -> Option<&FinalizeCore<N, Command>> {
-        self.finalize.as_ref()
+    pub const fn finalize_logic(&self) -> Option<&FinalizeCore<N, Command>> {
+        self.finalize_logic.as_ref()
     }
 }
 
@@ -109,7 +124,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
         ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
 
         // Ensure a finalize logic has not been added.
-        ensure!(self.finalize.is_none(), "Cannot add instructions after finalize logic has been added");
+        ensure!(self.finalize_logic.is_none(), "Cannot add instructions after finalize logic has been added");
 
         // Ensure the input register is a locator.
         ensure!(matches!(input.register(), Register::Locator(..)), "Input register must be a locator");
@@ -138,11 +153,17 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
         );
 
         // Ensure a finalize logic has not been added.
-        ensure!(self.finalize.is_none(), "Cannot add instructions after finalize logic has been added");
+        ensure!(self.finalize_logic.is_none(), "Cannot add instructions after finalize logic has been added");
 
         // Ensure the destination register is a locator.
         for register in instruction.destinations() {
             ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+        }
+
+        // If the instruction is an async instruction, ensure that there is not already an async instruction.
+        if instruction.is_async() {
+            ensure!(self.async_instruction.is_none(), "Cannot add more than one async instruction");
+            self.async_instruction = Some(instruction.clone());
         }
 
         // Insert the instruction.
@@ -163,7 +184,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
         ensure!(!self.outputs.contains(&output), "Cannot add duplicate output statement");
 
         // Ensure that the finalize logic has not been added.
-        ensure!(self.finalize.is_none(), "Cannot add instructions after finalize logic has been added");
+        ensure!(self.finalize_logic.is_none(), "Cannot add instructions after finalize logic has been added");
 
         // Insert the output statement.
         self.outputs.insert(output);
@@ -180,14 +201,14 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
     #[inline]
     fn add_finalize(&mut self, finalize: FinalizeCore<N, Command>) -> Result<()> {
         // Ensure there is no finalize scope in memory.
-        ensure!(self.finalize.is_none(), "Cannot add multiple finalize scopes to function '{}'", self.name);
+        ensure!(self.finalize_logic.is_none(), "Cannot add multiple finalize scopes to function '{}'", self.name);
         // Ensure the finalize scope name matches the function name.
         ensure!(*finalize.name() == self.name, "Finalize scope name must match function name '{}'", self.name);
         // Ensure the number of finalize inputs has not been exceeded.
         ensure!(finalize.inputs().len() <= N::MAX_INPUTS, "Cannot add more than {} inputs to finalize", N::MAX_INPUTS);
 
         // Insert the finalize scope.
-        self.finalize = Some(finalize);
+        self.finalize_logic = Some(finalize);
         Ok(())
     }
 }

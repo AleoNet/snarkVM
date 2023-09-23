@@ -506,6 +506,9 @@ impl<N: Network> FinalizeTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
+            Opcode::Async => {
+                bail!("Instruction 'async' is not allowed in 'finalize'");
+            }
             Opcode::Call => {
                 bail!("Instruction 'call' is not allowed in 'finalize'");
             }
@@ -557,9 +560,6 @@ impl<N: Network> FinalizeTypes<N> {
                 bail!("Fatal error: Cannot check command '{opcode}' as an instruction in 'finalize {finalize_name}'.")
             }
             Opcode::Commit(opcode) => RegisterTypes::check_commit_opcode(opcode, instruction)?,
-            Opcode::Finalize(opcode) => {
-                bail!("Forbidden operation: Cannot invoke '{opcode}' in a `finalize` scope.");
-            }
             Opcode::Hash(opcode) => RegisterTypes::check_hash_opcode(opcode, instruction)?,
             Opcode::Is(opcode) => {
                 // Ensure the instruction belongs to the defined set.
