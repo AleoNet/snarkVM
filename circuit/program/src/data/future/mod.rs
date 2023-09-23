@@ -19,24 +19,9 @@ mod find;
 mod to_bits;
 mod to_fields;
 
-use crate::{
-    Access,
-    Aleo,
-    Boolean,
-    Debug,
-    Eject,
-    Identifier,
-    Inject,
-    Mode,
-    Plaintext,
-    ProgramID,
-    Result,
-    ToBits,
-    ToFields,
-    Value,
-};
-
-use snarkvm_circuit_types::Field;
+use crate::{Access, Identifier, Plaintext, ProgramID, Value};
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16};
 
 /// A future.
 #[derive(Clone)]
@@ -56,7 +41,11 @@ impl<A: Aleo> Inject for Future<A> {
 
     /// Initializes a circuit of the given mode and future.
     fn new(_: Mode, value: Self::Primitive) -> Self {
-        todo!()
+        Self::from(
+            Inject::new(Mode::Constant, *value.program_id()),
+            Inject::new(Mode::Constant, *value.function_name()),
+            Inject::new(Mode::Public, value.inputs().to_vec()),
+        )
     }
 }
 
@@ -65,12 +54,19 @@ impl<A: Aleo> Eject for Future<A> {
 
     /// Ejects the mode of the circuit future.
     fn eject_mode(&self) -> Mode {
-        todo!()
+        let program_id_mode = Eject::eject_mode(self.program_id());
+        let function_name_mode = Eject::eject_mode(self.function_name());
+        let inputs_mode = Eject::eject_mode(&self.inputs());
+        Mode::combine(Mode::combine(program_id_mode, function_name_mode), inputs_mode)
     }
 
     /// Ejects the circuit value.
     fn eject_value(&self) -> Self::Primitive {
-        todo!()
+        Self::Primitive::new(
+            Eject::eject_value(self.program_id()),
+            Eject::eject_value(self.function_name()),
+            self.inputs().iter().map(Eject::eject_value).collect(),
+        )
     }
 }
 

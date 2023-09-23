@@ -20,6 +20,17 @@ impl<A: Aleo> ToFields for Future<A> {
     /// Returns the circuit future as a list of fields.
     #[inline]
     fn to_fields(&self) -> Vec<Field<A>> {
-        todo!()
+        // Encode the data as little-endian bits.
+        let mut bits_le = self.to_bits_le();
+        // Adds one final bit to the data, to serve as a terminus indicator.
+        // During decryption, this final bit ensures we've reached the end.
+        bits_le.push(Boolean::constant(true));
+        // Pack the bits into field elements.
+        let fields = bits_le.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect::<Vec<_>>();
+        // Ensure the number of field elements does not exceed the maximum allowed size.
+        match fields.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => fields,
+            false => A::halt("Future exceeds maximum allowed size"),
+        }
     }
 }
