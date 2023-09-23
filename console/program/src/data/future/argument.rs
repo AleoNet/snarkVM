@@ -24,17 +24,34 @@ pub enum Argument<N: Network> {
 }
 
 impl<N: Network> FromBytes for Argument<N> {
-    fn read_le<R: Read>(reader: R) -> IoResult<Self>
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
     where
         Self: Sized,
     {
-        todo!()
+        // Read the index.
+        let index = u8::read_le(&mut reader)?;
+        // Read the argument.
+        let argument = match index {
+            0 => Self::Plaintext(Plaintext::read_le(&mut reader)?),
+            1 => Self::Future(Future::read_le(&mut reader)?),
+            2.. => return Err(error(format!("Failed to decode future argument {index}"))),
+        };
+        Ok(argument)
     }
 }
 
 impl<N: Network> ToBytes for Argument<N> {
-    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        todo!()
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Plaintext(plaintext) => {
+                0u8.write_le(&mut writer)?;
+                plaintext.write_le(&mut writer)
+            }
+            Self::Future(future) => {
+                1u8.write_le(&mut writer)?;
+                future.write_le(&mut writer)
+            }
+        }
     }
 }
 
@@ -42,12 +59,34 @@ impl<N: Network> ToBits for Argument<N> {
     /// Returns the argument as a list of **little-endian** bits.
     #[inline]
     fn write_bits_le(&self, vec: &mut Vec<bool>) {
-        todo!()
+        match self {
+            Self::Plaintext(plaintext) => {
+                let mut bits_le = vec![false];
+                plaintext.write_bits_le(&mut bits_le);
+                vec.extend(bits_le);
+            }
+            Self::Future(future) => {
+                let mut bits_le = vec![true];
+                future.write_bits_le(&mut bits_le);
+                vec.extend(bits_le);
+            }
+        }
     }
 
     /// Returns the argument as a list of **big-endian** bits.
     #[inline]
     fn write_bits_be(&self, vec: &mut Vec<bool>) {
-        todo!()
+        match self {
+            Self::Plaintext(plaintext) => {
+                let mut bits_be = vec![false];
+                plaintext.write_bits_be(&mut bits_be);
+                vec.extend(bits_be);
+            }
+            Self::Future(future) => {
+                let mut bits_be = vec![true];
+                future.write_bits_be(&mut bits_be);
+                vec.extend(bits_be);
+            }
+        }
     }
 }

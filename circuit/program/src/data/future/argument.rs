@@ -22,3 +22,73 @@ pub enum Argument<A: Aleo> {
     /// A future.
     Future(Future<A>),
 }
+
+impl<A: Aleo> Inject for Argument<A> {
+    type Primitive = console::Argument<A::Network>;
+
+    /// Initializes a circuit of the given mode and argument.
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        match value {
+            console::Argument::Plaintext(plaintext) => Self::Plaintext(Inject::new(mode, plaintext)),
+            console::Argument::Future(future) => Self::Future(Inject::new(mode, future)),
+        }
+    }
+}
+
+impl<A: Aleo> Eject for Argument<A> {
+    type Primitive = console::Argument<A::Network>;
+
+    /// Ejects the mode of the circuit argument.
+    fn eject_mode(&self) -> Mode {
+        match self {
+            Self::Plaintext(plaintext) => plaintext.eject_mode(),
+            Self::Future(future) => future.eject_mode(),
+        }
+    }
+
+    /// Ejects the circuit argument.
+    fn eject_value(&self) -> Self::Primitive {
+        match self {
+            Self::Plaintext(plaintext) => Self::Primitive::Plaintext(plaintext.eject_value()),
+            Self::Future(future) => Self::Primitive::Future(future.eject_value()),
+        }
+    }
+}
+
+impl<A: Aleo> ToBits for Argument<A> {
+    type Boolean = Boolean<A>;
+
+    /// Returns the argument as a list of **little-endian** bits.
+    #[inline]
+    fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
+        match self {
+            Self::Plaintext(plaintext) => {
+                let mut bits_le = vec![Boolean::constant(false)];
+                plaintext.write_bits_le(&mut bits_le);
+                vec.extend(bits_le);
+            }
+            Self::Future(future) => {
+                let mut bits_le = vec![Boolean::constant(true)];
+                future.write_bits_le(&mut bits_le);
+                vec.extend(bits_le);
+            }
+        }
+    }
+
+    /// Returns the argument as a list of **big-endian** bits.
+    #[inline]
+    fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
+        match self {
+            Self::Plaintext(plaintext) => {
+                let mut bits_be = vec![Boolean::constant(false)];
+                plaintext.write_bits_be(&mut bits_be);
+                vec.extend(bits_be);
+            }
+            Self::Future(future) => {
+                let mut bits_be = vec![Boolean::constant(true)];
+                future.write_bits_be(&mut bits_be);
+                vec.extend(bits_be);
+            }
+        }
+    }
+}

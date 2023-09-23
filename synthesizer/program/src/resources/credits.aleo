@@ -706,10 +706,10 @@ function transfer_public_to_private:
     // Construct a record for the receiver.
     cast r0 r1 into r2 as credits.record;
     // Decrement the balance of the sender publicly.
-    async transfer_public_to_private self.caller r1 into r2;
+    async transfer_public_to_private self.caller r1 into r3;
     // Output the record of the receiver.
     output r2 as credits.record;
-    output r2 as future;
+    output r3 as future;
 
 finalize transfer_public_to_private:
     // Input the sender.

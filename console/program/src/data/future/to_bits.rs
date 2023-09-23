@@ -50,6 +50,9 @@ impl<N: Network> ToBits for Future<N> {
             // Write the argument.
             bits_le.extend_from_slice(&argument_bits);
         }
+
+        // Extend the vector with the bits.
+        vec.extend_from_slice(&bits_le);
     }
 
     /// Returns the future as a list of **big-endian** bits.
@@ -87,5 +90,8 @@ impl<N: Network> ToBits for Future<N> {
             // Write the argument.
             bits_be.extend_from_slice(&argument_bits);
         }
+
+        // Extend the vector with the bits.
+        vec.extend_from_slice(&bits_be);
     }
 }
