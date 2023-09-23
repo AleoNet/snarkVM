@@ -20,7 +20,8 @@ mapping data:
 function insert_contains_remove:
     input r0 as u8.public;
     input r1 as u8.public;
-    finalize r0 r1;
+    async insert_contains_remove r0 r1 into r3;
+    output r3 as future;
 
 finalize insert_contains_remove:
     input r0 as u8.public;
@@ -36,7 +37,8 @@ finalize insert_contains_remove:
 
 function empty_remove:
     input r0 as u8.public;
-    finalize r0;
+    async empty_remove r0 into r1;
+    output r1 as future;
 
 finalize empty_remove:
     input r0 as u8.public;

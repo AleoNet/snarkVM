@@ -28,7 +28,8 @@ function test_arrays:
     output r1 as [[boolean; 4u32]; 1u32].public;
     output r8 as [[boolean; 4u32]; 1u32].public;
     output r2 as tree.private;
-    finalize r0 r1;
+    async test_arrays r0 r1 into r3;
+    output r3 as future;
 
 finalize test_arrays:
     input r0 as [[boolean; 4u32]; 1u32].public;

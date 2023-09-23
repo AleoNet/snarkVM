@@ -14,7 +14,8 @@ program test_branch.aleo;
 function run_test:
     input r0 as u8.public;
     input r1 as u8.public;
-    finalize r0 r1;
+    async run_test r0 r1 into r2;
+    output r2 as future;
 
 finalize run_test:
     input r0 as u8.public;

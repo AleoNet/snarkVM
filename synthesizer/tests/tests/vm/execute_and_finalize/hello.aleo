@@ -24,7 +24,8 @@ function goodbye:
     input r1 as u32.private;
     add r0 r1 into r2;
     output r2 as u32.public;
-    finalize r1 r2;
+    async goodbye r1 r2 into r3;
+    output r3 as future;
 
 finalize goodbye:
     input r0 as u32.public;
