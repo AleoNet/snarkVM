@@ -15,7 +15,10 @@
 use super::Certificate;
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
+    polycommit::{
+        kzg10::DegreeInfo,
+        sonic_pc::{Commitment, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
+    },
     r1cs::{ConstraintSynthesizer, SynthesisError},
     snark::varuna::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
@@ -38,7 +41,7 @@ use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use core::marker::PhantomData;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
@@ -66,25 +69,37 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
     ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>> {
+        ensure!(!circuits.is_empty());
         let index_time = start_timer!(|| "Varuna::CircuitSetup");
 
-        let mut circuit_keys = Vec::with_capacity(circuits.len());
+        let mut indexed_circuits = Vec::with_capacity(circuits.len());
+        let mut degree_info = None::<DegreeInfo>;
         for circuit in circuits {
-            let mut indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
-            let degree_info = indexed_circuit.index_info.degree_info::<E::Fr, MM>();
-            // TODO: Add check that c is in the correct mode.
-            // Ensure the universal SRS supports the circuit size.
-            universal_srs
-                .download_powers_for(0..degree_info.max_degree)
-                .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", degree_info.max_degree))?;
+            let indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
+            let degree_info_i = indexed_circuit.index_info.degree_info::<E::Fr, MM>();
+            degree_info = match degree_info {
+                Some(degree_info) => Some(degree_info.union(&degree_info_i)),
+                None => Some(degree_info_i),
+            };
+            indexed_circuits.push(indexed_circuit);
+        }
+        let degree_info = degree_info.unwrap();
 
-            let universal_prover = &universal_srs.to_universal_prover(degree_info)?;
+        // TODO: Add check that c is in the correct mode.
+        // Ensure the universal SRS supports the circuit size.
+        universal_srs
+            .download_powers_for(0..degree_info.max_degree)
+            .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", degree_info.max_degree))?;
 
+        let universal_prover = universal_srs.to_universal_prover(degree_info)?;
+
+        let mut circuit_keys = Vec::with_capacity(circuits.len());
+        for mut indexed_circuit in indexed_circuits {
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments
 
             let (mut circuit_commitments, commitment_randomnesses): (_, _) = SonicKZG10::<E, FS>::commit(
-                universal_prover,
+                &universal_prover,
                 indexed_circuit.interpolate_matrix_evals().map(Into::into),
                 setup_rng,
             )?;

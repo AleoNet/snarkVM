@@ -76,10 +76,9 @@ impl<N: Network> ProvingKey<N> {
         let mut degree_info: Option<DegreeInfo> = None;
         for (pk, _) in assignments {
             let degree_info_i = pk.circuit.index_info.degree_info::<N::Field, varuna::VarunaHidingMode>();
-            degree_info = if let Some(degree_info) = degree_info {
-                Some(degree_info.union(&degree_info_i))
-            } else {
-                Some(degree_info_i)
+            degree_info = match degree_info {
+                Some(degree_info) => Some(degree_info.union(&degree_info_i)),
+                None => Some(degree_info_i),
             };
         }
         let universal_prover = N::varuna_universal_prover(degree_info.unwrap());
