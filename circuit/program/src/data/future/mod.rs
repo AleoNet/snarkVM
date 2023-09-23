@@ -49,6 +49,8 @@ pub struct Future<A: Aleo> {
     arguments: Vec<Argument<A>>,
 }
 
+// TODO (d0cd) Mode consistency
+
 impl<A: Aleo> Inject for Future<A> {
     type Primitive = console::Future<A::Network>;
 
@@ -73,6 +75,12 @@ impl<A: Aleo> Eject for Future<A> {
 }
 
 impl<A: Aleo> Future<A> {
+    /// Returns a future from the given program ID, function name, and arguments.
+    #[inline]
+    pub fn from(program_id: ProgramID<A>, function_name: Identifier<A>, arguments: Vec<Argument<A>>) -> Self {
+        Self { program_id, function_name, arguments }
+    }
+
     /// Returns the program ID.
     #[inline]
     pub const fn program_id(&self) -> &ProgramID<A> {

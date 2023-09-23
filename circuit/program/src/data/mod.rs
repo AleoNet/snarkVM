@@ -19,7 +19,7 @@ mod ciphertext;
 pub use ciphertext::Ciphertext;
 
 mod future;
-pub use future::Future;
+pub use future::{Argument, Future};
 
 pub(super) mod identifier;
 pub use identifier::Identifier;
