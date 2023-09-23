@@ -16,8 +16,12 @@ use crate::{
     traits::{FinalizeCommandTrait, RegistersLoad, StackMatches, StackProgram},
     Opcode,
     Operand,
+    RegistersStore,
 };
-use console::{network::prelude::*, program::Register};
+use console::{
+    network::prelude::*,
+    program::{Argument, Future, Identifier, Register, Value},
+};
 
 /// Finalizes the operands on-chain.
 pub type FinalizeCommand<N> = FinalizeInstruction<N, { Variant::FinalizeCommand as u8 }>;
@@ -29,8 +33,12 @@ enum Variant {
 /// Finalizes an operation on the operands.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FinalizeInstruction<N: Network, const VARIANT: u8> {
+    /// The function name.
+    function_name: Identifier<N>,
     /// The operands.
     operands: Vec<Operand<N>>,
+    /// The destination register.
+    destination: Register<N>,
 }
 
 impl<N: Network, const VARIANT: u8> FinalizeCommandTrait for FinalizeInstruction<N, VARIANT> {
@@ -50,6 +58,12 @@ impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
         }
     }
 
+    /// Returns the function name.
+    #[inline]
+    pub const fn function_name(&self) -> &Identifier<N> {
+        &self.function_name
+    }
+
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
@@ -62,7 +76,7 @@ impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
     /// Returns the destination register.
     #[inline]
     pub fn destinations(&self) -> Vec<Register<N>> {
-        vec![]
+        vec![self.destination.clone()]
     }
 }
 
@@ -72,19 +86,32 @@ impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
     pub fn evaluate(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut impl RegistersLoad<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() > N::MAX_INPUTS {
             bail!("'{}' expects <= {} operands, found {} operands", Self::opcode(), N::MAX_INPUTS, self.operands.len())
         }
 
-        // Load the operands values.
-        let _inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
+        // Load the operand values and check that they are valid arguments.
+        let arguments: Vec<_> = self
+            .operands
+            .iter()
+            .map(|operand| match registers.load(stack, operand)? {
+                Value::Plaintext(plaintext) => Ok(Argument::Plaintext(plaintext)),
+                Value::Record(_) => bail!("Cannot pass a record into a `finalize` instruction"),
+                Value::Future(future) => Ok(Argument::Future(future)),
+            })
+            .try_collect()?;
 
         // Finalize the inputs.
         match VARIANT {
-            0 => {}
+            0 => {
+                // Initialize a future.
+                let future = Value::Future(Future::new(*stack.program_id(), *self.function_name(), arguments));
+                // Store the future in the destination register.
+                registers.store(stack, &self.destination, future)?;
+            }
             _ => bail!("Invalid 'finalize' variant: {VARIANT}"),
         }
         Ok(())
@@ -109,8 +136,20 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the function name from the string.
+        let (string, function_name) = Identifier::parse(string)?;
         // Parse the operands from the string.
         let (string, operands) = many0(parse_operand)(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the 'into' from the string.
+        let (string, _) = tag("into")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the destination register from the string.
+        let (string, destination) = Register::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ';' from the string.
@@ -118,7 +157,7 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
 
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
         match operands.len() <= N::MAX_INPUTS {
-            true => Ok((string, Self { operands })),
+            true => Ok((string, Self { function_name, operands, destination })),
             false => map_res(fail, |_: ParserResult<Self>| {
                 Err(error(format!("The number of operands must be <= {}, found {}", N::MAX_INPUTS, operands.len())))
             })(string),
@@ -168,6 +207,9 @@ impl<N: Network, const VARIANT: u8> Display for FinalizeInstruction<N, VARIANT> 
 impl<N: Network, const VARIANT: u8> FromBytes for FinalizeInstruction<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the function name.
+        let function_name = Identifier::read_le(&mut reader)?;
+
         // Read the number of operands.
         let num_operands = u8::read_le(&mut reader)?;
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
@@ -182,8 +224,11 @@ impl<N: Network, const VARIANT: u8> FromBytes for FinalizeInstruction<N, VARIANT
             operands.push(Operand::read_le(&mut reader)?);
         }
 
+        // Read the destination register.
+        let destination = Register::read_le(&mut reader)?;
+
         // Return the operation.
-        Ok(Self { operands })
+        Ok(Self { function_name, operands, destination })
     }
 }
 
@@ -198,10 +243,14 @@ impl<N: Network, const VARIANT: u8> ToBytes for FinalizeInstruction<N, VARIANT> 
                 self.operands.len()
             )));
         }
+        // Write the function name.
+        self.function_name.write_le(&mut writer)?;
         // Write the number of operands.
         u8::try_from(self.operands.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the operands.
-        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))
+        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
+        // Write the destination register.
+        self.destination.write_le(&mut writer)
     }
 }
 
