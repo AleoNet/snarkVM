@@ -47,7 +47,6 @@ use crate::{
         StackProgram,
     },
     CastType,
-    FinalizeCommand,
     FinalizeOperation,
     FinalizeRegistersState,
     Instruction,
@@ -83,8 +82,6 @@ pub enum Command<N: Network> {
 }
 
 impl<N: Network> CommandTrait<N> for Command<N> {
-    type FinalizeCommand = FinalizeCommand<N>;
-
     /// Returns the destination registers of the command.
     #[inline]
     fn destinations(&self) -> Vec<Register<N>> {

@@ -13,26 +13,24 @@
 // limitations under the License.
 
 use crate::{
-    traits::{FinalizeCommandTrait, RegistersLoad, StackMatches, StackProgram},
+    traits::{RegistersLoad, StackMatches, StackProgram},
     Opcode,
     Operand,
+    RegistersLoadCircuit,
     RegistersStore,
+    RegistersStoreCircuit,
+    Result,
 };
+
+use circuit::{Eject, Inject, Mode};
 use console::{
     network::prelude::*,
-    program::{Argument, Future, Identifier, Register, Value},
+    program::{Argument, Future, Identifier, Register, RegisterType, Value},
 };
 
-/// Finalizes the operands on-chain.
-pub type FinalizeCommand<N> = FinalizeInstruction<N, { Variant::FinalizeCommand as u8 }>;
-
-enum Variant {
-    FinalizeCommand,
-}
-
-/// Finalizes an operation on the operands.
+/// Invokes the asynchronous call on the operands, producing a future.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct FinalizeInstruction<N: Network, const VARIANT: u8> {
+pub struct Async<N: Network> {
     /// The function name.
     function_name: Identifier<N>,
     /// The operands.
@@ -41,21 +39,18 @@ pub struct FinalizeInstruction<N: Network, const VARIANT: u8> {
     destination: Register<N>,
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeCommandTrait for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Async<N> {
     /// Returns the number of operands.
     fn num_operands(&self) -> usize {
         self.operands.len()
     }
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Async<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        match VARIANT {
-            0 => Opcode::Finalize("finalize"),
-            _ => panic!("Invalid 'finalize' instruction opcode"),
-        }
+        Opcode::Async
     }
 
     /// Returns the function name.
@@ -80,7 +75,7 @@ impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Async<N> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(
@@ -104,21 +99,70 @@ impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
             })
             .try_collect()?;
 
-        // Finalize the inputs.
-        match VARIANT {
-            0 => {
-                // Initialize a future.
-                let future = Value::Future(Future::new(*stack.program_id(), *self.function_name(), arguments));
-                // Store the future in the destination register.
-                registers.store(stack, &self.destination, future)?;
-            }
-            _ => bail!("Invalid 'finalize' variant: {VARIANT}"),
-        }
+        // Initialize a future.
+        let future = Value::Future(Future::new(*stack.program_id(), *self.function_name(), arguments));
+        // Store the future in the destination register.
+        registers.store(stack, &self.destination, future)?;
+
         Ok(())
+    }
+
+    /// Executes the instruction.
+    pub fn execute<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
+    ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if self.operands.len() > N::MAX_INPUTS {
+            bail!("'{}' expects <= {} operands, found {} operands", Self::opcode(), N::MAX_INPUTS, self.operands.len())
+        }
+
+        // Load the operand values and check that they are valid arguments.
+        let arguments: Vec<_> = self
+            .operands
+            .iter()
+            .map(|operand| match registers.load_circuit(stack, operand)? {
+                circuit::Value::Plaintext(plaintext) => Ok(circuit::Argument::Plaintext(plaintext)),
+                circuit::Value::Record(_) => bail!("Cannot pass a record into a `finalize` instruction"),
+                circuit::Value::Future(future) => Ok(circuit::Argument::Future(future)),
+            })
+            .try_collect()?;
+
+        // Initialize a future.
+        let future = circuit::Value::Future(circuit::Future::from(
+            circuit::ProgramID::new(Mode::Constant, *stack.program_id()),
+            circuit::Identifier::new(Mode::Constant, *self.function_name()),
+            arguments,
+        ));
+        // Store the future in the destination register.
+        registers.store_circuit(stack, &self.destination, future)?;
+
+        Ok(())
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(
+        &self,
+        _stack: &(impl StackMatches<N> + StackProgram<N>),
+        _registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
+        bail!("Forbidden operation: Finalize cannot invoke 'async'.")
+    }
+
+    /// Returns the output type from the given program and input types.
+    #[inline]
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
+        todo!()
     }
 }
 
-impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Parser for Async<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -165,7 +209,7 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromStr for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> FromStr for Async<N> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -183,14 +227,14 @@ impl<N: Network, const VARIANT: u8> FromStr for FinalizeInstruction<N, VARIANT> 
     }
 }
 
-impl<N: Network, const VARIANT: u8> Debug for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Debug for Async<N> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, const VARIANT: u8> Display for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Display for Async<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
@@ -204,7 +248,7 @@ impl<N: Network, const VARIANT: u8> Display for FinalizeInstruction<N, VARIANT> 
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromBytes for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> FromBytes for Async<N> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the function name.
@@ -232,7 +276,7 @@ impl<N: Network, const VARIANT: u8> FromBytes for FinalizeInstruction<N, VARIANT
     }
 }
 
-impl<N: Network, const VARIANT: u8> ToBytes for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> ToBytes for Async<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
@@ -338,7 +382,7 @@ mod tests {
     //     Ok(registers)
     // }
     //
-    // fn check_finalize<const VARIANT: u8>(
+    // fn check_finalize(
     //     operation: impl FnOnce(Vec<Operand<CurrentNetwork>>) -> FinalizeOperation<CurrentNetwork, VARIANT>,
     //     opcode: Opcode,
     //     literal_a: &Literal<CurrentNetwork>,
