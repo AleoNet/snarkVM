@@ -22,7 +22,7 @@ impl<N: Network> Serialize for CoinbaseSolution<N> {
         match serializer.is_human_readable() {
             true => {
                 let mut solutions = serializer.serialize_struct("CoinbaseSolution", 1)?;
-                solutions.serialize_field("solutions", &self.solutions)?;
+                solutions.serialize_field("solutions", &self.solutions.values().collect::<Vec<_>>())?;
                 solutions.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
