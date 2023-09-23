@@ -637,7 +637,8 @@ mapping account:
 function mint_public:
     input r0 as address.public;
     input r1 as u64.public;
-    finalize r0 r1;
+    async mint_public r0 r1 into r2;
+    output r2 as future;
 
 finalize mint_public:
     input r0 as address.public;
@@ -650,8 +651,8 @@ finalize mint_public:
 function transfer_public:
     input r0 as address.public;
     input r1 as u64.public;
-
-    finalize self.caller r0 r1;
+    async transfer_public self.caller r0 r1 into r2;
+    output r2 as future;
 
 finalize transfer_public:
     input r0 as address.public;
@@ -1098,7 +1099,8 @@ mapping hashes:
 function ped_hash:
     input r0 as u128.public;
     // hash.ped64 r0 into r1 as field; // <--- This will cause a E::halt.
-    finalize r0;
+    async ped_hash r0 into r1;
+    output r1 as future;
 
 {finalize_logic}"
             ))
@@ -1187,7 +1189,8 @@ mapping entries:
 
 function compute:
     input r0 as u8.public;
-    finalize self.caller r0;
+    async compute self.caller r0 into r1;
+    output r1 as future;
 
 finalize compute:
     input r0 as address.public;

@@ -1201,7 +1201,8 @@ function compute:
     input r1 as u64.public;
     input r2 as u64.public;
     add r1 r2 into r3;
-    finalize r0 r3;
+    async compute r0 r3 into r4;
+    outut r4 as future;
 
 finalize compute:
     input r0 as address.public;
@@ -1312,7 +1313,8 @@ function compute:
     input r1 as u64.public;
     input r2 as u64.public;
     add r1 r2 into r3;
-    finalize r0 r3;
+    async compute r0 r3 into r4;
+    outut r4 as future;
 
 finalize compute:
     input r0 as address.public;
@@ -1431,7 +1433,8 @@ function mint_public:
     // Input the token amount.
     input r1 as u64.public;
     // Mint the tokens publicly.
-    finalize r0 r1;
+    async mint_public r0 r1 into r2;
+    output r2 as future;
 
 // The finalize scope of `mint_public` increments the
 // `account` of the token receiver by the specified amount.
@@ -1561,7 +1564,8 @@ function mint_public:
     // Input the token amount.
     input r1 as u64.public;
     // Mint the tokens publicly.
-    finalize r0 r1;
+    async mint_public r0 r1 into r2;
+    output r2 as future;
 
 // The finalize scope of `mint_public` increments the
 // `account` of the token receiver by the specified amount.
@@ -1705,7 +1709,8 @@ function compute:
     input r1 as u64.public;
     input r2 as u64.public;
     add r1 r2 into r3;
-    finalize r0 r3;
+    async compute r0 r3 into r4;
+    output r4 as future;
 
 finalize compute:
     input r0 as address.public;
@@ -2129,7 +2134,8 @@ function compute:
     input r0 as u8.public;
     input r1 as u8.public;
     cast r0 r1 into r2 as entry;
-    finalize self.caller r2;
+    async compute self.caller r2 into r3;
+    output r3 as future;
 
 finalize compute:
     input r0 as address.public;

@@ -22,7 +22,8 @@ struct bundle:
 
 function rand_chacha_with_struct:
     input r0 as bundle.public;
-    finalize r0;
+    async rand_chacha_with_struct r0 into r1;
+    output r1 as future;
 
 finalize rand_chacha_with_struct:
     input r0 as bundle.public;
@@ -31,7 +32,8 @@ finalize rand_chacha_with_struct:
 function rand_chacha_check:
     input r0 as field.public;
     input r1 as boolean.public;
-    finalize r0 r1;
+    async rand_chacha_check r0 r1 into r2;
+    output r2 as future;
 
 finalize rand_chacha_check:
     input r0 as field.public;
@@ -48,7 +50,8 @@ function rand_chacha_with_literals:
     input r5 as i64.public;
     input r6 as u128.public;
     input r7 as field.public;
-    finalize r0 r1 r2 r3 r4 r5 r6 r7;
+    async rand_chacha_with_literals r0 r1 r2 r3 r4 r5 r6 r7 into r8;
+    output r8 as future;
 
 finalize rand_chacha_with_literals:
     input r0 as scalar.public;

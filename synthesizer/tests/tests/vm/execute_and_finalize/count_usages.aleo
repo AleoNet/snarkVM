@@ -52,7 +52,7 @@ function add_and_subtract:
     assert.eq r3[0u32] r5[0u32];
     async add_and_subtract r3 r5 into r6;
     output r0 as i64.private;
-    output r8 as future;
+    output r6 as future;
 
 finalize add_and_subtract:
     input r0 as future;

@@ -294,7 +294,6 @@ impl<N: Network> Parser for Command<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the command.
         // Note that the order of the parsers is important.
-        println!("Parsing command: {}", string);
         alt((
             map(Await::parse, |await_| Self::Await(await_)),
             map(Contains::parse, |contains| Self::Contains(contains)),
