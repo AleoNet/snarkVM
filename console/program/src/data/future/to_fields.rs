@@ -20,6 +20,20 @@ impl<N: Network> ToFields for Future<N> {
     /// Returns the future as a list of fields.
     #[inline]
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
-        todo!()
+        // Encode the data as little-endian bits.
+        let mut bits_le = self.to_bits_le();
+        // Adds one final bit to the data, to serve as a terminus indicator.
+        // During decryption, this final bit ensures we've reached the end.
+        bits_le.push(true);
+        // Pack the bits into field elements.
+        let fields = bits_le
+            .chunks(Field::<N>::size_in_data_bits())
+            .map(Field::<N>::from_bits_le)
+            .collect::<Result<Vec<_>>>()?;
+        // Ensure the number of field elements does not exceed the maximum allowed size.
+        match fields.len() <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => Ok(fields),
+            false => bail!("Future exceeds maximum allowed size"),
+        }
     }
 }

@@ -42,6 +42,7 @@ impl<N: Network> From<ValueType<N>> for RegisterType<N> {
             | ValueType::Private(plaintext_type) => Self::Plaintext(plaintext_type),
             ValueType::Record(record_name) => Self::Record(record_name),
             ValueType::ExternalRecord(locator) => Self::ExternalRecord(locator),
+            ValueType::Future => Self::Future,
         }
     }
 }

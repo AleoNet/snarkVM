@@ -207,6 +207,8 @@ impl<N: Network> Request<N> {
                     // Add the input hash to the inputs.
                     input_ids.push(InputID::ExternalRecord(input_hash));
                 }
+                // A future is not a valid input.
+                ValueType::Future => bail!("A future is not a valid input"),
             }
         }
 

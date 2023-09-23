@@ -22,3 +22,32 @@ pub enum Argument<N: Network> {
     /// A future.
     Future(Future<N>),
 }
+
+impl<N: Network> FromBytes for Argument<N> {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        todo!()
+    }
+}
+
+impl<N: Network> ToBytes for Argument<N> {
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        todo!()
+    }
+}
+
+impl<N: Network> ToBits for Argument<N> {
+    /// Returns the argument as a list of **little-endian** bits.
+    #[inline]
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        todo!()
+    }
+
+    /// Returns the argument as a list of **big-endian** bits.
+    #[inline]
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        todo!()
+    }
+}
