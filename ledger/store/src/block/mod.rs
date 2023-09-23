@@ -364,8 +364,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Store the block coinbase puzzle commitment.
             if let Some(coinbase) = block.coinbase() {
-                for puzzle_commitment in coinbase.partial_solutions().iter().map(|s| s.commitment()) {
-                    self.coinbase_puzzle_commitment_map().insert(puzzle_commitment, block.height())?;
+                for puzzle_commitment in coinbase.keys() {
+                    self.coinbase_puzzle_commitment_map().insert(*puzzle_commitment, block.height())?;
                 }
             }
 
@@ -449,8 +449,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Remove the block coinbase puzzle commitment.
             if let Some(coinbase) = coinbase {
-                for puzzle_commitment in coinbase.partial_solutions().iter().map(|s| s.commitment()) {
-                    self.coinbase_puzzle_commitment_map().remove(&puzzle_commitment)?;
+                for puzzle_commitment in coinbase.keys() {
+                    self.coinbase_puzzle_commitment_map().remove(puzzle_commitment)?;
                 }
             }
 

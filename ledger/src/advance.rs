@@ -100,18 +100,23 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
-    ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>), Error> {
+    ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>)> {
         // Construct the solutions.
         let (solutions, coinbase_accumulator_point, combined_proof_target) = match candidate_solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
             false => {
                 // Accumulate the prover solutions.
-                let (coinbase, coinbase_accumulator_point) =
-                    self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, &candidate_solutions)?;
+                let solutions = self.coinbase_puzzle.accumulate(
+                    candidate_solutions,
+                    &self.latest_epoch_challenge()?,
+                    self.latest_proof_target(),
+                )?;
+                // Compute the coinbase accumulator point.
+                let coinbase_accumulator_point = solutions.to_accumulator_point()?;
                 // Compute the combined proof target.
-                let combined_proof_target = coinbase.to_combined_proof_target()?;
+                let combined_proof_target = solutions.to_combined_proof_target()?;
                 // Output the solutions, coinbase accumulator point, and combined proof target.
-                (Some(coinbase), coinbase_accumulator_point, combined_proof_target)
+                (Some(solutions), coinbase_accumulator_point, combined_proof_target)
             }
         };
 
