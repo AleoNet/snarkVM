@@ -19,6 +19,8 @@ use console::network::prelude::*;
 pub enum Opcode {
     /// The opcode is for a assert operation (i.e. `assert`).
     Assert(&'static str),
+    /// The opcode is for an async call operation (i.e. `async`).
+    Async,
     /// The opcode is for a call operation (i.e. `call`).
     Call,
     /// The opcode is for a cast operation (i.e. `cast`).
@@ -46,6 +48,7 @@ impl Deref for Opcode {
     fn deref(&self) -> &Self::Target {
         match self {
             Opcode::Assert(opcode) => opcode,
+            Opcode::Async => &"async",
             Opcode::Call => &"call",
             Opcode::Cast => &"cast",
             Opcode::Command(opcode) => opcode,
@@ -71,6 +74,7 @@ impl Display for Opcode {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Assert(opcode) => write!(f, "{opcode}"),
+            Self::Async => write!(f, "{}", self.deref()),
             Self::Call => write!(f, "{}", self.deref()),
             Self::Cast => write!(f, "{}", self.deref()),
             Self::Command(opcode) => write!(f, "{opcode}"),
