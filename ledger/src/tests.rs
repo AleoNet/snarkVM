@@ -391,7 +391,7 @@ finalize failed_assert:
 }
 
 #[test]
-fn test_new_committee_member() {
+fn test_bond_and_unbond_validator() {
     let rng = &mut TestRng::default();
 
     // Initialize the test environment.
@@ -451,4 +451,27 @@ fn test_new_committee_member() {
     // Check that the committee is updated with the new member.
     let committee = ledger.latest_committee().unwrap();
     assert!(committee.is_committee_member(new_member_address));
+
+    // Construct the bond public
+    let unbond_amount = committee.get_stake(new_member_address); // 1 million credits.
+    let inputs = [Value::from_str(&format!("{unbond_amount}u64")).unwrap()];
+    let unbond_public_transaction = ledger
+        .vm
+        .execute(&new_member_private_key, ("credits.aleo", "unbond_public"), inputs.iter(), None, 0, None, rng)
+        .unwrap();
+
+    // Construct the next block.
+    let unbond_public_block = ledger
+        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![unbond_public_transaction], rng)
+        .unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&unbond_public_block).unwrap();
+
+    // Add the bond public block to the ledger.
+    ledger.advance_to_next_block(&unbond_public_block).unwrap();
+
+    // Check that the committee does not include the new member.
+    let committee = ledger.latest_committee().unwrap();
+    assert!(!committee.is_committee_member(new_member_address));
 }
