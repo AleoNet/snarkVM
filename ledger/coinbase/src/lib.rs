@@ -204,7 +204,7 @@ impl<N: Network> CoinbasePuzzle<N> {
         if !cfg_iter!(solutions).all(|(_, solution)| {
             solution.verify(self.coinbase_verifying_key(), epoch_challenge, proof_target).unwrap_or(false)
         }) {
-            bail!("An invalid prover solution was detected in the coinbase solution");
+            return Ok(false);
         }
         finish!(timer, "Verify each solution");
 
