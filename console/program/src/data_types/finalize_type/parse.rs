@@ -21,7 +21,7 @@ impl<N: Network> Parser for FinalizeType<N> {
         // Parse the mode from the string (ordering matters).
         alt((
             map(tag("future"), |_| Self::Future),
-            map(PlaintextType::parse, |plaintext_type| Self::Plaintext(plaintext_type)),
+            map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Plaintext(plaintext_type)),
         ))(string)
     }
 }

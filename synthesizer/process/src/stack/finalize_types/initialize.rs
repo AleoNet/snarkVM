@@ -14,7 +14,18 @@
 
 use super::*;
 use crate::RegisterTypes;
-use synthesizer_program::{Branch, CastType, Contains, Get, GetOrUse, RandChaCha, Remove, Set, MAX_ADDITIONAL_SEEDS};
+use synthesizer_program::{
+    Await,
+    Branch,
+    CastType,
+    Contains,
+    Get,
+    GetOrUse,
+    RandChaCha,
+    Remove,
+    Set,
+    MAX_ADDITIONAL_SEEDS,
+};
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -133,6 +144,7 @@ impl<N: Network> FinalizeTypes<N> {
     ) -> Result<()> {
         match command {
             Command::Instruction(instruction) => self.check_instruction(stack, finalize.name(), instruction)?,
+            Command::Await(await_) => self.check_await(stack, await_)?,
             Command::Contains(contains) => self.check_contains(stack, finalize.name(), contains)?,
             Command::Get(get) => self.check_get(stack, finalize.name(), get)?,
             Command::GetOrUse(get_or_use) => self.check_get_or_use(stack, finalize.name(), get_or_use)?,
@@ -145,6 +157,18 @@ impl<N: Network> FinalizeTypes<N> {
             Command::Position(_) => (),
         }
         Ok(())
+    }
+
+    /// Checks that the given `await` command is well-formed.
+    #[inline]
+    fn check_await(&mut self, stack: &(impl StackMatches<N> + StackProgram<N>), await_: &Await<N>) -> Result<()> {
+        // Check that the operand is a future.
+        match self.get_type(stack, await_.register())? {
+            // If the register is a plaintext type, throw an error.
+            FinalizeType::Plaintext(..) => bail!("Expected a future"),
+            // If the register is a future, return success.
+            FinalizeType::Future => Ok(()),
+        }
     }
 
     /// Checks that the given variant of the `branch` command is well-formed.
