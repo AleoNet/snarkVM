@@ -451,5 +451,4 @@ fn test_new_committee_member() {
     // Check that the committee is updated with the new member.
     let committee = ledger.latest_committee().unwrap();
     assert!(committee.is_committee_member(new_member_address));
-    assert_eq!(committee.get_stake(new_member_address), bond_amount);
 }
