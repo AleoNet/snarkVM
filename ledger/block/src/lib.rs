@@ -303,18 +303,18 @@ impl<N: Network> Block<N> {
 
 impl<N: Network> Block<N> {
     /// Returns the solution with the given solution ID, if it exists.
-    pub fn get_solution(&self, puzzle_commitment: PuzzleCommitment<N>) -> Option<&ProverSolution<N>> {
-        self.coinbase.as_ref().and_then(|solution| solution.get_solution(&puzzle_commitment))
+    pub fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Option<&ProverSolution<N>> {
+        self.coinbase.as_ref().and_then(|solution| solution.get_solution(puzzle_commitment))
     }
 
     /// Returns the transaction with the given transaction ID, if it exists.
-    pub fn get_transaction(&self, transaction_id: N::TransactionID) -> Option<&Transaction<N>> {
-        self.transactions.get(&transaction_id).map(|t| t.deref())
+    pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Option<&Transaction<N>> {
+        self.transactions.get(transaction_id).map(|t| t.deref())
     }
 
     /// Returns the confirmed transaction with the given transaction ID, if it exists.
-    pub fn get_confirmed_transaction(&self, transaction_id: N::TransactionID) -> Option<&ConfirmedTransaction<N>> {
-        self.transactions.get(&transaction_id)
+    pub fn get_confirmed_transaction(&self, transaction_id: &N::TransactionID) -> Option<&ConfirmedTransaction<N>> {
+        self.transactions.get(transaction_id)
     }
 }
 
