@@ -12,29 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+use super::*;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+impl<N: Network> ToBits for Future<N> {
+    /// Returns the future as a list of **little-endian** bits.
+    #[inline]
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        todo!()
+    }
 
-mod future;
-pub use future::Future;
-
-pub(super) mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::Literal;
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod register;
-pub use register::Register;
-
-mod value;
-pub use value::Value;
+    /// Returns the future as a list of **big-endian** bits.
+    #[inline]
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        todo!()
+    }
+}

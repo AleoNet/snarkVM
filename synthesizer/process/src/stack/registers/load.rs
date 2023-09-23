@@ -57,6 +57,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
                             Value::Plaintext(plaintext)
                         }
                     },
+                    // Retrieve the argument from the future.
+                    Value::Future(future) => future.find(path)?,
                 }
             }
         };
@@ -135,6 +137,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
                         | circuit::Entry::Public(plaintext)
                         | circuit::Entry::Private(plaintext) => circuit::Value::Plaintext(plaintext),
                     },
+                    // Retrieve the argument from the future.
+                    circuit::Value::Future(future) => future.find(&path)?,
                 }
             }
         };

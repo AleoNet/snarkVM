@@ -57,6 +57,7 @@ impl<A: Aleo> Response<A> {
                             Value::Plaintext(..) => Ok((OutputID::constant(A::hash_psd8(&preimage)), output)),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
                     // For a public output, compute the hash (using `tcm`) of the output.
@@ -80,6 +81,7 @@ impl<A: Aleo> Response<A> {
                             Value::Plaintext(..) => Ok((OutputID::public(A::hash_psd8(&preimage)), output)),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
                     // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.
@@ -98,6 +100,7 @@ impl<A: Aleo> Response<A> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         };
                         // Return the output ID.
                         Ok((OutputID::private(A::hash_psd8(&ciphertext.to_fields())), output))
@@ -112,6 +115,7 @@ impl<A: Aleo> Response<A> {
                             Value::Record(record) => record,
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
+                            Value::Future(..) => A::halt("Expected a record output, found a future output"),
                         };
                         // Compute the record commitment.
                         let commitment = record.to_commitment(program_id, &Identifier::constant(*record_name));
@@ -140,6 +144,7 @@ impl<A: Aleo> Response<A> {
                             Value::Record(..) => Ok((OutputID::external_record(A::hash_psd8(&preimage)), output)),
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
+                            Value::Future(..) => A::halt("Expected a record output, found a future output"),
                         }
                     }
                 }

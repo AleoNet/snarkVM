@@ -154,6 +154,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(..) => input_hash.is_equal(&A::hash_psd8(&preimage)),
                             // Ensure the input is not a record.
                             Value::Record(..) => A::halt("Expected a constant plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a constant plaintext input, found a future input"),
                         }
                     }
                     // A public input is hashed (using `tcm`) to a field element.
@@ -176,6 +177,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(..) => input_hash.is_equal(&A::hash_psd8(&preimage)),
                             // Ensure the input is not a record.
                             Value::Record(..) => A::halt("Expected a public plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a public plaintext input, found a future input"),
                         }
                     }
                     // A private input is encrypted (using `tvk`) and hashed to a field element.
@@ -194,6 +196,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key),
                             // Ensure the input is a plaintext.
                             Value::Record(..) => A::halt("Expected a private plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a private plaintext input, found a future input"),
                         };
 
                         // Ensure the expected hash matches the computed hash.
@@ -206,6 +209,7 @@ impl<A: Aleo> Request<A> {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
+                            Value::Future(..) => A::halt("Expected a record input, found a future input"),
                         };
                         // Retrieve the record name as a `Mode::Constant`.
                         let record_name = match input_type {
@@ -266,6 +270,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(..) => {
                                 A::halt("Expected an external record input, found a plaintext input")
                             }
+                            Value::Future(..) => A::halt("Expected an external record input, found a future input"),
                         };
 
                         // Prepare the index as a constant field element.

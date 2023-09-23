@@ -96,6 +96,7 @@ impl<N: Network> GetOrUse<N> {
         let value = match store.get_value_speculative(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(plaintext)) => Value::Plaintext(plaintext),
             Some(Value::Record(..)) => bail!("Cannot 'get.or_use' a 'record'"),
+            Some(Value::Future(..)) => bail!("Cannot 'get.or_use' a 'future'"),
             // If a key does not exist, then use the default value.
             None => Value::Plaintext(registers.load_plaintext(stack, &self.default)?),
         };

@@ -12,29 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+use super::*;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+impl<A: Aleo> ToFields for Future<A> {
+    type Field = Field<A>;
 
-mod future;
-pub use future::Future;
-
-pub(super) mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::Literal;
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod register;
-pub use register::Register;
-
-mod value;
-pub use value::Value;
+    /// Returns the circuit future as a list of fields.
+    #[inline]
+    fn to_fields(&self) -> Vec<Field<A>> {
+        todo!()
+    }
+}

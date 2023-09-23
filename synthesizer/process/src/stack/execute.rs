@@ -360,7 +360,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     match value {
                         circuit::Value::Plaintext(circuit::Plaintext::Literal(..))
                         | circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
-                        | circuit::Value::Plaintext(circuit::Plaintext::Array(..)) => (),
+                        | circuit::Value::Plaintext(circuit::Plaintext::Array(..))
+                        | circuit::Value::Future(..) => (),
                         circuit::Value::Record(..) => {
                             bail!(
                                 "'{}/{}' attempts to pass a 'record' into 'finalize'",
