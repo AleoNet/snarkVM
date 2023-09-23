@@ -36,3 +36,27 @@ finalize sub_and_count:
     get.or_use uses[r0] 0u64 into r1;
     add r1 1u64 into r2;
     set r2 into uses[r0];
+
+/////////////////////////////////////////////////
+
+import basic_math.aleo;
+
+program count_usages.aleo;
+
+function add_and_subtract:
+    input r0 as i64.private;
+    input r1 as i64.private;
+    call basic_math.aleo/add_and_count r0 r1 into r2 r3;
+    call basic_math.aleo/sub_and_count r2 r1 into r4 r5;
+    assert.eq r0 r2;
+    assert.eq r3[0u32] r5[0u32];
+    finalize add_and_subtract r3 r5 into r6;
+    output r0 as i64.private;
+    output r8 as future;
+
+finalize add_and_subtract:
+    input r0 as future;
+    input r1 as future;
+    assert.eq r0[0u32] r1[0u32];
+    await r0;
+    await r1;
