@@ -569,11 +569,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         continue;
                     };
                     // Compute the proof targets, with the corresponding addresses.
-                    let proof_targets = solutions
-                        .partial_solutions()
-                        .iter()
-                        .map(|s| Ok((s.address(), s.to_target()?)))
-                        .collect::<Result<Vec<_>>>()?;
+                    let proof_targets =
+                        solutions.values().map(|s| Ok((s.address(), s.to_target()?))).collect::<Result<Vec<_>>>()?;
                     // Calculate the proving rewards.
                     let proving_rewards = proving_rewards(proof_targets, *puzzle_reward);
                     // Iterate over the proving rewards.

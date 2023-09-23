@@ -87,8 +87,8 @@ version = "1"
 version = "0.10"
 default-features = false
 
-[dependencies.itertools]
-version = "0.11.0"
+[dependencies.indexmap]
+version = "2.0"
 
 [dependencies.rayon]
 version = "1"
