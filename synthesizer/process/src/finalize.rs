@@ -199,7 +199,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
     let mut finalize_operations = Vec::new();
 
     // If there is a finalize scope, finalize the function.
-    if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
+    if let Some(finalize) = stack.get_function(function_name)?.finalize_logic() {
         // Retrieve the finalize inputs.
         let inputs = match transition.finalize() {
             Some(inputs) => inputs,

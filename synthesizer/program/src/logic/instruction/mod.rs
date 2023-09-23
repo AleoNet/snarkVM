@@ -376,6 +376,12 @@ impl<N: Network> InstructionTrait<N> for Instruction<N> {
         instruction!(self, |instruction| instruction.destinations())
     }
 
+    /// Returns `true` if the given instruction is an `async` call.
+    #[inline]
+    fn is_async(&self) -> bool {
+        matches!(self, Self::Async(_))
+    }
+
     /// Returns `true` if the given name is a reserved opcode.
     #[inline]
     fn is_reserved_opcode(name: &str) -> bool {

@@ -111,7 +111,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Dis
         self.outputs.iter().try_for_each(|output| write!(f, "\n    {output}"))?;
 
         // If finalize exists, write it out.
-        if let Some(finalize) = &self.finalize {
+        if let Some(finalize) = &self.finalize_logic {
             write!(f, "\n\n")?;
             write!(f, "{finalize}")?;
         }
@@ -200,8 +200,10 @@ function mint_public:
     input r0 as address.public;
     // Input the token amount.
     input r1 as u64.public;
-    // Mint the tokens publicly.
-    finalize r0 r1;
+    // Mint the tokens via an asynchronous call.
+    async mint_public r0 r1 into r2;
+    // Output the future.
+    output r2 as future;
 
 // The finalize scope of `mint_public` increments the
 // `account` of the token receiver by the specified amount.
@@ -223,9 +225,8 @@ finalize mint_public:
         .1;
         assert_eq!("mint_public", function.name().to_string());
         assert_eq!(2, function.inputs().len());
-        assert_eq!(0, function.instructions().len());
-        assert_eq!(0, function.outputs().len());
-        assert!(function.finalize_command().is_some());
+        assert_eq!(1, function.instructions().len());
+        assert_eq!(1, function.outputs().len());
         assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
         assert_eq!(3, function.finalize_logic().as_ref().unwrap().commands().len());
 
@@ -234,7 +235,8 @@ finalize mint_public:
 function foo:
     input r0 as token.record;
     cast r0.owner r0.token_amount into r1 as token.record;
-    finalize r1.token_amount;
+    async foo r1.token_amount into r2;
+    output r2 as future;
 
 finalize foo:
     input r0 as u64.public;
@@ -245,8 +247,8 @@ finalize foo:
         .1;
         assert_eq!("foo", function.name().to_string());
         assert_eq!(1, function.inputs().len());
-        assert_eq!(1, function.instructions().len());
-        assert_eq!(0, function.outputs().len());
+        assert_eq!(2, function.instructions().len());
+        assert_eq!(1, function.outputs().len());
         assert_eq!(1, function.finalize_logic().as_ref().unwrap().inputs().len());
         assert_eq!(1, function.finalize_logic().as_ref().unwrap().commands().len());
 
@@ -257,7 +259,8 @@ function compute:
     input r1 as u64.public;
     input r2 as u64.public;
     add r1 r2 into r3;
-    finalize r0 r3;
+    async compute r0 r3 into r4;
+    output r4 as future;
 
 finalize compute:
     input r0 as address.public;
@@ -270,8 +273,8 @@ finalize compute:
         .unwrap()
         .1;
         assert_eq!(3, function.inputs().len());
-        assert_eq!(1, function.instructions().len());
-        assert_eq!(0, function.outputs().len());
+        assert_eq!(2, function.instructions().len());
+        assert_eq!(1, function.outputs().len());
         assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
         assert_eq!(3, function.finalize_logic().as_ref().unwrap().commands().len());
     }

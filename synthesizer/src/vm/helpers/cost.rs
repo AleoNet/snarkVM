@@ -79,8 +79,8 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
         // Retrieve the program.
         let program = lookup.get(program_id).ok_or(anyhow!("Program '{program_id}' is missing"))?;
         // Retrieve the finalize cost.
-        let cost = match program.get_function(function_name)?.finalize() {
-            Some((_, finalize)) => cost_in_microcredits(finalize)?,
+        let cost = match program.get_function(function_name)?.finalize_logic() {
+            Some(finalize) => cost_in_microcredits(finalize)?,
             None => continue,
         };
         // Accumulate the finalize cost.
@@ -108,6 +108,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::And(_)) => Ok(2_000),
         Command::Instruction(Instruction::AssertEq(_)) => Ok(2_000),
         Command::Instruction(Instruction::AssertNeq(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Async(_)) => bail!("`async` is not supported in finalize."),
         Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
         Command::Instruction(Instruction::Cast(_)) => Ok(2_000),
         Command::Instruction(Instruction::CommitBHP256(_)) => Ok(200_000),

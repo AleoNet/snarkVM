@@ -115,7 +115,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ToB
         }
 
         // If the finalize scope exists, write it.
-        match &self.finalize {
+        match &self.finalize_logic {
             None => 0u8.write_le(&mut writer)?,
             Some(logic) => {
                 1u8.write_le(&mut writer)?;

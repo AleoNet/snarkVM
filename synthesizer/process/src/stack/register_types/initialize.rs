@@ -34,6 +34,8 @@ impl<N: Network> RegisterTypes<N> {
 
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
+            // Ensure the closure contains no aysnc instructions.
+            ensure!(instruction.opcode() != Opcode::Async, "An 'async' instruction is not allowed in closures");
             // Ensure the closure contains no call instructions.
             ensure!(instruction.opcode() != Opcode::Call, "A 'call' instruction is not allowed in closures");
             // Check the instruction opcode, operands, and destinations.
@@ -86,44 +88,6 @@ impl<N: Network> RegisterTypes<N> {
         for output in function.outputs() {
             // Check the output operand type.
             register_types.check_output(stack, output.operand(), &RegisterType::from(output.value_type().clone()))?;
-        }
-
-        // Step 4. If the function has a finalize command, check that its operands are all defined.
-        if let Some((command, _)) = function.finalize() {
-            // Ensure the number of finalize operands is within bounds.
-            ensure!(
-                command.operands().len() <= N::MAX_INPUTS,
-                "Function '{}' has too many finalize operands",
-                function.name()
-            );
-
-            // Check the type of each finalize operand.
-            for operand in command.operands() {
-                // Retrieve the register type from the operand.
-                let register_type = register_types.get_type_from_operand(stack, operand)?;
-                // Ensure the register type is a literal or a struct.
-                // See `Stack::execute_function()` for the same set of checks.
-                match register_type {
-                    RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-                    RegisterType::Plaintext(PlaintextType::Struct(..)) => (),
-                    RegisterType::Plaintext(PlaintextType::Array(..)) => (),
-                    RegisterType::Record(..) => {
-                        bail!(
-                            "'{}/{}' attempts to pass a 'record' into 'finalize'",
-                            stack.program_id(),
-                            function.name()
-                        );
-                    }
-                    RegisterType::ExternalRecord(..) => {
-                        bail!(
-                            "'{}/{}' attempts to pass an 'external record' into 'finalize'",
-                            stack.program_id(),
-                            function.name()
-                        );
-                    }
-                    RegisterType::Future => todo!(),
-                }
-            }
         }
 
         Ok(register_types)
@@ -344,6 +308,19 @@ impl<N: Network> RegisterTypes<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
+            Opcode::Async => {
+                // Retrieve the async operation.
+                let async_ = match instruction {
+                    Instruction::Async(async_) => async_,
+                    _ => bail!("Instruction '{instruction}' is not an async operation."),
+                };
+
+                // Ensure the function name matches the one in the operation.
+                ensure!(
+                    async_.function_name() == closure_or_function_name,
+                    "Instruction '{instruction}' does not match the function name '{closure_or_function_name}'."
+                );
+            }
             Opcode::Call => {
                 // Retrieve the call operation.
                 let call = match instruction {
@@ -452,13 +429,6 @@ impl<N: Network> RegisterTypes<N> {
                 bail!("Forbidden operation: Instruction '{instruction}' cannot invoke command '{opcode}'.");
             }
             Opcode::Commit(opcode) => Self::check_commit_opcode(opcode, instruction)?,
-            Opcode::Finalize(opcode) => {
-                bail!("Forbidden operation: Instruction '{instruction}' cannot invoke command '{opcode}'.");
-                // // Ensure the opcode is correct.
-                // if opcode != "finalize" {
-                //     bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                // }
-            }
             Opcode::Hash(opcode) => Self::check_hash_opcode(opcode, instruction)?,
             Opcode::Is(opcode) => {
                 // Ensure the instruction belongs to the defined set.

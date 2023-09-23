@@ -13,7 +13,7 @@ function add_and_count:
     input r0 as i64.private;
     input r1 as i64.private;
     add r0 r1 into r2;
-    finalize add_and_count self.caller into r3;
+    async add_and_count self.caller into r3;
     output r2 as i64.private;
     output r3 as future;
 
@@ -27,7 +27,7 @@ function sub_and_count:
     input r0 as i64.private;
     input r1 as i64.private;
     sub r0 r1 into r2;
-    finalize self.caller into r3;
+    async sub_and_count self.caller into r3;
     output r2 as i64.private;
     output r3 as future;
 
@@ -50,7 +50,7 @@ function add_and_subtract:
     call basic_math.aleo/sub_and_count r2 r1 into r4 r5;
     assert.eq r0 r2;
     assert.eq r3[0u32] r5[0u32];
-    finalize add_and_subtract r3 r5 into r6;
+    async add_and_subtract r3 r5 into r6;
     output r0 as i64.private;
     output r8 as future;
 

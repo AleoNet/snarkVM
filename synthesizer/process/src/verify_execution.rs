@@ -173,7 +173,7 @@ impl<N: Network> Process<N> {
         inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
 
         // Ensure the transition contains finalize inputs, if the function has a finalize scope.
-        if let Some((command, logic)) = function.finalize() {
+        if let (Some(command), Some(logic)) = (function.finalize_command(), function.finalize_logic()) {
             // Ensure the transition contains finalize inputs.
             match transition.finalize() {
                 Some(finalize) => {
