@@ -85,8 +85,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
         }
         let degree_info = degree_info.unwrap();
 
-        // TODO: Add check that c is in the correct mode.
-        // Ensure the universal SRS supports the circuit size.
         universal_srs
             .download_powers_for(0..degree_info.max_degree)
             .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", degree_info.max_degree))?;
