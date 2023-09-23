@@ -41,17 +41,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         let (string, outputs) = many0(Output::parse)(string)?;
 
         // Parse an optional finalize command from the string.
-        let (string, command) = opt(Command::FinalizeCommand::parse)(string)?;
-        // If there is a finalize command, parse the finalize scope.
-        let (string, finalize) = match command {
-            Some(command) => {
-                // Parse the finalize scope from the string.
-                let (string, finalize) = FinalizeCore::parse(string)?;
-                // Return the finalize command and logic.
-                (string, Some((command, finalize)))
-            }
-            None => (string, None),
-        };
+        let (string, finalize) = opt(FinalizeCore::parse)(string)?;
 
         map_res(take(0usize), move |_| {
             // Initialize a new function.
@@ -70,8 +60,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
                 eprintln!("{error}");
                 return Err(error);
             }
-            if let Some((command, finalize)) = &finalize {
-                if let Err(error) = function.add_finalize(command.clone(), finalize.clone()) {
+            if let Some(finalize) = &finalize {
+                if let Err(error) = function.add_finalize(finalize.clone()) {
                     eprintln!("{error}");
                     return Err(error);
                 }
@@ -121,8 +111,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Dis
         self.outputs.iter().try_for_each(|output| write!(f, "\n    {output}"))?;
 
         // If finalize exists, write it out.
-        if let Some((command, finalize)) = &self.finalize {
-            write!(f, "\n   {command}")?;
+        if let Some(finalize) = &self.finalize {
             write!(f, "\n\n")?;
             write!(f, "{finalize}")?;
         }

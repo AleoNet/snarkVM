@@ -19,8 +19,6 @@ use console::{
 };
 
 pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
-    type FinalizeCommand: FinalizeCommandTrait;
-
     /// Returns the destination registers of the command.
     fn destinations(&self) -> Vec<Register<N>>;
     /// Returns the branch target, if the command is a branch command.
@@ -33,9 +31,4 @@ pub trait CommandTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
     fn is_cast_to_record(&self) -> bool;
     /// Returns `true` if the command is a write operation.
     fn is_write(&self) -> bool;
-}
-
-pub trait FinalizeCommandTrait: Clone + PartialEq + Eq + Parser + FromBytes + ToBytes {
-    /// Returns the number of operands.
-    fn num_operands(&self) -> usize;
 }
