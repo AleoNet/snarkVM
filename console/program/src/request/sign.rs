@@ -143,6 +143,7 @@ impl<N: Network> Request<N> {
                         Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
                         // Ensure the input is a plaintext.
                         Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                        Value::Future(..) => bail!("Expected a plaintext input, found a future input"),
                     };
                     // Hash the ciphertext to a field element.
                     let input_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
@@ -159,6 +160,7 @@ impl<N: Network> Request<N> {
                         Value::Record(record) => record,
                         // Ensure the input is a record.
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                        Value::Future(..) => bail!("Expected a record input, found a future input"),
                     };
                     // Ensure the record belongs to the caller.
                     ensure!(**record.owner() == caller, "Input record for '{program_id}' must belong to the signer");

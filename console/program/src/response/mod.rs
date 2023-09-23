@@ -125,6 +125,7 @@ impl<N: Network> Response<N> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key)?,
                             // Ensure the output is a plaintext.
                             Value::Record(..) => bail!("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => bail!("Expected a plaintext output, found a future output"),
                         };
                         // Hash the ciphertext to a field element.
                         let output_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
@@ -138,6 +139,7 @@ impl<N: Network> Response<N> {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => bail!("Expected a record output, found a plaintext output"),
+                            Value::Future(..) => bail!("Expected a record output, found a future output"),
                         };
 
                         // Retrieve the output register.

@@ -273,6 +273,8 @@ impl<N: Network> Cast<N> {
                         }
                         // Ensure the record entry is not a record.
                         Value::Record(..) => bail!("Casting a record into a record entry is illegal"),
+                        // Ensure the record entry is not a future.
+                        Value::Future(..) => bail!("Casting a future into a record entry is illegal"),
                     };
                     // Append the entry to the record entries.
                     match entry_type {
@@ -394,6 +396,10 @@ impl<N: Network> Cast<N> {
                         circuit::Value::Record(..) => {
                             bail!("Casting a record into a struct member is illegal")
                         }
+                        // Ensure the struct member is not a future.
+                        circuit::Value::Future(..) => {
+                            bail!("Casting a future into a struct member is illegal")
+                        }
                     };
                     // Append the member to the struct members.
                     members.insert(circuit::Identifier::constant(*member_name), plaintext);
@@ -437,6 +443,8 @@ impl<N: Network> Cast<N> {
                         }
                         // Ensure the element is not a record.
                         circuit::Value::Record(..) => bail!("Casting a record into an array element is illegal"),
+                        // Ensure the element is not a future.
+                        circuit::Value::Future(..) => bail!("Casting a future into an array element is illegal"),
                     };
                     // Store the element.
                     elements.push(plaintext);
@@ -505,6 +513,8 @@ impl<N: Network> Cast<N> {
                         }
                         // Ensure the record entry is not a record.
                         circuit::Value::Record(..) => bail!("Casting a record into a record entry is illegal"),
+                        // Ensure the record entry is not a future.
+                        circuit::Value::Future(..) => bail!("Casting a future into a record entry is illegal"),
                     };
                     // Construct the entry name constant circuit.
                     let entry_name = circuit::Identifier::constant(*entry_name);
@@ -821,6 +831,8 @@ impl<N: Network> Cast<N> {
                 }
                 // Ensure the struct member is not a record.
                 Value::Record(..) => bail!("Casting a record into a struct member is illegal"),
+                // Ensure the struct member is not a future.
+                Value::Future(..) => bail!("Casting a future into a struct member is illegal"),
             };
             // Append the member to the struct members.
             members.insert(*member_name, plaintext);
@@ -868,6 +880,8 @@ impl<N: Network> Cast<N> {
                 }
                 // Ensure the element is not a record.
                 Value::Record(..) => bail!("Casting a record into an array element is illegal"),
+                // Ensure the element is not a future.
+                Value::Future(..) => bail!("Casting a future into an array element is illegal"),
             };
             // Store the element.
             elements.push(plaintext);

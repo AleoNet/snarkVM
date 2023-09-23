@@ -12,29 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod access;
-pub use access::Access;
+use super::*;
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+impl<N: Network> FromBytes for Future<N> {
+    /// Reads in a future from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        todo!()
+    }
+}
 
-mod future;
-pub use future::Future;
+impl<N: Network> ToBytes for Future<N> {
+    /// Writes a future to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        todo!()
+    }
+}
 
-pub(super) mod identifier;
-pub use identifier::Identifier;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-mod literal;
-pub use literal::Literal;
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Entry, Owner, Record};
-
-mod register;
-pub use register::Register;
-
-mod value;
-pub use value::Value;
+    #[test]
+    fn test_bytes() -> Result<()> {
+        todo!()
+    }
+}

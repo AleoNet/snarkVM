@@ -42,6 +42,7 @@ impl<N: Network> StackMatches<N> for Stack<N> {
             (Value::Record(record), RegisterType::ExternalRecord(locator)) => {
                 self.matches_external_record(record, locator)
             }
+            (Value::Future(..), RegisterType::Future) => Ok(()),
             _ => bail!("A value does not match its declared register type '{register_type}'"),
         }
     }

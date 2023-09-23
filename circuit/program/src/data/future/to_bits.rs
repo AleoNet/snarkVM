@@ -14,26 +14,18 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for Value<A> {
+impl<A: Aleo> ToBits for Future<A> {
     type Boolean = Boolean<A>;
 
-    /// Returns the circuit value as a list of **little-endian** bits.
+    /// Returns the circuit future as a list of **little-endian** bits.
     #[inline]
     fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
-        match self {
-            Self::Plaintext(plaintext) => plaintext.write_bits_le(vec),
-            Self::Record(record) => record.write_bits_le(vec),
-            Self::Future(future) => future.write_bits_le(vec),
-        };
+        todo!()
     }
 
-    /// Returns the circuit value as a list of **big-endian** bits.
+    /// Returns the circuit future as a list of **big-endian** bits.
     #[inline]
     fn write_bits_be(&self, vec: &mut Vec<Boolean<A>>) {
-        match self {
-            Self::Plaintext(plaintext) => plaintext.write_bits_be(vec),
-            Self::Record(record) => record.write_bits_be(vec),
-            Self::Future(future) => future.write_bits_be(vec),
-        };
+        todo!()
     }
 }
