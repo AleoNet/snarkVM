@@ -23,7 +23,7 @@ struct bundle:
 function rand_chacha_with_struct:
     input r0 as bundle.public;
     async rand_chacha_with_struct r0 into r1;
-    output r1 as future;
+    output r1 as test_rand.aleo/rand_chacha_with_struct.future;
 
 finalize rand_chacha_with_struct:
     input r0 as bundle.public;
@@ -33,7 +33,7 @@ function rand_chacha_check:
     input r0 as field.public;
     input r1 as boolean.public;
     async rand_chacha_check r0 r1 into r2;
-    output r2 as future;
+    output r2 as test_rand.aleo/rand_chacha_check.future;
 
 finalize rand_chacha_check:
     input r0 as field.public;
@@ -51,7 +51,7 @@ function rand_chacha_with_literals:
     input r6 as u128.public;
     input r7 as field.public;
     async rand_chacha_with_literals r0 r1 r2 r3 r4 r5 r6 r7 into r8;
-    output r8 as future;
+    output r8 as test_rand.aleo/rand_chacha_with_literals.future;
 
 finalize rand_chacha_with_literals:
     input r0 as scalar.public;

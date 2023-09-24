@@ -1202,7 +1202,7 @@ function compute:
     input r2 as u64.public;
     add r1 r2 into r3;
     async compute r0 r3 into r4;
-    outut r4 as future;
+    outut r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -1314,7 +1314,7 @@ function compute:
     input r2 as u64.public;
     add r1 r2 into r3;
     async compute r0 r3 into r4;
-    outut r4 as future;
+    outut r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -1434,7 +1434,7 @@ function mint_public:
     input r1 as u64.public;
     // Mint the tokens publicly.
     async mint_public r0 r1 into r2;
-    output r2 as future;
+    output r2 as token.aleo/mint_public.future;
 
 // The finalize scope of `mint_public` increments the
 // `account` of the token receiver by the specified amount.
@@ -1565,7 +1565,7 @@ function mint_public:
     input r1 as u64.public;
     // Mint the tokens publicly.
     async mint_public r0 r1 into r2;
-    output r2 as future;
+    output r2 as token.aleo/mint_public.future;
 
 // The finalize scope of `mint_public` increments the
 // `account` of the token receiver by the specified amount.
@@ -1710,7 +1710,7 @@ function compute:
     input r2 as u64.public;
     add r1 r2 into r3;
     async compute r0 r3 into r4;
-    output r4 as future;
+    output r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -2135,7 +2135,7 @@ function compute:
     input r1 as u8.public;
     cast r0 r1 into r2 as entry;
     async compute self.caller r2 into r3;
-    output r3 as future;
+    output r3 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;

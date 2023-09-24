@@ -29,7 +29,7 @@ function test_arrays:
     output r8 as [[boolean; 4u32]; 1u32].public;
     output r2 as tree.private;
     async test_arrays r0 r1 into r3;
-    output r3 as future;
+    output r3 as arrays_in_finalize.aleo/test_arrays.future;
 
 finalize test_arrays:
     input r0 as [[boolean; 4u32]; 1u32].public;
