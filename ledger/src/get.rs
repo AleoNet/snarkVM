@@ -189,9 +189,9 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().get_block_coinbase(&block_hash)
     }
 
-    /// Returns the prover solution for the given puzzle commitment.
-    pub fn get_prover_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
-        self.vm.block_store().get_prover_solution(puzzle_commitment)
+    /// Returns the solution for the given solution ID.
+    pub fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        self.vm.block_store().get_solution(solution_id)
     }
 
     /// Returns the block authority for the given block height.

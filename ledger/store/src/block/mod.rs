@@ -701,8 +701,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the prover solution for the given puzzle commitment.
-    fn get_prover_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+    /// Returns the prover solution for the given solution ID.
+    fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
         // Retrieve the block height for the puzzle commitment.
         let Some(block_height) = self.find_block_height_from_puzzle_commitment(puzzle_commitment)? else {
             bail!("The block height for puzzle commitment '{puzzle_commitment}' is missing in block storage")
@@ -1001,9 +1001,9 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.get_block_coinbase(block_hash)
     }
 
-    /// Returns the prover solution for the given puzzle commitment.
-    pub fn get_prover_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
-        self.storage.get_prover_solution(puzzle_commitment)
+    /// Returns the prover solution for the given solution ID.
+    pub fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        self.storage.get_solution(solution_id)
     }
 
     /// Returns the block for the given `block hash`.
