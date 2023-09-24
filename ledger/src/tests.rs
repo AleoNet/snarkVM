@@ -165,7 +165,7 @@ program dummy.aleo;
 function foo:
     input r0 as u8.private;
     async foo r0 into r1;
-    output r1 as future;
+    output r1 as dummy.aleo/foo.future
 finalize foo:
     input r0 as u8.public;
     add r0 r0 into r1;",
@@ -204,7 +204,7 @@ program dummy.aleo;
 function foo:
     input r0 as u8.private;
     async foo r0 into r1;
-    output r1 as future;
+    output r1 as dummy.aleo/foo.future
 finalize foo:
     input r0 as u8.public;
     add r0 r0 into r1;",

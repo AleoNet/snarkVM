@@ -62,6 +62,15 @@ impl<N: Network> Serialize for Output<N> {
                     output.serialize_field("id", &id)?;
                     output.end()
                 }
+                Self::Future(id, value) => {
+                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    output.serialize_field("type", "public")?;
+                    output.serialize_field("id", &id)?;
+                    if let Some(value) = value {
+                        output.serialize_field("value", &value)?;
+                    }
+                    output.end()
+                }
             },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }

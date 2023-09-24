@@ -121,6 +121,17 @@ impl<N: Network> ToBytes for Output<N> {
                 (4 as Variant).write_le(&mut writer)?;
                 commitment.write_le(&mut writer)
             }
+            Self::Future(future_hash, future) => {
+                (5 as Variant).write_le(&mut writer)?;
+                future_hash.write_le(&mut writer)?;
+                match future {
+                    Some(future) => {
+                        true.write_le(&mut writer)?;
+                        future.write_le(&mut writer)
+                    }
+                    None => false.write_le(&mut writer),
+                }
+            }
         }
     }
 }
