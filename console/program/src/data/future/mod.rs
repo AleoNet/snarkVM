@@ -59,9 +59,9 @@ impl<N: Network> Future<N> {
         &self.function_name
     }
 
-    /// Returns the inputs.
+    /// Returns the arguments.
     #[inline]
-    pub fn inputs(&self) -> &[Argument<N>] {
+    pub fn arguments(&self) -> &[Argument<N>] {
         &self.arguments
     }
 }

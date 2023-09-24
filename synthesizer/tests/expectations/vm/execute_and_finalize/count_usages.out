@@ -1,3 +1,2 @@
-errors:
-- 'Failed to run `VM::deploy for program count_usages.aleo: Attempted to access a ''future'' register.'
+errors: []
 outputs: []

@@ -120,7 +120,7 @@ impl<N: Network> FinalizeTypes<N> {
                 RegisterTypes::check_struct(stack, struct_name)?
             }
             FinalizeType::Plaintext(PlaintextType::Array(array_type)) => RegisterTypes::check_array(stack, array_type)?,
-            FinalizeType::Future(..) => bail!("Input '{register}' cannot be a future."),
+            FinalizeType::Future(..) => (),
         };
 
         // Insert the input register.

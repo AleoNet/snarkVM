@@ -285,7 +285,7 @@ impl<N: Network> Stack<N> {
         ensure!(depth <= N::MAX_DATA_DEPTH, "Future exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
 
         // Ensure that the program IDs match.
-        ensure!(future.program_id() == self.program().id(), "Future program ID does not match");
+        ensure!(future.program_id() == locator.program_id(), "Future program ID does not match");
 
         // Ensure that the function names match.
         ensure!(future.function_name() == locator.resource(), "Future name does not match");

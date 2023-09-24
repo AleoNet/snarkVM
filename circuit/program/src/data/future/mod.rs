@@ -45,7 +45,7 @@ impl<A: Aleo> Inject for Future<A> {
         Self::from(
             Inject::new(Mode::Constant, *value.program_id()),
             Inject::new(Mode::Constant, *value.function_name()),
-            Inject::new(Mode::Public, value.inputs().to_vec()),
+            Inject::new(Mode::Public, value.arguments().to_vec()),
         )
     }
 }
