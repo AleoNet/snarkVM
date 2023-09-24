@@ -17,6 +17,7 @@ use console::{
     network::Network,
     prelude::{bail, Result},
     program::{
+        Future,
         Identifier,
         Literal,
         Locator,
@@ -48,6 +49,9 @@ pub trait StackMatches<N: Network> {
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
     fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()>;
+
+    /// Checks that the given future matches the layout of the future type.
+    fn matches_future(&self, future: &Future<N>, locator: &Locator<N>) -> Result<()>;
 }
 
 pub trait StackProgram<N: Network> {
@@ -71,6 +75,9 @@ pub trait StackProgram<N: Network> {
 
     /// Returns the function with the given function name.
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>>;
+
+    /// Returns a reference to the function with the given function name.
+    fn get_function_ref(&self, function_name: &Identifier<N>) -> Result<&Function<N>>;
 
     /// Returns the expected number of calls for the given function name.
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize>;

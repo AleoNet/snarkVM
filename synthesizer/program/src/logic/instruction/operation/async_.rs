@@ -22,7 +22,7 @@ use crate::{
     Result,
 };
 
-use circuit::{Eject, Inject, Mode};
+use circuit::{Inject, Mode};
 use console::{
     network::prelude::*,
     program::{Argument, FinalizeType, Future, Identifier, Locator, Register, RegisterType, Value},
@@ -186,7 +186,16 @@ impl<N: Network> Async<N> {
                 (RegisterType::ExternalRecord(..), _) => {
                     bail!("Attempted to pass an 'external record' into 'finalize'")
                 }
-                (RegisterType::Future(..), FinalizeType::Future(..)) => todo!(),
+                (RegisterType::Future(input_locator), FinalizeType::Future(expected_locator)) => {
+                    ensure!(
+                        input_locator == &expected_locator,
+                        "'{}/{}' finalize expects a '{}.future' argument, found a '{}.future' argument",
+                        stack.program_id(),
+                        self.function_name(),
+                        expected_locator,
+                        input_locator
+                    );
+                }
                 (input_type, finalize_type) => bail!(
                     "'{}/{}' finalize expects a '{}' argument, found a '{}' argument",
                     stack.program_id(),

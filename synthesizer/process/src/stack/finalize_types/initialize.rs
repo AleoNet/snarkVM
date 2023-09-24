@@ -120,7 +120,7 @@ impl<N: Network> FinalizeTypes<N> {
                 RegisterTypes::check_struct(stack, struct_name)?
             }
             FinalizeType::Plaintext(PlaintextType::Array(array_type)) => RegisterTypes::check_array(stack, array_type)?,
-            FinalizeType::Future(..) => todo!(),
+            FinalizeType::Future(..) => bail!("Input '{register}' cannot be a future."),
         };
 
         // Insert the input register.
@@ -167,7 +167,8 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, throw an error.
             FinalizeType::Plaintext(..) => bail!("Expected a future"),
             // If the register is a future, return success.
-            FinalizeType::Future(..) => todo!(),
+            // Note that there are not restrictions on the exact type of future.
+            FinalizeType::Future(..) => Ok(()),
         }
     }
 

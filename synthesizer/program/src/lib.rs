@@ -278,6 +278,22 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         // Return the function.
         Ok(function)
     }
+
+    /// Returns a reference to the function with the given name.
+    pub fn get_function_ref(&self, name: &Identifier<N>) -> Result<&FunctionCore<N, Instruction, Command>> {
+        // Attempt to retrieve the function.
+        let function = self.functions.get(name).ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
+        // Ensure the function name matches.
+        ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
+        // Ensure the number of instructions is within the allowed range.
+        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
+        // Return the function.
+        Ok(function)
+    }
 }
 
 impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ProgramCore<N, Instruction, Command> {

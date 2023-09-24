@@ -43,6 +43,7 @@ use console::{
     program::{
         Entry,
         EntryType,
+        Future,
         Identifier,
         Literal,
         Locator,
@@ -257,6 +258,16 @@ impl<N: Network> StackProgram<N> for Stack<N> {
         // Ensure the function exists.
         match self.program.contains_function(function_name) {
             true => self.program.get_function(function_name),
+            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
+        }
+    }
+
+    /// Returns a reference to the function with the given function name.
+    #[inline]
+    fn get_function_ref(&self, function_name: &Identifier<N>) -> Result<&Function<N>> {
+        // Ensure the function exists.
+        match self.program.contains_function(function_name) {
+            true => self.program.get_function_ref(function_name),
             false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
         }
     }
