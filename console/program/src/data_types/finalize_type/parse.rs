@@ -20,7 +20,7 @@ impl<N: Network> Parser for FinalizeType<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the mode from the string (ordering matters).
         alt((
-            map(tag("future"), |_| Self::Future),
+            map(pair(Locator::parse, tag(".future")), |(locator, _)| Self::Future(locator)),
             map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Plaintext(plaintext_type)),
         ))(string)
     }
@@ -55,9 +55,9 @@ impl<N: Network> Display for FinalizeType<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             // Prints the plaintext type, i.e. signature
-            Self::Plaintext(plaintext_type) => write!(f, "{plaintext_type}"),
+            Self::Plaintext(plaintext_type) => write!(f, "{plaintext_type}.public"),
             // Prints the future type, i.e. future
-            Self::Future => write!(f, "future"),
+            Self::Future(locator) => write!(f, "{locator}.future"),
         }
     }
 }

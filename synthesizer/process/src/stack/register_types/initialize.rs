@@ -170,7 +170,7 @@ impl<N: Network> RegisterTypes<N> {
                     bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
-            RegisterType::Future => bail!("Input '{register}' cannot be a future."),
+            RegisterType::Future(..) => bail!("Input '{register}' cannot be a future."),
         };
 
         // Insert the input register.
@@ -221,7 +221,7 @@ impl<N: Network> RegisterTypes<N> {
                     bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
-            RegisterType::Future => (),
+            RegisterType::Future(..) => todo!(),
         };
 
         // Ensure the operand type and the output type match.

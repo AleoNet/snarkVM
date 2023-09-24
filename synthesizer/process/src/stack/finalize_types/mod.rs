@@ -108,7 +108,7 @@ impl<N: Network> FinalizeTypes<N> {
                 (plaintext_type, path)
             }
             // TODO (@d0cd)
-            (FinalizeType::Future, _) => todo!(),
+            (FinalizeType::Future(..), _) => todo!(),
         };
 
         // Traverse the path to find the register type.

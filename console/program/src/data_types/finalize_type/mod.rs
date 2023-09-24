@@ -16,7 +16,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::PlaintextType;
+use crate::{Locator, PlaintextType};
 
 use snarkvm_console_network::prelude::*;
 
@@ -27,5 +27,5 @@ pub enum FinalizeType<N: Network> {
     /// A plaintext type.
     Plaintext(PlaintextType<N>),
     /// A future.
-    Future,
+    Future(Locator<N>),
 }

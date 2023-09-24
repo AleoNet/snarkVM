@@ -663,7 +663,7 @@ impl<N: Network> Cast<N> {
                             "Struct '{struct_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
                         ),
                         // Ensure the input type cannot be a future (this is unsupported behavior).
-                        RegisterType::Future => {
+                        RegisterType::Future(..) => {
                             bail!("Struct '{struct_name}' member type mismatch: expected '{member_type}', found future")
                         }
                     }
@@ -711,7 +711,7 @@ impl<N: Network> Cast<N> {
                             array_type.next_element_type()
                         ),
                         // Ensure the input type cannot be a future (this is unsupported behavior).
-                        RegisterType::Future => bail!(
+                        RegisterType::Future(..) => bail!(
                             "Array element type mismatch: expected '{}', found future",
                             array_type.next_element_type()
                         ),
@@ -770,7 +770,7 @@ impl<N: Network> Cast<N> {
                             "Record '{record_name}' entry type mismatch: expected '{entry_type}', found external record '{locator}'"
                         ),
                         // Ensure the input type cannot be a future (this is unsupported behavior).
-                        RegisterType::Future => {
+                        RegisterType::Future(..) => {
                             bail!("Record '{record_name}' entry type mismatch: expected '{entry_type}', found future",)
                         }
                     }

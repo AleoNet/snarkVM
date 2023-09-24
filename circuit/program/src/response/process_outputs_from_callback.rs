@@ -148,7 +148,7 @@ impl<A: Aleo> Response<A> {
                         }
                     }
                     // For a future output, compute the hash (using `tcm`) of the output.
-                    console::ValueType::Future => {
+                    console::ValueType::Future(..) => {
                         // Inject the output as `Mode::Private`.
                         let output = Value::new(Mode::Private, output.clone());
                         // Ensure the output is a future.

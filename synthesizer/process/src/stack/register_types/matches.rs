@@ -62,7 +62,7 @@ impl<N: Network> RegisterTypes<N> {
                             bail!("Casting a record into a struct entry is illegal")
                         }
                         // Ensure the register type is not a future.
-                        RegisterType::Future => {
+                        RegisterType::Future(..) => {
                             bail!("Casting a future into a struct entry is illegal")
                         }
                         // Ensure the register type matches the member type.
@@ -146,7 +146,7 @@ impl<N: Network> RegisterTypes<N> {
                             bail!("Casting a record into an array element is illegal")
                         }
                         // Ensure the register type is not a future.
-                        RegisterType::Future => {
+                        RegisterType::Future(..) => {
                             bail!("Casting a future into an array element is illegal")
                         }
                         // Ensure the register type matches the element type.
@@ -272,7 +272,7 @@ impl<N: Network> RegisterTypes<N> {
                                     bail!("Casting a record into a record entry is illegal")
                                 }
                                 // Ensure the register type is not a future.
-                                RegisterType::Future => {
+                                RegisterType::Future(..) => {
                                     bail!("Casting a future into a record entry is illegal")
                                 }
                                 // Ensure the register type matches the entry type.

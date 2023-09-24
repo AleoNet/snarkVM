@@ -120,7 +120,7 @@ impl<N: Network> FinalizeTypes<N> {
                 RegisterTypes::check_struct(stack, struct_name)?
             }
             FinalizeType::Plaintext(PlaintextType::Array(array_type)) => RegisterTypes::check_array(stack, array_type)?,
-            FinalizeType::Future => todo!(),
+            FinalizeType::Future(..) => todo!(),
         };
 
         // Insert the input register.
@@ -167,7 +167,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, throw an error.
             FinalizeType::Plaintext(..) => bail!("Expected a future"),
             // If the register is a future, return success.
-            FinalizeType::Future => Ok(()),
+            FinalizeType::Future(..) => todo!(),
         }
     }
 
@@ -184,14 +184,14 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Get the type of the second operand.
         let second_type = match self.get_type_from_operand(stack, branch.second())? {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Check that the operands have the same type.
         ensure!(
@@ -233,7 +233,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Check that the key type in the mapping matches the key type in the instruction.
         if *mapping_key_type != key_type {
@@ -274,7 +274,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Check that the key type in the mapping matches the key type in the instruction.
         if *mapping_key_type != key_type {
@@ -313,7 +313,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
@@ -326,7 +326,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Mapping default value cannot be a future"),
+            FinalizeType::Future(..) => bail!("Mapping default value cannot be a future"),
         };
         // Check that the value type in the mapping matches the default value type.
         if mapping_value_type != &default_value_type {
@@ -398,7 +398,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
@@ -409,7 +409,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Check that the value type in the mapping matches the type of the value.
         if mapping_value_type != &value_type {
@@ -442,7 +442,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
         };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
@@ -482,7 +482,7 @@ impl<N: Network> FinalizeTypes<N> {
             // Ensure that the destination type is a plaintext type.
             let destination_type = match destination_type {
                 RegisterType::Plaintext(destination_type) => FinalizeType::Plaintext(destination_type),
-                RegisterType::Future => FinalizeType::Future,
+                RegisterType::Future(locator) => FinalizeType::Future(locator),
                 _ => bail!("Destination type '{destination_type}' must be a plaintext type."),
             };
             // Insert the destination register.

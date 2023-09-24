@@ -30,7 +30,7 @@ pub enum RegisterType<N: Network> {
     /// A record locator.
     ExternalRecord(Locator<N>),
     /// A future.
-    Future,
+    Future(Locator<N>),
 }
 
 impl<N: Network> From<ValueType<N>> for RegisterType<N> {
@@ -42,7 +42,7 @@ impl<N: Network> From<ValueType<N>> for RegisterType<N> {
             | ValueType::Private(plaintext_type) => Self::Plaintext(plaintext_type),
             ValueType::Record(record_name) => Self::Record(record_name),
             ValueType::ExternalRecord(locator) => Self::ExternalRecord(locator),
-            ValueType::Future => Self::Future,
+            ValueType::Future(locator) => Self::Future(locator),
         }
     }
 }
@@ -52,7 +52,7 @@ impl<N: Network> From<FinalizeType<N>> for RegisterType<N> {
     fn from(finalize: FinalizeType<N>) -> Self {
         match finalize {
             FinalizeType::Plaintext(plaintext_type) => Self::Plaintext(plaintext_type),
-            FinalizeType::Future => Self::Future,
+            FinalizeType::Future(locator) => Self::Future(locator),
         }
     }
 }

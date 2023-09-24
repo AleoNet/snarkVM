@@ -22,7 +22,7 @@ impl<N: Network> ToBytes for RegisterType<N> {
             Self::Plaintext(plaintext_type) => plaintext_type.write_le(&mut writer),
             Self::Record(identifier) => identifier.write_le(&mut writer),
             Self::ExternalRecord(locator) => locator.write_le(&mut writer),
-            Self::Future => Ok(()),
+            Self::Future(locator) => locator.write_le(&mut writer),
         }
     }
 }
@@ -35,7 +35,7 @@ impl<N: Network> FromBytes for RegisterType<N> {
             0 => Ok(Self::Plaintext(PlaintextType::read_le(&mut reader)?)),
             1 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
             2 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
-            3 => Ok(Self::Future),
+            3 => Ok(Self::Future(Locator::read_le(&mut reader)?)),
             4.. => Err(error(format!("Failed to deserialize register type variant {variant}"))),
         }
     }

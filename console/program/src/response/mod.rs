@@ -187,7 +187,7 @@ impl<N: Network> Response<N> {
                         Ok(OutputID::ExternalRecord(output_hash))
                     }
                     // For a future output, compute the hash (using `tcm`) of the output.
-                    ValueType::Future => {
+                    ValueType::Future(..) => {
                         // Ensure the output is a future.
                         ensure!(matches!(output, Value::Future(..)), "Expected a future output");
 
