@@ -22,7 +22,7 @@ use crate::{
 };
 use console::{
     prelude::*,
-    program::{Ciphertext, Future, Identifier, Plaintext, ProgramID, Record, Value},
+    program::{Ciphertext, Future, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 
@@ -35,8 +35,6 @@ pub struct TransitionDB<N: Network> {
     input_store: InputStore<N, InputDB<N>>,
     /// The transition output store.
     output_store: OutputStore<N, OutputDB<N>>,
-    /// The transition finalize inputs.
-    finalize_map: DataMap<N::TransitionID, Option<Vec<Value<N>>>>,
     /// The transition public keys.
     tpk_map: DataMap<N::TransitionID, Group<N>>,
     /// The reverse `tpk` map.
@@ -52,7 +50,6 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
     type LocatorMap = DataMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
     type InputStorage = InputDB<N>;
     type OutputStorage = OutputDB<N>;
-    type FinalizeMap = DataMap<N::TransitionID, Option<Vec<Value<N>>>>;
     type TPKMap = DataMap<N::TransitionID, Group<N>>;
     type ReverseTPKMap = DataMap<Group<N>, N::TransitionID>;
     type TCMMap = DataMap<N::TransitionID, Field<N>>;
@@ -64,7 +61,6 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
             locator_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Transition(TransitionMap::Locator))?,
             input_store: InputStore::open(dev)?,
             output_store: OutputStore::open(dev)?,
-            finalize_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Transition(TransitionMap::Finalize))?,
             tpk_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Transition(TransitionMap::TPK))?,
             reverse_tpk_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Transition(TransitionMap::ReverseTPK))?,
             tcm_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Transition(TransitionMap::TCM))?,
@@ -85,11 +81,6 @@ impl<N: Network> TransitionStorage<N> for TransitionDB<N> {
     /// Returns the transition output store.
     fn output_store(&self) -> &OutputStore<N, Self::OutputStorage> {
         &self.output_store
-    }
-
-    /// Returns the transition finalize inputs map.
-    fn finalize_map(&self) -> &Self::FinalizeMap {
-        &self.finalize_map
     }
 
     /// Returns the transition public keys.
