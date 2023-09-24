@@ -58,9 +58,8 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
             (Ok(FinalizeType::Plaintext(plaintext_type)), Value::Plaintext(plaintext_value)) => {
                 stack.matches_plaintext(plaintext_value, &plaintext_type)?
             }
-            // TODO (@d0cd)
             // Ensure the future value matches the register type.
-            (Ok(FinalizeType::Future(..)), Value::Future(..)) => todo!(),
+            (Ok(FinalizeType::Future(locator)), Value::Future(future)) => stack.matches_future(future, &locator)?,
             // Ensure the load is valid in a finalize context.
             (Ok(finalize_type), stack_value) => bail!(
                 "Attempted to load a '{stack_value}' value from a register '{register}' of type '{finalize_type}' in a finalize scope",

@@ -221,7 +221,13 @@ impl<N: Network> RegisterTypes<N> {
                     bail!("External record '{locator}' in '{}' is not defined.", stack.program_id())
                 }
             }
-            RegisterType::Future(..) => todo!(),
+            RegisterType::Future(locator) => {
+                // Ensure that the locator is defined.
+                match locator.program_id() == stack.program_id() {
+                    true => stack.get_function(locator.resource())?,
+                    false => stack.get_external_program(locator.program_id())?.get_function(locator.resource())?,
+                };
+            }
         };
 
         // Ensure the operand type and the output type match.
