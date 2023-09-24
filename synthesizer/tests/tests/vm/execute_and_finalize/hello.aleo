@@ -25,7 +25,7 @@ function goodbye:
     add r0 r1 into r2;
     output r2 as u32.public;
     async goodbye r1 r2 into r3;
-    output r3 as future;
+    output r3 as hello.aleo/goodbye.future;
 
 finalize goodbye:
     input r0 as u32.public;

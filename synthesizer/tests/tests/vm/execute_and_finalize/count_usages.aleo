@@ -15,7 +15,7 @@ function add_and_count:
     add r0 r1 into r2;
     async add_and_count self.caller into r3;
     output r2 as i64.private;
-    output r3 as future;
+    output r3 as basic_math.aleo/add_and_count.future;
 
 finalize add_and_count:
     input r0 as address.public;
@@ -29,7 +29,7 @@ function sub_and_count:
     sub r0 r1 into r2;
     async sub_and_count self.caller into r3;
     output r2 as i64.private;
-    output r3 as future;
+    output r3 as basic_math.aleo/sub_and_count.future;
 
 finalize sub_and_count:
     input r0 as address.public;
@@ -52,11 +52,11 @@ function add_and_subtract:
     assert.eq r3[0u32] r5[0u32];
     async add_and_subtract r3 r5 into r6;
     output r0 as i64.private;
-    output r6 as future;
+    output r6 as count_usages.aleo/add_and_subtract.future;
 
 finalize add_and_subtract:
-    input r0 as future;
-    input r1 as future;
+    input r0 as basic_math.aleo/add_and_count.future;
+    input r1 as basic_math.aleo/sub_and_count.future;
     assert.eq r0[0u32] r1[0u32];
     await r0;
     await r1;

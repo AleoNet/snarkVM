@@ -97,7 +97,7 @@ fn sample_stack(
                 input {r0} as {type_}.{mode};
                 {opcode} {r0} into {r1} as {destination_type};
                 async {function_name} {r0} into r2;
-                output r2 as future;
+                output r2 as testing.aleo/{function_name}.future;
             finalize {function_name}:
                 input {r0} as {type_}.public;
                 {opcode} {r0} into {r1} as {destination_type};

@@ -643,7 +643,7 @@ function mint_public:
     input r0 as address.public;
     input r1 as u64.public;
     async mint_public r0 r1 into r2;
-    output r2 as future;
+    output r2 as {program_name}/mint_public.future;
 
 finalize mint_public:
     input r0 as address.public;
@@ -657,7 +657,7 @@ function transfer_public:
     input r0 as address.public;
     input r1 as u64.public;
     async transfer_public self.caller r0 r1 into r2;
-    output r2 as future;
+    output r2 as {program_name}/transfer_public.future;
 
 finalize transfer_public:
     input r0 as address.public;
@@ -1105,7 +1105,7 @@ function ped_hash:
     input r0 as u128.public;
     // hash.ped64 r0 into r1 as field; // <--- This will cause a E::halt.
     async ped_hash r0 into r1;
-    output r1 as future;
+    output r1 as {program_id}/ped_hash.future;
 
 {finalize_logic}"
             ))
@@ -1195,7 +1195,7 @@ mapping entries:
 function compute:
     input r0 as u8.public;
     async compute self.caller r0 into r1;
-    output r1 as future;
+    output r1 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
