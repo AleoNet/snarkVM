@@ -60,7 +60,7 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
             }
             // TODO (@d0cd)
             // Ensure the future value matches the register type.
-            (Ok(FinalizeType::Future), Value::Future(..)) => todo!(),
+            (Ok(FinalizeType::Future(..)), Value::Future(..)) => todo!(),
             // Ensure the load is valid in a finalize context.
             (Ok(finalize_type), stack_value) => bail!(
                 "Attempted to load a '{stack_value}' value from a register '{register}' of type '{finalize_type}' in a finalize scope",

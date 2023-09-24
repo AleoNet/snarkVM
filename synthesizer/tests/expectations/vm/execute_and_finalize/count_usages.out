@@ -1,3 +1,3 @@
 errors:
-- 'Failed to run `VM::deploy for program basic_math.aleo: Invalid operand types for the ''add'' instruction'
+- 'Failed to run `VM::deploy for program count_usages.aleo: Attempted to access a ''future'' register.'
 outputs: []

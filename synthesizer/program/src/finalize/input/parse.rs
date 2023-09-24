@@ -82,13 +82,7 @@ impl<N: Network> Debug for Input<N> {
 impl<N: Network> Display for Input<N> {
     /// Prints the input statement as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{type_} {register} as {plaintext_type}.public;",
-            type_ = Self::type_name(),
-            register = self.register,
-            plaintext_type = self.finalize_type
-        )
+        write!(f, "{} {} as {};", Self::type_name(), self.register, self.finalize_type)
     }
 }
 

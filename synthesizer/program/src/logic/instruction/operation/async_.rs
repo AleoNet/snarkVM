@@ -25,7 +25,7 @@ use crate::{
 use circuit::{Eject, Inject, Mode};
 use console::{
     network::prelude::*,
-    program::{Argument, FinalizeType, Future, Identifier, Register, RegisterType, Value},
+    program::{Argument, FinalizeType, Future, Identifier, Locator, Register, RegisterType, Value},
 };
 
 /// Invokes the asynchronous call on the operands, producing a future.
@@ -186,7 +186,7 @@ impl<N: Network> Async<N> {
                 (RegisterType::ExternalRecord(..), _) => {
                     bail!("Attempted to pass an 'external record' into 'finalize'")
                 }
-                (RegisterType::Future, FinalizeType::Future) => (),
+                (RegisterType::Future(..), FinalizeType::Future(..)) => todo!(),
                 (input_type, finalize_type) => bail!(
                     "'{}/{}' finalize expects a '{}' argument, found a '{}' argument",
                     stack.program_id(),
@@ -197,7 +197,7 @@ impl<N: Network> Async<N> {
             }
         }
 
-        Ok(vec![RegisterType::Future])
+        Ok(vec![RegisterType::Future(Locator::new(*stack.program_id(), *self.function_name()))])
     }
 }
 

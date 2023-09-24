@@ -93,6 +93,13 @@ impl ExpectedTest for ProgramTest {
             .expect("cases must be a sequence")
             .clone();
 
+        // Print the program splits.
+        for text in source[first_comment_start + 2 + end_first_comment + 2..]
+            .split("/////////////////////////////////////////////////")
+        {
+            println!("\n\nprogram: {}\nDONE", text);
+        }
+
         // Parse the remainder of the test file into a program.
         let programs = source[first_comment_start + 2 + end_first_comment + 2..]
             .split("/////////////////////////////////////////////////")

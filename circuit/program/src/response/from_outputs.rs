@@ -144,7 +144,7 @@ impl<A: Aleo> Response<A> {
                         }
                     }
                     // For a future output, compute the hash (using `tcm`) of the output.
-                    console::ValueType::Future => {
+                    console::ValueType::Future(..) => {
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Construct the preimage as `(function ID || output || tcm || index)`.

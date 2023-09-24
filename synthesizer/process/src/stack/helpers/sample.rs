@@ -32,7 +32,7 @@ impl<N: Network> Stack<N> {
             ValueType::ExternalRecord(locator) => {
                 bail!("Illegal operation: Cannot sample external records (for '{locator}.record').")
             }
-            ValueType::Future => bail!("Illegal operation: Cannot sample future values."),
+            ValueType::Future(locator) => bail!("Illegal operation: Cannot sample futures (for '{locator}.future')."),
         }
     }
 

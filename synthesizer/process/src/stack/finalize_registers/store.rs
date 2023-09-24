@@ -48,7 +48,7 @@ impl<N: Network> RegistersStore<N> for FinalizeRegisters<N> {
                     }
                     // TODO (@d0cd)
                     // Ensure the future value matches the future type.
-                    (Ok(FinalizeType::Future), Value::Future(..)) => todo!(),
+                    (Ok(FinalizeType::Future(..)), Value::Future(..)) => todo!(),
                     // Ensure the store is valid in a fianlize context.
                     (Ok(finalize_type), stack_value) => bail!(
                         "Attempted to store a '{stack_value}' value in a register '{register}' of type '{finalize_type}' in a finalize scope",

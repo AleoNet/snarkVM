@@ -20,7 +20,7 @@ impl<N: Network> ToBytes for FinalizeType<N> {
         u8::try_from(self.enum_index()).or_halt_with::<N>("Invalid finalize type variant").write_le(&mut writer)?;
         match self {
             Self::Plaintext(plaintext_type) => plaintext_type.write_le(&mut writer),
-            Self::Future => Ok(()),
+            Self::Future(locator) => locator.write_le(&mut writer),
         }
     }
 }
@@ -31,7 +31,7 @@ impl<N: Network> FromBytes for FinalizeType<N> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
             0 => Ok(Self::Plaintext(PlaintextType::read_le(&mut reader)?)),
-            1 => Ok(Self::Future),
+            1 => Ok(Self::Future(Locator::read_le(&mut reader)?)),
             2.. => Err(error(format!("Failed to deserialize finalize type variant {variant}"))),
         }
     }
