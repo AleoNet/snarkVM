@@ -22,7 +22,7 @@ use crate::{
 };
 use console::{
     prelude::*,
-    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record, Value},
+    program::{Ciphertext, Future, Identifier, Plaintext, ProgramID, Record, Value},
     types::{Field, Group},
 };
 
@@ -228,6 +228,8 @@ pub struct OutputDB<N: Network> {
     record_nonce: DataMap<Group<N>, Field<N>>,
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     external_record: DataMap<Field<N>, ()>,
+    /// The mapping of `future hash` to `(optional) future`.
+    future: DataMap<Field<N>, Option<Future<N>>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -242,6 +244,7 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
     type RecordMap = DataMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
     type RecordNonceMap = DataMap<Group<N>, Field<N>>;
     type ExternalRecordMap = DataMap<Field<N>, ()>;
+    type FutureMap = DataMap<Field<N>, Option<Future<N>>>;
 
     /// Initializes the transition output storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -254,6 +257,7 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
             record: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionOutput(TransitionOutputMap::Record))?,
             record_nonce: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionOutput(TransitionOutputMap::RecordNonce))?,
             external_record: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionOutput(TransitionOutputMap::ExternalRecord))?,
+            future: rocksdb::RocksDB::open_map(N::ID, dev, MapID::TransitionOutput(TransitionOutputMap::Future))?,
             dev,
         })
     }
@@ -296,6 +300,11 @@ impl<N: Network> OutputStorage<N> for OutputDB<N> {
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
+    }
+
+    /// Returns the future map.
+    fn future_map(&self) -> &Self::FutureMap {
+        &self.future
     }
 
     /// Returns the optional development ID.

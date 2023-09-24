@@ -15,7 +15,7 @@
 use crate::{helpers::memory::MemoryMap, InputStorage, InputStore, OutputStorage, OutputStore, TransitionStorage};
 use console::{
     prelude::*,
-    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record, Value},
+    program::{Ciphertext, Future, Identifier, Plaintext, ProgramID, Record, Value},
     types::{Field, Group},
 };
 
@@ -221,6 +221,8 @@ pub struct OutputMemory<N: Network> {
     record_nonce: MemoryMap<Group<N>, Field<N>>,
     /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
+    /// The mapping of `future hash` to `(optional) future`.
+    future: MemoryMap<Field<N>, Option<Future<N>>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -235,6 +237,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type RecordMap = MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
     type RecordNonceMap = MemoryMap<Group<N>, Field<N>>;
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
+    type FutureMap = MemoryMap<Field<N>, Option<Future<N>>>;
 
     /// Initializes the transition output storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -247,6 +250,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
             record: Default::default(),
             record_nonce: Default::default(),
             external_record: Default::default(),
+            future: Default::default(),
             dev,
         })
     }
@@ -289,6 +293,11 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
+    }
+
+    /// Returns the future map.
+    fn future_map(&self) -> &Self::FutureMap {
+        &self.future
     }
 
     /// Returns the optional development ID.

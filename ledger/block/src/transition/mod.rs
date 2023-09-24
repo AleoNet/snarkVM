@@ -240,6 +240,15 @@ impl<N: Network> Transition<N> {
                         // Return the record output.
                         Ok(Output::ExternalRecord(*hash))
                     }
+                    (OutputID::Future(output_hash), Value::Future(future)) => {
+                        // Construct the future output.
+                        let output = Output::Future(*output_hash, Some(future.clone()));
+                        // Ensure the output is valid.
+                        match output.verify(function_id, request.tcm(), num_inputs + index) {
+                            true => Ok(output),
+                            false => bail!("Malformed future transition output: '{output}'"),
+                        }
+                    }
                     _ => bail!("Malformed response output: {output_id:?}, {output}"),
                 }
             })
@@ -323,7 +332,7 @@ impl<N: Network> Transition<N> {
     #[inline]
     pub fn is_fee_public(&self) -> bool {
         self.inputs.len() == 2
-            && self.outputs.is_empty()
+            && self.outputs.len() == 1
             && self.finalize.as_ref().map_or(false, |finalize| finalize.len() == 2)
             && self.program_id.to_string() == "credits.aleo"
             && self.function_name.to_string() == "fee_public"
@@ -360,6 +369,7 @@ impl<N: Network> Transition<N> {
             Output::Private(_, _) => false,
             Output::Record(output_cm, _, _) => output_cm == commitment,
             Output::ExternalRecord(_) => false,
+            Output::Future(_, _) => false,
         })
     }
 }
@@ -374,6 +384,7 @@ impl<N: Network> Transition<N> {
             Output::Record(output_cm, _, Some(record)) if output_cm == commitment => Some(record),
             Output::Record(_, _, _) => None,
             Output::ExternalRecord(_) => None,
+            Output::Future(_, _) => None,
         })
     }
 }

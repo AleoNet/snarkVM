@@ -20,7 +20,7 @@ mod serialize;
 mod to_bits;
 mod to_fields;
 
-use crate::{Access, Entry, Future, Literal, Plaintext, Record};
+use crate::{Access, Argument, Entry, Future, Literal, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -87,6 +87,23 @@ impl<N: Network> From<&Future<N>> for Value<N> {
     /// Initializes the value from a future.
     fn from(future: &Future<N>) -> Self {
         Self::from(future.clone())
+    }
+}
+
+impl<N: Network> From<Argument<N>> for Value<N> {
+    /// Initializes the value from an argument.
+    fn from(argument: Argument<N>) -> Self {
+        match argument {
+            Argument::Plaintext(plaintext) => Self::Plaintext(plaintext),
+            Argument::Future(future) => Self::Future(future),
+        }
+    }
+}
+
+impl<N: Network> From<&Argument<N>> for Value<N> {
+    /// Initializes the value from an argument.
+    fn from(argument: &Argument<N>) -> Self {
+        Self::from(argument.clone())
     }
 }
 
