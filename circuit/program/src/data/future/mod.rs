@@ -15,6 +15,7 @@
 mod argument;
 pub use argument::Argument;
 
+mod equal;
 mod find;
 mod to_bits;
 mod to_fields;

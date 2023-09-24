@@ -18,8 +18,12 @@ impl<N: Network> Parser for Value<N> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // TODO: (@d0cd) Can futures by initialized by string?
-        alt((map(Plaintext::parse, Value::Plaintext), map(Record::parse, Value::Record)))(string)
+        // Note that the order of the parsers matters.
+        alt((
+            map(Future::parse, Value::Future),
+            map(Plaintext::parse, Value::Plaintext),
+            map(Record::parse, Value::Record),
+        ))(string)
     }
 }
 
@@ -54,7 +58,7 @@ impl<N: Network> Display for Value<N> {
         match self {
             Value::Plaintext(plaintext) => Display::fmt(plaintext, f),
             Value::Record(record) => Display::fmt(record, f),
-            Value::Future(future) => todo!(),
+            Value::Future(future) => Display::fmt(future, f),
         }
     }
 }

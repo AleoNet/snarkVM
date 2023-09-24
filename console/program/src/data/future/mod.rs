@@ -16,7 +16,10 @@ mod argument;
 pub use argument::Argument;
 
 mod bytes;
+mod equal;
 mod find;
+mod parse;
+mod serialize;
 mod to_bits;
 mod to_fields;
 

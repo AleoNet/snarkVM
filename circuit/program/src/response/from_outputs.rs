@@ -58,8 +58,8 @@ impl<A: Aleo> Response<A> {
                             Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
-                    // For a public or future output, compute the hash (using `tcm`) of the output.
-                    console::ValueType::Public(..) | console::ValueType::Future => {
+                    // For a public output, compute the hash (using `tcm`) of the output.
+                    console::ValueType::Public(..) => {
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Construct the preimage as `(function ID || output || tcm || index)`.
@@ -71,9 +71,10 @@ impl<A: Aleo> Response<A> {
                         // Hash the output to a field element.
                         match &output {
                             // Return the output ID.
-                            Value::Plaintext(..) | Value::Future(..) => OutputID::public(A::hash_psd8(&preimage)),
+                            Value::Plaintext(..) => OutputID::public(A::hash_psd8(&preimage)),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
                     // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.
@@ -140,6 +141,25 @@ impl<A: Aleo> Response<A> {
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
                             Value::Future(..) => A::halt("Expected a record output, found a future output"),
+                        }
+                    }
+                    // For a future output, compute the hash (using `tcm`) of the output.
+                    console::ValueType::Future => {
+                        // Prepare the index as a constant field element.
+                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id.clone()];
+                        preimage.extend(output.to_fields());
+                        preimage.push(tcm.clone());
+                        preimage.push(output_index);
+
+                        // Hash the output to a field element.
+                        match &output {
+                            // Return the output ID.
+                            Value::Future(..) => OutputID::future(A::hash_psd8(&preimage)),
+                            // Ensure the output is a future.
+                            Value::Plaintext(..) => A::halt("Expected a future output, found a plaintext output"),
+                            Value::Record(..) => A::halt("Expected a future output, found a record output"),
                         }
                     }
                 }
