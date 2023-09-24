@@ -79,7 +79,6 @@ impl ExpectedTest for ProgramTest {
         let comment = &source[first_comment_start + 2..first_comment_start + 2 + end_first_comment];
 
         // Parse the comment into the test configuration.
-        println!("source: {}", source);
         let test_config = serde_yaml::from_str::<Mapping>(comment).expect("invalid test configuration");
 
         // If the `randomness` field is present in the config, parse it as a `u64`.
@@ -92,13 +91,6 @@ impl ExpectedTest for ProgramTest {
             .as_sequence()
             .expect("cases must be a sequence")
             .clone();
-
-        // Print the program splits.
-        for text in source[first_comment_start + 2 + end_first_comment + 2..]
-            .split("/////////////////////////////////////////////////")
-        {
-            println!("\n\nprogram: {}\nDONE", text);
-        }
 
         // Parse the remainder of the test file into a program.
         let programs = source[first_comment_start + 2 + end_first_comment + 2..]

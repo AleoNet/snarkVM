@@ -44,8 +44,6 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         // Parse the semicolon ';' keyword from the string.
         let (string, _) = tag(";")(string)?;
 
-        println!("program_parse::47");
-
         // Parse the struct or function from the string.
         let (string, components) = many1(alt((
             map(Mapping::parse, |mapping| P::<N, Instruction, Command>::M(mapping)),
@@ -56,8 +54,6 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Par
         )))(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
-
-        println!("program_parse::58");
 
         // Return the program.
         map_res(take(0usize), move |_| {

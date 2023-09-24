@@ -162,7 +162,13 @@ impl<N: Network> FinalizeTypes<N> {
     /// Checks that the given `await` command is well-formed.
     #[inline]
     fn check_await(&mut self, stack: &(impl StackMatches<N> + StackProgram<N>), await_: &Await<N>) -> Result<()> {
-        // Check that the operand is a future.
+        // Ensure that the register is a locator.
+        ensure!(
+            matches!(await_.register(), Register::Locator(..)),
+            "The await register '{}' must be a locator.",
+            await_.register()
+        );
+        // Ensure that the register is a future.
         match self.get_type(stack, await_.register())? {
             // If the register is a plaintext type, throw an error.
             FinalizeType::Plaintext(..) => bail!("Expected a future"),
