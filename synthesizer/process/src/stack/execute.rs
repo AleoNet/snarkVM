@@ -330,74 +330,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let num_response_constraints =
             A::num_constraints().saturating_sub(num_request_constraints).saturating_sub(num_function_constraints);
 
-        // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
-        let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
-            || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
-            || matches!(registers.call_stack(), CallStack::Execute(..))
-        {
-            // If this function has the finalize command, then construct the finalize inputs.
-            if let Some(command) = function.finalize_command() {
-                use circuit::traits::ToBits;
-
-                // Ensure the number of inputs is within bounds.
-                ensure!(
-                    command.operands().len() <= N::MAX_INPUTS,
-                    "The 'finalize' command contains too many operands. The maximum number of inputs is {}.",
-                    N::MAX_INPUTS
-                );
-
-                // Initialize a vector for the (console) finalize inputs.
-                let mut console_finalize_inputs = Vec::with_capacity(command.operands().len());
-                // Initialize a vector for the (circuit) finalize input bits.
-                let mut circuit_finalize_input_bits = Vec::with_capacity(command.operands().len());
-
-                // Retrieve the finalize inputs.
-                for operand in command.operands() {
-                    // Retrieve the finalize input.
-                    let value = registers.load_circuit(self, operand)?;
-                    // Ensure the value is a literal, struct, or array.
-                    // See `RegisterTypes::initialize_function_types()` for the same set of checks.
-                    match value {
-                        circuit::Value::Plaintext(circuit::Plaintext::Literal(..))
-                        | circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
-                        | circuit::Value::Plaintext(circuit::Plaintext::Array(..))
-                        | circuit::Value::Future(..) => (),
-                        circuit::Value::Record(..) => {
-                            bail!(
-                                "'{}/{}' attempts to pass a 'record' into 'finalize'",
-                                self.program_id(),
-                                function.name()
-                            );
-                        }
-                    }
-
-                    // Store the (console) finalize input.
-                    console_finalize_inputs.push(value.eject_value());
-                    // Store the (circuit) finalize input bits.
-                    value.write_bits_le(&mut circuit_finalize_input_bits);
-                }
-
-                // Compute the finalize inputs checksum.
-                let finalize_checksum = A::hash_bhp1024(&circuit_finalize_input_bits);
-                // Inject the finalize inputs checksum as `Mode::Public`.
-                let circuit_checksum = circuit::Field::<A>::new(circuit::Mode::Public, finalize_checksum.eject_value());
-                // Enforce the injected checksum matches the original checksum.
-                A::assert_eq(circuit_checksum, finalize_checksum);
-
-                #[cfg(debug_assertions)]
-                Self::log_circuit::<A, _>("Finalize");
-
-                lap!(timer, "Construct the finalize inputs");
-
-                // Return the (console) finalize inputs.
-                Some(console_finalize_inputs)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Complete");
 
@@ -457,7 +389,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Construct the transition.
-            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
+            let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Construct the call metrics.

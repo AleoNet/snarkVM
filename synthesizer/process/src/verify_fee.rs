@@ -127,9 +127,6 @@ impl<N: Network> Process<N> {
         #[cfg(debug_assertions)]
         println!("Fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
-        // Ensure the fee transition does not contain a finalize scope.
-        ensure!(fee.finalize().is_none(), "The fee transition should not contain finalize inputs");
-
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(fee.program_id(), fee.function_name())?;
 
@@ -180,23 +177,6 @@ impl<N: Network> Process<N> {
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         lap!(timer, "Construct the verifier inputs");
-
-        // Ensure the fee transition contains finalize inputs.
-        match fee.finalize() {
-            Some(finalize) => {
-                // Ensure the number of inputs for finalize matches in the finalize logic.
-                ensure!(finalize.len() == 2, "The number of inputs for finalize is incorrect");
-
-                // Convert the finalize inputs into concatenated bits.
-                let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
-                // Compute the checksum of the finalize inputs.
-                let checksum = N::hash_bhp1024(&finalize_bits)?;
-
-                // [Inputs] Extend the verifier inputs with the inputs for finalize.
-                inputs.push(*checksum);
-            }
-            None => bail!("The fee transition is missing inputs for 'finalize'"),
-        }
 
         #[cfg(debug_assertions)]
         println!("Fee public inputs ({} elements): {:#?}", inputs.len(), inputs);

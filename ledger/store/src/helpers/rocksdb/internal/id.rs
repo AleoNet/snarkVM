@@ -166,7 +166,6 @@ pub enum TransactionMap {
 #[repr(u16)]
 pub enum TransitionMap {
     Locator = DataID::TransitionLocatorMap as u16,
-    Finalize = DataID::TransitionFinalizeMap as u16,
     TPK = DataID::TransitionTPKMap as u16,
     ReverseTPK = DataID::TransitionReverseTPKMap as u16,
     TCM = DataID::TransitionTCMMap as u16,
@@ -261,7 +260,6 @@ enum DataID {
     TransactionIDMap,
     // Transition
     TransitionLocatorMap,
-    TransitionFinalizeMap,
     TransitionTPKMap,
     TransitionReverseTPKMap,
     TransitionTCMMap,

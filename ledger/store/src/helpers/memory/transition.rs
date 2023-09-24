@@ -15,7 +15,7 @@
 use crate::{helpers::memory::MemoryMap, InputStorage, InputStore, OutputStorage, OutputStore, TransitionStorage};
 use console::{
     prelude::*,
-    program::{Ciphertext, Future, Identifier, Plaintext, ProgramID, Record, Value},
+    program::{Ciphertext, Future, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 
@@ -28,8 +28,6 @@ pub struct TransitionMemory<N: Network> {
     input_store: InputStore<N, InputMemory<N>>,
     /// The transition output store.
     output_store: OutputStore<N, OutputMemory<N>>,
-    /// The transition finalize inputs.
-    finalize_map: MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>,
     /// The transition public keys.
     tpk_map: MemoryMap<N::TransitionID, Group<N>>,
     /// The reverse `tpk` map.
@@ -45,7 +43,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
     type InputStorage = InputMemory<N>;
     type OutputStorage = OutputMemory<N>;
-    type FinalizeMap = MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>;
     type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
     type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
@@ -57,7 +54,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             locator_map: MemoryMap::default(),
             input_store: InputStore::open(dev)?,
             output_store: OutputStore::open(dev)?,
-            finalize_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
@@ -78,11 +74,6 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     /// Returns the transition output store.
     fn output_store(&self) -> &OutputStore<N, Self::OutputStorage> {
         &self.output_store
-    }
-
-    /// Returns the transition finalize inputs.
-    fn finalize_map(&self) -> &Self::FinalizeMap {
-        &self.finalize_map
     }
 
     /// Returns the transition public keys.
