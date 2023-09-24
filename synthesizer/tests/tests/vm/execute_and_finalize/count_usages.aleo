@@ -1,6 +1,9 @@
 /*
 randomness: 490582958
-cases: []
+cases:
+  - program: count_usages.aleo
+    function: add_and_subtract
+    inputs: [1i64, 2i64]
 */
 
 program basic_math.aleo;
@@ -48,7 +51,7 @@ function add_and_subtract:
     input r1 as i64.private;
     call basic_math.aleo/add_and_count r0 r1 into r2 r3;
     call basic_math.aleo/sub_and_count r2 r1 into r4 r5;
-    assert.eq r0 r2;
+    assert.eq r0 r4;
     assert.eq r3[0u32] r5[0u32];
     async add_and_subtract r3 r5 into r6;
     output r0 as i64.private;
