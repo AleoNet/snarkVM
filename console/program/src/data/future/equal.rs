@@ -14,35 +14,41 @@
 
 use super::*;
 
-impl<N: Network> Eq for Value<N> {}
+impl<N: Network> Eq for Future<N> {}
 
-impl<N: Network> PartialEq for Value<N> {
+impl<N: Network> PartialEq for Future<N> {
     /// Returns `true` if `self` and `other` are equal.
     fn eq(&self, other: &Self) -> bool {
         *self.is_equal(other)
     }
 }
 
-impl<N: Network> Equal<Self> for Value<N> {
+impl<N: Network> Equal<Self> for Future<N> {
     type Output = Boolean<N>;
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
-        match (self, other) {
-            (Self::Plaintext(a), Self::Plaintext(b)) => a.is_equal(b),
-            (Self::Record(a), Self::Record(b)) => a.is_equal(b),
-            (Self::Future(a), Self::Future(b)) => a.is_equal(b),
-            (Self::Plaintext(..), _) | (Self::Record(..), _) | (Self::Future(..), _) => Boolean::new(false),
+        // Recursively check each argument for equality.
+        let mut equal = Boolean::new(true);
+        for (argument_a, argument_b) in self.arguments.iter().zip_eq(other.arguments.iter()) {
+            equal &= argument_a.is_equal(argument_b);
         }
+
+        // Check the `program_id`, and `function_name`.
+        self.program_id.is_equal(&other.program_id) & equal & self.function_name.is_equal(&other.function_name)
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        match (self, other) {
-            (Self::Plaintext(a), Self::Plaintext(b)) => a.is_not_equal(b),
-            (Self::Record(a), Self::Record(b)) => a.is_not_equal(b),
-            (Self::Future(a), Self::Future(b)) => a.is_not_equal(b),
-            (Self::Plaintext(..), _) | (Self::Record(..), _) | (Self::Future(..), _) => Boolean::new(true),
+        // Recursively check each argument for equality.
+        let mut not_equal = Boolean::new(false);
+        for (argument_a, argument_b) in self.arguments.iter().zip_eq(other.arguments.iter()) {
+            not_equal |= argument_a.is_not_equal(argument_b);
         }
+
+        // Check the `program_id`, and `function_name`.
+        self.program_id.is_not_equal(&other.program_id)
+            | not_equal
+            | self.function_name.is_not_equal(&other.function_name)
     }
 }

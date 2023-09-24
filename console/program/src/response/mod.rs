@@ -28,6 +28,8 @@ pub enum OutputID<N: Network> {
     Record(Field<N>, Field<N>),
     /// The hash of the external record output.
     ExternalRecord(Field<N>),
+    /// The hash of the future output.
+    Future(Field<N>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,13 +92,10 @@ impl<N: Network> Response<N> {
                         // Return the output ID.
                         Ok(OutputID::Constant(output_hash))
                     }
-                    // For a public or future output, compute the hash (using `tcm`) of the output.
-                    ValueType::Public(..) | ValueType::Future => {
+                    // For a public output, compute the hash (using `tcm`) of the output.
+                    ValueType::Public(..) => {
                         // Ensure the output is a plaintext.
-                        ensure!(
-                            matches!(output, Value::Plaintext(..) | Value::Future(..)),
-                            "Expected a plaintext or future output"
-                        );
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
 
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(
@@ -186,6 +185,26 @@ impl<N: Network> Response<N> {
 
                         // Return the output ID.
                         Ok(OutputID::ExternalRecord(output_hash))
+                    }
+                    // For a future output, compute the hash (using `tcm`) of the output.
+                    ValueType::Future => {
+                        // Ensure the output is a future.
+                        ensure!(matches!(output, Value::Future(..)), "Expected a future output");
+
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(
+                            u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
+                        );
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id];
+                        preimage.extend(output.to_fields()?);
+                        preimage.push(*tcm);
+                        preimage.push(index);
+                        // Hash the output to a field element.
+                        let output_hash = N::hash_psd8(&preimage)?;
+
+                        // Return the output ID.
+                        Ok(OutputID::Future(output_hash))
                     }
                 }
             })

@@ -55,6 +55,28 @@ impl<A: Aleo> Eject for Argument<A> {
     }
 }
 
+impl<A: Aleo> Equal<Self> for Argument<A> {
+    type Output = Boolean<A>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Plaintext(plaintext_a), Self::Plaintext(plaintext_b)) => plaintext_a.is_equal(plaintext_b),
+            (Self::Future(future_a), Self::Future(future_b)) => future_a.is_equal(future_b),
+            (Self::Plaintext(..), _) | (Self::Future(..), _) => Boolean::constant(false),
+        }
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Plaintext(plaintext_a), Self::Plaintext(plaintext_b)) => plaintext_a.is_not_equal(plaintext_b),
+            (Self::Future(future_a), Self::Future(future_b)) => future_a.is_not_equal(future_b),
+            (Self::Plaintext(..), _) | (Self::Future(..), _) => Boolean::constant(true),
+        }
+    }
+}
+
 impl<A: Aleo> ToBits for Argument<A> {
     type Boolean = Boolean<A>;
 
