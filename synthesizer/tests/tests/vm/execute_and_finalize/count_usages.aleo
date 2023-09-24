@@ -19,7 +19,7 @@ function add_and_count:
 
 finalize add_and_count:
     input r0 as address.public;
-    get.or_use uses[r0] 0u64 into r1;
+    get.or_use uses[r0] 0i64 into r1;
     add r1 1u64 into r2;
     set r2 into uses[r0];
 
@@ -33,7 +33,7 @@ function sub_and_count:
 
 finalize sub_and_count:
     input r0 as address.public;
-    get.or_use uses[r0] 0u64 into r1;
+    get.or_use uses[r0] 0i64 into r1;
     add r1 1u64 into r2;
     set r2 into uses[r0];
 
