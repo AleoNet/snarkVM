@@ -172,14 +172,6 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                     .collect::<Vec<_>>();
                 transition_output
                     .insert(serde_yaml::Value::String("outputs".to_string()), serde_yaml::Value::Sequence(outputs));
-                let finalize = match transition.finalize() {
-                    None => vec![],
-                    Some(finalize) => {
-                        finalize.iter().map(|input| serde_yaml::Value::String(input.to_string())).collect::<Vec<_>>()
-                    }
-                };
-                transition_output
-                    .insert(serde_yaml::Value::String("finalize".to_string()), serde_yaml::Value::Sequence(finalize));
                 execute.insert(
                     serde_yaml::Value::String(format!("{}/{}", transition.program_id(), transition.function_name())),
                     serde_yaml::Value::Mapping(transition_output),

@@ -79,6 +79,7 @@ impl ExpectedTest for ProgramTest {
         let comment = &source[first_comment_start + 2..first_comment_start + 2 + end_first_comment];
 
         // Parse the comment into the test configuration.
+        println!("comment: {}", comment);
         let test_config = serde_yaml::from_str::<Mapping>(comment).expect("invalid test configuration");
 
         // If the `randomness` field is present in the config, parse it as a `u64`.
