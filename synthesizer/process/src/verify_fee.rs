@@ -161,9 +161,12 @@ impl<N: Network> Process<N> {
         }
         lap!(timer, "Verify the inputs");
 
-        // Ensure there are no outputs.
-        let num_outputs = fee.outputs().len();
-        ensure!(num_outputs == 1, "The number of outputs in the fee transition should be 1, found {num_outputs}",);
+        // Ensure there are is one output.
+        ensure!(
+            fee.outputs().len() == 1,
+            "The number of outputs in the fee transition should be 1, found {}",
+            fee.outputs().len()
+        );
         // Ensure each output is valid.
         if fee
             .outputs()
@@ -189,8 +192,12 @@ impl<N: Network> Process<N> {
         #[cfg(debug_assertions)]
         println!("Fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
+        println!("1");
+
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(fee.program_id(), fee.function_name())?;
+
+        println!("2");
 
         // Ensure the fee proof is valid.
         Trace::verify_fee_proof((verifying_key, vec![inputs]), fee)?;

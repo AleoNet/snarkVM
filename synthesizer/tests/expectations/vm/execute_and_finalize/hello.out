@@ -22,7 +22,7 @@ outputs:
     hello.aleo/goodbye:
       outputs:
       - '{"type":"public","id":"6479967549102698786501355579286201653159194507767944415639092049192937228124field","value":"1u32"}'
-      - '{"type":"public","id":"3413333273447015937668991532824129740236214843152627847347248311711336145614field","value":"{\n  program_id: hello.aleo\n  function_name: goodbye\n  arguments: [\n    1u32,\n    1u32\n  ]"}'
+      - '{"type":"future","id":"3413333273447015937668991532824129740236214843152627847347248311711336145614field","value":"{\n  program_id: hello.aleo,\n  function_name: goodbye,\n  arguments: [\n    1u32,\n    1u32\n  ]\n}"}'
     credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"7287112878295690992521567744030412033150717793151843926409452078487376146124field","checksum":"5993041325382159770059828349119204216475544914654488851940922814293615901313field","value":"record1qyqsqw4eutps3xwvdtx0se6kpjsamjymcz0jgtwy2ntkhp7ztxgt2qsxqyxx66trwfhkxun9v35hguerqqpqzq87q856y8ddlx0dyhzjf8w8cwmvqalfntzg4hh6xrv5vfh3u4agqyut9nru439eqpz3jpdlax396aysmz5j7zgfl49r3s72s9qdx6dpy5q0qpn"}'
@@ -32,7 +32,7 @@ outputs:
     hello.aleo/goodbye:
       outputs:
       - '{"type":"public","id":"626299501033028507774181248923989773544577830656010087029558433445349806993field","value":"1u32"}'
-      - '{"type":"public","id":"3565307659242500881563819123626548100763518079205528385426399960688796421686field","value":"{\n  program_id: hello.aleo\n  function_name: goodbye\n  arguments: [\n    0u32,\n    1u32\n  ]"}'
+      - '{"type":"future","id":"3565307659242500881563819123626548100763518079205528385426399960688796421686field","value":"{\n  program_id: hello.aleo,\n  function_name: goodbye,\n  arguments: [\n    0u32,\n    1u32\n  ]\n}"}'
     credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"3276525620596491704910422767629359784791621182330506835714531473667751021673field","checksum":"3977005922602739734086654659125385124878533733910145576787629183311570513598field","value":"record1qyqspm9z8aghcdgk8fpgrjfdsgzkkxw6r9vzey2atu5hjqlrzlp4pvg3qyxx66trwfhkxun9v35hguerqqpqzqpgaehx73vt8jg9nzn6tgqfyhlv8dtm3g4uxkqweuxe0vhlesphp9xz6daslf8rvds3stgdczpfm0c3pnuzxfyuh4pwnqltwv6gca6qwscu9yq"}'

@@ -689,7 +689,7 @@ finalize init:
     set 0field into map_0[0field];
 function getter:
     async getter into r0;
-    output r0 as test_program_1.aleo/getter.future
+    output r0 as test_program_1.aleo/getter.future;
 finalize getter:
     get map_0[0field] into r0;
         ";
@@ -705,7 +705,7 @@ finalize init:
     set 0field into map_0[0field];
 function getter:
     async getter into r0;
-    output r0 as test_program_2.aleo/getter.future
+    output r0 as test_program_2.aleo/getter.future;
 finalize getter:
     get map_0[0field] into r0;
         ";
