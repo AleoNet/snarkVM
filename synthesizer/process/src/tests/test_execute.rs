@@ -1592,7 +1592,7 @@ finalize mint_public:
     let function_name = Identifier::from_str("mint_public").unwrap();
 
     // Initialize the RNG.
-    let rng = &mut TestRng::default();
+    let rng = &mut TestRng::fixed(0);
 
     // Construct the process.
     let process = crate::test_helpers::sample_process(&program0);
@@ -1644,18 +1644,28 @@ finalize init:
     .unwrap();
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
-    // Add the program to the process.
-    process.add_program(&program1).unwrap();
+    // Declare the function name.
+    let function_name = Identifier::from_str("init").unwrap();
 
-    // Initialize the RNG.
-    let rng = &mut TestRng::default();
+    // Add the program to the process.
+    let deployment = process.deploy::<CurrentAleo, _>(&program1, rng).unwrap();
+    // Check that the deployment verifies.
+    process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
+    // Finalize the deployment.
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(2), &finalize_store, &deployment, &fee).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
+
+    // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
+    //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
+    //  the correctness of the synthesizer.
+    process.synthesize_key::<CurrentAleo, _>(program1.id(), &function_name, rng).unwrap();
 
     // Initialize caller.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     let caller = Address::try_from(&caller_private_key).unwrap();
-
-    // Declare the function name.
-    let function_name = Identifier::from_str("init").unwrap();
 
     // Declare the input value.
     let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
@@ -1685,7 +1695,7 @@ finalize init:
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
-    let execution = trace.prove_execution::<CurrentAleo, _>("token", rng).unwrap();
+    let execution = trace.prove_execution::<CurrentAleo, _>("public_wallet", rng).unwrap();
 
     // Verify the execution.
     process.verify_execution(&execution).unwrap();
