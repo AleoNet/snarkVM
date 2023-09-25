@@ -74,13 +74,19 @@ mod tests {
         // Literal type.
         assert_eq!(
             Ok(("", FinalizeType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("field")?))),
-            FinalizeType::<CurrentNetwork>::parse("field")
+            FinalizeType::<CurrentNetwork>::parse("field.public")
         );
 
         // Struct type.
         assert_eq!(
             Ok(("", FinalizeType::<CurrentNetwork>::Plaintext(PlaintextType::from_str("signature")?))),
-            FinalizeType::<CurrentNetwork>::parse("signature")
+            FinalizeType::<CurrentNetwork>::parse("signature.public")
+        );
+
+        // Future type.
+        assert_eq!(
+            Ok(("", FinalizeType::<CurrentNetwork>::Future(Locator::from_str("credits.aleo/mint_public")?))),
+            FinalizeType::<CurrentNetwork>::parse("credits.aleo/mint_public.future")
         );
 
         Ok(())
@@ -122,8 +128,10 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        assert_eq!(FinalizeType::<CurrentNetwork>::from_str("field")?.to_string(), "field");
-        assert_eq!(FinalizeType::<CurrentNetwork>::from_str("signature")?.to_string(), "signature");
+        assert_eq!(FinalizeType::<CurrentNetwork>::from_str("field.public")?.to_string(), "field.public");
+        assert_eq!(FinalizeType::<CurrentNetwork>::from_str("signature.public")?.to_string(), "signature.public");
+        assert_eq!(FinalizeType::<CurrentNetwork>::from_str("credits.aleo/mint_public.future")?.to_string(), "credits.aleo/mint_public.future");
+
         Ok(())
     }
 }

@@ -683,11 +683,13 @@ mapping map_0:
     key left as field.public;
     value right as field.public;
 function init:
-    finalize;
+    async init into r0;
+    output r0 as test_program_1.aleo/init.future;
 finalize init:
     set 0field into map_0[0field];
 function getter:
-    finalize;
+    async getter into r0;
+    output r0 as test_program_1.aleo/getter.future
 finalize getter:
     get map_0[0field] into r0;
         ";
@@ -697,11 +699,13 @@ mapping map_0:
     key left as field.public;
     value right as field.public;
 function init:
-    finalize;
+    async init into r0;
+    output r0 as test_program_2.aleo/init.future;
 finalize init:
     set 0field into map_0[0field];
 function getter:
-    finalize;
+    async getter into r0;
+    output r0 as test_program_2.aleo/getter.future
 finalize getter:
     get map_0[0field] into r0;
         ";
