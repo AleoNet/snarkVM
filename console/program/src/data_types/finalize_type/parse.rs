@@ -130,7 +130,10 @@ mod tests {
     fn test_display() -> Result<()> {
         assert_eq!(FinalizeType::<CurrentNetwork>::from_str("field.public")?.to_string(), "field.public");
         assert_eq!(FinalizeType::<CurrentNetwork>::from_str("signature.public")?.to_string(), "signature.public");
-        assert_eq!(FinalizeType::<CurrentNetwork>::from_str("credits.aleo/mint_public.future")?.to_string(), "credits.aleo/mint_public.future");
+        assert_eq!(
+            FinalizeType::<CurrentNetwork>::from_str("credits.aleo/mint_public.future")?.to_string(),
+            "credits.aleo/mint_public.future"
+        );
 
         Ok(())
     }
