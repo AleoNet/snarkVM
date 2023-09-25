@@ -126,3 +126,21 @@ impl<F: PrimeField> QuerySet<F> {
         query_set
     }
 }
+
+/// Helper struct to collect query points
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct QueryPoints<F: PrimeField> {
+    pub(crate) alpha: F,
+    pub(crate) beta: F,
+    pub(crate) gamma: F,
+}
+
+impl<F: PrimeField> QueryPoints<F> {
+    pub(crate) fn new(alpha: F, beta: F, gamma: F) -> Self {
+        Self { alpha, beta, gamma }
+    }
+
+    pub(crate) fn into_iter(self) -> impl IntoIterator<Item = F> {
+        [self.alpha, self.beta, self.gamma]
+    }
+}
