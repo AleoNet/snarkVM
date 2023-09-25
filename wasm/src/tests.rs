@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const NUM_POWERS_16: usize = 1 << 16;
+const NUM_POWERS_15: usize = 1 << 15;
 const NUM_POWERS_18: usize = 1 << 18;
+const NUM_POWERS_19: usize = 1 << 19;
+const NUM_POWERS_MAX: usize = 1 << 28;
 
 use snarkvm_circuit_network::AleoV0;
 use snarkvm_console::{
@@ -67,17 +69,46 @@ fn test_account_sign() {
 
 #[wasm_bindgen_test]
 async fn preload_powers_async() {
+    // Pre-download powers.
     let mut process = Process::<Testnet3>::load_web().unwrap();
-    let srs = process.universal_srs();
-    srs.preload_powers_async(16, 18).await.unwrap();
-    // Pre-downloading powers should not trigger further downloads
-    let powers_of_beta = srs.powers_of_beta_g(NUM_POWERS_16, NUM_POWERS_18).unwrap();
-    assert_eq!(powers_of_beta.len(), NUM_POWERS_18 - NUM_POWERS_16);
+    process.universal_srs().preload_powers_async(16, 18).await.unwrap();
 
+    // Requesting powers of beta normally should not trigger any downloads after pre-loading the powers.
+    let powers_of_beta = process.universal_srs().powers_of_beta_g(0, NUM_POWERS_18).unwrap();
+    assert_eq!(powers_of_beta.len(), NUM_POWERS_18);
+    let shifted_powers_of_beta = process
+        .universal_srs()
+        .powers_of_beta_g(NUM_POWERS_MAX - NUM_POWERS_18, NUM_POWERS_MAX - NUM_POWERS_15)
+        .unwrap();
+    assert_eq!(shifted_powers_of_beta.len(), NUM_POWERS_18 - NUM_POWERS_15);
+
+    // Execute a program in wasm without triggering synchronous parameter downloads.
     let hello = Program::from_str("program hello_hello.aleo;\n\nfunction hello:\n    input r0 as u32.public;\n    input r1 as u32.private;\n    add r0 r1 into r2;\n    output r2 as u32.private;\n").unwrap();
     process.add_program(&hello).unwrap();
     let function_name = Identifier::from_str("hello").unwrap();
+    let mut rng = TestRng::default();
+    let private_key = PrivateKey::<Testnet3>::new(&mut rng).unwrap();
+    let authorization = process
+        .authorize::<AleoV0, _>(&private_key, hello.id(), function_name, ["5u32", "5u32"].into_iter(), &mut rng)
+        .unwrap();
 
-    // Attempt to synthesize a new key without triggering further downloads (this runs an execution once)
-    process.synthesize_key::<AleoV0, _>(hello.id(), &function_name, &mut TestRng::default()).unwrap();
+    // Assert no proving key exists prior to execution.
+    assert!(process.get_proving_key(hello.id(), function_name).is_err());
+
+    // Ensure the proving key is synthesized during execution and the outputs are correct.
+    let (response, _) = process.execute::<AleoV0>(authorization).unwrap();
+    assert!(process.get_proving_key(hello.id(), function_name).is_ok());
+    assert_eq!(response.outputs()[0].to_string(), "10u32");
+
+    // Attempt to extend the powers of beta again, only downloading the missing powers of 2^19.
+    process.universal_srs().preload_powers_async(16, 19).await.unwrap();
+    let powers_of_beta = process.universal_srs().powers_of_beta_g(0, NUM_POWERS_19).unwrap();
+    let shifted_powers_of_beta = process
+        .universal_srs()
+        .powers_of_beta_g(NUM_POWERS_MAX - NUM_POWERS_19, NUM_POWERS_MAX - NUM_POWERS_15)
+        .unwrap();
+
+    // Ensure the powers of beta exist and no synchronous downloads are triggered.
+    assert_eq!(powers_of_beta.len(), NUM_POWERS_19);
+    assert_eq!(shifted_powers_of_beta.len(), NUM_POWERS_19 - NUM_POWERS_15);
 }

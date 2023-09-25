@@ -443,7 +443,7 @@ macro_rules! impl_remote {
 macro_rules! impl_download_powers {
     ($num_powers:expr, $load_bytes:ident $(, $await:ident)?) => {
         match $num_powers {
-            NUM_POWERS_16 => Degree16::$load_bytes()$(.$await)?,
+            NUM_POWERS_16 => Degree16::load_bytes(),
             NUM_POWERS_17 => Degree17::$load_bytes()$(.$await)?,
             NUM_POWERS_18 => Degree18::$load_bytes()$(.$await)?,
             NUM_POWERS_19 => Degree19::$load_bytes()$(.$await)?,
@@ -465,7 +465,7 @@ macro_rules! impl_download_powers {
 macro_rules! impl_download_shifted_powers {
     ($num_powers:expr, $load_bytes:ident $(, $await:ident)?) => {
         match $num_powers {
-            NUM_POWERS_16 => ShiftedDegree16::$load_bytes()$(.$await)?,
+            NUM_POWERS_16 => ShiftedDegree16::load_bytes(),
             NUM_POWERS_17 => ShiftedDegree17::$load_bytes()$(.$await)?,
             NUM_POWERS_18 => ShiftedDegree18::$load_bytes()$(.$await)?,
             NUM_POWERS_19 => ShiftedDegree19::$load_bytes()$(.$await)?,

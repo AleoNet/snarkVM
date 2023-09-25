@@ -29,7 +29,7 @@ use snarkvm_utilities::{
 };
 
 use crate::srs::{UniversalProver, UniversalVerifier};
-use anyhow::{ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
@@ -37,6 +37,7 @@ use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
 
 const MAX_POWER_OF_TWO: usize = 28;
 const MAX_NUM_POWERS: usize = 1 << MAX_POWER_OF_TWO;
+const NUM_POWERS_16: usize = 1 << 16;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Clone, Debug)]
@@ -73,22 +74,46 @@ impl<E: PairingEngine> UniversalParams<E> {
     }
 
     async fn download_powers_for_async(&self, range: &Range<usize>) -> Result<()> {
-        let (powers, shifted_powers) = self.powers.read().estimate_powers_for(range)?;
+        let (mut powers, shifted_powers) = self.powers.read().estimate_powers_for(range)?;
+
+        // If there are no powers to download, return early.
+        if powers.is_empty() {
+            return Ok(());
+        }
+
         if shifted_powers {
+            // Ensure the last shifted power is at least 2^16
+            let final_shifted_power = *powers.last().ok_or_else(|| anyhow!("No powers to download"))?;
+            ensure!(final_shifted_power >= NUM_POWERS_16, "Cannot download shifted powers for less than 2^16 powers");
+
+            // If the last power is 2^16 download it locally and pop it off the list of powers to manually download.
+            if final_shifted_power == NUM_POWERS_16 {
+                self.download_powers_for((MAX_NUM_POWERS - NUM_POWERS_16)..(MAX_NUM_POWERS - (1 << 15)))?;
+                powers.pop().unwrap();
+            }
+
             let mut final_powers = vec![];
-            for num_powers in &powers {
+            for num_powers in powers.iter() {
                 #[cfg(debug_assertions)]
                 println!("Loading {num_powers} shifted powers");
 
                 let downloaded_powers = PowersOfG::<E>::download_shifted_powers_async(*num_powers).await?;
+
                 final_powers.push(downloaded_powers);
             }
+
             self.powers.write().extend_shifted_powers_checked(&final_powers, &powers)?;
         } else {
             // Download the powers of two.
             for num_powers in &powers {
                 #[cfg(debug_assertions)]
                 println!("Loading {num_powers} powers");
+
+                // If the powers of 16 are requested, get them locally.
+                if *num_powers == NUM_POWERS_16 {
+                    self.download_powers_for(0..NUM_POWERS_16)?;
+                    continue;
+                }
 
                 let downloaded_powers = PowersOfG::<E>::download_powers_async(*num_powers).await?;
 
@@ -115,12 +140,11 @@ impl<E: PairingEngine> UniversalParams<E> {
 
         let range = (1usize << lower)..(1usize << upper);
 
-        // Download regular powers of \beta G
+        // Download regular powers
         self.download_powers_for_async(&range).await?;
 
-        // Then download shifted powers of \beta \gamma G
-        let lowest_shift_degree = MAX_NUM_POWERS - range.end;
-        self.download_powers_for_async(&(lowest_shift_degree..(MAX_NUM_POWERS + 1))).await?;
+        // Then download shifted powers
+        self.download_powers_for_async(&((MAX_NUM_POWERS - range.end)..(MAX_NUM_POWERS - range.start))).await?;
 
         Ok(())
     }
