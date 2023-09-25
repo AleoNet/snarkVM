@@ -1,5 +1,1 @@
-Failed to parse string. Remaining invalid string is: "output r0 as unused_position.aleo/foo.future
-
-finalize foo:
-    position end;
-"
+Program was successfully parsed.

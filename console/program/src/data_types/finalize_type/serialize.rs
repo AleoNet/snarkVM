@@ -68,7 +68,7 @@ mod tests {
         "object.public",
         "array.public",
         // Future
-        "credits.aleo/mint_public.future"
+        "credits.aleo/mint_public.future",
     ];
 
     fn check_serde_json<
