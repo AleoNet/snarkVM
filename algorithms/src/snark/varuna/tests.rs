@@ -55,7 +55,7 @@ mod varuna {
 
                     for i in 0..5 {
                         let mul_depth = 1;
-                        println!("running test with MM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
+                        println!("running test with SM::ZK: {}, mul_depth: {}, num_constraints: {}, num_variables: {}", $snark_mode::ZK, mul_depth + i, num_constraints + i, num_variables + i);
                         let (circ, public_inputs) = TestCircuit::gen_rand(mul_depth + i, num_constraints + i, num_variables + i, rng);
 
                         let (index_pk, index_vk) = $snark_inst::circuit_setup(&universal_srs, &circ).unwrap();

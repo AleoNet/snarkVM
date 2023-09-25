@@ -34,9 +34,9 @@ use std::collections::BTreeMap;
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
 /// less than a power of 2 (i.e., of the form 2^n - 1).
-pub struct AHPForR1CS<F: Field, MM: SNARKMode> {
+pub struct AHPForR1CS<F: Field, SM: SNARKMode> {
     field: PhantomData<F>,
-    mode: PhantomData<MM>,
+    mode: PhantomData<SM>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -57,13 +57,13 @@ pub(crate) struct NonZeroDomains<F: PrimeField> {
     pub(crate) domain_c: EvaluationDomain<F>,
 }
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// The linear combinations that are statically known to evaluate to zero.
     /// These correspond to the virtual commitments as noted in the Aleo varuna protocol docs
     pub const LC_WITH_ZERO_EVAL: [&'static str; 3] = ["matrix_sumcheck", "lineval_sumcheck", "rowcheck_zerocheck"];
 
     pub fn zk_bound() -> Option<usize> {
-        MM::ZK.then_some(1)
+        SM::ZK.then_some(1)
     }
 
     /// Check that the (formatted) public input is of the form 2^n for some integer n.
@@ -96,7 +96,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         Ok(*[
             2 * constraint_domain_size + 2 * zk_bound - 2,
             2 * variable_domain_size + 2 * zk_bound - 2,
-            if MM::ZK { variable_domain_size + 3 } else { 0 }, // mask_poly
+            if SM::ZK { variable_domain_size + 3 } else { 0 }, // mask_poly
             variable_domain_size,
             constraint_domain_size,
             non_zero_domain_size - 1, // non-zero polynomials
@@ -170,7 +170,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         prover_fourth_message: &prover::FourthMessage<F>,
-        state: &verifier::State<F, MM>,
+        state: &verifier::State<F, SM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
         let max_constraint_domain = state.max_constraint_domain;
@@ -286,7 +286,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         // We're now going to calculate the lineval_sumcheck
         let lineval_sumcheck = {
             let mut lineval_sumcheck = LinearCombination::empty("lineval_sumcheck");
-            if MM::ZK {
+            if SM::ZK {
                 lineval_sumcheck.add(F::one(), "mask_poly");
             }
             for (i, (id, c)) in batch_combiners.iter().enumerate() {

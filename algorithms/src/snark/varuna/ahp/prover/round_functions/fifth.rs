@@ -32,7 +32,7 @@ use snarkvm_utilities::{cfg_par_bridge, cfg_reduce};
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Output the number of oracles sent by the prover in this round.
     pub const fn num_fifth_round_oracles() -> usize {
         1
@@ -41,7 +41,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     /// Output the fifth round message and the next state.
     pub fn prover_fifth_round<R: RngCore>(
         verifier_message: verifier::FourthMessage<F>,
-        state: prover::State<'_, F, MM>,
+        state: prover::State<'_, F, SM>,
         _r: &mut R,
     ) -> Result<prover::FifthOracles<F>, AHPError> {
         let lhs_sum: DensePolynomial<F> = cfg_reduce!(
