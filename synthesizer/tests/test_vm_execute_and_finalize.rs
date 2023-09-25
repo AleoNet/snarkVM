@@ -94,8 +94,10 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
         vm.add_next_block(&block).unwrap();
     }
 
-    // Run each test case, aggregating the errors and outputs.
+    // Run each test case, aggregating the errors, outputs, and additional information.
     let mut outputs = Vec::with_capacity(test.cases().len());
+    let mut additional = Vec::with_capacity(test.cases().len());
+
     for value in test.cases() {
         // TODO: Dedup from other integration tests.
         // Extract the function name, inputs, and optional private key.
@@ -138,9 +140,12 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
         };
 
         // A helper function to run the test and extract the outputs as YAML, to be compared against the expectation.
-        let mut run_test = || -> serde_yaml::Value {
-            // Create a mapping to store the output.
-            let mut output = serde_yaml::Mapping::new();
+        let mut run_test = || -> (serde_yaml::Value, serde_yaml::Value) {
+            // Create a mapping to store the result of the test.
+            let mut result = serde_yaml::Mapping::new();
+            // Create a mapping to store the other iterms.
+            let mut other = serde_yaml::Mapping::new();
+
             // Execute the function, extracting the transaction.
             let transaction = match vm.execute(
                 &private_key,
@@ -154,16 +159,21 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                 Ok(transaction) => transaction,
                 // If the execution fails, return the error.
                 Err(err) => {
-                    output.insert(
+                    result.insert(
                         serde_yaml::Value::String("execute".to_string()),
                         serde_yaml::Value::String(err.to_string()),
                     );
-                    return serde_yaml::Value::Mapping(output);
+                    return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
                 }
             };
-            // For each transition in the transaction, extract the transition outputs and the inputs for finalize.
+
+            // For each root transition in the transaction, extract the transition outputs and the inputs for finalize.
             let mut execute = serde_yaml::Mapping::new();
-            for transition in transaction.transitions() {
+            // Store the outputs for child transitions separately, so that they are not checked for consistency.
+            let mut child_outputs = serde_yaml::Mapping::new();
+
+            let transitions = transaction.transitions().collect::<Vec<_>>();
+            for transition in transitions.iter() {
                 let mut transition_output = serde_yaml::Mapping::new();
                 let outputs = transition
                     .outputs()
@@ -172,17 +182,45 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                     .collect::<Vec<_>>();
                 transition_output
                     .insert(serde_yaml::Value::String("outputs".to_string()), serde_yaml::Value::Sequence(outputs));
-                execute.insert(
-                    serde_yaml::Value::String(format!("{}/{}", transition.program_id(), transition.function_name())),
-                    serde_yaml::Value::Mapping(transition_output),
-                );
+
+                // If this is the last transition, add the outputs to the `execute` mapping.
+                if transition.program_id() == &program_id && transition.function_name() == &function_name {
+                    execute.insert(
+                        serde_yaml::Value::String(format!(
+                            "{}/{}",
+                            transition.program_id(),
+                            transition.function_name()
+                        )),
+                        serde_yaml::Value::Mapping(transition_output),
+                    );
+                }
+                // Otherwise, add the outputs to the `child_outputs` mapping.
+                // This is done to avoid checking the sub-transitions for consistency (since they change every execution).
+                else {
+                    child_outputs.insert(
+                        serde_yaml::Value::String(format!(
+                            "{}/{}",
+                            transition.program_id(),
+                            transition.function_name()
+                        )),
+                        serde_yaml::Value::Mapping(transition_output),
+                    );
+                }
             }
-            output.insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
+
+            // Add the `execute` mapping to `result` mapping.
+            result.insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
+            // Add the child outputs to the `other` mapping.
+            other.insert(
+                serde_yaml::Value::String("child_outputs".to_string()),
+                serde_yaml::Value::Mapping(child_outputs),
+            );
+
             // Speculate on the transaction.
             let transactions = match vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter())
             {
                 Ok((transactions, _)) => {
-                    output.insert(
+                    result.insert(
                         serde_yaml::Value::String("speculate".to_string()),
                         serde_yaml::Value::String(match transactions.iter().next().unwrap() {
                             ConfirmedTransaction::AcceptedExecute(_, _, _) => "the execution was accepted".to_string(),
@@ -196,31 +234,36 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                     transactions
                 }
                 Err(err) => {
-                    output.insert(
+                    result.insert(
                         serde_yaml::Value::String("speculate".to_string()),
                         serde_yaml::Value::String(err.to_string()),
                     );
-                    return serde_yaml::Value::Mapping(output);
+                    return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
                 }
             };
             // Construct the next block.
             let block = construct_next_block(&vm, &private_key, transactions, rng).unwrap();
             // Add the next block.
-            output.insert(
+            result.insert(
                 serde_yaml::Value::String("add_next_block".to_string()),
                 serde_yaml::Value::String(match vm.add_next_block(&block) {
                     Ok(_) => "succeeded.".to_string(),
                     Err(err) => err.to_string(),
                 }),
             );
-            serde_yaml::Value::Mapping(output)
+            (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(other))
         };
-        outputs.push(run_test());
+
+        // Run the test.
+        let (result, other) = run_test();
+        outputs.push(result);
+        additional.push(other);
     }
 
     let mut output = serde_yaml::Mapping::new();
     output.insert(serde_yaml::Value::String("errors".to_string()), serde_yaml::Value::Sequence(vec![]));
     output.insert(serde_yaml::Value::String("outputs".to_string()), serde_yaml::Value::Sequence(outputs));
+    output.insert(serde_yaml::Value::String("additional".to_string()), serde_yaml::Value::Sequence(additional));
     output
 }
 
