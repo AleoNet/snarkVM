@@ -162,12 +162,18 @@ impl<N: Network> Process<N> {
         lap!(timer, "Verify the inputs");
 
         // Ensure there are no outputs.
-        ensure!(
-            fee.outputs().is_empty(),
-            "The number of outputs in the fee transition should be 0, found {}",
-            fee.outputs().len()
-        );
-        lap!(timer, "Verify there are no outputs");
+        let num_outputs = fee.outputs().len();
+        ensure!(num_outputs == 1, "The number of outputs in the fee transition should be 1, found {num_outputs}",);
+        // Ensure each output is valid.
+        if fee
+            .outputs()
+            .iter()
+            .enumerate()
+            .any(|(index, output)| !output.verify(function_id, fee.tcm(), num_inputs + index))
+        {
+            bail!("Failed to verify a fee output")
+        }
+        lap!(timer, "Verify the outputs");
 
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
@@ -176,6 +182,8 @@ impl<N: Network> Process<N> {
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
+        // Extend the inputs with the output IDs.
+        inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
         lap!(timer, "Construct the verifier inputs");
 
         #[cfg(debug_assertions)]
