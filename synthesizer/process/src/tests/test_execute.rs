@@ -1683,6 +1683,7 @@ finalize init:
     assert_eq!(1, candidate.len());
 
     // Prepare the trace.
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
     trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
     let execution = trace.prove_execution::<CurrentAleo, _>("token", rng).unwrap();

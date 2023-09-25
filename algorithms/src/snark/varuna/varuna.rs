@@ -384,6 +384,7 @@ where
         let circuit_commitments =
             keys_to_constraints.keys().map(|pk| pk.circuit_verifying_key.circuit_commitments.as_slice());
 
+        eprintln!("Prover inputs_and_batch_sizes: {:?}", inputs_and_batch_sizes);
         let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.clone());
 
         // --------------------------------------------------------------------
@@ -609,6 +610,8 @@ where
             &mut sponge,
         )?;
 
+        eprintln!("Prover test: {:?}", verifier_state.gamma);
+
         let proof = Proof::<E>::new(
             batch_sizes,
             commitments,
@@ -774,6 +777,7 @@ where
         let fifth_commitments = [LabeledCommitment::new_with_info(&fifth_round_info["h_2"], comms.h_2)];
 
         let circuit_commitments = keys_to_inputs.keys().map(|vk| vk.circuit_commitments.as_slice());
+        eprintln!("Verifier inputs_and_batch_sizes: {:?}", inputs_and_batch_sizes);
         let mut sponge = Self::init_sponge(fs_parameters, &inputs_and_batch_sizes, circuit_commitments.clone());
 
         // --------------------------------------------------------------------

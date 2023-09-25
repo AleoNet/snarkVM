@@ -80,6 +80,7 @@ impl<N: Network> Trace<N> {
         (proving_key, assignment): (ProvingKey<N>, Assignment<N::Field>),
         metrics: CallMetrics<N>,
     ) -> Result<()> {
+        println!("transition: {:?}", transition);
         // Ensure the inclusion assignments and global state root have not been set.
         ensure!(self.inclusion_assignments.get().is_none());
         ensure!(self.global_state_root.get().is_none());
@@ -89,6 +90,7 @@ impl<N: Network> Trace<N> {
 
         // Construct the locator.
         let locator = Locator::new(*transition.program_id(), *transition.function_name());
+        // println!("locator: {locator:?} assignment len : {:?}", assignment.len());
         // Insert the assignment (and proving key if the entry does not exist), for the specified locator.
         self.transition_tasks.entry(locator).or_insert((proving_key, vec![])).1.push(assignment);
         // Insert the transition into the list.
