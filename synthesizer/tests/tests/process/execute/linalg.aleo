@@ -1,7 +1,8 @@
 /*
 randomness: 2937849
 cases:
-  - function: frobenius_inner_product
+  - program: linalg.aleo
+    function: frobenius_inner_product
     inputs:
     - "[[0field, 0field, 0field],
         [0field, 0field, 0field],
@@ -9,7 +10,8 @@ cases:
     - "[[1field, 1field, 1field],
         [1field, 1field, 1field],
         [1field, 1field, 1field]]"
-  - function: frobenius_inner_product
+  - program: linalg.aleo
+    function: frobenius_inner_product
     inputs:
     - "[[1field, 1field, 1field],
         [1field, 1field, 1field],
