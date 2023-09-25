@@ -67,27 +67,142 @@ impl<N: Network> RegisterTypes<N> {
         // Initialize a map of registers to their types.
         let mut register_types = Self { inputs: IndexMap::new(), destinations: IndexMap::new() };
 
-        // Step 1. Check the inputs are well-formed.
+        /* Step 1. Check the inputs are well-formed. */
+
         for input in function.inputs() {
             // TODO (howardwu): In order to support constant inputs, update `Self::deploy()` to allow
             //  the caller to provide optional constant inputs (instead of sampling random constants).
             //  Then, this check can be removed to enable support for constant inputs in functions.
             ensure!(!matches!(input.value_type(), ValueType::Constant(..)), "Constant inputs are not supported");
+            ensure!(!matches!(input.value_type(), ValueType::Future(..)), "Future inputs are not supported");
 
             // Check the input register type.
             register_types.check_input(stack, input.register(), &RegisterType::from(input.value_type().clone()))?;
         }
 
-        // Step 2. Check the instructions are well-formed.
+        /* Step 2. Check the instructions are well-formed. */
+        // - If the function has a finalize block, then it must contain exactly one `async` instruction.
+        // - If the function has no finalize block, then it must **not** have `async` instructions.
+        // - All `call` instructions must precede any `async` instruction.
+
+        let mut async_ = None;
         for instruction in function.instructions() {
             // Check the instruction opcode, operands, and destinations.
             register_types.check_instruction(stack, function.name(), instruction)?;
+            // Additional validation.
+            match instruction.opcode() {
+                Opcode::Async => {
+                    // Ensure the function does not contain more than one `async` instruction.
+                    ensure!(
+                        async_.is_none(),
+                        "Function '{}' can contain at most one 'async' instruction",
+                        function.name()
+                    );
+                    // Save the `async` instruction.
+                    async_ = match &instruction {
+                        Instruction::Async(async_) => Some(async_),
+                        _ => bail!("Expected 'async' instruction"),
+                    };
+                }
+                Opcode::Call => {
+                    // Ensure the `call` instruction precedes any `async` instruction.
+                    ensure!(async_.is_none(), "The 'call' can only be invoked before an 'async' instruction")
+                }
+                _ => {}
+            }
         }
 
-        // Step 3. Check the outputs are well-formed.
+        // Ensure the number of `async` instructions is valid.
+        if function.finalize_logic().is_some() {
+            ensure!(async_.is_some(), "Function '{}' must contain exactly one 'async' instruction.", function.name());
+        } else {
+            ensure!(async_.is_none(), "Function '{}' must not contain any 'async' instructions.", function.name());
+        }
+
+        /* Step 3. Check the outputs are well-formed. */
+        // - If the function has a finalize block, then its last output must be a future associated with itself.
+        // - If the function has no finalize block, then it must **not** have `future` outputs.
+
+        let mut num_futures = 0;
         for output in function.outputs() {
             // Check the output operand type.
             register_types.check_output(stack, output.operand(), &RegisterType::from(output.value_type().clone()))?;
+            // Additional validation.
+            if matches!(output.value_type(), ValueType::Future(..)) {
+                num_futures += 1;
+            }
+        }
+
+        // Ensure the `future` outputs are valid.
+        if function.finalize_logic().is_some() {
+            ensure!(
+                num_futures == 1,
+                "Function '{}' must contain exactly one 'future' output, found {num_futures}",
+                function.name()
+            );
+            ensure!(
+                match function.outputs().last().map(|output| output.value_type()) {
+                    Some(ValueType::Future(locator)) =>
+                        locator.program_id() == stack.program_id() && locator.resource() == function.name(),
+                    _ => false,
+                },
+                "The last output of function '{}' must be a future associated with itself",
+                function.name()
+            );
+        } else {
+            ensure!(
+                num_futures == 0,
+                "Function '{}' must not contain any 'future' outputs, found {num_futures}",
+                function.name()
+            );
+        }
+
+        /* Additional checks. */
+        // - All futures produces before the `async` call must be consumed by the `async` call, in the order in which they were produced.
+
+        // Get all registers containing futures.
+        let mut future_registers = register_types
+            .destinations
+            .iter()
+            .filter_map(|(_, register_type)| match register_type {
+                RegisterType::Future(locator) => Some(*locator),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        // Remove the last locator, since this is the future created by the `async` call.
+        future_registers.pop();
+
+        // Check that all the registers were consumed by the `async` call, in order.
+        match async_ {
+            None => {
+                if !future_registers.is_empty() {
+                    bail!(
+                        "Function '{}' contains futures, but does not contain an 'async' instruction",
+                        function.name()
+                    )
+                }
+            }
+            Some(async_) => {
+                // Get the register operands that are `future` types.
+                let async_future_operands = async_
+                    .operands()
+                    .iter()
+                    .filter_map(|operand| match operand {
+                        Operand::Register(register) => match register_types.get_type(stack, register).ok() {
+                            Some(RegisterType::Future(locator)) => Some(locator),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                // Ensure the future operands are in the same order as the future registers.
+                ensure!(
+                    async_future_operands == future_registers,
+                    "Function '{}' contains futures, but the 'async' instruction does not consume all of them in the order they were produced",
+                    function.name()
+                );
+            }
         }
 
         Ok(register_types)

@@ -41,8 +41,6 @@ pub struct FunctionCore<N: Network, Instruction: InstructionTrait<N>, Command: C
     inputs: IndexSet<Input<N>>,
     /// The instructions, in order of execution.
     instructions: Vec<Instruction>,
-    /// The async instruction, if any.
-    async_instruction: Option<Instruction>,
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
     /// The optional finalize logic.
@@ -52,14 +50,7 @@ pub struct FunctionCore<N: Network, Instruction: InstructionTrait<N>, Command: C
 impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> FunctionCore<N, Instruction, Command> {
     /// Initializes a new function with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self {
-            name,
-            inputs: IndexSet::new(),
-            instructions: Vec::new(),
-            async_instruction: None,
-            outputs: IndexSet::new(),
-            finalize_logic: None,
-        }
+        Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new(), finalize_logic: None }
     }
 
     /// Returns the name of the function.
@@ -90,12 +81,6 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
     /// Returns the function output types.
     pub fn output_types(&self) -> Vec<ValueType<N>> {
         self.outputs.iter().map(|output| output.value_type()).cloned().collect()
-    }
-
-    // TODO (@d0cd) Renaming finalize to async when this code is approved.
-    /// Returns the finalize command, if any.
-    pub fn finalize_command(&self) -> Option<&Instruction> {
-        self.async_instruction.as_ref()
     }
 
     /// Returns the function finalize logic.
@@ -158,12 +143,6 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fun
         // Ensure the destination register is a locator.
         for register in instruction.destinations() {
             ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
-        }
-
-        // If the instruction is an async instruction, ensure that there is not already an async instruction.
-        if instruction.is_async() {
-            ensure!(self.async_instruction.is_none(), "Cannot add more than one async instruction");
-            self.async_instruction = Some(instruction.clone());
         }
 
         // Insert the instruction.
