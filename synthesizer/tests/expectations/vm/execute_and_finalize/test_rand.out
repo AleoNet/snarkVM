@@ -1,0 +1,6 @@
+errors: []
+outputs:
+- execute: Program 'rand.aleo' does not exist
+- execute: Program 'rand.aleo' does not exist
+- execute: Program 'rand.aleo' does not exist
+- execute: Program 'rand.aleo' does not exist

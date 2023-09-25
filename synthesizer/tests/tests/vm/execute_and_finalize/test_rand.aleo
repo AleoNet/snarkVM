@@ -1,13 +1,17 @@
 /*
 randomness: 479283
 cases:
-  - function: rand_chacha_with_literals
+  - program: rand.aleo
+    function: rand_chacha_with_literals
     inputs: [0scalar, 0group, 0u8, 2i16, 4u32, 7i64, 8u128, 10field]
-  - function: rand_chacha_with_struct
+  - program: rand.aleo
+    function: rand_chacha_with_struct
     inputs: ["{ first: 0field, second: 0field, third: 0field, fourth: 0field, fifth: 0field }"]
-  - function: rand_chacha_check
+  - program: rand.aleo
+    function: rand_chacha_check
     inputs: [0field, false]
-  - function: rand_chacha_check
+  - program: rand.aleo
+    function: rand_chacha_check
     inputs: [1field, true]
 */
 

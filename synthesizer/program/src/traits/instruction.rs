@@ -21,8 +21,6 @@ use console::{
 pub trait InstructionTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
     /// Returns the destination registers of the instruction.
     fn destinations(&self) -> Vec<Register<N>>;
-    /// Returns `true` if the given instruction is an `async` call.
-    fn is_async(&self) -> bool;
     /// Returns `true` if the given name is a reserved opcode.
     fn is_reserved_opcode(name: &str) -> bool;
 }

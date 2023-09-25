@@ -599,6 +599,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "record",
         "owner",
         // Program
+        "transition",
         "function",
         "struct",
         "closure",
@@ -631,7 +632,9 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "trait",
         "impl",
         "type",
-        "future"
+        "future",
+        "async",
+        "finalize",
     ];
 
     /// Returns `true` if the given name does not already exist in the program.
