@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let expected = "async foo r0 r1 into r3;";
+        let expected = "async foo r0 r1 into r3";
         let (string, async_) = Async::<CurrentNetwork>::parse(expected).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(expected, async_.to_string(), "Display.fmt() did not match expected: '{string}'");

@@ -24,9 +24,11 @@ impl<N: Network> Parser for Future<N> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the "[" from the string.
             let (string, _) = tag("[")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse(string)?;
             // Parse the members.
-            let (string, arguments) = separated_list1(
-                tag(","),
+            let (string, arguments) = separated_list0(
+                pair(pair(Sanitizer::parse, tag(",")), Sanitizer::parse),
                 alt((map(Future::parse, Argument::Future), map(Plaintext::parse, Argument::Plaintext))),
             )(string)?;
             // Parse the whitespace and comments from the string.
@@ -50,8 +52,14 @@ impl<N: Network> Parser for Future<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ":" from the string.
         let (string, _) = tag(":")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the program ID from the string.
         let (string, program_id) = ProgramID::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "," from the string.
+        let (string, _) = tag(",")(string)?;
 
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
@@ -61,8 +69,14 @@ impl<N: Network> Parser for Future<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ":" from the string.
         let (string, _) = tag(":")(string)?;
-        // Parse the program ID from the string.
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the function name from the string.
         let (string, function_name) = Identifier::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "," from the string.
+        let (string, _) = tag(",")(string)?;
 
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
@@ -72,6 +86,8 @@ impl<N: Network> Parser for Future<N> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ":" from the string.
         let (string, _) = tag(":")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the arguments from the string.
         let (string, arguments) = parse_arguments(string)?;
 
@@ -127,7 +143,7 @@ impl<N: Network> Future<N> {
         // Print the program ID.
         write!(
             f,
-            "\n{:indent$}program_id: {program_id}",
+            "\n{:indent$}program_id: {program_id},",
             "",
             indent = (depth + 1) * INDENT,
             program_id = self.program_id()
@@ -135,41 +151,102 @@ impl<N: Network> Future<N> {
         // Print the function name.
         write!(
             f,
-            "\n{:indent$}function_name: {function_name}",
+            "\n{:indent$}function_name: {function_name},",
             "",
             indent = (depth + 1) * INDENT,
             function_name = self.function_name()
         )?;
         // Print the arguments.
-        write!(f, "\n{:indent$}arguments: [", "", indent = (depth + 1) * INDENT)?;
-        self.arguments.iter().enumerate().try_for_each(|(i, argument)| {
-            match argument {
-                Argument::Plaintext(plaintext) => match i == self.arguments.len() - 1 {
-                    true => {
-                        // Print the last argument without a comma.
-                        write!(f, "\n{:indent$}{plaintext}", "", indent = (depth + 2) * INDENT, plaintext = plaintext)?;
-                        // Print the closing bracket.
-                        write!(f, "\n{:indent$}]", "", indent = (depth + 1) * INDENT)
-                    }
-                    // Print the argument with a comma.
-                    false => {
-                        write!(f, "\n{:indent$}{plaintext},", "", indent = (depth + 2) * INDENT, plaintext = plaintext)
-                    }
-                },
-                Argument::Future(future) => {
-                    // Print a newline.
-                    write!(f, "\n{:indent$}", "", indent = (depth + 2) * INDENT)?;
-                    // Print the argument.
-                    future.fmt_internal(f, depth + 2)?;
-                    // Print the closing brace.
-                    match i == self.arguments.len() - 1 {
-                        // Print the last member without a comma.
-                        true => write!(f, "\n{:indent$}]", "", indent = (depth + 1) * INDENT),
-                        // Print the member with a comma.
-                        false => write!(f, ","),
+        // If the arguments are empty, print an empty array.
+        if self.arguments.is_empty() {
+            write!(f, "\n{:indent$}arguments: []", "", indent = (depth + 1) * INDENT)?;
+        } else {
+            write!(f, "\n{:indent$}arguments: [", "", indent = (depth + 1) * INDENT)?;
+            self.arguments.iter().enumerate().try_for_each(|(i, argument)| {
+                match argument {
+                    Argument::Plaintext(plaintext) => match i == self.arguments.len() - 1 {
+                        true => {
+                            // Print the last argument without a comma.
+                            write!(
+                                f,
+                                "\n{:indent$}{plaintext}",
+                                "",
+                                indent = (depth + 2) * INDENT,
+                                plaintext = plaintext
+                            )
+                        }
+                        // Print the argument with a comma.
+                        false => {
+                            write!(
+                                f,
+                                "\n{:indent$}{plaintext},",
+                                "",
+                                indent = (depth + 2) * INDENT,
+                                plaintext = plaintext
+                            )
+                        }
+                    },
+                    Argument::Future(future) => {
+                        // Print a newline.
+                        write!(f, "\n{:indent$}", "", indent = (depth + 2) * INDENT)?;
+                        // Print the argument.
+                        future.fmt_internal(f, depth + 2)?;
+                        // Print the closing brace.
+                        match i == self.arguments.len() - 1 {
+                            // Print the last member without a comma.
+                            true => write!(f, "\n{:indent$}", "", indent = (depth + 1) * INDENT),
+                            // Print the member with a comma.
+                            false => write!(f, ","),
+                        }
                     }
                 }
-            }
-        })
+            })?;
+            // Print the closing bracket.
+            write!(f, "\n{:indent$}]", "", indent = (depth + 1) * INDENT)?;
+        }
+
+        // Print the closing brace.
+        write!(f, "\n{:indent$}}}", "", indent = depth * INDENT)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_parse_future() -> Result<()> {
+        // No argument case.
+        let expected = r"{
+  program_id: credits.aleo,
+  function_name: transfer,
+  arguments: []
+}";
+        let (remainder, candidate) =
+            Future::<CurrentNetwork>::parse("{ program_id: credits.aleo, function_name: transfer, arguments: [] }")?;
+        assert!(remainder.is_empty());
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        // Literal arguments.
+        let expected = r"{
+  program_id: credits.aleo,
+  function_name: transfer_public_to_private,
+  arguments: [
+    aleo1g8qul5a44vk22u9uuvaewdcjw4v6xg8wx0llru39nnjn7eu08yrscxe4e2,
+    100000000u64
+  ]
+}";
+        let (remainder, candidate) = Future::<CurrentNetwork>::parse(
+            "{ program_id: credits.aleo, function_name: transfer_public_to_private, arguments: [ aleo1g8qul5a44vk22u9uuvaewdcjw4v6xg8wx0llru39nnjn7eu08yrscxe4e2, 100000000u64 ] }",
+        )?;
+        assert!(remainder.is_empty());
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        Ok(())
     }
 }

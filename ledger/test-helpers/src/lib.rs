@@ -383,6 +383,7 @@ fn sample_genesis_block_and_components_raw(
     let execution = trace.prove_execution::<CurrentAleo, _>(locator.0, rng).unwrap();
     // Convert the execution.
     // Note: This is a testing-only hack to adhere to Rust's dependency cycle rules.
+    println!("{}", execution.to_string());
     let execution = Execution::from_str(&execution.to_string()).unwrap();
 
     // Construct the transaction.

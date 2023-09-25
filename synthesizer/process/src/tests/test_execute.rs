@@ -517,7 +517,7 @@ fn test_process_execute_transfer_public() {
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(1, candidate.len());
+    assert_eq!(2, candidate.len());
     assert_eq!(r2, candidate[0]);
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
@@ -526,7 +526,7 @@ fn test_process_execute_transfer_public() {
     // Execute the request.
     let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(1, candidate.len());
+    assert_eq!(2, candidate.len());
     assert_eq!(r2, candidate[0]);
 
     // process.verify_execution::<true>(&execution).unwrap();
@@ -1202,7 +1202,7 @@ function compute:
     input r2 as u64.public;
     add r1 r2 into r3;
     async compute r0 r3 into r4;
-    outut r4 as testing.aleo/compute.future;
+    output r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -1268,7 +1268,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1276,7 +1276,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -1314,7 +1314,7 @@ function compute:
     input r2 as u64.public;
     add r1 r2 into r3;
     async compute r0 r3 into r4;
-    outut r4 as testing.aleo/compute.future;
+    output r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -1381,7 +1381,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1389,7 +1389,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -1512,7 +1512,7 @@ finalize mint_public:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1520,7 +1520,7 @@ finalize mint_public:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -1633,7 +1633,13 @@ program public_wallet.aleo;
 function init:
     input r0 as address.public;
     input r1 as u64.public;
-    call token.aleo/mint_public r0 r1;",
+    call token.aleo/mint_public r0 r1 into r2;
+    async init r2 into r3;
+    output r3 as public_wallet.aleo/init.future;
+finalize init:
+    input r0 as token.aleo/mint_public.future;
+    await r0;
+",
     )
     .unwrap();
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
@@ -1664,7 +1670,7 @@ function init:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 2);
@@ -1672,7 +1678,7 @@ function init:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -1779,7 +1785,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1787,7 +1793,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -2207,7 +2213,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -2215,7 +2221,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();

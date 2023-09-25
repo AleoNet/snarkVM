@@ -64,7 +64,7 @@ impl<N: Network> Serialize for Output<N> {
                 }
                 Self::Future(id, value) => {
                     let mut output = serializer.serialize_struct("Output", 3)?;
-                    output.serialize_field("type", "public")?;
+                    output.serialize_field("type", "future")?;
                     output.serialize_field("id", &id)?;
                     if let Some(value) = value {
                         output.serialize_field("value", &value)?;
