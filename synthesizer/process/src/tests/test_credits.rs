@@ -1489,14 +1489,15 @@ mod sanity_checks {
         inputs: &[Value<N>],
         rng: &mut TestRng,
     ) -> Assignment<<N as Environment>::Field> {
+        // Derive the parent from the private key.
+        let parent = Address::try_from(private_key).unwrap();
         // Retrieve the program.
         let program = stack.program();
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
         let request =
-            Request::sign(private_key, todo!(), *program.id(), function_name, inputs.iter(), &input_types, rng)
-                .unwrap();
+            Request::sign(private_key, parent, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.

@@ -15,7 +15,7 @@
 use super::*;
 
 impl<N: Network> Request<N> {
-    /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
+    /// Returns the request for a given private key, parent, program ID, function name, inputs, input types, and RNG, where:
     ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
@@ -71,10 +71,10 @@ impl<N: Network> Request<N> {
             &(U16::<N>::new(N::ID), program_id.name(), program_id.network(), function_name).to_bits_le(),
         )?;
 
-        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
+        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, parent, function ID, input IDs])`.
         let mut message = Vec::with_capacity(5 + 2 * inputs.len());
         message.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
-        message.extend([tvk, tcm, function_id]);
+        message.extend([tvk, tcm, parent.to_field()?, function_id]);
 
         // Initialize a vector to store the prepared inputs.
         let mut prepared_inputs = Vec::with_capacity(inputs.len());

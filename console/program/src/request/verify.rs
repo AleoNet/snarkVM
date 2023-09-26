@@ -59,6 +59,15 @@ impl<N: Network> Request<N> {
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
+        // Derive a field element from the parent address.
+        let parent = match self.parent.to_field() {
+            Ok(parent) => parent,
+            Err(error) => {
+                eprintln!("Failed to derive a field element from the parent address: {error}");
+                return false;
+            }
+        };
+
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = match N::hash_bhp1024(
             &(U16::<N>::new(N::ID), self.program_id.name(), self.program_id.network(), &self.function_name)
@@ -71,10 +80,11 @@ impl<N: Network> Request<N> {
             }
         };
 
-        // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, parent, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + self.input_ids.len());
         message.push(self.tvk);
         message.push(self.tcm);
+        message.push(parent);
         message.push(function_id);
 
         if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(
@@ -234,6 +244,9 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
+            // Sample a random parent.
+            let parent = Address::rand(rng);
+
             // Sample a random private key and address.
             let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
             let address = Address::try_from(&private_key).unwrap();
@@ -266,7 +279,7 @@ mod tests {
 
             // Compute the signed request.
             let request =
-                Request::sign(&private_key, todo!(), program_id, function_name, inputs.into_iter(), &input_types, rng)
+                Request::sign(&private_key, parent, program_id, function_name, inputs.into_iter(), &input_types, rng)
                     .unwrap();
             assert!(request.verify(&input_types));
         }

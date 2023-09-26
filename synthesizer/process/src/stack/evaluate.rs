@@ -126,6 +126,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
         let caller = *request.caller();
+        let parent = *request.parent();
         let tvk = *request.tvk();
 
         // Ensure the number of inputs matches.
@@ -144,6 +145,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(function.name())?.clone());
         // Set the transition caller.
         registers.set_caller(caller);
+        // Set the transition parent.
+        registers.set_parent(parent);
         // Set the transition view key.
         registers.set_tvk(tvk);
         lap!(timer, "Initialize the registers");

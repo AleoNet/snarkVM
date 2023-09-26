@@ -204,7 +204,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            todo!(),
+                            stack.program_id().to_address()?,
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -230,7 +230,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            todo!(),
+                            stack.program_id().to_address()?,
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -288,12 +288,17 @@ impl<N: Network> CallTrait<N> for Call<N> {
             let program_id = circuit::ProgramID::constant(*substack.program_id());
             // Inject the function name as `Mode::Constant`.
             let function_name = circuit::Identifier::constant(*function.name());
+            // Inject the current program ID as `Mode::Constant`.
+            let current_program_id: circuit::Address<A> =
+                circuit::ProgramID::constant(*stack.program_id()).to_address();
 
             // Ensure the number of public variables remains the same.
             ensure!(A::num_public() == num_public, "Forbidden: 'call' injected excess public variables");
 
             // Inject the `caller` (from the request) as `Mode::Private`.
             let caller = circuit::Address::new(circuit::Mode::Private, *request.caller());
+            // Inject the `parent` (from the request) as `Mode::Private`.
+            let parent = circuit::Address::<A>::new(circuit::Mode::Private, *request.parent());
             // Inject the `sk_tag` (from the request) as `Mode::Private`.
             let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
@@ -306,6 +311,10 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 .iter()
                 .map(|input_id| circuit::InputID::new(circuit::Mode::Public, *input_id))
                 .collect::<Vec<_>>();
+
+            // Ensure that the parent matches the current program ID.
+            A::assert_eq(parent, current_program_id);
+
             // Ensure the candidate input IDs match their computed inputs.
             let (check_input_ids, _) = circuit::Request::check_input_ids::<false>(
                 &network_id,

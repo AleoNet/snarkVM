@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::account::Address;
 
 impl<N: Network> Process<N> {
     /// Authorizes a call to the program function for the given inputs.
@@ -42,6 +43,11 @@ impl<N: Network> Process<N> {
     ) -> Result<Authorization<N>> {
         let timer = timer!("Process::authorize_fee_private");
 
+        // Derive the parent address from the private key.
+        // TODO (@d0cd) Is this assumption valid?
+        // This consistent since the entity invoking `authorize_fee_private` must be a user.
+        let parent = Address::try_from(private_key)?;
+
         // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
@@ -61,7 +67,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, todo!(), program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let request = Request::sign(private_key, parent, program_id, function_name, inputs.iter(), &input_types, rng)?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.
@@ -79,6 +85,11 @@ impl<N: Network> Process<N> {
     ) -> Result<Authorization<N>> {
         let timer = timer!("Process::authorize_fee_public");
 
+        // Derive the parent address from the private key.
+        // TODO (@d0cd) Is this assumption valid?
+        // This consistent since the entity invoking `authorize_fee_private` must be a user.
+        let parent = Address::try_from(private_key)?;
+
         // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
@@ -93,7 +104,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, todo!(), program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let request = Request::sign(private_key, parent, program_id, function_name, inputs.iter(), &input_types, rng)?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.
