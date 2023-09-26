@@ -1,0 +1,23 @@
+errors: []
+outputs:
+- execute: 'Failed to evaluate instruction (assert.neq self.parent self.caller ;): ''assert.neq'' failed: ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' is equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should not be equal)'
+- verified: true
+  execute:
+    parent.aleo/foo:
+      outputs:
+      - '{"type":"private","id":"7721291525940188105507651562256767596095669000743550385121870209006826947820field","value":"ciphertext1qgqxfdp5xclqa0drefz58heufhf5qcmy838udcd53ms6qf2wkawxzy4zt6gz50p5nffytmuxu7qz6uznlvuevuvnfzpzmc0y8vlrlmq2zy023z2x"}'
+      - '{"type":"private","id":"5497468147943365873547093457698729195923139676361261261079856871742894506455field","value":"ciphertext1qgq285x873306d7uc86apdk6k0kvvjj5yq2pfjyzda0ppvz076qq7qd0x87zh0jnkg7ydmcvsy56va48ccnh70p6nh7f9td0xuhpnf3lzq8yhu75"}'
+      - '{"type":"private","id":"5522139628373393044313270060892602377792247640167606228814194729661024657959field","value":"ciphertext1qgq2mzyvpn58j68g5u4hc9x7w7scgclqr070eef57jceksym4ar4vrluzsq4xmaamh2jhwwdru72276yqvlun5crwv4l2g8zlgnq59a7qce73srp"}'
+      - '{"type":"private","id":"3880306221535423665478373024897320345042320832082709964783328712671124618148field","value":"ciphertext1qgqxwk2h0kl73405d52tqpncce6el8pa4jzxee9kag2g6vq3twfpvq68fcmlywremxdxm4y2fw4rk7u5yn5jskwv29p4jg93raylrz40zypsdpks"}'
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+additional:
+- {}
+- child_outputs:
+    child.aleo/foo:
+      outputs:
+      - '{"type":"private","id":"1538591427393885661236939748224410965466177533543453139542116378937698986081field","value":"ciphertext1qgqxwug4lx2ckg9ww6uhu8z7vs8wf7qhhp5vudrm40xyghey6mf35yj5pf5mtfulc5qef7d377uy660jpmyl42q53gzrlaku0f03x8ngqva9wjtx"}'
+      - '{"type":"private","id":"1377875229626689250762403323133357437398383098321196845451029951335487733140field","value":"ciphertext1qgqfl2mqnaq94qnepsq7m5lqzf57pvl3ga6k5tymkssw40cumflzxreyda2v2uuj8atd87any4xezvy23qpan7762w7ve4t7etmqshkvpyankxjc"}'
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"6446362896217923208008716289765632326647729786104133702909971055778943425864field","checksum":"673638633647414004392684107966836562147846499309442115573169059952574885506field","value":"record1qyqsqw2pte89kdswfmdnffp93se5950xef2trwvrttz8ytsjs2mdvmq0qyxx66trwfhkxun9v35hguerqqpqzq9fam3zu7k9zx3929wjd2gm8xdtu0axeshec24he6gdajafy89gqxcgc3kevu3ln63gyzwa008nkv04vwjpcqpk73jegvpj8t0wv4msu3832ne"}'

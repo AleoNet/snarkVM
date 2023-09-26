@@ -1,0 +1,17 @@
+errors: []
+outputs:
+- verified: true
+  execute:
+    child.aleo/foo:
+      outputs:
+      - '{"type":"private","id":"3788719263628377114462102866431813215073745402131228405111352100432510824324field","value":"ciphertext1qgqddrakxevvaq45v8hn6gmz0aankwskecua6k9z739hyjv3p0qm5r0hcccgg3uzhsftn8n4rnst4rfvrx6nrla03mjvapdmx6zvv8yypc37xwnp"}'
+      - '{"type":"private","id":"2089198275277959172662468427878689043388822710365402734082352746531223180952field","value":"ciphertext1qgq8xgu5cuqgtmv65ewgw02xjevxjrdvh7gctsh2gna3cu6z6psv7pwf9pflvxd9xxm7rjjjm56pa25ccjda7rlvmr4k3ypywyz0yay7p5gwqh6m"}'
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute: 'Failed to evaluate instruction (call child.aleo/foo into r0 r1;): Failed to evaluate instruction (assert.eq self.parent self.caller ;): ''assert.eq'' failed: ''aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg'' is not equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should be equal)'
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"6797501851406426081763935643190233554746546123549782067616882771084953687489field","checksum":"4254364428115475945004239347032391057450758499477261788513375056367364190653field","value":"record1qyqsp3agqhrv6lrugrgu9sc32rh2h486s7adwpdht6w8yj53j94f0tgwqyxx66trwfhkxun9v35hguerqqpqzqxrcnjq4ztfycp8td8tz4q4wmx67xd9k0mzldeecqxtzc5uxtl4qv3cn759q932fq05jk0a7hr63lxpfmy7je3anzmerqhkswu0yteq24gfvgc"}'
+- {}
