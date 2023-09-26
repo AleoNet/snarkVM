@@ -74,26 +74,17 @@ impl<N: Network> RegisterTypes<N> {
                         }
                     }
                 }
-                // Ensure the program ID type (address) matches the member type.
-                Operand::ProgramID(..) => {
-                    // Retrieve the program ID type.
-                    let program_ref_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the program ID type matches the member type.
+                // Ensure the program ID, caller, and parent types (address) match the member type.
+                Operand::ProgramID(..) | Operand::Caller | Operand::Parent => {
+                    // Retrieve the operand type.
+                    let operand_type = PlaintextType::Literal(LiteralType::Address);
+                    // Ensure the operand type matches the member type.
                     ensure!(
-                        &program_ref_type == member_type,
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
+                        &operand_type == member_type,
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{operand_type}' in the operand '{operand}'.",
                     )
                 }
-                // Ensure the caller type (address) matches the member type.
-                Operand::Caller => {
-                    // Retrieve the caller type.
-                    let caller_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the caller type matches the member type.
-                    ensure!(
-                        &caller_type == member_type,
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
-                    )
-                }
+                // Ensure the parent type (address
                 // If the operand is a block height type, throw an error.
                 Operand::BlockHeight => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be from a block height in a non-finalize scope"
@@ -159,25 +150,14 @@ impl<N: Network> RegisterTypes<N> {
                         }
                     }
                 }
-                // Ensure the program ID type (address) matches the element type.
-                Operand::ProgramID(..) => {
-                    // Retrieve the program ID type.
-                    let program_ref_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the program ID type matches the element type.
+                // Ensure the program ID type, caller type, and parent types (address) match the element type.
+                Operand::ProgramID(..) | Operand::Caller | Operand::Parent => {
+                    // Retrieve the operand type.
+                    let operand_type = PlaintextType::Literal(LiteralType::Address);
+                    // Ensure the operand type matches the element type.
                     ensure!(
-                        &program_ref_type == array_type.next_element_type(),
-                        "Array element expects {}, but found '{program_ref_type}' in the operand '{operand}'.",
-                        array_type.next_element_type()
-                    )
-                }
-                // Ensure the caller type (address) matches the element type.
-                Operand::Caller => {
-                    // Retrieve the caller type.
-                    let caller_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the caller type matches the element type.
-                    ensure!(
-                        &caller_type == array_type.next_element_type(),
-                        "Array element {}, but found '{caller_type}' in the operand '{operand}'.",
+                        &operand_type == array_type.next_element_type(),
+                        "Array element expects {}, but found '{operand_type}' in the operand '{operand}'.",
                         array_type.next_element_type()
                     )
                 }
@@ -241,7 +221,8 @@ impl<N: Network> RegisterTypes<N> {
                 // They must hold all necessary state in storage instead.
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
-            Operand::Caller => {}
+            // TODO (@d0cd): Comment on Operand::Parent allowing for program owned records.
+            Operand::Caller | Operand::Parent => {}
             Operand::BlockHeight => {
                 bail!("Forbidden operation: Cannot cast a block height as a record owner")
             }
@@ -284,24 +265,14 @@ impl<N: Network> RegisterTypes<N> {
                                 }
                             }
                         }
-                        // Ensure the program ID type (address) matches the entry type.
-                        Operand::ProgramID(..) => {
-                            // Retrieve the program ID type.
-                            let program_ref_type = &PlaintextType::Literal(LiteralType::Address);
-                            // Ensure the program ID type matches the entry type.
+                        // Ensure the program ID, caller, and parent types (address) match the entry type.
+                        Operand::ProgramID(..) | Operand::Caller | Operand::Parent => {
+                            // Retrieve the operand type.
+                            let operand_type = &PlaintextType::Literal(LiteralType::Address);
+                            // Ensure the operand type matches the entry type.
                             ensure!(
-                                program_ref_type == plaintext_type,
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{program_ref_type}' in the operand '{operand}'.",
-                            )
-                        }
-                        // Ensure the caller type (address) matches the entry type.
-                        Operand::Caller => {
-                            // Retrieve the caller type.
-                            let caller_type = &PlaintextType::Literal(LiteralType::Address);
-                            // Ensure the caller type matches the entry type.
-                            ensure!(
-                                caller_type == plaintext_type,
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
+                                operand_type == plaintext_type,
+                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{operand_type}' in the operand '{operand}'.",
                             )
                         }
                         // Fail if the operand is a block height.

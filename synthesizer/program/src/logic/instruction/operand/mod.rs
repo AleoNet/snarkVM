@@ -40,7 +40,6 @@ pub enum Operand<N: Network> {
     /// The operand is the block height.
     /// Note: This variant is only accessible in the `finalize` scope.
     BlockHeight,
-
 }
 
 impl<N: Network> From<Literal<N>> for Operand<N> {
