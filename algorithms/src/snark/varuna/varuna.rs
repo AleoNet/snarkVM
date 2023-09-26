@@ -154,12 +154,14 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
 
     fn init_sponge_for_certificate(
         fs_parameters: &FS::Parameters,
-        circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>],
-    ) -> FS {
+        verifying_key: &CircuitVerifyingKey<E>,
+    ) -> Result<FS> {
         let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
-        sponge.absorb_native_field_elements(circuit_commitments);
-        sponge
+        sponge.absorb_bytes(&verifying_key.circuit_info.to_bytes_le()?);
+        sponge.absorb_native_field_elements(&verifying_key.circuit_commitments);
+        sponge.absorb_bytes(&verifying_key.id.0);
+        Ok(sponge)
     }
 
     fn absorb_labeled_with_sums(
@@ -238,7 +240,7 @@ where
         proving_key: &Self::ProvingKey,
     ) -> Result<Self::Certificate, SNARKError> {
         // Initialize sponge
-        let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
+        let mut sponge = Self::init_sponge_for_certificate(fs_parameters, verifying_key)?;
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
         // The linear combination requires `num_polynomials - 1` coefficients
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
@@ -293,7 +295,7 @@ where
         }
 
         // Initialize sponge.
-        let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
+        let mut sponge = Self::init_sponge_for_certificate(fs_parameters, verifying_key)?;
 
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
         // The linear combination requires `num_polynomials - 1` coefficients
