@@ -28,7 +28,7 @@ impl<N: Network> Process<N> {
 
         // Evaluate the function.
         let response =
-            self.get_stack(request.program_id())?.evaluate_function::<A>(CallStack::evaluate(authorization)?);
+            self.get_stack(request.program_id())?.evaluate_function::<A, true>(CallStack::evaluate(authorization)?);
         lap!(timer, "Evaluate the function");
 
         finish!(timer);

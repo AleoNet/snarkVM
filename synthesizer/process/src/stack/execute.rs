@@ -131,7 +131,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
+    fn execute_function<A: circuit::Aleo<Network = N>, const IS_MAIN: bool>(
+        &self,
+        mut call_stack: CallStack<N>,
+    ) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
         // Ensure the call stack is not `Evaluate`.
@@ -185,6 +188,12 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
+
+        // If the function is the main function, ensure that the caller and parent match.
+        if IS_MAIN {
+            A::assert_eq(request.caller(), request.parent());
+        }
+
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
         lap!(timer, "Verify the circuit request");

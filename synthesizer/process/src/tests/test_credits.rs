@@ -1503,7 +1503,7 @@ mod sanity_checks {
         // Initialize the call stack.
         let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
         // Synthesize the circuit.
-        let _response = stack.execute_function::<A>(call_stack).unwrap();
+        let _response = stack.execute_function::<A, true>(call_stack).unwrap();
         // Retrieve the assignment.
         let assignment = assignments.read().last().unwrap().0.clone();
         assignment

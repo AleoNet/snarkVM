@@ -96,7 +96,10 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>> {
+    fn evaluate_function<A: circuit::Aleo<Network = N>, const IS_MAIN: bool>(
+        &self,
+        call_stack: CallStack<N>,
+    ) -> Result<Response<N>> {
         let timer = timer!("Stack::evaluate_function");
 
         // Retrieve the next request, based on the call stack mode.
@@ -128,6 +131,11 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         let caller = *request.caller();
         let parent = *request.parent();
         let tvk = *request.tvk();
+
+        // If the function is the main function, ensure that the caller and parent match.
+        if IS_MAIN {
+            ensure!(caller == parent, "The caller and parent must be the same for the main function.");
+        }
 
         // Ensure the number of inputs matches.
         if function.inputs().len() != inputs.len() {

@@ -136,13 +136,13 @@ function foo:
 
     // Run the function.
     let response =
-        stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);
 
     // Re-run to ensure state continues to work.
-    let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+    let response = stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);
@@ -198,13 +198,13 @@ output r1 as field.private;",
 
     // Compute the output value.
     let response =
-        stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);
 
     // Re-run to ensure state continues to work.
-    let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+    let response = stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);
@@ -263,13 +263,13 @@ output r1 as u64.private;",
 
     // Compute the output value.
     let response =
-        stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);
 
     // Re-run to ensure state continues to work.
-    let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+    let response = stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);
@@ -353,7 +353,7 @@ output r4 as field.private;",
 
     // Compute the output value.
     let response =
-        stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -361,7 +361,7 @@ output r4 as field.private;",
     assert_eq!(r4, candidate[2]);
 
     // Re-run to ensure state continues to work.
-    let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+    let response = stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -389,7 +389,7 @@ output r4 as field.private;",
     // Re-run to ensure state continues to work.
     let trace = Arc::new(RwLock::new(Trace::new()));
     let call_stack = CallStack::execute(authorization, trace).unwrap();
-    let response = stack.execute_function::<CurrentAleo>(call_stack).unwrap();
+    let response = stack.execute_function::<CurrentAleo, true>(call_stack).unwrap();
     let candidate = response.outputs();
     assert_eq!(3, candidate.len());
     assert_eq!(r2, candidate[0]);
@@ -458,13 +458,13 @@ output r1 as token.record;",
 
     // Compute the output value.
     let response =
-        stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);
 
     // Re-run to ensure state continues to work.
-    let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+    let response = stack.evaluate_function::<CurrentAleo, true>(CallStack::evaluate(authorization).unwrap()).unwrap();
     let candidate = response.outputs();
     assert_eq!(1, candidate.len());
     assert_eq!(expected, candidate[0]);

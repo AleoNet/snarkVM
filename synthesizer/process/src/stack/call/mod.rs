@@ -100,7 +100,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
             }
             // Evaluate the function.
-            let response = substack.evaluate_function::<A>(registers.call_stack())?;
+            let response = substack.evaluate_function::<A, false>(registers.call_stack())?;
             // Load the outputs.
             response.outputs().to_vec()
         }
@@ -221,7 +221,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function::<A>(call_stack)?;
+                        let response = substack.execute_function::<A, false>(call_stack)?;
 
                         // Return the request and response.
                         (request, response)
@@ -244,7 +244,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Execute the request.
-                        let response = substack.execute_function::<A>(call_stack)?;
+                        let response = substack.execute_function::<A, false>(call_stack)?;
                         // Return the request and response.
                         (request, response)
                     }
@@ -263,9 +263,10 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         })?;
 
                         // Evaluate the function, and load the outputs.
-                        let console_response = substack.evaluate_function::<A>(registers.call_stack().replicate())?;
+                        let console_response =
+                            substack.evaluate_function::<A, false>(registers.call_stack().replicate())?;
                         // Execute the request.
-                        let response = substack.execute_function::<A>(registers.call_stack())?;
+                        let response = substack.execute_function::<A, false>(registers.call_stack())?;
                         // Ensure the values are equal.
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]
@@ -288,6 +289,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
             let program_id = circuit::ProgramID::constant(*substack.program_id());
             // Inject the function name as `Mode::Constant`.
             let function_name = circuit::Identifier::constant(*function.name());
+
             // Inject the current program ID as `Mode::Constant`.
             let current_program_id: circuit::Address<A> =
                 circuit::ProgramID::constant(*stack.program_id()).to_address();
