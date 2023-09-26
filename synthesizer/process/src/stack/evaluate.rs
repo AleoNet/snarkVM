@@ -76,7 +76,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
                     // If the operand is the parent, retrieve the parent from the registers.
-                    Operand::Parent => Ok(Value::Plaintext(Plaintext::from(Literal::Address(todo!())))),
+                    Operand::Parent => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.parent()?)))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => bail!("Cannot retrieve the block height from a closure scope."),
                 }
@@ -193,7 +193,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
                     // If the operand is the parent, retrieve the parent from the registers.
-                    Operand::Parent => Ok(Value::Plaintext(Plaintext::from(Literal::Address(todo!())))),
+                    Operand::Parent => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.parent()?)))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => bail!("Cannot retrieve the block height from a function scope."),
                 }

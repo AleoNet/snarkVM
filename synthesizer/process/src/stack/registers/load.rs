@@ -35,7 +35,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
             // If the operand is the caller, load the value of the caller.
             Operand::Caller => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(self.caller()?)))),
             // If the operand is the parent, load the value of the parent.
-            Operand::Parent => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(todo!())))),
+            Operand::Parent => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(self.parent()?)))),
             // If the operand is the block height, throw an error.
             Operand::BlockHeight => bail!("Cannot load the block height in a non-finalize context"),
         };
@@ -115,7 +115,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
             }
             // If the operand is the parent, load the value of the parent.
             Operand::Parent => {
-                return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(todo!()))));
+                return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
+                    self.parent_circuit()?,
+                ))));
             }
             // If the operand is the block height, throw an error.
             Operand::BlockHeight => bail!("Cannot load the block height in a non-finalize context"),

@@ -105,9 +105,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                         circuit::Literal::Address(registers.caller_circuit()?),
                     ))),
                     // If the operand is the parent, retrieve the parent from the registers.
-                    Operand::Parent => {
-                        Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(todo!()))))
-                    }
+                    Operand::Parent => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.parent_circuit()?),
+                    ))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => {
                         bail!("Illegal operation: cannot retrieve the block height in a closure scope")
@@ -284,9 +284,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                         circuit::Literal::Address(registers.caller_circuit()?),
                     ))),
                     // If the operand is the parent, retrieve the parent from the registers.
-                    Operand::Parent => {
-                        Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(todo!()))))
-                    }
+                    Operand::Parent => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.parent_circuit()?),
+                    ))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => {
                         bail!("Illegal operation: cannot retrieve the block height in a function scope")
