@@ -18,7 +18,7 @@ mod parse;
 use console::{network::prelude::*, program::PlaintextType};
 
 /// An value statement is of the form `value as {plaintext_type}.public;`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapValue<N: Network> {
     /// The value plaintext type.
     plaintext_type: PlaintextType<N>,

@@ -18,7 +18,7 @@ mod parse;
 use console::{network::prelude::*, program::PlaintextType};
 
 /// A key statement is of the form `key as {plaintext_type}.public`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapKey<N: Network> {
     /// The key plaintext type.
     plaintext_type: PlaintextType<N>,
