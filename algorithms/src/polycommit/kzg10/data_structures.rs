@@ -14,6 +14,7 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
+    srs::{UniversalProver, UniversalVerifier},
     AlgebraicSponge,
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
@@ -28,7 +29,6 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::srs::{UniversalProver, UniversalVerifier};
 use anyhow::{anyhow, ensure, Result};
 use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
@@ -37,6 +37,7 @@ use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
 
 const MAX_POWER_OF_TWO: usize = 28;
 const MAX_NUM_POWERS: usize = 1 << MAX_POWER_OF_TWO;
+const NUM_POWERS_15: usize = 1 << 15;
 const NUM_POWERS_16: usize = 1 << 16;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
@@ -73,35 +74,42 @@ impl<E: PairingEngine> UniversalParams<E> {
         self.powers.write().download_powers_for(range)
     }
 
+    // Download powers for a given range asynchronously.
     async fn download_powers_for_async(&self, range: &Range<usize>) -> Result<()> {
+        // Estimate the powers needed.
         let (mut powers, shifted_powers) = self.powers.read().estimate_powers_for(range)?;
 
-        // If there are no powers to download, return early.
+        // If there are no powers to download, return.
         if powers.is_empty() {
             return Ok(());
         }
 
         if shifted_powers {
-            // Ensure the last shifted power is at least 2^16
+            // Ensure the last shifted power is at least 2^16.
             let final_shifted_power = *powers.last().ok_or_else(|| anyhow!("No powers to download"))?;
             ensure!(final_shifted_power >= NUM_POWERS_16, "Cannot download shifted powers for less than 2^16 powers");
 
-            // If the last power is 2^16 download it locally and pop it off the list of powers to manually download.
+            // If the last power is 2^16 download it locally and pop it off the list of powers to
+            // download.
             if final_shifted_power == NUM_POWERS_16 {
-                self.download_powers_for((MAX_NUM_POWERS - NUM_POWERS_16)..(MAX_NUM_POWERS - (1 << 15)))?;
+                self.download_powers_for((MAX_NUM_POWERS - NUM_POWERS_16)..(MAX_NUM_POWERS - NUM_POWERS_15))?;
                 powers.pop().unwrap();
             }
 
             let mut final_powers = vec![];
+
+            // Download the shifted powers.
             for num_powers in powers.iter() {
                 #[cfg(debug_assertions)]
                 println!("Loading {num_powers} shifted powers");
 
-                let downloaded_powers = PowersOfG::<E>::download_shifted_powers_async(*num_powers).await?;
+                let downloaded_powers = PowersOfG::<E>::download_shifted_powers_async(*num_powers, 2).await?;
 
                 final_powers.push(downloaded_powers);
             }
 
+            // Perform checks to ensure bytes are valid and then extend the shifted powers with the
+            // downloaded bytes.
             self.powers.write().extend_shifted_powers_checked(&final_powers, &powers)?;
         } else {
             // Download the powers of two.
@@ -115,9 +123,11 @@ impl<E: PairingEngine> UniversalParams<E> {
                     continue;
                 }
 
-                let downloaded_powers = PowersOfG::<E>::download_powers_async(*num_powers).await?;
+                // Otherwise download the bytes.
+                let downloaded_powers = PowersOfG::<E>::download_powers_async(*num_powers, 2).await?;
 
-                // Attempt to extend the powers
+                // Perform checks to ensure bytes are valid and then extend the powers with the
+                // downloaded bytes.
                 self.powers.write().extend_normal_powers_checked(&downloaded_powers, *num_powers)?;
             }
         }
@@ -131,12 +141,15 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(E::G1Projective::batch_normalization_into_affine(basis))
     }
 
-    /// Preload powers of \beta G and \beta \gamma G into memory prior to an execution. Useful for
+    /// Preload powers of the Universal SRS into memory prior to a function execution. Useful for
     /// environments such as WebAssembly where downloading powers in a blocking fashion is not
     /// possible or not optimal.
     pub async fn preload_powers_async(&self, lower: usize, upper: usize) -> Result<()> {
         ensure!(upper <= 28, "Upper bound must not exceed 2^28");
-        ensure!(lower <= upper && lower >= 16, "Lower bound must be less than or equal to upper bound and at least 16");
+        ensure!(
+            lower <= upper && lower >= 16,
+            "Lower bound must be less than or equal to upper bound and at least 2^16"
+        );
 
         let range = (1usize << lower)..(1usize << upper);
 

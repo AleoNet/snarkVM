@@ -99,14 +99,24 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.powers_of_beta_g.download_powers_for(&range)
     }
 
-    /// Asynchronously download powers of `beta * G` in byte form.
-    pub async fn download_powers_async(num_powers: usize) -> Result<Vec<u8>> {
-        impl_download_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
+    /// Asynchronously download bytes representing powers of `beta * G`.
+    pub async fn download_powers_async(num_powers: usize, retries: usize) -> Result<Vec<u8>> {
+        for _ in 0..(retries + 1) {
+            if let Ok(powers) = impl_download_powers!(num_powers, load_bytes_async, await) {
+                return Ok(powers);
+            }
+        }
+        bail!("Failed to download powers of beta * G")
     }
 
-    /// Asynchronously download shifted powers of `beta * G` in byte form.
-    pub async fn download_shifted_powers_async(num_powers: usize) -> Result<Vec<u8>> {
-        impl_download_shifted_powers!(num_powers, load_bytes_async, await).map_err(|e| e.into())
+    /// Asynchronously download bytes representing shifted powers of `beta * G`.
+    pub async fn download_shifted_powers_async(num_powers: usize, retries: usize) -> Result<Vec<u8>> {
+        for _ in 0..(retries + 1) {
+            if let Ok(powers) = impl_download_shifted_powers!(num_powers, load_bytes_async, await) {
+                return Ok(powers);
+            }
+        }
+        bail!("Failed to download shifted powers of beta * G")
     }
 
     /// Extend normal powers with checks to ensure that the bytes passed are valid powers.
@@ -262,16 +272,6 @@ pub struct PowersOfBetaG<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> PowersOfBetaG<E> {
-    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
-    pub fn num_powers(&self) -> usize {
-        self.powers_of_beta_g.len()
-    }
-
-    /// Returns the number of contiguous shifted powers of beta G.
-    pub fn num_shifted_powers(&self) -> usize {
-        self.shifted_powers_of_beta_g.len()
-    }
-
     /// Initializes the hard-coded instance of the powers.
     fn load() -> Result<Self> {
         // Deserialize the group elements.
@@ -326,54 +326,6 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         (range.start as isize - self.available_powers().1.start as isize).unsigned_abs()
     }
 
-    // Assumes that we have the requisite powers.
-    fn shifted_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
-        ensure!(
-            self.contains_in_shifted_powers(&range),
-            "Requested range is not contained in the available shifted powers"
-        );
-
-        if range.start < MAX_NUM_POWERS / 2 {
-            ensure!(self.shifted_powers_of_beta_g.is_empty());
-            // In this case, we have downloaded all the powers, and so
-            // all the powers reside in self.powers_of_beta_g.
-            Ok(&self.powers_of_beta_g[range])
-        } else {
-            // In this case, the shifted powers still reside in self.shifted_powers_of_beta_g.
-            let lower = self.shifted_powers_of_beta_g.len() - (MAX_NUM_POWERS - range.start);
-            let upper = self.shifted_powers_of_beta_g.len() - (MAX_NUM_POWERS - range.end);
-            Ok(&self.shifted_powers_of_beta_g[lower..upper])
-        }
-    }
-
-    // Assumes that we have the requisite powers.
-    fn normal_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
-        ensure!(self.contains_in_normal_powers(&range), "Requested range is not contained in the available powers");
-        Ok(&self.powers_of_beta_g[range])
-    }
-
-    // Returns the power of beta times G specified by `target`.
-    fn power(&mut self, target: usize) -> Result<E::G1Affine> {
-        self.powers(target..(target + 1)).map(|s| s[0])
-    }
-
-    // Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
-    fn powers(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
-        if range.is_empty() {
-            return Ok(&self.powers_of_beta_g[0..0]);
-        }
-        ensure!(range.start < range.end, "Lower power must be less than upper power");
-        ensure!(range.end <= MAX_NUM_POWERS, "Upper bound must be less than the maximum number of powers");
-        if !self.contains_powers(&range) {
-            // We must download the powers.
-            self.download_powers_for(&range)?;
-        }
-        match self.contains_in_normal_powers(&range) {
-            true => self.normal_powers(range),
-            false => self.shifted_powers(range),
-        }
-    }
-
     pub fn download_powers_for(&mut self, range: &Range<usize>) -> Result<()> {
         if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
             return Ok(());
@@ -426,6 +378,69 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(())
     }
 
+    /// This method downloads the universal SRS powers from
+    /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
+    /// and updates `Self` in place with the new powers.
+    fn download_shifted_powers_from(&mut self, start: usize) -> Result<()> {
+        let final_num_powers = MAX_NUM_POWERS
+            .checked_sub(start)
+            .ok_or_else(|| {
+                anyhow!("Requesting too many powers: `start ({start}) > MAX_NUM_POWERS ({MAX_NUM_POWERS})`")
+            })?
+            .checked_next_power_of_two()
+            .ok_or_else(|| anyhow!("Requesting too many powers"))?; // Calculated k.next_power_of_two().
+
+        // Get the download queue for the shifted powers.
+        let download_queue = self.get_shifted_powers_download_queue(start)?;
+
+        // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
+        let mut final_powers = Vec::with_capacity(final_num_powers);
+        for num_powers in &download_queue {
+            #[cfg(debug_assertions)]
+            println!("Loading {num_powers} shifted powers");
+
+            // Download the universal SRS powers if they're not already on disk.
+            let additional_bytes = impl_download_shifted_powers!(*num_powers, load_bytes).map_err(|e| anyhow!(e))?;
+
+            // Deserialize the group elements.
+            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
+
+            if final_powers.is_empty() {
+                final_powers = additional_powers;
+            } else {
+                final_powers.extend(additional_powers);
+            }
+        }
+        final_powers.extend(self.shifted_powers_of_beta_g.iter());
+
+        // Ensure the correct number of powers were loaded before extending the powers.
+        ensure!(final_powers.len() == final_num_powers, "Loaded an incorrect number of shifted powers");
+        self.shifted_powers_of_beta_g = final_powers;
+
+        Ok(())
+    }
+
+    /// Estimate the powers required to satisfy the range of the powers requested. Returns a vector
+    /// of sizes of the powers needed, and a boolean that if `true` indicates that the shifted
+    /// powers are needed (and `false` if the normal powers are needed).
+    pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
+        if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
+            return Ok((Vec::new(), false));
+        }
+        let half_max = MAX_NUM_POWERS / 2;
+        if (range.start <= half_max) && (range.end > half_max) {
+            // If the range contains the midpoint, then we must download all the powers.
+            // (because we round up to the next power of two).
+            Ok((self.get_powers_download_queue(range.end)?, false))
+        } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
+            // If the range is closer to the shifted powers, then we download the shifted powers.
+            Ok((self.get_shifted_powers_download_queue(range.start)?, true))
+        } else {
+            // Otherwise, we download the normal powers.
+            Ok((self.get_powers_download_queue(range.end)?, false))
+        }
+    }
+
     /// Extend normal powers in place with checks to ensure the bytes are valid and the extensions
     /// are contiguous with the existing powers.
     pub(crate) fn extend_normal_powers_checked(&mut self, powers: &[u8], num_powers: usize) -> Result<()> {
@@ -455,27 +470,6 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
 
         self.powers_of_beta_g.extend(&additional_powers);
         Ok(())
-    }
-
-    /// Estimate the powers required to satisfy the range of the powers requested. Returns a vector
-    /// of the sizes of the powers needed, and a boolean that if `true` indicates that the shifted
-    /// powers are needed (and `false` if the normal powers are needed).
-    pub fn estimate_powers_for(&self, range: &Range<usize>) -> Result<(Vec<usize>, bool)> {
-        if self.contains_in_normal_powers(range) || self.contains_in_shifted_powers(range) {
-            return Ok((Vec::new(), false));
-        }
-        let half_max = MAX_NUM_POWERS / 2;
-        if (range.start <= half_max) && (range.end > half_max) {
-            // If the range contains the midpoint, then we must download all the powers.
-            // (because we round up to the next power of two).
-            Ok((self.get_powers_download_queue(range.end)?, false))
-        } else if self.distance_from_shifted_of(range) < self.distance_from_normal_of(range) {
-            // If the range is closer to the shifted powers, then we download the shifted powers.
-            Ok((self.get_shifted_powers_download_queue(range.start)?, true))
-        } else {
-            // Otherwise, we download the normal powers.
-            Ok((self.get_powers_download_queue(range.end)?, false))
-        }
     }
 
     /// Extend shifted powers in place with checks to ensure the bytes are valid and the extensions
@@ -534,7 +528,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(())
     }
 
-    // Get the download queue for the normal powers of beta g that should be downloaded
+    // Get the download queue for the normal powers.
     fn get_powers_download_queue(&self, end: usize) -> Result<Vec<usize>> {
         // Determine the new power of two.
         let final_power_of_two =
@@ -564,7 +558,7 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(download_queue)
     }
 
-    // Get the download queue for the shifted powers of beta g that should be downloaded.
+    // Get the download queue for the shifted powers.
     fn get_shifted_powers_download_queue(&self, start: usize) -> Result<Vec<usize>> {
         // Ensure the total number of powers is less than the maximum number of powers.
         ensure!(start <= MAX_NUM_POWERS, "Requesting more powers than exist in the SRS");
@@ -609,52 +603,68 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
         Ok(download_queue)
     }
 
-    /// This method downloads the universal SRS powers from
-    /// `start` up to `MAXIMUM_NUM_POWERS - self.shifted_powers_of_beta_g.len()`,
-    /// and updates `Self` in place with the new powers.
-    fn download_shifted_powers_from(&mut self, start: usize) -> Result<()> {
-        let final_num_powers = MAX_NUM_POWERS
-            .checked_sub(start)
-            .ok_or_else(|| {
-                anyhow!("Requesting too many powers: `start ({start}) > MAX_NUM_POWERS ({MAX_NUM_POWERS})`")
-            })?
-            .checked_next_power_of_two()
-            .ok_or_else(|| anyhow!("Requesting too many powers"))?; // Calculated k.next_power_of_two().
+    /// Returns the number of contiguous powers of beta G starting from the 0-th power.
+    pub fn num_powers(&self) -> usize {
+        self.powers_of_beta_g.len()
+    }
 
-        // Get the download queue for the shifted powers.
-        let download_queue = self.get_shifted_powers_download_queue(start)?;
+    /// Returns the number of contiguous shifted powers of beta G.
+    pub fn num_shifted_powers(&self) -> usize {
+        self.shifted_powers_of_beta_g.len()
+    }
 
-        // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
-        let mut final_powers = Vec::with_capacity(final_num_powers);
-        for num_powers in &download_queue {
-            #[cfg(debug_assertions)]
-            println!("Loading {num_powers} shifted powers");
+    // Assumes that we have the requisite powers.
+    fn normal_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+        ensure!(self.contains_in_normal_powers(&range), "Requested range is not contained in the available powers");
+        Ok(&self.powers_of_beta_g[range])
+    }
 
-            // Download the universal SRS powers if they're not already on disk.
-            let additional_bytes = impl_download_shifted_powers!(*num_powers, load_bytes).map_err(|e| anyhow!(e))?;
+    // Returns the power of beta times G specified by `target`.
+    fn power(&mut self, target: usize) -> Result<E::G1Affine> {
+        self.powers(target..(target + 1)).map(|s| s[0])
+    }
 
-            // Deserialize the group elements.
-            let additional_powers = Vec::deserialize_uncompressed_unchecked(&*additional_bytes)?;
-
-            if final_powers.is_empty() {
-                final_powers = additional_powers;
-            } else {
-                final_powers.extend(additional_powers);
-            }
+    // Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
+    fn powers(&mut self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+        if range.is_empty() {
+            return Ok(&self.powers_of_beta_g[0..0]);
         }
-        final_powers.extend(self.shifted_powers_of_beta_g.iter());
+        ensure!(range.start < range.end, "Lower power must be less than upper power");
+        ensure!(range.end <= MAX_NUM_POWERS, "Upper bound must be less than the maximum number of powers");
+        if !self.contains_powers(&range) {
+            // We must download the powers.
+            self.download_powers_for(&range)?;
+        }
+        match self.contains_in_normal_powers(&range) {
+            true => self.normal_powers(range),
+            false => self.shifted_powers(range),
+        }
+    }
 
-        // Ensure the correct number of powers were loaded before extending the powers.
-        ensure!(final_powers.len() == final_num_powers, "Loaded an incorrect number of shifted powers");
-        self.shifted_powers_of_beta_g = final_powers;
+    // Assumes that we have the requisite powers.
+    fn shifted_powers(&self, range: Range<usize>) -> Result<&[E::G1Affine]> {
+        ensure!(
+            self.contains_in_shifted_powers(&range),
+            "Requested range is not contained in the available shifted powers"
+        );
 
-        Ok(())
+        if range.start < MAX_NUM_POWERS / 2 {
+            ensure!(self.shifted_powers_of_beta_g.is_empty());
+            // In this case, we have downloaded all the powers, and so
+            // all the powers reside in self.powers_of_beta_g.
+            Ok(&self.powers_of_beta_g[range])
+        } else {
+            // In this case, the shifted powers still reside in self.shifted_powers_of_beta_g.
+            let lower = self.shifted_powers_of_beta_g.len() - (MAX_NUM_POWERS - range.start);
+            let upper = self.shifted_powers_of_beta_g.len() - (MAX_NUM_POWERS - range.end);
+            Ok(&self.shifted_powers_of_beta_g[lower..upper])
+        }
     }
 
     /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
     /// degree of normal powers.
-    pub(crate) fn verify_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
-        let result = match num_powers {
+    pub(super) fn verify_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+        match num_powers {
             NUM_POWERS_17 => Degree17::verify_bytes(bytes),
             NUM_POWERS_18 => Degree18::verify_bytes(bytes),
             NUM_POWERS_19 => Degree19::verify_bytes(bytes),
@@ -668,14 +678,14 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             NUM_POWERS_27 => Degree27::verify_bytes(bytes),
             NUM_POWERS_28 => Degree28::verify_bytes(bytes),
             _ => bail!("Invalid number of powers"),
-        };
-        result.map_err(|e| anyhow!(e))
+        }
+        .map_err(|e| anyhow!(e))
     }
 
     /// Ensure bytes are the correct length and resolve to the intended checksum for a specified
     /// degree of shifted powers.
-    pub(crate) fn verify_shifted_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
-        let result = match num_powers {
+    pub(super) fn verify_shifted_bytes(bytes: &[u8], num_powers: usize) -> Result<()> {
+        match num_powers {
             NUM_POWERS_17 => ShiftedDegree17::verify_bytes(bytes),
             NUM_POWERS_18 => ShiftedDegree18::verify_bytes(bytes),
             NUM_POWERS_19 => ShiftedDegree19::verify_bytes(bytes),
@@ -688,8 +698,8 @@ impl<E: PairingEngine> PowersOfBetaG<E> {
             NUM_POWERS_26 => ShiftedDegree26::verify_bytes(bytes),
             NUM_POWERS_27 => ShiftedDegree27::verify_bytes(bytes),
             _ => bail!("Invalid number of shifted powers"),
-        };
-        result.map_err(|e| anyhow!(e))
+        }
+        .map_err(|e| anyhow!(e))
     }
 }
 

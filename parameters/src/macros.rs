@@ -101,9 +101,10 @@ macro_rules! impl_store_and_remote_fetch {
             Ok(transfer.perform()?)
         }
 
-        // This will work in both wasm and non-wasm environments
+        // Download parameters asynchronously using reqwest
         async fn remote_fetch_async(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
             let response = reqwest::get(url).await?;
+
             if response.status().is_success() {
                 // Read the response body as bytes and collect into the buffer
                 let bytes = response.bytes().await?;
@@ -111,7 +112,7 @@ macro_rules! impl_store_and_remote_fetch {
             } else {
                 let error_msg = response.text().await?;
                 let error = format!("Failed to download from {}. Response: {}", url, error_msg);
-                return Err($crate::errors::ParameterError::Crate("bad url", error));
+                return Err($crate::errors::ParameterError::Crate("Parameters failed to download", error));
             }
             Ok(())
         }
@@ -210,7 +211,7 @@ macro_rules! impl_load_bytes_logic_remote {
 
             // Fetch the bytes.
             let mut buffer = vec![];
-            let _ = Self::$remote_fetch(&mut buffer, &url)$(.$await)?;
+            Self::$remote_fetch(&mut buffer, &url)$(.$await)??;
 
             // Ensure the checksum matches and the length is correct prior to storing the bytes.
             Self::verify_bytes(&buffer)?;
@@ -231,7 +232,7 @@ macro_rules! impl_load_bytes_logic_remote {
             buffer
         };
 
-        // Validate the expected length and checksum match. If they don't, remove the file.
+        // Verify the expected length and checksum match. If they don't, remove the file.
         Self::verify_bytes(&buffer).or_else(|e| {
             remove_file!($filename);
             Err(e)

@@ -83,7 +83,7 @@ version = "1"
 version = "0.8"
 
 [dependencies.reqwest]
-version = "0.11.18"
+version = "0.11.20"
 
 [dependencies.serde_json]
 version = "1"
@@ -98,7 +98,7 @@ version = "1.0"
 
 [dependencies.web-sys]
 version = "0.3.64"
-features = [ "console", "XmlHttpRequest" ]
+features = [ "XmlHttpRequest" ]
 optional = true
 
 [target."cfg(not(target_family = \"wasm\"))".dependencies.curl]

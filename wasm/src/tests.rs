@@ -21,12 +21,12 @@ use snarkvm_circuit_network::AleoV0;
 use snarkvm_console::{
     account::{Address, PrivateKey, ViewKey},
     network::Testnet3,
+    program::Identifier,
 };
+use snarkvm_synthesizer::{Process, Program};
 use snarkvm_utilities::TestRng;
 
 use core::str::FromStr;
-use snarkvm_console::program::Identifier;
-use snarkvm_synthesizer::{Process, Program};
 use wasm_bindgen_test::*;
 
 const ITERATIONS: usize = 1000;
@@ -68,7 +68,7 @@ fn test_account_sign() {
 }
 
 #[wasm_bindgen_test]
-async fn preload_powers_async() {
+async fn test_preload_powers_async() {
     // Pre-download powers.
     let mut process = Process::<Testnet3>::load_web().unwrap();
     process.universal_srs().preload_powers_async(16, 18).await.unwrap();
