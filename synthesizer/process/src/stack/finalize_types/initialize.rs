@@ -191,14 +191,14 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used in a `branch` command"),
         };
         // Get the type of the second operand.
         let second_type = match self.get_type_from_operand(stack, branch.second())? {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used in a `branch` command"),
         };
         // Check that the operands have the same type.
         ensure!(
@@ -240,7 +240,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used as a key in a `contains` command"),
         };
         // Check that the key type in the mapping matches the key type in the instruction.
         if *mapping_key_type != key_type {
@@ -281,7 +281,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used as a key in a `get` command"),
         };
         // Check that the key type in the mapping matches the key type in the instruction.
         if *mapping_key_type != key_type {
@@ -320,7 +320,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used as a key in a `get.or_use` command"),
         };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
@@ -333,7 +333,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Mapping default value cannot be a future"),
+            FinalizeType::Future(..) => bail!("A default value cannot be a future"),
         };
         // Check that the value type in the mapping matches the default value type.
         if mapping_value_type != &default_value_type {
@@ -405,7 +405,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used as a key in a `set` command"),
         };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {
@@ -416,7 +416,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used as a value in a `set` command"),
         };
         // Check that the value type in the mapping matches the type of the value.
         if mapping_value_type != &value_type {
@@ -449,7 +449,7 @@ impl<N: Network> FinalizeTypes<N> {
             // If the register is a plaintext type, return it.
             FinalizeType::Plaintext(plaintext_type) => plaintext_type,
             // If the register is a future, throw an error.
-            FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+            FinalizeType::Future(..) => bail!("A future cannot be used as a key in a `remove` command"),
         };
         // Check that the key type in the mapping matches the key type.
         if *mapping_key_type != key_type {

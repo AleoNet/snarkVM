@@ -391,19 +391,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             // Construct the transition.
             let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
 
-            // TODO: Remove debug prints.
-            // Print the transition inputs.
-            println!("Stack::execute");
-            println!("Printing transition inputs for: {}", transition.id());
-            for input in transition.inputs() {
-                println!("  {}", input);
-            }
-            // Print the transition outputs.
-            println!("Printing transition outputs for: {}", transition.id());
-            for output in transition.outputs() {
-                println!("  {}", output);
-            }
-
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Construct the call metrics.

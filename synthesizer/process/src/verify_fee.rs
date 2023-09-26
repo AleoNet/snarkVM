@@ -192,12 +192,8 @@ impl<N: Network> Process<N> {
         #[cfg(debug_assertions)]
         println!("Fee public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
-        println!("1");
-
         // Retrieve the verifying key.
         let verifying_key = self.get_verifying_key(fee.program_id(), fee.function_name())?;
-
-        println!("2");
 
         // Ensure the fee proof is valid.
         Trace::verify_fee_proof((verifying_key, vec![inputs]), fee)?;

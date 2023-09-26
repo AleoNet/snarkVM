@@ -70,19 +70,6 @@ impl<N: Network> Process<N> {
             // Ensure the number of outputs is within the allowed range.
             ensure!(transition.outputs().len() <= N::MAX_OUTPUTS, "Transition exceeded maximum number of outputs");
 
-            // TODO: Remove debug prints.
-            // Print the transition inputs.
-            println!("Process::verify_execution");
-            println!("Printing transition inputs for: {}", transition.id());
-            for input in transition.inputs() {
-                println!("  {}", input);
-            }
-            // Print the transition outputs.
-            println!("Printing transition outputs for: {}", transition.id());
-            for output in transition.outputs() {
-                println!("  {}", output);
-            }
-
             // Compute the function ID as `Hash(network_id, program_id, function_name)`.
             let function_id = N::hash_bhp1024(
                 &(
@@ -146,13 +133,9 @@ impl<N: Network> Process<N> {
 
         // Construct the list of verifier inputs.
         let verifier_inputs: Vec<_> = verifier_inputs.values().cloned().collect();
-        println!("4");
-        println!("length of verifier_inputs: {:?}", verifier_inputs.len());
-        println!("verifier_inputs: {:?}", verifier_inputs);
         // Verify the execution proof.
         Trace::verify_execution_proof(&locator, verifier_inputs, execution)?;
 
-        println!("5");
         lap!(timer, "Verify the proof");
 
         finish!(timer);
