@@ -13,8 +13,8 @@ program child.aleo;
 
 function foo:
     assert.neq self.parent self.caller;
-    output self.parent as address.private;
-    output self.caller as address.private;
+    output self.parent as address.public;
+    output self.caller as address.public;
 
 /////////////////////////////////////////////////
 
@@ -24,8 +24,8 @@ program parent.aleo;
 
 function foo:
     call child.aleo/foo into r0 r1;
-    output r0 as address.private;
-    output r1 as address.private;
-    output self.parent as address.private;
-    output self.caller as address.private;
+    output r0 as address.public;
+    output r1 as address.public;
+    output self.parent as address.public;
+    output self.caller as address.public;
 
