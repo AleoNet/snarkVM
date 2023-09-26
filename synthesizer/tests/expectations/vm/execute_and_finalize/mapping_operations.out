@@ -1,24 +1,28 @@
 errors: []
 outputs:
-- execute:
+- verified: true
+  execute:
     mapping_operations.aleo/empty_remove:
       outputs:
       - '{"type":"future","id":"7291478973311998196889109284965727070006803821552839308760042614138648979276field","value":"{\n  program_id: mapping_operations.aleo,\n  function_name: empty_remove,\n  arguments: [\n    10u8\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     mapping_operations.aleo/insert_contains_remove:
       outputs:
       - '{"type":"future","id":"8125199181008624196820150111927204421834678204873633176936287270742730215646field","value":"{\n  program_id: mapping_operations.aleo,\n  function_name: insert_contains_remove,\n  arguments: [\n    0u8,\n    0u8\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     mapping_operations.aleo/insert_contains_remove:
       outputs:
       - '{"type":"future","id":"564988137123189827911719500643390438805066632168511094429444048054438194661field","value":"{\n  program_id: mapping_operations.aleo,\n  function_name: insert_contains_remove,\n  arguments: [\n    0u8,\n    0u8\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     mapping_operations.aleo/insert_contains_remove:
       outputs:
       - '{"type":"future","id":"1504983850261979002191664940947948558038660291110914628083356222450379989621field","value":"{\n  program_id: mapping_operations.aleo,\n  function_name: insert_contains_remove,\n  arguments: [\n    0u8,\n    1u8\n  ]\n}"}'

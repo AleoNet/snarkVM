@@ -1,18 +1,21 @@
 errors: []
 outputs:
-- execute:
+- verified: true
+  execute:
     test_branch.aleo/run_test:
       outputs:
       - '{"type":"future","id":"4807227403819588684031853679423924290019569164203178974904495218971849247520field","value":"{\n  program_id: test_branch.aleo,\n  function_name: run_test,\n  arguments: [\n    1u8,\n    1u8\n  ]\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     test_branch.aleo/run_test:
       outputs:
       - '{"type":"future","id":"6578563227874053328775488720373016284038873634029366303301076699226711812107field","value":"{\n  program_id: test_branch.aleo,\n  function_name: run_test,\n  arguments: [\n    0u8,\n    1u8\n  ]\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     test_branch.aleo/run_test:
       outputs:
       - '{"type":"future","id":"7508008554951635493629769098645178330945961002302110561994738513868095644109field","value":"{\n  program_id: test_branch.aleo,\n  function_name: run_test,\n  arguments: [\n    0u8,\n    0u8\n  ]\n}"}'

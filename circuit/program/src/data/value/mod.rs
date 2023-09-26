@@ -39,7 +39,7 @@ impl<A: Aleo> Inject for Value<A> {
         match value {
             console::Value::Plaintext(plaintext) => Value::Plaintext(Plaintext::new(mode, plaintext)),
             console::Value::Record(record) => Value::Record(Record::new(Mode::Private, record)),
-            console::Value::Future(future) => Value::Future(Future::new(Mode::Public, future)),
+            console::Value::Future(future) => Value::Future(Future::new(mode, future)),
         }
     }
 }

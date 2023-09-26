@@ -1,6 +1,7 @@
 errors: []
 outputs:
-- execute:
+- verified: true
+  execute:
     arrays_in_finalize.aleo/test_arrays:
       outputs:
       - '{"type":"public","id":"7478840637674867348334152936830348927618689666735497694442760373406118031677field","value":"[\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n]"}'

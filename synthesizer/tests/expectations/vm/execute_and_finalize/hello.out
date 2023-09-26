@@ -1,25 +1,29 @@
 errors: []
 outputs:
-- execute:
+- verified: true
+  execute:
     hello.aleo/hello:
       outputs:
       - '{"type":"private","id":"8125348741943322686009907907811782653304283628858249042666480861925372544888field","value":"ciphertext1qyqzh0ww4d529sp24xw2c0ek9p3mlh5amc8rlzhudhw6u4e6h9ffuzc4xu63n"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     hello.aleo/hello:
       outputs:
       - '{"type":"private","id":"4190523942746941151788535679482167833023294290248250731893857652327309412596field","value":"ciphertext1qyqg0dpeew6mjk7zgcw423k99k74k5nnqpshnjsjvjezfqsfel7q6pq9k0ny2"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     hello.aleo/goodbye:
       outputs:
       - '{"type":"public","id":"6479967549102698786501355579286201653159194507767944415639092049192937228124field","value":"1u32"}'
       - '{"type":"future","id":"3413333273447015937668991532824129740236214843152627847347248311711336145614field","value":"{\n  program_id: hello.aleo,\n  function_name: goodbye,\n  arguments: [\n    1u32,\n    1u32\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     hello.aleo/goodbye:
       outputs:
       - '{"type":"public","id":"626299501033028507774181248923989773544577830656010087029558433445349806993field","value":"1u32"}'

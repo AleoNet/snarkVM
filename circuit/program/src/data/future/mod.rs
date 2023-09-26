@@ -35,17 +35,15 @@ pub struct Future<A: Aleo> {
     arguments: Vec<Argument<A>>,
 }
 
-// TODO (d0cd) Mode consistency
-
 impl<A: Aleo> Inject for Future<A> {
     type Primitive = console::Future<A::Network>;
 
     /// Initializes a circuit of the given mode and future.
-    fn new(_: Mode, value: Self::Primitive) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self::from(
-            Inject::new(Mode::Constant, *value.program_id()),
-            Inject::new(Mode::Constant, *value.function_name()),
-            Inject::new(Mode::Public, value.arguments().to_vec()),
+            Inject::new(mode, *value.program_id()),
+            Inject::new(mode, *value.function_name()),
+            Inject::new(mode, value.arguments().to_vec()),
         )
     }
 }

@@ -1,12 +1,14 @@
 errors: []
 outputs:
-- execute:
+- verified: true
+  execute:
     timelock.aleo/lock:
       outputs:
       - '{"type":"future","id":"578152375660960413620944529176838111130558819753119775638549496005056051167field","value":"{\n  program_id: timelock.aleo,\n  function_name: lock,\n  arguments: []\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     timelock.aleo/lock:
       outputs:
       - '{"type":"future","id":"1153321566575392305875708931221831574430034867281515788213221373067783340857field","value":"{\n  program_id: timelock.aleo,\n  function_name: lock,\n  arguments: []\n}"}'

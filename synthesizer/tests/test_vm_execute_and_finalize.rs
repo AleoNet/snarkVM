@@ -143,7 +143,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
         let mut run_test = || -> (serde_yaml::Value, serde_yaml::Value) {
             // Create a mapping to store the result of the test.
             let mut result = serde_yaml::Mapping::new();
-            // Create a mapping to store the other iterms.
+            // Create a mapping to store the other items.
             let mut other = serde_yaml::Mapping::new();
 
             // Execute the function, extracting the transaction.
@@ -166,6 +166,11 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                     return (serde_yaml::Value::Mapping(result), serde_yaml::Value::Mapping(Default::default()));
                 }
             };
+
+            // Attempt to verify the transaction.
+            let verified = vm.verify_transaction(&transaction, None);
+            // Store the verification result.
+            result.insert(serde_yaml::Value::String("verified".to_string()), serde_yaml::Value::Bool(verified));
 
             // For each root transition in the transaction, extract the transition outputs and the inputs for finalize.
             let mut execute = serde_yaml::Mapping::new();

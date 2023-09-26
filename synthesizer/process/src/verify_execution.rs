@@ -216,7 +216,7 @@ impl<N: Network> Process<N> {
     // In order to reconstruct the call graph, we:
     // - Iterate over the call structure in reverse post-order. The ordering is maintained by the `traversal_stack`.
     // - Process each transition in the `Execution` in reverse, assigning its transition ID to the corresponding function call.
-    pub(crate) fn construct_call_graph(
+    pub fn construct_call_graph(
         &self,
         execution: &Execution<N>,
     ) -> Result<HashMap<N::TransitionID, Vec<N::TransitionID>>> {

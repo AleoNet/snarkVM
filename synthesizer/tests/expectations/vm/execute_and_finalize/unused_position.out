@@ -1,6 +1,7 @@
 errors: []
 outputs:
-- execute:
+- verified: true
+  execute:
     unused_position.aleo/foo:
       outputs:
       - '{"type":"future","id":"754819646549188005033265189873387370723612282538036088693249266044696644507field","value":"{\n  program_id: unused_position.aleo,\n  function_name: foo,\n  arguments: []\n}"}'

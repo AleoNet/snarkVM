@@ -1,6 +1,7 @@
 errors: []
 outputs:
-- execute:
+- verified: true
+  execute:
     mint_and_split.aleo/mint:
       outputs:
       - '{"type":"record","id":"7636508513753843688255477046613755926717864376364314808857555307422986366583field","checksum":"2724303349197854838397688958932042996013299317300510410551052639216931686578field","value":"record1qyqspznunw4usdtcqwznvpm3f73dlfxcmg07emews5rxsvfp8jelaqs3qyxx66trwfhkxun9v35hguerqqpqzqqjmj4kl3w0fh0dhqy67c47xgw7ftfdkhplztykwwr7mgnn8cm3q50aufvdjh84e3325vgsq98uzgdxyscfrymgz6j5p6txj0u06ngskkug8kd"}'
