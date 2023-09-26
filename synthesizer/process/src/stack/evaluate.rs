@@ -26,6 +26,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         inputs: &[Value<N>],
         call_stack: CallStack<N>,
         caller: Address<N>,
+        parent: Address<N>,
         tvk: Field<N>,
     ) -> Result<Vec<Value<N>>> {
         let timer = timer!("Stack::evaluate_closure");
@@ -39,6 +40,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(closure.name())?.clone());
         // Set the transition caller.
         registers.set_caller(caller);
+        // Set the transition parent.
+        registers.set_parent(parent);
         // Set the transition view key.
         registers.set_tvk(tvk);
         lap!(timer, "Initialize the registers");

@@ -100,6 +100,7 @@ impl<N: Network> Stack<N> {
             // Compute the request, with a burner private key.
             let request = Request::sign(
                 &burner_private_key,
+                todo!(),
                 *program_id,
                 *function.name(),
                 inputs.into_iter(),

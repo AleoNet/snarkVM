@@ -61,7 +61,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let request = Request::sign(private_key, todo!(), program_id, function_name, inputs.iter(), &input_types, rng)?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.
@@ -93,7 +93,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let request = Request::sign(private_key, todo!(), program_id, function_name, inputs.iter(), &input_types, rng)?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.

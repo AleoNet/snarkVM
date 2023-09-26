@@ -20,6 +20,7 @@ impl<N: Network> Request<N> {
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
+        parent: Address<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
@@ -59,6 +60,7 @@ impl<N: Network> Request<N> {
 
         // Derive the caller from the compute key.
         let caller = Address::try_from(compute_key)?;
+
         // Compute the transition view key `tvk` as `r * caller`.
         let tvk = (*caller * r).to_x_coordinate();
         // Compute the transition commitment `tcm` as `Hash(tvk)`.
@@ -219,6 +221,7 @@ impl<N: Network> Request<N> {
 
         Ok(Self {
             caller,
+            parent,
             network_id: U16::new(N::ID),
             program_id,
             function_name,

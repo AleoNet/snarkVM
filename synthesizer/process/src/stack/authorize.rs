@@ -33,7 +33,8 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Retrieve the input types");
 
         // Compute the request.
-        let request = Request::sign(private_key, *self.program.id(), function_name, inputs, &input_types, rng)?;
+        let request =
+            Request::sign(private_key, todo!(), *self.program.id(), function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::from(request.clone());

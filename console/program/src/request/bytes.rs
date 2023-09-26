@@ -26,6 +26,8 @@ impl<N: Network> FromBytes for Request<N> {
 
         // Read the caller.
         let caller = FromBytes::read_le(&mut reader)?;
+        // Read the parent.
+        let parent = FromBytes::read_le(&mut reader)?;
         // Read the network ID.
         let network_id = FromBytes::read_le(&mut reader)?;
         // Read the program ID.
@@ -53,6 +55,7 @@ impl<N: Network> FromBytes for Request<N> {
 
         Ok(Self::from((
             caller,
+            parent,
             network_id,
             program_id,
             function_name,

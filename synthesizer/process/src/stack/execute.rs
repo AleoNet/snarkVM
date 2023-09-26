@@ -26,6 +26,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
         caller: circuit::Address<A>,
+        parent: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
         let timer = timer!("Stack::execute_closure");
@@ -46,6 +47,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(caller);
+        // Set the transition parent, as a circuit.
+        registers.set_parent_circuit(parent);
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
         lap!(timer, "Initialize the registers");
@@ -190,6 +193,11 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         registers.set_caller(*console_request.caller());
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(request.caller().clone());
+
+        // Set the transition parent.
+        registers.set_parent(*console_request.parent());
+        // Set the transition parent, as a circuit.
+        registers.set_parent_circuit(request.parent().clone());
 
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());
