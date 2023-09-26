@@ -1193,8 +1193,8 @@ fn test_process_execute_and_finalize_get_add_set() {
 program testing.aleo;
 
 mapping account:
-    key owner as address.public;
-    value amount as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function compute:
     input r0 as address.public;
@@ -1304,8 +1304,8 @@ fn test_process_execute_and_finalize_increment_decrement_via_get_set() {
 program testing.aleo;
 
 mapping account:
-    key owner as address.public;
-    value amount as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function compute:
     input r0 as address.public;
@@ -1419,9 +1419,9 @@ program token.aleo;
 // and `amount` as the value.
 mapping account:
     // The token owner.
-    key owner as address.public;
+    key as address.public;
     // The token amount.
-    value amount as u64.public;
+    value as u64.public;
 
 // The function `mint_public` issues the specified token amount
 // for the token receiver publicly on the network.
@@ -1549,9 +1549,9 @@ program token.aleo;
 // and `amount` as the value.
 mapping account:
     // The token owner.
-    key owner as address.public;
+    key as address.public;
     // The token amount.
-    value amount as u64.public;
+    value as u64.public;
 
 // The function `mint_public` issues the specified token amount
 // for the token receiver publicly on the network.
@@ -1697,8 +1697,8 @@ fn test_process_execute_and_finalize_get_set() {
 program testing.aleo;
 
 mapping account:
-    key owner as address.public;
-    value amount as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function compute:
     input r0 as address.public;
@@ -2122,8 +2122,8 @@ struct entry:
     data as u8;
 
 mapping entries:
-    key owner as address.public;
-    value entry as entry.public;
+    key as address.public;
+    value as entry.public;
 
 function compute:
     input r0 as u8.public;

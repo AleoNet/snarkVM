@@ -6,8 +6,8 @@ struct entry:
     data as u8;
 
 mapping entries:
-    key owner as address.public;
-    value entry as entry.public;
+    key as address.public;
+    value as entry.public;
 
 function compute:
     input r0 as u8.public;

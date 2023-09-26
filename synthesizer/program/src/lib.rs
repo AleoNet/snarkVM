@@ -662,8 +662,8 @@ mod tests {
         let mapping = Mapping::<CurrentNetwork>::from_str(
             r"
 mapping message:
-    key first as field.public;
-    value second as field.public;",
+    key as field.public;
+    value as field.public;",
         )?;
 
         // Initialize a new program.
