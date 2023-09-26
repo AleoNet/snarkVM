@@ -67,7 +67,12 @@ impl<N: Network> Debug for MapKey<N> {
 impl<N: Network> Display for MapKey<N> {
     /// Prints the key statement as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{type_} {plaintext_type}.public;", type_ = Self::type_name(), plaintext_type = self.plaintext_type)
+        write!(
+            f,
+            "{type_} as {plaintext_type}.public;",
+            type_ = Self::type_name(),
+            plaintext_type = self.plaintext_type
+        )
     }
 }
 
