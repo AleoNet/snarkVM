@@ -25,8 +25,8 @@ impl<A: Aleo> Equal<Self> for Future<A> {
             equal &= argument_a.is_equal(argument_b);
         }
 
-        // Check the `program_id`, and `function_name`.
-        self.program_id.is_equal(&other.program_id) & equal & self.function_name.is_equal(&other.function_name)
+        // Check the `program_id`, `function_name`, and arguments are equal.
+        self.program_id.is_equal(&other.program_id) & self.function_name.is_equal(&other.function_name) & equal
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
