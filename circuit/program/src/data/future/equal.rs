@@ -37,9 +37,9 @@ impl<A: Aleo> Equal<Self> for Future<A> {
             not_equal |= argument_a.is_not_equal(argument_b);
         }
 
-        // Check the `program_id`, and `function_name`.
+        // Check the `program_id`, `function_name`, or arguments are not equal.
         self.program_id.is_not_equal(&other.program_id)
-            | not_equal
             | self.function_name.is_not_equal(&other.function_name)
+            | not_equal
     }
 }
