@@ -38,7 +38,7 @@ mod tests {
 
         // Create the `resources` folder, if it does not exist.
         if !path.exists() {
-            std::fs::create_dir_all(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
+            fs::create_dir_all(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
         }
         // Output the path.
         path
@@ -53,7 +53,7 @@ mod tests {
 
         // Create the test folder, if it does not exist.
         if !path.exists() {
-            std::fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {path:?}"));
+            fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {path:?}"));
         }
 
         // Construct the path for the test file.
@@ -71,6 +71,7 @@ mod tests {
         expect_test::expect_file![path].assert_eq(candidate);
     }
 
+    // In the case that we're creating a test vectors from a trusted branch
     fn create_test_vector(folder: &str, file: &str, data: &str) {
         // Construct the path for the test folder.
         let mut path = resources_path();
@@ -78,7 +79,7 @@ mod tests {
 
         // Create the test folder, if it does not exist.
         if !path.exists() {
-            std::fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {path:?}"));
+            fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {path:?}"));
         }
 
         // Construct the path for the test file.
@@ -87,10 +88,10 @@ mod tests {
 
         // Create the test file, if it does not exist.
         if !path.exists() {
-            std::fs::File::create(&path).unwrap_or_else(|_| panic!("Failed to create file: {path:?}"));
+            fs::File::create(&path).unwrap_or_else(|_| panic!("Failed to create file: {path:?}"));
         }
 
-        std::fs::write(&path, data).unwrap_or_else(|_| panic!("Failed to write to file: {:?}", path));
+        fs::write(&path, data).unwrap_or_else(|_| panic!("Failed to write to file: {:?}", path));
     }
 
     #[test]
@@ -106,26 +107,32 @@ mod tests {
 
     // TODO: make macros to use different hiding modes
     fn run_prover_sage_vectors(create_test_vectors: bool) {
-        let input_path = "src/snark/varuna/resources/inputs.txt";
-        let test_vectors_file = fs::read_to_string(input_path).expect("Could not read the file");
-        let mut test_vectors = Vec::new(); // TODO: preallocate
-        for line in test_vectors_file.lines() {
-            test_vectors.push(line.to_string())
-        }
-
+        // Get the circuit instance from the test vector.
         let instance_path = "src/snark/varuna/resources/instance.input";
         let instance_file = fs::read_to_string(instance_path).expect("Could not read the file");
-        let mut instance = Vec::new(); // TODO: preallocate
+        let mut instance = Vec::new();
         for line in instance_file.lines() {
             instance.push(line.to_string())
         }
 
+        // Initialize challenges from file.
         let challenges_path = "src/snark/varuna/resources/challenges.input";
         let challenges_file = fs::read_to_string(challenges_path).expect("Could not read the file");
-        let mut challenges = Vec::new(); // TODO: preallocate
+        let mut challenges = Vec::new();
         for line in challenges_file.lines() {
-            challenges.push(line.to_string())
+            challenges.push(line)
         }
+        let (alpha, _eta_a, eta_b, eta_c, beta, delta_a, delta_b, delta_c, gamma) = (
+            Fr::from_str(challenges[0]).unwrap(),
+            Fr::from_str(challenges[1]).unwrap(),
+            Fr::from_str(challenges[2]).unwrap(),
+            Fr::from_str(challenges[3]).unwrap(),
+            Fr::from_str(challenges[4]).unwrap(),
+            vec![Fr::from_str(challenges[5]).unwrap()],
+            vec![Fr::from_str(challenges[6]).unwrap()],
+            vec![Fr::from_str(challenges[7]).unwrap()],
+            Fr::from_str(challenges[8]).unwrap(),
+        );
         let circuit_combiner = Fr::one();
         let instance_combiners = vec![Fr::one()];
 
@@ -193,22 +200,6 @@ mod tests {
             create_test_vector("polynomials", "h_0", &h_0);
         }
 
-        // TODO: hardcoding for testing purposes
-        let alpha =
-            Fr::from_str("3848747268438146429751199396409351181775389242768022193485885831738448017147").unwrap();
-        let eta_b =
-            Fr::from_str("8197944265508088395536605774074305135172727109973647025295290482999689956740").unwrap();
-        let eta_c =
-            Fr::from_str("969057258436037177120044092706484307847087860293738150232755543560372962965").unwrap();
-        let beta =
-            Fr::from_str("1261454636320080423466301508402274008580035865105120100172548996301504688503").unwrap();
-        let delta_a = vec![Fr::from_str("1").unwrap()];
-        let delta_b =
-            vec![Fr::from_str("4987583518937978349829618221849930643691403053432331091973338029344238378359").unwrap()];
-        let delta_c =
-            vec![Fr::from_str("5292820491592383411924896857610185298390500160570506754003580089093852949536").unwrap()];
-        let gamma =
-            Fr::from_str("672738024541753390172108082983901395072703770443783662610485842877496432861").unwrap();
         let verifier_second_msg = verifier::SecondMessage::<Fr> { alpha, eta_b, eta_c };
         let (prover_third_message, third_oracles, prover_state) =
             AHPForR1CS::<_, MM>::prover_third_round(&verifier_first_msg, &verifier_second_msg, prover_state, rng)
