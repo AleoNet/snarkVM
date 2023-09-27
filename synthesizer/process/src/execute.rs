@@ -38,7 +38,7 @@ impl<N: Network> Process<N> {
         lap!(timer, "Initialize call stack");
 
         // Execute the circuit.
-        let response = self.get_stack(request.program_id())?.execute_function::<A, true>(call_stack)?;
+        let response = self.get_stack(request.program_id())?.execute_function::<A>(call_stack)?;
         lap!(timer, "Execute the function");
 
         // Extract the trace.

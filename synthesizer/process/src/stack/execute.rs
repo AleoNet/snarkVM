@@ -131,10 +131,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn execute_function<A: circuit::Aleo<Network = N>, const IS_MAIN: bool>(
-        &self,
-        mut call_stack: CallStack<N>,
-    ) -> Result<Response<N>> {
+    fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
 
         // Ensure the call stack is not `Evaluate`.
@@ -188,11 +185,12 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
-
-        // If the function is the main function, ensure that the caller and parent match.
-        if IS_MAIN {
-            A::assert_eq(request.caller(), request.parent());
-        }
+        // Inject `is_root` as `Mode::Public`.
+        let is_root = circuit::Boolean::new(circuit::Mode::Public, console_request.is_root());
+        // Inject the parent as `Mode::Public`.
+        let claimed_parent = circuit::Address::new(circuit::Mode::Public, console_request.parent().clone());
+        // Compute the parent.
+        let parent = Ternary::ternary(&is_root, request.caller(), &claimed_parent);
 
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
@@ -204,9 +202,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         registers.set_caller_circuit(request.caller().clone());
 
         // Set the transition parent.
-        registers.set_parent(*console_request.parent());
+        registers.set_parent(parent.eject_value());
         // Set the transition parent, as a circuit.
-        registers.set_parent_circuit(request.parent().clone());
+        registers.set_parent_circuit(parent);
 
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());
@@ -243,7 +241,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         for instruction in function.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
             if let CallStack::Execute(..) = registers.call_stack() {
-                // Evaluate the instruction.
                 let result = match instruction {
                     // If the instruction is a `call` instruction, we need to handle it separately.
                     Instruction::Call(call) => CallTrait::evaluate(call, self, &mut registers),

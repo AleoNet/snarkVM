@@ -51,8 +51,10 @@ impl<N: Network> Process<N> {
         // Initialize a map of transition IDs to references of the transition.
         let mut transition_map = HashMap::new();
 
+        let mut parent = None;
+
         // Verify each transition.
-        for transition in execution.transitions() {
+        for (i, transition) in execution.transitions().enumerate() {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
             // Debug-mode only, as the `Transition` constructor recomputes the transition ID at initialization.
@@ -110,7 +112,7 @@ impl<N: Network> Process<N> {
             let function = stack.get_function(transition.function_name())?;
 
             // Construct the verifier inputs for the transition.
-            let inputs = self.to_transition_verifier_inputs(transition, &call_graph, &mut transition_map)?;
+            let inputs = self.to_transition_verifier_inputs(transition, parent, &call_graph, &mut transition_map)?;
             lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
 
             // Save the verifying key and its inputs.
@@ -124,6 +126,8 @@ impl<N: Network> Process<N> {
 
             // Add the transition to the transition map.
             transition_map.insert(*transition.id(), transition);
+
+            parent = Some(*transition.program_id());
         }
 
         // Count the number of verifier instances.
@@ -148,14 +152,23 @@ impl<N: Network> Process<N> {
     fn to_transition_verifier_inputs(
         &self,
         transition: &Transition<N>,
+        parent: Option<ProgramID<N>>,
         call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
         transition_map: &mut HashMap<N::TransitionID, &Transition<N>>,
     ) -> Result<Vec<N::Field>> {
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
 
+        let (is_root, parent) = match parent {
+            Some(program_id) => (Field::<N>::zero(), program_id),
+            None => (Field::one(), *transition.program_id()),
+        };
+        let (parent_x, parent_y) = parent.to_address()?.to_xy_coordinates();
+
         // [Inputs] Construct the verifier inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
+        // [Inputs] Extend the verifier inputs with the 'self.parent' public inputs.
+        inputs.extend([*is_root, *parent_x, *parent_y]);
         // [Inputs] Extend the verifier inputs with the input IDs.
         inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
 

@@ -96,7 +96,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn evaluate_function<A: circuit::Aleo<Network = N>, const IS_MAIN: bool>(
+    fn evaluate_function<A: circuit::Aleo<Network = N>>(
         &self,
         call_stack: CallStack<N>,
     ) -> Result<Response<N>> {
@@ -129,13 +129,9 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
         let caller = *request.caller();
+        let is_root = *request.is_root();
         let parent = *request.parent();
         let tvk = *request.tvk();
-
-        // If the function is the main function, ensure that the caller and parent match.
-        if IS_MAIN {
-            ensure!(caller == parent, "The caller and parent must be the same for the main function.");
-        }
 
         // Ensure the number of inputs matches.
         if function.inputs().len() != inputs.len() {
@@ -154,7 +150,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         // Set the transition caller.
         registers.set_caller(caller);
         // Set the transition parent.
-        registers.set_parent(parent);
+        registers.set_parent(Address::ternary(is_root, &caller, &parent));
         // Set the transition view key.
         registers.set_tvk(tvk);
         lap!(timer, "Initialize the registers");

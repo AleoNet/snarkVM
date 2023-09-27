@@ -100,7 +100,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
             }
             // Evaluate the function.
-            let response = substack.evaluate_function::<A, false>(registers.call_stack())?;
+            let response = substack.evaluate_function::<A>(registers.call_stack())?;
             // Load the outputs.
             response.outputs().to_vec()
         }
@@ -221,7 +221,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, false>(call_stack)?;
+                        let response = substack.execute_function::<A>(call_stack)?;
 
                         // Return the request and response.
                         (request, response)
@@ -244,7 +244,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Execute the request.
-                        let response = substack.execute_function::<A, false>(call_stack)?;
+                        let response = substack.execute_function::<A>(call_stack)?;
                         // Return the request and response.
                         (request, response)
                     }
@@ -264,9 +264,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
 
                         // Evaluate the function, and load the outputs.
                         let console_response =
-                            substack.evaluate_function::<A, false>(registers.call_stack().replicate())?;
+                            substack.evaluate_function::<A>(registers.call_stack().replicate())?;
                         // Execute the request.
-                        let response = substack.execute_function::<A, false>(registers.call_stack())?;
+                        let response = substack.execute_function::<A>(registers.call_stack())?;
                         // Ensure the values are equal.
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]
@@ -290,10 +290,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Inject the function name as `Mode::Constant`.
             let function_name = circuit::Identifier::constant(*function.name());
 
-            // Inject the current program ID as `Mode::Constant`.
-            let current_program_id: circuit::Address<A> =
-                circuit::ProgramID::constant(*stack.program_id()).to_address();
-
             // Ensure the number of public variables remains the same.
             ensure!(A::num_public() == num_public, "Forbidden: 'call' injected excess public variables");
 
@@ -313,9 +309,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 .iter()
                 .map(|input_id| circuit::InputID::new(circuit::Mode::Public, *input_id))
                 .collect::<Vec<_>>();
-
-            // Ensure that the parent matches the current program ID.
-            A::assert_eq(parent, current_program_id);
 
             // Ensure the candidate input IDs match their computed inputs.
             let (check_input_ids, _) = circuit::Request::check_input_ids::<false>(

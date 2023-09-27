@@ -121,6 +121,8 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                             println!("Number of non-zero entries in C: {num_non_zero_c}");
                         }
 
+                        println!("Index Info: {:?}", circuit.index_info);
+
                         if circuit.index_info.num_constraints != num_constraints
                             || circuit.index_info.num_variables != (num_public_variables + num_private_variables)
                         {
