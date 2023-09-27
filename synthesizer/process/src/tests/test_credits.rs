@@ -1479,7 +1479,10 @@ mod sanity_checks {
     use super::*;
     use crate::{Assignments, CallStack, Stack, StackExecute};
     use circuit::Assignment;
-    use console::{program::Request, types::Field};
+    use console::{
+        program::Request,
+        types::{Boolean, Field},
+    };
     use synthesizer_program::StackProgram;
 
     fn get_assignment<N: Network, A: circuit::Aleo<Network = N>>(
@@ -1491,11 +1494,24 @@ mod sanity_checks {
     ) -> Assignment<<N as Environment>::Field> {
         // Retrieve the program.
         let program = stack.program();
+        // Get the program ID.
+        let program_id = *program.id();
+        // Since this is  a top-level call, `is_root` is true.
+        let is_root = Boolean::new(true);
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
-        let request =
-            Request::sign(private_key, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
+        let request = Request::sign(
+            private_key,
+            program_id.to_address().unwrap(),
+            is_root,
+            program_id,
+            function_name,
+            inputs.iter(),
+            &input_types,
+            rng,
+        )
+        .unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.
@@ -1535,7 +1551,7 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(12, assignment.num_public());
-        assert_eq!(54672, assignment.num_private());
+        assert_eq!(54686, assignment.num_private());
         assert_eq!(54730, assignment.num_constraints());
         assert_eq!((88496, 130675, 83625), assignment.num_nonzeros());
     }
@@ -1563,7 +1579,7 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
         assert_eq!(7, assignment.num_public());
-        assert_eq!(17044, assignment.num_private());
+        assert_eq!(17058, assignment.num_private());
         assert_eq!(17062, assignment.num_constraints());
         assert_eq!((31397, 45936, 24021), assignment.num_nonzeros());
     }
@@ -1596,7 +1612,7 @@ mod sanity_checks {
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
         assert_eq!(10, assignment.num_public());
-        assert_eq!(41220, assignment.num_private());
+        assert_eq!(41234, assignment.num_private());
         assert_eq!(41269, assignment.num_constraints());
         assert_eq!((64427, 92903, 62359), assignment.num_nonzeros());
     }
@@ -1622,8 +1638,8 @@ mod sanity_checks {
 
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
-        assert_eq!(7, assignment.num_public());
-        assert_eq!(17035, assignment.num_private());
+        assert_eq!(10, assignment.num_public());
+        assert_eq!(17071, assignment.num_private());
         assert_eq!(17057, assignment.num_constraints());
         assert_eq!((31267, 45420, 24009), assignment.num_nonzeros());
     }

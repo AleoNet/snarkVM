@@ -13,7 +13,10 @@
 // limitations under the License.
 
 use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
-use console::{network::prelude::*, program::Request};
+use console::{
+    network::prelude::*,
+    program::{Boolean, Request},
+};
 use synthesizer_program::{
     Call,
     CallOperator,
@@ -89,6 +92,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &inputs,
                 registers.call_stack(),
                 registers.caller()?,
+                registers.parent()?,
                 registers.tvk()?,
             )?
         }
@@ -170,6 +174,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &inputs,
                 registers.call_stack(),
                 registers.caller_circuit()?,
+                registers.parent_circuit()?,
                 registers.tvk_circuit()?,
             )?
         }
@@ -202,6 +207,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
+                            stack.program_id().to_address()?,
+                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -227,6 +234,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
+                            stack.program_id().to_address()?,
+                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -302,6 +311,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 .iter()
                 .map(|input_id| circuit::InputID::new(circuit::Mode::Public, *input_id))
                 .collect::<Vec<_>>();
+
             // Ensure the candidate input IDs match their computed inputs.
             let (check_input_ids, _) = circuit::Request::check_input_ids::<false>(
                 &network_id,

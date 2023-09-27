@@ -43,6 +43,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{
+        Boolean,
         Identifier,
         Literal,
         LiteralType,

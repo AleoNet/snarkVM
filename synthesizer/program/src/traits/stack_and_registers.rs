@@ -101,6 +101,12 @@ pub trait RegistersCaller<N: Network> {
     /// Sets the transition caller.
     fn set_caller(&mut self, caller: Address<N>);
 
+    /// Returns the transition parent.
+    fn parent(&self) -> Result<Address<N>>;
+
+    /// Sets the transition parent.
+    fn set_parent(&mut self, parent: Address<N>);
+
     /// Returns the transition view key.
     fn tvk(&self) -> Result<Field<N>>;
 
@@ -114,6 +120,12 @@ pub trait RegistersCallerCircuit<N: Network, A: circuit::Aleo<Network = N>> {
 
     /// Sets the transition caller, as a circuit.
     fn set_caller_circuit(&mut self, caller_circuit: circuit::Address<A>);
+
+    /// Returns the transition parent, as a circuit.
+    fn parent_circuit(&self) -> Result<circuit::Address<A>>;
+
+    /// Sets the transition parent, as a circuit.
+    fn set_parent_circuit(&mut self, parent_circuit: circuit::Address<A>);
 
     /// Returns the transition view key, as a circuit.
     fn tvk_circuit(&self) -> Result<circuit::Field<A>>;
