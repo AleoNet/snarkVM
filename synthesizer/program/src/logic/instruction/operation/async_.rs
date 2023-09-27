@@ -197,7 +197,7 @@ impl<N: Network> Async<N> {
                     );
                 }
                 (input_type, finalize_type) => bail!(
-                    "'{}/{}' finalize expects a '{}' argument, found a '{}' argument",
+                    "'{}/{}' async expects a '{}' argument, found a '{}' argument",
                     stack.program_id(),
                     self.function_name(),
                     finalize_type,
