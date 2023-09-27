@@ -57,7 +57,7 @@ impl<A: Aleo> Inject for OutputID<A> {
             // Inject the expected hash as `Mode::Public`.
             console::OutputID::ExternalRecord(hash) => Self::ExternalRecord(Field::new(Mode::Public, hash)),
             // Inject the expected hash as `Mode::Public`.
-            console::OutputID::Future(hash) => Self::Public(Field::new(Mode::Public, hash)),
+            console::OutputID::Future(hash) => Self::Future(Field::new(Mode::Public, hash)),
         }
     }
 }
