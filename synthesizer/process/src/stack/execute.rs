@@ -241,6 +241,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         for instruction in function.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
             if let CallStack::Execute(..) = registers.call_stack() {
+                // Evaluate the instruction.
                 let result = match instruction {
                     // If the instruction is a `call` instruction, we need to handle it separately.
                     Instruction::Call(call) => CallTrait::evaluate(call, self, &mut registers),
@@ -378,8 +379,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
-
-        // let _ = self.synthesize_from_assignment(function.name(), &assignment)?;
 
         // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
         if matches!(registers.call_stack(), CallStack::Synthesize(..))

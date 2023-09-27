@@ -12,12 +12,12 @@ additional:
 - child_outputs:
     basic_math.aleo/add_and_count:
       outputs:
-      - '{"type":"private","id":"4810388849004066849587558466710875827647862454285690938342071935225242833186field","value":"ciphertext1qyqvl92ruf6xxdq4dvxlrchhs3rmh6a6rcfg4se9q0rf8g8ct5phvqqadw35a"}'
-      - '{"type":"future","id":"1171496391790169732565251960673160367769014042130522240011814990943661319245field","value":"{\n  program_id: basic_math.aleo,\n  function_name: add_and_count,\n  arguments: [\n    aleo1kw4knandael9qcpxs6g36rr6h7dwvjz6q25ueah6zz9v57zjlvxsx5llq8\n  ]\n}"}'
+      - '{"type":"private","id":"1781051340627118428777014649556828124909796245630622370430417175512329868169field","value":"ciphertext1qyq2qu8uax3m3j2mdn0qvfk3hlhlmx7rwae28du97rgru7nuwlh5upgg9c068"}'
+      - '{"type":"future","id":"2263863546975913894939197141513992270181150231544950911357988802141952022058field","value":"{\n  program_id: basic_math.aleo,\n  function_name: add_and_count,\n  arguments: [\n    aleo1kw4knandael9qcpxs6g36rr6h7dwvjz6q25ueah6zz9v57zjlvxsx5llq8\n  ]\n}"}'
     basic_math.aleo/sub_and_count:
       outputs:
-      - '{"type":"private","id":"1519328279051842148431940365095605588346423749538723656191591574858145930963field","value":"ciphertext1qyqyzq60qmpkdp00v04zvpvmnywpk783p0x9csfwlmacphk5u7luwqcw4na9c"}'
-      - '{"type":"future","id":"3165939825184549932555656574248000837891446238251510475359956618983059032146field","value":"{\n  program_id: basic_math.aleo,\n  function_name: sub_and_count,\n  arguments: [\n    aleo1kw4knandael9qcpxs6g36rr6h7dwvjz6q25ueah6zz9v57zjlvxsx5llq8\n  ]\n}"}'
+      - '{"type":"private","id":"8122326122761437261615409291400011330501702291423599119429042968895834133570field","value":"ciphertext1qyq9nug54dwuuwffxcv5s5u9sz8jg97mtzgdwkl9zj7cvees8hxj2pgkwlr94"}'
+      - '{"type":"future","id":"5433287873018321300191987394821981580453229412430375055464384409214643799697field","value":"{\n  program_id: basic_math.aleo,\n  function_name: sub_and_count,\n  arguments: [\n    aleo1kw4knandael9qcpxs6g36rr6h7dwvjz6q25ueah6zz9v57zjlvxsx5llq8\n  ]\n}"}'
     credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"3804346316984041823294162136772931525318447628188479621927554726550292053298field","checksum":"2674376701264730907472456556683557794284043725222021080149967876338845192834field","value":"record1qyqsqyqkklc2l5esqkpp22x73qrn6svuc7j29tg2prv6sj7m4uyvprgdqyxx66trwfhkxun9v35hguerqqpqzqx59ueulmygxwjy0egqhtpl5mlpgs7mxxznkfnupz29hx0l06udpvlwkp6qqgax2yjtsdk3whntdra458tqy4j85ydvuhm08qn478psj363ls0"}'

@@ -1492,18 +1492,26 @@ mod sanity_checks {
         inputs: &[Value<N>],
         rng: &mut TestRng,
     ) -> Assignment<<N as Environment>::Field> {
-        // Derive the parent from the private key.
-        let parent = Address::try_from(private_key).unwrap();
-        // Since this is a top-level call, `is_root` is true.
-        let is_root = Boolean::new(true);
         // Retrieve the program.
         let program = stack.program();
+        // Get the program ID.
+        let program_id = *program.id();
+        // Since this is  a top-level call, `is_root` is true.
+        let is_root = Boolean::new(true);
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
-        let request =
-            Request::sign(private_key, parent, is_root, *program.id(), function_name, inputs.iter(), &input_types, rng)
-                .unwrap();
+        let request = Request::sign(
+            private_key,
+            program_id.to_address().unwrap(),
+            is_root,
+            program_id,
+            function_name,
+            inputs.iter(),
+            &input_types,
+            rng,
+        )
+        .unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.
@@ -1630,8 +1638,8 @@ mod sanity_checks {
 
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
-        assert_eq!(7, assignment.num_public());
-        assert_eq!(17049, assignment.num_private());
+        assert_eq!(10, assignment.num_public());
+        assert_eq!(17071, assignment.num_private());
         assert_eq!(17057, assignment.num_constraints());
         assert_eq!((31267, 45420, 24009), assignment.num_nonzeros());
     }

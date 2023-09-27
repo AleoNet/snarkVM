@@ -34,7 +34,6 @@ impl<A: Aleo> Request<A> {
         message.push(Field::from_boolean(&self.is_root));
         message.push(function_id);
 
-
         // Check the input IDs and construct the rest of the signature message.
         let (input_checks, append_to_message) = Self::check_input_ids::<true>(
             &self.network_id,
