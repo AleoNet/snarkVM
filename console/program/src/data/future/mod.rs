@@ -43,7 +43,7 @@ pub struct Future<N: Network> {
 impl<N: Network> Future<N> {
     /// Initializes a new future.
     #[inline]
-    pub fn new(program_id: ProgramID<N>, function_name: Identifier<N>, arguments: Vec<Argument<N>>) -> Self {
+    pub const fn new(program_id: ProgramID<N>, function_name: Identifier<N>, arguments: Vec<Argument<N>>) -> Self {
         Self { program_id, function_name, arguments }
     }
 
