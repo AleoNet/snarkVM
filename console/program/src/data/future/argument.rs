@@ -98,9 +98,8 @@ impl<N: Network> ToBits for Argument<N> {
     fn write_bits_be(&self, vec: &mut Vec<bool>) {
         match self {
             Self::Plaintext(plaintext) => {
-                let mut bits_be = vec![false];
-                plaintext.write_bits_be(&mut bits_be);
-                vec.extend(bits_be);
+                vec.push(false);
+                plaintext.write_bits_be(vec);
             }
             Self::Future(future) => {
                 let mut bits_be = vec![true];
