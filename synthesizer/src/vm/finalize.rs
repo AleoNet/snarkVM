@@ -161,7 +161,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Construct the rejected execute transaction.
                             Err(_error) => match fee {
                                 Some(fee) => {
-                                    println!("Error: {:?}", _error);
                                     // Finalize the fee, to ensure it is valid.
                                     if let Err(error) = process.finalize_fee(state, store, fee) {
                                         // Note: On failure, skip this transaction, and continue speculation.
