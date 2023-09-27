@@ -152,7 +152,7 @@ impl<A: Aleo> Request<A> {
                         // Ensure the expected hash matches the computed hash.
                         match &input {
                             Value::Plaintext(..) => input_hash.is_equal(&A::hash_psd8(&preimage)),
-                            // Ensure the input is not a record.
+                            // Ensure the input is not a record or future.
                             Value::Record(..) => A::halt("Expected a constant plaintext input, found a record input"),
                             Value::Future(..) => A::halt("Expected a constant plaintext input, found a future input"),
                         }
