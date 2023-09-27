@@ -33,14 +33,22 @@ impl<N: Network> Equal<Self> for Future<N> {
             return Boolean::new(false);
         }
 
-        // Recursively check each argument for equality.
-        let mut equal = Boolean::new(true);
-        for (argument_a, argument_b) in self.arguments.iter().zip_eq(other.arguments.iter()) {
-            equal &= argument_a.is_equal(argument_b);
+        // Check the `program_id`, and `function_name`.
+        if !(*self.program_id.is_equal(&other.program_id) && *self.function_name.is_equal(&other.function_name)) {
+            return Boolean::new(false);
         }
 
-        // Check the `program_id`, and `function_name`.
-        self.program_id.is_equal(&other.program_id) & equal & self.function_name.is_equal(&other.function_name)
+        // Recursively check each argument for equality.
+        if self
+            .arguments
+            .iter()
+            .zip_eq(other.arguments.iter())
+            .all(|(argument_a, argument_b)| *argument_a.is_equal(argument_b))
+        {
+            Boolean::new(true)
+        } else {
+            Boolean::new(false)
+        }
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
