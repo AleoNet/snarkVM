@@ -189,8 +189,8 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
     debug_assert_eq!(stack.program_id(), transition.program_id());
 
     // If the last output of the transition is a future, retrieve and finalize it. Otherwise, there are no operations to finalize.
-    let future = match transition.outputs().last().map(|output| output.future()) {
-        Some(Some(future)) => future,
+    let future = match transition.outputs().last().and_then(|output| output.future()) {
+        Some(future) => future,
         _ => return Ok(Vec::new()),
     };
 
