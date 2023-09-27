@@ -9,8 +9,8 @@ cases:
 program basic_math.aleo;
 
 mapping uses:
-    key user as address.public;
-    value count as i64.public;
+    key as address.public;
+    value as i64.public;
 
 function add_and_count:
     input r0 as i64.private;

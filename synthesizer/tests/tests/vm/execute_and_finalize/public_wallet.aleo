@@ -13,9 +13,9 @@ program token.aleo;
 // and `amount` as the value.
 mapping account:
     // The token owner.
-    key owner as address.public;
+    key as address.public;
     // The token amount.
-    value amount as u64.public;
+    value as u64.public;
 
 // The function `mint_public` issues the specified token amount
 // for the token receiver publicly on the network.
