@@ -180,7 +180,7 @@ impl<N: Network> Output<N> {
             Output::Public(hash, Some(output)) => {
                 match output.to_fields() {
                     Ok(fields) => {
-                        // Construct the (public) output index as a field element.
+                        // Construct the (console) output index as a field element.
                         let index = Field::from_u16(index as u16);
                         // Construct the preimage as `(function ID || output || tcm || index)`.
                         let mut preimage = vec![function_id];
