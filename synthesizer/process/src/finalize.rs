@@ -466,8 +466,8 @@ struct message:
     amount as u128;
 
 mapping account:
-    key owner as address.public;
-    value amount as u64.public;
+    key as address.public;
+    value as u64.public;
 
 record token:
     owner as address.private;

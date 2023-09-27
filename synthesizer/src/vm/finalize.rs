@@ -631,9 +631,9 @@ program {program_name};
 
 mapping account:
     // The token owner.
-    key owner as address.public;
+    key as address.public;
     // The token amount.
-    value amount as u64.public;
+    value as u64.public;
 
 function mint_public:
     input r0 as address.public;
@@ -1094,8 +1094,8 @@ finalize transfer_public:
 program {program_id};
 
 mapping hashes:
-    key preimage as u128.public;
-    value val as field.public;
+    key as u128.public;
+    value as field.public;
 
 function ped_hash:
     input r0 as u128.public;
@@ -1185,8 +1185,8 @@ function ped_hash:
 program testing.aleo;
 
 mapping entries:
-    key owner as address.public;
-    value data as u8.public;
+    key as address.public;
+    value as u8.public;
 
 function compute:
     input r0 as u8.public;

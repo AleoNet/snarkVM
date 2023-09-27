@@ -18,8 +18,8 @@ cases:
 program mapping_operations.aleo;
 
 mapping data:
-    key left as u8.public;
-    value right as u8.public;
+    key as u8.public;
+    value as u8.public;
 
 function insert_contains_remove:
     input r0 as u8.public;

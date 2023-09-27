@@ -87,23 +87,21 @@ mod tests {
         let mapping = Mapping::<CurrentNetwork>::parse(
             r"
 mapping foo:
-    key a as field.public;
-    value b as field.public;",
+    key as field.public;
+    value as field.public;",
         )
         .unwrap()
         .1;
         assert_eq!("foo", mapping.name().to_string());
-        assert_eq!("a", mapping.key.name().to_string());
         assert_eq!("field", mapping.key.plaintext_type().to_string());
-        assert_eq!("b", mapping.value.name().to_string());
         assert_eq!("field", mapping.value.plaintext_type().to_string());
     }
 
     #[test]
     fn test_mapping_display() {
         let expected = r"mapping foo:
-    key a as field.public;
-    value b as field.public;";
+    key as field.public;
+    value as field.public;";
         let mapping = Mapping::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{mapping}"),);
     }

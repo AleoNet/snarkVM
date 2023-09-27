@@ -360,8 +360,8 @@ struct message:
     amount as u128;
 
 mapping account:
-    key owner as address.public;
-    value amount as u64.public;
+    key as address.public;
+    value as u64.public;
 
 record token:
     owner as address.private;
@@ -680,8 +680,8 @@ function compute:
         let first_program = r"
 program test_program_1.aleo;
 mapping map_0:
-    key left as field.public;
-    value right as field.public;
+    key as field.public;
+    value as field.public;
 function init:
     async init into r0;
     output r0 as test_program_1.aleo/init.future;
@@ -696,8 +696,8 @@ finalize getter:
         let second_program = r"
 program test_program_2.aleo;
 mapping map_0:
-    key left as field.public;
-    value right as field.public;
+    key as field.public;
+    value as field.public;
 function init:
     async init into r0;
     output r0 as test_program_2.aleo/init.future;

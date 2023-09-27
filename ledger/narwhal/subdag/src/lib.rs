@@ -84,8 +84,8 @@ impl<N: Network> Subdag<N> {
     pub fn from(subdag: BTreeMap<u64, IndexSet<BatchCertificate<N>>>) -> Result<Self> {
         // Ensure the subdag is not empty.
         ensure!(!subdag.is_empty(), "Subdag cannot be empty");
-        // Ensure the anchor round is odd.
-        ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 1, "Anchor round must be odd");
+        // Ensure the anchor round is even.
+        ensure!(subdag.iter().next_back().map_or(0, |(r, _)| *r) % 2 == 0, "Anchor round must be even");
         // Ensure there is only one leader certificate.
         ensure!(subdag.iter().next_back().map_or(0, |(_, c)| c.len()) == 1, "Subdag cannot have multiple leaders");
         // Ensure the rounds are sequential.
@@ -164,7 +164,7 @@ pub mod test_helpers {
         let starting_round = {
             loop {
                 let round = rng.gen_range(2..u64::MAX);
-                if round % 2 == 1 {
+                if round % 2 == 0 {
                     break round;
                 }
             }
