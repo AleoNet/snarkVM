@@ -13,7 +13,10 @@
 // limitations under the License.
 
 use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
-use console::{network::prelude::*, program::Request};
+use console::{
+    network::prelude::*,
+    program::{Boolean, Request},
+};
 use synthesizer_program::{
     Call,
     CallOperator,
@@ -205,6 +208,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         let request = Request::sign(
                             &private_key,
                             stack.program_id().to_address()?,
+                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -231,6 +235,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         let request = Request::sign(
                             &private_key,
                             stack.program_id().to_address()?,
+                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -263,8 +268,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         })?;
 
                         // Evaluate the function, and load the outputs.
-                        let console_response =
-                            substack.evaluate_function::<A>(registers.call_stack().replicate())?;
+                        let console_response = substack.evaluate_function::<A>(registers.call_stack().replicate())?;
                         // Execute the request.
                         let response = substack.execute_function::<A>(registers.call_stack())?;
                         // Ensure the values are equal.
@@ -295,8 +299,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
 
             // Inject the `caller` (from the request) as `Mode::Private`.
             let caller = circuit::Address::new(circuit::Mode::Private, *request.caller());
-            // Inject the `parent` (from the request) as `Mode::Private`.
-            let parent = circuit::Address::<A>::new(circuit::Mode::Private, *request.parent());
             // Inject the `sk_tag` (from the request) as `Mode::Private`.
             let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.

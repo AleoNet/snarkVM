@@ -28,6 +28,8 @@ impl<N: Network> FromBytes for Request<N> {
         let caller = FromBytes::read_le(&mut reader)?;
         // Read the parent.
         let parent = FromBytes::read_le(&mut reader)?;
+        // Read the `is_root` flag.
+        let is_root = FromBytes::read_le(&mut reader)?;
         // Read the network ID.
         let network_id = FromBytes::read_le(&mut reader)?;
         // Read the program ID.
@@ -56,6 +58,7 @@ impl<N: Network> FromBytes for Request<N> {
         Ok(Self::from((
             caller,
             parent,
+            is_root,
             network_id,
             program_id,
             function_name,
@@ -78,6 +81,10 @@ impl<N: Network> ToBytes for Request<N> {
 
         // Write the caller.
         self.caller.write_le(&mut writer)?;
+        // Write the parent.
+        self.parent.write_le(&mut writer)?;
+        // Write the `is_root` flag.
+        self.is_root.write_le(&mut writer)?;
         // Write the network ID.
         self.network_id.write_le(&mut writer)?;
         // Write the program ID.

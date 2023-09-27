@@ -21,9 +21,10 @@ impl<N: Network> Serialize for Request<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transition = serializer.serialize_struct("Request", 10)?;
+                let mut transition = serializer.serialize_struct("Request", 11)?;
                 transition.serialize_field("caller", &self.caller)?;
                 transition.serialize_field("parent", &self.parent)?;
+                transition.serialize_field("is_root", &self.is_root)?;
                 transition.serialize_field("network", &self.network_id)?;
                 transition.serialize_field("program", &self.program_id)?;
                 transition.serialize_field("function", &self.function_name)?;
@@ -54,6 +55,8 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                     DeserializeExt::take_from_value::<D>(&mut request, "caller")?,
                     // Retrieve the parent.
                     DeserializeExt::take_from_value::<D>(&mut request, "parent")?,
+                    // Retrieve the `is_root` flag.
+                    DeserializeExt::take_from_value::<D>(&mut request, "is_root")?,
                     // Retrieve the network ID.
                     DeserializeExt::take_from_value::<D>(&mut request, "network")?,
                     // Retrieve the program ID.

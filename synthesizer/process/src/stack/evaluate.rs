@@ -96,10 +96,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn evaluate_function<A: circuit::Aleo<Network = N>>(
-        &self,
-        call_stack: CallStack<N>,
-    ) -> Result<Response<N>> {
+    fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>> {
         let timer = timer!("Stack::evaluate_function");
 
         // Retrieve the next request, based on the call stack mode.
@@ -150,7 +147,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         // Set the transition caller.
         registers.set_caller(caller);
         // Set the transition parent.
-        registers.set_parent(Address::ternary(is_root, &caller, &parent));
+        registers.set_parent(Address::ternary(&is_root, &caller, &parent));
         // Set the transition view key.
         registers.set_tvk(tvk);
         lap!(timer, "Initialize the registers");

@@ -27,9 +27,9 @@ impl<N: Network> Stack<N> {
         let timer = timer!("Stack::authorize");
 
         // Derive the parent address from the private key.
-        // TODO (@d0cd) Is this assumption valid?
-        // This consistent since the entity invoking `authorize_fee_private` must be a user.
         let parent = Address::try_from(private_key)?;
+        // Since this a top-level call, `is_root` is `true`.
+        let is_root = Boolean::new(true);
 
         // Prepare the function name.
         let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
@@ -38,7 +38,8 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Retrieve the input types");
 
         // Compute the request.
-        let request = Request::sign(private_key, parent, *self.program.id(), function_name, inputs, &input_types, rng)?;
+        let request =
+            Request::sign(private_key, parent, is_root, *self.program.id(), function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::from(request.clone());

@@ -101,6 +101,7 @@ impl<N: Network> Stack<N> {
             let request = Request::sign(
                 &burner_private_key,
                 burner_address,
+                Boolean::new(true),
                 *program_id,
                 *function.name(),
                 inputs.into_iter(),

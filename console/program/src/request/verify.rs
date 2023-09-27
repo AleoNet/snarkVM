@@ -247,6 +247,9 @@ mod tests {
             // Sample a random parent.
             let parent = Address::rand(rng);
 
+            // Sample a random boolean for the `is_root` flag.
+            let is_root = Boolean::rand(rng);
+
             // Sample a random private key and address.
             let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
             let address = Address::try_from(&private_key).unwrap();
@@ -278,9 +281,17 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request =
-                Request::sign(&private_key, parent, program_id, function_name, inputs.into_iter(), &input_types, rng)
-                    .unwrap();
+            let request = Request::sign(
+                &private_key,
+                parent,
+                is_root,
+                program_id,
+                function_name,
+                inputs.into_iter(),
+                &input_types,
+                rng,
+            )
+            .unwrap();
             assert!(request.verify(&input_types));
         }
     }

@@ -1479,7 +1479,10 @@ mod sanity_checks {
     use super::*;
     use crate::{Assignments, CallStack, Stack, StackExecute};
     use circuit::Assignment;
-    use console::{program::Request, types::Field};
+    use console::{
+        program::Request,
+        types::{Boolean, Field},
+    };
     use synthesizer_program::StackProgram;
 
     fn get_assignment<N: Network, A: circuit::Aleo<Network = N>>(
@@ -1491,13 +1494,16 @@ mod sanity_checks {
     ) -> Assignment<<N as Environment>::Field> {
         // Derive the parent from the private key.
         let parent = Address::try_from(private_key).unwrap();
+        // Since this is a top-level call, `is_root` is true.
+        let is_root = Boolean::new(true);
         // Retrieve the program.
         let program = stack.program();
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
         let request =
-            Request::sign(private_key, parent, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
+            Request::sign(private_key, parent, is_root, *program.id(), function_name, inputs.iter(), &input_types, rng)
+                .unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.

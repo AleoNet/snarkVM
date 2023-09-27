@@ -26,12 +26,14 @@ impl<A: Aleo> Request<A> {
             &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
         );
 
-        // Construct the signature message as `[tvk, tcm, parent, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, parent, is_root, function ID, input IDs]`.
         let mut message = Vec::with_capacity(3 + 4 * self.input_ids.len());
         message.push(self.tvk.clone());
         message.push(self.tcm.clone());
         message.push(self.parent.to_field());
+        message.push(Field::from_boolean(&self.is_root));
         message.push(function_id);
+
 
         // Check the input IDs and construct the rest of the signature message.
         let (input_checks, append_to_message) = Self::check_input_ids::<true>(
@@ -323,6 +325,9 @@ mod tests {
             // Sample a random address to use as the parent.
             let parent = snarkvm_console_account::Address::rand(rng);
 
+            // Sample a random boolean for the `is_root` flag.
+            let is_root = console::Boolean::rand(rng);
+
             // Sample a random private key and address.
             let private_key = snarkvm_console_account::PrivateKey::new(rng)?;
             let address = snarkvm_console_account::Address::try_from(&private_key).unwrap();
@@ -363,6 +368,7 @@ mod tests {
             let request = console::Request::sign(
                 &private_key,
                 parent,
+                is_root,
                 program_id,
                 function_name,
                 inputs.iter(),

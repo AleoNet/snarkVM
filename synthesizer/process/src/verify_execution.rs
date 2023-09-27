@@ -54,7 +54,7 @@ impl<N: Network> Process<N> {
         let mut parent = None;
 
         // Verify each transition.
-        for (i, transition) in execution.transitions().enumerate() {
+        for transition in execution.transitions() {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
             // Debug-mode only, as the `Transition` constructor recomputes the transition ID at initialization.

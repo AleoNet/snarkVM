@@ -120,6 +120,8 @@ pub struct Request<A: Aleo> {
     caller: Address<A>,
     /// The request parent.
     parent: Address<A>,
+    /// The `is_root` flag.
+    is_root: Boolean<A>,
     /// The network ID.
     network_id: U16<A>,
     /// The program ID.
@@ -214,6 +216,7 @@ impl<A: Aleo> Inject for Request<A> {
         Self {
             caller: Address::new(mode, *request.caller()),
             parent: Address::new(mode, *request.parent()),
+            is_root: Boolean::new(mode, **request.is_root()),
             network_id: U16::new(Mode::Constant, *request.network_id()),
             program_id: ProgramID::new(Mode::Constant, *request.program_id()),
             function_name: Identifier::new(Mode::Constant, *request.function_name()),
@@ -237,6 +240,11 @@ impl<A: Aleo> Request<A> {
     /// Returns the request parent.
     pub const fn parent(&self) -> &Address<A> {
         &self.parent
+    }
+
+    /// Returns the `is_root` flag.
+    pub const fn is_root(&self) -> &Boolean<A> {
+        &self.is_root
     }
 
     /// Returns the network ID.
@@ -298,6 +306,7 @@ impl<A: Aleo> Eject for Request<A> {
     fn eject_mode(&self) -> Mode {
         Mode::combine(self.caller.eject_mode(), [
             self.parent.eject_mode(),
+            self.is_root.eject_mode(),
             self.network_id.eject_mode(),
             self.program_id.eject_mode(),
             self.function_name.eject_mode(),
@@ -316,6 +325,7 @@ impl<A: Aleo> Eject for Request<A> {
         Self::Primitive::from((
             self.caller.eject_value(),
             self.parent.eject_value(),
+            console::Boolean::new(self.is_root.eject_value()),
             self.network_id.eject_value(),
             self.program_id.eject_value(),
             self.function_name.eject_value(),

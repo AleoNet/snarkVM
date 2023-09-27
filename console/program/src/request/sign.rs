@@ -21,6 +21,7 @@ impl<N: Network> Request<N> {
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
         parent: Address<N>,
+        is_root: Boolean<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
@@ -71,10 +72,13 @@ impl<N: Network> Request<N> {
             &(U16::<N>::new(N::ID), program_id.name(), program_id.network(), function_name).to_bits_le(),
         )?;
 
-        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, parent, function ID, input IDs])`.
+        // Map `is_root` to a field element.
+        let is_root_field = Field::ternary(&is_root, &Field::one(), &Field::zero());
+
+        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, parent, is_root, function ID, input IDs])`.
         let mut message = Vec::with_capacity(5 + 2 * inputs.len());
         message.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
-        message.extend([tvk, tcm, parent.to_field()?, function_id]);
+        message.extend([tvk, tcm, parent.to_field()?, is_root_field, function_id]);
 
         // Initialize a vector to store the prepared inputs.
         let mut prepared_inputs = Vec::with_capacity(inputs.len());
@@ -222,6 +226,7 @@ impl<N: Network> Request<N> {
         Ok(Self {
             caller,
             parent,
+            is_root,
             network_id: U16::new(N::ID),
             program_id,
             function_name,

@@ -186,9 +186,9 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Inject `is_root` as `Mode::Public`.
-        let is_root = circuit::Boolean::new(circuit::Mode::Public, console_request.is_root());
+        let is_root = circuit::Boolean::new(circuit::Mode::Public, **console_request.is_root());
         // Inject the parent as `Mode::Public`.
-        let claimed_parent = circuit::Address::new(circuit::Mode::Public, console_request.parent().clone());
+        let claimed_parent = circuit::Address::new(circuit::Mode::Public, *console_request.parent());
         // Compute the parent.
         let parent = Ternary::ternary(&is_root, request.caller(), &claimed_parent);
 
