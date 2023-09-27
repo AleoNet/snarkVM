@@ -27,7 +27,7 @@ impl<A: Aleo> Request<A> {
         );
 
         // Construct the signature message as `[tvk, tcm, parent, is_root, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(3 + 4 * self.input_ids.len());
+        let mut message = Vec::with_capacity(5 + 4 * self.input_ids.len());
         message.push(self.tvk.clone());
         message.push(self.tcm.clone());
         message.push(self.parent.to_field());
