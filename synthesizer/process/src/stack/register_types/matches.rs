@@ -220,8 +220,9 @@ impl<N: Network> RegisterTypes<N> {
                 // They must hold all necessary state in storage instead.
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
-            // TODO (@d0cd): Comment on Operand::Parent allowing for program owned records.
-            Operand::Caller | Operand::Parent => {}
+            Operand::Caller | Operand::Parent => {
+                // No-op.
+            }
             Operand::BlockHeight => {
                 bail!("Forbidden operation: Cannot cast a block height as a record owner")
             }
