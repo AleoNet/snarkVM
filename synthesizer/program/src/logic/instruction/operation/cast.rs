@@ -68,7 +68,7 @@ impl<N: Network> Parser for CastType<N> {
             map(tag("group.y"), |_| Self::GroupYCoordinate),
             map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
             map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
-            map(PlaintextType::parse, |plaintext_type| Self::Plaintext(plaintext_type)),
+            map(PlaintextType::parse, Self::Plaintext),
         ))(string)
     }
 }
