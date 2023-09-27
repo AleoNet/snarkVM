@@ -104,9 +104,8 @@ impl<A: Aleo> ToBits for Argument<A> {
                 plaintext.write_bits_be(vec);
             }
             Self::Future(future) => {
-                let mut bits_be = vec![Boolean::constant(true)];
-                future.write_bits_be(&mut bits_be);
-                vec.extend(bits_be);
+                vec.push(Boolean::constant(true));
+                future.write_bits_be(vec);
             }
         }
     }
