@@ -119,7 +119,7 @@ impl<A: Aleo> OutputID<A> {
     fn future(expected_hash: Field<A>) -> Self {
         // Inject the expected hash as `Mode::Public`.
         let output_hash = Field::new(Mode::Public, expected_hash.eject_value());
-        // Ensure the injected hash matches the given commitment.
+        // Ensure the injected hash matches the given hash.
         A::assert_eq(&output_hash, expected_hash);
         // Return the output ID.
         Self::Future(output_hash)
