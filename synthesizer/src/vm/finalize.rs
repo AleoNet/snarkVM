@@ -570,17 +570,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             match ratify {
                 Ratify::Genesis(..) => continue,
                 Ratify::BlockReward(block_reward) => {
-                    // Retrieve the committee from storage.
-                    let current_committee = store.committee_store().current_committee()?;
                     // Retrieve the committee mapping from storage.
                     let current_committee_map = store.get_mapping_speculative(&program_id, &committee_mapping)?;
+                    // Convert the committee mapping into a committee.
+                    let current_committee = committee_map_into_committee(state.block_round(), current_committee_map)?;
                     // Retrieve the bonded mapping from storage.
                     let current_bonded_map = store.get_mapping_speculative(&program_id, &bonded_mapping)?;
                     // Convert the bonded map into stakers.
                     let current_stakers = bonded_map_into_stakers(current_bonded_map)?;
 
-                    // Ensure the committee matches the committee mapping.
-                    ensure_committee_matches(&current_committee, &current_committee_map)?;
                     // Ensure the committee matches the bonded mapping.
                     ensure_stakers_matches(&current_committee, &current_stakers)?;
 
@@ -612,11 +610,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         continue;
                     };
                     // Compute the proof targets, with the corresponding addresses.
-                    let proof_targets = solutions
-                        .partial_solutions()
-                        .iter()
-                        .map(|s| Ok((s.address(), s.to_target()?)))
-                        .collect::<Result<Vec<_>>>()?;
+                    let proof_targets =
+                        solutions.values().map(|s| Ok((s.address(), s.to_target()?))).collect::<Result<Vec<_>>>()?;
                     // Calculate the proving rewards.
                     let proving_rewards = proving_rewards(proof_targets, *puzzle_reward);
                     // Iterate over the proving rewards.

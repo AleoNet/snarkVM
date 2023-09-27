@@ -14,8 +14,8 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Struct<N> {
-    /// Serializes the struct into string or bytes.
+impl<N: Network> Serialize for StructType<N> {
+    /// Serializes the struct type into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
@@ -24,12 +24,12 @@ impl<N: Network> Serialize for Struct<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Struct<N> {
-    /// Deserializes the struct from a string or bytes.
+impl<'de, N: Network> Deserialize<'de> for StructType<N> {
+    /// Deserializes the struct type from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "struct"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "struct type"),
         }
     }
 }
@@ -77,14 +77,14 @@ mod tests {
     #[test]
     fn test_serde_json() {
         for case in TEST_CASES.iter() {
-            check_serde_json(Struct::<CurrentNetwork>::from_str(case).unwrap());
+            check_serde_json(StructType::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 
     #[test]
     fn test_bincode() {
         for case in TEST_CASES.iter() {
-            check_bincode(Struct::<CurrentNetwork>::from_str(case).unwrap());
+            check_bincode(StructType::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 }

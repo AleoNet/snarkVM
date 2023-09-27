@@ -58,11 +58,11 @@ use snarkvm_utilities::println;
 
 /// The Varuna proof system.
 #[derive(Clone, Debug)]
-pub struct VarunaSNARK<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode>(
-    #[doc(hidden)] PhantomData<(E, FS, MM)>,
+pub struct VarunaSNARK<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode>(
+    #[doc(hidden)] PhantomData<(E, FS, SM)>,
 );
 
-impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK<E, FS, MM> {
+impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK<E, FS, SM> {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"VARUNA-2023";
@@ -72,20 +72,20 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
     pub fn batch_circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuits: &[&C],
-    ) -> Result<Vec<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E>)>> {
+    ) -> Result<Vec<(CircuitProvingKey<E, SM>, CircuitVerifyingKey<E>)>> {
         let index_time = start_timer!(|| "Varuna::CircuitSetup");
 
         let universal_prover = &universal_srs.to_universal_prover()?;
 
         let mut circuit_keys = Vec::with_capacity(circuits.len());
         for circuit in circuits {
-            let mut indexed_circuit = AHPForR1CS::<_, MM>::index(*circuit)?;
+            let mut indexed_circuit = AHPForR1CS::<_, SM>::index(*circuit)?;
             // TODO: Add check that c is in the correct mode.
             // Ensure the universal SRS supports the circuit size.
             universal_srs
                 .download_powers_for(0..indexed_circuit.max_degree())
                 .map_err(|e| anyhow!("Failed to download powers for degree {}: {e}", indexed_circuit.max_degree()))?;
-            let coefficient_support = AHPForR1CS::<E::Fr, MM>::get_degree_bounds(&indexed_circuit.index_info);
+            let coefficient_support = AHPForR1CS::<E::Fr, SM>::get_degree_bounds(&indexed_circuit.index_info);
 
             // Varuna only needs degree 2 random polynomials.
             let supported_hiding_bound = 1;
@@ -102,8 +102,15 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments
-            let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
-                SonicKZG10::<E, FS>::commit(universal_prover, &ck, indexed_circuit.iter().map(Into::into), setup_rng)?;
+
+            let (mut circuit_commitments, commitment_randomnesses): (_, _) = SonicKZG10::<E, FS>::commit(
+                universal_prover,
+                &ck,
+                indexed_circuit.interpolate_matrix_evals().map(Into::into),
+                setup_rng,
+            )?;
+            let empty_randomness = Randomness::<E>::empty();
+            assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
             end_timer!(commit_time);
 
             circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
@@ -116,7 +123,6 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
             };
             let circuit_proving_key = CircuitProvingKey {
                 circuit_verifying_key: circuit_verifying_key.clone(),
-                circuit_commitment_randomness,
                 circuit: Arc::new(indexed_circuit),
                 committer_key: Arc::new(committer_key),
             };
@@ -186,19 +192,19 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, MM: SNARKMode> VarunaSNARK
     }
 }
 
-impl<E: PairingEngine, FS, MM> SNARK for VarunaSNARK<E, FS, MM>
+impl<E: PairingEngine, FS, SM> SNARK for VarunaSNARK<E, FS, SM>
 where
     E::Fr: PrimeField,
     E::Fq: PrimeField,
     FS: AlgebraicSponge<E::Fq, 2>,
-    MM: SNARKMode,
+    SM: SNARKMode,
 {
     type BaseField = E::Fq;
     type Certificate = Certificate<E>;
     type FSParameters = FS::Parameters;
     type FiatShamirRng = FS;
     type Proof = Proof<E>;
-    type ProvingKey = CircuitProvingKey<E, MM>;
+    type ProvingKey = CircuitProvingKey<E, SM>;
     type ScalarField = E::Fr;
     type UniversalProver = UniversalProver<E>;
     type UniversalSRS = UniversalSRS<E>;
@@ -224,8 +230,7 @@ where
         Ok(circuit_keys.pop().unwrap())
     }
 
-    /// Prove that the verifying key indeed includes a part of the reference string,
-    /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
+    /// Prove that the verifying key commitments commit to the indexed circuit's polynomials
     fn prove_vk(
         universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
@@ -242,39 +247,34 @@ where
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
 
+        let circuit_id = std::iter::once(&verifying_key.id);
+        let circuit_poly_info = AHPForR1CS::<E::Fr, SM>::index_polynomial_info(circuit_id);
+
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        for (poly, &c) in proving_key.circuit.iter().zip(linear_combination_challenges) {
-            lc.add(c, poly.label());
+        for (label, &c) in circuit_poly_info.keys().zip(linear_combination_challenges) {
+            lc.add(c, label.clone());
         }
 
-        let circuit_id = std::iter::once(&verifying_key.id);
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
-        let commitments = verifying_key
-            .iter()
-            .cloned()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_id).values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
-            .collect::<Vec<_>>();
-
         let committer_key = CommitterUnionKey::union(std::iter::once(proving_key.committer_key.as_ref()));
 
+        let empty_randomness = vec![Randomness::<E>::empty(); 12];
         let certificate = SonicKZG10::<E, FS>::open_combinations(
             universal_prover,
             &committer_key,
             &[lc],
-            proving_key.circuit.iter(),
-            &commitments,
+            proving_key.circuit.interpolate_matrix_evals(),
+            &empty_randomness,
             &query_set,
-            &proving_key.circuit_commitment_randomness.clone(),
             &mut sponge,
         )?;
 
         Ok(Self::Certificate::new(certificate))
     }
 
-    /// Verify that the verifying key indeed includes a part of the reference string,
-    /// as well as the indexed circuit (i.e. the circuit as a set of linear-sized polynomials).
+    /// Verify that the verifying key commitments commit to the indexed circuit's polynomials
+    /// Verify that the verifying key's circuit_info is correct
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
         universal_verifier: &Self::UniversalVerifier,
         fs_parameters: &Self::FSParameters,
@@ -282,36 +282,45 @@ where
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
+        // Ensure the VerifyingKey encodes the expected circuit.
         let circuit_id = &verifying_key.id;
-        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info(std::iter::once(circuit_id));
+        let state = AHPForR1CS::<E::Fr, SM>::index_helper(circuit)?;
+        if state.index_info != verifying_key.circuit_info {
+            return Err(SNARKError::CircuitNotFound);
+        }
+        if state.id != *circuit_id {
+            return Err(SNARKError::CircuitNotFound);
+        }
+
         // Initialize sponge.
         let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
+
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
         // The linear combination requires `num_polynomials - 1` coefficients
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
         let mut challenges = sponge.squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len());
         let point = challenges.pop().unwrap();
-
-        let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, circuit_id, point)?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
 
         // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
+        let poly_info = AHPForR1CS::<E::Fr, SM>::index_polynomial_info(std::iter::once(circuit_id));
+        let evaluations_at_point = AHPForR1CS::<E::Fr, SM>::evaluate_index_polynomials(state, circuit_id, point)?;
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
         let mut evaluation = E::Fr::zero();
-        for ((label, &c), eval) in info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
+        for ((label, &c), eval) in poly_info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
             lc.add(c, label.as_str());
             evaluation += c * eval;
         }
 
-        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(info.values())
+            .zip_eq(poly_info.values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
         let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
+        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
 
         SonicKZG10::<E, FS>::check_combinations(
             universal_verifier,
@@ -325,14 +334,13 @@ where
         .map_err(Into::into)
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     /// This is the main entrypoint for creating proofs.
     /// You can find a specification of the prover algorithm in:
-    /// https://github.com/AleoHQ/protocol-docs/tree/main/marlin
+    /// https://github.com/AleoHQ/protocol-docs/tree/main/snark/varuna
     fn prove_batch<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         universal_prover: &Self::UniversalProver,
         fs_parameters: &Self::FSParameters,
-        keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, MM>, &[C]>,
+        keys_to_constraints: &BTreeMap<&CircuitProvingKey<E, SM>, &[C]>,
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let prover_time = start_timer!(|| "Varuna::Prover");
@@ -344,13 +352,13 @@ where
         for (pk, constraints) in keys_to_constraints {
             circuits_to_constraints.insert(pk.circuit.deref(), *constraints);
         }
-        let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuits_to_constraints, zk_rng)?;
+        let prover_state = AHPForR1CS::<_, SM>::init_prover(&circuits_to_constraints, zk_rng)?;
 
         // extract information from the prover key and state to consume in further calculations
         let mut batch_sizes = BTreeMap::new();
         let mut circuit_infos = BTreeMap::new();
         let mut inputs_and_batch_sizes = BTreeMap::new();
-        let mut total_instances = 0;
+        let mut total_instances = 0usize;
         let mut public_inputs = BTreeMap::new(); // inputs need to live longer than the rest of prover_state
         let num_unique_circuits = keys_to_constraints.len();
         let mut circuit_ids = Vec::with_capacity(num_unique_circuits);
@@ -363,8 +371,9 @@ where
             batch_sizes.insert(circuit_id, batch_size);
             circuit_infos.insert(circuit_id, &pk.circuit_verifying_key.circuit_info);
             inputs_and_batch_sizes.insert(circuit_id, (batch_size, padded_public_input));
-            total_instances += batch_size;
             public_inputs.insert(circuit_id, public_input);
+            total_instances = total_instances.saturating_add(batch_size);
+
             circuit_ids.push(circuit_id);
         }
         assert_eq!(prover_state.total_instances, total_instances);
@@ -379,23 +388,23 @@ where
         // --------------------------------------------------------------------
         // First round
 
-        let mut prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, zk_rng)?;
+        let prover_state = AHPForR1CS::<_, SM>::prover_first_round(prover_state, zk_rng)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = {
-            let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
+            let first_round_oracles = prover_state.first_round_oracles.as_ref().unwrap();
             SonicKZG10::<E, FS>::commit(
                 universal_prover,
                 &committer_key,
                 first_round_oracles.iter().map(Into::into),
-                MM::ZK.then_some(zk_rng),
+                SM::ZK.then_some(zk_rng),
             )?
         };
         end_timer!(first_round_comm_time);
 
         Self::absorb_labeled(&first_commitments, &mut sponge);
 
-        let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
+        let (verifier_first_message, verifier_state) = AHPForR1CS::<_, SM>::verifier_first_round(
             &batch_sizes,
             &circuit_infos,
             prover_state.max_constraint_domain,
@@ -403,35 +412,33 @@ where
             prover_state.max_non_zero_domain,
             &mut sponge,
         )?;
-        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Second round
 
         let (second_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_message, prover_state, zk_rng)?;
+            AHPForR1CS::<_, SM>::prover_second_round(&verifier_first_message, prover_state, zk_rng)?;
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,
             &committer_key,
             second_oracles.iter().map(Into::into),
-            MM::ZK.then_some(zk_rng),
+            SM::ZK.then_some(zk_rng),
         )?;
         end_timer!(second_round_comm_time);
 
         Self::absorb_labeled(&second_commitments, &mut sponge);
 
         let (verifier_second_msg, verifier_state) =
-            AHPForR1CS::<_, MM>::verifier_second_round(verifier_state, &mut sponge)?;
+            AHPForR1CS::<_, SM>::verifier_second_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Third round
 
-        let (prover_third_message, third_oracles, prover_state) = AHPForR1CS::<_, MM>::prover_third_round(
+        let (prover_third_message, third_oracles, prover_state) = AHPForR1CS::<_, SM>::prover_third_round(
             &verifier_first_message,
             &verifier_second_msg,
             prover_state,
@@ -443,7 +450,7 @@ where
             universal_prover,
             &committer_key,
             third_oracles.iter().map(Into::into),
-            MM::ZK.then_some(zk_rng),
+            SM::ZK.then_some(zk_rng),
         )?;
         end_timer!(third_round_comm_time);
 
@@ -454,111 +461,104 @@ where
         );
 
         let (verifier_third_msg, verifier_state) =
-            AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
+            AHPForR1CS::<_, SM>::verifier_third_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Fourth round
 
-        let (prover_fourth_message, fourth_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_second_msg, &verifier_third_msg, prover_state, zk_rng)?;
+        let (prover_fourth_message, fourth_oracles, mut prover_state) =
+            AHPForR1CS::<_, SM>::prover_fourth_round(&verifier_second_msg, &verifier_third_msg, prover_state, zk_rng)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
         let (fourth_commitments, fourth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,
             &committer_key,
             fourth_oracles.iter().map(Into::into),
-            MM::ZK.then_some(zk_rng),
+            SM::ZK.then_some(zk_rng),
         )?;
         end_timer!(fourth_round_comm_time);
 
         Self::absorb_labeled_with_sums(&fourth_commitments, &prover_fourth_message.sums, &mut sponge);
 
         let (verifier_fourth_msg, verifier_state) =
-            AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+            AHPForR1CS::<_, SM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
+
+        // We take out values from state before they are consumed.
+        let first_round_oracles = prover_state.first_round_oracles.take().unwrap();
+        let index_a_polys =
+            prover_state.circuit_specific_states.values_mut().flat_map(|s| s.a_polys.take().unwrap()).collect_vec();
+        let index_b_polys =
+            prover_state.circuit_specific_states.values_mut().flat_map(|s| s.b_polys.take().unwrap()).collect_vec();
 
         // --------------------------------------------------------------------
         // Fifth round
-
-        let fifth_oracles = AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg, prover_state, zk_rng)?;
+        let fifth_oracles = AHPForR1CS::<_, SM>::prover_fifth_round(verifier_fourth_msg, prover_state, zk_rng)?;
 
         let fifth_round_comm_time = start_timer!(|| "Committing to fifth round polys");
         let (fifth_commitments, fifth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,
             &committer_key,
             fifth_oracles.iter().map(Into::into),
-            MM::ZK.then_some(zk_rng),
+            SM::ZK.then_some(zk_rng),
         )?;
         end_timer!(fifth_round_comm_time);
 
         Self::absorb_labeled(&fifth_commitments, &mut sponge);
 
-        let verifier_state = AHPForR1CS::<_, MM>::verifier_fifth_round(verifier_state, &mut sponge)?;
+        let verifier_state = AHPForR1CS::<_, SM>::verifier_fifth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // Gather prover polynomials in one vector.
-        let polynomials: Vec<_> = keys_to_constraints
-            .keys()
-            .flat_map(|pk| pk.circuit.iter())
-            .chain(first_round_oracles.iter())
-            .chain(second_oracles.iter())
-            .chain(third_oracles.iter())
-            .chain(fourth_oracles.iter())
-            .chain(fifth_oracles.iter())
+        let polynomials: Vec<_> = index_a_polys
+            .into_iter()
+            .chain(index_b_polys)
+            .chain(first_round_oracles.into_iter())
+            .chain(second_oracles.into_iter())
+            .chain(third_oracles.into_iter())
+            .chain(fourth_oracles.into_iter())
+            .chain(fifth_oracles.into_iter())
             .collect();
         assert!(
             polynomials.len()
-                == num_unique_circuits * 12 + // row, col, rowcol, rowcolval
-            AHPForR1CS::<E::Fr, MM>::num_first_round_oracles(total_instances) +
-            AHPForR1CS::<E::Fr, MM>::num_second_round_oracles() +
-            AHPForR1CS::<E::Fr, MM>::num_third_round_oracles() +
-            AHPForR1CS::<E::Fr, MM>::num_fourth_round_oracles(num_unique_circuits) +
-            AHPForR1CS::<E::Fr, MM>::num_fifth_round_oracles()
+                == num_unique_circuits * 6 + // numerator and denominator for each matrix sumcheck
+            AHPForR1CS::<E::Fr, SM>::num_first_round_oracles(total_instances) +
+            AHPForR1CS::<E::Fr, SM>::num_second_round_oracles() +
+            AHPForR1CS::<E::Fr, SM>::num_third_round_oracles() +
+            AHPForR1CS::<E::Fr, SM>::num_fourth_round_oracles(num_unique_circuits) +
+            AHPForR1CS::<E::Fr, SM>::num_fifth_round_oracles()
         );
 
         // Gather commitments in one vector.
-        let witness_comm_len = if MM::ZK { first_commitments.len() - 1 } else { first_commitments.len() };
-        let mask_poly = MM::ZK.then(|| *first_commitments[witness_comm_len].commitment());
+        let witness_comm_len = if SM::ZK { first_commitments.len() - 1 } else { first_commitments.len() };
+        let mask_poly = SM::ZK.then(|| *first_commitments[witness_comm_len].commitment());
         let witness_commitments = first_commitments[..witness_comm_len]
             .iter()
             .map(|c| proof::WitnessCommitments { w: *c.commitment() })
             .collect_vec();
         let fourth_commitments_chunked = fourth_commitments.chunks_exact(3);
+        let (g_a_commitments, g_b_commitments, g_c_commitments) = fourth_commitments_chunked
+            .map(|c| (*c[0].commitment(), *c[1].commitment(), *c[2].commitment()))
+            .multiunzip();
 
         #[rustfmt::skip]
         let commitments = proof::Commitments {
             witness_commitments,
             mask_poly,
-
             h_0: *second_commitments[0].commitment(),
-
             g_1: *third_commitments[0].commitment(),
             h_1: *third_commitments[1].commitment(),
-
-            g_a_commitments: fourth_commitments_chunked.clone().map(|c| *c[0].commitment()).collect(),
-            g_b_commitments: fourth_commitments_chunked.clone().map(|c| *c[1].commitment()).collect(),
-            g_c_commitments: fourth_commitments_chunked.map(|c| *c[2].commitment()).collect(),
-
+            g_a_commitments,
+            g_b_commitments,
+            g_c_commitments,
             h_2: *fifth_commitments[0].commitment(),
         };
 
-        let labeled_commitments: Vec<_> = circuit_commitments
-            .into_iter()
-            .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
-            .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
-            .chain(first_commitments.into_iter())
-            .chain(second_commitments.into_iter())
-            .chain(third_commitments.into_iter())
-            .chain(fourth_commitments.into_iter())
-            .chain(fifth_commitments.into_iter())
-            .collect();
-
         // Gather commitment randomness together.
-        let commitment_randomnesses: Vec<Randomness<E>> = keys_to_constraints
-            .keys()
-            .flat_map(|pk| pk.circuit_commitment_randomness.clone())
+        let indexer_randomness = vec![Randomness::<E>::empty(); 6 * num_unique_circuits];
+        let commitment_randomnesses: Vec<Randomness<E>> = indexer_randomness
+            .into_iter()
             .chain(first_commitment_randomnesses)
             .chain(second_commitment_randomnesses)
             .chain(third_commitment_randomnesses)
@@ -566,14 +566,16 @@ where
             .chain(fifth_commitment_randomnesses)
             .collect();
 
-        if !MM::ZK {
-            let empty_randomness = Randomness::<E>::empty();
+        let empty_randomness = Randomness::<E>::empty();
+        if SM::ZK {
+            assert!(commitment_randomnesses.iter().any(|r| r != &empty_randomness));
+        } else {
             assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
         }
 
         // Compute the AHP verifier's query set.
-        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
-        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+        let (query_set, verifier_state) = AHPForR1CS::<_, SM>::verifier_query_set(verifier_state);
+        let lc_s = AHPForR1CS::<_, SM>::construct_linear_combinations(
             &public_inputs,
             &polynomials,
             &prover_third_message,
@@ -584,7 +586,7 @@ where
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations = std::collections::BTreeMap::new();
         for (label, (_, point)) in query_set.to_set() {
-            if !AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
+            if !AHPForR1CS::<E::Fr, SM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
                 let lc = lc_s.get(&label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
                 let evaluation = polynomials.get_lc_eval(lc, point)?;
                 evaluations.insert(label, evaluation);
@@ -601,9 +603,8 @@ where
             &committer_key,
             lc_s.values(),
             polynomials,
-            &labeled_commitments,
-            &query_set.to_set(),
             &commitment_randomnesses,
+            &query_set.to_set(),
             &mut sponge,
         )?;
 
@@ -615,7 +616,7 @@ where
             prover_fourth_message,
             pc_proof,
         )?;
-        assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
+        assert_eq!(proof.pc_proof.is_hiding(), SM::ZK);
 
         end_timer!(prover_time);
         Ok(proof)
@@ -662,7 +663,7 @@ where
             max_num_constraints = max_num_constraints.max(vk.circuit_info.num_constraints);
             max_num_variables = max_num_variables.max(vk.circuit_info.num_variables);
 
-            let non_zero_domains = AHPForR1CS::<_, MM>::cmp_non_zero_domains(&vk.circuit_info, max_non_zero_domain)?;
+            let non_zero_domains = AHPForR1CS::<_, SM>::cmp_non_zero_domains(&vk.circuit_info, max_non_zero_domain)?;
             max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
             let input_domain = EvaluationDomain::<E::Fr>::new(vk.circuit_info.num_public_inputs).unwrap();
@@ -700,7 +701,7 @@ where
         let max_non_zero_domain = max_non_zero_domain.ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let comms = &proof.commitments;
-        let proof_has_correct_zk_mode = if MM::ZK {
+        let proof_has_correct_zk_mode = if SM::ZK {
             proof.pc_proof.is_hiding() & comms.mask_poly.is_some()
         } else {
             !proof.pc_proof.is_hiding() & comms.mask_poly.is_none()
@@ -715,7 +716,7 @@ where
 
         let verifier_time = start_timer!(|| format!("Varuna::Verify with batch sizes: {:?}", batch_sizes));
 
-        let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_sizes.iter());
+        let first_round_info = AHPForR1CS::<E::Fr, SM>::first_round_polynomial_info(batch_sizes.iter());
 
         let mut first_comms_consumed = 0;
         let mut first_commitments = batch_sizes
@@ -735,24 +736,24 @@ where
             })
             .collect_vec();
 
-        if MM::ZK {
+        if SM::ZK {
             first_commitments.push(LabeledCommitment::new_with_info(
                 first_round_info.get("mask_poly").unwrap(),
                 comms.mask_poly.unwrap(),
             ));
         }
 
-        let second_round_info = AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info();
+        let second_round_info = AHPForR1CS::<E::Fr, SM>::second_round_polynomial_info();
         let second_commitments = [LabeledCommitment::new_with_info(&second_round_info["h_0"], comms.h_0)];
 
-        let third_round_info = AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(max_variable_domain.size());
+        let third_round_info = AHPForR1CS::<E::Fr, SM>::third_round_polynomial_info(max_variable_domain.size());
         let third_commitments = [
             LabeledCommitment::new_with_info(&third_round_info["g_1"], comms.g_1),
             LabeledCommitment::new_with_info(&third_round_info["h_1"], comms.h_1),
         ];
 
         let fourth_round_info =
-            AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info(circuit_infos.clone().into_iter());
+            AHPForR1CS::<E::Fr, SM>::fourth_round_polynomial_info(circuit_infos.clone().into_iter());
         let fourth_commitments = comms
             .g_a_commitments
             .iter()
@@ -768,7 +769,7 @@ where
             })
             .collect_vec();
 
-        let fifth_round_info = AHPForR1CS::<E::Fr, MM>::fifth_round_polynomial_info();
+        let fifth_round_info = AHPForR1CS::<E::Fr, SM>::fifth_round_polynomial_info();
         let fifth_commitments = [LabeledCommitment::new_with_info(&fifth_round_info["h_2"], comms.h_2)];
 
         let circuit_commitments = keys_to_inputs.keys().map(|vk| vk.circuit_commitments.as_slice());
@@ -778,7 +779,7 @@ where
         // First round
         let first_round_time = start_timer!(|| "First round");
         Self::absorb_labeled(&first_commitments, &mut sponge);
-        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
+        let (_, verifier_state) = AHPForR1CS::<_, SM>::verifier_first_round(
             &batch_sizes,
             &circuit_infos,
             max_constraint_domain,
@@ -793,7 +794,7 @@ where
         // Second round
         let second_round_time = start_timer!(|| "Second round");
         Self::absorb_labeled(&second_commitments, &mut sponge);
-        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_second_round(verifier_state, &mut sponge)?;
+        let (_, verifier_state) = AHPForR1CS::<_, SM>::verifier_second_round(verifier_state, &mut sponge)?;
         end_timer!(second_round_time);
         // --------------------------------------------------------------------
 
@@ -805,7 +806,7 @@ where
             &proof.third_msg.sums.clone().into_iter().flatten().collect_vec(),
             &mut sponge,
         );
-        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
+        let (_, verifier_state) = AHPForR1CS::<_, SM>::verifier_third_round(verifier_state, &mut sponge)?;
         end_timer!(third_round_time);
         // --------------------------------------------------------------------
 
@@ -814,7 +815,7 @@ where
         let fourth_round_time = start_timer!(|| "Fourth round");
 
         Self::absorb_labeled_with_sums(&fourth_commitments, &proof.fourth_msg.sums, &mut sponge);
-        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        let (_, verifier_state) = AHPForR1CS::<_, SM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         end_timer!(fourth_round_time);
         // --------------------------------------------------------------------
 
@@ -823,7 +824,7 @@ where
         let fifth_round_time = start_timer!(|| "Fifth round");
 
         Self::absorb_labeled(&fifth_commitments, &mut sponge);
-        let verifier_state = AHPForR1CS::<_, MM>::verifier_fifth_round(verifier_state, &mut sponge)?;
+        let verifier_state = AHPForR1CS::<_, SM>::verifier_fifth_round(verifier_state, &mut sponge)?;
         end_timer!(fifth_round_time);
         // --------------------------------------------------------------------
 
@@ -835,7 +836,7 @@ where
         let commitments: Vec<_> = circuit_commitments
             .into_iter()
             .flatten()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info(circuit_ids.iter()).values())
+            .zip_eq(AHPForR1CS::<E::Fr, SM>::index_polynomial_info(circuit_ids.iter()).values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, *c))
             .chain(first_commitments)
             .chain(second_commitments)
@@ -845,7 +846,7 @@ where
             .collect();
 
         let query_set_time = start_timer!(|| "Constructing query set");
-        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
+        let (query_set, verifier_state) = AHPForR1CS::<_, SM>::verifier_query_set(verifier_state);
         end_timer!(query_set_time);
 
         sponge.absorb_nonnative_field_elements(proof.evaluations.to_field_elements());
@@ -856,7 +857,7 @@ where
         let mut circuit_index: i64 = -1;
 
         for (label, (_point_name, q)) in query_set.to_set() {
-            if AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
+            if AHPForR1CS::<E::Fr, SM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), E::Fr::zero());
             } else {
                 if label != "g_1" {
@@ -875,7 +876,7 @@ where
         }
 
         let lc_time = start_timer!(|| "Constructing linear combinations");
-        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+        let lc_s = AHPForR1CS::<_, SM>::construct_linear_combinations(
             &public_inputs,
             &evaluations,
             &proof.third_msg,

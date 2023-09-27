@@ -22,28 +22,28 @@ use snarkvm_console_network::prelude::*;
 use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Struct<N: Network> {
+pub struct StructType<N: Network> {
     /// The name of the struct.
     name: Identifier<N>,
     /// The name and type for the members of the struct.
     members: IndexMap<Identifier<N>, PlaintextType<N>>,
 }
 
-impl<N: Network> Struct<N> {
-    /// Returns the name of the struct.
+impl<N: Network> StructType<N> {
+    /// Returns the name of the struct type.
     #[inline]
     pub const fn name(&self) -> &Identifier<N> {
         &self.name
     }
 
-    /// Returns the members of the struct.
+    /// Returns the members of the struct type.
     #[inline]
     pub const fn members(&self) -> &IndexMap<Identifier<N>, PlaintextType<N>> {
         &self.members
     }
 }
 
-impl<N: Network> TypeName for Struct<N> {
+impl<N: Network> TypeName for StructType<N> {
     /// Returns the type name.
     fn type_name() -> &'static str {
         "struct"

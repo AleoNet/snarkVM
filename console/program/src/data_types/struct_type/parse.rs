@@ -14,7 +14,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Struct<N> {
+impl<N: Network> Parser for StructType<N> {
     /// Parses a struct as:
     /// ```text
     ///   struct message:
@@ -74,7 +74,7 @@ impl<N: Network> Parser for Struct<N> {
     }
 }
 
-impl<N: Network> FromStr for Struct<N> {
+impl<N: Network> FromStr for StructType<N> {
     type Err = Error;
 
     /// Returns a struct from a string literal.
@@ -91,16 +91,16 @@ impl<N: Network> FromStr for Struct<N> {
     }
 }
 
-impl<N: Network> Debug for Struct<N> {
-    /// Prints the struct as a string.
+impl<N: Network> Debug for StructType<N> {
+    /// Prints the struct type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 #[allow(clippy::format_push_string)]
-impl<N: Network> Display for Struct<N> {
-    /// Prints the struct as a string.
+impl<N: Network> Display for StructType<N> {
+    /// Prints the struct type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut output = format!("{} {}:\n", Self::type_name(), self.name);
         for (identifier, plaintext_type) in &self.members {
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        let expected = Struct::<CurrentNetwork> {
+        let expected = StructType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             members: IndexMap::from_iter(
                 vec![
@@ -131,7 +131,7 @@ mod tests {
             ),
         };
 
-        let (remainder, candidate) = Struct::<CurrentNetwork>::parse(
+        let (remainder, candidate) = StructType::<CurrentNetwork>::parse(
             r"
 struct message:
     sender as address;
@@ -146,50 +146,52 @@ struct message:
     #[test]
     fn test_parse_fails() {
         // Must be non-empty.
-        assert!(Struct::<CurrentNetwork>::parse("").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("struct message:").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("struct message:").is_err());
 
         // Invalid characters.
-        assert!(Struct::<CurrentNetwork>::parse("{}").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("_").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("__").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("___").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("-").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("--").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("---").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("*").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("**").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("***").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("{}").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("_").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("__").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("___").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("-").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("--").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("---").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("*").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("**").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("***").is_err());
 
         // Must not start with a number.
-        assert!(Struct::<CurrentNetwork>::parse("1").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("2").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("3").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("1foo").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("12").is_err());
-        assert!(Struct::<CurrentNetwork>::parse("111").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("1").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("2").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("3").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("1foo").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("12").is_err());
+        assert!(StructType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
         let struct_ =
-            Struct::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+            StructType::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
         assert!(struct_.is_err());
     }
 
     #[test]
     fn test_display() {
         let expected = "struct message:\n    first as field;\n    second as field;";
-        let message = Struct::<CurrentNetwork>::parse(expected).unwrap().1;
+        let message = StructType::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{message}"));
     }
 
     #[test]
     fn test_display_fails() {
         // Duplicate identifier.
-        let candidate = Struct::<CurrentNetwork>::parse("struct message:\n    first as field;\n    first as field;");
+        let candidate =
+            StructType::<CurrentNetwork>::parse("struct message:\n    first as field;\n    first as field;");
         assert!(candidate.is_err());
         // Visibility in plaintext type.
-        let candidate =
-            Struct::<CurrentNetwork>::parse("struct message:\n    first as field.public;\n    first as field.private;");
+        let candidate = StructType::<CurrentNetwork>::parse(
+            "struct message:\n    first as field.public;\n    first as field.private;",
+        );
         assert!(candidate.is_err());
     }
 
@@ -199,7 +201,7 @@ struct message:
         for i in 0..CurrentNetwork::MAX_STRUCT_ENTRIES {
             string += &format!("    member_{i} as field;\n");
         }
-        assert!(Struct::<CurrentNetwork>::parse(&string).is_ok());
+        assert!(StructType::<CurrentNetwork>::parse(&string).is_ok());
     }
 
     #[test]
@@ -208,6 +210,6 @@ struct message:
         for i in 0..=CurrentNetwork::MAX_STRUCT_ENTRIES {
             string += &format!("    member_{i} as field;\n");
         }
-        assert!(Struct::<CurrentNetwork>::parse(&string).is_err());
+        assert!(StructType::<CurrentNetwork>::parse(&string).is_err());
     }
 }

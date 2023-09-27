@@ -27,8 +27,8 @@ pub use record_type::{EntryType, RecordType};
 mod register_type;
 pub use register_type::RegisterType;
 
-mod struct_;
-pub use struct_::Struct;
+mod struct_type;
+pub use struct_type::StructType;
 
 mod value_type;
 pub use value_type::ValueType;
