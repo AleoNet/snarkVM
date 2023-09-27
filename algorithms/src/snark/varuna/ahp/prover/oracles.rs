@@ -118,11 +118,11 @@ pub struct FourthOracles<F: PrimeField> {
 #[derive(Debug)]
 pub struct MatrixGs<F: PrimeField> {
     /// The polynomial `g_a` resulting from the second sumcheck.
-    pub(super) g_a: LabeledPolynomial<F>,
+    pub(crate) g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
-    pub(super) g_b: LabeledPolynomial<F>,
+    pub(crate) g_b: LabeledPolynomial<F>,
     /// The polynomial `g_c` resulting from the second sumcheck.
-    pub(super) g_c: LabeledPolynomial<F>,
+    pub(crate) g_c: LabeledPolynomial<F>,
 }
 
 impl<F: PrimeField> MatrixGs<F> {
