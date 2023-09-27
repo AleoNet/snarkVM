@@ -123,7 +123,7 @@ mod tests {
         // Ensure the response has 1 outputs.
         assert_eq!(response.outputs().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 output");
         // Ensure the response has 1 output IDs.
-        assert_eq!(response.output_ids().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 0 output IDs");
+        assert_eq!(response.output_ids().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 output ID");
         // Ensure the trace contains 1 transition.
         assert_eq!(trace.transitions().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 transition");
 
