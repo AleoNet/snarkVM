@@ -21,7 +21,7 @@ use console::{
 };
 
 /// An input statement defines an input argument to finalize, and is of the form
-/// `input {register} as {plaintext_type}`.
+/// `input {register} as {finalize_type}`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {
     /// The input register.
