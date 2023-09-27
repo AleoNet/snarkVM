@@ -189,7 +189,7 @@ impl<N: Network> Async<N> {
                 (RegisterType::Future(input_locator), FinalizeType::Future(expected_locator)) => {
                     ensure!(
                         input_locator == &expected_locator,
-                        "'{}/{}' finalize expects a '{}.future' argument, found a '{}.future' argument",
+                        "'{}/{}' async expects a '{}.future' argument, found a '{}.future' argument",
                         stack.program_id(),
                         self.function_name(),
                         expected_locator,
