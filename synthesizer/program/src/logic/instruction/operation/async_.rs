@@ -117,7 +117,7 @@ impl<N: Network> Async<N> {
             .iter()
             .map(|operand| match registers.load_circuit(stack, operand)? {
                 circuit::Value::Plaintext(plaintext) => Ok(circuit::Argument::Plaintext(plaintext)),
-                circuit::Value::Record(_) => bail!("Cannot pass a record into a `finalize` instruction"),
+                circuit::Value::Record(_) => bail!("Cannot pass a record into an `async` instruction"),
                 circuit::Value::Future(future) => Ok(circuit::Argument::Future(future)),
             })
             .try_collect()?;
