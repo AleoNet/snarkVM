@@ -18,13 +18,12 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Plaintext, Record},
+    program::{Ciphertext, Future, Plaintext, Record},
     types::{Field, Group},
 };
 use ledger_block::Output;
 
 use anyhow::Result;
-use console::program::Future;
 use std::borrow::Cow;
 
 /// A trait for transition output storage.
