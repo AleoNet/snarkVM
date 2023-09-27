@@ -21,7 +21,7 @@ impl<N: Network> Serialize for Request<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transition = serializer.serialize_struct("Request", 11)?;
+                let mut transition = serializer.serialize_struct("Request", 13)?;
                 transition.serialize_field("caller", &self.caller)?;
                 transition.serialize_field("parent", &self.parent)?;
                 transition.serialize_field("is_root", &self.is_root)?;
