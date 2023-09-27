@@ -20,9 +20,9 @@ program credits.aleo;
 /// The `committee` mapping contains the active validator set and their corresponding stake.
 mapping committee:
     // The key represents the address of the validator.
-    key validator as address.public;
+    key as address.public;
     // The value represents the committee state of the validator.
-    value committee_state as committee_state.public;
+    value as committee_state.public;
 
 // The `committee_state` struct tracks the total stake of the validator, and whether they are open to stakers.
 struct committee_state:
@@ -36,9 +36,9 @@ struct committee_state:
 // The `bonded` mapping represents the amount of microcredits that are currently bonded.
 mapping bonded:
     // The key represents the address of the staker, which includes the validators and their delegators.
-    key staker as address.public;
+    key as address.public;
     // The value represents the bond state.
-    value bond_state as bond_state.public;
+    value as bond_state.public;
 
 // The `bond_state` struct tracks the amount of microcredits that are currently bonded to the specified validator.
 struct bond_state:
@@ -52,9 +52,9 @@ struct bond_state:
 // The `unbonding` mapping contains a set of stakers with their unbonding microcredits and unlock height.
 mapping unbonding:
     // The key represents the address of the staker, which includes the validators and their delegators.
-    key staker as address.public;
+    key as address.public;
     // The value represents the unbond state.
-    value unbond_state as unbond_state.public;
+    value as unbond_state.public;
 
 // The `unbond_state` struct tracks the microcredits that are currently unbonding, along with the unlock height.
 struct unbond_state:
@@ -68,9 +68,9 @@ struct unbond_state:
 // The `account` mapping is used to store credits publicly.
 mapping account:
     // The key represents the address of the owner.
-    key owner as address.public;
+    key as address.public;
     // The value represents the amount of public microcredits that belong to the specified owner.
-    value microcredits as u64.public;
+    value as u64.public;
 
 /**********************************************************************************************************************/
 

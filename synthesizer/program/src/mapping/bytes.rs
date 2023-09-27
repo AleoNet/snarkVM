@@ -53,8 +53,8 @@ mod tests {
     fn test_mapping_bytes() -> Result<()> {
         let mapping_string = r"
 mapping main:
-    key a as field.public;
-    value b as field.public;";
+    key as field.public;
+    value as field.public;";
 
         let expected = Mapping::<CurrentNetwork>::from_str(mapping_string)?;
         let expected_bytes = expected.to_bytes_le()?;
