@@ -186,6 +186,7 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
     let function_name = transition.function_name();
 
     #[cfg(debug_assertions)]
+    println!("Finalizing transition for {}/{function_name}...", transition.program_id());
     debug_assert_eq!(stack.program_id(), transition.program_id());
 
     // If the last output of the transition is a future, retrieve and finalize it. Otherwise, there are no operations to finalize.
