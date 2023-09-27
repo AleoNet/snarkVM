@@ -33,7 +33,6 @@ use console::{
 };
 use synthesizer_program::{
     CallOperator,
-    CastOperation,
     Closure,
     Function,
     Instruction,

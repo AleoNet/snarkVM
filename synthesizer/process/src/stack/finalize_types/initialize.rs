@@ -17,7 +17,6 @@ use crate::RegisterTypes;
 use synthesizer_program::{
     Await,
     Branch,
-    CastOperation,
     CastType,
     Contains,
     Get,

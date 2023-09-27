@@ -206,6 +206,11 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        if VARIANT == CastVariant::CastLossy as u8 {
+            bail!("cast.lossy is not supported (yet)")
+        }
+
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
@@ -328,6 +333,11 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
+        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        if VARIANT == CastVariant::CastLossy as u8 {
+            bail!("cast.lossy is not supported (yet)")
+        }
+
         use circuit::{Eject, Inject};
 
         // Load the operands values.
@@ -572,6 +582,11 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        if VARIANT == CastVariant::CastLossy as u8 {
+            bail!("cast.lossy is not supported (yet)")
+        }
+
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
