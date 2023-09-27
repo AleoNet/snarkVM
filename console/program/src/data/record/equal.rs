@@ -30,6 +30,11 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
     ///
     /// Note: This method does **not** check the `nonce` equality.
     fn is_equal(&self, other: &Self) -> Self::Output {
+        // Ensure the `data` lengths are equal.
+        if self.data.len() != other.data.len() {
+            return Boolean::new(false);
+        }
+
         // Recursively check each entry for equality.
         let mut equal = Boolean::new(true);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
@@ -44,6 +49,11 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
     ///
     /// Note: This method does **not** check the `nonce` equality.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
+        // Check the `data` lengths.
+        if self.data.len() != other.data.len() {
+            return Boolean::new(true);
+        }
+
         // Recursively check each entry for inequality.
         let mut not_equal = Boolean::new(false);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {

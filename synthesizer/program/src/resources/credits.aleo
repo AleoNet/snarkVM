@@ -97,7 +97,8 @@ function bond_public:
     assert.eq r2 true;
 
     // Bond the specified amount of microcredits to the specified validator.
-    finalize self.caller r0 r1;
+    async bond_public self.caller r0 r1 into r3;
+    output r3 as credits.aleo/bond_public.future;
 
 finalize bond_public:
     // Input the staker's address.
@@ -244,7 +245,8 @@ function unbond_public:
     input r0 as u64.public;
 
     // Unbond the specified amount of microcredits to the caller.
-    finalize self.caller r0;
+    async unbond_public self.caller r0 into r1;
+    output r1 as credits.aleo/unbond_public.future;
 
 finalize unbond_public:
     // Input the staker's address.
@@ -458,7 +460,8 @@ function unbond_delegator_as_validator:
     input r0 as address.public;
 
     // Unbond the delegator as the validator.
-    finalize self.caller r0;
+    async unbond_delegator_as_validator self.caller r0 into r1;
+    output r1 as credits.aleo/unbond_delegator_as_validator.future;
 
 finalize unbond_delegator_as_validator:
     // Input the validator's address.
@@ -533,7 +536,8 @@ finalize unbond_delegator_as_validator:
 // This function allows any staker to claim their microcredits after the unbonding period.
 function claim_unbond_public:
     // Claim the unbonded microcredits.
-    finalize self.caller;
+    async claim_unbond_public self.caller into r0;
+    output r0 as credits.aleo/claim_unbond_public.future;
 
 finalize claim_unbond_public:
     // Input the staker's address.
@@ -570,7 +574,8 @@ function set_validator_state:
     // Input the 'is_open' state.
     input r0 as boolean.public;
     // Set the validator to be either open or closed to stakers.
-    finalize self.caller r0;
+    async set_validator_state self.caller r0 into r1;
+    output r1 as credits.aleo/set_validator_state.future;
 
 finalize set_validator_state:
     // Input the validator's address.
@@ -597,7 +602,8 @@ function transfer_public:
     // Input the amount.
     input r1 as u64.public;
     // Transfer the credits publicly.
-    finalize self.caller r0 r1;
+    async transfer_public self.caller r0 r1 into r2;
+    output r2 as credits.aleo/transfer_public.future;
 
 finalize transfer_public:
     // Input the sender.
@@ -665,10 +671,11 @@ function transfer_private_to_public:
     sub r0.microcredits r2 into r3;
     // Construct a record with the change amount for the sender.
     cast r0.owner r3 into r4 as credits.record;
+    // Increment the amount publicly for the receiver.
+    async transfer_private_to_public r1 r2 into r5;
     // Output the sender's change record.
     output r4 as credits.record;
-    // Increment the amount publicly for the receiver.
-    finalize r1 r2;
+    output r5 as credits.aleo/transfer_private_to_public.future;
 
 finalize transfer_private_to_public:
     // Input the receiver.
@@ -698,10 +705,11 @@ function transfer_public_to_private:
     input r1 as u64.public;
     // Construct a record for the receiver.
     cast r0 r1 into r2 as credits.record;
+    // Decrement the balance of the sender publicly.
+    async transfer_public_to_private self.caller r1 into r3;
     // Output the record of the receiver.
     output r2 as credits.record;
-    // Decrement the balance of the sender publicly.
-    finalize self.caller r1;
+    output r3 as credits.aleo/transfer_public_to_private.future;
 
 finalize transfer_public_to_private:
     // Input the sender.
@@ -800,7 +808,8 @@ function fee_public:
     // Ensure the deployment or execution root is nonzero.
     assert.neq r1 0field;
     // Decrement the balance of the sender publicly.
-    finalize self.caller r0;
+    async fee_public self.caller r0 into r2;
+    output r2 as credits.aleo/fee_public.future;
 
 finalize fee_public:
     // Input the sender's address.

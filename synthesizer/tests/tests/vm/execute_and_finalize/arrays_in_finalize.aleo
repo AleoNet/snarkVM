@@ -1,7 +1,8 @@
 /*
 randomness: 2937849
 cases:
-  - function: test_arrays
+  - program: arrays_in_finalize.aleo
+    function: test_arrays
     inputs:
     - "[[true, false, true, false]]"
     - "[[false, true, false, true]]"
@@ -24,11 +25,12 @@ function test_arrays:
     and r2.left[0u32][3u32] r2.right[0u32][3u32] into r6;
     cast r3 r4 r5 r6 into r7 as [boolean; 4u32];
     cast r7 into r8 as [[boolean; 4u32]; 1u32];
+    async test_arrays r0 r1 into r9;
     output r0 as [[boolean; 4u32]; 1u32].public;
     output r1 as [[boolean; 4u32]; 1u32].public;
     output r8 as [[boolean; 4u32]; 1u32].public;
     output r2 as tree.private;
-    finalize r0 r1;
+    output r9 as arrays_in_finalize.aleo/test_arrays.future;
 
 finalize test_arrays:
     input r0 as [[boolean; 4u32]; 1u32].public;

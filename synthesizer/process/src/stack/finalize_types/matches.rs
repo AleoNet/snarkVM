@@ -56,7 +56,12 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the type of the register matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the type.
-                    let plaintext_type = self.get_type(stack, register)?;
+                    let plaintext_type = match self.get_type(stack, register)? {
+                        // If the register is a plaintext type, return it.
+                        FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+                        // If the register is a future, throw an error.
+                        FinalizeType::Future(..) => bail!("Struct member cannot be a future"),
+                    };
                     // Ensure the register type matches the member type.
                     ensure!(
                         &plaintext_type == member_type,
@@ -129,7 +134,12 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the type of the register matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the type.
-                    let plaintext_type = self.get_type(stack, register)?;
+                    let plaintext_type = match self.get_type(stack, register)? {
+                        // If the register is a plaintext type, return it.
+                        FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+                        // If the register is a future, throw an error.
+                        FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+                    };
                     // Ensure the register type matches the member type.
                     ensure!(
                         &plaintext_type == array_type.next_element_type(),

@@ -20,7 +20,7 @@ mod serialize;
 mod to_bits;
 mod to_fields;
 
-use crate::{Access, Entry, Literal, Plaintext, Record};
+use crate::{Access, Argument, Entry, Future, Literal, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -30,6 +30,8 @@ pub enum Value<N: Network> {
     Plaintext(Plaintext<N>),
     /// A record value.
     Record(Record<N, Plaintext<N>>),
+    /// A future.
+    Future(Future<N>),
 }
 
 impl<N: Network> From<Literal<N>> for Value<N> {
@@ -71,6 +73,37 @@ impl<N: Network> From<&Record<N, Plaintext<N>>> for Value<N> {
     /// Initializes the value from a record.
     fn from(record: &Record<N, Plaintext<N>>) -> Self {
         Self::from(record.clone())
+    }
+}
+
+impl<N: Network> From<Future<N>> for Value<N> {
+    /// Initializes the value from a future.
+    fn from(future: Future<N>) -> Self {
+        Self::Future(future)
+    }
+}
+
+impl<N: Network> From<&Future<N>> for Value<N> {
+    /// Initializes the value from a future.
+    fn from(future: &Future<N>) -> Self {
+        Self::from(future.clone())
+    }
+}
+
+impl<N: Network> From<Argument<N>> for Value<N> {
+    /// Initializes the value from an argument.
+    fn from(argument: Argument<N>) -> Self {
+        match argument {
+            Argument::Plaintext(plaintext) => Self::Plaintext(plaintext),
+            Argument::Future(future) => Self::Future(future),
+        }
+    }
+}
+
+impl<N: Network> From<&Argument<N>> for Value<N> {
+    /// Initializes the value from an argument.
+    fn from(argument: &Argument<N>) -> Self {
+        Self::from(argument.clone())
     }
 }
 

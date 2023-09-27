@@ -110,7 +110,7 @@ impl<N: Network> Process<N> {
             let function = stack.get_function(transition.function_name())?;
 
             // Construct the verifier inputs for the transition.
-            let inputs = self.to_transition_verifier_inputs(transition, &function, &call_graph, &mut transition_map)?;
+            let inputs = self.to_transition_verifier_inputs(transition, &call_graph, &mut transition_map)?;
             lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
 
             // Save the verifying key and its inputs.
@@ -132,9 +132,10 @@ impl<N: Network> Process<N> {
         ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
 
         // Construct the list of verifier inputs.
-        let verifier_inputs = verifier_inputs.values().cloned().collect();
+        let verifier_inputs: Vec<_> = verifier_inputs.values().cloned().collect();
         // Verify the execution proof.
         Trace::verify_execution_proof(&locator, verifier_inputs, execution)?;
+
         lap!(timer, "Verify the proof");
 
         finish!(timer);
@@ -147,7 +148,6 @@ impl<N: Network> Process<N> {
     fn to_transition_verifier_inputs(
         &self,
         transition: &Transition<N>,
-        function: &Function<N>,
         call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
         transition_map: &mut HashMap<N::TransitionID, &Transition<N>>,
     ) -> Result<Vec<N::Field>> {
@@ -171,42 +171,6 @@ impl<N: Network> Process<N> {
 
         // [Inputs] Extend the verifier inputs with the output IDs.
         inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
-
-        // Ensure the transition contains finalize inputs, if the function has a finalize scope.
-        if let Some((command, logic)) = function.finalize() {
-            // Ensure the transition contains finalize inputs.
-            match transition.finalize() {
-                Some(finalize) => {
-                    // Retrieve the number of operands.
-                    let num_operands = command.operands().len();
-                    // Retrieve the number of inputs.
-                    let num_inputs = logic.inputs().len();
-
-                    // Ensure the number of inputs for finalize is within the allowed range.
-                    ensure!(finalize.len() <= N::MAX_INPUTS, "Transition exceeds maximum inputs for finalize");
-                    // Ensure the number of inputs for finalize matches in the finalize command.
-                    ensure!(finalize.len() == num_operands, "The number of inputs for finalize is incorrect");
-                    // Ensure the number of inputs for finalize matches in the finalize logic.
-                    ensure!(finalize.len() == num_inputs, "The number of inputs for finalize is incorrect");
-
-                    // Convert the finalize inputs into concatenated bits.
-                    let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
-                    // Compute the checksum of the finalize inputs.
-                    let checksum = N::hash_bhp1024(&finalize_bits)?;
-
-                    // [Inputs] Extend the verifier inputs with the inputs for finalize.
-                    inputs.push(*checksum);
-                }
-                None => bail!("The transition is missing inputs for 'finalize'"),
-            }
-        } else {
-            // Ensure the transition does not contain inputs for finalize.
-            if transition.finalize().is_some() {
-                bail!(
-                    "The transition contains inputs for 'finalize', but the function does not have a 'finalize' scope"
-                )
-            }
-        }
 
         #[cfg(debug_assertions)]
         println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
@@ -235,7 +199,10 @@ impl<N: Network> Process<N> {
     // In order to reconstruct the call graph, we:
     // - Iterate over the call structure in reverse post-order. The ordering is maintained by the `traversal_stack`.
     // - Process each transition in the `Execution` in reverse, assigning its transition ID to the corresponding function call.
-    fn construct_call_graph(&self, execution: &Execution<N>) -> Result<HashMap<N::TransitionID, Vec<N::TransitionID>>> {
+    pub fn construct_call_graph(
+        &self,
+        execution: &Execution<N>,
+    ) -> Result<HashMap<N::TransitionID, Vec<N::TransitionID>>> {
         // Metadata for each transition the execution.
         struct TransitionMetadata<N: Network> {
             uid: usize,

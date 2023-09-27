@@ -1,12 +1,4 @@
-0: at line 8, in MapRes:
+Failed to parse string. Remaining invalid string is: "finalize compute:
+    position foo;
     branch.eq true true to foo;
-                               ^
-
-1: at line 1, in Alt:
-program backwards_branch.aleo;
-                              ^
-
-2: at line 1, in Many1:
-program backwards_branch.aleo;
-                              ^
-
+"

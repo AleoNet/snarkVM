@@ -2,110 +2,160 @@
 randomness: 0
 cases:
 
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [0i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [1i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [10i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [100i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [127i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [-1i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [-10i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [-100i8]
-  - function: abs_i8
+  - program: abs.aleo
+    function: abs_i8
     inputs: [-127i8]
 # negative test:
-#  - function: abs_i8
+#  - program: abs.aleo
+#    function: abs_i8
 #    inputs: [-128i8]
 
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [0i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [1i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [1_000_i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [10_000_i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [32767_i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [-1i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [-1_000_i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [-10_000_i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [-32_767_i16]
-  - function: abs_i16
+  - program: abs.aleo
+    function: abs_i16
     inputs: [-32_768_i16]
 
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [0i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [1i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [1_000_i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [10_000_000_i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [2_147_483_647_i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [-1i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [-1_000_i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [-10_000_000_i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [-2_147_483_647_i32]
-  - function: abs_i32
+  - program: abs.aleo
+    function: abs_i32
     inputs: [-2_147_483_647_i32]
 
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [0i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [1i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [1_000_i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [10_000_000_000_i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [2_147_483_647_i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [-1i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [-1_000_i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [-10_000_000_000_i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [-9_223_372_036_854_775_807_i64]
-  - function: abs_i64
+  - program: abs.aleo
+    function: abs_i64
     inputs: [-9_223_372_036_854_775_808_i64]
 
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [0i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [1i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [1_000_i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [10_000_000_000_000_000_000_000_000_000_i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [2_147_483_647_i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [-1i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [-1_000_i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [-10_000_000_000_000_000_000_000_000_000_i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [-170_141_183_460_469_231_731_687_303_715_884_105_727_i128]
-  - function: abs_i128
+  - program: abs.aleo
+    function: abs_i128
     inputs: [-170_141_183_460_469_231_731_687_303_715_884_105_728_i128]
 
 */

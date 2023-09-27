@@ -57,6 +57,7 @@ impl<A: Aleo> Response<A> {
                             Value::Plaintext(..) => Ok((OutputID::constant(A::hash_psd8(&preimage)), output)),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
                     // For a public output, compute the hash (using `tcm`) of the output.
@@ -80,6 +81,7 @@ impl<A: Aleo> Response<A> {
                             Value::Plaintext(..) => Ok((OutputID::public(A::hash_psd8(&preimage)), output)),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         }
                     }
                     // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.
@@ -98,6 +100,7 @@ impl<A: Aleo> Response<A> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key),
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Future(..) => A::halt("Expected a plaintext output, found a future output"),
                         };
                         // Return the output ID.
                         Ok((OutputID::private(A::hash_psd8(&ciphertext.to_fields())), output))
@@ -112,6 +115,7 @@ impl<A: Aleo> Response<A> {
                             Value::Record(record) => record,
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
+                            Value::Future(..) => A::halt("Expected a record output, found a future output"),
                         };
                         // Compute the record commitment.
                         let commitment = record.to_commitment(program_id, &Identifier::constant(*record_name));
@@ -140,6 +144,31 @@ impl<A: Aleo> Response<A> {
                             Value::Record(..) => Ok((OutputID::external_record(A::hash_psd8(&preimage)), output)),
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
+                            Value::Future(..) => A::halt("Expected a record output, found a future output"),
+                        }
+                    }
+                    // For a future output, compute the hash (using `tcm`) of the output.
+                    console::ValueType::Future(..) => {
+                        // Inject the output as `Mode::Private`.
+                        let output = Value::new(Mode::Private, output.clone());
+                        // Ensure the output is a future.
+                        ensure!(matches!(output, Value::Future(..)), "Expected a future output");
+
+                        // Prepare the index as a constant field element.
+                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = vec![function_id.clone()];
+                        preimage.extend(output.to_fields());
+                        preimage.push(tcm.clone());
+                        preimage.push(output_index);
+
+                        // Hash the output to a field element.
+                        match &output {
+                            // Return the output ID.
+                            Value::Future(..) => Ok((OutputID::future(A::hash_psd8(&preimage)), output)),
+                            // Ensure the output is a future.
+                            Value::Plaintext(..) => A::halt("Expected a future output, found a plaintext output"),
+                            Value::Record(..) => A::halt("Expected a future output, found a record output"),
                         }
                     }
                 }

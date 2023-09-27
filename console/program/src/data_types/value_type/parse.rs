@@ -19,12 +19,14 @@ impl<N: Network> Parser for ValueType<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the mode from the string.
+        // Note that the order of the parsers matters.
         alt((
             map(pair(PlaintextType::parse, tag(".constant")), |(plaintext_type, _)| Self::Constant(plaintext_type)),
             map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Public(plaintext_type)),
             map(pair(PlaintextType::parse, tag(".private")), |(plaintext_type, _)| Self::Private(plaintext_type)),
             map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
             map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
+            map(pair(Locator::parse, tag(".future")), |(locator, _)| Self::Future(locator)),
         ))(string)
     }
 }
@@ -62,6 +64,7 @@ impl<N: Network> Display for ValueType<N> {
             Self::Private(plaintext_type) => write!(f, "{plaintext_type}.private"),
             Self::Record(identifier) => write!(f, "{identifier}.record"),
             Self::ExternalRecord(locator) => write!(f, "{locator}.record"),
+            Self::Future(locator) => write!(f, "{locator}.future"),
         }
     }
 }
@@ -121,6 +124,16 @@ mod tests {
         assert_eq!(
             ValueType::<CurrentNetwork>::ExternalRecord(Locator::from_str("howard.aleo/message")?),
             ValueType::<CurrentNetwork>::parse("howard.aleo/message.record")?.1
+        );
+
+        // Future type.
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("credits.aleo/mint_public.future")?)),
+            ValueType::<CurrentNetwork>::parse("credits.aleo/mint_public.future")
+        );
+        assert_eq!(
+            ValueType::<CurrentNetwork>::Future(Locator::from_str("credits.aleo/mint_public")?),
+            ValueType::<CurrentNetwork>::parse("credits.aleo/mint_public.future")?.1
         );
 
         Ok(())

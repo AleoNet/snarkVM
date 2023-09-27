@@ -517,7 +517,7 @@ fn test_process_execute_transfer_public() {
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(1, candidate.len());
+    assert_eq!(2, candidate.len());
     assert_eq!(r2, candidate[0]);
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
@@ -526,7 +526,7 @@ fn test_process_execute_transfer_public() {
     // Execute the request.
     let (response, _trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(1, candidate.len());
+    assert_eq!(2, candidate.len());
     assert_eq!(r2, candidate[0]);
 
     // process.verify_execution::<true>(&execution).unwrap();
@@ -1201,7 +1201,8 @@ function compute:
     input r1 as u64.public;
     input r2 as u64.public;
     add r1 r2 into r3;
-    finalize r0 r3;
+    async compute r0 r3 into r4;
+    output r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -1267,7 +1268,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1275,7 +1276,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -1312,7 +1313,8 @@ function compute:
     input r1 as u64.public;
     input r2 as u64.public;
     add r1 r2 into r3;
-    finalize r0 r3;
+    async compute r0 r3 into r4;
+    output r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -1379,7 +1381,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1387,7 +1389,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -1431,7 +1433,8 @@ function mint_public:
     // Input the token amount.
     input r1 as u64.public;
     // Mint the tokens publicly.
-    finalize r0 r1;
+    async mint_public r0 r1 into r2;
+    output r2 as token.aleo/mint_public.future;
 
 // The finalize scope of `mint_public` increments the
 // `account` of the token receiver by the specified amount.
@@ -1509,7 +1512,7 @@ finalize mint_public:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1517,7 +1520,7 @@ finalize mint_public:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -1561,7 +1564,8 @@ function mint_public:
     // Input the token amount.
     input r1 as u64.public;
     // Mint the tokens publicly.
-    finalize r0 r1;
+    async mint_public r0 r1 into r2;
+    output r2 as token.aleo/mint_public.future;
 
 // The finalize scope of `mint_public` increments the
 // `account` of the token receiver by the specified amount.
@@ -1629,23 +1633,39 @@ program public_wallet.aleo;
 function init:
     input r0 as address.public;
     input r1 as u64.public;
-    call token.aleo/mint_public r0 r1;",
+    call token.aleo/mint_public r0 r1 into r2;
+    async init r2 into r3;
+    output r3 as public_wallet.aleo/init.future;
+finalize init:
+    input r0 as token.aleo/mint_public.future;
+    await r0;
+",
     )
     .unwrap();
     assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
-    // Add the program to the process.
-    process.add_program(&program1).unwrap();
+    // Declare the function name.
+    let function_name = Identifier::from_str("init").unwrap();
 
-    // Initialize the RNG.
-    let rng = &mut TestRng::default();
+    // Add the program to the process.
+    let deployment = process.deploy::<CurrentAleo, _>(&program1, rng).unwrap();
+    // Check that the deployment verifies.
+    process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+    // Compute the fee.
+    let fee = sample_fee::<_, CurrentAleo, _, _>(&process, &block_store, &finalize_store, rng);
+    // Finalize the deployment.
+    let (stack, _) = process.finalize_deployment(sample_finalize_state(2), &finalize_store, &deployment, &fee).unwrap();
+    // Add the stack *manually* to the process.
+    process.add_stack(stack);
+
+    // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
+    //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
+    //  the correctness of the synthesizer.
+    process.synthesize_key::<CurrentAleo, _>(program1.id(), &function_name, rng).unwrap();
 
     // Initialize caller.
     let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     let caller = Address::try_from(&caller_private_key).unwrap();
-
-    // Declare the function name.
-    let function_name = Identifier::from_str("init").unwrap();
 
     // Declare the input value.
     let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
@@ -1660,7 +1680,7 @@ function init:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 2);
@@ -1668,12 +1688,12 @@ function init:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
     // Prove the execution.
-    let execution = trace.prove_execution::<CurrentAleo, _>("token", rng).unwrap();
+    let execution = trace.prove_execution::<CurrentAleo, _>("public_wallet", rng).unwrap();
 
     // Verify the execution.
     process.verify_execution(&execution).unwrap();
@@ -1705,7 +1725,8 @@ function compute:
     input r1 as u64.public;
     input r2 as u64.public;
     add r1 r2 into r3;
-    finalize r0 r3;
+    async compute r0 r3 into r4;
+    output r4 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -1774,7 +1795,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -1782,7 +1803,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();
@@ -2129,7 +2150,8 @@ function compute:
     input r0 as u8.public;
     input r1 as u8.public;
     cast r0 r1 into r2 as entry;
-    finalize self.caller r2;
+    async compute self.caller r2 into r3;
+    output r3 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
@@ -2201,7 +2223,7 @@ finalize compute:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
     assert_eq!(authorization.len(), 1);
@@ -2209,7 +2231,7 @@ finalize compute:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    assert_eq!(0, candidate.len());
+    assert_eq!(1, candidate.len());
 
     // Prepare the trace.
     trace.prepare(Query::from(block_store)).unwrap();

@@ -15,6 +15,9 @@
 mod array_type;
 pub use array_type::ArrayType;
 
+mod finalize_type;
+pub use finalize_type::FinalizeType;
+
 mod literal_type;
 pub use literal_type::LiteralType;
 

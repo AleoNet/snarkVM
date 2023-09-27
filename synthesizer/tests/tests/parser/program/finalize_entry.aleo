@@ -13,7 +13,8 @@ function compute:
     input r0 as u8.public;
     input r1 as u8.public;
     cast r0 r1 into r2 as entry;
-    finalize self.caller r2;
+    async compute self.caller r2 into r3;
+    output r3 as finalize_entry.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;
