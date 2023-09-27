@@ -75,7 +75,7 @@ impl<N: Network> Request<N> {
         let is_root_field = Field::ternary(&is_root, &Field::one(), &Field::zero());
 
         // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, parent, is_root, function ID, input IDs])`.
-        let mut message = Vec::with_capacity(5 + 2 * inputs.len());
+        let mut message = Vec::with_capacity(9 + 2 * inputs.len());
         message.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
         message.extend([tvk, tcm, parent.to_field()?, is_root_field, function_id]);
 
