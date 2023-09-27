@@ -1680,7 +1680,6 @@ finalize init:
     // Compute the output value.
     let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
     let candidate = response.outputs();
-    println!("{:?}", candidate);
     assert_eq!(1, candidate.len());
 
     // Check again to make sure we didn't modify the authorization after calling `evaluate`.
@@ -1689,7 +1688,6 @@ finalize init:
     // Execute the request.
     let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
     let candidate = response.outputs();
-    println!("\n{:?}", candidate);
     assert_eq!(1, candidate.len());
 
     // Prepare the trace.
