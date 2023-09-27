@@ -20,30 +20,54 @@ impl<N: Network> Future<N> {
         // Ensure the path is not empty.
         ensure!(!path.is_empty(), "Attempted to find an argument with an empty path.");
 
+        // A helper enum to track the the argument.
+        enum ArgumentRefType<'a, N: Network> {
+            /// A plaintext type.
+            Plaintext(&'a Plaintext<N>),
+            /// A future.
+            Future(&'a Future<N>),
+        }
+
         // Initialize a value starting from the top-level.
-        let mut value = None;
+        let mut value = ArgumentRefType::Future(self);
 
         // Iterate through the path to retrieve the value.
         for access in path.iter() {
-            let index = match (*access).into() {
-                Access::Member(identifier) => {
-                    bail!("Attempted to find an argument to the future with the member access '{identifier}'")
+            let access = (*access).into();
+            match (value, access) {
+                (ArgumentRefType::Plaintext(Plaintext::Struct(members, ..)), Access::Member(identifier)) => {
+                    match members.get(&identifier) {
+                        // Retrieve the member and update `value` for the next iteration.
+                        Some(member) => value = ArgumentRefType::Plaintext(member),
+                        // Halts if the member does not exist.
+                        None => bail!("Failed to locate member '{identifier}'"),
+                    }
                 }
-                Access::Index(index) => index,
-            };
-
-            match self.arguments.get(*index as usize) {
-                // Retrieve the argument and update `value` for the next iteration.
-                Some(argument) => value = Some(argument),
-                // Halts if the index is out of bounds.
-                None => bail!("Index '{index}' is out of bounds"),
+                (ArgumentRefType::Plaintext(Plaintext::Array(array, ..)), Access::Index(index)) => {
+                    match array.get(*index as usize) {
+                        // Retrieve the element and update `value` for the next iteration.
+                        Some(element) => value = ArgumentRefType::Plaintext(element),
+                        // Halts if the index is out of bounds.
+                        None => bail!("Index '{index}' is out of bounds"),
+                    }
+                }
+                (ArgumentRefType::Future(future), Access::Index(index)) => {
+                    match future.arguments.get(*index as usize) {
+                        // If the argument is a future, update `value` for the next iteration.
+                        Some(Argument::Future(future)) => value = ArgumentRefType::Future(future),
+                        // If the argument is a plaintext, update `value` for the next iteration.
+                        Some(Argument::Plaintext(plaintext)) => value = ArgumentRefType::Plaintext(plaintext),
+                        // Halts if the index is out of bounds.
+                        None => bail!("Index '{index}' is out of bounds"),
+                    }
+                }
+                _ => bail!("Invalid access `{access}`"),
             }
         }
 
         match value {
-            Some(Argument::Plaintext(plaintext)) => Ok(Value::Plaintext(plaintext.clone())),
-            Some(Argument::Future(future)) => Ok(Value::Future(future.clone())),
-            None => bail!("Failed to locate argument"),
+            ArgumentRefType::Plaintext(plaintext) => Ok(Value::Plaintext(plaintext.clone())),
+            ArgumentRefType::Future(future) => Ok(Value::Future(future.clone())),
         }
     }
 }
