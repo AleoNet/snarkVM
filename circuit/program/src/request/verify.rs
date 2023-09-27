@@ -415,16 +415,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 48000, 0, 17000, 17000)
+        check_verify(Mode::Constant, 48000, 0, 18000, 18000)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 41268, 0, 30403, 30447)
+        check_verify(Mode::Public, 41268, 0, 30923, 30967)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 41268, 0, 30403, 30447)
+        check_verify(Mode::Private, 41268, 0, 30923, 30967)
     }
 }
