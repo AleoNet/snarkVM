@@ -19,6 +19,11 @@ impl<A: Aleo> Equal<Self> for Future<A> {
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
+        // Ensure the `arguments` are the same length.
+        if self.arguments.len() != other.arguments.len() {
+            return Boolean::constant(false);
+        }
+
         // Recursively check each argument for equality.
         let mut equal = Boolean::constant(true);
         for (argument_a, argument_b) in self.arguments.iter().zip_eq(other.arguments.iter()) {
@@ -31,6 +36,11 @@ impl<A: Aleo> Equal<Self> for Future<A> {
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
+        // Check the `arguments` lengths.
+        if self.arguments.len() != other.arguments.len() {
+            return Boolean::constant(true);
+        }
+
         // Recursively check each argument for equality.
         let mut not_equal = Boolean::constant(false);
         for (argument_a, argument_b) in self.arguments.iter().zip_eq(other.arguments.iter()) {
