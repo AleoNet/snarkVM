@@ -44,14 +44,19 @@ impl<N: Network> Process<N> {
 
         // Construct the call graph of the execution.
         let call_graph = self.construct_call_graph(execution)?;
+        // Construct the inverted call graph of the execution. This is a mapping from the transition ID of a child transition to the transition ID of its parent.
+        let inverted_call_graph = Self::invert_call_graph(&call_graph);
+        // Construct a mapping of transition IDs to program IDs.
+        let transition_program_ids = execution
+            .transitions()
+            .map(|transition| (*transition.id(), *transition.program_id()))
+            .collect::<HashMap<_, _>>();
 
         // Initialize a map of verifying keys to public inputs.
         let mut verifier_inputs = HashMap::new();
 
         // Initialize a map of transition IDs to references of the transition.
         let mut transition_map = HashMap::new();
-
-        let mut parent = None;
 
         // Verify each transition.
         for transition in execution.transitions() {
@@ -111,6 +116,9 @@ impl<N: Network> Process<N> {
             // Retrieve the function from the stack.
             let function = stack.get_function(transition.function_name())?;
 
+            // Retrieve the parent transition. Note that only the last transition in the execution has no parent.
+            let parent = inverted_call_graph.get(transition.id()).and_then(|tid| transition_program_ids.get(tid));
+
             // Construct the verifier inputs for the transition.
             let inputs = self.to_transition_verifier_inputs(transition, parent, &call_graph, &mut transition_map)?;
             lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
@@ -126,8 +134,6 @@ impl<N: Network> Process<N> {
 
             // Add the transition to the transition map.
             transition_map.insert(*transition.id(), transition);
-
-            parent = Some(*transition.program_id());
         }
 
         // Count the number of verifier instances.
@@ -152,7 +158,7 @@ impl<N: Network> Process<N> {
     fn to_transition_verifier_inputs(
         &self,
         transition: &Transition<N>,
-        parent: Option<ProgramID<N>>,
+        parent: Option<&ProgramID<N>>,
         call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
         transition_map: &mut HashMap<N::TransitionID, &Transition<N>>,
     ) -> Result<Vec<N::Field>> {
@@ -160,7 +166,7 @@ impl<N: Network> Process<N> {
         let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
 
         let (is_root, parent) = match parent {
-            Some(program_id) => (Field::<N>::zero(), program_id),
+            Some(program_id) => (Field::<N>::zero(), *program_id),
             None => (Field::one(), *transition.program_id()),
         };
         let (parent_x, parent_y) = parent.to_address()?.to_xy_coordinates();
@@ -352,5 +358,20 @@ impl<N: Network> Process<N> {
         );
 
         Ok(call_graph)
+    }
+
+    // A helper function to invert a call graph.
+    // The call graph is represented as a mapping from the transition ID of a parent transition to the transition IDs of its children, in the order in which they were called.
+    // The inverted call graph is represented as a mapping from the transition ID of a child transition to the transition ID of its parent.
+    // Note that each child transition can only have one parent transition.
+    fn invert_call_graph(call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>) -> HashMap<N::TransitionID, N::TransitionID> {
+        let mut inverted_call_graph = HashMap::new();
+        for (parent, children) in call_graph {
+            for child in children {
+                let result = inverted_call_graph.insert(*child, *parent);
+                debug_assert!(result.is_none(), "The call graph is not a DAG");
+            }
+        }
+        inverted_call_graph
     }
 }

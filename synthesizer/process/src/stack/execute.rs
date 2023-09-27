@@ -379,6 +379,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
 
+        // let _ = self.synthesize_from_assignment(function.name(), &assignment)?;
+
         // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
         if matches!(registers.call_stack(), CallStack::Synthesize(..))
             || matches!(registers.call_stack(), CallStack::Execute(..))

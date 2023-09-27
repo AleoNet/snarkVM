@@ -80,11 +80,15 @@ impl<N: Network> Request<N> {
             }
         };
 
-        // Construct the signature message as `[tvk, tcm, parent, function ID, input IDs]`.
+        // Convert `self.is_root` to a field element.
+        let is_root = if *self.is_root { Field::one() } else { Field::zero() };
+
+        // Construct the signature message as `[tvk, tcm, parent, is_root, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + self.input_ids.len());
         message.push(self.tvk);
         message.push(self.tcm);
         message.push(parent);
+        message.push(is_root);
         message.push(function_id);
 
         if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(

@@ -64,6 +64,13 @@ impl<N: Network> ProvingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        println!("prove_batch: {}", locator);
+        for (_, assignment) in assignments.iter() {
+            for (_, assignment) in assignment.iter().enumerate() {
+                println!("  num_public: {}", assignment.num_public());
+            }
+        }
+
         // Prepare the instances.
         let instances: BTreeMap<_, _> = assignments
             .iter()

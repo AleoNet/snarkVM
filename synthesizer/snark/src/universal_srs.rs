@@ -35,6 +35,9 @@ impl<N: Network> UniversalSRS<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        println!("unversal_srs: {function_name}");
+        println!("   num_public: {}", assignment.num_public());
+
         let (proving_key, verifying_key) = Varuna::<N>::circuit_setup(self, assignment)?;
 
         #[cfg(feature = "aleo-cli")]

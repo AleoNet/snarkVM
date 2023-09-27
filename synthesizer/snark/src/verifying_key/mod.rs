@@ -65,6 +65,14 @@ impl<N: Network> VerifyingKey<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
+        println!("verify batch: {locator}");
+        for (_, input) in inputs.iter() {
+            for input in input {
+                println!("   num_public: {}", input.len());
+            }
+        }
+
+
         // Convert the instances.
         let keys_to_inputs: BTreeMap<_, _> =
             inputs.iter().map(|(verifying_key, inputs)| (verifying_key.deref(), inputs.as_slice())).collect();

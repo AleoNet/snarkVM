@@ -15,8 +15,8 @@
 use super::*;
 
 impl<N: Network> Request<N> {
-    /// Returns the request for a given private key, parent, program ID, function name, inputs, input types, and RNG, where:
-    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
+    /// Returns the request for a given private key, parent, is_root, program ID, function name, inputs, input types, and RNG, where:
+    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, parent, is_root, function ID, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
@@ -61,7 +61,6 @@ impl<N: Network> Request<N> {
 
         // Derive the caller from the compute key.
         let caller = Address::try_from(compute_key)?;
-
         // Compute the transition view key `tvk` as `r * caller`.
         let tvk = (*caller * r).to_x_coordinate();
         // Compute the transition commitment `tcm` as `Hash(tvk)`.
