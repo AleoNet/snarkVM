@@ -21,33 +21,27 @@ impl<A: Aleo> ToBits for Future<A> {
     /// Returns the circuit future as a list of **little-endian** bits.
     #[inline]
     fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
-        // Initialize storage for the bits.
-        let mut bits_le = vec![];
-
         // Write the bits for the program ID.
         let program_id_bits = self.program_id.to_bits_le();
-        U16::constant(console::U16::new(program_id_bits.len() as u16)).write_bits_le(&mut bits_le);
-        bits_le.extend_from_slice(&program_id_bits);
+        U16::constant(console::U16::new(program_id_bits.len() as u16)).write_bits_le(vec);
+        vec.extend_from_slice(&program_id_bits);
 
         // Write the bits for the function name.
         let function_name_bits = self.function_name.to_bits_le();
-        U16::constant(console::U16::new(function_name_bits.len() as u16)).write_bits_le(&mut bits_le);
-        bits_le.extend_from_slice(&function_name_bits);
+        U16::constant(console::U16::new(function_name_bits.len() as u16)).write_bits_le(vec);
+        vec.extend_from_slice(&function_name_bits);
 
         // Write the number of arguments.
-        U8::constant(console::U8::new(self.arguments.len() as u8)).write_bits_le(&mut bits_le);
+        U8::constant(console::U8::new(self.arguments.len() as u8)).write_bits_le(vec);
 
         // Write the arguments.
         for argument in &self.arguments {
             let argument_bits = argument.to_bits_le();
             // Write the size of the argument.
-            U16::constant(console::U16::new(argument_bits.len() as u16)).write_bits_le(&mut bits_le);
+            U16::constant(console::U16::new(argument_bits.len() as u16)).write_bits_le(vec);
             // Write the argument.
-            bits_le.extend_from_slice(&argument_bits);
+            vec.extend_from_slice(&argument_bits);
         }
-
-        // Extend the vector with the bits.
-        vec.extend_from_slice(&bits_le);
     }
 
     /// Returns the circuit future as a list of **big-endian** bits.
