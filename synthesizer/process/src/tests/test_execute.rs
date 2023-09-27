@@ -1592,7 +1592,7 @@ finalize mint_public:
     let function_name = Identifier::from_str("mint_public").unwrap();
 
     // Initialize the RNG.
-    let rng = &mut TestRng::fixed(0);
+    let rng = &mut TestRng::default();
 
     // Construct the process.
     let process = crate::test_helpers::sample_process(&program0);
