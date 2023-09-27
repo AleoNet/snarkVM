@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub use cast::Cast;
+pub use cast_lossy::CastLossy;
+
 mod bytes;
 mod cast;
+mod cast_lossy;
 mod equal;
 mod from_bits;
 mod parse;

@@ -146,9 +146,20 @@ impl<N: Network> FromBytes for CastType<N> {
     }
 }
 
+/// The `cast` instruction.
+pub type Cast<N> = CastOperation<N, { CastVariant::Cast as u8 }>;
+/// The `cast.lossy` instruction.
+pub type CastLossy<N> = CastOperation<N, { CastVariant::CastLossy as u8 }>;
+
+/// The variant of the cast operation.
+enum CastVariant {
+    Cast,
+    CastLossy,
+}
+
 /// Casts the operands into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Cast<N: Network> {
+pub struct CastOperation<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
@@ -157,11 +168,15 @@ pub struct Cast<N: Network> {
     cast_type: CastType<N>,
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Cast
+        Opcode::Cast(match VARIANT {
+            0 => "cast",
+            1 => "cast.lossy",
+            2.. => panic!("Invalid cast variant"),
+        })
     }
 
     /// Returns the operands in the operation.
@@ -183,7 +198,7 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(
@@ -191,6 +206,11 @@ impl<N: Network> Cast<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        if VARIANT == CastVariant::CastLossy as u8 {
+            bail!("cast.lossy is not supported (yet)")
+        }
+
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
@@ -214,7 +234,11 @@ impl<N: Network> Cast<N> {
             CastType::Plaintext(PlaintextType::Literal(literal_type)) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(*literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => match VARIANT {
+                        0 => literal.cast(*literal_type)?,
+                        1 => literal.cast_lossy(*literal_type)?,
+                        2.. => unreachable!("Invalid cast variant"),
+                    },
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
@@ -309,6 +333,11 @@ impl<N: Network> Cast<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
+        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        if VARIANT == CastVariant::CastLossy as u8 {
+            bail!("cast.lossy is not supported (yet)")
+        }
+
         use circuit::{Eject, Inject};
 
         // Load the operands values.
@@ -347,9 +376,11 @@ impl<N: Network> Cast<N> {
             CastType::Plaintext(PlaintextType::Literal(literal_type)) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                        literal.cast(*literal_type)?
-                    }
+                    circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => match VARIANT {
+                        0 => literal.cast(*literal_type)?,
+                        1 => literal.cast_lossy(*literal_type)?,
+                        2.. => unreachable!("Invalid cast variant"),
+                    },
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store_circuit(
@@ -551,6 +582,11 @@ impl<N: Network> Cast<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
+        // TODO (howardwu & d0cd): Re-enable after stabilizing.
+        if VARIANT == CastVariant::CastLossy as u8 {
+            bail!("cast.lossy is not supported (yet)")
+        }
+
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
@@ -574,7 +610,11 @@ impl<N: Network> Cast<N> {
             CastType::Plaintext(PlaintextType::Literal(literal_type)) => {
                 ensure!(inputs.len() == 1, "Casting to a literal requires exactly 1 operand");
                 let value = match &inputs[0] {
-                    Value::Plaintext(Plaintext::Literal(literal, ..)) => literal.cast(*literal_type)?,
+                    Value::Plaintext(Plaintext::Literal(literal, ..)) => match VARIANT {
+                        0 => literal.cast(*literal_type)?,
+                        1 => literal.cast_lossy(*literal_type)?,
+                        2.. => unreachable!("Invalid cast variant"),
+                    },
                     _ => bail!("Casting to a literal requires a literal"),
                 };
                 registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(value)))
@@ -791,7 +831,7 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
     /// A helper method to handle casting to a struct.
     fn cast_to_struct(
         &self,
@@ -894,7 +934,7 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Parser for Cast<N> {
+impl<N: Network, const VARIANT: u8> Parser for CastOperation<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -946,7 +986,7 @@ impl<N: Network> Parser for Cast<N> {
     }
 }
 
-impl<N: Network> FromStr for Cast<N> {
+impl<N: Network, const VARIANT: u8> FromStr for CastOperation<N, VARIANT> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -964,14 +1004,14 @@ impl<N: Network> FromStr for Cast<N> {
     }
 }
 
-impl<N: Network> Debug for Cast<N> {
+impl<N: Network, const VARIANT: u8> Debug for CastOperation<N, VARIANT> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Cast<N> {
+impl<N: Network, const VARIANT: u8> Display for CastOperation<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
@@ -993,7 +1033,7 @@ impl<N: Network> Display for Cast<N> {
     }
 }
 
-impl<N: Network> FromBytes for Cast<N> {
+impl<N: Network, const VARIANT: u8> FromBytes for CastOperation<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of operands.
@@ -1037,7 +1077,7 @@ impl<N: Network> FromBytes for Cast<N> {
     }
 }
 
-impl<N: Network> ToBytes for Cast<N> {
+impl<N: Network, const VARIANT: u8> ToBytes for CastOperation<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.

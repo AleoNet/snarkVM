@@ -12,7 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+mod boolean;
+mod field;
+mod integer;
+mod scalar;
+
+use crate::data::{CastLossy, Literal};
+use console::LiteralType;
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::prelude::{
+    bail,
+    integers::Integer,
+    Address,
+    BitOr,
+    Boolean,
+    Environment,
+    Field,
+    FromBits,
+    FromField,
+    FromGroup,
+    Group,
+    IntegerType,
+    One,
+    Result,
+    Scalar,
+    ToBits,
+    ToField,
+    ToGroup,
+    Zero,
+    MSB,
+};
+
+#[cfg(test)]
+use snarkvm_circuit_types::prelude::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
+
+/// Unary operator for casting values of one type to another.
+pub trait Cast<T: Sized = Self> {
+    /// Casts the value of `self` into a value of type `T`.
+    ///
+    /// This method checks that the cast does not lose any bits of information.
+    fn cast(&self) -> T;
+}
 
 impl<A: Aleo> Literal<A> {
     /// Casts the literal to the given literal type.
@@ -22,6 +62,7 @@ impl<A: Aleo> Literal<A> {
     ///
     /// The hierarchy of casting is as follows:
     ///  - (`Address`, `Group`) <-> `Field` <-> `Scalar` <-> `Integer` <-> `Boolean`
+    ///  - `Signature` (not supported)
     ///  - `String` (not supported)
     /// Note that casting to left along the hierarchy always preserves information.
     pub fn cast(&self, to_type: LiteralType) -> Result<Self> {
@@ -45,40 +86,9 @@ impl<A: Aleo> Literal<A> {
             Self::String(..) => bail!("Cannot cast a string literal to another type."),
         }
     }
-
-    /// Casts the literal to the given literal type, with lossy truncation.
-    ///
-    /// This method makes a *best-effort* attempt to preserve all bits of information,
-    /// but it is not guaranteed to do so.
-    ///
-    /// The hierarchy of casting is as follows:
-    ///  - (`Address`, `Group`) <-> `Field` <-> `Scalar` <-> `Integer` <-> `Boolean`
-    ///  - `String` (not supported)
-    /// Note that casting to left along the hierarchy always preserves information.
-    pub fn cast_lossy(&self, to_type: LiteralType) -> Result<Self> {
-        match self {
-            Self::Address(address) => cast_lossy_group_to_type(&address.to_group(), to_type),
-            Self::Boolean(boolean) => cast_lossy_boolean_to_type(boolean, to_type),
-            Self::Field(field) => cast_lossy_field_to_type(field, to_type),
-            Self::Group(group) => cast_lossy_group_to_type(group, to_type),
-            Self::I8(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I16(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I32(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I64(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I128(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U8(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U16(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U32(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U64(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U128(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::Scalar(scalar) => cast_lossy_scalar_to_type(scalar, to_type),
-            Self::Signature(..) => bail!("Cannot cast a signature literal to another type."),
-            Self::String(..) => bail!("Cannot cast a string literal to another type."),
-        }
-    }
 }
 
-// A helper macro to implement the body of the `cast` and `cast_lossy` methods.
+/// A helper macro to implement the body of the `cast` methods.
 macro_rules! impl_cast_body {
     ($type_name:ident, $cast:ident, $input:expr, $to_type:expr) => {
         match $to_type {
@@ -112,19 +122,9 @@ fn cast_boolean_to_type<A: Aleo>(input: &Boolean<A>, to_type: LiteralType) -> Re
     impl_cast_body!(boolean, cast, input, to_type)
 }
 
-/// Casts a boolean literal to the given literal type, with lossy truncation.
-fn cast_lossy_boolean_to_type<A: Aleo>(input: &Boolean<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    impl_cast_body!(boolean, cast_lossy, input, to_type)
-}
-
 /// Casts a field literal to the given literal type.
 fn cast_field_to_type<A: Aleo>(input: &Field<A>, to_type: LiteralType) -> Result<Literal<A>> {
     impl_cast_body!(field, cast, input, to_type)
-}
-
-/// Casts a field literal to the given literal type, with lossy truncation.
-fn cast_lossy_field_to_type<A: Aleo>(input: &Field<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    impl_cast_body!(field, cast_lossy, input, to_type)
 }
 
 /// Casts a group literal to the given literal type.
@@ -136,29 +136,9 @@ fn cast_group_to_type<A: Aleo>(input: &Group<A>, to_type: LiteralType) -> Result
     }
 }
 
-/// Casts a group literal to the given literal type, with lossy truncation.
-fn cast_lossy_group_to_type<A: Aleo>(input: &Group<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(Address::from_group(input.clone()))),
-        LiteralType::Group => Ok(Literal::Group(input.clone())),
-        _ => cast_lossy_field_to_type(&input.to_x_coordinate(), to_type),
-    }
-}
-
 /// Casts an integer literal to the given literal type.
-fn cast_integer_to_type<A: Aleo, I: IntegerType>(
-    input: &integers::Integer<A, I>,
-    to_type: LiteralType,
-) -> Result<Literal<A>> {
+fn cast_integer_to_type<A: Aleo, I: IntegerType>(input: &Integer<A, I>, to_type: LiteralType) -> Result<Literal<A>> {
     impl_cast_body!(integer, cast, input, to_type)
-}
-
-/// Casts an integer literal to the given literal type, with lossy truncation.
-fn cast_lossy_integer_to_type<A: Aleo, I: IntegerType>(
-    input: &integers::Integer<A, I>,
-    to_type: LiteralType,
-) -> Result<Literal<A>> {
-    impl_cast_body!(integer, cast_lossy, input, to_type)
 }
 
 /// Casts a scalar literal to the given literal type.
@@ -166,7 +146,56 @@ fn cast_scalar_to_type<A: Aleo>(input: &Scalar<A>, to_type: LiteralType) -> Resu
     impl_cast_body!(scalar, cast, input, to_type)
 }
 
-/// Casts a scalar literal to the given literal type, with lossy truncation.
-fn cast_lossy_scalar_to_type<A: Aleo>(input: &Scalar<A>, to_type: LiteralType) -> Result<Literal<A>> {
-    impl_cast_body!(scalar, cast_lossy, input, to_type)
+#[cfg(test)]
+macro_rules! impl_check_cast {
+    ($fun:ident, $circuit_type:ty, $console_type:ty) => {
+        fn check_cast<CircuitType, ConsoleType>(mode: Mode, count: UpdatableCount)
+        where
+            CircuitType: Eject,
+            <CircuitType as Eject>::Primitive: Debug + PartialEq<ConsoleType>,
+            ConsoleType: Debug,
+            $console_type: console::Cast<ConsoleType>,
+            $circuit_type: crate::Cast<CircuitType>,
+        {
+            let rng = &mut TestRng::default();
+            for i in 0..ITERATIONS {
+                let (console_value, circuit_value) = sample_values(i, mode, rng);
+                match console_value.$fun() {
+                    // If the console cast fails and the mode is constant, then the circuit cast should fail.
+                    Err(_) if mode == Mode::Constant => {
+                        assert!(std::panic::catch_unwind(|| circuit_value.$fun()).is_err())
+                    }
+                    // If the console cast fails, the circuit cast can either fail by panicking or fail by being unsatisfied.
+                    Err(_) => {
+                        Circuit::scope("test", || {
+                            if std::panic::catch_unwind(|| circuit_value.$fun()).is_ok() {
+                                assert!(!Circuit::is_satisfied());
+                                count.assert_matches(
+                                    Circuit::num_constants_in_scope(),
+                                    Circuit::num_public_in_scope(),
+                                    Circuit::num_private_in_scope(),
+                                    Circuit::num_constraints_in_scope(),
+                                );
+                            }
+                        });
+                    }
+                    // If the console cast succeeds, the circuit cast should succeed and the values should match.
+                    Ok(expected) => Circuit::scope("test", || {
+                        let result = circuit_value.$fun();
+                        assert_eq!(result.eject_value(), expected);
+                        assert!(Circuit::is_satisfied());
+                        count.assert_matches(
+                            Circuit::num_constants_in_scope(),
+                            Circuit::num_public_in_scope(),
+                            Circuit::num_private_in_scope(),
+                            Circuit::num_constraints_in_scope(),
+                        );
+                    }),
+                };
+                Circuit::reset();
+            }
+        }
+    };
 }
+#[cfg(test)]
+pub(super) use impl_check_cast;

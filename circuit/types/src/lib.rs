@@ -14,12 +14,6 @@
 
 #![forbid(unsafe_code)]
 
-pub mod cast;
-pub use cast::*;
-
-pub mod cast_lossy;
-pub use cast_lossy::*;
-
 pub use modules::*;
 
 pub mod modules {
@@ -48,62 +42,6 @@ pub mod modules {
 }
 
 pub mod prelude {
-    pub use crate::{cast::*, cast_lossy::*, modules::*};
+    pub use crate::modules::*;
     pub use snarkvm_circuit_environment::prelude::*;
-}
-
-#[cfg(test)]
-mod test_helpers {
-    macro_rules! impl_check_cast {
-        ($fun:ident, $circuit_type:ty, $console_type:ty) => {
-            fn check_cast<CircuitType, ConsoleType>(mode: Mode, count: UpdatableCount)
-            where
-                CircuitType: Eject,
-                <CircuitType as Eject>::Primitive: Debug + PartialEq<ConsoleType>,
-                ConsoleType: Debug,
-                $console_type: ConsoleCast<ConsoleType>,
-                $circuit_type: CircuitCast<CircuitType>,
-            {
-                let rng = &mut TestRng::default();
-                for i in 0..ITERATIONS {
-                    let (console_value, circuit_value) = sample_values(i, mode, rng);
-                    match console_value.$fun() {
-                        // If the console cast fails and the mode is constant, then the circuit cast should fail.
-                        Err(_) if mode == Mode::Constant => {
-                            assert!(std::panic::catch_unwind(|| circuit_value.$fun()).is_err())
-                        }
-                        // If the console cast fails, the circuit cast can either fail by panicking or fail by being unsatisfied.
-                        Err(_) => {
-                            Circuit::scope("test", || {
-                                if std::panic::catch_unwind(|| circuit_value.$fun()).is_ok() {
-                                    assert!(!Circuit::is_satisfied());
-                                    count.assert_matches(
-                                        Circuit::num_constants_in_scope(),
-                                        Circuit::num_public_in_scope(),
-                                        Circuit::num_private_in_scope(),
-                                        Circuit::num_constraints_in_scope(),
-                                    );
-                                }
-                            });
-                        }
-                        // If the console cast succeeds, the circuit cast should succeed and the values should match.
-                        Ok(expected) => Circuit::scope("test", || {
-                            let result = circuit_value.$fun();
-                            assert_eq!(result.eject_value(), expected);
-                            assert!(Circuit::is_satisfied());
-                            count.assert_matches(
-                                Circuit::num_constants_in_scope(),
-                                Circuit::num_public_in_scope(),
-                                Circuit::num_private_in_scope(),
-                                Circuit::num_constraints_in_scope(),
-                            );
-                        }),
-                    };
-                    Circuit::reset();
-                }
-            }
-        };
-    }
-
-    pub(super) use impl_check_cast;
 }

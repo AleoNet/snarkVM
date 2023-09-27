@@ -19,7 +19,7 @@ impl<E: Environment> Scalar<E> {
     ///
     /// This method is commonly-used by hash-to-scalar algorithms,
     /// where the hash output does not need to preserve the full base field.
-    pub fn from_field_lossy(field: Field<E>) -> Self {
+    pub fn from_field_lossy(field: &Field<E>) -> Self {
         // Note: We are reconstituting the integer from the base field.
         // This is safe as the number of bits in the integer is less than the base field modulus,
         // and thus will always fit within a single base field element.
@@ -48,7 +48,7 @@ mod tests {
 
             Circuit::scope(format!("{mode} {expected} {i}"), || {
                 // Perform the operation.
-                let candidate = Scalar::<Circuit>::from_field_lossy(candidate);
+                let candidate = Scalar::<Circuit>::from_field_lossy(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 match mode {
                     Mode::Constant => assert_scope!(253, 0, 0, 0),
@@ -60,7 +60,7 @@ mod tests {
             // Sample a random field element.
             let expected = Field::<Circuit>::new(mode, Uniform::rand(rng));
             // Perform the operation.
-            Scalar::from_field_lossy(expected); // This should not fail.
+            Scalar::from_field_lossy(&expected); // This should not fail.
 
             Circuit::reset();
         }

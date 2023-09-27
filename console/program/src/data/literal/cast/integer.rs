@@ -16,6 +16,12 @@ use super::*;
 
 impl<E: Environment, I: IntegerType> Cast<Address<E>> for Integer<E, I> {
     /// Casts an `Integer` to an `Address`.
+    ///
+    /// This operation converts the integer to a field element, and then attempts to recover
+    /// the group element by treating the field element as an x-coordinate. The group element
+    /// is then converted to an address.
+    ///
+    /// To cast arbitrary integers to addresses, use `Integer::cast_lossy`.
     #[inline]
     fn cast(&self) -> Result<Address<E>> {
         let field: Field<E> = self.cast()?;
@@ -24,7 +30,9 @@ impl<E: Environment, I: IntegerType> Cast<Address<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Cast<Boolean<E>> for Integer<E, I> {
-    /// Casts an `Integer` to a `Boolean`.
+    /// Casts an `Integer` to a `Boolean`, if the integer is zero or one.
+    ///
+    /// To cast arbitrary integers to booleans, use `Integer::cast_lossy`.
     #[inline]
     fn cast(&self) -> Result<Boolean<E>> {
         if self.is_zero() {
@@ -47,6 +55,11 @@ impl<E: Environment, I: IntegerType> Cast<Field<E>> for Integer<E, I> {
 
 impl<E: Environment, I: IntegerType> Cast<Group<E>> for Integer<E, I> {
     /// Casts an `Integer` to a `Group`.
+    ///
+    /// This operation converts the integer to a field element, and then attempts to recover
+    /// the group element by treating the field element as an x-coordinate.
+    ///
+    /// To cast arbitrary integers to groups, use `Integer::cast_lossy`.
     #[inline]
     fn cast(&self) -> Result<Group<E>> {
         let field: Field<E> = self.cast()?;
@@ -55,7 +68,7 @@ impl<E: Environment, I: IntegerType> Cast<Group<E>> for Integer<E, I> {
 }
 
 impl<E: Environment, I0: IntegerType, I1: IntegerType + TryFrom<I0>> Cast<Integer<E, I1>> for Integer<E, I0> {
-    /// Casts an `Integer` to another `Integer`.
+    /// Casts an `Integer` to another `Integer`, if the conversion is lossless.
     #[inline]
     fn cast(&self) -> Result<Integer<E, I1>> {
         Ok(Integer::<E, I1>::new(match I1::try_from(**self) {
