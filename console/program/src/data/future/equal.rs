@@ -53,20 +53,6 @@ impl<N: Network> Equal<Self> for Future<N> {
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        // Check the `arguments` lengths.
-        if self.arguments.len() != other.arguments.len() {
-            return Boolean::new(true);
-        }
-
-        // Recursively check each argument for equality.
-        let mut not_equal = Boolean::new(false);
-        for (argument_a, argument_b) in self.arguments.iter().zip_eq(other.arguments.iter()) {
-            not_equal |= argument_a.is_not_equal(argument_b);
-        }
-
-        // Check the `program_id`, and `function_name`.
-        self.program_id.is_not_equal(&other.program_id)
-            | not_equal
-            | self.function_name.is_not_equal(&other.function_name)
+        !self.is_equal(other)
     }
 }
