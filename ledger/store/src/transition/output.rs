@@ -272,28 +272,26 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
 
         // A helper function to construct the output given the output ID.
         let construct_output = |output_id| {
-            let constant = self.constant_map().get_confirmed(&output_id)?;
-            let public = self.public_map().get_confirmed(&output_id)?;
-            let private = self.private_map().get_confirmed(&output_id)?;
-            let record = self.record_map().get_confirmed(&output_id)?;
-            let external_record = self.external_record_map().get_confirmed(&output_id)?;
-            let future = self.future_map().get_confirmed(&output_id)?;
+            if let Some(constant) = self.constant_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Constant(output_id, constant)));
+            }
+            if let Some(public) = self.public_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Public(output_id, public)));
+            }
+            if let Some(private) = self.private_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Private(output_id, private)));
+            }
+            if let Some(record) = self.record_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Record(output_id, record)));
+            }
+            if let Some(_) = self.external_record_map().get_confirmed(&output_id)? {
+                return Ok(Output::ExternalRecord(output_id));
+            }
+            if let Some(future) = self.future_map().get_confirmed(&output_id)? {
+                return Ok(into_output!(Output::Future(output_id, future)));
+            }
 
-            // Retrieve the output.
-            let output = match (constant, public, private, record, external_record, future) {
-                (Some(constant), None, None, None, None, None) => into_output!(Output::Constant(output_id, constant)),
-                (None, Some(public), None, None, None, None) => into_output!(Output::Public(output_id, public)),
-                (None, None, Some(private), None, None, None) => into_output!(Output::Private(output_id, private)),
-                (None, None, None, Some(record), None, None) => into_output!(Output::Record(output_id, record)),
-                (None, None, None, None, Some(_), None) => Output::ExternalRecord(output_id),
-                (None, None, None, None, None, Some(future)) => into_output!(Output::Future(output_id, future)),
-                (None, None, None, None, None, None) => {
-                    bail!("Missing output '{output_id}' in transition '{transition_id}'")
-                }
-                _ => bail!("Found multiple outputs for the output ID '{output_id}' in transition '{transition_id}'"),
-            };
-
-            Ok(output)
+            bail!("Missing output '{output_id}' in transition '{transition_id}'")
         };
 
         // Retrieve the output IDs.
