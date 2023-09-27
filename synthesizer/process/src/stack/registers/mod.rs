@@ -87,8 +87,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             }
             // Ensure the console and circuit registers match (executed to same value).
             if console_register != &circuit_register.eject_value() {
-                println!("Console register: \n{:#?}", console_register);
-                println!("Circuit register: \n{:#?}", circuit_register.eject_value());
                 bail!("The console and circuit register values do not match at index {console_index}")
             }
         }
