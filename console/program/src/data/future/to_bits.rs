@@ -20,9 +20,7 @@ impl<N: Network> ToBits for Future<N> {
     fn write_bits_le(&self, vec: &mut Vec<bool>) {
         // Write the bits for the program ID.
         let program_id_bits = self.program_id.to_bits_le();
-        u16::try_from(program_id_bits.len())
-            .or_halt_with::<N>("Program ID exceeds u16::MAX bits")
-            .write_bits_le(vec);
+        u16::try_from(program_id_bits.len()).or_halt_with::<N>("Program ID exceeds u16::MAX bits").write_bits_le(vec);
         vec.extend_from_slice(&program_id_bits);
 
         // Write the bits for the function name.
@@ -40,9 +38,7 @@ impl<N: Network> ToBits for Future<N> {
             let argument_bits = argument.to_bits_le();
 
             // Write the size of the argument.
-            u16::try_from(argument_bits.len())
-                .or_halt_with::<N>("argument exceeds u16::MAX bits")
-                .write_bits_le(vec);
+            u16::try_from(argument_bits.len()).or_halt_with::<N>("argument exceeds u16::MAX bits").write_bits_le(vec);
 
             // Write the argument.
             vec.extend_from_slice(&argument_bits);
@@ -54,9 +50,7 @@ impl<N: Network> ToBits for Future<N> {
     fn write_bits_be(&self, vec: &mut Vec<bool>) {
         // Write the bits for the program ID.
         let program_id_bits = self.program_id.to_bits_be();
-        u16::try_from(program_id_bits.len())
-            .or_halt_with::<N>("Program ID exceeds u16::MAX bits")
-            .write_bits_be(vec);
+        u16::try_from(program_id_bits.len()).or_halt_with::<N>("Program ID exceeds u16::MAX bits").write_bits_be(vec);
         vec.extend_from_slice(&program_id_bits);
 
         // Write the bits for the function name.
@@ -74,9 +68,7 @@ impl<N: Network> ToBits for Future<N> {
             let argument_bits = argument.to_bits_be();
 
             // Write the size of the argument.
-            u16::try_from(argument_bits.len())
-                .or_halt_with::<N>("argument exceeds u16::MAX bits")
-                .write_bits_be(vec);
+            u16::try_from(argument_bits.len()).or_halt_with::<N>("argument exceeds u16::MAX bits").write_bits_be(vec);
 
             // Write the argument.
             vec.extend_from_slice(&argument_bits);
