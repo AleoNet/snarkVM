@@ -19,9 +19,9 @@ mod tests {
         snark::varuna::{ahp::verifier, AHPForR1CS, TestCircuit, VarunaNonHidingMode, VarunaSNARK},
         traits::snark::SNARK,
     };
-    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_fields::One;
-    use std::{collections::BTreeMap, fmt::Debug, fs, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr, FrParameters};
+    use snarkvm_fields::{Fp256, One};
+    use std::{collections::BTreeMap, fs, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
 
     type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
     type MM = VarunaNonHidingMode;
@@ -46,11 +46,10 @@ mod tests {
 
     /// Loads the given `test_folder/test_file` and asserts the given `candidate` matches the expected values.
     #[track_caller]
-    fn assert_snapshot<S1: Into<String>, S2: Into<String>, C: Debug>(test_folder: S1, test_file: S2, candidate: C) {
+    fn assert_snapshot<S1: Into<String>, S2: Into<String>>(test_folder: S1, test_file: S2, candidate: &str) {
         // Construct the path for the test folder.
         let mut path = resources_path();
         path.push(test_folder.into());
-        path.push("polynomials");
 
         // Create the test folder, if it does not exist.
         if !path.exists() {
@@ -59,15 +58,17 @@ mod tests {
 
         // Construct the path for the test file.
         path.push(test_file.into());
-        path.set_extension("snap");
+        path.set_extension("txt");
 
         // Create the test file, if it does not exist.
         if !path.exists() {
-            std::fs::File::create(&path).unwrap_or_else(|_| panic!("Failed to create file: {path:?}"));
+            panic!("Test file does not exist: {path:?}");
         }
 
+        println!("Testing path: {:?}", path);
+
         // Assert the test file is equal to the expected value.
-        expect_test::expect_file![path].assert_eq(&format!("{candidate:?}"));
+        expect_test::expect_file![path].assert_eq(candidate);
     }
 
     fn create_test_vector(folder: &str, file: &str, data: &str) {
@@ -82,7 +83,7 @@ mod tests {
 
         // Construct the path for the test file.
         path.push(file);
-        path.set_extension("snap");
+        path.set_extension("txt");
 
         // Create the test file, if it does not exist.
         if !path.exists() {
@@ -98,6 +99,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn create_prover_test_vectors() {
         run_prover_sage_vectors(true);
     }
@@ -127,17 +129,14 @@ mod tests {
         let circuit_combiner = Fr::one();
         let instance_combiners = vec![Fr::one()];
 
-        use snarkvm_curves::bls12_377::FrParameters;
-        use snarkvm_fields::Fp256;
         let mut random_state = vec![0u64; 100];
         let add_f_to_state = |s: &mut Vec<u64>, f: Fp256<FrParameters>| {
-            // Fp384 field elements sample 6 u64 values in total
-            for i in 0..f.0 .0.len() {
-                s.push(f.0 .0[f.0 .0.len() - 1 - i]);
+            // Fp384 field elements sample 6 u64 values in total.
+            for i in 0..f.0.0.len() {
+                s.push(f.0.0[f.0.0.len() - 1 - i]);
             }
         };
         for witness in instance[15].split(',') {
-            println!("witness: {}", witness.trim());
             if witness.trim() == "" {
                 continue;
             }
@@ -161,49 +160,24 @@ mod tests {
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&keys_to_constraints, rng).unwrap();
         let prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, rng).unwrap();
         let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-        println!("first_round_oracles: {:?}\n", first_round_oracles);
-        first_round_oracles.batches.iter().enumerate().for_each(|(circuit_index, (_, w_polys))| {
-            w_polys.iter().enumerate().for_each(|(witness_index, w_poly)| {
-                create_test_vector(
-                    "polynomials",
-                    &format!("circuit_{}_w_lde_{}", circuit_index, witness_index),
-                    &format!("{:?}", w_poly.0.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>()),
-                );
-            });
-        });
 
-        // Generate test vectors from assignments
+        // Get private witness polynomial coefficients.
+        // TODO: Support batched circuits
+        let (_, w_poly) = first_round_oracles.batches.iter().next().unwrap();
+        let w_lde = format!("{:?}", w_poly[0].0.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        if create_test_vectors {
+            create_test_vector("polynomials", "w_lde", &w_lde);
+        }
+
+        // Generate test vectors from assignments.
         let assignments = AHPForR1CS::<_, MM>::calculate_assignments(&prover_state).unwrap();
 
+        // Get full witness polynomial coefficients.
+        // TODO: Support batched circuits
+        let (_, z_poly) = assignments.iter().next().unwrap();
+        let z_lde = format!("{:?}", z_poly[0].coeffs().iter().collect::<Vec<_>>());
         if create_test_vectors {
-            assignments.iter().enumerate().for_each(|(circuit_index, (_, z_polys))| {
-                z_polys.iter().enumerate().for_each(|(witness_index, z_poly)| {
-                    create_test_vector(
-                        "polynomials",
-                        &format!("circuit_{}_z_lde_{}", circuit_index, witness_index),
-                        &format!("{:?}", z_poly.coeffs().iter().collect::<Vec<_>>()),
-                    )
-                });
-            });
-        }
-
-        let constraint_domain = EvaluationDomain::<Fr>::new(num_constraints).unwrap();
-        let mut constraint_domain_elements = Vec::with_capacity(constraint_domain.size());
-
-        if create_test_vectors {
-            for el in constraint_domain.elements() {
-                constraint_domain_elements.push(el);
-            }
-            create_test_vector("domain", "H", &format!("{:?}", constraint_domain_elements));
-        }
-
-        let non_zero_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_non_zero_a).unwrap();
-
-        if create_test_vectors {
-            for el in non_zero_domain.elements() {
-                constraint_domain_elements.push(el);
-            }
-            create_test_vector("domain", "K", &format!("{:?}", constraint_domain_elements));
+            create_test_vector("polynomials", "z_lde", &z_lde);
         }
 
         let combiners = verifier::BatchCombiners::<Fr> { circuit_combiner, instance_combiners };
@@ -213,6 +187,7 @@ mod tests {
         let (second_oracles, prover_state) =
             AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_msg, prover_state).unwrap();
 
+        // Get round 2 rowcheck polynomial oracle coefficients.
         let h_0 = format!("{:?}", second_oracles.h_0.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
         if create_test_vectors {
             create_test_vector("polynomials", "h_0", &h_0);
@@ -239,11 +214,11 @@ mod tests {
             AHPForR1CS::<_, MM>::prover_third_round(&verifier_first_msg, &verifier_second_msg, prover_state, rng)
                 .unwrap();
 
+        // Get coefficients round 3 univariate rowcheck polynomial oracles.
         let g_1 = format!("{:?}", third_oracles.g_1.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
         if create_test_vectors {
             create_test_vector("polynomials", "g_1", &g_1);
         }
-
         let h_1 = format!("{:?}", third_oracles.h_1.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
         if create_test_vectors {
             create_test_vector("polynomials", "h_1", &h_1);
@@ -254,26 +229,19 @@ mod tests {
             AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_second_msg, &verifier_third_msg, prover_state, rng)
                 .unwrap();
 
+        // Create round 4 rational sumcheck oracle polynomials.
+        // TODO: Provide support for batched circuits
+        let (_, gm_polys) = fourth_oracles.gs.iter().next().unwrap();
+        let g_a = format!("{:?}", gm_polys.g_a.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        let g_b = format!("{:?}", gm_polys.g_b.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
+        let g_c = format!("{:?}", gm_polys.g_b.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
         if create_test_vectors {
-            fourth_oracles.gs.iter().enumerate().for_each(|(circuit_index, (_, gm_polys))| {
-                create_test_vector(
-                    "polynomials",
-                    &format!("circuit_{}_g_a", circuit_index),
-                    &format!("{:?}", gm_polys.g_a.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>()),
-                );
-                create_test_vector(
-                    "polynomials",
-                    &format!("circuit_{}_g_b", circuit_index),
-                    &format!("{:?}", gm_polys.g_b.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>()),
-                );
-                create_test_vector(
-                    "polynomials",
-                    &format!("circuit_{}_g_C", circuit_index),
-                    &format!("{:?}", gm_polys.g_c.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>()),
-                );
-            });
+            create_test_vector("polynomials", "g_a", &g_a);
+            create_test_vector("polynomials", "g_b", &g_b);
+            create_test_vector("polynomials", "g_c", &g_c);
         }
 
+        // Create the verifier's fourth message.
         let verifier_fourth_msg = verifier::FourthMessage::<Fr> { delta_a, delta_b, delta_c };
 
         let mut public_inputs = BTreeMap::new();
@@ -286,15 +254,46 @@ mod tests {
         let constraint_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_constraints).unwrap();
         let input_domain = EvaluationDomain::<Fr>::new(index_pk.circuit.index_info.num_public_inputs).unwrap();
 
+        // Get constraint domain elements.
+        let mut constraint_domain_elements = Vec::with_capacity(constraint_domain.size());
+        for el in constraint_domain.elements() {
+            constraint_domain_elements.push(el);
+        }
+        if create_test_vectors {
+            create_test_vector("domain", "R", &format!("{:?}", constraint_domain_elements));
+        }
+
+        // Get non_zero_domain elements.
+        let non_zero_domain = *[&non_zero_a_domain, &non_zero_b_domain, &non_zero_c_domain]
+            .iter()
+            .max_by_key(|domain| domain.size)
+            .unwrap();
+        let mut non_zero_domain_elements = Vec::with_capacity(non_zero_domain.size());
+        for el in non_zero_domain.elements() {
+            non_zero_domain_elements.push(el);
+        }
+        if create_test_vectors {
+            create_test_vector("domain", "K", &format!("{:?}", constraint_domain_elements));
+        }
+
+        // Get variable domain elements.
+        let mut variable_domain_elements = Vec::with_capacity(input_domain.size());
+        for el in variable_domain.elements() {
+            variable_domain_elements.push(el);
+        }
+        if create_test_vectors {
+            create_test_vector("domain", "C", &format!("{:?}", constraint_domain_elements));
+        }
+
         let fifth_oracles =
             AHPForR1CS::<_, MM>::prover_fifth_round(verifier_fourth_msg.clone(), prover_state, rng).unwrap();
 
+        // Get coefficients of final oracle polynomial from round 5.
         let h_2 = format!("{:?}", fifth_oracles.h_2.coeffs().map(|(_, coeff)| coeff).collect::<Vec<_>>());
         if create_test_vectors {
             create_test_vector("polynomials", "h_2", &h_2);
         }
 
-        use std::marker::PhantomData;
         let mut circuit_specific_states = BTreeMap::new();
         let circuit_specific_state = verifier::CircuitSpecificState {
             input_domain,
@@ -310,15 +309,14 @@ mod tests {
             circuit_specific_states,
             max_constraint_domain: constraint_domain,
             max_variable_domain: variable_domain,
-            max_non_zero_domain: non_zero_domain, // TODO: currently assuming same for three matrices but we should take the max
+            max_non_zero_domain: *non_zero_domain,
             first_round_message: Some(verifier_first_msg),
             second_round_message: Some(verifier_second_msg),
             third_round_message: Some(verifier_third_msg),
             fourth_round_message: Some(verifier_fourth_msg),
             gamma: Some(gamma),
-            mode: PhantomData,
+            mode: std::marker::PhantomData,
         };
-        println!("verifier_state: {:?}", verifier_state);
 
         let polynomials: Vec<_> = index_pk
             .circuit
@@ -339,11 +337,20 @@ mod tests {
         )
         .unwrap();
 
-        assert_snapshot("polynomials", "h_0", h_0);
-        assert_snapshot("polynomials", "h_1", h_1);
-        assert_snapshot("polynomials", "g_1", g_1);
-        assert_snapshot("polynomials", "h_2", h_2);
+        // Check the intermediate oracle polynomials against the test vectors.
+        assert_snapshot("polynomials", "w_lde", &w_lde);
+        assert_snapshot("polynomials", "z_lde", &z_lde);
+        assert_snapshot("polynomials", "h_0", &h_0);
+        assert_snapshot("polynomials", "h_1", &h_1);
+        assert_snapshot("polynomials", "g_1", &g_1);
+        assert_snapshot("polynomials", "h_2", &h_2);
+        assert_snapshot("polynomials", "g_a", &g_a);
+        assert_snapshot("polynomials", "g_b", &g_b);
+        assert_snapshot("polynomials", "g_c", &g_c);
 
-        // TODO: check round 1 & round 4 oracles
+        // Check that the domains match the test vectors.
+        assert_snapshot("domain", "R", &format!("{:?}", constraint_domain_elements));
+        assert_snapshot("domain", "K", &format!("{:?}", non_zero_domain_elements));
+        assert_snapshot("domain", "C", &format!("{:?}", variable_domain_elements));
     }
 }
