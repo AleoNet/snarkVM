@@ -184,7 +184,7 @@ impl<N: Network> Async<N> {
                 }
                 (RegisterType::Record(..), _) => bail!("Attempted to pass a 'record' into 'async'"),
                 (RegisterType::ExternalRecord(..), _) => {
-                    bail!("Attempted to pass an 'external record' into 'finalize'")
+                    bail!("Attempted to pass an 'external record' into 'async'")
                 }
                 (RegisterType::Future(input_locator), FinalizeType::Future(expected_locator)) => {
                     ensure!(
