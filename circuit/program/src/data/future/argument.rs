@@ -85,9 +85,8 @@ impl<A: Aleo> ToBits for Argument<A> {
     fn write_bits_le(&self, vec: &mut Vec<Boolean<A>>) {
         match self {
             Self::Plaintext(plaintext) => {
-                let mut bits_le = vec![Boolean::constant(false)];
-                plaintext.write_bits_le(&mut bits_le);
-                vec.extend(bits_le);
+                vec.push(Boolean::constant(false));
+                plaintext.write_bits_le(vec);
             }
             Self::Future(future) => {
                 let mut bits_le = vec![Boolean::constant(true)];
