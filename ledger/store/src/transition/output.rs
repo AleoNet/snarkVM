@@ -284,7 +284,7 @@ pub trait OutputStorage<N: Network>: Clone + Send + Sync {
             if let Some(record) = self.record_map().get_confirmed(&output_id)? {
                 return Ok(into_output!(Output::Record(output_id, record)));
             }
-            if let Some(_) = self.external_record_map().get_confirmed(&output_id)? {
+            if self.external_record_map().get_confirmed(&output_id)?.is_some() {
                 return Ok(Output::ExternalRecord(output_id));
             }
             if let Some(future) = self.future_map().get_confirmed(&output_id)? {
