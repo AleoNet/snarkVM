@@ -139,12 +139,12 @@ impl<N: Network> Equal<Self> for ProgramID<N> {
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
-        Boolean::new(self.eq(other))
+        Boolean::new(self == other)
     }
 
     /// Returns `true` if `self` and `other` are **not** equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        Boolean::new(self.ne(other))
+        Boolean::new(self != other)
     }
 }
 
