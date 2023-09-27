@@ -43,7 +43,6 @@ impl<N: Network> Parser for Input<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the finalize type from the string.
-        // TODO (d0cd): Futures are implicitly public.
         let (string, finalize_type) = FinalizeType::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;

@@ -18,11 +18,11 @@ impl<N: Network> FromBytes for Input<N> {
     /// Reads the input from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let register = FromBytes::read_le(&mut reader)?;
-        let plaintext_type = FromBytes::read_le(&mut reader)?;
+        let finalize_type = FromBytes::read_le(&mut reader)?;
 
         // Ensure the register is not a register member.
         match matches!(register, Register::Locator(..)) {
-            true => Ok(Self { register, finalize_type: plaintext_type }),
+            true => Ok(Self { register, finalize_type }),
             false => Err(error(format!("Input '{register}' cannot be a register member"))),
         }
     }
