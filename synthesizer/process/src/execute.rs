@@ -121,7 +121,7 @@ mod tests {
         // Execute the authorization.
         let (response, trace) = process.execute::<CurrentAleo>(authorization).unwrap();
         // Ensure the response has 1 outputs.
-        assert_eq!(response.outputs().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 outputs");
+        assert_eq!(response.outputs().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 output");
         // Ensure the response has 1 output IDs.
         assert_eq!(response.output_ids().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 0 output IDs");
         // Ensure the trace contains 1 transition.
