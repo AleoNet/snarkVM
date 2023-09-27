@@ -242,10 +242,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),
-            false => {
-                println!("Foo");
-                bail!("Failed to initialize a genesis block")
-            }
+            false => bail!("Failed to initialize a genesis block"),
         }
     }
 
