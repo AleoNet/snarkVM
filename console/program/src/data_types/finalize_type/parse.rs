@@ -29,7 +29,7 @@ impl<N: Network> Parser for FinalizeType<N> {
 impl<N: Network> FromStr for FinalizeType<N> {
     type Err = Error;
 
-    /// Returns a register type from a string literal.
+    /// Returns a finalize type from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
@@ -44,14 +44,14 @@ impl<N: Network> FromStr for FinalizeType<N> {
 }
 
 impl<N: Network> Debug for FinalizeType<N> {
-    /// Prints the register type as a string.
+    /// Prints the finalize type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 impl<N: Network> Display for FinalizeType<N> {
-    /// Prints the register type as a string.
+    /// Prints the finalize type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             // Prints the plaintext type, i.e. signature
