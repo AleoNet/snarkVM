@@ -23,8 +23,8 @@ cases:
 program zero_program.aleo;
 
 mapping counts:
-    key user as address.public;
-    value count as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function c:
     async c self.caller into r0;
@@ -40,8 +40,8 @@ finalize c:
 program one_program.aleo;
 
 mapping counts:
-    key user as address.public;
-    value count as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function d:
     async d self.caller into r0;
@@ -60,8 +60,8 @@ import one_program.aleo;
 program two_program.aleo;
 
 mapping counts:
-    key user as address.public;
-    value count as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function b:
     call zero_program.aleo/c into r0;
@@ -87,8 +87,8 @@ import two_program.aleo;
 program three_program.aleo;
 
 mapping counts:
-    key user as address.public;
-    value count as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function e:
     call two_program.aleo/b into r0;
@@ -118,8 +118,8 @@ import three_program.aleo;
 program four_program.aleo;
 
 mapping counts:
-    key user as address.public;
-    value count as u64.public;
+    key as address.public;
+    value as u64.public;
 
 function a:
     call two_program.aleo/b into r0;
@@ -130,6 +130,18 @@ finalize a:
     input r0 as two_program.aleo/b.future;
     input r1 as three_program.aleo/e.future;
     input r2 as address.public;
+    // Assert that all of the inputs to the finalize blocks of `one_program.aleo/d` and `zero_program.aleo/c`.
+    assert.eq r0[0u32][0u32] r0[1u32][0u32];
+    assert.eq r0[1u32][0u32] r1[0u32][0u32][0u32];
+    assert.eq r1[0u32][0u32][0u32] r1[0u32][1u32][0u32];
+    assert.eq r1[0u32][1u32][0u32] r1[1u32][0u32];
+    assert.eq r1[1u32][0u32] r1[2u32][0u32];
+    // Assert that all of the futures of `one_program.aleo/d` are the same.
+    assert.eq r0[1u32] r1[0u32][1u32];
+    assert.eq r1[0u32][1u32] r1[1u32];
+    // Assert that all of the futures of `zero_program.aleo/c` are the same.
+    assert.eq r0[0u32] r1[0u32][0u32];
+    assert.eq r1[0u32][0u32] r1[2u32];
     await r0;
     await r1;
     get.or_use counts[r2] 0u64 into r3;
