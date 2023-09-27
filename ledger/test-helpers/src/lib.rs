@@ -392,8 +392,11 @@ fn sample_genesis_block_and_components_raw(
     // Prepare the transactions.
     let transactions = Transactions::from_iter([confirmed].into_iter());
 
+    // TODO (raychu86): Sample the finalize_root properly.
+    let finalize_root = CurrentNetwork::hash_bhp1024(&[]).unwrap();
+
     // Prepare the block header.
-    let header = Header::genesis(&transactions).unwrap();
+    let header = Header::genesis(&transactions, finalize_root).unwrap();
     // Prepare the previous block hash.
     let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 

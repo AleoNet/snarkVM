@@ -229,11 +229,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Construct the finalize state.
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate the transactions.
-        let (transactions, aborted) = self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
+        let (transactions, aborted, finalize_root) =
+            self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
         ensure!(aborted.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
 
         // Prepare the block header.
-        let header = Header::genesis(&transactions)?;
+        let header = Header::genesis(&transactions, finalize_root)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
@@ -570,7 +571,8 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let (transactions, _) = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        let (transactions, _, finalize_root) =
+            vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
@@ -588,7 +590,7 @@ function compute:
         let header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root().unwrap(),
+            finalize_root,
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             metadata,

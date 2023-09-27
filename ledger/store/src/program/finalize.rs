@@ -144,6 +144,58 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         self.value_map().finish_atomic()
     }
 
+    /// Returns the write batch.
+    fn get_write_batch(&self) -> Result<Vec<u8>> {
+        let mut write_batch = self.committee_store().get_write_batch()?;
+
+        // TODO (raychu86): Unify the macro usage.
+        macro_rules! process_map {
+            ($map:expr, $result:expr) => {
+                for (key, value) in $map.iter_pending() {
+                    $result.extend(key.to_bytes_le()?);
+                    match value {
+                        Some(value) => {
+                            $result.push(1u8);
+                            $result.extend(value.to_bytes_le()?);
+                        }
+                        None => $result.push(0u8),
+                    }
+                }
+            };
+        }
+
+        macro_rules! process_map_nested {
+            ($map:expr, $result:expr) => {
+                for (key, value) in $map.iter_pending() {
+                    $result.extend(key.to_bytes_le()?);
+                    match value {
+                        Some(values) => {
+                            $result.push(1u8);
+                            (values.len() as u32).write_le(&mut $result)?;
+                            for v in values.iter() {
+                                $result.extend(v.to_bytes_le()?);
+                            }
+                        }
+                        None => $result.push(0u8),
+                    }
+                }
+            };
+        }
+
+        // Add the program id map's key value atomic batch.
+        process_map_nested!(self.program_id_map(), write_batch);
+        // Add the mapping id map's key value atomic batch.
+        process_map!(self.mapping_id_map(), write_batch);
+        // Add the key-value id map's key value atomic batch.
+        process_map_nested!(self.key_value_id_map(), write_batch);
+        // Add the key map's key value atomic batch.
+        process_map!(self.key_map(), write_batch);
+        // Add the value map's key value atomic batch.
+        process_map!(self.value_map(), write_batch);
+
+        Ok(write_batch)
+    }
+
     /// Initializes the given `program ID` and `mapping name` in storage.
     /// If the `mapping name` is already initialized, an error is returned.
     fn initialize_mapping(
@@ -800,6 +852,11 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Finishes an atomic batch write operation.
     pub fn finish_atomic(&self) -> Result<()> {
         self.storage.finish_atomic()
+    }
+
+    /// Returns the write batch.
+    pub fn get_write_batch(&self) -> Result<Vec<u8>> {
+        self.storage.get_write_batch()
     }
 
     /// Returns the optional development ID.

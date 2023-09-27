@@ -57,9 +57,9 @@ fn test_vm_execute_and_finalize() {
         // Deploy the program.
         let transaction =
             vm.deploy(&genesis_private_key, test.program(), Some(fee_records.pop().unwrap().0), 0, None, rng).unwrap();
-        let (transactions, _) =
+        let (transactions, _, finalize_root) =
             vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
-        let block = construct_next_block(&vm, &genesis_private_key, transactions, rng).unwrap();
+        let block = construct_next_block(&vm, &genesis_private_key, transactions, finalize_root, rng).unwrap();
         vm.add_next_block(&block).unwrap();
 
         // Run each test case, aggregating the outputs.
@@ -161,9 +161,9 @@ fn test_vm_execute_and_finalize() {
                     output
                         .insert(serde_yaml::Value::String("execute".to_string()), serde_yaml::Value::Mapping(execute));
                     // Speculate on the transaction.
-                    let transactions =
+                    let (transactions, finalize_root) =
                         match vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()) {
-                            Ok((transactions, _)) => {
+                            Ok((transactions, _, finalize_root)) => {
                                 output.insert(
                                     serde_yaml::Value::String("speculate".to_string()),
                                     serde_yaml::Value::String(match transactions.iter().next().unwrap() {
@@ -180,7 +180,7 @@ fn test_vm_execute_and_finalize() {
                                     }),
                                 );
 
-                                transactions
+                                (transactions, finalize_root)
                             }
                             Err(err) => {
                                 output.insert(
@@ -191,7 +191,7 @@ fn test_vm_execute_and_finalize() {
                             }
                         };
                     // Construct the next block.
-                    let block = construct_next_block(&vm, &private_key, transactions, rng).unwrap();
+                    let block = construct_next_block(&vm, &private_key, transactions, finalize_root, rng).unwrap();
                     // Add the next block.
                     output.insert(
                         serde_yaml::Value::String("add_next_block".to_string()),
@@ -284,9 +284,9 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let (transactions, _) =
+        let (transactions, _, finalize_root) =
             vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
-        let block = construct_next_block(vm, private_key, transactions, rng).unwrap();
+        let block = construct_next_block(vm, private_key, transactions, finalize_root, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
 
@@ -300,6 +300,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     vm: &VM<CurrentNetwork, C>,
     private_key: &PrivateKey<CurrentNetwork>,
     transactions: Transactions<CurrentNetwork>,
+    finalize_root: Field<CurrentNetwork>,
     rng: &mut R,
 ) -> Result<Block<CurrentNetwork>> {
     // Get the most recent block.
@@ -324,7 +325,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     let header = Header::from(
         vm.block_store().current_state_root(),
         transactions.to_transactions_root().unwrap(),
-        transactions.to_finalize_root().unwrap(),
+        finalize_root,
         *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),
         Field::zero(),
         metadata,
