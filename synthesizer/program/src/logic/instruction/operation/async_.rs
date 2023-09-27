@@ -87,7 +87,7 @@ impl<N: Network> Async<N> {
             .iter()
             .map(|operand| match registers.load(stack, operand)? {
                 Value::Plaintext(plaintext) => Ok(Argument::Plaintext(plaintext)),
-                Value::Record(_) => bail!("Cannot pass a record into a `finalize` instruction"),
+                Value::Record(_) => bail!("Cannot pass a record into an `async` instruction"),
                 Value::Future(future) => Ok(Argument::Future(future)),
             })
             .try_collect()?;
