@@ -182,7 +182,7 @@ impl<N: Network> Async<N> {
                         input_type
                     );
                 }
-                (RegisterType::Record(..), _) => bail!("Attempted to pass a 'record' into 'finalize'"),
+                (RegisterType::Record(..), _) => bail!("Attempted to pass a 'record' into 'async'"),
                 (RegisterType::ExternalRecord(..), _) => {
                     bail!("Attempted to pass an 'external record' into 'finalize'")
                 }
