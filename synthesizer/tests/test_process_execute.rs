@@ -14,19 +14,17 @@
 
 mod utilities;
 
-use std::panic::AssertUnwindSafe;
-use utilities::*;
-
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Literal, Value},
+    program::{Identifier, Literal, ProgramID, Value},
     types::Boolean,
 };
 use synthesizer_process::Process;
+use utilities::*;
 
-use console::program::ProgramID;
 use rayon::prelude::*;
+use std::panic::AssertUnwindSafe;
 
 #[test]
 fn test_process_execute() {

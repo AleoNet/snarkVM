@@ -27,7 +27,7 @@ use crate::{Access, Identifier, Plaintext, ProgramID, Value};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-// TODO (@d0cd) Check serializers
+// TODO (@d0cd). Implement `FromBytes` and `FromBits` for `Future`.
 
 /// A future.
 #[derive(Clone)]

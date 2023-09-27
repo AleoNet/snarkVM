@@ -56,7 +56,7 @@ impl<N: Network> Async<N> {
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
         // Sanity check that there is less than or equal to MAX_INPUTS operands.
-        debug_assert!(self.operands.len() <= N::MAX_INPUTS, "Finalize must have less than {} operands", N::MAX_INPUTS);
+        debug_assert!(self.operands.len() <= N::MAX_INPUTS, "`async` must have less than {} operands", N::MAX_INPUTS);
         // Return the operands.
         &self.operands
     }

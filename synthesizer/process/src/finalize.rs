@@ -103,13 +103,10 @@ impl<N: Network> Process<N> {
         let call_graph = self.construct_call_graph(execution)?;
 
         atomic_batch_scope!(store, {
-            // Initialize a list for finalize operations.
-            let mut finalize_operations = Vec::new();
-
             // Finalize the root transition.
             // Note that this will result in all the remaining transitions being finalized, since the number
             // of calls matches the number of transitions.
-            finalize_operations.extend(finalize_transition(state, store, stack, transition, call_graph)?);
+            let mut finalize_operations = finalize_transition(state, store, stack, transition, call_graph)?;
 
             /* Finalize the fee. */
 
