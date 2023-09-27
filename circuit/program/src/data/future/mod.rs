@@ -72,7 +72,7 @@ impl<A: Aleo> Eject for Future<A> {
 impl<A: Aleo> Future<A> {
     /// Returns a future from the given program ID, function name, and arguments.
     #[inline]
-    pub fn from(program_id: ProgramID<A>, function_name: Identifier<A>, arguments: Vec<Argument<A>>) -> Self {
+    pub const fn from(program_id: ProgramID<A>, function_name: Identifier<A>, arguments: Vec<Argument<A>>) -> Self {
         Self { program_id, function_name, arguments }
     }
 
