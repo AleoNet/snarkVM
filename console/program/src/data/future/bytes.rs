@@ -29,7 +29,14 @@ impl<N: Network> FromBytes for Future<N> {
         // Read the arguments.
         let mut arguments = Vec::with_capacity(num_arguments);
         for _ in 0..num_arguments {
-            arguments.push(Argument::read_le(&mut reader)?);
+            // Read the argument (in 2 steps to prevent infinite recursion).
+            let num_bytes = u16::read_le(&mut reader)?;
+            // Read the argument bytes.
+            let bytes = (0..num_bytes).map(|_| u8::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+            // Recover the argument.
+            let entry = Argument::read_le(&mut bytes.as_slice())?;
+            // Add the argument.
+            arguments.push(entry);
         }
         // Return the future.
         Ok(Self::new(program_id, function_name, arguments))
@@ -50,7 +57,12 @@ impl<N: Network> ToBytes for Future<N> {
         u8::try_from(self.arguments.len()).map_err(error)?.write_le(&mut writer)?;
         // Write each argument.
         for argument in &self.arguments {
-            argument.write_le(&mut writer)?;
+            // Write the argument (performed in 2 steps to prevent infinite recursion).
+            let bytes = argument.to_bytes_le().map_err(error)?;
+            // Write the number of bytes.
+            u16::try_from(bytes.len()).map_err(error)?.write_le(&mut writer)?;
+            // Write the bytes.
+            bytes.write_le(&mut writer)?;
         }
         Ok(())
     }
