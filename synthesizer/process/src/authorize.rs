@@ -44,6 +44,8 @@ impl<N: Network> Process<N> {
 
         // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
+        // Since this a top-level call, `is_root` is `true`.
+        let is_root = Boolean::new(true);
         // Ensure the fee has the correct function.
         let function_name = Identifier::from_str("fee_private")?;
         // Retrieve the input types.
@@ -61,7 +63,16 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let request = Request::sign(
+            private_key,
+            program_id.to_address()?,
+            is_root,
+            program_id,
+            function_name,
+            inputs.iter(),
+            &input_types,
+            rng,
+        )?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.
@@ -81,6 +92,8 @@ impl<N: Network> Process<N> {
 
         // Ensure the fee has the correct program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
+        // Since this a top-level call, `is_root` is `true`.
+        let is_root = Boolean::new(true);
         // Ensure the fee has the correct function.
         let function_name = Identifier::from_str("fee_public")?;
         // Construct the input types.
@@ -93,7 +106,16 @@ impl<N: Network> Process<N> {
         lap!(timer, "Construct the inputs");
 
         // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+        let request = Request::sign(
+            private_key,
+            program_id.to_address()?,
+            is_root,
+            program_id,
+            function_name,
+            inputs.iter(),
+            &input_types,
+            rng,
+        )?;
         finish!(timer, "Compute the request");
 
         // Return the authorization.

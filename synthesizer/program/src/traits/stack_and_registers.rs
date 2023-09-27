@@ -17,6 +17,7 @@ use console::{
     network::Network,
     prelude::{bail, Result},
     program::{
+        Future,
         Identifier,
         Literal,
         Locator,
@@ -48,6 +49,9 @@ pub trait StackMatches<N: Network> {
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
     fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()>;
+
+    /// Checks that the given future matches the layout of the future type.
+    fn matches_future(&self, future: &Future<N>, locator: &Locator<N>) -> Result<()>;
 }
 
 pub trait StackProgram<N: Network> {
@@ -72,6 +76,9 @@ pub trait StackProgram<N: Network> {
     /// Returns the function with the given function name.
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>>;
 
+    /// Returns a reference to the function with the given function name.
+    fn get_function_ref(&self, function_name: &Identifier<N>) -> Result<&Function<N>>;
+
     /// Returns the expected number of calls for the given function name.
     fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize>;
 }
@@ -94,6 +101,12 @@ pub trait RegistersCaller<N: Network> {
     /// Sets the transition caller.
     fn set_caller(&mut self, caller: Address<N>);
 
+    /// Returns the transition parent.
+    fn parent(&self) -> Result<Address<N>>;
+
+    /// Sets the transition parent.
+    fn set_parent(&mut self, parent: Address<N>);
+
     /// Returns the transition view key.
     fn tvk(&self) -> Result<Field<N>>;
 
@@ -107,6 +120,12 @@ pub trait RegistersCallerCircuit<N: Network, A: circuit::Aleo<Network = N>> {
 
     /// Sets the transition caller, as a circuit.
     fn set_caller_circuit(&mut self, caller_circuit: circuit::Address<A>);
+
+    /// Returns the transition parent, as a circuit.
+    fn parent_circuit(&self) -> Result<circuit::Address<A>>;
+
+    /// Sets the transition parent, as a circuit.
+    fn set_parent_circuit(&mut self, parent_circuit: circuit::Address<A>);
 
     /// Returns the transition view key, as a circuit.
     fn tvk_circuit(&self) -> Result<circuit::Field<A>>;
@@ -137,7 +156,10 @@ pub trait RegistersLoad<N: Network> {
     ) -> Result<Literal<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            Value::Plaintext(Plaintext::Struct(..)) | Value::Plaintext(Plaintext::Array(..)) | Value::Record(..) => {
+            Value::Plaintext(Plaintext::Struct(..))
+            | Value::Plaintext(Plaintext::Array(..))
+            | Value::Record(..)
+            | Value::Future(..) => {
                 bail!("Operand must be a literal")
             }
         }
@@ -157,7 +179,7 @@ pub trait RegistersLoad<N: Network> {
     ) -> Result<Plaintext<N>> {
         match self.load(stack, operand)? {
             Value::Plaintext(plaintext) => Ok(plaintext),
-            Value::Record(..) => bail!("Operand must be a plaintext"),
+            Value::Record(..) | Value::Future(..) => bail!("Operand must be a plaintext"),
         }
     }
 }
@@ -190,7 +212,8 @@ pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
             circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
             | circuit::Value::Plaintext(circuit::Plaintext::Array(..))
-            | circuit::Value::Record(..) => bail!("Operand must be a literal"),
+            | circuit::Value::Record(..)
+            | circuit::Value::Future(..) => bail!("Operand must be a literal"),
         }
     }
 
@@ -208,7 +231,7 @@ pub trait RegistersLoadCircuit<N: Network, A: circuit::Aleo<Network = N>> {
     ) -> Result<circuit::Plaintext<A>> {
         match self.load_circuit(stack, operand)? {
             circuit::Value::Plaintext(plaintext) => Ok(plaintext),
-            circuit::Value::Record(..) => bail!("Operand must be a plaintext"),
+            circuit::Value::Record(..) | circuit::Value::Future(..) => bail!("Operand must be a plaintext"),
         }
     }
 }

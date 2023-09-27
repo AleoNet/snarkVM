@@ -51,6 +51,10 @@ pub struct Registers<N: Network, A: circuit::Aleo<Network = N>> {
     caller: Option<Address<N>>,
     /// The transition caller, as a circuit.
     caller_circuit: Option<circuit::Address<A>>,
+    /// The transition parent.
+    parent: Option<Address<N>>,
+    /// The transition parent, as a circuit.
+    parent_circuit: Option<circuit::Address<A>>,
     /// The transition view key.
     tvk: Option<Field<N>>,
     /// The transition view key, as a circuit.
@@ -68,6 +72,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             circuit_registers: IndexMap::new(),
             caller: None,
             caller_circuit: None,
+            parent: None,
+            parent_circuit: None,
             tvk: None,
             tvk_circuit: None,
         }

@@ -27,6 +27,18 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCaller<N> for Registers
         self.caller = Some(caller);
     }
 
+    /// Returns the transition parent.
+    #[inline]
+    fn parent(&self) -> Result<Address<N>> {
+        self.parent.ok_or_else(|| anyhow!("Parent address (console) is not set in the registers."))
+    }
+
+    /// Sets the transition parent.
+    #[inline]
+    fn set_parent(&mut self, parent: Address<N>) {
+        self.parent = Some(parent);
+    }
+
     /// Returns the transition view key.
     #[inline]
     fn tvk(&self) -> Result<Field<N>> {
@@ -51,6 +63,18 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCallerCircuit<N, A> for
     #[inline]
     fn set_caller_circuit(&mut self, caller_circuit: circuit::Address<A>) {
         self.caller_circuit = Some(caller_circuit);
+    }
+
+    /// Returns the transition parent, as a circuit.
+    #[inline]
+    fn parent_circuit(&self) -> Result<circuit::Address<A>> {
+        self.parent_circuit.clone().ok_or_else(|| anyhow!("Parent address (circuit) is not set in the registers."))
+    }
+
+    /// Sets the transition parent, as a circuit.
+    #[inline]
+    fn set_parent_circuit(&mut self, parent_circuit: circuit::Address<A>) {
+        self.parent_circuit = Some(parent_circuit);
     }
 
     /// Returns the transition view key, as a circuit.

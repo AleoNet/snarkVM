@@ -19,17 +19,19 @@ impl<A: Aleo> Request<A> {
     /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, parent, is_root, function ID, input IDs\])
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
             &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
         );
 
-        // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(3 + 4 * self.input_ids.len());
+        // Construct the signature message as `[tvk, tcm, parent, is_root, function ID, input IDs]`.
+        let mut message = Vec::with_capacity(5 + 4 * self.input_ids.len());
         message.push(self.tvk.clone());
         message.push(self.tcm.clone());
+        message.push(self.parent.to_field());
+        message.push(Field::from_boolean(&self.is_root));
         message.push(function_id);
 
         // Check the input IDs and construct the rest of the signature message.
@@ -152,8 +154,9 @@ impl<A: Aleo> Request<A> {
                         // Ensure the expected hash matches the computed hash.
                         match &input {
                             Value::Plaintext(..) => input_hash.is_equal(&A::hash_psd8(&preimage)),
-                            // Ensure the input is not a record.
+                            // Ensure the input is not a record or future.
                             Value::Record(..) => A::halt("Expected a constant plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a constant plaintext input, found a future input"),
                         }
                     }
                     // A public input is hashed (using `tcm`) to a field element.
@@ -174,8 +177,9 @@ impl<A: Aleo> Request<A> {
                         // Ensure the expected hash matches the computed hash.
                         match &input {
                             Value::Plaintext(..) => input_hash.is_equal(&A::hash_psd8(&preimage)),
-                            // Ensure the input is not a record.
+                            // Ensure the input is not a record or future.
                             Value::Record(..) => A::halt("Expected a public plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a public plaintext input, found a future input"),
                         }
                     }
                     // A private input is encrypted (using `tvk`) and hashed to a field element.
@@ -194,6 +198,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key),
                             // Ensure the input is a plaintext.
                             Value::Record(..) => A::halt("Expected a private plaintext input, found a record input"),
+                            Value::Future(..) => A::halt("Expected a private plaintext input, found a future input"),
                         };
 
                         // Ensure the expected hash matches the computed hash.
@@ -206,6 +211,7 @@ impl<A: Aleo> Request<A> {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
+                            Value::Future(..) => A::halt("Expected a record input, found a future input"),
                         };
                         // Retrieve the record name as a `Mode::Constant`.
                         let record_name = match input_type {
@@ -266,6 +272,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(..) => {
                                 A::halt("Expected an external record input, found a plaintext input")
                             }
+                            Value::Future(..) => A::halt("Expected an external record input, found a future input"),
                         };
 
                         // Prepare the index as a constant field element.
@@ -298,7 +305,7 @@ impl<A: Aleo> Request<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::TestRng;
+    use snarkvm_utilities::{TestRng, Uniform};
 
     use anyhow::Result;
 
@@ -314,8 +321,14 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
+            // Sample a random address to use as the parent.
+            let parent = snarkvm_console_account::Address::rand(rng);
+
+            // Sample a random boolean for the `is_root` flag.
+            let is_root = console::Boolean::rand(rng);
+
             // Sample a random private key and address.
-            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
+            let private_key = snarkvm_console_account::PrivateKey::new(rng)?;
             let address = snarkvm_console_account::Address::try_from(&private_key).unwrap();
 
             // Construct a program ID and function name.
@@ -351,8 +364,16 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request =
-                console::Request::sign(&private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+            let request = console::Request::sign(
+                &private_key,
+                parent,
+                is_root,
+                program_id,
+                function_name,
+                inputs.iter(),
+                &input_types,
+                rng,
+            )?;
             assert!(request.verify(&input_types));
 
             // Inject the request into a circuit.
@@ -394,16 +415,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 48000, 0, 17000, 17000)
+        check_verify(Mode::Constant, 48000, 0, 18000, 18000)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 41268, 0, 30403, 30447)
+        check_verify(Mode::Public, 41268, 0, 30923, 30967)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 41268, 0, 30403, 30447)
+        check_verify(Mode::Private, 41268, 0, 30923, 30967)
     }
 }

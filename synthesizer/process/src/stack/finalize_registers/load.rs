@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use console::program::FinalizeType;
 
 impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
     /// Loads the value of a given operand from the registers.
@@ -34,32 +35,41 @@ impl<N: Network> RegistersLoad<N> for FinalizeRegisters<N> {
             }
             // If the operand is the caller, throw an error.
             Operand::Caller => bail!("Forbidden operation: Cannot use 'self.caller' in 'finalize'"),
+            // If the operand is the parent, throw an error.
+            Operand::Parent => bail!("Forbidden operation: Cannot use 'self.parent' in 'finalize'"),
             // If the operand is the block height, load the block height.
             Operand::BlockHeight => {
                 return Ok(Value::Plaintext(Plaintext::from(Literal::U32(U32::new(self.state.block_height())))));
             }
         };
 
-        // Retrieve the plaintext value.
-        let plaintext_value =
-            self.registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
+        // Retrieve the value.
+        let value = self.registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
 
         // Return the value for the given register or register access.
-        let plaintext_value = match register {
+        let value = match register {
             // If the register is a locator, then return the plaintext value.
-            Register::Locator(..) => plaintext_value.clone(),
+            Register::Locator(..) => value.clone(),
             // If the register is a register access, then load the specific plaintext value.
-            Register::Access(_, ref path) => plaintext_value.find(path)?,
+            Register::Access(_, ref path) => value.find(path)?,
         };
 
         // Retrieve the type of the register.
-        match self.finalize_types.get_type(stack, register) {
+        match (self.finalize_types.get_type(stack, register), &value) {
             // Ensure the plaintext value matches the register type.
-            Ok(plaintext_type) => stack.matches_plaintext(&plaintext_value, &plaintext_type)?,
+            (Ok(FinalizeType::Plaintext(plaintext_type)), Value::Plaintext(plaintext_value)) => {
+                stack.matches_plaintext(plaintext_value, &plaintext_type)?
+            }
+            // Ensure the future value matches the register type.
+            (Ok(FinalizeType::Future(locator)), Value::Future(future)) => stack.matches_future(future, &locator)?,
+            // Ensure the load is valid in a finalize context.
+            (Ok(finalize_type), stack_value) => bail!(
+                "Attempted to load a '{stack_value}' value from a register '{register}' of type '{finalize_type}' in a finalize scope",
+            ),
             // Ensure the register is defined.
-            Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+            (Err(error), _) => bail!("Register '{register}' is not a member of the function: {error}"),
         };
 
-        Ok(Value::Plaintext(plaintext_value))
+        Ok(value)
     }
 }

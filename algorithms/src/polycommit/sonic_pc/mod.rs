@@ -171,7 +171,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     ///
     /// If for some `i`, `polynomials[i].degree_bound().is_some()`, then that
     /// polynomial will have the corresponding degree bound enforced.
-    #[allow(clippy::type_complexity)]
     #[allow(clippy::format_push_string)]
     pub fn commit<'b>(
         universal_prover: &UniversalProver<E>,
@@ -211,7 +210,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                     hiding_bound,
                 ));
 
-                #[allow(clippy::or_fun_call)]
                 let (comm, rand) = p
                     .sum()
                     .map(move |p| {
@@ -634,7 +632,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         end_timer!(acc_time);
     }
 
-    #[allow(clippy::type_complexity)]
     fn check_elems(
         vk: &UniversalVerifier<E>,
         combined_comms: BTreeMap<Option<usize>, E::G1Projective>,

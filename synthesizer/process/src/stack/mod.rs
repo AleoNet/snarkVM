@@ -41,8 +41,10 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
+        Boolean,
         Entry,
         EntryType,
+        Future,
         Identifier,
         Literal,
         Locator,
@@ -254,11 +256,13 @@ impl<N: Network> StackProgram<N> for Stack<N> {
     /// Returns the function with the given function name.
     #[inline]
     fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
-        // Ensure the function exists.
-        match self.program.contains_function(function_name) {
-            true => self.program.get_function(function_name),
-            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
-        }
+        self.program.get_function(function_name)
+    }
+
+    /// Returns a reference to the function with the given function name.
+    #[inline]
+    fn get_function_ref(&self, function_name: &Identifier<N>) -> Result<&Function<N>> {
+        self.program.get_function_ref(function_name)
     }
 
     /// Returns the expected number of calls for the given function name.

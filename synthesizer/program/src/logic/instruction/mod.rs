@@ -79,7 +79,9 @@ pub enum Instruction<N: Network> {
     AssertEq(AssertEq<N>),
     /// Asserts `first` and `second` are **not** equal.
     AssertNeq(AssertNeq<N>),
-    /// Calls a closure on the operands.
+    /// Calls a finalize asynchronously on the operands.
+    Async(Async<N>),
+    /// Calls a closure or function on the operands.
     Call(Call<N>),
     /// Casts the operands into the declared type.
     Cast(Cast<N>),
@@ -237,6 +239,7 @@ macro_rules! instruction {
             And,
             AssertEq,
             AssertNeq,
+            Async,
             Call,
             Cast,
             CastLossy,

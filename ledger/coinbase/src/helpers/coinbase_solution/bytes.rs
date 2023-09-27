@@ -17,59 +17,45 @@ use super::*;
 impl<N: Network> FromBytes for CoinbaseSolution<N> {
     /// Reads the solutions from the buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let partial_solutions_len: u32 = FromBytes::read_le(&mut reader)?;
-
-        let mut partial_solutions = Vec::with_capacity(partial_solutions_len as usize);
-        for _ in 0..partial_solutions_len {
-            let individual_puzzle_solution: PartialSolution<N> = FromBytes::read_le(&mut reader)?;
-            partial_solutions.push(individual_puzzle_solution);
+        // Read the number of solutions.
+        let num_solutions: u16 = FromBytes::read_le(&mut reader)?;
+        // Read the solutions.
+        let mut prover_solutions = Vec::with_capacity(num_solutions as usize);
+        for _ in 0..num_solutions {
+            prover_solutions.push(ProverSolution::read_le(&mut reader)?);
         }
-
-        let proof = KZGProof::read_le(&mut reader)?;
-
-        Ok(Self::new(partial_solutions, proof))
+        // Return the solutions.
+        Ok(Self::new(prover_solutions))
     }
 }
 
 impl<N: Network> ToBytes for CoinbaseSolution<N> {
     /// Writes the solutions to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (u32::try_from(self.partial_solutions.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
-
-        for individual_puzzle_solution in &self.partial_solutions {
-            individual_puzzle_solution.write_le(&mut writer)?;
+        // Write the number of solutions.
+        (u16::try_from(self.solutions.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
+        // Write the solutions.
+        for solution in self.solutions.values() {
+            solution.write_le(&mut writer)?;
         }
-
-        self.proof.write_le(&mut writer)
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3};
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_bytes() -> Result<()> {
         let mut rng = TestRng::default();
 
-        // Sample new solutions.
-        let mut partial_solutions = vec![];
-        for _ in 0..rng.gen_range(1..10) {
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
-            let address = Address::try_from(private_key)?;
-
-            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
-        }
-        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
+        // Sample random solutions.
+        let expected = crate::helpers::coinbase_solution::serialize::tests::sample_solutions(&mut rng);
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
         assert_eq!(expected, CoinbaseSolution::read_le(&expected_bytes[..])?);
-        // assert!(CoinbaseSolution::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-
         Ok(())
     }
 }

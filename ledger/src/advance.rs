@@ -75,11 +75,17 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // Drop the write lock on the current block.
         drop(current_block);
 
+        // Update the cached committee from storage.
+        if let Ok(current_committee) = self.vm.finalize_store().committee_store().current_committee() {
+            *self.current_committee.write() = Some(current_committee);
+        }
+
         // If the block is the start of a new epoch, or the epoch challenge has not been set, update the current epoch challenge.
         if block.height() % N::NUM_BLOCKS_PER_EPOCH == 0 || self.current_epoch_challenge.read().is_none() {
             // Update the current epoch challenge.
             self.current_epoch_challenge.write().clone_from(&self.get_epoch_challenge(block.height()).ok());
         }
+
         Ok(())
     }
 }
@@ -94,18 +100,23 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         candidate_ratifications: Vec<Ratify<N>>,
         candidate_solutions: Vec<ProverSolution<N>>,
         candidate_transactions: Vec<Transaction<N>>,
-    ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>), Error> {
+    ) -> Result<(Header<N>, Vec<Ratify<N>>, Option<CoinbaseSolution<N>>, Transactions<N>)> {
         // Construct the solutions.
         let (solutions, coinbase_accumulator_point, combined_proof_target) = match candidate_solutions.is_empty() {
             true => (None, Field::<N>::zero(), 0u128),
             false => {
                 // Accumulate the prover solutions.
-                let (coinbase, coinbase_accumulator_point) =
-                    self.coinbase_puzzle.accumulate_unchecked(&self.latest_epoch_challenge()?, &candidate_solutions)?;
+                let solutions = self.coinbase_puzzle.accumulate(
+                    candidate_solutions,
+                    &self.latest_epoch_challenge()?,
+                    self.latest_proof_target(),
+                )?;
+                // Compute the coinbase accumulator point.
+                let coinbase_accumulator_point = solutions.to_accumulator_point()?;
                 // Compute the combined proof target.
-                let combined_proof_target = coinbase.to_combined_proof_target()?;
+                let combined_proof_target = solutions.to_combined_proof_target()?;
                 // Output the solutions, coinbase accumulator point, and combined proof target.
-                (Some(coinbase), coinbase_accumulator_point, combined_proof_target)
+                (Some(solutions), coinbase_accumulator_point, combined_proof_target)
             }
         };
 

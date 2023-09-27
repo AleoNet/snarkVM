@@ -26,6 +26,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
         caller: circuit::Address<A>,
+        parent: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
         let timer = timer!("Stack::execute_closure");
@@ -46,6 +47,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(caller);
+        // Set the transition parent, as a circuit.
+        registers.set_parent_circuit(parent);
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
         lap!(timer, "Initialize the registers");
@@ -103,6 +106,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
+                    ))),
+                    // If the operand is the parent, retrieve the parent from the registers.
+                    Operand::Parent => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.parent_circuit()?),
                     ))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => {
@@ -178,6 +185,13 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
+        // Inject `is_root` as `Mode::Public`.
+        let is_root = circuit::Boolean::new(circuit::Mode::Public, **console_request.is_root());
+        // Inject the parent as `Mode::Public`.
+        let claimed_parent = circuit::Address::new(circuit::Mode::Public, *console_request.parent());
+        // Compute the parent.
+        let parent = Ternary::ternary(&is_root, request.caller(), &claimed_parent);
+
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
         lap!(timer, "Verify the circuit request");
@@ -186,6 +200,11 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         registers.set_caller(*console_request.caller());
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(request.caller().clone());
+
+        // Set the transition parent.
+        registers.set_parent(parent.eject_value());
+        // Set the transition parent, as a circuit.
+        registers.set_parent_circuit(parent);
 
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());
@@ -279,6 +298,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
                     ))),
+                    // If the operand is the parent, retrieve the parent from the registers.
+                    Operand::Parent => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.parent_circuit()?),
+                    ))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => {
                         bail!("Illegal operation: cannot retrieve the block height in a function scope")
@@ -329,73 +352,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         // Retrieve the number of constraints for verifying the response in the circuit.
         let num_response_constraints =
             A::num_constraints().saturating_sub(num_request_constraints).saturating_sub(num_function_constraints);
-
-        // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
-        let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
-            || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
-            || matches!(registers.call_stack(), CallStack::Execute(..))
-        {
-            // If this function has the finalize command, then construct the finalize inputs.
-            if let Some(command) = function.finalize_command() {
-                use circuit::traits::ToBits;
-
-                // Ensure the number of inputs is within bounds.
-                ensure!(
-                    command.operands().len() <= N::MAX_INPUTS,
-                    "The 'finalize' command contains too many operands. The maximum number of inputs is {}.",
-                    N::MAX_INPUTS
-                );
-
-                // Initialize a vector for the (console) finalize inputs.
-                let mut console_finalize_inputs = Vec::with_capacity(command.operands().len());
-                // Initialize a vector for the (circuit) finalize input bits.
-                let mut circuit_finalize_input_bits = Vec::with_capacity(command.operands().len());
-
-                // Retrieve the finalize inputs.
-                for operand in command.operands() {
-                    // Retrieve the finalize input.
-                    let value = registers.load_circuit(self, operand)?;
-                    // Ensure the value is a literal, struct, or array.
-                    // See `RegisterTypes::initialize_function_types()` for the same set of checks.
-                    match value {
-                        circuit::Value::Plaintext(circuit::Plaintext::Literal(..))
-                        | circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
-                        | circuit::Value::Plaintext(circuit::Plaintext::Array(..)) => (),
-                        circuit::Value::Record(..) => {
-                            bail!(
-                                "'{}/{}' attempts to pass a 'record' into 'finalize'",
-                                self.program_id(),
-                                function.name()
-                            );
-                        }
-                    }
-
-                    // Store the (console) finalize input.
-                    console_finalize_inputs.push(value.eject_value());
-                    // Store the (circuit) finalize input bits.
-                    value.write_bits_le(&mut circuit_finalize_input_bits);
-                }
-
-                // Compute the finalize inputs checksum.
-                let finalize_checksum = A::hash_bhp1024(&circuit_finalize_input_bits);
-                // Inject the finalize inputs checksum as `Mode::Public`.
-                let circuit_checksum = circuit::Field::<A>::new(circuit::Mode::Public, finalize_checksum.eject_value());
-                // Enforce the injected checksum matches the original checksum.
-                A::assert_eq(circuit_checksum, finalize_checksum);
-
-                #[cfg(debug_assertions)]
-                Self::log_circuit::<A, _>("Finalize");
-
-                lap!(timer, "Construct the finalize inputs");
-
-                // Return the (console) finalize inputs.
-                Some(console_finalize_inputs)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Complete");
@@ -456,7 +412,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Construct the transition.
-            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
+            let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
+
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Construct the call metrics.

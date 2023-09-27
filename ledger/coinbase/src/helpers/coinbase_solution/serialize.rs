@@ -21,13 +21,9 @@ impl<N: Network> Serialize for CoinbaseSolution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut combined_puzzle_solution = serializer.serialize_struct("CoinbaseSolution", 3)?;
-                combined_puzzle_solution.serialize_field("partial_solutions", &self.partial_solutions)?;
-                combined_puzzle_solution.serialize_field("proof.w", &self.proof.w)?;
-                if let Some(random_v) = &self.proof.random_v {
-                    combined_puzzle_solution.serialize_field("proof.random_v", &random_v)?;
-                }
-                combined_puzzle_solution.end()
+                let mut solutions = serializer.serialize_struct("CoinbaseSolution", 1)?;
+                solutions.serialize_field("solutions", &self.solutions.values().collect::<Vec<_>>())?;
+                solutions.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
@@ -39,19 +35,8 @@ impl<'de, N: Network> Deserialize<'de> for CoinbaseSolution<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let mut combined_puzzle_solution = serde_json::Value::deserialize(deserializer)?;
-                Ok(Self::new(
-                    DeserializeExt::take_from_value::<D>(&mut combined_puzzle_solution, "partial_solutions")?,
-                    KZGProof {
-                        w: DeserializeExt::take_from_value::<D>(&mut combined_puzzle_solution, "proof.w")?,
-                        random_v: match combined_puzzle_solution.get("proof.random_v") {
-                            Some(random_v) => {
-                                Some(serde_json::from_value(random_v.clone()).map_err(de::Error::custom)?)
-                            }
-                            None => None,
-                        },
-                    },
-                ))
+                let mut solutions = serde_json::Value::deserialize(deserializer)?;
+                Ok(Self::new(DeserializeExt::take_from_value::<D>(&mut solutions, "solutions")?))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "solutions"),
         }
@@ -59,25 +44,31 @@ impl<'de, N: Network> Deserialize<'de> for CoinbaseSolution<N> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3};
+    use console::account::PrivateKey;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = console::network::Testnet3;
+
+    pub(crate) fn sample_solutions(rng: &mut TestRng) -> CoinbaseSolution<CurrentNetwork> {
+        // Sample a new solutions.
+        let mut prover_solutions = vec![];
+        for _ in 0..rng.gen_range(1..10) {
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+            let address = Address::try_from(private_key).unwrap();
+
+            let partial_solution = PartialSolution::new(address, u64::rand(rng), KZGCommitment(rng.gen()));
+            prover_solutions.push(ProverSolution::new(partial_solution, KZGProof { w: rng.gen(), random_v: None }));
+        }
+        CoinbaseSolution::new(prover_solutions)
+    }
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let mut rng = TestRng::default();
+        let rng = &mut TestRng::default();
 
         // Sample a new solutions.
-        let mut partial_solutions = vec![];
-        for _ in 0..rng.gen_range(1..10) {
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
-            let address = Address::try_from(private_key)?;
-
-            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
-        }
-        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
+        let expected = sample_solutions(rng);
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -93,17 +84,10 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let mut rng = TestRng::default();
+        let rng = &mut TestRng::default();
 
         // Sample a new solutions.
-        let mut partial_solutions = vec![];
-        for _ in 0..rng.gen_range(1..10) {
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
-            let address = Address::try_from(private_key)?;
-
-            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
-        }
-        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
+        let expected = sample_solutions(rng);
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

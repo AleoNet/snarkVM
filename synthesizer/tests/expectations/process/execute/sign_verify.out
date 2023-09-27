@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - - 'true'
 - - 'true'
 - - 'false'

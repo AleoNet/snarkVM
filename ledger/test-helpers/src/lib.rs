@@ -133,8 +133,8 @@ pub fn sample_deployment(rng: &mut TestRng) -> Deployment<CurrentNetwork> {
 program testing.aleo;
 
 mapping store:
-    key item as u32.public;
-    value object as u32.public;
+    key as u32.public;
+    value as u32.public;
 
 function compute:
     input r0 as u32.private;

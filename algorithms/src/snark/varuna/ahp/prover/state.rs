@@ -69,9 +69,9 @@ pub struct CircuitSpecificState<F: PrimeField> {
 }
 
 /// State for the AHP prover.
-pub struct State<'a, F: PrimeField, MM: SNARKMode> {
+pub struct State<'a, F: PrimeField, SM: SNARKMode> {
     /// The state for each circuit in the batch.
-    pub(in crate::snark) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
+    pub(in crate::snark) circuit_specific_states: BTreeMap<&'a Circuit<F, SM>, CircuitSpecificState<F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<super::FirstOracles<F>>,
@@ -104,9 +104,9 @@ pub(super) struct Assignments<F>(
     pub(super) Zc<F>,
 );
 
-impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
+impl<'a, F: PrimeField, SM: SNARKMode> State<'a, F, SM> {
     pub(super) fn initialize(
-        indices_and_assignments: BTreeMap<&'a Circuit<F, MM>, Vec<Assignments<F>>>,
+        indices_and_assignments: BTreeMap<&'a Circuit<F, SM>, Vec<Assignments<F>>>,
     ) -> Result<Self, AHPError> {
         let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
         let mut max_num_constraints = 0;
@@ -125,7 +125,7 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                     EvaluationDomain::new(index_info.num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
                 max_num_variables = max_num_variables.max(index_info.num_variables);
 
-                let non_zero_domains = AHPForR1CS::<_, MM>::cmp_non_zero_domains(index_info, max_non_zero_domain)?;
+                let non_zero_domains = AHPForR1CS::<_, SM>::cmp_non_zero_domains(index_info, max_non_zero_domain)?;
                 max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
                 let first_padded_public_inputs = &variable_assignments[0].0;
@@ -190,12 +190,12 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
     }
 
     /// Get the batch size for a given circuit.
-    pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
+    pub fn batch_size(&self, circuit: &Circuit<F, SM>) -> Option<usize> {
         self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
     }
 
     /// Get the public inputs for the entire batch.
-    pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
+    pub fn public_inputs(&self, circuit: &Circuit<F, SM>) -> Option<Vec<Vec<F>>> {
         // We need to export inputs as they live longer than prover_state
         self.circuit_specific_states.get(circuit).map(|s| {
             s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect()
@@ -203,7 +203,7 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[Vec<F>]> {
+    pub fn padded_public_inputs(&self, circuit: &Circuit<F, SM>) -> Option<&[Vec<F>]> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.as_slice())
     }
 

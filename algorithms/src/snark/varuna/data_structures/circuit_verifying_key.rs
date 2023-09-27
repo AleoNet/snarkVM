@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{fft::EvaluationDomain, polycommit::sonic_pc, snark::varuna::ahp::indexer::*};
+use crate::{polycommit::sonic_pc, snark::varuna::ahp::indexer::*};
 use snarkvm_curves::PairingEngine;
-use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{
     error,
     io::{self, Read, Write},
@@ -57,32 +56,6 @@ impl<E: PairingEngine> CircuitVerifyingKey<E> {
     /// Iterate over the commitments to indexed polynomials in `self`.
     pub fn iter(&self) -> impl Iterator<Item = &sonic_pc::Commitment<E>> {
         self.circuit_commitments.iter()
-    }
-}
-
-impl<E: PairingEngine> ToConstraintField<E::Fq> for CircuitVerifyingKey<E> {
-    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
-        let constraint_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_constraints).unwrap() as u128;
-        let non_zero_a_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_a).unwrap() as u128;
-        let non_zero_b_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_b).unwrap() as u128;
-        let non_zero_c_domain_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(self.circuit_info.num_non_zero_c).unwrap() as u128;
-
-        let mut res = Vec::new();
-        res.append(&mut E::Fq::from(constraint_domain_size).to_field_elements()?);
-        res.append(&mut E::Fq::from(non_zero_a_domain_size).to_field_elements()?);
-        res.append(&mut E::Fq::from(non_zero_b_domain_size).to_field_elements()?);
-        res.append(&mut E::Fq::from(non_zero_c_domain_size).to_field_elements()?);
-        for comm in self.circuit_commitments.iter() {
-            res.append(&mut comm.to_field_elements()?);
-        }
-
-        // Intentionally ignore the appending of the PC verifier key.
-
-        Ok(res)
     }
 }
 

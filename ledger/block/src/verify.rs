@@ -468,7 +468,7 @@ impl<N: Network> Block<N> {
         transactions: &Transactions<N>,
     ) -> Result<()> {
         // Prepare an iterator over the solution IDs.
-        let mut solutions = solutions.as_ref().map(CoinbaseSolution::partial_solutions).into_iter().flatten();
+        let mut solutions = solutions.as_ref().map(|s| s.deref()).into_iter().flatten();
         // Prepare an iterator over the transaction IDs.
         let mut transaction_ids = transactions.transaction_ids();
 
@@ -483,7 +483,7 @@ impl<N: Network> Block<N> {
                 TransmissionID::Solution(commitment) => {
                     match solutions.next() {
                         // Check the next solution matches the expected commitment.
-                        Some(solution) if solution.commitment() == *commitment => {}
+                        Some((_, solution)) if solution.commitment() == *commitment => {}
                         // Otherwise, add the transmission ID to the rejected list.
                         _ => rejected_transmission_ids.push(transmission_id),
                     }

@@ -43,6 +43,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{
+        Boolean,
         Identifier,
         Literal,
         LiteralType,
@@ -66,7 +67,6 @@ use synthesizer_program::{
     Finalize,
     FinalizeGlobalState,
     FinalizeOperation,
-    Function,
     Instruction,
     Program,
     RegistersLoad,

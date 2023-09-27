@@ -56,7 +56,12 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the type of the register matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the type.
-                    let plaintext_type = self.get_type(stack, register)?;
+                    let plaintext_type = match self.get_type(stack, register)? {
+                        // If the register is a plaintext type, return it.
+                        FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+                        // If the register is a future, throw an error.
+                        FinalizeType::Future(..) => bail!("Struct member cannot be a future"),
+                    };
                     // Ensure the register type matches the member type.
                     ensure!(
                         &plaintext_type == member_type,
@@ -76,6 +81,10 @@ impl<N: Network> FinalizeTypes<N> {
                 // If the operand is a caller, throw an error.
                 Operand::Caller => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be cast from a caller in a finalize scope."
+                ),
+                // If the operand is a parent, throw an error.
+                Operand::Parent => bail!(
+                    "Struct member '{struct_name}.{member_name}' cannot be cast from a parent in a finalize scope."
                 ),
                 // Ensure the block height type (u32) matches the member type.
                 Operand::BlockHeight => {
@@ -129,7 +138,12 @@ impl<N: Network> FinalizeTypes<N> {
                 // Ensure the type of the register matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the type.
-                    let plaintext_type = self.get_type(stack, register)?;
+                    let plaintext_type = match self.get_type(stack, register)? {
+                        // If the register is a plaintext type, return it.
+                        FinalizeType::Plaintext(plaintext_type) => plaintext_type,
+                        // If the register is a future, throw an error.
+                        FinalizeType::Future(..) => bail!("Array element cannot be a future"),
+                    };
                     // Ensure the register type matches the member type.
                     ensure!(
                         &plaintext_type == array_type.next_element_type(),
@@ -150,6 +164,8 @@ impl<N: Network> FinalizeTypes<N> {
                 }
                 // If the operand is a caller, throw an error.
                 Operand::Caller => bail!("Array element cannot be cast from a caller in a finalize scope."),
+                // If the operand is a parent, throw an error.
+                Operand::Parent => bail!("Array element cannot be cast from a parent in a finalize scope."),
                 // Ensure the block height type (u32) matches the member type.
                 Operand::BlockHeight => {
                     // Retrieve the block height type.
