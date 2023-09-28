@@ -1,6 +1,6 @@
 errors: []
 outputs:
-- execute: 'Failed to evaluate instruction (assert.neq self.parent self.caller ;): ''assert.neq'' failed: ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' is equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should not be equal)'
+- execute: 'Failed to evaluate instruction (assert.neq self.caller self.signer ;): ''assert.neq'' failed: ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' is equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should not be equal)'
 - verified: true
   execute:
     parent.aleo/foo:
@@ -16,8 +16,8 @@ additional:
 - child_outputs:
     child.aleo/foo:
       outputs:
-      - '{"type":"public","id":"6140329251084722846563810767927295702904761932021867977001791495575460790519field","value":"aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg"}'
-      - '{"type":"public","id":"3985320944028071879737630067946982781582776606441403437645778843164328115523field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+      - '{"type":"public","id":"8315488359140276951580034101006992939968845497407579899625786765501757885120field","value":"aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg"}'
+      - '{"type":"public","id":"6448656616136714939474098840421676776091940937099745585069337249931177552009field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
     credits.aleo/fee_private:
       outputs:
       - '{"type":"record","id":"964136334948849132414160766296260727340691066934799441989114948739870252786field","checksum":"4284310774341117492431656293805660126619950812721728677296318897866321714996field","value":"record1qyqsqw2pte89kdswfmdnffp93se5950xef2trwvrttz8ytsjs2mdvmq0qyxx66trwfhkxun9v35hguerqqpqzq9fam3pvlw9zx3929wjd2gm8xdtu0axeshec24he6gdajafy89gqxcgc3kevu3ln63gyzwa008nkv04vwjpcqpk73jegvpj8t0wv4msu4en2zu"}'
