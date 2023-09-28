@@ -22,7 +22,8 @@ impl<N: Network> Client<N> {
         program_id: impl TryInto<ProgramID<N>>,
         function_name: impl TryInto<Identifier<N>>,
         inputs: impl IntoIterator<IntoIter = impl ExactSizeIterator<Item = impl TryInto<Value<N>>>>,
-        (credits, priority_fee_in_microcredits): (Record<N, Plaintext<N>>, u64),
+        fee_record: Option<Record<N, Plaintext<N>>>,
+        priority_fee_in_microcredits: u64,
     ) -> Result<Transaction<N>> {
         let rng = &mut rand::thread_rng();
         // Prepare the program ID.
@@ -44,7 +45,8 @@ impl<N: Network> Client<N> {
             private_key,
             (program_id, function_name),
             inputs.into_iter(),
-            Some((credits, priority_fee_in_microcredits)),
+            fee_record,
+            priority_fee_in_microcredits,
             Some(query),
             rng,
         )
@@ -91,7 +93,7 @@ mod tests {
         let inputs = [record.to_string(), address.to_string(), (**amount).to_string()];
         // Execute the program.
         let transaction =
-            client.execute(&private_key, "credits.aleo", "transfer_private", inputs, (fee_record, 10)).unwrap();
+            client.execute(&private_key, "credits.aleo", "transfer_private", inputs, Some(fee_record), 10).unwrap();
         assert_eq!(transaction.transitions().count(), 2);
 
         // let response = reqwest::blocking::Client::new()
