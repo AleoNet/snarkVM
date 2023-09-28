@@ -15,7 +15,8 @@
 use rand::{
     distributions::{Distribution, Standard},
     rngs::StdRng,
-    Rng, SeedableRng,
+    Rng,
+    SeedableRng,
 };
 use rand_xorshift::XorShiftRng;
 use std::num::NonZeroU32;
@@ -109,11 +110,7 @@ impl TestRng {
         /// to do that, we would need to reify the possible elements of strings,
         /// namely characters and escapes, and randomly generate such elements.
         fn adjust_backslash_and_doublequote(ch: char) -> char {
-            if ch == '\\' || ch == '\"' {
-                '0'
-            } else {
-                ch
-            }
+            if ch == '\\' || ch == '\"' { '0' } else { ch }
         }
 
         let range = match is_fixed_size {
