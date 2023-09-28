@@ -103,7 +103,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                             circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
                         ))))
                     }
-                    // If the operand is the signer, retrieve the caller from the registers.
+                    // If the operand is the signer, retrieve the signer from the registers.
                     Operand::Signer => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.signer_circuit()?),
                     ))),
@@ -320,7 +320,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                             circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
                         ))))
                     }
-                    // If the operand is the signer, retrieve the caller from the registers.
+                    // If the operand is the signer, retrieve the signer from the registers.
                     Operand::Signer => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.signer_circuit()?),
                     ))),
