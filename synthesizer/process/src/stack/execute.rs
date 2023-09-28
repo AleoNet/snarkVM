@@ -153,18 +153,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         );
 
         // Determine if this is the top-level caller.
-        let console_is_root = match &call_stack {
-            // If the authorization contains a single request, then this is the root.
-            CallStack::Authorize(_, _, authorization) | CallStack::Synthesize(_, _, authorization) => {
-                authorization.len() == 1
-            }
-            // If the assignments contains no assignments, then this is the root.
-            CallStack::CheckDeployment(_, _, assignments) => assignments.read().is_empty(),
-            // Ensure the call stack is not `Evaluate`, as this is not supported in `execute` mode.
-            CallStack::Evaluate(..) => bail!("Illegal operation: cannot evaluate in execute mode"),
-            // If the trace contains no transitions, then this is the root.
-            CallStack::Execute(_, trace) => trace.read().transitions().is_empty(),
-        };
+        let console_is_root = console_caller.is_none();
 
         // Determine the parent.
         //  - If this execution is the top-level caller, then the parent is the program ID.
