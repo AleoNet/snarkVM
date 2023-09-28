@@ -25,7 +25,7 @@ pub(super) mod identifier;
 pub use identifier::Identifier;
 
 mod literal;
-pub use literal::Literal;
+pub use literal::{Cast, CastLossy, Literal};
 
 mod plaintext;
 pub use plaintext::Plaintext;

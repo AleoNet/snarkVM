@@ -12,7 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
+mod boolean;
+mod field;
+mod integer;
+mod scalar;
+
+use crate::{Literal, LiteralType};
+use snarkvm_console_network::Network;
+use snarkvm_console_types::{integers::Integer, prelude::*, Boolean};
+
+/// Unary operator for casting values of one type to another.
+pub trait Cast<T: Sized = Self> {
+    /// Casts the value of `self` into a value of type `T`.
+    ///
+    /// This method checks that the cast does not lose any bits of information,
+    /// and returns an error if it does.
+    fn cast(&self) -> Result<T>;
+}
 
 impl<N: Network> Literal<N> {
     /// Casts the literal to the given literal type.
@@ -22,6 +38,7 @@ impl<N: Network> Literal<N> {
     ///
     /// The hierarchy of casting is as follows:
     ///  - (`Address`, `Group`) <-> `Field` <-> `Scalar` <-> `Integer` <-> `Boolean`
+    ///  - `Signature` (not supported)
     ///  - `String` (not supported)
     /// Note that casting to left along the hierarchy always preserves information.
     pub fn cast(&self, to_type: LiteralType) -> Result<Self> {
@@ -45,40 +62,9 @@ impl<N: Network> Literal<N> {
             Self::String(..) => bail!("Cannot cast a string literal to another type."),
         }
     }
-
-    /// Casts the literal to the given literal type, with lossy truncation.
-    ///
-    /// This method makes a *best-effort* attempt to preserve all bits of information,
-    /// but it is not guaranteed to do so.
-    ///
-    /// The hierarchy of casting is as follows:
-    ///  - (`Address`, `Group`) <-> `Field` <-> `Scalar` <-> `Integer` <-> `Boolean`
-    ///  - `String` (not supported)
-    /// Note that casting to left along the hierarchy always preserves information.
-    pub fn cast_lossy(&self, to_type: LiteralType) -> Result<Self> {
-        match self {
-            Self::Address(address) => cast_lossy_group_to_type(address.to_group(), to_type),
-            Self::Boolean(boolean) => cast_lossy_boolean_to_type(boolean, to_type),
-            Self::Field(field) => cast_lossy_field_to_type(field, to_type),
-            Self::Group(group) => cast_lossy_group_to_type(group, to_type),
-            Self::I8(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I16(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I32(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I64(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::I128(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U8(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U16(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U32(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U64(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::U128(integer) => cast_lossy_integer_to_type(integer, to_type),
-            Self::Scalar(scalar) => cast_lossy_scalar_to_type(scalar, to_type),
-            Self::Signature(..) => bail!("Cannot cast a signature literal to another type."),
-            Self::String(..) => bail!("Cannot cast a string literal to another type."),
-        }
-    }
 }
 
-// A helper macro to implement the body of the `cast` and `cast_lossy` methods.
+/// A helper macro to implement the body of the `cast` methods.
 macro_rules! impl_cast_body {
     ($type_name:ident, $cast:ident, $input:expr, $to_type:expr) => {
         match $to_type {
@@ -112,19 +98,9 @@ fn cast_boolean_to_type<N: Network>(input: &Boolean<N>, to_type: LiteralType) ->
     impl_cast_body!(boolean, cast, input, to_type)
 }
 
-/// Casts a boolean literal to the given literal type, with lossy truncation.
-fn cast_lossy_boolean_to_type<N: Network>(input: &Boolean<N>, to_type: LiteralType) -> Result<Literal<N>> {
-    impl_cast_body!(boolean, cast_lossy, input, to_type)
-}
-
 /// Casts a field literal to the given literal type.
 fn cast_field_to_type<N: Network>(input: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
     impl_cast_body!(field, cast, input, to_type)
-}
-
-/// Casts a field literal to the given literal type, with lossy truncation.
-fn cast_lossy_field_to_type<N: Network>(input: &Field<N>, to_type: LiteralType) -> Result<Literal<N>> {
-    impl_cast_body!(field, cast_lossy, input, to_type)
 }
 
 /// Casts a group literal to the given literal type.
@@ -133,15 +109,6 @@ fn cast_group_to_type<N: Network>(input: &Group<N>, to_type: LiteralType) -> Res
         LiteralType::Address => Ok(Literal::Address(Address::new(*input))),
         LiteralType::Group => Ok(Literal::Group(*input)),
         _ => cast_field_to_type(&input.to_x_coordinate(), to_type),
-    }
-}
-
-/// Casts a group literal to the given literal type, with lossy truncation.
-fn cast_lossy_group_to_type<N: Network>(input: &Group<N>, to_type: LiteralType) -> Result<Literal<N>> {
-    match to_type {
-        LiteralType::Address => Ok(Literal::Address(Address::new(*input))),
-        LiteralType::Group => Ok(Literal::Group(*input)),
-        _ => cast_lossy_field_to_type(&input.to_x_coordinate(), to_type),
     }
 }
 
@@ -165,32 +132,7 @@ where
     impl_cast_body!(integer, cast, input, to_type)
 }
 
-/// Casts an integer literal to the given literal type, with lossy truncation.
-fn cast_lossy_integer_to_type<N: Network, I: IntegerType>(
-    input: &integers::Integer<N, I>,
-    to_type: LiteralType,
-) -> Result<Literal<N>>
-where
-    I: AsPrimitive<u8>
-        + AsPrimitive<u16>
-        + AsPrimitive<u32>
-        + AsPrimitive<u64>
-        + AsPrimitive<u128>
-        + AsPrimitive<i8>
-        + AsPrimitive<i16>
-        + AsPrimitive<i32>
-        + AsPrimitive<i64>
-        + AsPrimitive<i128>,
-{
-    impl_cast_body!(integer, cast_lossy, input, to_type)
-}
-
 /// Casts a scalar literal to the given literal type.
 fn cast_scalar_to_type<N: Network>(input: &Scalar<N>, to_type: LiteralType) -> Result<Literal<N>> {
     impl_cast_body!(scalar, cast, input, to_type)
-}
-
-/// Casts a scalar literal to the given literal type, with lossy truncation.
-fn cast_lossy_scalar_to_type<N: Network>(input: &Scalar<N>, to_type: LiteralType) -> Result<Literal<N>> {
-    impl_cast_body!(scalar, cast_lossy, input, to_type)
 }

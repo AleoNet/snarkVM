@@ -24,7 +24,7 @@ pub enum Opcode {
     /// The opcode is for a call operation (i.e. `call`).
     Call,
     /// The opcode is for a cast operation (i.e. `cast`).
-    Cast,
+    Cast(&'static str),
     /// The opcode is for a finalize command (i.e. `increment`).
     Command(&'static str),
     /// The opcode is for a commit operation (i.e. `commit.psd4`).
@@ -48,7 +48,7 @@ impl Deref for Opcode {
             Opcode::Assert(opcode) => opcode,
             Opcode::Async => &"async",
             Opcode::Call => &"call",
-            Opcode::Cast => &"cast",
+            Opcode::Cast(opcode) => opcode,
             Opcode::Command(opcode) => opcode,
             Opcode::Commit(opcode) => opcode,
             Opcode::Hash(opcode) => opcode,
@@ -73,7 +73,7 @@ impl Display for Opcode {
             Self::Assert(opcode) => write!(f, "{opcode}"),
             Self::Async => write!(f, "{}", self.deref()),
             Self::Call => write!(f, "{}", self.deref()),
-            Self::Cast => write!(f, "{}", self.deref()),
+            Self::Cast(opcode) => write!(f, "{opcode}"),
             Self::Command(opcode) => write!(f, "{opcode}"),
             Self::Commit(opcode) => write!(f, "{opcode}"),
             Self::Hash(opcode) => write!(f, "{opcode}"),

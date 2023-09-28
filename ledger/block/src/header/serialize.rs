@@ -19,12 +19,13 @@ impl<N: Network> Serialize for Header<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("Header", 6)?;
+                let mut header = serializer.serialize_struct("Header", 7)?;
                 header.serialize_field("previous_state_root", &self.previous_state_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
                 header.serialize_field("finalize_root", &self.finalize_root)?;
                 header.serialize_field("ratifications_root", &self.ratifications_root)?;
                 header.serialize_field("solutions_root", &self.solutions_root)?;
+                header.serialize_field("subdag_root", &self.subdag_root)?;
                 header.serialize_field("metadata", &self.metadata)?;
                 header.end()
             }
@@ -45,6 +46,7 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
                     DeserializeExt::take_from_value::<D>(&mut header, "finalize_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "ratifications_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "solutions_root")?,
+                    DeserializeExt::take_from_value::<D>(&mut header, "subdag_root")?,
                     DeserializeExt::take_from_value::<D>(&mut header, "metadata")?,
                 )
                 .map_err(de::Error::custom)?)

@@ -386,6 +386,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
         transactions.to_finalize_root().unwrap(),
         *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),
         Field::zero(),
+        Field::zero(),
         metadata,
     )?;
 

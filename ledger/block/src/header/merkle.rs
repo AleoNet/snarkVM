@@ -48,6 +48,10 @@ impl<N: Network> Header<N> {
         else if id == &self.solutions_root {
             Ok(HeaderLeaf::<N>::new(4, self.solutions_root))
         }
+        // If the ID is the subdag root, return the 5th leaf
+        else if id == &self.subdag_root {
+            Ok(HeaderLeaf::<N>::new(5, self.subdag_root))
+        }
         // If the ID is the metadata hash, then return the 7th leaf.
         else if id == &self.metadata.to_hash()? {
             Ok(HeaderLeaf::<N>::new(7, *id))
@@ -70,9 +74,8 @@ impl<N: Network> Header<N> {
         leaves.push(HeaderLeaf::<N>::new(2, self.finalize_root).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(3, self.ratifications_root).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(4, self.solutions_root).to_bits_le());
-        for i in 5..7 {
-            leaves.push(HeaderLeaf::<N>::new(i, Field::zero()).to_bits_le());
-        }
+        leaves.push(HeaderLeaf::<N>::new(5, self.subdag_root).to_bits_le());
+        leaves.push(HeaderLeaf::<N>::new(6, Field::zero()).to_bits_le());
         leaves.push(HeaderLeaf::<N>::new(7, self.metadata.to_hash()?).to_bits_le());
 
         // Ensure the correct number of leaves are allocated.
@@ -117,6 +120,7 @@ mod tests {
                 Field::rand(rng),
                 Field::rand(rng),
                 Field::rand(rng),
+                Field::rand(rng),
                 Metadata::new(
                     CurrentNetwork::ID,
                     u64::rand(rng),
@@ -157,6 +161,11 @@ mod tests {
             // Check the 4th leaf.
             let leaf = header.to_leaf(&header.solutions_root())?;
             assert_eq!(leaf.index(), 4);
+            check_path(header.to_path(&leaf)?, root, &leaf)?;
+
+            // Check the 5th leaf.
+            let leaf = header.to_leaf(&header.subdag_root())?;
+            assert_eq!(leaf.index(), 5);
             check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 7th leaf.

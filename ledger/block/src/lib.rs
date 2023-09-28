@@ -145,6 +145,15 @@ impl<N: Network> Block<N> {
             bail!("The solutions root in the block does not correspond to the solutions");
         }
 
+        // Ensure that the subdag root matches the authority.
+        let subdag_root = match &authority {
+            Authority::Beacon(_) => Field::<N>::zero(),
+            Authority::Quorum(subdag) => subdag.leader_certificate().certificate_id(),
+        };
+        if header.subdag_root() != subdag_root {
+            bail!("The subdag root in the block does not correspond to the authority");
+        }
+
         // Return the block.
         Self::from_unchecked(block_hash.into(), previous_hash, header, authority, transactions, ratifications, coinbase)
     }
