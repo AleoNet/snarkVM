@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Subdag<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid batch version"));
         }
 
@@ -51,7 +51,7 @@ impl<N: Network> ToBytes for Subdag<N> {
     /// Writes the subdag to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
         // Write the number of rounds.
         u32::try_from(self.subdag.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the round certificates.

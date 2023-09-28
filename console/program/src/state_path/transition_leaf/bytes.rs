@@ -19,6 +19,10 @@ impl<N: Network> FromBytes for TransitionLeaf<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = FromBytes::read_le(&mut reader)?;
+        // Ensure the version is valid.
+        if version != TRANSITION_LEAF_VERSION {
+            return Err(error("Invalid transition leaf version"));
+        }
         // Read the index.
         let index = FromBytes::read_le(&mut reader)?;
         // Read the variant.
