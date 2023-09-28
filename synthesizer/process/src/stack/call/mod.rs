@@ -13,10 +13,7 @@
 // limitations under the License.
 
 use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
-use console::{
-    network::prelude::*,
-    program::{Boolean, Request},
-};
+use console::{network::prelude::*, program::Request};
 use synthesizer_program::{
     Call,
     CallOperator,
@@ -207,8 +204,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            stack.program_id().to_address()?,
-                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -234,8 +229,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            stack.program_id().to_address()?,
-                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
