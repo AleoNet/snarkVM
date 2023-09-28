@@ -58,15 +58,17 @@ impl<N: Network> ProvingKey<N> {
     #[allow(clippy::type_complexity)]
     pub fn prove_batch<R: Rng + CryptoRng>(
         locator: &str,
-        assignments: BTreeMap<&ProvingKey<N>, &[circuit::Assignment<N::Field>]>,
+        assignments: &BTreeMap<ProvingKey<N>, Vec<circuit::Assignment<N::Field>>>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
         // Prepare the instances.
-        let instances: BTreeMap<_, _> =
-            assignments.into_iter().map(|(proving_key, assignments)| (proving_key.deref(), assignments)).collect();
+        let instances = assignments
+            .iter()
+            .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
+            .collect::<BTreeMap<_, _>>();
 
         // Retrieve the proving parameters.
         let universal_prover = N::varuna_universal_prover();
