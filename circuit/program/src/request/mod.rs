@@ -118,10 +118,6 @@ impl<A: Aleo> ToFields for InputID<A> {
 pub struct Request<A: Aleo> {
     /// The request signer.
     signer: Address<A>,
-    /// The request caller.
-    caller: Address<A>,
-    /// The `is_root` flag.
-    is_root: Boolean<A>,
     /// The network ID.
     network_id: U16<A>,
     /// The program ID.
@@ -215,8 +211,6 @@ impl<A: Aleo> Inject for Request<A> {
 
         Self {
             signer: Address::new(mode, *request.signer()),
-            caller: Address::new(mode, *request.caller()),
-            is_root: Boolean::new(mode, **request.is_root()),
             network_id: U16::new(Mode::Constant, *request.network_id()),
             program_id: ProgramID::new(Mode::Constant, *request.program_id()),
             function_name: Identifier::new(Mode::Constant, *request.function_name()),
@@ -235,16 +229,6 @@ impl<A: Aleo> Request<A> {
     /// Returns the request signer.
     pub const fn signer(&self) -> &Address<A> {
         &self.signer
-    }
-
-    /// Returns the request caller.
-    pub const fn caller(&self) -> &Address<A> {
-        &self.caller
-    }
-
-    /// Returns the `is_root` flag.
-    pub const fn is_root(&self) -> &Boolean<A> {
-        &self.is_root
     }
 
     /// Returns the network ID.
@@ -305,8 +289,6 @@ impl<A: Aleo> Eject for Request<A> {
     /// Ejects the mode of the request.
     fn eject_mode(&self) -> Mode {
         Mode::combine(self.signer.eject_mode(), [
-            self.caller.eject_mode(),
-            self.is_root.eject_mode(),
             self.network_id.eject_mode(),
             self.program_id.eject_mode(),
             self.function_name.eject_mode(),
@@ -324,8 +306,6 @@ impl<A: Aleo> Eject for Request<A> {
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from((
             self.signer.eject_value(),
-            self.caller.eject_value(),
-            console::Boolean::new(self.is_root.eject_value()),
             self.network_id.eject_value(),
             self.program_id.eject_value(),
             self.function_name.eject_value(),

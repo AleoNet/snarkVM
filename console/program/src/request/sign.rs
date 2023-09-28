@@ -15,13 +15,11 @@
 use super::*;
 
 impl<N: Network> Request<N> {
-    /// Returns the request for a given private key, caller, is_root, program ID, function name, inputs, input types, and RNG, where:
-    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, caller, is_root, function ID, input IDs\])
+    /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
+    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
-        caller: Address<N>,
-        is_root: Boolean<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
         inputs: impl ExactSizeIterator<Item = impl TryInto<Value<N>>>,
@@ -71,13 +69,10 @@ impl<N: Network> Request<N> {
             &(U16::<N>::new(N::ID), program_id.name(), program_id.network(), function_name).to_bits_le(),
         )?;
 
-        // Map `is_root` to a field element.
-        let is_root_field = Field::ternary(&is_root, &Field::one(), &Field::zero());
-
-        // Construct the hash input as `(r * G, pk_sig, pr_sig, signer, [tvk, tcm, caller, is_root, function ID, input IDs])`.
+        // Construct the hash input as `(r * G, pk_sig, pr_sig, signer, [tvk, tcm, function ID, input IDs])`.
         let mut message = Vec::with_capacity(9 + 2 * inputs.len());
         message.extend([g_r, pk_sig, pr_sig, *signer].map(|point| point.to_x_coordinate()));
-        message.extend([tvk, tcm, caller.to_field()?, is_root_field, function_id]);
+        message.extend([tvk, tcm, function_id]);
 
         // Initialize a vector to store the prepared inputs.
         let mut prepared_inputs = Vec::with_capacity(inputs.len());
@@ -224,8 +219,6 @@ impl<N: Network> Request<N> {
 
         Ok(Self {
             signer,
-            caller,
-            is_root,
             network_id: U16::new(N::ID),
             program_id,
             function_name,

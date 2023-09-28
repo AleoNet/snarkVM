@@ -19,19 +19,17 @@ impl<A: Aleo> Request<A> {
     /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, caller, is_root, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
             &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
         );
 
-        // Construct the signature message as `[tvk, tcm, caller, is_root, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(5 + 4 * self.input_ids.len());
         message.push(self.tvk.clone());
         message.push(self.tcm.clone());
-        message.push(self.caller.to_field());
-        message.push(Field::from_boolean(&self.is_root));
         message.push(function_id);
 
         // Check the input IDs and construct the rest of the signature message.
@@ -305,7 +303,7 @@ impl<A: Aleo> Request<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{TestRng, Uniform};
+    use snarkvm_utilities::TestRng;
 
     use anyhow::Result;
 
@@ -321,12 +319,6 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
-            // Sample a random address to use as the caller.
-            let caller = snarkvm_console_account::Address::rand(rng);
-
-            // Sample a random boolean for the `is_root` flag.
-            let is_root = console::Boolean::rand(rng);
-
             // Sample a random private key and address.
             let private_key = snarkvm_console_account::PrivateKey::new(rng)?;
             let address = snarkvm_console_account::Address::try_from(&private_key).unwrap();
@@ -364,16 +356,8 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = console::Request::sign(
-                &private_key,
-                caller,
-                is_root,
-                program_id,
-                function_name,
-                inputs.iter(),
-                &input_types,
-                rng,
-            )?;
+            let request =
+                console::Request::sign(&private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
             assert!(request.verify(&input_types));
 
             // Inject the request into a circuit.
