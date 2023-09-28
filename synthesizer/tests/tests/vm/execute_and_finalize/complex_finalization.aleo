@@ -27,7 +27,7 @@ mapping counts:
     value as u64.public;
 
 function c:
-    async c self.caller into r0;
+    async c self.signer into r0;
     output r0 as zero_program.aleo/c.future;
 finalize c:
     input r0 as address.public;
@@ -44,7 +44,7 @@ mapping counts:
     value as u64.public;
 
 function d:
-    async d self.caller into r0;
+    async d self.signer into r0;
     output r0 as one_program.aleo/d.future;
 finalize d:
     input r0 as address.public;
@@ -66,7 +66,7 @@ mapping counts:
 function b:
     call zero_program.aleo/c into r0;
     call one_program.aleo/d into r1;
-    async b r0 r1 self.caller into r2;
+    async b r0 r1 self.signer into r2;
     output r2 as two_program.aleo/b.future;
 finalize b:
     input r0 as zero_program.aleo/c.future;
@@ -94,7 +94,7 @@ function e:
     call two_program.aleo/b into r0;
     call one_program.aleo/d into r1;
     call zero_program.aleo/c into r2;
-    async e r0 r1 r2 self.caller into r3;
+    async e r0 r1 r2 self.signer into r3;
     output r3 as three_program.aleo/e.future;
 finalize e:
     input r0 as two_program.aleo/b.future;
@@ -124,7 +124,7 @@ mapping counts:
 function a:
     call two_program.aleo/b into r0;
     call three_program.aleo/e into r1;
-    async a r0 r1 self.caller into r2;
+    async a r0 r1 self.signer into r2;
     output r2 as four_program.aleo/a.future;
 finalize a:
     input r0 as two_program.aleo/b.future;
