@@ -130,10 +130,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Construct the rejected deploy transaction.
                             Err(_error) => {
                                 // Finalize the fee, to ensure it is valid.
-                                if let Err(error) = process.finalize_fee(state, store, fee) {
+                                if let Err(_error) = process.finalize_fee(state, store, fee) {
                                     // Note: On failure, skip this transaction, and continue speculation.
                                     #[cfg(debug_assertions)]
-                                    eprintln!("Failed to finalize the fee in a rejected deploy - {error}");
+                                    eprintln!("Failed to finalize the fee in a rejected deploy - {_error}");
                                     // Store the aborted transaction.
                                     aborted.push(transaction.clone());
                                     continue 'outer;
@@ -162,10 +162,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             Err(_error) => match fee {
                                 Some(fee) => {
                                     // Finalize the fee, to ensure it is valid.
-                                    if let Err(error) = process.finalize_fee(state, store, fee) {
+                                    if let Err(_error) = process.finalize_fee(state, store, fee) {
                                         // Note: On failure, skip this transaction, and continue speculation.
                                         #[cfg(debug_assertions)]
-                                        eprintln!("Failed to finalize the fee in a rejected execute - {error}");
+                                        eprintln!("Failed to finalize the fee in a rejected execute - {_error}");
                                         // Store the aborted transaction.
                                         aborted.push(transaction.clone());
                                         continue 'outer;
