@@ -456,6 +456,7 @@ mod tests {
             transactions.to_finalize_root().unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
+            Field::zero(),
             deployment_metadata,
         )
         .unwrap();
