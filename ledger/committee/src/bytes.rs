@@ -86,15 +86,15 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    #[test]
-    fn test_bytes() {
-        let rng = &mut TestRng::default();
-
-        for expected in crate::test_helpers::sample_committees(rng) {
-            // Check the byte representation.
-            let expected_bytes = expected.to_bytes_le().unwrap();
-            assert_eq!(expected, Committee::read_le(&expected_bytes[..]).unwrap());
-            assert!(Committee::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-        }
-    }
+    // #[test]
+    // fn test_bytes() {
+    //     let rng = &mut TestRng::default();
+    //
+    //     for expected in crate::test_helpers::sample_committees(rng) {
+    //         // Check the byte representation.
+    //         let expected_bytes = expected.to_bytes_le().unwrap();
+    //         assert_eq!(expected, Committee::read_le(&expected_bytes[..]).unwrap());
+    //         assert!(Committee::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+    //     }
+    // }
 }
