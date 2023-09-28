@@ -28,14 +28,14 @@ use ledger_query::QueryTrait;
 use synthesizer_snark::{Proof, ProvingKey, VerifyingKey};
 
 use once_cell::sync::OnceCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, Debug, Default)]
 pub struct Trace<N: Network> {
     /// The list of transitions.
     transitions: Vec<Transition<N>>,
     /// A map of locators to (proving key, assignments) pairs.
-    transition_tasks: HashMap<Locator<N>, (ProvingKey<N>, Vec<Assignment<N::Field>>)>,
+    transition_tasks: HashMap<Locator<N>, TransitionTask<N>>,
     /// A tracker for all inclusion tasks.
     inclusion_tasks: Inclusion<N>,
     /// A list of call metrics.
@@ -45,6 +45,18 @@ pub struct Trace<N: Network> {
     inclusion_assignments: OnceCell<Vec<InclusionAssignment<N>>>,
     /// A tracker for the global state root.
     global_state_root: OnceCell<N::StateRoot>,
+}
+
+#[derive(Clone, Debug)]
+struct TransitionTask<N: Network> {
+    proving_key: ProvingKey<N>,
+    assignments: Vec<Assignment<N::Field>>,
+}
+
+impl<N: Network> TransitionTask<N> {
+    fn new(proving_key: ProvingKey<N>) -> Self {
+        Self { proving_key, assignments: Vec::new() }
+    }
 }
 
 impl<N: Network> Trace<N> {
@@ -90,7 +102,7 @@ impl<N: Network> Trace<N> {
         // Construct the locator.
         let locator = Locator::new(*transition.program_id(), *transition.function_name());
         // Insert the assignment (and proving key if the entry does not exist), for the specified locator.
-        self.transition_tasks.entry(locator).or_insert((proving_key, vec![])).1.push(assignment);
+        self.transition_tasks.entry(locator).or_insert(TransitionTask::new(proving_key)).assignments.push(assignment);
         // Insert the transition into the list.
         self.transitions.push(transition.clone());
         // Insert the call metrics into the list.
@@ -148,7 +160,7 @@ impl<N: Network> Trace<N> {
 
     /// Returns a new execution with a proof, for the current inclusion assignments and global state root.
     pub fn prove_execution<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
+        &mut self,
         locator: &str,
         rng: &mut R,
     ) -> Result<Execution<N>> {
@@ -166,7 +178,9 @@ impl<N: Network> Trace<N> {
         let global_state_root =
             self.global_state_root.get().ok_or_else(|| anyhow!("Global state root has not been set"))?;
         // Construct the proving tasks.
-        let proving_tasks = self.transition_tasks.values().cloned().collect();
+        let proving_tasks: BTreeMap<_, _> =
+            self.transition_tasks.values().map(|t| (&t.proving_key, t.assignments.as_slice())).collect();
+        ensure!(proving_tasks.len() == self.transition_tasks.len(), "Expected unique proving tasks");
         // Compute the proof.
         let (global_state_root, proof) =
             Self::prove_batch::<A, R>(locator, proving_tasks, inclusion_assignments, *global_state_root, rng)?;
@@ -175,7 +189,7 @@ impl<N: Network> Trace<N> {
     }
 
     /// Returns a new fee with a proof, for the current inclusion assignment and global state root.
-    pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Fee<N>> {
+    pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&mut self, rng: &mut R) -> Result<Fee<N>> {
         // Ensure this is a fee.
         let is_fee_public = self.is_fee_public();
         let is_fee_private = self.is_fee_private();
@@ -194,7 +208,9 @@ impl<N: Network> Trace<N> {
         // Retrieve the fee transition.
         let fee_transition = &self.transitions[0];
         // Construct the proving tasks.
-        let proving_tasks = self.transition_tasks.values().cloned().collect();
+        let proving_tasks: BTreeMap<_, _> =
+            self.transition_tasks.values().map(|t| (&t.proving_key, t.assignments.as_slice())).collect();
+        ensure!(proving_tasks.len() == self.transition_tasks.len(), "Expected unique proving tasks");
         // Compute the proof.
         let (global_state_root, proof) = Self::prove_batch::<A, R>(
             "credits.aleo/fee (private or public)",
@@ -258,7 +274,7 @@ impl<N: Network> Trace<N> {
     /// Returns the global state root and proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         locator: &str,
-        mut proving_tasks: Vec<(ProvingKey<N>, Vec<Assignment<N::Field>>)>,
+        proving_tasks: BTreeMap<&ProvingKey<N>, &[Assignment<N::Field>]>,
         inclusion_assignments: &[InclusionAssignment<N>],
         global_state_root: N::StateRoot,
         rng: &mut R,
@@ -282,15 +298,19 @@ impl<N: Network> Trace<N> {
             batch_inclusions.push(assignment.to_circuit_assignment::<A>()?);
         }
 
+        // Optionally add inclusion task to proving tasks
+        let mut proving_tasks = proving_tasks;
+        let inclusion_proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
         if !batch_inclusions.is_empty() {
-            // Fetch the inclusion proving key.
-            let proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
             // Insert the inclusion proving key and assignments.
-            proving_tasks.push((proving_key, batch_inclusions));
+            if proving_tasks.insert(&inclusion_proving_key, batch_inclusions.as_slice()).is_some() {
+                return Err(anyhow!("proving_key was already present"));
+            }
         }
 
         // Compute the proof.
-        let proof = ProvingKey::prove_batch(locator, &proving_tasks, rng)?;
+        let proof = ProvingKey::prove_batch(locator, proving_tasks, rng)?;
+
         // Return the global state root and proof.
         Ok((global_state_root, proof))
     }

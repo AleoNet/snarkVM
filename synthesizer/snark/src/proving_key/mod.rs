@@ -20,7 +20,7 @@ mod serialize;
 
 use std::collections::BTreeMap;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
     proving_key: Arc<varuna::CircuitProvingKey<N::PairingCurve, varuna::VarunaHidingMode>>,
@@ -58,17 +58,15 @@ impl<N: Network> ProvingKey<N> {
     #[allow(clippy::type_complexity)]
     pub fn prove_batch<R: Rng + CryptoRng>(
         locator: &str,
-        assignments: &[(ProvingKey<N>, Vec<circuit::Assignment<N::Field>>)],
+        assignments: BTreeMap<&ProvingKey<N>, &[circuit::Assignment<N::Field>]>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
         // Prepare the instances.
-        let instances: BTreeMap<_, _> = assignments
-            .iter()
-            .map(|(proving_key, assignments)| (proving_key.deref(), assignments.as_slice()))
-            .collect();
+        let instances: BTreeMap<_, _> =
+            assignments.into_iter().map(|(proving_key, assignments)| (proving_key.deref(), assignments)).collect();
 
         // Retrieve the proving parameters.
         let universal_prover = N::varuna_universal_prover();
@@ -89,5 +87,17 @@ impl<N: Network> Deref for ProvingKey<N> {
 
     fn deref(&self) -> &Self::Target {
         &self.proving_key
+    }
+}
+
+impl<N: Network> Ord for ProvingKey<N> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (&self).cmp(&other)
+    }
+}
+
+impl<N: Network> PartialOrd for ProvingKey<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
