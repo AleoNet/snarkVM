@@ -16,15 +16,30 @@ use super::Certificate;
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc::{
-        Commitment, CommitterUnionKey, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10,
+        Commitment,
+        CommitterUnionKey,
+        Evaluations,
+        LabeledCommitment,
+        QuerySet,
+        Randomness,
+        SonicKZG10,
     },
     r1cs::{ConstraintSynthesizer, SynthesisError},
     snark::varuna::{
         ahp::{AHPError, AHPForR1CS, CircuitId, EvaluationsProvider},
-        proof, prover, witness_label, CircuitProvingKey, CircuitVerifyingKey, Proof, SNARKMode, UniversalSRS,
+        proof,
+        prover,
+        witness_label,
+        CircuitProvingKey,
+        CircuitVerifyingKey,
+        Proof,
+        SNARKMode,
+        UniversalSRS,
     },
     srs::UniversalVerifier,
-    AlgebraicSponge, SNARKError, SNARK,
+    AlgebraicSponge,
+    SNARKError,
+    SNARK,
 };
 use rand::RngCore;
 use snarkvm_curves::PairingEngine;

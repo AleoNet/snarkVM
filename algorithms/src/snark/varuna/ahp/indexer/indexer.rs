@@ -19,10 +19,12 @@ use crate::{
     snark::varuna::{
         ahp::{
             indexer::{Circuit, CircuitId, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
-            AHPError, AHPForR1CS,
+            AHPError,
+            AHPForR1CS,
         },
         matrices::{matrix_evals, MatrixEvals},
-        num_non_zero, SNARKMode,
+        num_non_zero,
+        SNARKMode,
     },
 };
 use snarkvm_fields::PrimeField;
@@ -63,13 +65,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
 
         let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
-
-        let [a_arith, b_arith, c_arith]: [_; 3] = [("a", a_evals), ("b", b_evals), ("c", c_evals)]
-            .into_iter()
-            .map(|(label, evals)| arithmetize_matrix(&id, label, evals))
-            .collect::<Result<Vec<_>, _>>()?
-            .try_into()
-            .unwrap();
 
         end_timer!(joint_arithmetization_time);
 

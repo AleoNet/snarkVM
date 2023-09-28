@@ -25,6 +25,7 @@ use crate::{
     },
 };
 use anyhow::Result;
+use rand_core::RngCore;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, cfg_reduce, ExecutionPool};
 
@@ -43,7 +44,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     }
 
     /// Output the second round message and the next state.
-    pub fn prover_second_round<'a>(
+    pub fn prover_second_round<'a, R: RngCore>(
         verifier_message: &verifier::FirstMessage<F>,
         mut state: prover::State<'a, F, SM>,
         _r: &mut R,

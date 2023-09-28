@@ -128,8 +128,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
                         Self::formatted_public_input_is_admissible(&padded_public_variables)?;
 
-                        println!("padded_public_variables: {:?}", padded_public_variables);
-                        println!("private_variables: {:?}", private_variables);
                         let eval_z_a_time = start_timer!(|| format!("For {:?}, evaluating z_A_{_i}", circuit.id));
                         let z_a = cfg_iter!(circuit.a)
                             .map(|row| {

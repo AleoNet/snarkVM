@@ -214,7 +214,9 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         Ok((h_1_sum, xg_1_sum, msg))
     }
 
-    fn calculate_assignments(state: &mut prover::State<F, SM>) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
+    pub(in crate::snark::varuna) fn calculate_assignments(
+        state: &mut prover::State<F, SM>,
+    ) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
         let assignments_time = start_timer!(|| "Calculate assignments");
         let assignments: BTreeMap<_, _> = state
             .circuit_specific_states
@@ -296,8 +298,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         // Instead of calculating L^C_col(κ)(c), we add val(k)*L^R_row(α) where we know L^C_col(k)(X) will be 1
         let m_at_alpha_evals_time = start_timer!(|| format!("Compute m_at_alpha_evals parallel for {_label}"));
         let l_at_alpha = constraint_domain.evaluate_all_lagrange_coefficients(alpha);
-        let m_at_alpha_evals: Vec<_> = matrix_transpose
-            .iter()
+        let m_at_alpha_evals: Vec<_> = cfg_iter!(matrix_transpose)
             .map(|col| col.iter().map(|(val, row_index)| *val * l_at_alpha[*row_index]).sum::<F>())
             .collect();
         end_timer!(m_at_alpha_evals_time);

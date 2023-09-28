@@ -162,14 +162,14 @@ impl rand::RngCore for TestMockRng {
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for i in 0..dest.len() {
-            dest[i] = self.state.pop().unwrap() as u8;
+        for byte in dest.iter_mut() {
+            *byte = self.state.pop().unwrap() as u8;
         }
     }
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        for i in 0..dest.len() {
-            dest[i] = self.state.pop().unwrap() as u8; // TODO: use try_from and convert the Error
+        for byte in dest.iter_mut() {
+            *byte = self.state.pop().unwrap() as u8; // TODO: use try_from and convert the Error
         }
         Ok(())
     }
