@@ -41,7 +41,8 @@ impl<N: Network> Parser for Plaintext<N> {
             // Parse the "{" from the string.
             let (string, _) = tag("{")(string)?;
             // Parse the members.
-            let (string, members) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
+            let (string, members) =
+                map_res(separated_list1(pair(Sanitizer::parse_whitespaces,tag(",")), parse_pair), |members: Vec<_>| {
                 // Ensure the members has no duplicate names.
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
                     return Err(error("Duplicate member in struct"));
@@ -67,7 +68,7 @@ impl<N: Network> Parser for Plaintext<N> {
             // Parse the "[" from the string.
             let (string, _) = tag("[")(string)?;
             // Parse the members.
-            let (string, members) = separated_list1(tag(","), Plaintext::parse)(string)?;
+            let (string, members) = separated_list1(pair(Sanitizer::parse_whitespaces,tag(",")), Plaintext::parse)(string)?;
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the ']' from the string.
