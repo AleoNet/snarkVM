@@ -64,5 +64,5 @@ enum KeccakType {
 /// of the absorbing phase.
 ///
 /// In addition, the capacity is defined as `c := b - r`.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Keccak<const TYPE: u8, const VARIANT: usize>;

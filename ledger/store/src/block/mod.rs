@@ -29,7 +29,7 @@ use console::{
 };
 use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
-use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
 
@@ -364,8 +364,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Store the block coinbase puzzle commitment.
             if let Some(coinbase) = block.coinbase() {
-                for puzzle_commitment in coinbase.partial_solutions().iter().map(|s| s.commitment()) {
-                    self.coinbase_puzzle_commitment_map().insert(puzzle_commitment, block.height())?;
+                for puzzle_commitment in coinbase.keys() {
+                    self.coinbase_puzzle_commitment_map().insert(*puzzle_commitment, block.height())?;
                 }
             }
 
@@ -449,8 +449,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Remove the block coinbase puzzle commitment.
             if let Some(coinbase) = coinbase {
-                for puzzle_commitment in coinbase.partial_solutions().iter().map(|s| s.commitment()) {
-                    self.coinbase_puzzle_commitment_map().remove(&puzzle_commitment)?;
+                for puzzle_commitment in coinbase.keys() {
+                    self.coinbase_puzzle_commitment_map().remove(puzzle_commitment)?;
                 }
             }
 
@@ -619,8 +619,8 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the certificate for the given `certificate ID`.
-    fn get_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
+    /// Returns the batch certificate for the given `certificate ID`.
+    fn get_batch_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
         // Retrieve the height and round for the given certificate ID.
         let (block_height, round) = match self.certificate_map().get_confirmed(certificate_id)? {
             Some(block_height_and_round) => cow_to_copied!(block_height_and_round),
@@ -698,6 +698,33 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
         match self.coinbase_solution_map().get_confirmed(block_hash)? {
             Some(solutions) => Ok(cow_to_cloned!(solutions)),
             None => bail!("Missing solutions for block ('{block_hash}')"),
+        }
+    }
+
+    /// Returns the prover solution for the given solution ID.
+    fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        // Retrieve the block height for the puzzle commitment.
+        let Some(block_height) = self.find_block_height_from_puzzle_commitment(puzzle_commitment)? else {
+            bail!("The block height for puzzle commitment '{puzzle_commitment}' is missing in block storage")
+        };
+        // Retrieve the block hash.
+        let Some(block_hash) = self.get_block_hash(block_height)? else {
+            bail!("The block hash for block '{block_height}' is missing in block storage")
+        };
+        // Retrieve the coinbase solution.
+        let Some(coinbase) = self.coinbase_solution_map().get_confirmed(&block_hash)? else {
+            bail!("The coinbase solution for block '{block_height}' is missing in block storage")
+        };
+        // Retrieve the prover solution.
+        match coinbase {
+            Cow::Owned(Some(ref coinbase)) | Cow::Borrowed(Some(ref coinbase)) => {
+                coinbase.get(puzzle_commitment).cloned().ok_or_else(|| {
+                    anyhow!(
+                        "The prover solution for puzzle commitment '{puzzle_commitment}' is missing in block storage"
+                    )
+                })
+            }
+            _ => bail!("The prover solution for puzzle commitment '{puzzle_commitment}' is missing in block storage"),
         }
     }
 
@@ -974,6 +1001,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.get_block_coinbase(block_hash)
     }
 
+    /// Returns the prover solution for the given solution ID.
+    pub fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        self.storage.get_solution(solution_id)
+    }
+
     /// Returns the block for the given `block hash`.
     pub fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
         self.storage.get_block(block_hash)
@@ -990,6 +1022,11 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the program for the given `program ID`.
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<Option<Program<N>>> {
         self.storage.transaction_store().get_program(program_id)
+    }
+
+    /// Returns the batch certificate for the given `certificate ID`.
+    pub fn get_batch_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
+        self.storage.get_batch_certificate(certificate_id)
     }
 }
 

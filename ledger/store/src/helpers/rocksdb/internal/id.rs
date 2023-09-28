@@ -147,6 +147,7 @@ pub enum TransitionOutputMap {
     Record = DataID::OutputRecordMap as u16,
     RecordNonce = DataID::OutputRecordNonceMap as u16,
     ExternalRecord = DataID::OutputExternalRecordMap as u16,
+    Future = DataID::OutputFutureMap as u16,
 }
 
 /// The RocksDB map prefix for transaction-related entries.
@@ -165,7 +166,6 @@ pub enum TransactionMap {
 #[repr(u16)]
 pub enum TransitionMap {
     Locator = DataID::TransitionLocatorMap as u16,
-    Finalize = DataID::TransitionFinalizeMap as u16,
     TPK = DataID::TransitionTPKMap as u16,
     ReverseTPK = DataID::TransitionReverseTPKMap as u16,
     TCM = DataID::TransitionTCMMap as u16,
@@ -255,11 +255,11 @@ enum DataID {
     OutputRecordMap,
     OutputRecordNonceMap,
     OutputExternalRecordMap,
+    OutputFutureMap,
     // Transaction
     TransactionIDMap,
     // Transition
     TransitionLocatorMap,
-    TransitionFinalizeMap,
     TransitionTPKMap,
     TransitionReverseTPKMap,
     TransitionTCMMap,

@@ -40,23 +40,13 @@ impl<N: Network> Display for CoinbaseSolution<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{account::PrivateKey, network::Testnet3};
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_string() -> Result<()> {
         let mut rng = TestRng::default();
 
-        // Sample new solutions.
-        let mut partial_solutions = vec![];
-        for _ in 0..rng.gen_range(1..10) {
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut rng)?;
-            let address = Address::try_from(private_key)?;
-
-            partial_solutions.push(PartialSolution::new(address, u64::rand(&mut rng), KZGCommitment(rng.gen())));
-        }
-        let expected = CoinbaseSolution::new(partial_solutions, KZGProof { w: rng.gen(), random_v: None });
+        // Sample random solutions.
+        let expected = crate::helpers::coinbase_solution::serialize::tests::sample_solutions(&mut rng);
 
         // Check the string representation.
         let candidate = format!("{expected}");

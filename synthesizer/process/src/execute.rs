@@ -37,8 +37,10 @@ impl<N: Network> Process<N> {
         let call_stack = CallStack::execute(authorization, trace.clone())?;
         lap!(timer, "Initialize call stack");
 
+        // Retrieve the stack.
+        let stack = self.get_stack(request.program_id())?;
         // Execute the circuit.
-        let response = self.get_stack(request.program_id())?.execute_function::<A>(call_stack)?;
+        let response = stack.execute_function::<A>(call_stack, None)?;
         lap!(timer, "Execute the function");
 
         // Extract the trace.
@@ -120,10 +122,10 @@ mod tests {
 
         // Execute the authorization.
         let (response, trace) = process.execute::<CurrentAleo>(authorization).unwrap();
-        // Ensure the response has 0 outputs.
-        assert_eq!(response.outputs().len(), 0, "Execution of 'credits.aleo/fee_public' must contain 0 outputs");
-        // Ensure the response has 0 output IDs.
-        assert_eq!(response.output_ids().len(), 0, "Execution of 'credits.aleo/fee_public' must contain 0 output IDs");
+        // Ensure the response has 1 outputs.
+        assert_eq!(response.outputs().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 output");
+        // Ensure the response has 1 output IDs.
+        assert_eq!(response.output_ids().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 output ID");
         // Ensure the trace contains 1 transition.
         assert_eq!(trace.transitions().len(), 1, "Execution of 'credits.aleo/fee_public' must contain 1 transition");
 

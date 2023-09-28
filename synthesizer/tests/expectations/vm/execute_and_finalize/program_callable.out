@@ -1,0 +1,23 @@
+errors: []
+outputs:
+- execute: 'Failed to evaluate instruction (assert.neq self.caller self.signer ;): ''assert.neq'' failed: ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' is equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should not be equal)'
+- verified: true
+  execute:
+    parent.aleo/foo:
+      outputs:
+      - '{"type":"public","id":"1992839124075328699173964528370087701745156471557389751122952085003950595832field","value":"aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg"}'
+      - '{"type":"public","id":"307885753616111794499278513815755325774421253222438014088047291626146246158field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+      - '{"type":"public","id":"1260075966251215032940540134753397347255605556303289668063307322367655594483field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+      - '{"type":"public","id":"6132019643538827223159216821616255691562939708927702036224235366852272625285field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+additional:
+- {}
+- child_outputs:
+    child.aleo/foo:
+      outputs:
+      - '{"type":"public","id":"8315488359140276951580034101006992939968845497407579899625786765501757885120field","value":"aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg"}'
+      - '{"type":"public","id":"6448656616136714939474098840421676776091940937099745585069337249931177552009field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"964136334948849132414160766296260727340691066934799441989114948739870252786field","checksum":"4284310774341117492431656293805660126619950812721728677296318897866321714996field","value":"record1qyqsqw2pte89kdswfmdnffp93se5950xef2trwvrttz8ytsjs2mdvmq0qyxx66trwfhkxun9v35hguerqqpqzq9fam3pvlw9zx3929wjd2gm8xdtu0axeshec24he6gdajafy89gqxcgc3kevu3ln63gyzwa008nkv04vwjpcqpk73jegvpj8t0wv4msu4en2zu"}'

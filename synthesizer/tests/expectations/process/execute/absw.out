@@ -1,3 +1,5 @@
+errors: []
+outputs:
 - - 0i8
 - - 1i8
 - - 10i8

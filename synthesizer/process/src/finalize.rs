@@ -13,6 +13,8 @@
 // limitations under the License.
 
 use super::*;
+use console::program::{Future, Register};
+use synthesizer_program::{Await, FinalizeRegistersState, Operand};
 
 impl<N: Network> Process<N> {
     /// Finalizes the deployment and fee.
@@ -84,46 +86,27 @@ impl<N: Network> Process<N> {
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
         // Ensure the number of transitions matches the program function.
-        {
-            // Retrieve the transition (without popping it).
-            let transition = execution.peek()?;
-            // Retrieve the stack.
-            let stack = self.get_stack(transition.program_id())?;
-            // Ensure the number of calls matches the number of transitions.
-            let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
-            ensure!(
-                number_of_calls == execution.len(),
-                "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
-                execution.len()
-            );
-        }
+        // Retrieve the root transition (without popping it).
+        let transition = execution.peek()?;
+        // Retrieve the stack.
+        let stack = self.get_stack(transition.program_id())?;
+        // Ensure the number of calls matches the number of transitions.
+        let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
+        ensure!(
+            number_of_calls == execution.len(),
+            "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
+            execution.len()
+        );
         lap!(timer, "Verify the number of transitions");
 
+        // Construct the call graph.
+        let call_graph = self.construct_call_graph(execution)?;
+
         atomic_batch_scope!(store, {
-            // Initialize a list for finalize operations.
-            let mut finalize_operations = Vec::new();
-
-            /* Finalize the execution. */
-
-            // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
-            //  Currently this loop assumes a linearly execution stack.
-            // Finalize each transition, starting from the last one.
-            for transition in execution.transitions() {
-                // Retrieve the program ID.
-                let program_id = transition.program_id();
-                // Retrieve the function name.
-                let function_name = transition.function_name();
-                // Retrieve the stack.
-                let stack = self.get_stack(program_id)?;
-                // Finalize the transition.
-                match finalize_transition(state, store, stack, transition) {
-                    // If the evaluation succeeds with an operation, add it to the list.
-                    Ok(operations) => finalize_operations.extend(operations),
-                    // If the evaluation fails, bail and return the error.
-                    Err(error) => bail!("'finalize' failed on '{program_id}/{function_name}' - {error}"),
-                }
-                lap!(timer, "Finalize transition for '{program_id}/{function_name}'");
-            }
+            // Finalize the root transition.
+            // Note that this will result in all the remaining transitions being finalized, since the number
+            // of calls matches the number of transitions.
+            let mut finalize_operations = finalize_transition(state, store, stack, transition, call_graph)?;
 
             /* Finalize the fee. */
 
@@ -172,8 +155,13 @@ fn finalize_fee_transition<N: Network, P: FinalizeStorage<N>>(
     stack: &Stack<N>,
     fee: &Fee<N>,
 ) -> Result<Vec<FinalizeOperation<N>>> {
+    // Construct the call graph.
+    let mut call_graph = HashMap::new();
+    // Insert the fee transition.
+    call_graph.insert(*fee.transition_id(), Vec::new());
+
     // Finalize the transition.
-    match finalize_transition(state, store, stack, fee) {
+    match finalize_transition(state, store, stack, fee, call_graph) {
         // If the evaluation succeeds, return the finalize operations.
         Ok(finalize_operations) => Ok(finalize_operations),
         // If the evaluation fails, bail and return the error.
@@ -187,7 +175,10 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
     store: &FinalizeStore<N, P>,
     stack: &Stack<N>,
     transition: &Transition<N>,
+    call_graph: HashMap<N::TransitionID, Vec<N::TransitionID>>,
 ) -> Result<Vec<FinalizeOperation<N>>> {
+    // Retrieve the program ID.
+    let program_id = transition.program_id();
     // Retrieve the function name.
     let function_name = transition.function_name();
 
@@ -195,70 +186,224 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
     println!("Finalizing transition for {}/{function_name}...", transition.program_id());
     debug_assert_eq!(stack.program_id(), transition.program_id());
 
+    // If the last output of the transition is a future, retrieve and finalize it. Otherwise, there are no operations to finalize.
+    let future = match transition.outputs().last().and_then(|output| output.future()) {
+        Some(future) => future,
+        _ => return Ok(Vec::new()),
+    };
+
+    // Check that the program ID and function name of the transition match those in the future.
+    ensure!(
+        future.program_id() == program_id && future.function_name() == function_name,
+        "The program ID and function name of the future do not match the transition"
+    );
+
     // Initialize a list for finalize operations.
     let mut finalize_operations = Vec::new();
 
-    // If there is a finalize scope, finalize the function.
-    if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
-        // Retrieve the finalize inputs.
-        let inputs = match transition.finalize() {
-            Some(inputs) => inputs,
-            // Ensure the transition contains finalize inputs.
-            None => bail!("The transition is missing inputs for 'finalize'"),
-        };
+    // Initialize a stack of active finalize states.
+    let mut states = Vec::new();
 
-        // Initialize the registers.
-        let mut registers = FinalizeRegisters::<N>::new(
-            state,
-            *transition.id(),
-            *function_name,
-            stack.get_finalize_types(finalize.name())?.clone(),
-        );
+    // Initialize the top-level finalize state.
+    states.push(initialize_finalize_state(state, future, stack, *transition.id())?);
 
-        // Store the inputs.
-        finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
-            // Assign the input value to the register.
-            registers.store(stack, register, input.clone())
-        })?;
-
-        // Initialize a counter for the index of the commands.
-        let mut counter = 0;
-
+    // While there are active finalize states, finalize them.
+    while let Some(FinalizeState {
+        mut counter,
+        finalize,
+        mut registers,
+        stack,
+        mut call_counter,
+        mut recent_call_locator,
+    }) = states.pop()
+    {
         // Evaluate the commands.
         while counter < finalize.commands().len() {
             // Retrieve the command.
             let command = &finalize.commands()[counter];
             // Finalize the command.
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match &command {
+            match &command {
                 Command::BranchEq(branch_eq) => {
-                    counter = branch_to(counter, branch_eq, finalize, stack, &registers)?;
-                    Ok(None)
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        branch_to(counter, branch_eq, finalize, stack, &registers)
+                    }));
+                    match result {
+                        Ok(Ok(new_counter)) => {
+                            counter = new_counter;
+                        }
+                        // If the evaluation fails, bail and return the error.
+                        Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                        // If the evaluation fails, bail and return the error.
+                        Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
+                    }
                 }
                 Command::BranchNeq(branch_neq) => {
-                    counter = branch_to(counter, branch_neq, finalize, stack, &registers)?;
-                    Ok(None)
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        branch_to(counter, branch_neq, finalize, stack, &registers)
+                    }));
+                    match result {
+                        Ok(Ok(new_counter)) => {
+                            counter = new_counter;
+                        }
+                        // If the evaluation fails, bail and return the error.
+                        Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                        // If the evaluation fails, bail and return the error.
+                        Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
+                    }
+                }
+                Command::Await(await_) => {
+                    // Check that the `await` register's locator is greater than the last seen call locator.
+                    // This ensures that futures are invoked in the order they are called.
+                    let locator = *match await_.register() {
+                        Register::Locator(locator) => locator,
+                        Register::Access(..) => bail!("The 'await' register must be a locator"),
+                    };
+                    if let Some(recent_call_locator) = recent_call_locator {
+                        ensure!(
+                            locator > recent_call_locator,
+                            "Await register's locator '{locator}' must be greater than the last seen call locator '{recent_call_locator}'",
+                        )
+                    }
+
+                    // Get the current transition ID.
+                    let transition_id = registers.transition_id();
+                    // Get the child transition ID.
+                    let child_transition_id = match call_graph.get(transition_id) {
+                        Some(transitions) => match transitions.get(call_counter) {
+                            Some(transition_id) => *transition_id,
+                            None => bail!("Child transition ID not found."),
+                        },
+                        None => bail!("Transition ID '{transition_id}' not found in call graph"),
+                    };
+
+                    let callee_state = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        // Set up the finalize state for the await.
+                        setup_await(state, await_, stack, &registers, child_transition_id)
+                    })) {
+                        Ok(Ok(callee_state)) => callee_state,
+                        // If the evaluation fails, bail and return the error.
+                        Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                        // If the evaluation fails, bail and return the error.
+                        Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
+                    };
+
+                    // Set the last seen call locator.
+                    recent_call_locator = Some(locator);
+                    // Increment the call counter.
+                    call_counter += 1;
+                    // Increment the counter.
+                    counter += 1;
+
+                    // Aggregate the caller state.
+                    let caller_state =
+                        FinalizeState { counter, finalize, registers, stack, call_counter, recent_call_locator };
+
+                    // Push the caller state onto the stack.
+                    states.push(caller_state);
+                    // Push the callee state onto the stack.
+                    states.push(callee_state);
+
+                    break;
                 }
                 _ => {
-                    let operations = command.finalize(stack, store, &mut registers);
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        command.finalize(stack, store, &mut registers)
+                    }));
+                    match result {
+                        // If the evaluation succeeds with an operation, add it to the list.
+                        Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
+                        // If the evaluation succeeds with no operation, continue.
+                        Ok(Ok(None)) => {}
+                        // If the evaluation fails, bail and return the error.
+                        Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
+                        // If the evaluation fails, bail and return the error.
+                        Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
+                    }
                     counter += 1;
-                    operations
                 }
-            }));
-
-            match result {
-                // If the evaluation succeeds with an operation, add it to the list.
-                Ok(Ok(Some(finalize_operation))) => finalize_operations.push(finalize_operation),
-                // If the evaluation succeeds with no operation, continue.
-                Ok(Ok(None)) => (),
-                // If the evaluation fails, bail and return the error.
-                Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),
-                // If the evaluation fails, bail and return the error.
-                Err(_) => bail!("'finalize' failed to evaluate command ({command})"),
-            }
+            };
         }
     }
+
     // Return the finalize operations.
     Ok(finalize_operations)
+}
+
+// A helper struct to track the execution of a finalize block.
+struct FinalizeState<'a, N: Network> {
+    // A counter for the index of the commands.
+    counter: usize,
+    // The finalize logic.
+    finalize: &'a Finalize<N>,
+    // The registers.
+    registers: FinalizeRegisters<N>,
+    // The stack.
+    stack: &'a Stack<N>,
+    // Call counter.
+    call_counter: usize,
+    // Recent call register.
+    recent_call_locator: Option<u64>,
+}
+
+// A helper function to initialize the finalize state.
+fn initialize_finalize_state<'a, N: Network>(
+    state: FinalizeGlobalState,
+    future: &Future<N>,
+    stack: &'a Stack<N>,
+    transition_id: N::TransitionID,
+) -> Result<FinalizeState<'a, N>> {
+    // Get the finalize logic and the stack.
+    let (finalize, stack) = match stack.program_id() == future.program_id() {
+        true => (stack.get_function_ref(future.function_name())?.finalize_logic(), stack),
+        false => {
+            let stack = stack.get_external_stack(future.program_id())?;
+            (stack.get_function_ref(future.function_name())?.finalize_logic(), stack)
+        }
+    };
+    // Check that the finalize logic exists.
+    let finalize = match finalize {
+        Some(finalize) => finalize,
+        None => bail!(
+            "The function '{}/{}' does not have an associated finalize block",
+            future.program_id(),
+            future.function_name()
+        ),
+    };
+    // Initialize the registers.
+    let mut registers = FinalizeRegisters::new(
+        state,
+        transition_id,
+        *future.function_name(),
+        stack.get_finalize_types(future.function_name())?.clone(),
+    );
+
+    // Store the inputs.
+    finalize.inputs().iter().map(|i| i.register()).zip_eq(future.arguments().iter()).try_for_each(
+        |(register, input)| {
+            // Assign the input value to the register.
+            registers.store(stack, register, Value::from(input))
+        },
+    )?;
+
+    Ok(FinalizeState { counter: 0, finalize, registers, stack, call_counter: 0, recent_call_locator: None })
+}
+
+// A helper function that sets up the await operation.
+#[inline]
+fn setup_await<'a, N: Network>(
+    state: FinalizeGlobalState,
+    await_: &Await<N>,
+    stack: &'a Stack<N>,
+    registers: &FinalizeRegisters<N>,
+    transition_id: N::TransitionID,
+) -> Result<FinalizeState<'a, N>> {
+    // Retrieve the input as a future.
+    let future = match registers.load(stack, &Operand::Register(await_.register().clone()))? {
+        Value::Future(future) => future,
+        _ => bail!("The input to 'await' is not a future"),
+    };
+    // Initialize the state.
+    initialize_finalize_state(state, &future, stack, transition_id)
 }
 
 // A helper function that returns the index to branch to.
@@ -319,8 +464,8 @@ struct message:
     amount as u128;
 
 mapping account:
-    key owner as address.public;
-    value amount as u64.public;
+    key as address.public;
+    value as u64.public;
 
 record token:
     owner as address.private;

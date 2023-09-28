@@ -4,127 +4,182 @@ randomness: 0
 
 cases:
 
-  - function: add_i8
+  - program: add.aleo
+    function: add_i8
     inputs: [6i8, 9i8]
-  - function: add_i8
+  - program: add.aleo
+    function: add_i8
     inputs: [-100i8, -10i8]
-  - function: add_i8
+  - program: add.aleo
+    function: add_i8
     inputs: [0i8, 0i8]
-  - function: add_i8
+  - program: add.aleo
+    function: add_i8
     inputs: [50i8, -40i8]
-  - function: add_i8
+  - program: add.aleo
+    function: add_i8
     inputs: [-70i8, 30i8]
-  - function: add_i8
+  - program: add.aleo
+    function: add_i8
     inputs: [120i8, 50i8]
 
-  - function: add_i16
+  - program: add.aleo
+    function: add_i16
     inputs: [10_000_i16, 20_000_i16]
-  - function: add_i16
+  - program: add.aleo
+    function: add_i16
     inputs: [-10_000_i16, -20_000_i16]
-  - function: add_i16
+  - program: add.aleo
+    function: add_i16
     inputs: [10_000_i16, -20_000_i16]
-  - function: add_i16
+  - program: add.aleo
+    function: add_i16
     inputs: [-10_000_i16, 20_000_i16]
-  - function: add_i16
+  - program: add.aleo
+    function: add_i16
     inputs: [-20_000_i16, -20_000_i16]
 
-  - function: add_i32
+  - program: add.aleo
+    function: add_i32
     inputs: [10_000_000_i32, 20_000_000_i32]
-  - function: add_i32
+  - program: add.aleo
+    function: add_i32
     inputs: [-10_000_000_i32, -20_000_000_i32]
-  - function: add_i32
+  - program: add.aleo
+    function: add_i32
     inputs: [10_000_000_i32, -20_000_000_i32]
-  - function: add_i32
+  - program: add.aleo
+    function: add_i32
     inputs: [-10_000_000_i32, 20_000_000_i32]
-  - function: add_i32
+  - program: add.aleo
+    function: add_i32
     inputs: [2_000_000_000_i32, 2_000_000_000_i32]
 
-  - function: add_i64
+  - program: add.aleo
+    function: add_i64
     inputs: [10_000_000_000_000_i64, 20_000_000_000_000_i64]
-  - function: add_i64
+  - program: add.aleo
+    function: add_i64
     inputs: [-10_000_000_000_000_i64, -20_000_000_000_000_i64]
-  - function: add_i64
+  - program: add.aleo
+    function: add_i64
     inputs: [10_000_000_000_000_i64, -20_000_000_000_000_i64]
-  - function: add_i64
+  - program: add.aleo
+    function: add_i64
     inputs: [-10_000_000_000_000_i64, 20_000_000_000_000_i64]
-  - function: add_i64
+  - program: add.aleo
+    function: add_i64
     inputs: [9_000_000_000_000_000_000_i64, 8_000_000_000_000_000_000_i64]
 
-  - function: add_i128
+  - program: add.aleo
+    function: add_i128
     inputs: [10_000_000_000_000_000_000_000_i128, 20_000_000_000_000_000_000_000_i128]
-  - function: add_i128
+  - program: add.aleo
+    function: add_i128
     inputs: [-10_000_000_000_000_000_000_000_i128, -20_000_000_000_000_000_000_000_i128]
-  - function: add_i128
+  - program: add.aleo
+    function: add_i128
     inputs: [10_000_000_000_000_000_000_000_i128, -20_000_000_000_000_000_000_000_i128]
-  - function: add_i128
+  - program: add.aleo
+    function: add_i128
     inputs: [-10_000_000_000_000_000_000_000_i128, 20_000_000_000_000_000_000_000_i128]
-  - function: add_i128
+  - program: add.aleo
+    function: add_i128
     inputs: [85_070_591_730_234_615_865_843_651_857_942_052_864_i128, 85_070_591_730_234_615_865_843_651_857_942_052_864_i128]
 
-  - function: add_u8
+  - program: add.aleo
+    function: add_u8
     inputs: [6u8, 9u8]
-  - function: add_u8
+  - program: add.aleo
+    function: add_u8
     inputs: [100u8, 120u8]
-  - function: add_u8
+  - program: add.aleo
+    function: add_u8
     inputs: [0u8, 0u8]
-  - function: add_u8
+  - program: add.aleo
+    function: add_u8
     inputs: [120u8, 200u8]
 
-  - function: add_u16
+  - program: add.aleo
+    function: add_u16
     inputs: [10_000_u16, 20_000_u16]
-  - function: add_u16
+  - program: add.aleo
+    function: add_u16
     inputs: [30_000_u16, 20_000_u16]
-  - function: add_u16
+  - program: add.aleo
+    function: add_u16
     inputs: [40_000_u16, 40_000_u16]
 
-  - function: add_u32
+  - program: add.aleo
+    function: add_u32
     inputs: [10_000_000_u32, 20_000_000_u32]
-  - function: add_u32
+  - program: add.aleo
+    function: add_u32
     inputs: [2_500_000_000_u32, 1_500_000_000_u32]
-  - function: add_u32
+  - program: add.aleo
+    function: add_u32
     inputs: [3_000_000_000_u32, 2_000_000_000_u32]
 
-  - function: add_u64
+  - program: add.aleo
+    function: add_u64
     inputs: [10_000_000_000_000_u64, 20_000_000_000_000_u64]
-  - function: add_u64
+  - program: add.aleo
+    function: add_u64
     inputs: [7_000_000_000_000_000_000_u64, 10_000_000_000_000_000_000_u64]
-  - function: add_u64
+  - program: add.aleo
+    function: add_u64
     inputs: [10_000_000_000_000_000_000_u64, 9_000_000_000_000_000_000_u64]
 
-  - function: add_u128
+  - program: add.aleo
+    function: add_u128
     inputs: [10_000_000_000_000_000_000_000_u128, 20_000_000_000_000_000_000_000_u128]
-  - function: add_u128
+  - program: add.aleo
+    function: add_u128
     inputs: [200_000_000_000_000_000_000_000_000_000_000_000_000_u128, 100_000_000_000_000_000_000_000_000_000_000_000_000_u128]
-  - function: add_u128
+  - program: add.aleo
+    function: add_u128
     inputs: [200_000_000_000_000_000_000_000_000_000_000_000_000_u128, 200_000_000_000_000_000_000_000_000_000_000_000_000_u128]
 
-  - function: add_field
+  - program: add.aleo
+    function: add_field
     inputs: [8field, 88field]
-  - function: add_field
+  - program: add.aleo
+    function: add_field
     inputs: [-1field, 0field]
-  - function: add_field
+  - program: add.aleo
+    function: add_field
     inputs: [8444461749428370424248824938781546531375899335154063827935233455917409239040field, 1field]
-  - function: add_field
+  - program: add.aleo
+    function: add_field
     inputs: [8444461749428370424248824938781546531375899335154063827935233455917409239040field, 3field]
-  - function: add_field
+  - program: add.aleo
+    function: add_field
     inputs: [111118444461749428370424248824938781546531375899335154063827935233455917409239040field, 10field]
 
-  - function: add_group
+  - program: add.aleo
+    function: add_group
     inputs: [0group, 7810607721416582242904415504650443951498042435501746664987470571546413371306group]
-  - function: add_group
+  - program: add.aleo
+    function: add_group
     inputs: [7810607721416582242904415504650443951498042435501746664987470571546413371306group, 7810607721416582242904415504650443951498042435501746664987470571546413371306group]
-  - function: add_group
+  - program: add.aleo
+    function: add_group
     inputs: [2group, 2group]
 
-  - function: add_scalar
+  - program: add.aleo
+    function: add_scalar
     inputs: [8scalar, 88scalar]
-  - function: add_scalar
+  - program: add.aleo
+    function: add_scalar
     inputs: [0scalar, -1scalar]
-  - function: add_scalar
+  - program: add.aleo
+    function: add_scalar
     inputs: [1scalar, 2111115437357092606062206234695386632838870926408408195193685246394721360382scalar]
-  - function: add_scalar
+  - program: add.aleo
+    function: add_scalar
     inputs: [11scalar, 2111115437357092606062206234695386632838870926408408195193685246394721360382scalar]
-  - function: add_scalar
+  - program: add.aleo
+    function: add_scalar
     inputs: [11111scalar, 999999992111115437357092606062206234695386632838870926408408195193685246394721360382scalar]
 */
 

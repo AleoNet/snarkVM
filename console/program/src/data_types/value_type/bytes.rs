@@ -17,13 +17,14 @@ use super::*;
 impl<N: Network> ToBytes for ValueType<N> {
     /// Writes the value type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        u8::try_from(self.enum_index()).or_halt_with::<N>("Invalid value type variant").write_le(&mut writer)?;
+        u8::try_from(self.enum_index()).map_err(error)?.write_le(&mut writer)?;
         match self {
             Self::Constant(plaintext_type) => plaintext_type.write_le(&mut writer),
             Self::Public(plaintext_type) => plaintext_type.write_le(&mut writer),
             Self::Private(plaintext_type) => plaintext_type.write_le(&mut writer),
             Self::Record(identifier) => identifier.write_le(&mut writer),
             Self::ExternalRecord(locator) => locator.write_le(&mut writer),
+            Self::Future(locator) => locator.write_le(&mut writer),
         }
     }
 }
@@ -38,7 +39,8 @@ impl<N: Network> FromBytes for ValueType<N> {
             2 => Ok(Self::Private(PlaintextType::read_le(&mut reader)?)),
             3 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
             4 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
-            5.. => Err(error(format!("Failed to deserialize value type variant {variant}"))),
+            5 => Ok(Self::Future(Locator::read_le(&mut reader)?)),
+            6.. => Err(error(format!("Failed to deserialize value type variant {variant}"))),
         }
     }
 }

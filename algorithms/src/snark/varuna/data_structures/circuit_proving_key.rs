@@ -28,17 +28,17 @@ use std::{cmp::Ordering, sync::Arc};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CircuitProvingKey<E: PairingEngine, MM: SNARKMode> {
+pub struct CircuitProvingKey<E: PairingEngine, SM: SNARKMode> {
     /// The circuit verifying key.
     pub circuit_verifying_key: CircuitVerifyingKey<E>,
     // NOTE: The circuit verifying key's circuit_info and circuit id are also stored in Circuit for convenience.
     /// The circuit itself.
-    pub circuit: Arc<Circuit<E::Fr, MM>>,
+    pub circuit: Arc<Circuit<E::Fr, SM>>,
     /// The committer key for this index, trimmed from the universal SRS.
     pub committer_key: Arc<sonic_pc::CommitterKey<E>>,
 }
 
-impl<E: PairingEngine, MM: SNARKMode> ToBytes for CircuitProvingKey<E, MM> {
+impl<E: PairingEngine, SM: SNARKMode> ToBytes for CircuitProvingKey<E, SM> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(&self.circuit_verifying_key, &mut writer)?;
         CanonicalSerialize::serialize_compressed(&self.circuit, &mut writer)?;
@@ -47,7 +47,7 @@ impl<E: PairingEngine, MM: SNARKMode> ToBytes for CircuitProvingKey<E, MM> {
     }
 }
 
-impl<E: PairingEngine, MM: SNARKMode> FromBytes for CircuitProvingKey<E, MM> {
+impl<E: PairingEngine, SM: SNARKMode> FromBytes for CircuitProvingKey<E, SM> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         let circuit_verifying_key = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
@@ -58,13 +58,13 @@ impl<E: PairingEngine, MM: SNARKMode> FromBytes for CircuitProvingKey<E, MM> {
     }
 }
 
-impl<E: PairingEngine, MM: SNARKMode> Ord for CircuitProvingKey<E, MM> {
+impl<E: PairingEngine, SM: SNARKMode> Ord for CircuitProvingKey<E, SM> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.circuit.id.cmp(&other.circuit.id)
     }
 }
 
-impl<E: PairingEngine, MM: SNARKMode> PartialOrd for CircuitProvingKey<E, MM> {
+impl<E: PairingEngine, SM: SNARKMode> PartialOrd for CircuitProvingKey<E, SM> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }

@@ -66,7 +66,6 @@ use synthesizer_program::{
     Finalize,
     FinalizeGlobalState,
     FinalizeOperation,
-    Function,
     Instruction,
     Program,
     RegistersLoad,

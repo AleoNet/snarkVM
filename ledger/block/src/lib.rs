@@ -47,7 +47,7 @@ use console::{
     types::{Field, Group, U64},
 };
 use ledger_authority::Authority;
-use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
+use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
 use ledger_narwhal_subdag::Subdag;
 use ledger_narwhal_transmission_id::TransmissionID;
@@ -143,6 +143,15 @@ impl<N: Network> Block<N> {
         };
         if header.solutions_root() != solutions_root {
             bail!("The solutions root in the block does not correspond to the solutions");
+        }
+
+        // Ensure that the subdag root matches the authority.
+        let subdag_root = match &authority {
+            Authority::Beacon(_) => Field::<N>::zero(),
+            Authority::Quorum(subdag) => subdag.leader_certificate().certificate_id(),
+        };
+        if header.subdag_root() != subdag_root {
+            bail!("The subdag root in the block does not correspond to the authority");
         }
 
         // Return the block.
@@ -302,6 +311,23 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
+    /// Returns the solution with the given solution ID, if it exists.
+    pub fn get_solution(&self, puzzle_commitment: &PuzzleCommitment<N>) -> Option<&ProverSolution<N>> {
+        self.coinbase.as_ref().and_then(|solution| solution.get_solution(puzzle_commitment))
+    }
+
+    /// Returns the transaction with the given transaction ID, if it exists.
+    pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Option<&Transaction<N>> {
+        self.transactions.get(transaction_id).map(|t| t.deref())
+    }
+
+    /// Returns the confirmed transaction with the given transaction ID, if it exists.
+    pub fn get_confirmed_transaction(&self, transaction_id: &N::TransactionID) -> Option<&ConfirmedTransaction<N>> {
+        self.transactions.get(transaction_id)
+    }
+}
+
+impl<N: Network> Block<N> {
     /// Returns the transaction with the given transition ID, if it exists.
     pub fn find_transaction_for_transition_id(&self, transition_id: &N::TransitionID) -> Option<&Transaction<N>> {
         self.transactions.find_transaction_for_transition_id(transition_id)
@@ -340,7 +366,7 @@ impl<N: Network> Block<N> {
 
 impl<N: Network> Block<N> {
     /// Returns the puzzle commitments in this block.
-    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = PuzzleCommitment<N>>> {
+    pub fn puzzle_commitments(&self) -> Option<impl '_ + Iterator<Item = &PuzzleCommitment<N>>> {
         self.coinbase.as_ref().map(|solution| solution.puzzle_commitments())
     }
 

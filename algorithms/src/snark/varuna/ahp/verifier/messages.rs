@@ -87,7 +87,7 @@ pub struct QuerySet<F: PrimeField> {
 }
 
 impl<F: PrimeField> QuerySet<F> {
-    pub fn new<MM: SNARKMode>(state: &super::State<F, MM>) -> Self {
+    pub fn new<SM: SNARKMode>(state: &super::State<F, SM>) -> Self {
         let alpha = state.second_round_message.as_ref().unwrap().alpha;
         let beta = state.third_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();

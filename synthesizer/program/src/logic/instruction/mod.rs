@@ -26,10 +26,10 @@ mod parse;
 
 use crate::traits::{
     InstructionTrait,
-    RegistersCaller,
-    RegistersCallerCircuit,
     RegistersLoad,
     RegistersLoadCircuit,
+    RegistersSigner,
+    RegistersSignerCircuit,
     RegistersStore,
     RegistersStoreCircuit,
     StackMatches,
@@ -79,10 +79,14 @@ pub enum Instruction<N: Network> {
     AssertEq(AssertEq<N>),
     /// Asserts `first` and `second` are **not** equal.
     AssertNeq(AssertNeq<N>),
-    /// Calls a closure on the operands.
+    /// Calls a finalize asynchronously on the operands.
+    Async(Async<N>),
+    /// Calls a closure or function on the operands.
     Call(Call<N>),
     /// Casts the operands into the declared type.
     Cast(Cast<N>),
+    /// Casts the operands into the declared type, with lossy truncation if applicable.
+    CastLossy(CastLossy<N>),
     /// Performs a BHP commitment on inputs of 256-bit chunks.
     CommitBHP256(CommitBHP256<N>),
     /// Performs a BHP commitment on inputs of 512-bit chunks.
@@ -235,8 +239,10 @@ macro_rules! instruction {
             And,
             AssertEq,
             AssertNeq,
+            Async,
             Call,
             Cast,
+            CastLossy,
             CommitBHP256,
             CommitBHP512,
             CommitBHP768,
@@ -402,7 +408,7 @@ impl<N: Network> Instruction<N> {
     pub fn evaluate(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
+        registers: &mut (impl RegistersSigner<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate(stack, registers))
     }
@@ -412,7 +418,7 @@ impl<N: Network> Instruction<N> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
+        registers: &mut (impl RegistersSignerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
     }
@@ -463,7 +469,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            66,
+            68,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

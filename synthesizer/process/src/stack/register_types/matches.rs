@@ -61,6 +61,10 @@ impl<N: Network> RegisterTypes<N> {
                         RegisterType::ExternalRecord(..) | RegisterType::Record(..) => {
                             bail!("Casting a record into a struct entry is illegal")
                         }
+                        // Ensure the register type is not a future.
+                        RegisterType::Future(..) => {
+                            bail!("Casting a future into a struct entry is illegal")
+                        }
                         // Ensure the register type matches the member type.
                         RegisterType::Plaintext(type_) => {
                             ensure!(
@@ -70,24 +74,14 @@ impl<N: Network> RegisterTypes<N> {
                         }
                     }
                 }
-                // Ensure the program ID type (address) matches the member type.
-                Operand::ProgramID(..) => {
-                    // Retrieve the program ID type.
-                    let program_ref_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the program ID type matches the member type.
+                // Ensure the program ID, signer, and caller types (address) match the member type.
+                Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
+                    // Retrieve the operand type.
+                    let operand_type = PlaintextType::Literal(LiteralType::Address);
+                    // Ensure the operand type matches the member type.
                     ensure!(
-                        &program_ref_type == member_type,
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
-                    )
-                }
-                // Ensure the caller type (address) matches the member type.
-                Operand::Caller => {
-                    // Retrieve the caller type.
-                    let caller_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the caller type matches the member type.
-                    ensure!(
-                        &caller_type == member_type,
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
+                        &operand_type == member_type,
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{operand_type}' in the operand '{operand}'.",
                     )
                 }
                 // If the operand is a block height type, throw an error.
@@ -141,6 +135,10 @@ impl<N: Network> RegisterTypes<N> {
                         RegisterType::ExternalRecord(..) | RegisterType::Record(..) => {
                             bail!("Casting a record into an array element is illegal")
                         }
+                        // Ensure the register type is not a future.
+                        RegisterType::Future(..) => {
+                            bail!("Casting a future into an array element is illegal")
+                        }
                         // Ensure the register type matches the element type.
                         RegisterType::Plaintext(type_) => {
                             ensure!(
@@ -151,25 +149,14 @@ impl<N: Network> RegisterTypes<N> {
                         }
                     }
                 }
-                // Ensure the program ID type (address) matches the element type.
-                Operand::ProgramID(..) => {
-                    // Retrieve the program ID type.
-                    let program_ref_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the program ID type matches the element type.
+                // Ensure the program ID type, signer type, and caller types (address) match the element type.
+                Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
+                    // Retrieve the operand type.
+                    let operand_type = PlaintextType::Literal(LiteralType::Address);
+                    // Ensure the operand type matches the element type.
                     ensure!(
-                        &program_ref_type == array_type.next_element_type(),
-                        "Array element expects {}, but found '{program_ref_type}' in the operand '{operand}'.",
-                        array_type.next_element_type()
-                    )
-                }
-                // Ensure the caller type (address) matches the element type.
-                Operand::Caller => {
-                    // Retrieve the caller type.
-                    let caller_type = PlaintextType::Literal(LiteralType::Address);
-                    // Ensure the caller type matches the element type.
-                    ensure!(
-                        &caller_type == array_type.next_element_type(),
-                        "Array element {}, but found '{caller_type}' in the operand '{operand}'.",
+                        &operand_type == array_type.next_element_type(),
+                        "Array element expects {}, but found '{operand_type}' in the operand '{operand}'.",
                         array_type.next_element_type()
                     )
                 }
@@ -233,7 +220,9 @@ impl<N: Network> RegisterTypes<N> {
                 // They must hold all necessary state in storage instead.
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
-            Operand::Caller => {}
+            Operand::Signer | Operand::Caller => {
+                // No-op.
+            }
             Operand::BlockHeight => {
                 bail!("Forbidden operation: Cannot cast a block height as a record owner")
             }
@@ -263,6 +252,10 @@ impl<N: Network> RegisterTypes<N> {
                                 RegisterType::ExternalRecord(..) | RegisterType::Record(..) => {
                                     bail!("Casting a record into a record entry is illegal")
                                 }
+                                // Ensure the register type is not a future.
+                                RegisterType::Future(..) => {
+                                    bail!("Casting a future into a record entry is illegal")
+                                }
                                 // Ensure the register type matches the entry type.
                                 RegisterType::Plaintext(type_) => {
                                     ensure!(
@@ -272,24 +265,14 @@ impl<N: Network> RegisterTypes<N> {
                                 }
                             }
                         }
-                        // Ensure the program ID type (address) matches the entry type.
-                        Operand::ProgramID(..) => {
-                            // Retrieve the program ID type.
-                            let program_ref_type = &PlaintextType::Literal(LiteralType::Address);
-                            // Ensure the program ID type matches the entry type.
+                        // Ensure the program ID, signer, and caller types (address) match the entry type.
+                        Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
+                            // Retrieve the operand type.
+                            let operand_type = &PlaintextType::Literal(LiteralType::Address);
+                            // Ensure the operand type matches the entry type.
                             ensure!(
-                                program_ref_type == plaintext_type,
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{program_ref_type}' in the operand '{operand}'.",
-                            )
-                        }
-                        // Ensure the caller type (address) matches the entry type.
-                        Operand::Caller => {
-                            // Retrieve the caller type.
-                            let caller_type = &PlaintextType::Literal(LiteralType::Address);
-                            // Ensure the caller type matches the entry type.
-                            ensure!(
-                                caller_type == plaintext_type,
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
+                                operand_type == plaintext_type,
+                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{operand_type}' in the operand '{operand}'.",
                             )
                         }
                         // Fail if the operand is a block height.

@@ -1,12 +1,15 @@
 /*
 randomness: 1337
 cases:
-  - function: mint
+  - program: mint_and_split.aleo
+    function: mint
     inputs: [aleo1j2hfs6yru47h2nvsjdefwtw6nwaj0y4zcl02juyy29txm7nt6y9qln7uhp, 100u64]
-  - function: split
+  - program: mint_and_split.aleo
+    function: split
     inputs: [ "{ owner: aleo1j2hfs6yru47h2nvsjdefwtw6nwaj0y4zcl02juyy29txm7nt6y9qln7uhp.private, microcredits: 100u64.private, _nonce: 0group.public }", 50u64]
     private_key: APrivateKey1zkpFbGDx4znwxo1zrxfUscfGn1Vy3My3ia5gRHx3XwaLtCR
-  - function: split
+  - program: mint_and_split.aleo
+    function: split
     inputs: [ "{ owner: aleo1j2hfs6yru47h2nvsjdefwtw6nwaj0y4zcl02juyy29txm7nt6y9qln7uhp.private, microcredits: 100u64.private, _nonce: 0group.public }", 50u64]
     private_key: APrivateKey1zkpJhviKDvvm7yu7SZuhSudVR7zjCRG2HznuAHwuGYc1xqN
 */
