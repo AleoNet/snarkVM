@@ -404,11 +404,11 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 41268, 0, 30923, 30967)
+        check_verify(Mode::Public, 41268, 0, 30403, 30447)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 41268, 0, 30923, 30967)
+        check_verify(Mode::Private, 41268, 0, 30403, 30447)
     }
 }
