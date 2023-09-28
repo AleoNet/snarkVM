@@ -27,6 +27,7 @@ use crate::{
     },
     ledger::{
         block::{Block, Transaction},
+        committee::Committee,
         query::Query,
         store::{
             helpers::memory::{BlockMemory, ConsensusMemory},

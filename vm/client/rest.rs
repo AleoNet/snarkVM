@@ -39,6 +39,14 @@ impl<N: Network> Client<N> {
         }
     }
 
+    pub async fn latest_committee(&self) -> Result<Committee<N>> {
+        let url = format!("{}/testnet3/latest/committee", self.node_url());
+        match self.client.get(url).send().await?.json().await {
+            Ok(block) => Ok(block),
+            Err(error) => bail!("Failed to parse the latest block: {error}"),
+        }
+    }
+
     pub async fn get_block(&self, height: u32) -> Result<Block<N>> {
         let url = format!("{}/testnet3/block/{height}", self.node_url());
         match self.client.get(url).send().await?.json().await {
@@ -95,6 +103,26 @@ impl<N: Network> Client<N> {
         match self.client.get(url).send().await?.json().await {
             Ok(program) => Ok(program),
             Err(error) => bail!("Failed to parse program {program_id}: {error}"),
+        }
+    }
+
+    pub async fn get_mapping_value(
+        &self,
+        program_id: impl TryInto<ProgramID<N>>,
+        mapping_name: impl TryInto<Identifier<N>>,
+        key: impl TryInto<Plaintext<N>>,
+    ) -> Result<Option<Value<N>>> {
+        // Prepare the program ID.
+        let program_id = program_id.try_into().map_err(|_| anyhow!("Invalid program ID"))?;
+        // Prepare the mapping name.
+        let mapping_name = mapping_name.try_into().map_err(|_| anyhow!("Invalid mapping name"))?;
+        // Prepare the key.
+        let key = key.try_into().map_err(|_| anyhow!("Invalid key"))?;
+        // Perform the request.
+        let url = format!("{}/testnet3/program/{program_id}/mapping/{mapping_name}/{key}", self.node_url());
+        match self.client.get(url).send().await?.json().await {
+            Ok(program) => Ok(program),
+            Err(error) => bail!("Failed to get mapping value for {program_id}/{mapping_name}/{key}: {error}"),
         }
     }
 
