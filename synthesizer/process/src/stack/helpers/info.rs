@@ -53,7 +53,7 @@ impl<N: Network> Stack<N> {
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
-        let _ = self.execute_function::<A>(call_stack)?;
+        let _ = self.execute_function::<A>(call_stack, None)?;
 
         let transcript = A::clear();
 
