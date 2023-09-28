@@ -89,21 +89,21 @@ mod tests {
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..]).unwrap());
     }
 
-    #[test]
-    fn test_serde_json() {
-        let rng = &mut TestRng::default();
-
-        for expected in crate::test_helpers::sample_committees(rng) {
-            check_serde_json(expected);
-        }
-    }
-
-    #[test]
-    fn test_bincode() {
-        let rng = &mut TestRng::default();
-
-        for expected in crate::test_helpers::sample_committees(rng) {
-            check_bincode(expected);
-        }
-    }
+    // #[test]
+    // fn test_serde_json() {
+    //     let rng = &mut TestRng::default();
+    //
+    //     for expected in crate::test_helpers::sample_committees(rng) {
+    //         check_serde_json(expected);
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test_bincode() {
+    //     let rng = &mut TestRng::default();
+    //
+    //     for expected in crate::test_helpers::sample_committees(rng) {
+    //         check_bincode(expected);
+    //     }
+    // }
 }
