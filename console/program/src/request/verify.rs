@@ -72,7 +72,7 @@ impl<N: Network> Request<N> {
         };
 
         // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(5 + self.input_ids.len());
+        let mut message = Vec::with_capacity(3 + self.input_ids.len());
         message.push(self.tvk);
         message.push(self.tcm);
         message.push(function_id);

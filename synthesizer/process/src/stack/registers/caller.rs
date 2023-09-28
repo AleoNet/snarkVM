@@ -30,7 +30,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSigner<N> for Registers
     /// Returns the transition caller.
     #[inline]
     fn caller(&self) -> Result<Address<N>> {
-        self.caller.ok_or_else(|| anyhow!("Parent address (console) is not set in the registers."))
+        self.caller.ok_or_else(|| anyhow!("Caller address (console) is not set in the registers."))
     }
 
     /// Sets the transition caller.
@@ -56,7 +56,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSignerCircuit<N, A> for
     /// Returns the transition signer, as a circuit.
     #[inline]
     fn signer_circuit(&self) -> Result<circuit::Address<A>> {
-        self.signer_circuit.clone().ok_or_else(|| anyhow!("Caller address (circuit) is not set in the registers."))
+        self.signer_circuit.clone().ok_or_else(|| anyhow!("Signer address (circuit) is not set in the registers."))
     }
 
     /// Sets the transition signer, as a circuit.
@@ -68,7 +68,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSignerCircuit<N, A> for
     /// Returns the transition caller, as a circuit.
     #[inline]
     fn caller_circuit(&self) -> Result<circuit::Address<A>> {
-        self.caller_circuit.clone().ok_or_else(|| anyhow!("Parent address (circuit) is not set in the registers."))
+        self.caller_circuit.clone().ok_or_else(|| anyhow!("Caller address (circuit) is not set in the registers."))
     }
 
     /// Sets the transition caller, as a circuit.

@@ -1496,15 +1496,11 @@ mod sanity_checks {
         let program = stack.program();
         // Get the program ID.
         let program_id = *program.id();
-        // Since this is  a top-level call, `is_root` is true.
-        let is_root = Boolean::new(true);
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
         let request = Request::sign(
             private_key,
-            program_id.to_address().unwrap(),
-            is_root,
             program_id,
             function_name,
             inputs.iter(),
