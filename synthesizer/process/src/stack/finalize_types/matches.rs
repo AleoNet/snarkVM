@@ -78,13 +78,13 @@ impl<N: Network> FinalizeTypes<N> {
                         "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
                     )
                 }
+                // If the operand is a signer, throw an error.
+                Operand::Signer => bail!(
+                    "Struct member '{struct_name}.{member_name}' cannot be cast from a signer in a finalize scope."
+                ),
                 // If the operand is a caller, throw an error.
                 Operand::Caller => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be cast from a caller in a finalize scope."
-                ),
-                // If the operand is a parent, throw an error.
-                Operand::Parent => bail!(
-                    "Struct member '{struct_name}.{member_name}' cannot be cast from a parent in a finalize scope."
                 ),
                 // Ensure the block height type (u32) matches the member type.
                 Operand::BlockHeight => {
@@ -162,10 +162,10 @@ impl<N: Network> FinalizeTypes<N> {
                         array_type.next_element_type()
                     )
                 }
+                // If the operand is a signer, throw an error.
+                Operand::Signer => bail!("Array element cannot be cast from a signer in a finalize scope."),
                 // If the operand is a caller, throw an error.
                 Operand::Caller => bail!("Array element cannot be cast from a caller in a finalize scope."),
-                // If the operand is a parent, throw an error.
-                Operand::Parent => bail!("Array element cannot be cast from a parent in a finalize scope."),
                 // Ensure the block height type (u32) matches the member type.
                 Operand::BlockHeight => {
                     // Retrieve the block height type.

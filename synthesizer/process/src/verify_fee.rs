@@ -116,15 +116,15 @@ impl<N: Network> Process<N> {
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
 
-        // Compute the x- and y-coordinate of `parent`.
-        let (parent_x, parent_y) = fee.program_id().to_address()?.to_xy_coordinates();
+        // Compute the x- and y-coordinate of `caller`.
+        let (caller_x, caller_y) = fee.program_id().to_address()?.to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
-        // Extend the verifier inputs with the 'self.parent' public inputs.
-        inputs.extend([*Field::<N>::one(), *parent_x, *parent_y]);
+        // Extend the verifier inputs with the 'self.caller' public inputs.
+        inputs.extend([*Field::<N>::one(), *caller_x, *caller_y]);
         // Extend the inputs with the output IDs.
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
         lap!(timer, "Construct the verifier inputs");
@@ -186,15 +186,15 @@ impl<N: Network> Process<N> {
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = fee.tpk().to_xy_coordinates();
 
-        // Compute the x- and y-coordinate of `parent`.
-        let (parent_x, parent_y) = fee.program_id().to_address()?.to_xy_coordinates();
+        // Compute the x- and y-coordinate of `caller`.
+        let (caller_x, caller_y) = fee.program_id().to_address()?.to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
-        // Extend the verifier inputs with the 'self.parent' public inputs.
-        inputs.extend([*Field::<N>::one(), *parent_x, *parent_y]);
+        // Extend the verifier inputs with the 'self.caller' public inputs.
+        inputs.extend([*Field::<N>::one(), *caller_x, *caller_y]);
         // Extend the inputs with the output IDs.
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
         lap!(timer, "Construct the verifier inputs");

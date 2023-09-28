@@ -18,7 +18,7 @@ impl<N: Network> Request<N> {
     /// Returns `true` if the request is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, caller, is_root, function ID, input IDs\])
     pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
         // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
@@ -30,8 +30,8 @@ impl<N: Network> Request<N> {
                 return false;
             }
 
-            // Compute the transition view key `tvk` as `tsk * caller`.
-            let tvk = (*self.caller * self.tsk).to_x_coordinate();
+            // Compute the transition view key `tvk` as `tsk * signer`.
+            let tvk = (*self.signer * self.tsk).to_x_coordinate();
             // Ensure the computed transition view key matches.
             if tvk != self.tvk {
                 eprintln!("Invalid transition view key in request.");
@@ -59,11 +59,11 @@ impl<N: Network> Request<N> {
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
-        // Derive a field element from the parent address.
-        let parent = match self.parent.to_field() {
-            Ok(parent) => parent,
+        // Derive a field element from the caller address.
+        let caller = match self.caller.to_field() {
+            Ok(caller) => caller,
             Err(error) => {
-                eprintln!("Failed to derive a field element from the parent address: {error}");
+                eprintln!("Failed to derive a field element from the caller address: {error}");
                 return false;
             }
         };
@@ -83,11 +83,11 @@ impl<N: Network> Request<N> {
         // Convert `self.is_root` to a field element.
         let is_root = if *self.is_root { Field::one() } else { Field::zero() };
 
-        // Construct the signature message as `[tvk, tcm, parent, is_root, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, caller, is_root, function ID, input IDs]`.
         let mut message = Vec::with_capacity(5 + self.input_ids.len());
         message.push(self.tvk);
         message.push(self.tcm);
-        message.push(parent);
+        message.push(caller);
         message.push(is_root);
         message.push(function_id);
 
@@ -173,8 +173,8 @@ impl<N: Network> Request<N> {
                             // Ensure the input type is a record.
                             _ => bail!("Expected a record type at input {index}"),
                         };
-                        // Ensure the record belongs to the caller.
-                        ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
+                        // Ensure the record belongs to the signer.
+                        ensure!(**record.owner() == self.signer, "Input record does not belong to the signer");
 
                         // Compute the record commitment.
                         let candidate_cm = record.to_commitment(&self.program_id, record_name)?;
@@ -229,7 +229,7 @@ impl<N: Network> Request<N> {
         }
 
         // Verify the signature.
-        self.signature.verify(&self.caller, &message)
+        self.signature.verify(&self.signer, &message)
     }
 }
 
@@ -248,8 +248,8 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for _ in 0..ITERATIONS {
-            // Sample a random parent.
-            let parent = Address::rand(rng);
+            // Sample a random caller.
+            let caller = Address::rand(rng);
 
             // Sample a random boolean for the `is_root` flag.
             let is_root = Boolean::rand(rng);
@@ -287,7 +287,7 @@ mod tests {
             // Compute the signed request.
             let request = Request::sign(
                 &private_key,
-                parent,
+                caller,
                 is_root,
                 program_id,
                 function_name,

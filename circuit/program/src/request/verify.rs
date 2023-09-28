@@ -15,22 +15,22 @@
 use super::*;
 
 impl<A: Aleo> Request<A> {
-    /// Returns `true` if the input IDs are derived correctly, the input records all belong to the caller,
+    /// Returns `true` if the input IDs are derived correctly, the input records all belong to the signer,
     /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, parent, is_root, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, caller, is_root, function ID, input IDs\])
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
             &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
         );
 
-        // Construct the signature message as `[tvk, tcm, parent, is_root, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, caller, is_root, function ID, input IDs]`.
         let mut message = Vec::with_capacity(5 + 4 * self.input_ids.len());
         message.push(self.tvk.clone());
         message.push(self.tcm.clone());
-        message.push(self.parent.to_field());
+        message.push(self.caller.to_field());
         message.push(Field::from_boolean(&self.is_root));
         message.push(function_id);
 
@@ -42,7 +42,7 @@ impl<A: Aleo> Request<A> {
             &self.input_ids,
             &self.inputs,
             input_types,
-            &self.caller,
+            &self.signer,
             &self.sk_tag,
             &self.tvk,
             &self.tcm,
@@ -58,8 +58,8 @@ impl<A: Aleo> Request<A> {
         let tvk_checks = {
             // Compute the transition public key `tpk` as `tsk * G`.
             let candidate_tpk = A::g_scalar_multiply(&self.tsk);
-            // Compute the transition view key `tvk` as `tsk * caller`.
-            let tvk = (self.caller.to_group() * &self.tsk).to_x_coordinate();
+            // Compute the transition view key `tvk` as `tsk * signer`.
+            let tvk = (self.signer.to_group() * &self.tsk).to_x_coordinate();
             // Compute the transition commitment as `Hash(tvk)`.
             let tcm = A::hash_psd2(&[tvk.clone()]);
 
@@ -84,7 +84,7 @@ impl<A: Aleo> Request<A> {
             // Construct the hash input as (r * G, pk_sig, pr_sig, address, message).
             let mut preimage = Vec::with_capacity(4 + message.len());
             preimage.extend([tpk, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
-            preimage.push(self.caller.to_field());
+            preimage.push(self.signer.to_field());
             preimage.extend_from_slice(&message);
 
             // Compute the candidate verifier challenge.
@@ -93,7 +93,7 @@ impl<A: Aleo> Request<A> {
             let candidate_address = self.signature.compute_key().to_address();
 
             // Return `true` if the challenge and address is valid.
-            self.signature.challenge().is_equal(&candidate_challenge) & self.caller.is_equal(&candidate_address)
+            self.signature.challenge().is_equal(&candidate_challenge) & self.signer.is_equal(&candidate_address)
         };
 
         // Verify the signature, inputs, and `tvk` are valid.
@@ -109,7 +109,7 @@ impl<A: Aleo> Request<A> {
         input_ids: &[InputID<A>],
         inputs: &[Value<A>],
         input_types: &[console::ValueType<A::Network>],
-        caller: &Address<A>,
+        signer: &Address<A>,
         sk_tag: &Field<A>,
         tvk: &Field<A>,
         tcm: &Field<A>,
@@ -255,8 +255,8 @@ impl<A: Aleo> Request<A> {
                             & commitment.is_equal(&candidate_commitment)
                             // Ensure the candidate tag matches the expected tag.
                             & tag.is_equal(&candidate_tag)
-                            // Ensure the record belongs to the caller.
-                            & record.owner().deref().is_equal(caller)
+                            // Ensure the record belongs to the signer.
+                            & record.owner().deref().is_equal(signer)
                     }
                     // An external record input is hashed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_hash) => {
@@ -321,8 +321,8 @@ mod tests {
         let rng = &mut TestRng::default();
 
         for i in 0..ITERATIONS {
-            // Sample a random address to use as the parent.
-            let parent = snarkvm_console_account::Address::rand(rng);
+            // Sample a random address to use as the caller.
+            let caller = snarkvm_console_account::Address::rand(rng);
 
             // Sample a random boolean for the `is_root` flag.
             let is_root = console::Boolean::rand(rng);
@@ -366,7 +366,7 @@ mod tests {
             // Compute the signed request.
             let request = console::Request::sign(
                 &private_key,
-                parent,
+                caller,
                 is_root,
                 program_id,
                 function_name,
@@ -397,7 +397,7 @@ mod tests {
                     request.input_ids(),
                     request.inputs(),
                     &input_types,
-                    request.caller(),
+                    request.signer(),
                     request.sk_tag(),
                     request.tvk(),
                     request.tcm(),

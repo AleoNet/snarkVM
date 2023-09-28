@@ -20,10 +20,10 @@ use console::{
 use synthesizer_program::{
     Call,
     CallOperator,
-    RegistersCaller,
-    RegistersCallerCircuit,
     RegistersLoad,
     RegistersLoadCircuit,
+    RegistersSigner,
+    RegistersSignerCircuit,
     RegistersStore,
     RegistersStoreCircuit,
     StackMatches,
@@ -44,7 +44,7 @@ pub trait CallTrait<N: Network> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
-                 + RegistersCallerCircuit<N, A>
+                 + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
              ),
@@ -91,8 +91,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &closure,
                 &inputs,
                 registers.call_stack(),
+                registers.signer()?,
                 registers.caller()?,
-                registers.parent()?,
                 registers.tvk()?,
             )?
         }
@@ -128,7 +128,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
-                 + RegistersCallerCircuit<N, A>
+                 + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
              ),
@@ -173,8 +173,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &closure,
                 &inputs,
                 registers.call_stack(),
+                registers.signer_circuit()?,
                 registers.caller_circuit()?,
-                registers.parent_circuit()?,
                 registers.tvk_circuit()?,
             )?
         }
@@ -297,8 +297,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Ensure the number of public variables remains the same.
             ensure!(A::num_public() == num_public, "Forbidden: 'call' injected excess public variables");
 
-            // Inject the `caller` (from the request) as `Mode::Private`.
-            let caller = circuit::Address::new(circuit::Mode::Private, *request.caller());
+            // Inject the `signer` (from the request) as `Mode::Private`.
+            let signer = circuit::Address::new(circuit::Mode::Private, *request.signer());
             // Inject the `sk_tag` (from the request) as `Mode::Private`.
             let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
@@ -320,7 +320,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &input_ids,
                 &inputs,
                 &function.input_types(),
-                &caller,
+                &signer,
                 &sk_tag,
                 &tvk,
                 &tcm,

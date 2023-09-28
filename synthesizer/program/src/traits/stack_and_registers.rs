@@ -94,18 +94,18 @@ pub trait FinalizeRegistersState<N: Network> {
     fn function_name(&self) -> &Identifier<N>;
 }
 
-pub trait RegistersCaller<N: Network> {
+pub trait RegistersSigner<N: Network> {
+    /// Returns the transition signer.
+    fn signer(&self) -> Result<Address<N>>;
+
+    /// Sets the transition signer.
+    fn set_signer(&mut self, signer: Address<N>);
+
     /// Returns the transition caller.
     fn caller(&self) -> Result<Address<N>>;
 
     /// Sets the transition caller.
     fn set_caller(&mut self, caller: Address<N>);
-
-    /// Returns the transition parent.
-    fn parent(&self) -> Result<Address<N>>;
-
-    /// Sets the transition parent.
-    fn set_parent(&mut self, parent: Address<N>);
 
     /// Returns the transition view key.
     fn tvk(&self) -> Result<Field<N>>;
@@ -114,18 +114,18 @@ pub trait RegistersCaller<N: Network> {
     fn set_tvk(&mut self, tvk: Field<N>);
 }
 
-pub trait RegistersCallerCircuit<N: Network, A: circuit::Aleo<Network = N>> {
+pub trait RegistersSignerCircuit<N: Network, A: circuit::Aleo<Network = N>> {
+    /// Returns the transition signer, as a circuit.
+    fn signer_circuit(&self) -> Result<circuit::Address<A>>;
+
+    /// Sets the transition signer, as a circuit.
+    fn set_signer_circuit(&mut self, signer_circuit: circuit::Address<A>);
+
     /// Returns the transition caller, as a circuit.
     fn caller_circuit(&self) -> Result<circuit::Address<A>>;
 
     /// Sets the transition caller, as a circuit.
     fn set_caller_circuit(&mut self, caller_circuit: circuit::Address<A>);
-
-    /// Returns the transition parent, as a circuit.
-    fn parent_circuit(&self) -> Result<circuit::Address<A>>;
-
-    /// Sets the transition parent, as a circuit.
-    fn set_parent_circuit(&mut self, parent_circuit: circuit::Address<A>);
 
     /// Returns the transition view key, as a circuit.
     fn tvk_circuit(&self) -> Result<circuit::Field<A>>;
