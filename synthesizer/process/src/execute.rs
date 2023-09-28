@@ -37,8 +37,10 @@ impl<N: Network> Process<N> {
         let call_stack = CallStack::execute(authorization, trace.clone())?;
         lap!(timer, "Initialize call stack");
 
+        // Retrieve the stack.
+        let stack = self.get_stack(request.program_id())?;
         // Execute the circuit.
-        let response = self.get_stack(request.program_id())?.execute_function::<A>(call_stack)?;
+        let response = stack.execute_function::<A>(call_stack, None)?;
         lap!(timer, "Execute the function");
 
         // Extract the trace.

@@ -131,11 +131,12 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
+    fn execute_function<A: circuit::Aleo<Network = N>>(
+        &self,
+        mut call_stack: CallStack<N>,
+        console_caller: Option<ProgramID<N>>,
+    ) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
-
-        // Ensure the call stack is not `Evaluate`.
-        ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
 
         // Ensure the circuit environment is clean.
         A::reset();
@@ -150,6 +151,30 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             N::ID,
             console_request.network_id()
         );
+
+        // Determine if this is the top-level caller.
+        let console_is_root = match &call_stack {
+            // If the authorization contains a single request, then this is the root.
+            CallStack::Authorize(_, _, authorization) | CallStack::Synthesize(_, _, authorization) => {
+                authorization.len() == 1
+            }
+            // If the assignments contains no assignments, then this is the root.
+            CallStack::CheckDeployment(_, _, assignments) => assignments.read().is_empty(),
+            // Ensure the call stack is not `Evaluate`, as this is not supported in `execute` mode.
+            CallStack::Evaluate(..) => bail!("Illegal operation: cannot evaluate in execute mode"),
+            // If the trace contains no transitions, then this is the root.
+            CallStack::Execute(_, trace) => trace.read().transitions().is_empty(),
+        };
+
+        // Determine the parent.
+        //  - If this execution is the top-level caller, then the parent is the program ID.
+        //  - If this execution is a child caller, then the parent is the caller.
+        let console_parent = match console_caller {
+            // If this execution is the top-level caller, then the parent is the program ID.
+            None => console_request.program_id().to_address()?,
+            // If this execution is a child caller, then the parent is the caller.
+            Some(console_caller) => console_caller.to_address()?,
+        };
 
         // Retrieve the function from the program.
         let function = self.get_function(console_request.function_name())?;
@@ -185,12 +210,13 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
+
         // Inject `is_root` as `Mode::Public`.
-        let is_root = circuit::Boolean::new(circuit::Mode::Public, **console_request.is_root());
-        // Inject the caller as `Mode::Public`.
-        let claimed_caller = circuit::Address::new(circuit::Mode::Public, *console_request.caller());
-        // Compute the caller.
-        let caller = Ternary::ternary(&is_root, request.signer(), &claimed_caller);
+        let is_root = circuit::Boolean::new(circuit::Mode::Public, console_is_root);
+        // Inject the parent as `Mode::Public`.
+        let parent = circuit::Address::new(circuit::Mode::Public, console_parent);
+        // Determine the caller.
+        let caller = Ternary::ternary(&is_root, request.signer(), &parent);
 
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));

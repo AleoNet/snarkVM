@@ -44,13 +44,9 @@ impl<N: Network> Process<N> {
 
         // Construct the call graph of the execution.
         let call_graph = self.construct_call_graph(execution)?;
-        // Construct the inverted call graph of the execution. This is a mapping from the transition ID of a callee transition to the transition ID of its caller.
-        let inverted_call_graph = Self::invert_call_graph(&call_graph);
-        // Construct a mapping of transition IDs to program IDs.
-        let transition_program_ids = execution
-            .transitions()
-            .map(|transition| (*transition.id(), *transition.program_id()))
-            .collect::<HashMap<_, _>>();
+        // Construct the reverse call graph of the execution.
+        // Note: This is a mapping of the child transition ID to the parent transition ID.
+        let reverse_call_graph = Self::reverse_call_graph(&call_graph);
 
         // Initialize a map of verifying keys to public inputs.
         let mut verifier_inputs = HashMap::new();
@@ -116,11 +112,12 @@ impl<N: Network> Process<N> {
             // Retrieve the function from the stack.
             let function = stack.get_function(transition.function_name())?;
 
-            // Retrieve the caller transition. Note that only the last transition in the execution has no caller.
-            let caller = inverted_call_graph.get(transition.id()).and_then(|tid| transition_program_ids.get(tid));
+            // Retrieve the parent program ID.
+            // Note: The last transition in the execution does not have a parent, by definition.
+            let parent = reverse_call_graph.get(transition.id()).and_then(|tid| execution.get_program_id(tid));
 
             // Construct the verifier inputs for the transition.
-            let inputs = self.to_transition_verifier_inputs(transition, caller, &call_graph, &mut transition_map)?;
+            let inputs = self.to_transition_verifier_inputs(transition, parent, &call_graph, &mut transition_map)?;
             lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
 
             // Save the verifying key and its inputs.
@@ -158,33 +155,35 @@ impl<N: Network> Process<N> {
     fn to_transition_verifier_inputs(
         &self,
         transition: &Transition<N>,
-        caller: Option<&ProgramID<N>>,
+        parent: Option<&ProgramID<N>>,
         call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
         transition_map: &mut HashMap<N::TransitionID, &Transition<N>>,
     ) -> Result<Vec<N::Field>> {
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
 
-        // Compute `is_root` and `caller`.
-        let (is_root, caller) = match caller {
+        // Determine the value of `is_root` and `parent`.
+        let (is_root, parent) = match parent {
+            // If there is a parent, then `is_root` is `0` and `parent` is the parent program ID.
             Some(program_id) => (Field::<N>::zero(), *program_id),
+            // If there is no parent, then `is_root` is `1` and `parent` is the root program ID.
             None => (Field::one(), *transition.program_id()),
         };
-        // Compute the x- and y-coordinate of `caller`.
-        let (caller_x, caller_y) = caller.to_address()?.to_xy_coordinates();
+        // Compute the x- and y-coordinate of `parent`.
+        let (parent_x, parent_y) = parent.to_address()?.to_xy_coordinates();
 
         // [Inputs] Construct the verifier inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
         // [Inputs] Extend the verifier inputs with the input IDs.
         inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
-        // [Inputs] Extend the verifier inputs with the 'self.caller' public inputs.
-        inputs.extend([*is_root, *caller_x, *caller_y]);
+        // [Inputs] Extend the verifier inputs with the public inputs for 'self.caller'.
+        inputs.extend([*is_root, *parent_x, *parent_y]);
 
         // If there are function calls, append their inputs and outputs.
         for transition_id in call_graph.get(transition.id()).unwrap() {
-            // Note that this unwrap is safe, since we are processing transitions in post-order, which implies that all callees have been added to `transition_map`.
+            // Note: This unwrap is safe, as we are processing transitions in post-order,
+            // which implies that all child transition IDs have been added to `transition_map`.
             let transition: &&Transition<N> = transition_map.get(transition_id).unwrap();
-
             // [Inputs] Extend the verifier inputs with the input IDs of the external call.
             inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
             // [Inputs] Extend the verifier inputs with the output IDs of the external call.
@@ -202,7 +201,9 @@ impl<N: Network> Process<N> {
 
 impl<N: Network> Process<N> {
     // A helper function to construct a call graph from an execution.
-    // The call graph is represented as a mapping from the transition ID of a caller transition to the transition IDs of its callees, in the order in which they were called.
+    //
+    // The call graph represents a mapping of parent transition IDs to child transition IDs,
+    // in the order that they were called.
     //
     // Suppose we have the following call structure.
     // The functions are invoked in the following order:
@@ -231,19 +232,19 @@ impl<N: Network> Process<N> {
             pid: ProgramID<N>,
             fname: Identifier<N>,
             tid: Option<N::TransitionID>,
-            callees: Option<Vec<usize>>,
+            children: Option<Vec<usize>>,
         }
 
         impl<N: Network> TransitionMetadata<N> {
             fn new(counter: &mut usize, pid: ProgramID<N>, fname: Identifier<N>, tid: Option<N::TransitionID>) -> Self {
                 let uid = *counter;
                 *counter += 1;
-                Self { uid, pid, fname, tid, callees: None }
+                Self { uid, pid, fname, tid, children: None }
             }
 
             /// Returns 'true' if the subgraph starting from this transition has been fully-indexed.
             fn is_complete(&self) -> bool {
-                self.tid.is_some() && self.callees.is_some()
+                self.tid.is_some() && self.children.is_some()
             }
         }
 
@@ -258,7 +259,7 @@ impl<N: Network> Process<N> {
             call_graph.insert(
                 metadata.tid.unwrap(),
                 metadata
-                    .callees // Safe to unwrap, since the metadata is complete.
+                    .children // Safe to unwrap, since the metadata is complete.
                     .unwrap()
                     .into_iter()
                     .map(|uid| match uid_to_tid.get(&uid) {
@@ -316,8 +317,8 @@ impl<N: Network> Process<N> {
                 let stack = self.get_stack(top.pid)?;
                 // Retrieve the function from the stack.
                 let function = stack.get_function(&top.fname)?;
-                // Collect the callees of the current transition.
-                let mut callees = Vec::new();
+                // Collect the children of the current transition.
+                let mut children = Vec::new();
                 for instruction in function.instructions() {
                     if let Instruction::Call(call) = instruction {
                         let (pid, fname) = match call.operator() {
@@ -326,23 +327,23 @@ impl<N: Network> Process<N> {
                             }
                             synthesizer_program::CallOperator::Resource(fname) => (&top.pid, fname),
                         };
-                        // Add the callee to the traversal stack, only if it is a call to a transition.
+                        // Add the child to the traversal stack, only if it is a call to a transition.
                         if self.get_stack(pid)?.get_function(fname).is_ok() {
-                            callees.push(TransitionMetadata::new(&mut counter, *pid, *fname, None));
+                            children.push(TransitionMetadata::new(&mut counter, *pid, *fname, None));
                         }
                     }
                 }
 
-                // Add the callees UIDs to the metadata.
+                // Add the children UIDs to the metadata.
                 // Note this unwrap is safe, for the same reason as above.
                 let top = traversal_stack.last_mut().unwrap();
-                let callee_uids = callees.iter().map(|callee| callee.uid).collect::<Vec<_>>();
-                match top.callees {
-                    None => top.callees = Some(callee_uids),
-                    Some(_) => bail!("Invalid traversal - callees have already been processed"),
+                let child_uids = children.iter().map(|child| child.uid).collect::<Vec<_>>();
+                match top.children {
+                    None => top.children = Some(child_uids),
+                    Some(_) => bail!("Invalid traversal - children have already been processed"),
                 }
-                // Push the callees to the top of the stack.
-                traversal_stack.extend(callees);
+                // Push the children to the top of the stack.
+                traversal_stack.extend(children);
             }
             // If the stack has complete metadata entries, then remove and add them to the call graph.
             while let Some(metadata) = traversal_stack.last() {
@@ -363,20 +364,25 @@ impl<N: Network> Process<N> {
         Ok(call_graph)
     }
 
-    // A helper function to invert a call graph.
-    // The call graph is represented as a mapping from the transition ID of a caller transition to the transition IDs of its callees, in the order in which they were called.
-    // The inverted call graph is represented as a mapping from the transition ID of a callee transition to the transition ID of its caller.
-    // Note that each callee transition can only have one caller transition.
-    fn invert_call_graph(
+    /// A helper function to reverse the call graph.
+    ///
+    /// The call graph is a mapping of parent transition IDs to child transition IDs,
+    /// in the order that they were called.
+    ///
+    /// The reverse call graph is a mapping of child transition IDs to parent transition IDs.
+    /// Note: Each child transition only has one parent transition, by definition.
+    fn reverse_call_graph(
         call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
     ) -> HashMap<N::TransitionID, N::TransitionID> {
-        let mut inverted_call_graph = HashMap::new();
-        for (caller, callees) in call_graph {
-            for callee in callees {
-                let result = inverted_call_graph.insert(*callee, *caller);
-                debug_assert!(result.is_none(), "The call graph is not a DAG");
+        // Initialize a map for the reverse call graph.
+        let mut reverse_call_graph = HashMap::new();
+        // Iterate over the (forward) call graph.
+        for (parent, children) in call_graph {
+            for child in children {
+                let result = reverse_call_graph.insert(*child, *parent);
+                debug_assert!(result.is_none(), "Found a child with multiple parents");
             }
         }
-        inverted_call_graph
+        reverse_call_graph
     }
 }

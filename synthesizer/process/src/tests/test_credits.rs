@@ -1479,10 +1479,7 @@ mod sanity_checks {
     use super::*;
     use crate::{Assignments, CallStack, Stack, StackExecute};
     use circuit::Assignment;
-    use console::{
-        program::Request,
-        types::{Boolean, Field},
-    };
+    use console::{program::Request, types::Field};
     use synthesizer_program::StackProgram;
 
     fn get_assignment<N: Network, A: circuit::Aleo<Network = N>>(
@@ -1499,21 +1496,13 @@ mod sanity_checks {
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
-        let request = Request::sign(
-            private_key,
-            program_id,
-            function_name,
-            inputs.iter(),
-            &input_types,
-            rng,
-        )
-        .unwrap();
+        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng).unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.
         let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
         // Synthesize the circuit.
-        let _response = stack.execute_function::<A>(call_stack).unwrap();
+        let _response = stack.execute_function::<A>(call_stack, None).unwrap();
         // Retrieve the assignment.
         let assignment = assignments.read().last().unwrap().0.clone();
         assignment
