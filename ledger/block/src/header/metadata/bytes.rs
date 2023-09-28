@@ -21,7 +21,7 @@ impl<N: Network> FromBytes for Metadata<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid metadata version"));
         }
 
@@ -59,7 +59,7 @@ impl<N: Network> ToBytes for Metadata<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         // Write to the buffer.
         self.network.write_le(&mut writer)?;

@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Transition<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid transition version"));
         }
 
@@ -69,7 +69,7 @@ impl<N: Network> ToBytes for Transition<N> {
     /// Writes the literal to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         // Write the transition ID.
         self.id.write_le(&mut writer)?;
