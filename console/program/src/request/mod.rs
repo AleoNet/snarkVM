@@ -28,12 +28,8 @@ use snarkvm_console_types::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Request<N: Network> {
-    /// The request caller.
-    caller: Address<N>,
-    /// The request parent.
-    parent: Address<N>,
-    /// The `is_root` flag.
-    is_root: Boolean<N>,
+    /// The request signer.
+    signer: Address<N>,
     /// The network ID.
     network_id: U16<N>,
     /// The program ID.
@@ -59,8 +55,6 @@ pub struct Request<N: Network> {
 impl<N: Network>
     From<(
         Address<N>,
-        Address<N>,
-        Boolean<N>,
         U16<N>,
         ProgramID<N>,
         Identifier<N>,
@@ -75,24 +69,8 @@ impl<N: Network>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
-        (
-            caller,
-            parent,
-            is_root,
-            network_id,
-            program_id,
-            function_name,
-            input_ids,
-            inputs,
-            signature,
-            sk_tag,
-            tvk,
-            tsk,
-            tcm,
-        ): (
+        (signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm): (
             Address<N>,
-            Address<N>,
-            Boolean<N>,
             U16<N>,
             ProgramID<N>,
             Identifier<N>,
@@ -109,39 +87,15 @@ impl<N: Network>
         if *network_id != N::ID {
             N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
         } else {
-            Self {
-                caller,
-                parent,
-                is_root,
-                network_id,
-                program_id,
-                function_name,
-                input_ids,
-                inputs,
-                signature,
-                sk_tag,
-                tvk,
-                tsk,
-                tcm,
-            }
+            Self { signer, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm }
         }
     }
 }
 
 impl<N: Network> Request<N> {
-    /// Returns the request caller.
-    pub const fn caller(&self) -> &Address<N> {
-        &self.caller
-    }
-
-    /// Returns the request parent.
-    pub const fn parent(&self) -> &Address<N> {
-        &self.parent
-    }
-
-    /// Returns the `is_root` flag.
-    pub const fn is_root(&self) -> &Boolean<N> {
-        &self.is_root
+    /// Returns the request signer.
+    pub const fn signer(&self) -> &Address<N> {
+        &self.signer
     }
 
     /// Returns the network ID.
@@ -219,12 +173,6 @@ mod test_helpers {
     pub(super) fn sample_requests(rng: &mut TestRng) -> Vec<Request<CurrentNetwork>> {
         (0..ITERATIONS)
             .map(|i| {
-                // Sample a random address for the parent.
-                let parent = Address::<CurrentNetwork>::rand(rng);
-
-                // Sample a random boolean for the `is_root` flag.
-                let is_root = Boolean::rand(rng);
-
                 // Sample a random private key and address.
                 let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 let address = Address::try_from(&private_key).unwrap();
@@ -256,7 +204,7 @@ mod test_helpers {
 
                 // Compute the signed request.
                 let request =
-                    Request::sign(&private_key, parent, is_root, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
+                    Request::sign(&private_key, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
                 assert!(request.verify(&input_types));
                 request
             })

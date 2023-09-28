@@ -123,7 +123,7 @@ impl<N: Network> Process<N> {
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
-        // Extend the verifier inputs with the 'self.parent' public inputs.
+        // Extend the verifier inputs with the public inputs for 'self.caller'.
         inputs.extend([*Field::<N>::one(), *parent_x, *parent_y]);
         // Extend the inputs with the output IDs.
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));
@@ -193,7 +193,7 @@ impl<N: Network> Process<N> {
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
-        // Extend the verifier inputs with the 'self.parent' public inputs.
+        // Extend the verifier inputs with the public inputs for 'self.caller'
         inputs.extend([*Field::<N>::one(), *parent_x, *parent_y]);
         // Extend the inputs with the output IDs.
         inputs.extend(fee.outputs().iter().flat_map(|output| output.verifier_inputs()));

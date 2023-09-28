@@ -15,7 +15,7 @@
 use super::*;
 
 impl<A: Aleo> Response<A> {
-    /// Returns the injected circuit outputs, given the number of inputs, caller, tvk, tcm, outputs, and output types.
+    /// Returns the injected circuit outputs, given the number of inputs, tvk, tcm, outputs, and output types.
     pub fn process_outputs_from_callback(
         network_id: &U16<A>,
         program_id: &ProgramID<A>,

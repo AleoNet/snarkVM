@@ -28,8 +28,6 @@ impl<N: Network> Stack<N> {
 
         // Get the program ID.
         let program_id = *self.program.id();
-        // Since this a top-level call, `is_root` is `true`.
-        let is_root = Boolean::new(true);
         // Prepare the function name.
         let function_name = function_name.try_into().map_err(|_| anyhow!("Invalid function name"))?;
         // Retrieve the input types.
@@ -37,16 +35,7 @@ impl<N: Network> Stack<N> {
         lap!(timer, "Retrieve the input types");
 
         // Compute the request.
-        let request = Request::sign(
-            private_key,
-            program_id.to_address()?,
-            is_root,
-            program_id,
-            function_name,
-            inputs,
-            &input_types,
-            rng,
-        )?;
+        let request = Request::sign(private_key, program_id, function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
         let authorization = Authorization::from(request.clone());
@@ -56,7 +45,7 @@ impl<N: Network> Stack<N> {
             // Construct the call stack.
             let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
             // Construct the authorization from the function.
-            let _response = self.execute_function::<A>(call_stack)?;
+            let _response = self.execute_function::<A>(call_stack, Some(program_id))?;
         }
         finish!(timer, "Construct the authorization from the function");
 

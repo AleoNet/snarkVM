@@ -14,10 +14,10 @@
 
 use crate::{
     traits::{
-        RegistersCaller,
-        RegistersCallerCircuit,
         RegistersLoad,
         RegistersLoadCircuit,
+        RegistersSigner,
+        RegistersSignerCircuit,
         RegistersStore,
         RegistersStoreCircuit,
         StackMatches,
@@ -204,7 +204,7 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
     pub fn evaluate(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
+        registers: &mut (impl RegistersSigner<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // TODO (howardwu & d0cd): Re-enable after stabilizing.
         if VARIANT == CastVariant::CastLossy as u8 {
@@ -331,7 +331,7 @@ impl<N: Network, const VARIANT: u8> CastOperation<N, VARIANT> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
+        registers: &mut (impl RegistersSignerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         // TODO (howardwu & d0cd): Re-enable after stabilizing.
         if VARIANT == CastVariant::CastLossy as u8 {

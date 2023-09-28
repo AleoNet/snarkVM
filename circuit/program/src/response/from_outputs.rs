@@ -15,7 +15,7 @@
 use super::*;
 
 impl<A: Aleo> Response<A> {
-    /// Initializes a response, given the number of inputs, caller, tvk, tcm, outputs, output types, and output registers.
+    /// Initializes a response, given the number of inputs, tvk, tcm, outputs, output types, and output registers.
     pub fn from_outputs(
         network_id: &U16<A>,
         program_id: &ProgramID<A>,

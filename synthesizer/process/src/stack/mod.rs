@@ -41,7 +41,6 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
-        Boolean,
         Entry,
         EntryType,
         Future,

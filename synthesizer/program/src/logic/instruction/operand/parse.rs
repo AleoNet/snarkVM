@@ -23,8 +23,8 @@ impl<N: Network> Parser for Operand<N> {
             // Parse special operands before literals, registers, and program IDs.
             // This ensures correctness in the case where a special operand is a prefix of, or could be parsed as, a literal, register, or program ID.
             map(tag("group::GEN"), |_| Self::Literal(Literal::Group(Group::generator()))),
+            map(tag("self.signer"), |_| Self::Signer),
             map(tag("self.caller"), |_| Self::Caller),
-            map(tag("self.parent"), |_| Self::Parent),
             map(tag("block.height"), |_| Self::BlockHeight),
             map(Literal::parse, |literal| Self::Literal(literal)),
             map(Register::parse, |register| Self::Register(register)),
@@ -68,10 +68,10 @@ impl<N: Network> Display for Operand<N> {
             Self::Register(register) => Display::fmt(register, f),
             // Prints the program ID, i.e. howard.aleo
             Self::ProgramID(program_id) => Display::fmt(program_id, f),
+            // Prints the identifier for the signer, i.e. self.signer
+            Self::Signer => write!(f, "self.signer"),
             // Prints the identifier for the caller, i.e. self.caller
             Self::Caller => write!(f, "self.caller"),
-            // Prints the identifier for the parent, i.e. self.parent
-            Self::Parent => write!(f, "self.parent"),
             // Prints the identifier for the block height, i.e. block.height
             Self::BlockHeight => write!(f, "block.height"),
         }
@@ -99,11 +99,11 @@ mod tests {
         let operand = Operand::<CurrentNetwork>::parse("howard.aleo").unwrap().1;
         assert_eq!(Operand::ProgramID(ProgramID::from_str("howard.aleo")?), operand);
 
+        let operand = Operand::<CurrentNetwork>::parse("self.signer").unwrap().1;
+        assert_eq!(Operand::Signer, operand);
+
         let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
         assert_eq!(Operand::Caller, operand);
-
-        let operand = Operand::<CurrentNetwork>::parse("self.parent").unwrap().1;
-        assert_eq!(Operand::Parent, operand);
 
         let operand = Operand::<CurrentNetwork>::parse("block.height").unwrap().1;
         assert_eq!(Operand::BlockHeight, operand);
@@ -133,11 +133,11 @@ mod tests {
         let operand = Operand::<CurrentNetwork>::parse("howard.aleo").unwrap().1;
         assert_eq!(format!("{operand}"), "howard.aleo");
 
+        let operand = Operand::<CurrentNetwork>::parse("self.signer").unwrap().1;
+        assert_eq!(format!("{operand}"), "self.signer");
+
         let operand = Operand::<CurrentNetwork>::parse("self.caller").unwrap().1;
         assert_eq!(format!("{operand}"), "self.caller");
-
-        let operand = Operand::<CurrentNetwork>::parse("self.parent").unwrap().1;
-        assert_eq!(format!("{operand}"), "self.parent");
 
         let operand = Operand::<CurrentNetwork>::parse("group::GEN").unwrap().1;
         assert_eq!(

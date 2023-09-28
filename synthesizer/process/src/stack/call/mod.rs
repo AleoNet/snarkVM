@@ -13,17 +13,14 @@
 // limitations under the License.
 
 use crate::{CallStack, Registers, RegistersCall, StackEvaluate, StackExecute};
-use console::{
-    network::prelude::*,
-    program::{Boolean, Request},
-};
+use console::{network::prelude::*, program::Request};
 use synthesizer_program::{
     Call,
     CallOperator,
-    RegistersCaller,
-    RegistersCallerCircuit,
     RegistersLoad,
     RegistersLoadCircuit,
+    RegistersSigner,
+    RegistersSignerCircuit,
     RegistersStore,
     RegistersStoreCircuit,
     StackMatches,
@@ -44,7 +41,7 @@ pub trait CallTrait<N: Network> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
-                 + RegistersCallerCircuit<N, A>
+                 + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
              ),
@@ -91,8 +88,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &closure,
                 &inputs,
                 registers.call_stack(),
+                registers.signer()?,
                 registers.caller()?,
-                registers.parent()?,
                 registers.tvk()?,
             )?
         }
@@ -102,8 +99,10 @@ impl<N: Network> CallTrait<N> for Call<N> {
             if function.inputs().len() != inputs.len() {
                 bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
             }
+            // Set the (console) caller.
+            let console_caller = Some(*stack.program_id());
             // Evaluate the function.
-            let response = substack.evaluate_function::<A>(registers.call_stack())?;
+            let response = substack.evaluate_function::<A>(registers.call_stack(), console_caller)?;
             // Load the outputs.
             response.outputs().to_vec()
         }
@@ -128,7 +127,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
         stack: &(impl StackEvaluate<N> + StackExecute<N> + StackMatches<N> + StackProgram<N>),
         registers: &mut (
                  impl RegistersCall<N>
-                 + RegistersCallerCircuit<N, A>
+                 + RegistersSignerCircuit<N, A>
                  + RegistersLoadCircuit<N, A>
                  + RegistersStoreCircuit<N, A>
              ),
@@ -173,8 +172,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &closure,
                 &inputs,
                 registers.call_stack(),
+                registers.signer_circuit()?,
                 registers.caller_circuit()?,
-                registers.parent_circuit()?,
                 registers.tvk_circuit()?,
             )?
         }
@@ -200,6 +199,9 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 // Initialize an RNG.
                 let rng = &mut rand::thread_rng();
 
+                // Set the (console) caller.
+                let console_caller = Some(*stack.program_id());
+
                 match registers.call_stack() {
                     // If the circuit is in authorize or synthesize mode, then add any external calls to the stack.
                     CallStack::Authorize(_, private_key, authorization)
@@ -207,8 +209,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            stack.program_id().to_address()?,
-                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -225,7 +225,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function::<A>(call_stack)?;
+                        let response = substack.execute_function::<A>(call_stack, console_caller)?;
 
                         // Return the request and response.
                         (request, response)
@@ -234,8 +234,6 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         // Compute the request.
                         let request = Request::sign(
                             &private_key,
-                            stack.program_id().to_address()?,
-                            Boolean::new(false),
                             *substack.program_id(),
                             *function.name(),
                             inputs.iter(),
@@ -249,7 +247,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Execute the request.
-                        let response = substack.execute_function::<A>(call_stack)?;
+                        let response = substack.execute_function::<A>(call_stack, console_caller)?;
                         // Return the request and response.
                         (request, response)
                     }
@@ -268,9 +266,10 @@ impl<N: Network> CallTrait<N> for Call<N> {
                         })?;
 
                         // Evaluate the function, and load the outputs.
-                        let console_response = substack.evaluate_function::<A>(registers.call_stack().replicate())?;
+                        let console_response =
+                            substack.evaluate_function::<A>(registers.call_stack().replicate(), console_caller)?;
                         // Execute the request.
-                        let response = substack.execute_function::<A>(registers.call_stack())?;
+                        let response = substack.execute_function::<A>(registers.call_stack(), console_caller)?;
                         // Ensure the values are equal.
                         if console_response.outputs() != response.outputs() {
                             #[cfg(debug_assertions)]
@@ -297,8 +296,8 @@ impl<N: Network> CallTrait<N> for Call<N> {
             // Ensure the number of public variables remains the same.
             ensure!(A::num_public() == num_public, "Forbidden: 'call' injected excess public variables");
 
-            // Inject the `caller` (from the request) as `Mode::Private`.
-            let caller = circuit::Address::new(circuit::Mode::Private, *request.caller());
+            // Inject the `signer` (from the request) as `Mode::Private`.
+            let signer = circuit::Address::new(circuit::Mode::Private, *request.signer());
             // Inject the `sk_tag` (from the request) as `Mode::Private`.
             let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
@@ -320,7 +319,7 @@ impl<N: Network> CallTrait<N> for Call<N> {
                 &input_ids,
                 &inputs,
                 &function.input_types(),
-                &caller,
+                &signer,
                 &sk_tag,
                 &tvk,
                 &tcm,
