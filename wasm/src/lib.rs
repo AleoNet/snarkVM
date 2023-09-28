@@ -13,15 +13,15 @@
 // limitations under the License.
 
 #[cfg(feature = "console")]
-pub use snarkvm_console::*;
+pub use snarkvm_console as console;
 #[cfg(feature = "curves")]
-pub use snarkvm_curves::{bls12_377::*, edwards_bls12::*};
+pub use snarkvm_curves as curves;
 #[cfg(feature = "fields")]
-pub use snarkvm_fields::*;
+pub use snarkvm_fields as fields;
 #[cfg(feature = "synthesizer")]
-pub use snarkvm_synthesizer::*;
+pub use snarkvm_synthesizer as synthesizer;
 #[cfg(feature = "utilities")]
-pub use snarkvm_utilities::*;
+pub use snarkvm_utilities as utilities;
 
 #[cfg(test)]
 mod tests;

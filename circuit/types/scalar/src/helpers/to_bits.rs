@@ -18,13 +18,13 @@ impl<E: Environment> ToBits for Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_le(vec);
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_be()
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        (&self).write_bits_be(vec);
     }
 }
 
@@ -32,38 +32,37 @@ impl<E: Environment> ToBits for &Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.bits_le
-            .get_or_init(|| {
-                // Note: We are reconstituting the scalar field into a base field.
-                // This is safe as the scalar field modulus is less than the base field modulus,
-                // and thus will always fit within a single base field element.
-                debug_assert!(
-                    console::Scalar::<E::Network>::size_in_bits() < console::Field::<E::Network>::size_in_bits()
-                );
+    fn write_bits_le(&self, vec: &mut Vec<Self::Boolean>) {
+        // Compute the bits of the scalar.
+        let bits = self.bits_le.get_or_init(|| {
+            // Note: We are reconstituting the scalar field into a base field.
+            // This is safe as the scalar field modulus is less than the base field modulus,
+            // and thus will always fit within a single base field element.
+            debug_assert!(console::Scalar::<E::Network>::size_in_bits() < console::Field::<E::Network>::size_in_bits());
 
-                // Construct a vector of `Boolean`s comprising the bits of the scalar value.
-                let bits_le = self.field.to_lower_bits_le(console::Scalar::<E::Network>::size_in_bits());
+            // Construct a vector of `Boolean`s comprising the bits of the scalar value.
+            let bits_le = self.field.to_lower_bits_le(console::Scalar::<E::Network>::size_in_bits());
 
-                // Ensure the bit representation is unique.
-                {
-                    // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
-                    // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
-                    let modulus_minus_one = -E::ScalarField::one();
-                    // Assert `bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
-                    Boolean::assert_less_than_or_equal_constant(&bits_le, &modulus_minus_one.to_bits_le());
-                }
+            // Ensure the bit representation is unique.
+            {
+                // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
+                // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
+                let modulus_minus_one = -E::ScalarField::one();
+                // Assert `bits_le <= (ScalarField::MODULUS - 1)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
+                Boolean::assert_less_than_or_equal_constant(&bits_le, &modulus_minus_one.to_bits_le());
+            }
 
-                bits_le
-            })
-            .clone()
+            bits_le
+        });
+        // Extend the vector with the bits of the scalar.
+        vec.extend_from_slice(bits)
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.to_bits_le();
-        bits_le.reverse();
-        bits_le
+    fn write_bits_be(&self, vec: &mut Vec<Self::Boolean>) {
+        let initial_len = vec.len();
+        self.write_bits_le(vec);
+        vec[initial_len..].reverse();
     }
 }
 

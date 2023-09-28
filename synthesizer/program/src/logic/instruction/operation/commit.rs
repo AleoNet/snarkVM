@@ -142,7 +142,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             6.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Cast the output to the destination type.
-        let output = output.downcast_lossy(self.destination_type)?;
+        let output = output.cast_lossy(self.destination_type)?;
         // Store the output.
         registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
@@ -154,7 +154,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
-        use circuit::ToBits;
+        use circuit::traits::ToBits;
 
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
@@ -184,7 +184,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             5 => circuit::Literal::Group(A::commit_to_group_ped128(&input.to_bits_le(), &randomizer)),
             6.. => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
-        let output = output.downcast_lossy(self.destination_type)?;
+        let output = output.cast_lossy(self.destination_type)?;
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
         // Store the output.

@@ -12,11 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod rewards;
-pub use rewards::*;
+mod bft;
+pub use bft::*;
 
 mod supply;
 pub use supply::*;
-
-mod target;
-pub use target::*;

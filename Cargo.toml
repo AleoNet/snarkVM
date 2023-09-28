@@ -22,7 +22,7 @@ categories = [
 include = [ "Cargo.toml", "vm", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.70"
 
 [workspace]
 members = [
@@ -62,8 +62,17 @@ members = [
   "curves",
   "fields",
   "ledger",
+  "ledger/authority",
   "ledger/block",
   "ledger/coinbase",
+  "ledger/committee",
+  "ledger/narwhal",
+  "ledger/narwhal/batch-certificate",
+  "ledger/narwhal/batch-header",
+  "ledger/narwhal/data",
+  "ledger/narwhal/subdag",
+  "ledger/narwhal/transmission",
+  "ledger/narwhal/transmission-id",
   "ledger/query",
   "ledger/store",
   "ledger/test-helpers",
@@ -124,8 +133,8 @@ cuda = [ "snarkvm-algorithms/cuda" ]
 parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
 noconfig = [ ]
 rocks = [ "snarkvm-ledger/rocks" ]
+test-helpers = [ "snarkvm-ledger/test-helpers" ]
 timer = [ "snarkvm-ledger/timer" ]
-ed25519 = [ "snarkvm-console/ed25519" ]
 algorithms = [ "snarkvm-algorithms" ]
 circuit = [ "snarkvm-circuit" ]
 console = [ "snarkvm-console" ]
@@ -192,7 +201,7 @@ optional = true
 version = "1"
 
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 optional = true
 
 [dependencies.bincode]
@@ -200,8 +209,8 @@ version = "1"
 optional = true
 
 [dependencies.clap]
-version = "4.3"
-features = [ "derive", "color", "unstable-styles" ]
+version = "4.4"
+features = [ "derive", "color" ]
 optional = true
 
 [dependencies.colored]
@@ -237,7 +246,7 @@ version = "0.11"
 optional = true
 
 [dependencies.self_update]
-version = "0.37"
+version = "0.38"
 optional = true
 
 [dependencies.serde_json]
@@ -260,7 +269,7 @@ version = "1.3"
 version = "0.11.2"
 
 [dev-dependencies.tempfile]
-version = "3.6"
+version = "3.8"
 
 [build-dependencies.walkdir]
 version = "2"

@@ -302,7 +302,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
 {
 }
 
-pub(super) mod integer_type {
+pub mod integer_type {
     use snarkvm_utilities::{FromBits, FromBytes, ToBits, ToBytes, Uniform};
 
     use core::{
@@ -596,8 +596,8 @@ pub(super) mod integer_type {
     integer_properties_impl!(i128, u128, true);
 }
 
-/// Sealed trait pattern to prevent abuse of Magnitude.
-pub(super) mod magnitude {
+/// Trait pattern to prevent abuse of Magnitude.
+pub mod integer_magnitude {
     use super::integer_type::IntegerType;
     use num_traits::{ToPrimitive, Unsigned};
 

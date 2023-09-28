@@ -46,7 +46,7 @@ default = [
   "types"
 ]
 wasm = [ "snarkvm-console-network/wasm" ]
-test = [ "snarkvm-console-program/test" ]
+test = [ "snarkvm-console-account/test", "snarkvm-console-program/test" ]
 account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]
 collections = [ "algorithms", "snarkvm-console-collections" ]
@@ -54,4 +54,3 @@ network = [ "collections", "snarkvm-console-network" ]
 program = [ "network", "snarkvm-console-program" ]
 serial = [ "snarkvm-console-collections/serial" ]
 types = [ "snarkvm-console-types" ]
-ed25519 = [ "snarkvm-console-account/ed25519" ]

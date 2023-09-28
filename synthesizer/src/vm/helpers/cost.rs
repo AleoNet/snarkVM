@@ -13,7 +13,10 @@
 // limitations under the License.
 
 use crate::VM;
-use console::{prelude::*, program::LiteralType};
+use console::{
+    prelude::*,
+    program::{LiteralType, PlaintextType},
+};
 use ledger_block::{Deployment, Execution};
 use ledger_store::ConsensusStorage;
 use synthesizer_program::{Command, Finalize, Instruction};
@@ -76,8 +79,8 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
         // Retrieve the program.
         let program = lookup.get(program_id).ok_or(anyhow!("Program '{program_id}' is missing"))?;
         // Retrieve the finalize cost.
-        let cost = match program.get_function(function_name)?.finalize() {
-            Some((_, finalize)) => cost_in_microcredits(finalize)?,
+        let cost = match program.get_function(function_name)?.finalize_logic() {
+            Some(finalize) => cost_in_microcredits(finalize)?,
             None => continue,
         };
         // Accumulate the finalize cost.
@@ -105,8 +108,10 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::And(_)) => Ok(2_000),
         Command::Instruction(Instruction::AssertEq(_)) => Ok(2_000),
         Command::Instruction(Instruction::AssertNeq(_)) => Ok(2_000),
+        Command::Instruction(Instruction::Async(_)) => bail!("`async` is not supported in finalize."),
         Command::Instruction(Instruction::Call(_)) => bail!("`call` is not supported in finalize."),
         Command::Instruction(Instruction::Cast(_)) => Ok(2_000),
+        Command::Instruction(Instruction::CastLossy(_)) => Ok(2_000),
         Command::Instruction(Instruction::CommitBHP256(_)) => Ok(200_000),
         Command::Instruction(Instruction::CommitBHP512(_)) => Ok(200_000),
         Command::Instruction(Instruction::CommitBHP768(_)) => Ok(200_000),
@@ -118,24 +123,33 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Double(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThan(_)) => Ok(2_000),
         Command::Instruction(Instruction::GreaterThanOrEqual(_)) => Ok(2_000),
-        Command::Instruction(Instruction::HashBHP256(_)) => Ok(200_000),
+        Command::Instruction(Instruction::HashBHP256(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP512(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP768(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashBHP1024(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashKeccak256(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashKeccak384(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashKeccak512(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashPED64(_)) => Ok(20_000),
         Command::Instruction(Instruction::HashPED128(_)) => Ok(30_000),
         Command::Instruction(Instruction::HashPSD2(hash)) => match hash.destination_type() {
-            LiteralType::Address | LiteralType::Group => Ok(600_000),
-            _ => Ok(60_000),
+            PlaintextType::Literal(LiteralType::Address) | PlaintextType::Literal(LiteralType::Group) => Ok(600_000),
+            PlaintextType::Literal(..) => Ok(60_000),
+            plaintext_type => bail!("`hash.psd2` is not supported for plaintext type '{plaintext_type}'"),
         },
         Command::Instruction(Instruction::HashPSD4(hash)) => match hash.destination_type() {
-            LiteralType::Address | LiteralType::Group => Ok(700_000),
-            _ => Ok(100_000),
+            PlaintextType::Literal(LiteralType::Address) | PlaintextType::Literal(LiteralType::Group) => Ok(700_000),
+            PlaintextType::Literal(..) => Ok(100_000),
+            plaintext_type => bail!("`hash.psd4` is not supported for plaintext type '{plaintext_type}'"),
         },
         Command::Instruction(Instruction::HashPSD8(hash)) => match hash.destination_type() {
-            LiteralType::Address | LiteralType::Group => Ok(800_000),
-            _ => Ok(200_000),
+            PlaintextType::Literal(LiteralType::Address) | PlaintextType::Literal(LiteralType::Group) => Ok(800_000),
+            PlaintextType::Literal(..) => Ok(200_000),
+            plaintext_type => bail!("`hash.psd8` is not supported for plaintext type '{plaintext_type}'"),
         },
+        Command::Instruction(Instruction::HashSha3_256(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashSha3_384(_)) => Ok(100_000),
+        Command::Instruction(Instruction::HashSha3_512(_)) => Ok(100_000),
         Command::Instruction(Instruction::HashManyPSD2(_)) => {
             bail!("`hash_many.psd2` is not supported in finalize.")
         }
@@ -162,6 +176,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::PowWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Rem(_)) => Ok(2_000),
         Command::Instruction(Instruction::RemWrapped(_)) => Ok(2_000),
+        Command::Instruction(Instruction::SignVerify(_)) => Ok(1_000_000),
         Command::Instruction(Instruction::Shl(_)) => Ok(2_000),
         Command::Instruction(Instruction::ShlWrapped(_)) => Ok(2_000),
         Command::Instruction(Instruction::Shr(_)) => Ok(2_000),
@@ -174,6 +189,7 @@ pub fn cost_in_microcredits<N: Network>(finalize: &Finalize<N>) -> Result<u64> {
         Command::Instruction(Instruction::Xor(_)) => Ok(2_000),
         // TODO: The following 'finalize' commands are currently priced higher than expected.
         //  Expect these numbers to change as their usage is stabilized.
+        Command::Await(_) => Ok(2_000),
         Command::Contains(_) => Ok(250_000),
         Command::Get(_) => Ok(500_000),
         Command::GetOrUse(_) => Ok(500_000),

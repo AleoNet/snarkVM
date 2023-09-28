@@ -272,7 +272,7 @@ public:
                 RustError ret;
                 try {
                     msm_t<bucket_t, point_t, affine_t, scalar_t> msm(dev);
-                    ret = msm.invoke(partial_sums[i], vec_t<affine_t>{pts, sz},
+                    ret = msm.invoke(partial_sums[i], slice_t<affine_t>{pts, sz},
                                      &scalars[start], false, ffi_affine_size);
                 } catch (const cuda_error& e) {
                     out->inf();

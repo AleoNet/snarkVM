@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for StatePath<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid state path version"));
         }
 
@@ -38,6 +38,8 @@ impl<N: Network> FromBytes for StatePath<N> {
         let transaction_id = FromBytes::read_le(&mut reader)?;
         let transaction_path = FromBytes::read_le(&mut reader)?;
         let transaction_leaf = FromBytes::read_le(&mut reader)?;
+        let transition_root = Field::read_le(&mut reader)?;
+        let tcm = FromBytes::read_le(&mut reader)?;
         let transition_path = FromBytes::read_le(&mut reader)?;
         let transition_leaf = FromBytes::read_le(&mut reader)?;
 
@@ -54,6 +56,8 @@ impl<N: Network> FromBytes for StatePath<N> {
             transaction_id,
             transaction_path,
             transaction_leaf,
+            transition_root,
+            tcm,
             transition_path,
             transition_leaf,
         ))
@@ -64,7 +68,7 @@ impl<N: Network> ToBytes for StatePath<N> {
     /// Writes the path to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         // Write the state path.
         self.global_state_root.write_le(&mut writer)?;
@@ -80,6 +84,8 @@ impl<N: Network> ToBytes for StatePath<N> {
         self.transaction_id.write_le(&mut writer)?;
         self.transaction_path.write_le(&mut writer)?;
         self.transaction_leaf.write_le(&mut writer)?;
+        self.transition_root.write_le(&mut writer)?;
+        self.tcm.write_le(&mut writer)?;
         self.transition_path.write_le(&mut writer)?;
         self.transition_leaf.write_le(&mut writer)
     }

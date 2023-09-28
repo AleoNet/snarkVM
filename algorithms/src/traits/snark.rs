@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use crate::{errors::SNARKError, r1cs::ConstraintSynthesizer, AlgebraicSponge};
-use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -49,14 +49,7 @@ pub trait SNARK {
     type UniversalVerifier;
 
     type VerifierInput: ?Sized;
-    type VerifyingKey: Clone
-        + Send
-        + Sync
-        + ToBytes
-        + FromBytes
-        + ToConstraintField<Self::BaseField>
-        + ToMinimalBits
-        + Ord;
+    type VerifyingKey: Clone + Send + Sync + ToBytes + FromBytes + Ord;
 
     type FiatShamirRng: AlgebraicSponge<Self::BaseField, 2, Parameters = Self::FSParameters>;
     type FSParameters;

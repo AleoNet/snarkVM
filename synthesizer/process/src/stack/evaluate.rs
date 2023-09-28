@@ -25,6 +25,7 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         closure: &Closure<N>,
         inputs: &[Value<N>],
         call_stack: CallStack<N>,
+        signer: Address<N>,
         caller: Address<N>,
         tvk: Field<N>,
     ) -> Result<Vec<Value<N>>> {
@@ -37,6 +38,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition signer.
+        registers.set_signer(signer);
         // Set the transition caller.
         registers.set_caller(caller);
         // Set the transition view key.
@@ -73,6 +76,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                     Operand::ProgramID(program_id) => {
                         Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
                     }
+                    // If the operand is the signer, retrieve the signer from the registers.
+                    Operand::Signer => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.signer()?)))),
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
                     // If the operand is the block height, throw an error.
@@ -91,7 +96,11 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>> {
+    fn evaluate_function<A: circuit::Aleo<Network = N>>(
+        &self,
+        call_stack: CallStack<N>,
+        caller: Option<ProgramID<N>>,
+    ) -> Result<Response<N>> {
         let timer = timer!("Stack::evaluate_function");
 
         // Retrieve the next request, based on the call stack mode.
@@ -100,6 +109,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
             // If the evaluation is performed in the `Execute` mode, create a new `Evaluate` mode.
             // This is done to ensure that evaluation during execution is performed consistently.
             CallStack::Execute(authorization, _) => {
+                // Note: We need to replicate the authorization, so that 'execute' can call 'authorization.next()?'.
+                // This way, the authorization remains unmodified in this 'evaluate' scope.
                 let authorization = authorization.replicate();
                 let request = authorization.next()?;
                 let call_stack = CallStack::Evaluate(authorization);
@@ -120,7 +131,13 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
         // Retrieve the function, inputs, and transition view key.
         let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
-        let caller = *request.caller();
+        let signer = *request.signer();
+        let caller = match caller {
+            // If a caller is provided, then this is an evaluation of a child function.
+            Some(caller) => caller.to_address()?,
+            // If no caller is provided, then this is an evaluation of a top-level function.
+            None => signer,
+        };
         let tvk = *request.tvk();
 
         // Ensure the number of inputs matches.
@@ -137,6 +154,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(function.name())?.clone());
+        // Set the transition signer.
+        registers.set_signer(signer);
         // Set the transition caller.
         registers.set_caller(caller);
         // Set the transition view key.
@@ -188,6 +207,8 @@ impl<N: Network> StackEvaluate<N> for Stack<N> {
                     Operand::ProgramID(program_id) => {
                         Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))))
                     }
+                    // If the operand is the signer, retrieve the signer from the registers.
+                    Operand::Signer => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.signer()?)))),
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(Value::Plaintext(Plaintext::from(Literal::Address(registers.caller()?)))),
                     // If the operand is the block height, throw an error.

@@ -24,7 +24,7 @@ use console::{
 };
 use ledger_block::Transition;
 use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
-use synthesizer::{process::Authorization, program::Program, VM};
+use synthesizer::{program::Program, VM};
 
 use criterion::Criterion;
 use indexmap::IndexMap;
@@ -36,7 +36,7 @@ fn initialize_vm<R: Rng + CryptoRng>(
     let vm = VM::from(ConsensusStore::open(None).unwrap()).unwrap();
 
     // Initialize the genesis block.
-    let genesis = vm.genesis(private_key, rng).unwrap();
+    let genesis = vm.genesis_beacon(private_key, rng).unwrap();
 
     // Fetch the unspent records.
     let records = genesis.transitions().cloned().flat_map(Transition::into_records).collect::<IndexMap<_, _>>();
@@ -74,12 +74,12 @@ function hello:
     )
     .unwrap();
 
-    c.bench_function("Transaction - deploy", |b| {
-        b.iter(|| vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap())
+    c.bench_function("Transaction::Deploy", |b| {
+        b.iter(|| vm.deploy(&private_key, &program, Some(records[0].clone()), 600000, None, rng).unwrap())
     });
 
-    c.bench_function("Transaction verify - deployment", |b| {
-        let transaction = vm.deploy(&private_key, &program, (records[0].clone(), 600000), None, rng).unwrap();
+    c.bench_function("Transaction::Deploy - verify", |b| {
+        let transaction = vm.deploy(&private_key, &program, Some(records[0].clone()), 600000, None, rng).unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });
 }
@@ -102,31 +102,21 @@ fn execute(c: &mut Criterion) {
     ]
     .into_iter();
 
-    // Authorize.
-    let authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+    // Authorize the execution.
+    let execute_authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+    // Authorize the fee.
+    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, Field::one(), rng).unwrap();
 
-    let (_, fee) = vm.execute_fee_raw(&private_key, records[1].clone(), 100000, Field::zero(), None, rng).unwrap();
-
-    c.bench_function("Transaction - execution (transfer)", |b| {
+    c.bench_function("Transaction::Execute(transfer)", |b| {
         b.iter(|| {
-            vm.execute_authorization(
-                Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
-                Some(fee.clone()),
-                None,
-                rng,
-            )
-            .unwrap();
+            vm.execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
+                .unwrap();
         })
     });
 
-    c.bench_function("Transaction verify - execution (transfer)", |b| {
+    c.bench_function("Transaction::Execute(transfer) - verify", |b| {
         let transaction = vm
-            .execute_authorization(
-                Authorization::new(&authorization.to_vec_deque().into_iter().collect::<Vec<_>>()),
-                Some(fee.clone()),
-                None,
-                rng,
-            )
+            .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
             .unwrap();
         b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
     });

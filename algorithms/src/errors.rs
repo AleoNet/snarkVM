@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{r1cs::SynthesisError, snark::marlin::ahp::AHPError};
+use crate::{r1cs::SynthesisError, snark::varuna::ahp::AHPError};
 use snarkvm_fields::ConstraintFieldError;
 
 #[derive(Debug, Error)]

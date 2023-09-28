@@ -28,16 +28,21 @@ harness = false
 
 [features]
 default = [ "async", "indexmap/rayon", "rayon" ]
-async = [ "ledger-query/async", "synthesizer/async" ]
+async = [ "ledger-narwhal/async", "ledger-query/async", "synthesizer/async" ]
 rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
+  "ledger-authority/serial",
   "ledger-block/serial",
   "ledger-coinbase/serial",
+  "ledger-committee/serial",
+  "ledger-narwhal/serial",
   "ledger-query/serial",
   "ledger-store/serial",
   "synthesizer/serial"
 ]
+test = [ "ledger-block/test" ]
+test-helpers = [ "ledger-committee/test-helpers", "ledger-narwhal/test-helpers" ]
 timer = [ "aleo-std/timer" ]
 
 [dependencies.console]
@@ -45,9 +50,9 @@ package = "snarkvm-console"
 path = "../console"
 version = "=0.14.6"
 
-[dependencies.synthesizer]
-package = "snarkvm-synthesizer"
-path = "../synthesizer"
+[dependencies.ledger-authority]
+package = "snarkvm-ledger-authority"
+path = "./authority"
 version = "=0.14.6"
 
 [dependencies.ledger-block]
@@ -58,6 +63,16 @@ version = "=0.14.6"
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
 path = "./coinbase"
+version = "=0.14.6"
+
+[dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "./committee"
+version = "=0.14.6"
+
+[dependencies.ledger-narwhal]
+package = "snarkvm-ledger-narwhal"
+path = "./narwhal"
 version = "=0.14.6"
 
 [dependencies.ledger-query]
@@ -71,12 +86,17 @@ package = "snarkvm-ledger-store"
 path = "./store"
 version = "=0.14.6"
 
+[dependencies.synthesizer]
+package = "snarkvm-synthesizer"
+path = "../synthesizer"
+version = "=0.14.6"
+
 [dependencies.aleo-std]
 version = "0.1.18"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [dependencies.indexmap]
 version = "2.0"
@@ -103,6 +123,11 @@ version = "1.3"
 
 [dev-dependencies.criterion]
 version = "0.5"
+
+[dev-dependencies.ledger-block]
+package = "snarkvm-ledger-block"
+path = "./block"
+features = [ "test" ]
 
 [dev-dependencies.serde_json]
 version = "1.0"

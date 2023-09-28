@@ -24,9 +24,7 @@ use snarkvm_utilities::{
     rand::Uniform,
     serialize::*,
     FromBytes,
-    ToBits,
     ToBytes,
-    ToMinimalBits,
 };
 
 use core::{
@@ -259,15 +257,6 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             // for squaring: (3x^2 + a)/2y(x - y - x3) - (y - (3x^2 + a)/2) = l*(x - x3) - y
             a.y = lambda * (b.x - a.x) - b.y;
         }
-    }
-}
-
-impl<P: Parameters> ToMinimalBits for Affine<P> {
-    fn to_minimal_bits(&self) -> Vec<bool> {
-        let mut res_bits = self.x.to_bits_le();
-        res_bits.push(*self.y.to_bits_le().first().unwrap());
-        res_bits.push(self.infinity);
-        res_bits
     }
 }
 

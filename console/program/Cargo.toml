@@ -14,6 +14,10 @@ test = [ ]
 path = "../account"
 version = "=0.14.6"
 
+[dependencies.snarkvm-console-algorithms]
+path = "../algorithms"
+version = "=0.14.6"
+
 [dependencies.snarkvm-console-collections]
 path = "../collections"
 version = "=0.14.6"
@@ -47,6 +51,9 @@ version = "0.2"
 
 [dependencies.once_cell]
 version = "1.18.0"
+
+[dependencies.paste]
+version = "1.0"
 
 [dependencies.serde_json]
 version = "1.0"

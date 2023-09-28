@@ -1,10 +1,14 @@
-- execute:
+errors: []
+outputs:
+- verified: true
+  execute:
     unused_position.aleo/foo:
-      outputs: []
-      finalize: []
-    credits.aleo/fee:
       outputs:
-      - '{"type":"record","id":"2261233392902243988997539264723290500205508662383263270446840785924684254191field","checksum":"5695777994777952487909244469971922183766254812169037640411689353647239503517field","value":"record1qyqsq9jtjxwleyp4wwzc3xfghucfy4whxwr3ftkrssyeaftwzfvyzrg9qyxx66trwfhkxun9v35hguerqqpqzqr3wrwfuwys43tjqph9r65rj3nswa4uwljfrjy49tfgzljatwzwqmqez49x9lz30gxa7mqy2hzf6hwrp4rhr8yxmw3n7rju7sjfwd4q6cnvlmr"}'
-      finalize: []
+      - '{"type":"future","id":"754819646549188005033265189873387370723612282538036088693249266044696644507field","value":"{\n  program_id: unused_position.aleo,\n  function_name: foo,\n  arguments: []\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"875033401852434094702492600440392424787025840166109430734637501068980969766field","checksum":"2328944404027113612090052407695562488717162291959132346024608978740660323098field","value":"record1qyqspmxa6hf672z4g02lsyr39dza2ewvwlzl80lh9eh3d3vyyhe08vs2qyxx66trwfhkxun9v35hguerqqpqzqxk3u4z0kjkd93ykrlc7syrx68zz509h6nkfn4mtw0php83nl4upftd0nnhpkll5z5zu5q6u4xk9zhx8sneztwswkedqg946rlak2fpq2cpfgy"}'

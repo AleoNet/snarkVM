@@ -41,6 +41,7 @@ impl<N: Network> core::hash::Hash for Literal<N> {
             Self::U64(a) => a.hash(state),
             Self::U128(a) => a.hash(state),
             Self::Scalar(a) => a.hash(state),
+            Self::Signature(a) => a.hash(state),
             Self::String(a) => a.hash(state),
         }
     }
@@ -67,6 +68,7 @@ impl<N: Network> Equal for Literal<N> {
             (Self::U64(a), Self::U64(b)) => a.is_equal(b),
             (Self::U128(a), Self::U128(b)) => a.is_equal(b),
             (Self::Scalar(a), Self::Scalar(b)) => a.is_equal(b),
+            (Self::Signature(a), Self::Signature(b)) => a.is_equal(b),
             (Self::String(a), Self::String(b)) => a.is_equal(b),
             _ => Boolean::new(false),
         }
@@ -90,6 +92,7 @@ impl<N: Network> Equal for Literal<N> {
             (Self::U64(a), Self::U64(b)) => a.is_not_equal(b),
             (Self::U128(a), Self::U128(b)) => a.is_not_equal(b),
             (Self::Scalar(a), Self::Scalar(b)) => a.is_not_equal(b),
+            (Self::Signature(a), Self::Signature(b)) => a.is_not_equal(b),
             (Self::String(a), Self::String(b)) => a.is_not_equal(b),
             _ => Boolean::new(true),
         }

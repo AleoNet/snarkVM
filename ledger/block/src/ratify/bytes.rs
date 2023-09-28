@@ -20,29 +20,43 @@ impl<N: Network> FromBytes for Ratify<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid ratify version"));
         }
 
         let variant = Variant::read_le(&mut reader)?;
         let literal = match variant {
             0 => {
-                // Read the address.
-                let address: Address<N> = FromBytes::read_le(&mut reader)?;
-                // Read the amount.
-                let amount: u64 = FromBytes::read_le(&mut reader)?;
+                // Read the committee.
+                let committee: Committee<N> = FromBytes::read_le(&mut reader)?;
+                // Read the number of public balances.
+                let num_public_balances: u16 = FromBytes::read_le(&mut reader)?;
+                // Read the public balances.
+                let mut public_balances = PublicBalances::with_capacity(num_public_balances as usize);
+                for _ in 0..num_public_balances {
+                    // Read the address.
+                    let address: Address<N> = FromBytes::read_le(&mut reader)?;
+                    // Read the amount.
+                    let amount: u64 = FromBytes::read_le(&mut reader)?;
+                    // Insert the public balance.
+                    public_balances.insert(address, amount);
+                }
                 // Return the ratify object.
-                Self::ProvingReward(address, amount)
+                Self::Genesis(committee, public_balances)
             }
             1 => {
-                // Read the address.
-                let address: Address<N> = FromBytes::read_le(&mut reader)?;
                 // Read the amount.
                 let amount: u64 = FromBytes::read_le(&mut reader)?;
                 // Return the ratify object.
-                Self::StakingReward(address, amount)
+                Self::BlockReward(amount)
             }
-            2.. => return Err(error(format!("Failed to decode ratify object variant {variant}"))),
+            2 => {
+                // Read the amount.
+                let amount: u64 = FromBytes::read_le(&mut reader)?;
+                // Return the ratify object.
+                Self::PuzzleReward(amount)
+            }
+            3.. => return Err(error(format!("Failed to decode ratify object variant {variant}"))),
         };
         Ok(literal)
     }
@@ -52,17 +66,25 @@ impl<N: Network> ToBytes for Ratify<N> {
     /// Writes the ratify object to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         match self {
-            Self::ProvingReward(address, amount) => {
+            Self::Genesis(committee, public_balances) => {
                 (0 as Variant).write_le(&mut writer)?;
-                address.write_le(&mut writer)?;
+                committee.write_le(&mut writer)?;
+                u16::try_from(public_balances.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+                for (address, amount) in public_balances {
+                    address.write_le(&mut writer)?;
+                    amount.write_le(&mut writer)?;
+                }
+                Ok(())
+            }
+            Self::BlockReward(amount) => {
+                (1 as Variant).write_le(&mut writer)?;
                 amount.write_le(&mut writer)
             }
-            Self::StakingReward(address, amount) => {
-                (1 as Variant).write_le(&mut writer)?;
-                address.write_le(&mut writer)?;
+            Self::PuzzleReward(amount) => {
+                (2 as Variant).write_le(&mut writer)?;
                 amount.write_le(&mut writer)
             }
         }

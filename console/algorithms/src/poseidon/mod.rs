@@ -35,7 +35,7 @@ pub type Poseidon4<E> = Poseidon<E, 4>;
 /// Poseidon8 is a cryptographic hash function of input rate 8.
 pub type Poseidon8<E> = Poseidon<E, 8>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Poseidon<E: Environment, const RATE: usize> {
     /// The domain separator for the Poseidon hash function.
     domain: Field<E>,

@@ -34,7 +34,9 @@ impl<N: Network> EpochChallenge<N> {
     /// Initializes a new epoch challenge.
     pub fn new(epoch_number: u32, epoch_block_hash: N::BlockHash, degree: u32) -> Result<Self> {
         // Construct the 'input' as '( epoch_number || epoch_block_hash )'
-        let input: Vec<u8> = epoch_number.to_le_bytes().into_iter().chain(epoch_block_hash.to_bytes_le()?).collect();
+        let mut input = vec![];
+        epoch_number.write_le(&mut input)?;
+        epoch_block_hash.write_le(&mut input)?;
 
         let product_domain = CoinbasePuzzle::<N>::product_domain(degree)?;
 

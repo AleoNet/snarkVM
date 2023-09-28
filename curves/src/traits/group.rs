@@ -14,7 +14,7 @@
 
 use crate::{templates::short_weierstrass_jacobian, PairingEngine};
 use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use core::{
     fmt::{Debug, Display},
@@ -136,7 +136,6 @@ pub trait AffineCurve:
     + DeserializeOwned
     + ToBytes
     + From<<Self as AffineCurve>::Projective>
-    + ToMinimalBits
     + Zero
 {
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;

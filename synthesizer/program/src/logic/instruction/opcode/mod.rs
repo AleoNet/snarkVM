@@ -19,22 +19,24 @@ use console::network::prelude::*;
 pub enum Opcode {
     /// The opcode is for a assert operation (i.e. `assert`).
     Assert(&'static str),
+    /// The opcode is for an async call operation (i.e. `async`).
+    Async,
     /// The opcode is for a call operation (i.e. `call`).
     Call,
     /// The opcode is for a cast operation (i.e. `cast`).
-    Cast,
+    Cast(&'static str),
     /// The opcode is for a finalize command (i.e. `increment`).
     Command(&'static str),
     /// The opcode is for a commit operation (i.e. `commit.psd4`).
     Commit(&'static str),
-    /// The opcode is for a finalize operation (i.e. `finalize`).
-    Finalize(&'static str),
     /// The opcode is for a hash operation (i.e. `hash.psd4`).
     Hash(&'static str),
-    /// The opcode for an 'is' operation (i.e. `is.eq`).
+    /// The opcode is for an 'is' operation (i.e. `is.eq`).
     Is(&'static str),
     /// The opcode is for a literal operation (i.e. `add`).
     Literal(&'static str),
+    /// The opcode is for signature verification (i.e. `sign.verify`).
+    Sign,
 }
 
 impl Deref for Opcode {
@@ -44,14 +46,15 @@ impl Deref for Opcode {
     fn deref(&self) -> &Self::Target {
         match self {
             Opcode::Assert(opcode) => opcode,
+            Opcode::Async => &"async",
             Opcode::Call => &"call",
-            Opcode::Cast => &"cast",
+            Opcode::Cast(opcode) => opcode,
             Opcode::Command(opcode) => opcode,
             Opcode::Commit(opcode) => opcode,
-            Opcode::Finalize(opcode) => opcode,
             Opcode::Hash(opcode) => opcode,
             Opcode::Is(opcode) => opcode,
             Opcode::Literal(opcode) => opcode,
+            Opcode::Sign => &"sign.verify",
         }
     }
 }
@@ -68,14 +71,15 @@ impl Display for Opcode {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Assert(opcode) => write!(f, "{opcode}"),
+            Self::Async => write!(f, "{}", self.deref()),
             Self::Call => write!(f, "{}", self.deref()),
-            Self::Cast => write!(f, "{}", self.deref()),
+            Self::Cast(opcode) => write!(f, "{opcode}"),
             Self::Command(opcode) => write!(f, "{opcode}"),
             Self::Commit(opcode) => write!(f, "{opcode}"),
-            Self::Finalize(opcode) => write!(f, "{opcode}"),
             Self::Hash(opcode) => write!(f, "{opcode}"),
             Self::Is(opcode) => write!(f, "{opcode}"),
             Self::Literal(opcode) => write!(f, "{opcode}"),
+            Self::Sign => write!(f, "{}", self.deref()),
         }
     }
 }

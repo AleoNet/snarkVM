@@ -35,7 +35,6 @@ impl LineParseTest {
 
 impl ExpectedTest for LineParseTest {
     type Output = Vec<String>;
-    type Test = Vec<String>;
 
     /// Loads the tests from a given path.
     fn load<P: AsRef<Path>>(test_path: P, expectation_dir: P) -> Self {

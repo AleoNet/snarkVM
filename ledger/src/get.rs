@@ -15,6 +15,16 @@
 use super::*;
 
 impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
+    /// Returns the committee for the given `block height`.
+    pub fn get_committee(&self, block_height: u32) -> Result<Option<Committee<N>>> {
+        self.vm.finalize_store().committee_store().get_committee(block_height)
+    }
+
+    /// Returns the committee for the given `round`.
+    pub fn get_committee_for_round(&self, round: u64) -> Result<Option<Committee<N>>> {
+        self.vm.finalize_store().committee_store().get_committee_for_round(round)
+    }
+
     /// Returns the state root that contains the given `block height`.
     pub fn get_state_root(&self, block_height: u32) -> Result<Option<N::StateRoot>> {
         self.vm.block_store().get_state_root(block_height)
@@ -41,7 +51,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
         // If the height is 0, return the genesis block.
         if height == 0 {
-            return Ok(self.genesis.clone());
+            return Ok(self.genesis_block.clone());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
@@ -82,7 +92,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn get_hash(&self, height: u32) -> Result<N::BlockHash> {
         // If the height is 0, return the genesis block hash.
         if height == 0 {
-            return Ok(self.genesis.hash());
+            return Ok(self.genesis_block.hash());
         }
         match self.vm.block_store().get_block_hash(height)? {
             Some(block_hash) => Ok(block_hash),
@@ -106,7 +116,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn get_header(&self, height: u32) -> Result<Header<N>> {
         // If the height is 0, return the genesis block header.
         if height == 0 {
-            return Ok(*self.genesis.header());
+            return Ok(*self.genesis_block.header());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
@@ -124,7 +134,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     pub fn get_transactions(&self, height: u32) -> Result<Transactions<N>> {
         // If the height is 0, return the genesis block transactions.
         if height == 0 {
-            return Ok(self.genesis.transactions().clone());
+            return Ok(self.genesis_block.transactions().clone());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
@@ -164,37 +174,47 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         }
     }
 
-    /// Returns the block coinbase solution for the given block height.
+    /// Returns the block solutions for the given block height.
     pub fn get_coinbase(&self, height: u32) -> Result<Option<CoinbaseSolution<N>>> {
-        // If the height is 0, return the genesis block coinbase.
+        // If the height is 0, return the genesis block solutions.
         if height == 0 {
-            return Ok(self.genesis.coinbase().cloned());
+            return Ok(self.genesis_block.coinbase().cloned());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
             Some(block_hash) => block_hash,
             None => bail!("Block {height} does not exist in storage"),
         };
-        // Retrieve the block coinbase solution.
+        // Retrieve the block solutions.
         self.vm.block_store().get_block_coinbase(&block_hash)
     }
 
-    /// Returns the block signature for the given block height.
-    pub fn get_signature(&self, height: u32) -> Result<Signature<N>> {
-        // If the height is 0, return the genesis block signature.
+    /// Returns the solution for the given solution ID.
+    pub fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        self.vm.block_store().get_solution(solution_id)
+    }
+
+    /// Returns the block authority for the given block height.
+    pub fn get_authority(&self, height: u32) -> Result<Authority<N>> {
+        // If the height is 0, return the genesis block authority.
         if height == 0 {
-            return Ok(*self.genesis.signature());
+            return Ok(self.genesis_block.authority().clone());
         }
         // Retrieve the block hash.
         let block_hash = match self.vm.block_store().get_block_hash(height)? {
             Some(block_hash) => block_hash,
             None => bail!("Block {height} does not exist in storage"),
         };
-        // Retrieve the block signature.
-        match self.vm.block_store().get_block_signature(&block_hash)? {
-            Some(signature) => Ok(signature),
-            None => bail!("Missing signature for block {height}"),
+        // Retrieve the block authority.
+        match self.vm.block_store().get_block_authority(&block_hash)? {
+            Some(authority) => Ok(authority),
+            None => bail!("Missing authority for block {height}"),
         }
+    }
+
+    /// Returns the batch certificate for the given `certificate ID`.
+    pub fn get_batch_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
+        self.vm.block_store().get_batch_certificate(certificate_id)
     }
 }
 

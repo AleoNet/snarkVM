@@ -43,11 +43,11 @@ fn test_coinbase_puzzle() {
                     puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let full_solution = puzzle.accumulate_unchecked(&epoch_challenge, &solutions).unwrap();
-            assert!(puzzle.verify(&full_solution, &epoch_challenge, 0u64, 0u64).unwrap());
+            let full_solution = puzzle.accumulate(solutions, &epoch_challenge, 0).unwrap();
+            assert!(puzzle.verify(&full_solution, &epoch_challenge, 0u64).unwrap());
 
             let bad_epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
-            assert!(!puzzle.verify(&full_solution, &bad_epoch_challenge, 0u64, 0u64).unwrap());
+            assert!(!puzzle.verify(&full_solution, &bad_epoch_challenge, 0u64).unwrap());
         }
     }
 }
@@ -93,7 +93,7 @@ fn test_edge_case_for_degree() {
     let srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
 
     // Generate PK and VK.
-    let degree = (1 << 13) - 1; // IF YOU ADD `- 1` THIS WILL PASS
+    let degree = (1 << 13) - 1;
     let puzzle = CoinbasePuzzle::<Testnet3>::trim(&srs, PuzzleConfig { degree }).unwrap();
 
     // Generate proof inputs
@@ -103,6 +103,50 @@ fn test_edge_case_for_degree() {
 
     // Generate a prover solution.
     let prover_solution = puzzle.prove(&epoch_challenge, address, rng.gen(), None).unwrap();
-    let coinbase_solution = puzzle.accumulate_unchecked(&epoch_challenge, &[prover_solution]).unwrap();
-    assert!(puzzle.verify(&coinbase_solution, &epoch_challenge, 0u64, 0u64).unwrap());
+    let coinbase_solution = puzzle.accumulate(vec![prover_solution], &epoch_challenge, 0).unwrap();
+    assert!(puzzle.verify(&coinbase_solution, &epoch_challenge, 0u64).unwrap());
+}
+
+/// Use `cargo test profiler --features timer` to run this test.
+#[ignore]
+#[test]
+fn test_profiler() -> Result<()> {
+    fn sample_address_and_nonce(rng: &mut (impl CryptoRng + RngCore)) -> (Address<Testnet3>, u64) {
+        let private_key = PrivateKey::new(rng).unwrap();
+        let address = Address::try_from(private_key).unwrap();
+        let nonce = rng.next_u64();
+        (address, nonce)
+    }
+
+    let mut rng = rand::thread_rng();
+
+    // Generate srs.
+    let max_degree = 1 << 15;
+    let max_config = PuzzleConfig { degree: max_degree };
+    let universal_srs = CoinbasePuzzle::<Testnet3>::setup(max_config).unwrap();
+
+    // Generate PK and VK.
+    let degree = (1 << 13) - 1;
+    let config = PuzzleConfig { degree };
+    let puzzle = CoinbasePuzzle::trim(&universal_srs, config).unwrap();
+
+    // Generate proof inputs
+    let epoch_challenge = EpochChallenge::new(rng.next_u32(), Default::default(), degree).unwrap();
+
+    for batch_size in [10, 100, <Testnet3 as Network>::MAX_PROVER_SOLUTIONS] {
+        // Generate the solutions.
+        let solutions = (0..batch_size)
+            .map(|_| {
+                let (address, nonce) = sample_address_and_nonce(&mut rng);
+                puzzle.prove(&epoch_challenge, address, nonce, None).unwrap()
+            })
+            .collect::<Vec<_>>();
+        // Accumulate the solutions.
+        let solution = puzzle.accumulate(solutions, &epoch_challenge, 0).unwrap();
+
+        // Verify the solution.
+        puzzle.verify(&solution, &epoch_challenge, 0u64).unwrap();
+    }
+
+    bail!("\n\nRemember to #[ignore] this test!\n\n")
 }

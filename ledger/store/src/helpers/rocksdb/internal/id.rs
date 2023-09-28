@@ -18,6 +18,7 @@
 #[repr(u16)]
 pub enum MapID {
     Block(BlockMap),
+    Committee(CommitteeMap),
     Deployment(DeploymentMap),
     Execution(ExecutionMap),
     Fee(FeeMap),
@@ -34,6 +35,7 @@ impl From<MapID> for u16 {
     fn from(id: MapID) -> u16 {
         match id {
             MapID::Block(id) => id as u16,
+            MapID::Committee(id) => id as u16,
             MapID::Deployment(id) => id as u16,
             MapID::Execution(id) => id as u16,
             MapID::Fee(id) => id as u16,
@@ -59,12 +61,24 @@ pub enum BlockMap {
     ID = DataID::BlockIDMap as u16,
     ReverseID = DataID::BlockReverseIDMap as u16,
     Header = DataID::BlockHeaderMap as u16,
+    Authority = DataID::BlockAuthorityMap as u16,
+    Certificate = DataID::BlockCertificateMap as u16,
     Transactions = DataID::BlockTransactionsMap as u16,
     ConfirmedTransactions = DataID::BlockConfirmedTransactionsMap as u16,
     Ratifications = DataID::BlockRatificationsMap as u16,
     CoinbaseSolution = DataID::BlockCoinbaseSolutionMap as u16,
     CoinbasePuzzleCommitment = DataID::BlockCoinbasePuzzleCommitmentMap as u16,
-    Signature = DataID::BlockSignatureMap as u16,
+}
+
+/// The RocksDB map prefix for committee-related entries.
+// Note: the order of these variants can be changed at any point in time,
+// as long as the corresponding DataID values remain the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum CommitteeMap {
+    CurrentRound = DataID::CurrentRoundMap as u16,
+    RoundToHeight = DataID::RoundToHeightMap as u16,
+    Committee = DataID::CommitteeMap as u16,
 }
 
 /// The RocksDB map prefix for deployment-related entries.
@@ -133,6 +147,7 @@ pub enum TransitionOutputMap {
     Record = DataID::OutputRecordMap as u16,
     RecordNonce = DataID::OutputRecordNonceMap as u16,
     ExternalRecord = DataID::OutputExternalRecordMap as u16,
+    Future = DataID::OutputFutureMap as u16,
 }
 
 /// The RocksDB map prefix for transaction-related entries.
@@ -151,7 +166,6 @@ pub enum TransactionMap {
 #[repr(u16)]
 pub enum TransitionMap {
     Locator = DataID::TransitionLocatorMap as u16,
-    Finalize = DataID::TransitionFinalizeMap as u16,
     TPK = DataID::TransitionTPKMap as u16,
     ReverseTPK = DataID::TransitionReverseTPKMap as u16,
     TCM = DataID::TransitionTCMMap as u16,
@@ -197,12 +211,17 @@ enum DataID {
     BlockIDMap,
     BlockReverseIDMap,
     BlockHeaderMap,
+    BlockAuthorityMap,
+    BlockCertificateMap,
     BlockTransactionsMap,
     BlockConfirmedTransactionsMap,
     BlockRatificationsMap,
     BlockCoinbaseSolutionMap,
     BlockCoinbasePuzzleCommitmentMap,
-    BlockSignatureMap,
+    // Committee
+    CurrentRoundMap,
+    RoundToHeightMap,
+    CommitteeMap,
     // Deployment
     DeploymentIDMap,
     DeploymentEditionMap,
@@ -236,11 +255,11 @@ enum DataID {
     OutputRecordMap,
     OutputRecordNonceMap,
     OutputExternalRecordMap,
+    OutputFutureMap,
     // Transaction
     TransactionIDMap,
     // Transition
     TransitionLocatorMap,
-    TransitionFinalizeMap,
     TransitionTPKMap,
     TransitionReverseTPKMap,
     TransitionTCMMap,

@@ -19,7 +19,8 @@ use crate::{
     TransactionStore,
     TransitionStore,
 };
-use console::{account::Signature, prelude::*};
+use console::{prelude::*, types::Field};
+use ledger_authority::Authority;
 use ledger_block::{Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
 
@@ -36,6 +37,10 @@ pub struct BlockMemory<N: Network> {
     reverse_id_map: MemoryMap<N::BlockHash, u32>,
     /// The header map.
     header_map: MemoryMap<N::BlockHash, Header<N>>,
+    /// The authority map.
+    authority_map: MemoryMap<N::BlockHash, Authority<N>>,
+    /// The certificate map.
+    certificate_map: MemoryMap<Field<N>, (u32, u64)>,
     /// The transactions map.
     transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The confirmed transactions map.
@@ -44,12 +49,10 @@ pub struct BlockMemory<N: Network> {
     transaction_store: TransactionStore<N, TransactionMemory<N>>,
     /// The ratifications map.
     ratifications_map: MemoryMap<N::BlockHash, Vec<Ratify<N>>>,
-    /// The coinbase solution map.
+    /// The solutions map.
     coinbase_solution_map: MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>,
     /// The coinbase puzzle commitment map.
     coinbase_puzzle_commitment_map: MemoryMap<PuzzleCommitment<N>, u32>,
-    /// The signature map.
-    signature_map: MemoryMap<N::BlockHash, Signature<N>>,
 }
 
 #[rustfmt::skip]
@@ -59,6 +62,8 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type IDMap = MemoryMap<u32, N::BlockHash>;
     type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
     type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
+    type AuthorityMap = MemoryMap<N::BlockHash, Authority<N>>;
+    type CertificateMap = MemoryMap<Field<N>, (u32, u64)>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type ConfirmedTransactionsMap = MemoryMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionMemory<N>;
@@ -66,7 +71,6 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type RatificationsMap = MemoryMap<N::BlockHash, Vec<Ratify<N>>>;
     type CoinbaseSolutionMap = MemoryMap<N::BlockHash, Option<CoinbaseSolution<N>>>;
     type CoinbasePuzzleCommitmentMap = MemoryMap<PuzzleCommitment<N>, u32>;
-    type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -81,13 +85,14 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
             header_map: MemoryMap::default(),
+            authority_map: MemoryMap::default(),
+            certificate_map: MemoryMap::default(),
             transactions_map: MemoryMap::default(),
             confirmed_transactions_map: MemoryMap::default(),
             transaction_store,
             ratifications_map: MemoryMap::default(),
             coinbase_solution_map: MemoryMap::default(),
             coinbase_puzzle_commitment_map: MemoryMap::default(),
-            signature_map: MemoryMap::default(),
         })
     }
 
@@ -116,6 +121,16 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.header_map
     }
 
+    /// Returns the certificate map.
+    fn certificate_map(&self) -> &Self::CertificateMap {
+        &self.certificate_map
+    }
+
+    /// Returns the authority map.
+    fn authority_map(&self) -> &Self::AuthorityMap {
+        &self.authority_map
+    }
+
     /// Returns the transactions map.
     fn transactions_map(&self) -> &Self::TransactionsMap {
         &self.transactions_map
@@ -136,7 +151,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
         &self.ratifications_map
     }
 
-    /// Returns the coinbase solution map.
+    /// Returns the solutions map.
     fn coinbase_solution_map(&self) -> &Self::CoinbaseSolutionMap {
         &self.coinbase_solution_map
     }
@@ -144,10 +159,5 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     /// Returns the coinbase puzzle commitment map.
     fn coinbase_puzzle_commitment_map(&self) -> &Self::CoinbasePuzzleCommitmentMap {
         &self.coinbase_puzzle_commitment_map
-    }
-
-    /// Returns the signature map.
-    fn signature_map(&self) -> &Self::SignatureMap {
-        &self.signature_map
     }
 }

@@ -23,6 +23,7 @@ serial = [
   "console/serial",
   "ledger-block/serial",
   "ledger-coinbase/serial",
+  "ledger-committee/serial",
   "synthesizer-program/serial",
   "synthesizer-snark/serial"
 ]
@@ -32,14 +33,29 @@ package = "snarkvm-console"
 path = "../../console"
 version = "=0.14.6"
 
+[dependencies.ledger-authority]
+package = "snarkvm-ledger-authority"
+path = "../authority"
+version = "=0.14.6"
+
 [dependencies.ledger-block]
 package = "snarkvm-ledger-block"
-path = "../../ledger/block"
+path = "../block"
 version = "=0.14.6"
 
 [dependencies.ledger-coinbase]
 package = "snarkvm-ledger-coinbase"
-path = "../../ledger/coinbase"
+path = "../coinbase"
+version = "=0.14.6"
+
+[dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../committee"
+version = "=0.14.6"
+
+[dependencies.ledger-narwhal-batch-certificate]
+package = "snarkvm-ledger-narwhal-batch-certificate"
+path = "../narwhal/batch-certificate"
 version = "=0.14.6"
 
 [dependencies.synthesizer-program]
@@ -58,7 +74,7 @@ default-features = false
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.72"
+version = "1.0.73"
 
 [dependencies.bincode]
 version = "1.3"
@@ -91,6 +107,11 @@ version = "1.0"
 version = "0.1"
 optional = true
 
+[dev-dependencies.ledger-committee]
+package = "snarkvm-ledger-committee"
+path = "../committee"
+features = [ "test-helpers" ]
+
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
 path = "../../ledger/test-helpers"
@@ -99,7 +120,7 @@ path = "../../ledger/test-helpers"
 version = "2"
 
 [dev-dependencies.tempfile]
-version = "3.6"
+version = "3.8"
 
 [dev-dependencies.tracing-test]
 version = "0.2"

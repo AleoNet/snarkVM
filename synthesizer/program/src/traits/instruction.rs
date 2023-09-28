@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::{prelude::*, program::Register};
+use console::{
+    network::Network,
+    prelude::{FromBytes, Parser, ToBytes},
+    program::Register,
+};
 
 pub trait InstructionTrait<N: Network>: Clone + Parser + FromBytes + ToBytes {
     /// Returns the destination registers of the instruction.

@@ -12,8 +12,13 @@ path = "benches/bhp.rs"
 harness = false
 
 [[bench]]
-name = "poseidon_sponge"
+name = "poseidon"
 path = "benches/poseidon.rs"
+harness = false
+
+[[bench]]
+name = "elligator2"
+path = "benches/elligator2.rs"
 harness = false
 
 [dependencies.snarkvm-console-types]
@@ -38,6 +43,10 @@ version = "1.0"
 version = "1.11"
 default-features = false
 features = [ "const_generics", "const_new" ]
+
+[dependencies.tiny-keccak]
+version = "2"
+features = [ "keccak", "sha3" ]
 
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"

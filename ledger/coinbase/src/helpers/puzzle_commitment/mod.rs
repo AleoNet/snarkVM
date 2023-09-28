@@ -16,6 +16,8 @@ mod bytes;
 mod serialize;
 mod string;
 
+pub use string::PUZZLE_COMMITMENT_PREFIX;
+
 use super::*;
 use snarkvm_algorithms::crypto_hash::sha256d_to_u64;
 

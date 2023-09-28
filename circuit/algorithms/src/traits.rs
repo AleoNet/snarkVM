@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use snarkvm_circuit_types::{
-    environment::{Eject, Inject, ScalarTrait, Ternary, ToBits},
-    GroupTrait,
-};
+use snarkvm_circuit_types::environment::{Eject, GroupTrait, Inject, ScalarTrait, ToBits};
 
 /// A trait for a commitment scheme.
 pub trait Commit {
@@ -40,7 +37,7 @@ pub trait CommitUncompressed {
 /// A trait for a hash function.
 pub trait Hash {
     type Input: Inject + Eject + Clone;
-    type Output: Inject + Eject + Ternary<Output = Self::Output> + ToBits + Clone;
+    type Output: Inject + Eject + ToBits + Clone;
 
     /// Returns the hash of the given input.
     fn hash(&self, input: &[Self::Input]) -> Self::Output;

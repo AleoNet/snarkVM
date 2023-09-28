@@ -227,13 +227,13 @@ impl crate::biginteger::BigInteger for BigInteger256 {
 
 impl ToBits for BigInteger256 {
     #[doc = " Returns `self` as a boolean array in little-endian order, with trailing zeros."]
-    fn to_bits_le(&self) -> Vec<bool> {
-        BitIteratorLE::new(self).collect::<Vec<_>>()
+    fn write_bits_le(&self, vec: &mut Vec<bool>) {
+        vec.extend(BitIteratorLE::new(self));
     }
 
     #[doc = " Returns `self` as a boolean array in big-endian order, with leading zeros."]
-    fn to_bits_be(&self) -> Vec<bool> {
-        BitIteratorBE::new(self).collect::<Vec<_>>()
+    fn write_bits_be(&self, vec: &mut Vec<bool>) {
+        vec.extend(BitIteratorBE::new(self));
     }
 }
 
@@ -265,7 +265,11 @@ impl FromBits for BigInteger256 {
 impl ToBytes for BigInteger256 {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write_le(writer)
+        let mut arr = [0u8; 8 * 4];
+        for (i, num) in self.0.iter().enumerate() {
+            arr[i * 8..(i + 1) * 8].copy_from_slice(&num.to_le_bytes());
+        }
+        arr.write_le(writer)
     }
 }
 
