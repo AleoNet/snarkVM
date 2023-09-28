@@ -27,7 +27,7 @@ impl<N: Network> FromBytes for Committee<N> {
         // Read the starting round.
         let starting_round = u64::read_le(&mut reader)?;
         // Read the number of members.
-        let num_members = u32::read_le(&mut reader)?;
+        let num_members = u16::read_le(&mut reader)?;
         // Read the members.
         let mut members = IndexMap::with_capacity(num_members as usize);
         for _ in 0..num_members {
@@ -60,7 +60,7 @@ impl<N: Network> ToBytes for Committee<N> {
         // Write the starting round.
         self.starting_round.write_le(&mut writer)?;
         // Write the number of members.
-        u32::try_from(self.members.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u16::try_from(self.members.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the members.
         for (address, (stake, is_open)) in &self.members {
             // Write the address.
