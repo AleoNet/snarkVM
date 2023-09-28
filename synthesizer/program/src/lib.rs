@@ -599,6 +599,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "mapping",
         "key",
         "value",
+        "async",
+        "finalize",
         // Reserved (catch all)
         "global",
         "block",
@@ -622,8 +624,6 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "impl",
         "type",
         "future",
-        "async",
-        "finalize",
     ];
 
     /// Returns `true` if the given name does not already exist in the program.

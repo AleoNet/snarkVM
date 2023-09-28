@@ -28,10 +28,10 @@ use snarkvm_console_types::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Request<N: Network> {
+    /// The request signer.
+    signer: Address<N>,
     /// The request caller.
     caller: Address<N>,
-    /// The request parent.
-    parent: Address<N>,
     /// The `is_root` flag.
     is_root: Boolean<N>,
     /// The network ID.
@@ -76,8 +76,8 @@ impl<N: Network>
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
         (
+            signer,
             caller,
-            parent,
             is_root,
             network_id,
             program_id,
@@ -110,8 +110,8 @@ impl<N: Network>
             N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
         } else {
             Self {
+                signer,
                 caller,
-                parent,
                 is_root,
                 network_id,
                 program_id,
@@ -129,14 +129,14 @@ impl<N: Network>
 }
 
 impl<N: Network> Request<N> {
+    /// Returns the request signer.
+    pub const fn signer(&self) -> &Address<N> {
+        &self.signer
+    }
+
     /// Returns the request caller.
     pub const fn caller(&self) -> &Address<N> {
         &self.caller
-    }
-
-    /// Returns the request parent.
-    pub const fn parent(&self) -> &Address<N> {
-        &self.parent
     }
 
     /// Returns the `is_root` flag.
@@ -219,8 +219,8 @@ mod test_helpers {
     pub(super) fn sample_requests(rng: &mut TestRng) -> Vec<Request<CurrentNetwork>> {
         (0..ITERATIONS)
             .map(|i| {
-                // Sample a random address for the parent.
-                let parent = Address::<CurrentNetwork>::rand(rng);
+                // Sample a random address for the caller.
+                let caller = Address::<CurrentNetwork>::rand(rng);
 
                 // Sample a random boolean for the `is_root` flag.
                 let is_root = Boolean::rand(rng);
@@ -256,7 +256,7 @@ mod test_helpers {
 
                 // Compute the signed request.
                 let request =
-                    Request::sign(&private_key, parent, is_root, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
+                    Request::sign(&private_key, caller, is_root, program_id, function_name, inputs.into_iter(), &input_types, rng).unwrap();
                 assert!(request.verify(&input_types));
                 request
             })

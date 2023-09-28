@@ -25,8 +25,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
+        signer: circuit::Address<A>,
         caller: circuit::Address<A>,
-        parent: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
         let timer = timer!("Stack::execute_closure");
@@ -45,10 +45,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition signer, as a circuit.
+        registers.set_signer_circuit(signer);
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(caller);
-        // Set the transition parent, as a circuit.
-        registers.set_parent_circuit(parent);
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
         lap!(timer, "Initialize the registers");
@@ -103,13 +103,13 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                             circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
                         ))))
                     }
+                    // If the operand is the signer, retrieve the caller from the registers.
+                    Operand::Signer => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.signer_circuit()?),
+                    ))),
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
-                    ))),
-                    // If the operand is the parent, retrieve the parent from the registers.
-                    Operand::Parent => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
-                        circuit::Literal::Address(registers.parent_circuit()?),
                     ))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => {
@@ -187,24 +187,24 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Inject `is_root` as `Mode::Public`.
         let is_root = circuit::Boolean::new(circuit::Mode::Public, **console_request.is_root());
-        // Inject the parent as `Mode::Public`.
-        let claimed_parent = circuit::Address::new(circuit::Mode::Public, *console_request.parent());
-        // Compute the parent.
-        let parent = Ternary::ternary(&is_root, request.caller(), &claimed_parent);
+        // Inject the caller as `Mode::Public`.
+        let claimed_caller = circuit::Address::new(circuit::Mode::Public, *console_request.caller());
+        // Compute the caller.
+        let caller = Ternary::ternary(&is_root, request.signer(), &claimed_caller);
 
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
         lap!(timer, "Verify the circuit request");
 
-        // Set the transition caller.
-        registers.set_caller(*console_request.caller());
-        // Set the transition caller, as a circuit.
-        registers.set_caller_circuit(request.caller().clone());
+        // Set the transition signer.
+        registers.set_signer(*console_request.signer());
+        // Set the transition signer, as a circuit.
+        registers.set_signer_circuit(request.signer().clone());
 
-        // Set the transition parent.
-        registers.set_parent(parent.eject_value());
-        // Set the transition parent, as a circuit.
-        registers.set_parent_circuit(parent);
+        // Set the transition caller.
+        registers.set_caller(caller.eject_value());
+        // Set the transition caller, as a circuit.
+        registers.set_caller_circuit(caller);
 
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());
@@ -294,13 +294,13 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                             circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
                         ))))
                     }
+                    // If the operand is the signer, retrieve the caller from the registers.
+                    Operand::Signer => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.signer_circuit()?),
+                    ))),
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
-                    ))),
-                    // If the operand is the parent, retrieve the parent from the registers.
-                    Operand::Parent => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
-                        circuit::Literal::Address(registers.parent_circuit()?),
                     ))),
                     // If the operand is the block height, throw an error.
                     Operand::BlockHeight => {

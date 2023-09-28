@@ -14,10 +14,10 @@
 
 use crate::{
     traits::{
-        RegistersCaller,
-        RegistersCallerCircuit,
         RegistersLoad,
         RegistersLoadCircuit,
+        RegistersSigner,
+        RegistersSignerCircuit,
         RegistersStore,
         RegistersStoreCircuit,
         StackMatches,
@@ -189,7 +189,7 @@ impl<N: Network> Cast<N> {
     pub fn evaluate(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersCaller<N> + RegistersLoad<N> + RegistersStore<N>),
+        registers: &mut (impl RegistersSigner<N> + RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
@@ -307,7 +307,7 @@ impl<N: Network> Cast<N> {
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut (impl RegistersCallerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
+        registers: &mut (impl RegistersSignerCircuit<N, A> + RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
         use circuit::{Eject, Inject};
 

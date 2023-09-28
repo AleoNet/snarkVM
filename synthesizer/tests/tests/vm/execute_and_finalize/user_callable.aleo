@@ -12,9 +12,9 @@ cases:
 program child.aleo;
 
 function foo:
-    assert.eq self.parent self.caller;
-    output self.parent as address.public;
+    assert.eq self.caller self.signer;
     output self.caller as address.public;
+    output self.signer as address.public;
 
 /////////////////////////////////////////////////
 
@@ -26,6 +26,6 @@ function foo:
     call child.aleo/foo into r0 r1;
     output r0 as address.public;
     output r1 as address.public;
-    output self.parent as address.public;
     output self.caller as address.public;
+    output self.signer as address.public;
 

@@ -14,29 +14,29 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCaller<N> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSigner<N> for Registers<N, A> {
+    /// Returns the transition signer.
+    #[inline]
+    fn signer(&self) -> Result<Address<N>> {
+        self.signer.ok_or_else(|| anyhow!("Signer address (console) is not set in the registers."))
+    }
+
+    /// Sets the transition signer.
+    #[inline]
+    fn set_signer(&mut self, signer: Address<N>) {
+        self.signer = Some(signer);
+    }
+
     /// Returns the transition caller.
     #[inline]
     fn caller(&self) -> Result<Address<N>> {
-        self.caller.ok_or_else(|| anyhow!("Caller address (console) is not set in the registers."))
+        self.caller.ok_or_else(|| anyhow!("Parent address (console) is not set in the registers."))
     }
 
     /// Sets the transition caller.
     #[inline]
     fn set_caller(&mut self, caller: Address<N>) {
         self.caller = Some(caller);
-    }
-
-    /// Returns the transition parent.
-    #[inline]
-    fn parent(&self) -> Result<Address<N>> {
-        self.parent.ok_or_else(|| anyhow!("Parent address (console) is not set in the registers."))
-    }
-
-    /// Sets the transition parent.
-    #[inline]
-    fn set_parent(&mut self, parent: Address<N>) {
-        self.parent = Some(parent);
     }
 
     /// Returns the transition view key.
@@ -52,29 +52,29 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCaller<N> for Registers
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> RegistersCallerCircuit<N, A> for Registers<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegistersSignerCircuit<N, A> for Registers<N, A> {
+    /// Returns the transition signer, as a circuit.
+    #[inline]
+    fn signer_circuit(&self) -> Result<circuit::Address<A>> {
+        self.signer_circuit.clone().ok_or_else(|| anyhow!("Caller address (circuit) is not set in the registers."))
+    }
+
+    /// Sets the transition signer, as a circuit.
+    #[inline]
+    fn set_signer_circuit(&mut self, signer_circuit: circuit::Address<A>) {
+        self.signer_circuit = Some(signer_circuit);
+    }
+
     /// Returns the transition caller, as a circuit.
     #[inline]
     fn caller_circuit(&self) -> Result<circuit::Address<A>> {
-        self.caller_circuit.clone().ok_or_else(|| anyhow!("Caller address (circuit) is not set in the registers."))
+        self.caller_circuit.clone().ok_or_else(|| anyhow!("Parent address (circuit) is not set in the registers."))
     }
 
     /// Sets the transition caller, as a circuit.
     #[inline]
     fn set_caller_circuit(&mut self, caller_circuit: circuit::Address<A>) {
         self.caller_circuit = Some(caller_circuit);
-    }
-
-    /// Returns the transition parent, as a circuit.
-    #[inline]
-    fn parent_circuit(&self) -> Result<circuit::Address<A>> {
-        self.parent_circuit.clone().ok_or_else(|| anyhow!("Parent address (circuit) is not set in the registers."))
-    }
-
-    /// Sets the transition parent, as a circuit.
-    #[inline]
-    fn set_parent_circuit(&mut self, parent_circuit: circuit::Address<A>) {
-        self.parent_circuit = Some(parent_circuit);
     }
 
     /// Returns the transition view key, as a circuit.

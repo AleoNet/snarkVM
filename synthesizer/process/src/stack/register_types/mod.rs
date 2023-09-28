@@ -93,7 +93,7 @@ impl<N: Network> RegisterTypes<N> {
         Ok(match operand {
             Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
             Operand::Register(register) => self.get_type(stack, register)?,
-            Operand::ProgramID(_) | Operand::Caller | Operand::Parent => {
+            Operand::ProgramID(_) | Operand::Signer | Operand::Caller => {
                 RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
             }
             Operand::BlockHeight => bail!("'block.height' is not a valid operand in a non-finalize context."),

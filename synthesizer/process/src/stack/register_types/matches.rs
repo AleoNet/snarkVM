@@ -74,8 +74,8 @@ impl<N: Network> RegisterTypes<N> {
                         }
                     }
                 }
-                // Ensure the program ID, caller, and parent types (address) match the member type.
-                Operand::ProgramID(..) | Operand::Caller | Operand::Parent => {
+                // Ensure the program ID, signer, and caller types (address) match the member type.
+                Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
                     // Retrieve the operand type.
                     let operand_type = PlaintextType::Literal(LiteralType::Address);
                     // Ensure the operand type matches the member type.
@@ -149,8 +149,8 @@ impl<N: Network> RegisterTypes<N> {
                         }
                     }
                 }
-                // Ensure the program ID type, caller type, and parent types (address) match the element type.
-                Operand::ProgramID(..) | Operand::Caller | Operand::Parent => {
+                // Ensure the program ID type, signer type, and caller types (address) match the element type.
+                Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
                     // Retrieve the operand type.
                     let operand_type = PlaintextType::Literal(LiteralType::Address);
                     // Ensure the operand type matches the element type.
@@ -220,7 +220,7 @@ impl<N: Network> RegisterTypes<N> {
                 // They must hold all necessary state in storage instead.
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
-            Operand::Caller | Operand::Parent => {
+            Operand::Signer | Operand::Caller => {
                 // No-op.
             }
             Operand::BlockHeight => {
@@ -265,8 +265,8 @@ impl<N: Network> RegisterTypes<N> {
                                 }
                             }
                         }
-                        // Ensure the program ID, caller, and parent types (address) match the entry type.
-                        Operand::ProgramID(..) | Operand::Caller | Operand::Parent => {
+                        // Ensure the program ID, signer, and caller types (address) match the entry type.
+                        Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
                             // Retrieve the operand type.
                             let operand_type = &PlaintextType::Literal(LiteralType::Address);
                             // Ensure the operand type matches the entry type.

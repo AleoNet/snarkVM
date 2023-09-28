@@ -76,8 +76,8 @@ impl<N: Network> FinalizeTypes<N> {
             Operand::Literal(literal) => FinalizeType::Plaintext(PlaintextType::from(literal.to_type())),
             Operand::Register(register) => self.get_type(stack, register)?,
             Operand::ProgramID(_) => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+            Operand::Signer => bail!("'self.signer' is not a valid operand in a finalize context."),
             Operand::Caller => bail!("'self.caller' is not a valid operand in a finalize context."),
-            Operand::Parent => bail!("'self.parent' is not a valid operand in a finalize context."),
             Operand::BlockHeight => FinalizeType::Plaintext(PlaintextType::Literal(LiteralType::U32)),
         })
     }
