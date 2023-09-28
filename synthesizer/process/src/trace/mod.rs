@@ -162,13 +162,8 @@ impl<N: Network> Trace<N> {
         let global_state_root =
             self.global_state_root.get().ok_or_else(|| anyhow!("Global state root has not been set"))?;
         // Compute the proof.
-        let (global_state_root, proof) = Self::prove_batch::<A, R>(
-            locator,
-            &mut self.transition_tasks,
-            inclusion_assignments,
-            *global_state_root,
-            rng,
-        )?;
+        let (global_state_root, proof) =
+            Self::prove_batch::<A, R>(locator, &self.transition_tasks, inclusion_assignments, *global_state_root, rng)?;
         // Return the execution.
         Execution::from(self.transitions.iter().cloned(), global_state_root, Some(proof))
     }
@@ -195,7 +190,7 @@ impl<N: Network> Trace<N> {
         // Compute the proof.
         let (global_state_root, proof) = Self::prove_batch::<A, R>(
             "credits.aleo/fee (private or public)",
-            &mut self.transition_tasks,
+            &self.transition_tasks,
             inclusion_assignments,
             *global_state_root,
             rng,
@@ -255,7 +250,7 @@ impl<N: Network> Trace<N> {
     /// Returns the global state root and proof for the given assignments.
     fn prove_batch<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         locator: &str,
-        proving_tasks: &mut BTreeMap<ProvingKey<N>, Vec<Assignment<N::Field>>>,
+        proving_tasks: &BTreeMap<ProvingKey<N>, Vec<Assignment<N::Field>>>,
         inclusion_assignments: &[InclusionAssignment<N>],
         global_state_root: N::StateRoot,
         rng: &mut R,
@@ -266,6 +261,9 @@ impl<N: Network> Trace<N> {
         if global_state_root == N::StateRoot::default() {
             bail!("Inclusion expected the global state root in the execution to *not* be zero")
         }
+
+        // Collect references to keys and assignments, potentially to be extended by the inclusion key and assignment
+        let mut proving_tasks = proving_tasks.iter().map(|(p, a)| (p, a.as_slice())).collect::<BTreeMap<_, _>>();
 
         // Initialize a vector for the batch inclusion assignments.
         let mut batch_inclusions = Vec::with_capacity(inclusion_assignments.len());
@@ -279,12 +277,13 @@ impl<N: Network> Trace<N> {
             batch_inclusions.push(assignment.to_circuit_assignment::<A>()?);
         }
 
-        if !batch_inclusions.is_empty() {
-            let inclusion_proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
+        // Fetch the inclusion proving key.
+        let inclusion_proving_key = ProvingKey::<N>::new(N::inclusion_proving_key().clone());
 
+        if !batch_inclusions.is_empty() {
             // Insert the inclusion proving key and assignments.
-            if proving_tasks.insert(inclusion_proving_key, batch_inclusions).is_some() {
-                return Err(anyhow!("proving_key was already present"));
+            if proving_tasks.insert(&inclusion_proving_key, batch_inclusions.as_slice()).is_some() {
+                bail!("The inclusion proving key (and its instances) have already been inserted");
             }
         }
 
