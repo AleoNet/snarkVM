@@ -202,6 +202,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?
         .root();
 
+        // Construct the subdag root.
+        let subdag_root = match subdag {
+            Some(subdag) => subdag.leader_certificate().certificate_id(),
+            None => Field::zero(),
+        };
+
         // Construct the finalize state.
         let state = FinalizeGlobalState::new::<N>(
             next_round,
@@ -235,6 +241,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             transactions.to_finalize_root()?,
             ratifications_root,
             coinbase_accumulator_point,
+            subdag_root,
             metadata,
         )?;
         Ok((header, ratifications, solutions, transactions))
