@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use anyhow::anyhow;
 use rand::{
     distributions::{Distribution, Standard},
     rngs::StdRng,
@@ -169,7 +170,7 @@ impl rand::RngCore for TestMockRng {
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
         for byte in dest.iter_mut() {
-            *byte = self.state.pop().unwrap() as u8; // TODO: use try_from and convert the Error
+            *byte = self.state.pop().ok_or(rand::Error::new(anyhow!("Exceeded available internal randomness")))? as u8;
         }
         Ok(())
     }

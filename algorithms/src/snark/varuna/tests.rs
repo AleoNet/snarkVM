@@ -546,9 +546,8 @@ mod varuna_test_vectors {
     type MM = VarunaNonHidingMode;
     type VarunaSonicInst = VarunaSNARK<Bls12_377, FS, MM>;
 
-    /// Returns the path to the `resources` folder for this module.
-    fn resources_path() -> PathBuf {
-        // Construct the path for the `resources` folder.
+    // Create the path for the `resources` folder.
+    fn resources_path(create_dir: bool) -> PathBuf {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("src");
         path.push("snark");
@@ -557,70 +556,62 @@ mod varuna_test_vectors {
 
         // Create the `resources` folder, if it does not exist.
         if !path.exists() {
-            fs::create_dir_all(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
+            if create_dir {
+                fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
+            } else {
+                panic!("Resources folder does not exist: {path:?}");
+            }
         }
-        // Output the path.
+
         path
     }
 
-    /// Loads the given `test_folder/test_file` and asserts the given `candidate` matches the expected values.
-    #[track_caller]
-    fn assert_test_vector_equality<S1: Into<String>, S2: Into<String>>(
-        test_folder: S1,
-        test_file: S2,
-        candidate: &str,
-        circuit: &str,
-    ) {
-        // Construct the path for the test folder.
-        let mut path = resources_path();
-        path.push(circuit);
-        path.push(test_folder.into());
+    // Create the file path.
+    fn test_vector_path(folder: &str, file: &str, circuit: &str, create_dir: bool) -> PathBuf {
+        let mut path = resources_path(create_dir);
 
-        // Create the test folder, if it does not exist.
-        if !path.exists() {
-            fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {path:?}"));
-        }
-
-        // Construct the path for the test file.
-        path.push(test_file.into());
-        path.set_extension("txt");
-
-        // Create the test file, if it does not exist.
-        if !path.exists() {
-            panic!("Test file does not exist: {path:?}");
-        }
-
-        // Assert the test file is equal to the expected value.
-        expect_test::expect_file![path].assert_eq(candidate);
-    }
-
-    // In the case that we're creating a test vectors from a trusted branch
-    fn create_test_vector(folder: &str, file: &str, data: &str, circuit: &str) {
-        // Construct the path for the test folder.
-        let mut path = resources_path();
+        // Construct the path where the test data lives.
         path.push(circuit);
         path.push(folder);
 
-        // Create the test folder, if it does not exist.
+        // Create the test folder if it does not exist if specified, otherwise panic.
         if !path.exists() {
-            fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {path:?}"));
+            if create_dir {
+                fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {path:?}"));
+            } else {
+                panic!("Resources folder does not exist: {path:?}");
+            }
         }
 
         // Construct the path for the test file.
         path.push(file);
         path.set_extension("txt");
 
-        // Create the test file, if it does not exist.
-        if !path.exists() {
-            fs::File::create(&path).unwrap_or_else(|_| panic!("Failed to create file: {path:?}"));
-        }
+        path
+    }
 
+    // Loads the given `test_folder/test_file` and asserts the given `candidate` matches the expected values.
+    #[track_caller]
+    fn assert_test_vector_equality(test_folder: &str, test_file: &str, candidate: &str, circuit: &str) {
+        // Get the path to the test file.
+        let path = test_vector_path(test_folder, test_file, circuit, false);
+
+        // Assert the test file is equal to the expected value.
+        expect_test::expect_file![path].assert_eq(candidate);
+    }
+
+    // Create a test vector from a trusted revision of Varuna.
+    fn create_test_vector(folder: &str, file: &str, data: &str, circuit: &str) {
+        // Get the path to the test file.
+        let path = test_vector_path(folder, file, circuit, true);
+
+        // Write the test vector to file.
         fs::write(&path, data).unwrap_or_else(|_| panic!("Failed to write to file: {:?}", path));
     }
 
     // Tests varuna against the test vectors in all circuits in the resources folder.
     fn test_varuna_with_all_circuits(create_test_vectors: bool) {
-        let entries = fs::read_dir(resources_path()).expect("Failed to read resources folder");
+        let entries = fs::read_dir(resources_path(create_test_vectors)).expect("Failed to read resources folder");
         entries.into_iter().for_each(|entry| {
             let path = entry.unwrap().path();
             if path.is_dir() {
@@ -630,24 +621,14 @@ mod varuna_test_vectors {
         });
     }
 
-    // Create test vectors for all circuits in the resources folder.
-    #[test]
-    fn create_prover_test_vectors() {
-        test_varuna_with_all_circuits(true);
-    }
-
-    #[test]
-    fn test_varuna_with_prover_test_vectors() {
-        test_varuna_with_all_circuits(false);
-    }
-
+    // Test Varuna against test vectors for a specific circuit.
     fn test_circuit_with_test_vectors(create_test_vectors: bool, circuit: &str) {
         // Get the circuit instance from the test vector.
-        let instance_path = format!("src/snark/varuna/resources/{}/instance.input", circuit);
-        let instance_file = fs::read_to_string(instance_path).expect("Could not read the file");
-        let mut instance = Vec::new();
+        let witness_path = format!("src/snark/varuna/resources/{}/witness.input", circuit);
+        let instance_file = fs::read_to_string(witness_path).expect("Could not read the file");
+        let mut witness_vector = Vec::new();
         for line in instance_file.lines() {
-            instance.push(line.to_string())
+            witness_vector.push(line.to_string())
         }
 
         // Initialize challenges from file.
@@ -657,7 +638,6 @@ mod varuna_test_vectors {
         for line in challenges_file.lines() {
             challenges.push(line)
         }
-
         let (alpha, _eta_a, eta_b, eta_c, beta, delta_a, delta_b, delta_c, _gamma) = (
             Fr::from_str(challenges[0]).unwrap(),
             Fr::from_str(challenges[1]).unwrap(),
@@ -669,6 +649,7 @@ mod varuna_test_vectors {
             vec![Fr::from_str(challenges[7]).unwrap()],
             Fr::from_str(challenges[8]).unwrap(),
         );
+
         let circuit_combiner = Fr::one();
         let instance_combiners = vec![Fr::one()];
 
@@ -679,26 +660,27 @@ mod varuna_test_vectors {
                 s.push(f.0.0[f.0.0.len() - 1 - i]);
             }
         };
-        for witness in instance[15].split(',') {
+        for witness in witness_vector[0].split(',') {
             if witness.trim() == "" {
                 continue;
             }
             add_f_to_state(&mut rng_state, Fr::from_str(witness.trim()).unwrap());
         }
 
-        let rng = &mut snarkvm_utilities::rand::TestMockRng::fixed(rng_state);
-
-        let max_degree = AHPForR1CS::<Fr, MM>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = VarunaSonicInst::universal_setup(max_degree).unwrap();
+        // Create sample circuit which corresponds to instance.input file.
         let mul_depth = 3;
         let num_constraints = 7;
         let num_variables = 7;
-
+        let rng = &mut snarkvm_utilities::rand::TestMockRng::fixed(rng_state);
+        let max_degree =
+            AHPForR1CS::<Fr, MM>::max_degree(num_constraints, num_variables, num_variables * num_constraints).unwrap();
+        let universal_srs = VarunaSonicInst::universal_setup(max_degree).unwrap();
         let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
         let (index_pk, _index_vk) = VarunaSonicInst::circuit_setup(&universal_srs, &circ).unwrap();
         let mut keys_to_constraints = BTreeMap::new();
         keys_to_constraints.insert(index_pk.circuit.deref(), std::slice::from_ref(&circ));
 
+        // Begin the Varuna protocol execution.
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&keys_to_constraints, rng).unwrap();
         let mut prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, rng).unwrap();
         let first_round_oracles = Arc::new(prover_state.first_round_oracles.as_ref().unwrap());
@@ -832,5 +814,10 @@ mod varuna_test_vectors {
         assert_test_vector_equality("domain", "R", &format!("{:?}", constraint_domain_elements), circuit);
         assert_test_vector_equality("domain", "K", &format!("{:?}", non_zero_domain_elements), circuit);
         assert_test_vector_equality("domain", "C", &format!("{:?}", variable_domain_elements), circuit);
+    }
+
+    #[test]
+    fn test_varuna_with_prover_test_vectors() {
+        test_varuna_with_all_circuits(false);
     }
 }
