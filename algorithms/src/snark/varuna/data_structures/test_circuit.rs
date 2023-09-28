@@ -73,7 +73,6 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
         }
 
         for i in 0..mul_constraints {
-            println!("adding mul_constraint {i}");
             cs.enforce(|| format!("constraint_mul {i}"), |lc| lc + mul_vars[i], |lc| lc + b, |lc| lc + mul_vars[i + 1]);
         }
 
@@ -102,9 +101,6 @@ impl<F: Field> TestCircuit<F> {
             }
             public_inputs.push(new_var);
         }
-
-        println!("a: {}", a);
-        println!("b: {}", b);
 
         (TestCircuit { a: Some(a), b: Some(b), num_constraints, num_variables, mul_depth }, public_inputs)
     }
