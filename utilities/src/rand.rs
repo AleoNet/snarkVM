@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use anyhow::anyhow;
 use rand::{
     distributions::{Distribution, Standard},
     rngs::StdRng,
-    Rng,
-    SeedableRng,
+    Rng, SeedableRng,
 };
 use rand_xorshift::XorShiftRng;
+use std::num::NonZeroU32;
 
 /// A trait for a uniform random number generator.
 pub trait Uniform: Sized {
@@ -110,7 +109,11 @@ impl TestRng {
         /// to do that, we would need to reify the possible elements of strings,
         /// namely characters and escapes, and randomly generate such elements.
         fn adjust_backslash_and_doublequote(ch: char) -> char {
-            if ch == '\\' || ch == '\"' { '0' } else { ch }
+            if ch == '\\' || ch == '\"' {
+                '0'
+            } else {
+                ch
+            }
         }
 
         let range = match is_fixed_size {
@@ -170,7 +173,7 @@ impl rand::RngCore for TestMockRng {
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
         for byte in dest.iter_mut() {
-            *byte = self.state.pop().ok_or(rand::Error::new(anyhow!("Exceeded available internal randomness")))? as u8;
+            *byte = self.state.pop().ok_or(NonZeroU32::new(rand::Error::CUSTOM_START).unwrap())? as u8;
         }
         Ok(())
     }
