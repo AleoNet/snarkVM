@@ -28,6 +28,7 @@ impl<N: Network> FromBytes for Committee<N> {
         let starting_round = u64::read_le(&mut reader)?;
         // Read the number of members.
         let num_members = u32::read_le(&mut reader)?;
+        println!("NUM MEMBERS: {}", num_members);
         // Ensure the number of members is within bounds.
         if num_members > i32::MAX as u32 {
             return Err(error("Number of members exceeds maximum"));
@@ -86,15 +87,15 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    // #[test]
-    // fn test_bytes() {
-    //     let rng = &mut TestRng::default();
-    //
-    //     for expected in crate::test_helpers::sample_committees(rng) {
-    //         // Check the byte representation.
-    //         let expected_bytes = expected.to_bytes_le().unwrap();
-    //         assert_eq!(expected, Committee::read_le(&expected_bytes[..]).unwrap());
-    //         assert!(Committee::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-    //     }
-    // }
+    #[test]
+    fn test_bytes() {
+        let rng = &mut TestRng::default();
+
+        for expected in crate::test_helpers::sample_committees(rng) {
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            // assert_eq!(expected, Committee::read_le(&expected_bytes[..]).unwrap());
+            assert!(Committee::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        }
+    }
 }
