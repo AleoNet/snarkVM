@@ -86,7 +86,7 @@ impl<N: Network> Trace<N> {
 
         // Insert the assignment (and proving key if the entry does not exist)
         // We pass assignment by value because we are later also passing short-lived inclusion_assignment by value
-        self.transition_tasks.entry(proving_key).or_insert(vec![]).push(assignment);
+        self.transition_tasks.entry(proving_key).or_default().push(assignment);
         // Insert the transition into the list.
         self.transitions.push(transition.clone());
         // Insert the call metrics into the list.
