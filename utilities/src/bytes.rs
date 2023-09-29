@@ -25,6 +25,7 @@ use serde::{
     Deserializer,
     Serializer,
 };
+use smol_str::SmolStr;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 /// Takes as input a sequence of structs, and converts them to a series of little-endian bytes.
@@ -160,12 +161,12 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     }
 }
 
-pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, String, Option<usize>);
+pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, SmolStr, Option<usize>);
 
 impl<'a> FromBytesVisitor<'a> {
     /// Initializes a new `FromBytesVisitor` with the given `buffer` and `name`.
     pub fn new(buffer: &'a mut Vec<u8>, name: &str) -> Self {
-        Self(buffer, name.to_string(), None)
+        Self(buffer, SmolStr::new(name), None)
     }
 }
 
