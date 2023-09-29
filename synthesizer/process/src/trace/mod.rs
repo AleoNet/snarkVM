@@ -143,7 +143,7 @@ impl<N: Network> Trace<N> {
 
     /// Returns a new execution with a proof, for the current inclusion assignments and global state root.
     pub fn prove_execution<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &mut self,
+        &self,
         locator: &str,
         rng: &mut R,
     ) -> Result<Execution<N>> {
@@ -168,7 +168,7 @@ impl<N: Network> Trace<N> {
     }
 
     /// Returns a new fee with a proof, for the current inclusion assignment and global state root.
-    pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&mut self, rng: &mut R) -> Result<Fee<N>> {
+    pub fn prove_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Fee<N>> {
         // Ensure this is a fee.
         let is_fee_public = self.is_fee_public();
         let is_fee_private = self.is_fee_private();
