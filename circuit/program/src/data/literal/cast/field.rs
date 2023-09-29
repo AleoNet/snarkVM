@@ -88,9 +88,13 @@ mod tests {
         network::Testnet3,
         prelude::{One, TestRng, Uniform, Zero},
     };
-    use snarkvm_circuit_types::environment::{count_is, count_less_than, Circuit, Eject, Inject, Mode, UpdatableCount};
-
-    use std::fmt::Debug;
+   use snarkvm_circuit_types::environment::{count_is, count_less_than, Circuit, Eject, FormalCircuit, Inject, Mode, Transcribe, UpdatableCount};
+   use snarkvm_console_types_field::{Field as ConsoleField, One as ConsoleFieldOne, Zero as ConsoleFieldZero};
+   use snarkvm_console_types_group::Group as ConsoleGroup;
+ 
+   use std::{fmt::Debug,
+             str::FromStr,
+   };
 
     const ITERATIONS: usize = 100;
 
@@ -219,5 +223,51 @@ mod tests {
         check_cast::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Constant, count_is!(128, 0, 0, 0));
         check_cast::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Public, count_is!(0, 0, 128, 129));
         check_cast::<U128<Circuit>, console_root::types::U128<Testnet3>>(Mode::Private, count_is!(0, 0, 128, 129));
+    }
+
+
+
+    #[test]
+    fn formal_sample_field_0_cast_to_group() {
+        let a = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::zero());
+        let _candidate: Group<FormalCircuit> = a.cast();
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// cast of field (witness 0) to group");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_field_1_cast_to_group() {
+        let a = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate: Group<FormalCircuit> = a.cast();
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// cast of field (witness 1) to group");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_field_2_cast_to_group() {
+        let a = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::from_str("2field").unwrap());
+        let _candidate: Group<FormalCircuit> = a.cast();
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// cast of field (witness 2) to group");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_field_3_cast_to_group() {
+        let a = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::from_str("3field").unwrap());
+        let _candidate: Group<FormalCircuit> = a.cast();
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// cast of field (witness 3) to group");
+        println!("{}", output);
     }
 }

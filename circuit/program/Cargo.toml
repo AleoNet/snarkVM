@@ -43,6 +43,16 @@ version = "1.0"
 package = "snarkvm-console"
 path = "../../console"
 
+[dev-dependencies.snarkvm_console_types_field]
+package = "snarkvm-console-types-field"
+path = "../../console/types/field"
+version = "0.14.6"
+
+[dev-dependencies.snarkvm_console_types_group]
+package = "snarkvm-console-types-group"
+path = "../../console/types/group"
+version = "0.14.6"
+
 [dev-dependencies.console]
 package = "snarkvm-console-program"
 path = "../../console/program"
@@ -56,6 +66,9 @@ version = "1.0.73"
 
 [dev-dependencies.rand]
 version = "0.8"
+
+[dev-dependencies.serde_json]
+version = "1.0"
 
 [features]
 default = [ "enable_console" ]
