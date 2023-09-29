@@ -2483,3 +2483,108 @@ function {function_name}:
     assert_ne!(execution_1.peek().unwrap().id(), execution_2.peek().unwrap().id());
     assert_ne!(execution_1.to_execution_id().unwrap(), execution_2.to_execution_id().unwrap());
 }
+
+#[test]
+fn test_duplicate_function_call() {
+    // Initialize a new program.
+    let (string, program0) = Program::<CurrentNetwork>::parse(
+        r"
+program zero.aleo;
+
+function b:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    add r0 r1 into r2;
+    output r2 as u8.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Construct the process.
+    let mut process = crate::test_helpers::sample_process(&program0);
+
+    // Initialize another program.
+    let (string, program1) = Program::<CurrentNetwork>::parse(
+        r"
+import zero.aleo;
+
+program one.aleo;
+
+function a:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    call zero.aleo/b r0 r1 into r2;
+    call zero.aleo/b r0 r1 into r3;
+    output r2 as u8.private;
+    output r3 as u8.private;",
+    )
+    .unwrap();
+    assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+    // Add the program to the process.
+    process.add_program(&program1).unwrap();
+
+    // Initialize the RNG.
+    let rng = &mut TestRng::default();
+
+    // Initialize the caller.
+    let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+    // Declare the function name.
+    let function_name = Identifier::from_str("a").unwrap();
+
+    // Declare the input value.
+    let r0 = Value::<CurrentNetwork>::from_str("1u8").unwrap();
+    let r1 = Value::<CurrentNetwork>::from_str("2u8").unwrap();
+
+    // Authorize the function call.
+    let authorization = process
+        .authorize::<CurrentAleo, _>(&caller_private_key, program1.id(), function_name, [r0, r1].iter(), rng)
+        .unwrap();
+    assert_eq!(authorization.len(), 3);
+    println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
+
+    let output = Value::<CurrentNetwork>::from_str("3u8").unwrap();
+
+    // Compute the output value.
+    let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(2, candidate.len());
+    assert_eq!(output, candidate[0]);
+    assert_eq!(output, candidate[1]);
+
+    // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+    assert_eq!(authorization.len(), 3);
+
+    // Execute the request.
+    let (response, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
+    let candidate = response.outputs();
+    assert_eq!(2, candidate.len());
+    assert_eq!(output, candidate[0]);
+    assert_eq!(output, candidate[1]);
+
+    // Construct the expected transition order.
+    let expected_order = [
+        (program0.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
+        (program0.id(), Identifier::<Testnet3>::from_str("b").unwrap()),
+        (program1.id(), Identifier::from_str("a").unwrap()),
+    ];
+
+    // Check the expected transition order.
+    for (transition, (expected_program_id, expected_function_name)) in
+        trace.transitions().iter().zip_eq(expected_order.iter())
+    {
+        assert_eq!(transition.program_id(), *expected_program_id);
+        assert_eq!(transition.function_name(), expected_function_name);
+    }
+
+    // Initialize a new block store.
+    let block_store = BlockStore::<CurrentNetwork, BlockMemory<_>>::open(None).unwrap();
+    // Prepare the trace.
+    trace.prepare(Query::from(block_store)).unwrap();
+    // Prove the execution.
+    let execution = trace.prove_execution::<CurrentAleo, _>("one", rng).unwrap();
+
+    // Verify the execution.
+    process.verify_execution(&execution).unwrap();
+}
