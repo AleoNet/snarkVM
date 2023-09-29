@@ -84,8 +84,7 @@ impl<N: Network> Trace<N> {
         // Insert the transition into the inclusion tasks.
         self.inclusion_tasks.insert_transition(input_ids, transition)?;
 
-        // Insert the assignment (and proving key if the entry does not exist)
-        // We pass assignment by value because we are later also passing short-lived inclusion_assignment by value
+        // Insert the assignment (and proving key if the entry does not exist).
         self.transition_tasks.entry(proving_key).or_default().push(assignment);
         // Insert the transition into the list.
         self.transitions.push(transition.clone());
