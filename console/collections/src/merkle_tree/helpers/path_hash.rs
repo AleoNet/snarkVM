@@ -45,8 +45,9 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for 
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {
+        let mut input = Vec::with_capacity(1 + <Self::Hash as SizeInBits>::size_in_bits() * 2);
         // Prepend the nodes with a `true` bit.
-        let mut input = vec![true];
+        input.push(true);
         left.write_bits_le(&mut input);
         right.write_bits_le(&mut input);
         // Hash the input.
