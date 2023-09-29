@@ -5,7 +5,7 @@
 /**********************************************************************************************************************/
 
 // Open Questions:
-// - Should the 720 be more?
+// - Should the 360 be more?
 // fn bond
 // - if the bond is now 33% or more, close the validator. (determine how hard to impl this)
 // fn unbond
@@ -261,7 +261,7 @@ finalize unbond_public:
 
     // Compute the height at which the unbonding will be complete, starting from the current block.
     // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 720u32 into r4;
+    add block.height 360u32 into r4;
 
     // Determine if the caller is a validator or delegator.
     contains committee[r0] into r5;
@@ -513,7 +513,7 @@ finalize unbond_delegator_as_validator:
     add r8.microcredits r4.microcredits into r9;
     // Compute the height at which the unbonding will be complete, starting from the current block.
     // Note: Calling unbond across multiple blocks before the unbonding is complete will reset the height each time.
-    add block.height 720u32 into r10;
+    add block.height 360u32 into r10;
 
     // Construct the updated unbond state.
     cast r9 r10 into r11 as unbond_state;
