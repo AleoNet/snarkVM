@@ -36,7 +36,7 @@ use indexmap::IndexMap;
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
 
-const NUM_BLOCKS_TO_UNLOCK: u32 = 720;
+const NUM_BLOCKS_TO_UNLOCK: u32 = 360;
 
 /// Samples a new finalize state.
 fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {

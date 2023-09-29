@@ -71,9 +71,9 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> CastLossy<Integer<E, I1>>
             // Otherwise, zero extend.
             false => Boolean::constant(false),
         };
-        bits_le.extend(std::iter::repeat(padding).take(I1::BITS.saturating_sub(I0::BITS) as usize));
+        bits_le.resize(I1::BITS as usize, padding);
         // Construct the integer from the bits.
-        Integer::from_bits_le(&bits_le[..(I1::BITS as usize)])
+        Integer::from_bits_le(&bits_le)
     }
 }
 
