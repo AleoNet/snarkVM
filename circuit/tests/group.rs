@@ -28,9 +28,9 @@ mod group {
         Boolean,
     };
     use snarkvm_circuit_environment::{FormalCircuit, Inject, Mode, Transcribe};
-    use snarkvm_circuit_types::Group;
+    use snarkvm_circuit_types::{Field, Group, Scalar};
+    use snarkvm_console_types_field::{Field as ConsoleField, One};
     use snarkvm_console_types_group::{Group as ConsoleGroup, Zero};
-    use snarkvm_circuit_types::Scalar;
     use snarkvm_console_types_scalar::{Scalar as ConsoleScalar};
     use std::{
         str::FromStr,
@@ -141,6 +141,19 @@ mod group {
         let transcript = FormalCircuit::clear();
         let output = serde_json::to_string_pretty(&transcript).unwrap();
         println!("// mul10");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn from_xy_coordinates() {
+        // see circuit/types/group/src/helpers/from_xy_coordinates.rs
+        let x= Field::<FormalCircuit>::new(Mode::Private, ConsoleField::zero());
+        let y = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::one());
+        let _candidate = Group::<FormalCircuit>::from_xy_coordinates(x, y);
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// from_xy_coordinates");
         println!("{}", output);
     }
 
