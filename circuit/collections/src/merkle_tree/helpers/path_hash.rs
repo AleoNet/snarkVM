@@ -48,7 +48,7 @@ impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Self::Hash {
-        let mut input = Vec::new();
+        let mut input = Vec::with_capacity(3);
         // Prepend the nodes with a `1field` byte.
         input.push(Self::Hash::one());
         input.push(left.clone());

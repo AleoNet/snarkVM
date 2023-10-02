@@ -201,7 +201,7 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     pub fn to_field_elements(&self) -> Vec<F> {
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(1 + self.g_a_evals.len() + self.g_b_evals.len() + self.g_c_evals.len());
         result.push(self.g_1_eval);
         result.extend_from_slice(&self.g_a_evals);
         result.extend_from_slice(&self.g_b_evals);

@@ -43,7 +43,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash for 
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<Self::Hash> {
-        let mut input = Vec::new();
+        let mut input = Vec::with_capacity(1 + leaf.len());
         // Prepend the leaf with a `false` bit.
         input.push(false);
         input.extend(leaf);
@@ -58,7 +58,7 @@ impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<Self::Hash> {
-        let mut input = Vec::new();
+        let mut input = Vec::with_capacity(1 + leaf.len());
         // Prepend the leaf with a `0field` element.
         input.push(Self::Hash::zero());
         input.extend(leaf);
@@ -73,7 +73,7 @@ impl<const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<TYPE, VARIANT> {
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<Self::Hash> {
-        let mut input = Vec::new();
+        let mut input = Vec::with_capacity(1 + leaf.len());
         // Prepend the leaf with a `false` bit.
         input.push(false);
         input.extend(leaf);

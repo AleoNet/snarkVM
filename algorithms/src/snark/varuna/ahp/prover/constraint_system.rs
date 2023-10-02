@@ -37,7 +37,7 @@ impl<F: Field> ConstraintSystem<F> {
     /// Formats the public input according to the requirements of the constraint
     /// system
     pub(crate) fn format_public_input(public_input: &[F]) -> Vec<F> {
-        let mut input = Vec::new();
+        let mut input = Vec::with_capacity(1 + public_input.len());
         input.push(F::one());
         input.extend_from_slice(public_input);
         input

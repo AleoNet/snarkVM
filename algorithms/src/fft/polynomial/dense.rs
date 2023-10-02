@@ -101,7 +101,7 @@ impl<F: Field> DensePolynomial<F> {
         } else if point.is_zero() {
             return self.coeffs[0];
         }
-        let mut powers_of_point = Vec::new();
+        let mut powers_of_point = Vec::with_capacity(1 + self.degree());
         powers_of_point.push(F::one());
         let mut cur = point;
         for _ in 0..self.degree() {
