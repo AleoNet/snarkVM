@@ -45,9 +45,9 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize>: Clone + Debug {
     /// Takes in bytes.
     fn absorb_bytes(&mut self, elements: &[u8]) {
         let capacity = F::size_in_bits() - 1;
-        let mut bits = Vec::<bool>::new();
+        let mut bits = Vec::<bool>::with_capacity(elements.len() * 8);
         for elem in elements {
-            bits.append(&mut vec![
+            bits.extend_from_slice(&[
                 elem & 128 != 0,
                 elem & 64 != 0,
                 elem & 32 != 0,
