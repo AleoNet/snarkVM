@@ -46,7 +46,8 @@ impl<A: Aleo> Response<A> {
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(output.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(output_index);
@@ -70,7 +71,8 @@ impl<A: Aleo> Response<A> {
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(output.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(output_index);
@@ -134,7 +136,8 @@ impl<A: Aleo> Response<A> {
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Construct the preimage as `(function ID || output || tvk || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(output.to_fields());
                         preimage.push(tvk.clone());
                         preimage.push(output_index);
@@ -157,7 +160,8 @@ impl<A: Aleo> Response<A> {
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(output.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(output_index);

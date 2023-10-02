@@ -225,7 +225,8 @@ impl<N: Network> Transition<N> {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(u16::try_from(num_inputs + index)?);
                         // Construct the preimage as `(function ID || output || tvk || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(record.to_fields()?);
                         preimage.push(*request.tvk());
                         preimage.push(index);
