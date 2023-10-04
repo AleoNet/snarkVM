@@ -139,7 +139,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
         circuit_commitments: impl Iterator<Item = &'a [crate::polycommit::sonic_pc::Commitment<E>]>,
     ) -> FS {
         let mut sponge = FS::new_with_parameters(fs_parameters);
-        sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
+        sponge.absorb_bytes(Self::PROTOCOL_NAME);
         for (batch_size, inputs) in inputs_and_batch_sizes.values() {
             sponge.absorb_bytes(&(u64::try_from(*batch_size).unwrap()).to_le_bytes());
             for input in inputs.iter() {
