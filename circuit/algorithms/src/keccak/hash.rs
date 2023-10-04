@@ -91,9 +91,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     fn pad_keccak(input: &[Boolean<E>], bitrate: usize) -> Vec<Vec<Boolean<E>>> {
         debug_assert!(bitrate > 0, "The bitrate must be positive");
 
-        // Resize the input to a multiple of 8.
         let mut padded_input = input.to_vec();
-        padded_input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
 
         // Step 1: Append the bit "1" to the message.
         padded_input.push(Boolean::constant(true));
@@ -121,9 +119,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     fn pad_sha3(input: &[Boolean<E>], bitrate: usize) -> Vec<Vec<Boolean<E>>> {
         debug_assert!(bitrate > 1, "The bitrate must be greater than 1");
 
-        // Resize the input to a multiple of 8.
         let mut padded_input = input.to_vec();
-        padded_input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
 
         // Step 1: Append the "0x06" byte to the message.
         padded_input.push(Boolean::constant(false));
@@ -303,7 +299,12 @@ mod tests {
 
                 // Prepare the preimage.
                 let native_input = (0..num_inputs).map(|_| Uniform::rand(rng)).collect::<Vec<bool>>();
-                let input = native_input.iter().map(|v| Boolean::<Circuit>::new(Mode::Private, *v)).collect::<Vec<_>>();
+                let mut input = native_input.iter().map(|v| Boolean::<Circuit>::new(Mode::Private, *v)).collect::<Vec<_>>();
+                // Since the implementation of the native hash zero-extends the bits to be byte-aligned,
+                // while circuit hash operates on bits according to FIPS,
+                // we need to zero-extend the circuit hash input to be byte-aligned
+                // in order to make an apple-to-apple comparison in the tests.
+                input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
 
                 // Compute the console hash.
                 let expected = $console.hash(&native_input).expect("Failed to hash console input");
@@ -333,7 +334,12 @@ mod tests {
         for i in 0..ITERATIONS {
             // Prepare the preimage.
             let native_input = (0..num_inputs).map(|_| Uniform::rand(rng)).collect::<Vec<bool>>();
-            let input = native_input.iter().map(|v| Boolean::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
+            let mut input = native_input.iter().map(|v| Boolean::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
+            // Since the implementation of the native hash zero-extends the bits to be byte-aligned,
+            // while circuit hash operates on bits according to FIPS,
+            // we need to zero-extend the circuit hash input to be byte-aligned
+            // in order to make an apple-to-apple comparison in the tests.
+            input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
 
             // Compute the native hash.
             let expected = native.hash(&native_input).expect("Failed to hash native input");
