@@ -68,7 +68,7 @@ fn sanity_check_subdag_with_dfs<N: Network>(subdag: &BTreeMap<u64, IndexSet<Batc
                 continue;
             }
             // Retrieve the previous certificate.
-            let Some(previous_certificate) = subdag.get(&(certificate.round() - 1)).and_then(|map| {
+            let Some(previous_certificate) = subdag.get(&previous_round).and_then(|map| {
                 map.iter().find(|certificate| certificate.certificate_id() == *previous_certificate_id)
             }) else {
                 // The previous certificate is missing.
