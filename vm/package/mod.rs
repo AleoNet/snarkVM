@@ -359,9 +359,12 @@ function transfer:
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::prelude::Testnet3;
     use snarkvm_utilities::TestRng;
 
     type CurrentAleo = snarkvm_circuit::network::AleoV0;
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_imports_directory() {
@@ -412,6 +415,61 @@ mod tests {
 
         // Get the program process and check all instructions.
         assert!(package.get_process().is_ok());
+
+        // Proactively remove the temporary directory (to conserve space).
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn test_package_run_and_execute_match() {
+        // Initialize the program.
+        let program = Program::<CurrentNetwork>::from_str(
+            "
+program foo.aleo;
+
+function bar:
+    input r0 as boolean.private;
+    assert.eq r0 false;",
+        )
+        .unwrap();
+
+        // Samples a new package at a temporary directory.
+        let (directory, package) = crate::package::test_helpers::sample_package_with_program_and_imports(&program, &[]);
+
+        // Ensure the build directory does *not* exist.
+        assert!(!package.build_directory().exists());
+        // Build the package.
+        package.build::<CurrentAleo>(None).unwrap();
+        // Ensure the build directory exists.
+        assert!(package.build_directory().exists());
+
+        // Initialize an RNG.
+        let rng = &mut TestRng::default();
+        // Sample the function inputs.
+        let private_key = PrivateKey::new(rng).unwrap();
+        let function_name = Identifier::from_str("bar").unwrap();
+        let inputs = vec![Value::from_str("true").unwrap()];
+
+        // Construct the endpoint.
+        let endpoint = "https://api.explorer.aleo.org/v1".to_string();
+
+        // Run the program function.
+        let run_result = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).ok();
+
+        // Execute the program function.
+        let execute_result =
+            package.execute::<CurrentAleo, _>(endpoint, &private_key, function_name, &inputs, rng).ok();
+
+        match (run_result, execute_result) {
+            // If both results are `None`, then they both failed.
+            (None, None) => {}
+            // If both results are `Some`, then check that the responses match.
+            (Some((run_response, _)), Some((execute_response, _, _))) => {
+                assert_eq!(run_response, execute_response);
+            }
+            // Otherwise, the results do not match.
+            _ => panic!("Run and execute results do not match"),
+        }
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
