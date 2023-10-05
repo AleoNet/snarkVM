@@ -299,7 +299,8 @@ mod tests {
 
                 // Prepare the preimage.
                 let native_input = (0..num_inputs).map(|_| Uniform::rand(rng)).collect::<Vec<bool>>();
-                let mut input = native_input.iter().map(|v| Boolean::<Circuit>::new(Mode::Private, *v)).collect::<Vec<_>>();
+                let mut input =
+                    native_input.iter().map(|v| Boolean::<Circuit>::new(Mode::Private, *v)).collect::<Vec<_>>();
                 // Since the implementation of the native hash zero-extends the bits to be byte-aligned,
                 // while circuit hash operates on bits according to FIPS,
                 // we need to zero-extend the circuit hash input to be byte-aligned
