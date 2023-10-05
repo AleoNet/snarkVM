@@ -86,7 +86,6 @@ mod tests {
 
     macro_rules! check_hash_leaf {
         ($native:ident, $circuit:ident, $mode:ident, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
-
             let mut rng = TestRng::default();
 
             for i in 0..ITERATIONS {
