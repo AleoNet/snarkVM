@@ -42,6 +42,9 @@ fn is_sequential<T>(map: &BTreeMap<u64, T>) -> bool {
 fn sanity_check_subdag_with_dfs<N: Network>(subdag: &BTreeMap<u64, IndexSet<BatchCertificate<N>>>) -> bool {
     use std::collections::HashSet;
 
+    // Determine the lowest round.
+    let lowest_round = subdag.iter().next().map_or(0, |(round, _)| *round);
+
     // Initialize a map for the certificates to commit.
     let mut commit = BTreeMap::<u64, IndexSet<_>>::new();
     // Initialize a set for the already ordered certificates.
@@ -52,13 +55,27 @@ fn sanity_check_subdag_with_dfs<N: Network>(subdag: &BTreeMap<u64, IndexSet<Batc
     while let Some(certificate) = buffer.pop() {
         // Insert the certificate into the map.
         commit.entry(certificate.round()).or_default().insert(certificate.clone());
+
+        // If the previous certificate is below the GC round, continue.
+        let previous_round = certificate.round().saturating_sub(1);
+        if previous_round < lowest_round {
+            continue;
+        }
         // Iterate over the previous certificate IDs.
         for previous_certificate_id in certificate.previous_certificate_ids() {
+            // If the previous certificate ID is already ordered, continue.
+            if already_ordered.contains(previous_certificate_id) {
+                continue;
+            }
+            // Retrieve the previous certificate.
             let Some(previous_certificate) = subdag.get(&(certificate.round() - 1)).and_then(|map| {
                 map.iter().find(|certificate| certificate.certificate_id() == *previous_certificate_id)
             }) else {
-                // It is either ordered or below the GC round.
-                continue;
+                // The previous certificate is missing.
+                eprintln!(
+                    "The subdag is missing a previous certificate for round {previous_round} ({previous_certificate_id})"
+                );
+                return false;
             };
             // Insert the previous certificate into the set of already ordered certificates.
             if !already_ordered.insert(previous_certificate.certificate_id()) {
