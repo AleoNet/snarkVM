@@ -386,16 +386,19 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
     ) -> SmallVec<[F; 10]> {
         let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), optimization_type);
 
+        // Prepare a reusable vector for the BE bits.
+        let mut cur_bits = Vec::new();
         // Push the lower limbs first
         let mut limbs: SmallVec<[F; 10]> = SmallVec::new();
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
-            let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
+            cur.write_bits_be(&mut cur_bits); // `write_bits_be` is big endian
             let cur_mod_r =
                 <F as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..])
                     .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(F::from_bigint(cur_mod_r).unwrap());
             cur.divn(params.bits_per_limb as u32);
+            cur_bits.clear();
         }
 
         // then we reserve, so that the limbs are ``big limb first''
