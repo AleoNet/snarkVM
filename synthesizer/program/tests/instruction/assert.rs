@@ -37,7 +37,7 @@ fn sample_stack(
     type_b: LiteralType,
     mode_a: circuit::Mode,
     mode_b: circuit::Mode,
-) -> Result<(Stack<CurrentNetwork>, Vec<Operand<CurrentNetwork>>)> {
+) -> Result<(Stack<CurrentNetwork>, [Operand<CurrentNetwork>; 2])> {
     // Initialize the opcode.
     let opcode = opcode.to_string();
 
@@ -68,7 +68,7 @@ fn sample_stack(
     // Initialize the operands.
     let operand_a = Operand::Register(r0);
     let operand_b = Operand::Register(r1);
-    let operands = vec![operand_a, operand_b];
+    let operands = [operand_a, operand_b];
 
     // Initialize the stack.
     let stack = Stack::new(&Process::load()?, &program)?;
@@ -77,7 +77,7 @@ fn sample_stack(
 }
 
 fn check_assert<const VARIANT: u8>(
-    operation: impl FnOnce(Vec<Operand<CurrentNetwork>>) -> AssertInstruction<CurrentNetwork, VARIANT>,
+    operation: impl FnOnce([Operand<CurrentNetwork>; 2]) -> AssertInstruction<CurrentNetwork, VARIANT>,
     opcode: Opcode,
     literal_a: &Literal<CurrentNetwork>,
     literal_b: &Literal<CurrentNetwork>,
