@@ -32,7 +32,7 @@ use crate::{
     ledger::{block::Execution, query::Query, store::helpers::memory::BlockMemory},
     prelude::{Deserialize, Deserializer, Serialize, SerializeStruct, Serializer},
     synthesizer::{
-        process::{Assignments, CallMetrics, CallStack, Process, StackExecute},
+        process::{CallMetrics, CallStack, Process, StackEvaluate},
         program::{CallOperator, Instruction, Program},
         snark::{ProvingKey, VerifyingKey},
     },

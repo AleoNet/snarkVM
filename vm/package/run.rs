@@ -22,7 +22,7 @@ impl<N: Network> Package<N> {
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<(Response<N>, Vec<CallMetrics<N>>)> {
+    ) -> Result<Response<N>> {
         // Retrieve the main program.
         let program = self.program();
         // Retrieve the program ID.
@@ -43,21 +43,14 @@ impl<N: Network> Package<N> {
         // Authorize the function call.
         let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs.iter(), rng)?;
 
-        // TODO (howardwu): Retrieve the value directly from the authorize call.
-        // Pop the first request.
-        let request = authorization.next()?;
         // Retrieve the stack.
         let stack = process.get_stack(program_id)?;
-        // Initialize the assignments.
-        let assignments = Assignments::<N>::default();
         // Initialize the call stack.
-        let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
+        let call_stack = CallStack::Evaluate(authorization);
         // Synthesize the circuit.
-        let response = stack.execute_function::<A>(call_stack, None)?;
-        // Retrieve the call metrics.
-        let call_metrics = assignments.read().iter().map(|(_, metrics)| *metrics).collect::<Vec<_>>();
+        let response = stack.evaluate_function::<A>(call_stack, None)?;
         // Return the response and call metrics.
-        Ok((response, call_metrics))
+        Ok(response)
     }
 }
 
@@ -86,7 +79,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _metrics) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+        let _response = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
@@ -110,7 +103,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _metrics) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+        let _metrics = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
@@ -136,7 +129,7 @@ mod tests {
         let (private_key, function_name, inputs) =
             crate::package::test_helpers::sample_package_run(package.program_id());
         // Run the program function.
-        let (_response, _metrics) = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
+        let _metrics = package.run::<CurrentAleo, _>(&private_key, function_name, &inputs, rng).unwrap();
 
         // Proactively remove the temporary directory (to conserve space).
         std::fs::remove_dir_all(directory).unwrap();
