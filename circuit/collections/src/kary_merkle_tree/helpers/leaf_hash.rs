@@ -59,8 +59,10 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> LeafHash for Keccak<E
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash {
         // Prepend the leaf with a `false` bit.
+        // Also zero-extend to byte, because this is what the console implementation of Keccak does.
         let mut input = vec![Boolean::constant(false)];
         input.extend_from_slice(leaf);
+        input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
         // Hash the input.
         let output = Hash::hash(self, &input);
         // Read the first VARIANT bits.
@@ -84,6 +86,7 @@ mod tests {
 
     macro_rules! check_hash_leaf {
         ($native:ident, $circuit:ident, $mode:ident, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
+
             let mut rng = TestRng::default();
 
             for i in 0..ITERATIONS {

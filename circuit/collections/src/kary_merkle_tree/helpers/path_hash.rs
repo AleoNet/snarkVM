@@ -74,10 +74,12 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> PathHash<E> for Kecca
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, children: &[Self::Hash]) -> Self::Hash {
         // Prepend the nodes with a `true` bit.
+        // Also zero-extend to byte, because this is what the console implementation of Keccak does.
         let mut input = vec![Boolean::constant(true)];
         for child in children {
             child.write_bits_le(&mut input);
         }
+        input.resize((input.len() + 7) / 8 * 8, Boolean::constant(false));
         // Hash the input.
         let output = Hash::hash(self, &input);
         // Read the first VARIANT bits.
