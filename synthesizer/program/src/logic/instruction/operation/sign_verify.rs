@@ -28,7 +28,7 @@ use console::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SignVerify<N: Network> {
     /// The operands.
-    operands: Vec<Operand<N>>,
+    operands: [Operand<N>; 3],
     /// The destination register.
     destination: Register<N>,
 }
@@ -36,9 +36,7 @@ pub struct SignVerify<N: Network> {
 impl<N: Network> SignVerify<N> {
     /// Initializes a new `sign.verify` instruction.
     #[inline]
-    pub fn new(operands: Vec<Operand<N>>, destination: Register<N>) -> Result<Self> {
-        // Sanity check the number of operands.
-        ensure!(operands.len() == 3, "Instruction '{}' must have three operands", Self::opcode());
+    pub fn new(operands: [Operand<N>; 3], destination: Register<N>) -> Result<Self> {
         // Return the instruction.
         Ok(Self { operands, destination })
     }
@@ -73,11 +71,6 @@ impl<N: Network> SignVerify<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 3 {
-            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-
         // Retrieve the inputs.
         let signature = match registers.load_literal(stack, &self.operands[0])? {
             Literal::Signature(signature) => signature,
@@ -103,11 +96,6 @@ impl<N: Network> SignVerify<N> {
         stack: &(impl StackMatches<N> + StackProgram<N>),
         registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
     ) -> Result<()> {
-        // Ensure the number of operands is correct.
-        if self.operands.len() != 3 {
-            bail!("Instruction '{}' expects 3 operands, found {} operands", Self::opcode(), self.operands.len())
-        }
-
         // Retrieve the inputs.
         let signature = match registers.load_literal_circuit(stack, &self.operands[0])? {
             circuit::Literal::Signature(signature) => signature,
@@ -197,7 +185,7 @@ impl<N: Network> Parser for SignVerify<N> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
 
-        Ok((string, Self { operands: vec![first, second, third], destination }))
+        Ok((string, Self { operands: [first, second, third], destination }))
     }
 }
 
@@ -229,10 +217,6 @@ impl<N: Network> Debug for SignVerify<N> {
 impl<N: Network> Display for SignVerify<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Ensure the number of operands is 3.
-        if self.operands.len() != 3 {
-            return Err(fmt::Error);
-        }
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
         self.operands.iter().try_for_each(|operand| write!(f, "{operand} "))?;
@@ -244,11 +228,7 @@ impl<N: Network> FromBytes for SignVerify<N> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Initialize the vector for the operands.
-        let mut operands = Vec::with_capacity(3);
-        // Read the operands.
-        for _ in 0..3 {
-            operands.push(Operand::read_le(&mut reader)?);
-        }
+        let operands = [Operand::read_le(&mut reader)?, Operand::read_le(&mut reader)?, Operand::read_le(&mut reader)?];
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
 
@@ -260,10 +240,6 @@ impl<N: Network> FromBytes for SignVerify<N> {
 impl<N: Network> ToBytes for SignVerify<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the number of operands is 3.
-        if self.operands.len() != 3 {
-            return Err(error(format!("The number of operands must be 3, found {}", self.operands.len())));
-        }
         // Write the operands.
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
         // Write the destination register.
@@ -282,7 +258,6 @@ mod tests {
     fn test_parse() {
         let (string, is) = SignVerify::<CurrentNetwork>::parse("sign.verify r0 r1 r2 into r3").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(is.operands.len(), 3, "The number of operands is incorrect");
         assert_eq!(is.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(is.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
         assert_eq!(is.operands[2], Operand::Register(Register::Locator(2)), "The third operand is incorrect");
