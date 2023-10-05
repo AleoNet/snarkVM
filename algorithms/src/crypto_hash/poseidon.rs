@@ -129,7 +129,7 @@ impl<F: PrimeField, const RATE: usize> AlgebraicSponge<F, RATE> for PoseidonSpon
             mode: DuplexSpongeMode::Absorbing { next_absorb_index: 0 },
             adjustment_factor_lookup_table: {
                 let capacity = F::size_in_bits() - 1;
-                let mut table = Vec::<F>::new();
+                let mut table = Vec::<F>::with_capacity(capacity);
 
                 let mut cur = F::one();
                 for _ in 0..capacity {
