@@ -449,7 +449,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                 metrics,
             )?;
         }
-        // If the circuit is in `PackageRun` mode, then save the assignment
+        // If the circuit is in `PackageRun` mode, then save the assignment.
         else if let CallStack::PackageRun(_, _, ref assignments) = registers.call_stack() {
             // Construct the call metrics.
             let metrics = CallMetrics {
