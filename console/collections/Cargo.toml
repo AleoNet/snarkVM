@@ -7,6 +7,11 @@ license = "Apache-2.0"
 edition = "2021"
 
 [[bench]]
+name = "kary_merkle_tree"
+path = "benches/kary_merkle_tree.rs"
+harness = false
+
+[[bench]]
 name = "merkle_tree"
 path = "benches/merkle_tree.rs"
 harness = false
