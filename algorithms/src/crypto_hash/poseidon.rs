@@ -338,15 +338,18 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
 
         let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), ty);
 
+        // Prepare a reusable vector to be used in overhead calculation.
+        let mut num_bits = Vec::new();
+
         let mut i = 0;
         let src_len = src_limbs.len();
         while i < src_len {
             let first = &src_limbs[i];
             let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
 
-            let first_max_bits_per_limb = params.bits_per_limb + crate::overhead!(first.1 + F::one());
+            let first_max_bits_per_limb = params.bits_per_limb + crate::overhead!(first.1 + F::one(), &mut num_bits);
             let second_max_bits_per_limb = if let Some(second) = second {
-                params.bits_per_limb + crate::overhead!(second.1 + F::one())
+                params.bits_per_limb + crate::overhead!(second.1 + F::one(), &mut num_bits)
             } else {
                 0
             };

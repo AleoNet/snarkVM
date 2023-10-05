@@ -100,10 +100,11 @@ pub(crate) mod nonnative_params {
     /// A macro for computing ceil(log2(x))+1 for a field element x
     #[macro_export]
     macro_rules! overhead {
-        ($x:expr) => {{
+        ($x:expr, $num_bits:expr) => {{
             use snarkvm_utilities::ToBits;
             let num = $x;
-            let num_bits = num.to_bigint().to_bits_be();
+            let num_bits = $num_bits;
+            num.to_bigint().write_bits_be(num_bits);
             let mut skipped_bits = 0;
             for b in num_bits.iter() {
                 if *b == false {
@@ -120,7 +121,12 @@ pub(crate) mod nonnative_params {
                 }
             }
 
-            if is_power_of_2 { num_bits.len() - skipped_bits } else { num_bits.len() - skipped_bits + 1 }
+            let result = if is_power_of_2 { num_bits.len() - skipped_bits } else { num_bits.len() - skipped_bits + 1 };
+
+            // Clear the reusable vector for bits.
+            num_bits.clear();
+
+            result
         }};
     }
 
