@@ -82,6 +82,7 @@ pub enum CallStack<N: Network> {
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Trace<N>>>),
+    PackageRun(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
 }
 
 impl<N: Network> CallStack<N> {
@@ -115,6 +116,9 @@ impl<N: Network> CallStack<N> {
             CallStack::Execute(authorization, trace) => {
                 CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(trace.read().clone())))
             }
+            CallStack::PackageRun(requests, private_key, assignments) => {
+                CallStack::PackageRun(requests.clone(), *private_key, Arc::new(RwLock::new(assignments.read().clone())))
+            }
         }
     }
 
@@ -126,6 +130,7 @@ impl<N: Network> CallStack<N> {
             CallStack::CheckDeployment(requests, ..) => requests.push(request),
             CallStack::Evaluate(authorization) => authorization.push(request),
             CallStack::Execute(authorization, ..) => authorization.push(request),
+            CallStack::PackageRun(requests, ..) => requests.push(request),
         }
         Ok(())
     }
@@ -135,7 +140,8 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..)
             | CallStack::Synthesize(requests, ..)
-            | CallStack::CheckDeployment(requests, ..) => {
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.next(),
@@ -148,7 +154,8 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..)
             | CallStack::Synthesize(requests, ..)
-            | CallStack::CheckDeployment(requests, ..) => {
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => {
                 requests.last().cloned().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate(authorization) => authorization.peek_next(),
