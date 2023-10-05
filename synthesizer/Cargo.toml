@@ -59,6 +59,11 @@ process = [ "synthesizer-process" ]
 program = [ "synthesizer-program" ]
 snark = [ "synthesizer-snark" ]
 
+[[bench]]
+name = "kary_merkle_tree"
+path = "benches/kary_merkle_tree.rs"
+harness = false
+
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../circuit"
@@ -140,6 +145,9 @@ version = "0.1"
 
 [dev-dependencies.anyhow]
 version = "1.0.73"
+
+[dev-dependencies.criterion]
+version = "0.5"
 
 [dev-dependencies.itertools]
 version = "0.11.0"

@@ -3277,6 +3277,7 @@ version = "0.15.1"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "criterion",
  "indexmap 2.0.0",
  "itertools 0.11.0",
  "once_cell",
