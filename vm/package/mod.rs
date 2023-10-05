@@ -275,18 +275,20 @@ function transfer:
         // Initialize a temporary directory.
         let directory = temp_dir();
 
-        // Create the imports directory.
-        let imports_directory = directory.join("imports");
-        std::fs::create_dir_all(&imports_directory).unwrap();
+        // If there are imports, create the imports directory.
+        if !imported_programs.is_empty() {
+            let imports_directory = directory.join("imports");
+            std::fs::create_dir_all(&imports_directory).unwrap();
 
-        // Add the imported programs.
-        for imported_program in imported_programs {
-            let imported_program_id = imported_program.id();
+            // Add the imported programs.
+            for imported_program in imported_programs {
+                let imported_program_id = imported_program.id();
 
-            // Write the imported program string to an imports file in the temporary directory.
-            let import_filepath = imports_directory.join(imported_program_id.to_string());
-            let mut file = File::create(import_filepath).unwrap();
-            file.write_all(imported_program.to_string().as_bytes()).unwrap();
+                // Write the imported program string to an imports file in the temporary directory.
+                let import_filepath = imports_directory.join(imported_program_id.to_string());
+                let mut file = File::create(import_filepath).unwrap();
+                file.write_all(imported_program.to_string().as_bytes()).unwrap();
+            }
         }
 
         // Initialize the main program ID.
