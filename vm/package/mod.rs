@@ -464,7 +464,7 @@ function bar:
             // If both results are `None`, then they both failed.
             (None, None) => {}
             // If both results are `Some`, then check that the responses match.
-            (Some((run_response, _)), Some((execute_response, _, _))) => {
+            (Some(run_response), Some((execute_response, _, _))) => {
                 assert_eq!(run_response, execute_response);
             }
             // Otherwise, the results do not match.
