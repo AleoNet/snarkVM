@@ -265,8 +265,13 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
 
     /// Returns the function with the given name.
     pub fn get_function(&self, name: &Identifier<N>) -> Result<FunctionCore<N, Instruction, Command>> {
+        self.get_function_ref(name).map(|function| function.clone())
+    }
+
+    /// Returns a reference to the function with the given name.
+    pub fn get_function_ref(&self, name: &Identifier<N>) -> Result<&FunctionCore<N, Instruction, Command>> {
         // Attempt to retrieve the function.
-        let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
+        let function = self.functions.get(name).ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
         // Ensure the function name matches.
         ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
         // Ensure the number of inputs is within the allowed range.
@@ -583,6 +588,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "record",
         "owner",
         // Program
+        "transition",
         "function",
         "struct",
         "closure",
@@ -593,6 +599,8 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "mapping",
         "key",
         "value",
+        "async",
+        "finalize",
         // Reserved (catch all)
         "global",
         "block",
@@ -615,6 +623,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Pro
         "trait",
         "impl",
         "type",
+        "future",
     ];
 
     /// Returns `true` if the given name does not already exist in the program.
@@ -662,8 +671,8 @@ mod tests {
         let mapping = Mapping::<CurrentNetwork>::from_str(
             r"
 mapping message:
-    key first as field.public;
-    value second as field.public;",
+    key as field.public;
+    value as field.public;",
         )?;
 
         // Initialize a new program.

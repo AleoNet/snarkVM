@@ -1,32 +1,18 @@
-- execute:
+errors: []
+outputs:
+- verified: true
+  execute:
     arrays_in_finalize.aleo/test_arrays:
       outputs:
       - '{"type":"public","id":"7478840637674867348334152936830348927618689666735497694442760373406118031677field","value":"[\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n]"}'
       - '{"type":"public","id":"5497626638973564164115408441431072571251727387638555124557359358862572601150field","value":"[\n  [\n    false,\n    true,\n    false,\n    true\n  ]\n]"}'
       - '{"type":"public","id":"6826141182633851685078476561830773249264254215146313720362967764421378578986field","value":"[\n  [\n    false,\n    false,\n    false,\n    false\n  ]\n]"}'
       - '{"type":"private","id":"8090041184628455649123912475425661970245522643231603870408821235652148265153field","value":"ciphertext1qvq9rlleav6excsnqaep0h3cztdzpergd8pdrhnrhapvr49kfrws6zwarcw9rxh9q3g0v8e5dutwyw34qslkjeqx6jzexjt2qrthnnazqerfvaxj939casntsm62yke9djhnked6nv4mufg8rmh27macnejpzdgpy4a"}'
-      finalize:
-      - |-
-        [
-          [
-            true,
-            false,
-            true,
-            false
-          ]
-        ]
-      - |-
-        [
-          [
-            false,
-            true,
-            false,
-            true
-          ]
-        ]
-    credits.aleo/fee_private:
-      outputs:
-      - '{"type":"record","id":"815791570017233122453273774941492367952277048293456822304345540143995529953field","checksum":"4869855676772882475668683419932446144154346062831742745755868012916120873274field","value":"record1qyqsp8vzct4ed5hge87puykkd4yem36s30w2x9hntmxlg43zar9ymeqzqyxx66trwfhkxun9v35hguerqqpqzqz4fgl4v44nzzlrvs38xfpzew83cru4c57xx6qpph932h5h8kd8zff5ypw2lqqkg8nw53f4uvt5urv5kl3txkaewvwqq52zxc62ly6qsglk9he"}'
-      finalize: []
+      - '{"type":"future","id":"3563270012340942054693097512832513108146970497297480667692085200645102263926field","value":"{\n  program_id: arrays_in_finalize.aleo,\n  function_name: test_arrays,\n  arguments: [\n    [\n  [\n    true,\n    false,\n    true,\n    false\n  ]\n],\n    [\n  [\n    false,\n    true,\n    false,\n    true\n  ]\n]\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"3298579767605006288641102096866674928980645756821119249844628355603571734266field","checksum":"2702317708000054137395260339703377890316212760764317951160180948360966604664field","value":"record1qyqsp8vzct4ed5hge87puykkd4yem36s30w2x9hntmxlg43zar9ymeqzqyxx66trwfhkxun9v35hguerqqpqzqz4fglny4dnzzlrvs38xfpzew83cru4c57xx6qpph932h5h8kd8zff5ypw2lqqkg8nw53f4uvt5urv5kl3txkaewvwqq52zxc62ly6qsyj2tdv"}'

@@ -19,6 +19,10 @@ impl<A: Aleo> Equal<Self> for Ciphertext<A> {
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
+        // Ensure the ciphertexts have the same number of field elements.
+        if self.0.len() != other.0.len() {
+            return Boolean::constant(false);
+        }
         // Check each field element for equality.
         let mut equal = Boolean::constant(true);
         for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
@@ -29,6 +33,10 @@ impl<A: Aleo> Equal<Self> for Ciphertext<A> {
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
+        // Check if the ciphertexts have different numbers of field elements.
+        if self.0.len() != other.0.len() {
+            return Boolean::constant(true);
+        }
         // Recursively check each member for inequality.
         let mut not_equal = Boolean::constant(false);
         for (a, b) in self.0.iter().zip_eq(other.0.iter()) {

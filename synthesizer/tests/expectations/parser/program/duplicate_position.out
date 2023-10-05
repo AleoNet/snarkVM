@@ -1,12 +1,4 @@
-0: at line 8, in MapRes:
+Failed to parse string. Remaining invalid string is: "finalize compute:
     position foo;
-                 ^
-
-1: at line 1, in Alt:
-program duplicate_position.aleo;
-                                ^
-
-2: at line 1, in Many1:
-program duplicate_position.aleo;
-                                ^
-
+    position foo;
+"

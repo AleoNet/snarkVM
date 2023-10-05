@@ -23,6 +23,7 @@ impl<N: Network> Header<N> {
         let finalize_root = transactions.to_finalize_root()?;
         let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root();
         let coinbase_accumulator_point = Field::zero();
+        let subdag_root = Field::zero();
         let metadata = Metadata::genesis()?;
 
         // Return the genesis block header.
@@ -32,6 +33,7 @@ impl<N: Network> Header<N> {
             finalize_root,
             ratifications_root,
             coinbase_accumulator_point,
+            subdag_root,
             metadata,
         )
     }
@@ -48,6 +50,8 @@ impl<N: Network> Header<N> {
             && self.ratifications_root != Field::zero()
             // Ensure the solutions root is zero.
             && self.solutions_root == Field::zero()
+            // Ensure the subdag root is zero.
+            && self.subdag_root == Field::zero()
             // Ensure the metadata is a genesis metadata.
             && self.metadata.is_genesis()
     }
@@ -64,7 +68,7 @@ mod tests {
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
         // Previous state root, transactions root, finalize root, ratifications root, and solutions root size.
-        (Field::<N>::size_in_bytes() * 5)
+        (Field::<N>::size_in_bytes() * 6)
             // Metadata size.
             + 1 + 8 + 4 + 16 + 16 + 8 + 8 + 8 + 8 + 8
             // Add an additional 3 bytes for versioning.
@@ -95,6 +99,7 @@ mod tests {
         // Ensure the genesis block contains the following.
         assert_eq!(*header.previous_state_root(), Field::zero());
         assert_eq!(header.solutions_root(), Field::zero());
+        assert_eq!(header.subdag_root(), Field::zero());
         assert_eq!(header.network(), CurrentNetwork::ID);
         assert_eq!(header.round(), 0);
         assert_eq!(header.height(), 0);

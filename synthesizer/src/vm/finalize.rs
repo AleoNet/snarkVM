@@ -130,10 +130,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Construct the rejected deploy transaction.
                             Err(_error) => {
                                 // Finalize the fee, to ensure it is valid.
-                                if let Err(error) = process.finalize_fee(state, store, fee) {
+                                if let Err(_error) = process.finalize_fee(state, store, fee) {
                                     // Note: On failure, skip this transaction, and continue speculation.
                                     #[cfg(debug_assertions)]
-                                    eprintln!("Failed to finalize the fee in a rejected deploy - {error}");
+                                    eprintln!("Failed to finalize the fee in a rejected deploy - {_error}");
                                     // Store the aborted transaction.
                                     aborted.push(transaction.clone());
                                     continue 'outer;
@@ -162,10 +162,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             Err(_error) => match fee {
                                 Some(fee) => {
                                     // Finalize the fee, to ensure it is valid.
-                                    if let Err(error) = process.finalize_fee(state, store, fee) {
+                                    if let Err(_error) = process.finalize_fee(state, store, fee) {
                                         // Note: On failure, skip this transaction, and continue speculation.
                                         #[cfg(debug_assertions)]
-                                        eprintln!("Failed to finalize the fee in a rejected execute - {error}");
+                                        eprintln!("Failed to finalize the fee in a rejected execute - {_error}");
                                         // Store the aborted transaction.
                                         aborted.push(transaction.clone());
                                         continue 'outer;
@@ -630,14 +630,15 @@ program {program_name};
 
 mapping account:
     // The token owner.
-    key owner as address.public;
+    key as address.public;
     // The token amount.
-    value amount as u64.public;
+    value as u64.public;
 
 function mint_public:
     input r0 as address.public;
     input r1 as u64.public;
-    finalize r0 r1;
+    async mint_public r0 r1 into r2;
+    output r2 as {program_name}/mint_public.future;
 
 finalize mint_public:
     input r0 as address.public;
@@ -650,8 +651,8 @@ finalize mint_public:
 function transfer_public:
     input r0 as address.public;
     input r1 as u64.public;
-
-    finalize self.caller r0 r1;
+    async transfer_public self.caller r0 r1 into r2;
+    output r2 as {program_name}/transfer_public.future;
 
 finalize transfer_public:
     input r0 as address.public;
@@ -711,6 +712,7 @@ finalize transfer_public:
             transactions.to_transactions_root().unwrap(),
             transactions.to_finalize_root().unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
+            Field::zero(),
             Field::zero(),
             metadata,
         )?;
@@ -1092,13 +1094,14 @@ finalize transfer_public:
 program {program_id};
 
 mapping hashes:
-    key preimage as u128.public;
-    value val as field.public;
+    key as u128.public;
+    value as field.public;
 
 function ped_hash:
     input r0 as u128.public;
     // hash.ped64 r0 into r1 as field; // <--- This will cause a E::halt.
-    finalize r0;
+    async ped_hash r0 into r1;
+    output r1 as {program_id}/ped_hash.future;
 
 {finalize_logic}"
             ))
@@ -1182,12 +1185,13 @@ function ped_hash:
 program testing.aleo;
 
 mapping entries:
-    key owner as address.public;
-    value data as u8.public;
+    key as address.public;
+    value as u8.public;
 
 function compute:
     input r0 as u8.public;
-    finalize self.caller r0;
+    async compute self.caller r0 into r1;
+    output r1 as testing.aleo/compute.future;
 
 finalize compute:
     input r0 as address.public;

@@ -14,18 +14,17 @@
 
 mod utilities;
 
-use std::panic::AssertUnwindSafe;
-use utilities::*;
-
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Literal, Value},
+    program::{Identifier, Literal, ProgramID, Value},
     types::Boolean,
 };
 use synthesizer_process::Process;
+use utilities::*;
 
 use rayon::prelude::*;
+use std::panic::AssertUnwindSafe;
 
 #[test]
 fn test_process_execute() {
@@ -36,10 +35,11 @@ fn test_process_execute() {
 
     // Run each test and compare it against its corresponding expectation.
     tests.par_iter().for_each(|test| {
-        // Add the program into the process.
+        // Add the programs into the process.
         let mut process = process.clone();
-        let program = test.program();
-        process.add_program(program).unwrap();
+        for program in test.programs() {
+            process.add_program(program).unwrap()
+        }
 
         // Initialize the RNG.
         let rng = &mut match test.randomness() {
@@ -47,76 +47,98 @@ fn test_process_execute() {
             Some(randomness) => TestRng::fixed(randomness),
         };
 
-        let outputs = test
-            .cases()
-            .iter()
-            .map(|value| {
-                // Extract the function name, inputs, and optional private key.
-                let value = value.as_mapping().expect("expected mapping for test case");
-                let function_name = Identifier::<CurrentNetwork>::from_str(
-                    value
-                        .get("function")
-                        .expect("expected function name for test case")
-                        .as_str()
-                        .expect("expected string for function name"),
-                )
-                .expect("unable to parse function name");
-                let inputs = value
-                    .get("inputs")
-                    .expect("expected inputs for test case")
-                    .as_sequence()
-                    .expect("expected sequence for inputs")
+        let mut output = serde_yaml::Mapping::new();
+        output.insert(
+            serde_yaml::Value::String("errors".to_string()),
+            serde_yaml::Value::Sequence(serde_yaml::Sequence::new()),
+        );
+        output.insert(
+            serde_yaml::Value::String("outputs".to_string()),
+            serde_yaml::Value::Sequence(
+                test.cases()
                     .iter()
-                    .map(|input| match &input {
-                        serde_yaml::Value::Bool(bool) => {
-                            Value::<CurrentNetwork>::from(Literal::Boolean(Boolean::new(*bool)))
-                        }
-                        _ => Value::<CurrentNetwork>::from_str(input.as_str().expect("expected string for input"))
-                            .expect("unable to parse input"),
-                    })
-                    .collect_vec();
-                let private_key = match value.get("private_key") {
-                    Some(private_key) => PrivateKey::<CurrentNetwork>::from_str(
-                        private_key.as_str().expect("expected string for private key"),
-                    )
-                    .expect("unable to parse private key"),
-                    None => PrivateKey::new(rng).unwrap(),
-                };
+                    .map(|value| {
+                        // Extract the function name, inputs, and optional private key.
+                        let value = value.as_mapping().expect("expected mapping for test case");
+                        let program_id = ProgramID::<CurrentNetwork>::from_str(
+                            value
+                                .get("program")
+                                .expect("expected program name for test case")
+                                .as_str()
+                                .expect("expected string for program name"),
+                        )
+                        .expect("unable to parse program name");
+                        let function_name = Identifier::<CurrentNetwork>::from_str(
+                            value
+                                .get("function")
+                                .expect("expected function name for test case")
+                                .as_str()
+                                .expect("expected string for function name"),
+                        )
+                        .expect("unable to parse function name");
+                        let inputs = value
+                            .get("inputs")
+                            .expect("expected inputs for test case")
+                            .as_sequence()
+                            .expect("expected sequence for inputs")
+                            .iter()
+                            .map(|input| match &input {
+                                serde_yaml::Value::Bool(bool) => {
+                                    Value::<CurrentNetwork>::from(Literal::Boolean(Boolean::new(*bool)))
+                                }
+                                _ => Value::<CurrentNetwork>::from_str(
+                                    input.as_str().expect("expected string for input"),
+                                )
+                                .expect("unable to parse input"),
+                            })
+                            .collect_vec();
+                        let private_key = match value.get("private_key") {
+                            Some(private_key) => PrivateKey::<CurrentNetwork>::from_str(
+                                private_key.as_str().expect("expected string for private key"),
+                            )
+                            .expect("unable to parse private key"),
+                            None => PrivateKey::new(rng).unwrap(),
+                        };
 
-                let mut run_test = || -> serde_yaml::Value {
-                    // Authorize the execution.
-                    let authorization = match process.authorize::<CurrentAleo, _>(
-                        &private_key,
-                        program.id(),
-                        function_name,
-                        inputs.iter(),
-                        rng,
-                    ) {
-                        Ok(authorization) => authorization,
-                        Err(err) => return serde_yaml::Value::String(err.to_string()),
-                    };
-                    // Execute the authorization and extract the output as YAML.
-                    std::panic::catch_unwind(AssertUnwindSafe(|| match process.execute::<CurrentAleo>(authorization) {
-                        Ok((response, _)) => serde_yaml::Value::Sequence(
-                            response
-                                .outputs()
-                                .iter()
-                                .cloned()
-                                .map(|output| serde_yaml::Value::String(output.to_string()))
-                                .collect_vec(),
-                        ),
-                        Err(err) => serde_yaml::Value::String(err.to_string()),
-                    }))
-                    .unwrap_or(serde_yaml::Value::String(
-                        "Compiler panicked when calling `Process::execute`".to_string(),
-                    ))
-                };
-                run_test()
-            })
-            .collect::<Vec<_>>();
+                        let mut run_test = || -> serde_yaml::Value {
+                            // Authorize the execution.
+                            let authorization = match process.authorize::<CurrentAleo, _>(
+                                &private_key,
+                                program_id,
+                                function_name,
+                                inputs.iter(),
+                                rng,
+                            ) {
+                                Ok(authorization) => authorization,
+                                Err(err) => return serde_yaml::Value::String(err.to_string()),
+                            };
+                            // Execute the authorization and extract the output as YAML.
+                            std::panic::catch_unwind(AssertUnwindSafe(|| {
+                                match process.execute::<CurrentAleo>(authorization) {
+                                    Ok((response, _)) => serde_yaml::Value::Sequence(
+                                        response
+                                            .outputs()
+                                            .iter()
+                                            .cloned()
+                                            .map(|output| serde_yaml::Value::String(output.to_string()))
+                                            .collect_vec(),
+                                    ),
+                                    Err(err) => serde_yaml::Value::String(err.to_string()),
+                                }
+                            }))
+                            .unwrap_or(serde_yaml::Value::String(
+                                "Compiler panicked when calling `Process::execute`".to_string(),
+                            ))
+                        };
+                        run_test()
+                    })
+                    .collect::<serde_yaml::Sequence>(),
+            ),
+        );
+
         // Check against the expected output.
-        test.check(&outputs).unwrap();
+        test.check(&output).unwrap();
         // Save the output.
-        test.save(&outputs).unwrap();
+        test.save(&output).unwrap();
     });
 }

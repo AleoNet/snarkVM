@@ -1,36 +1,36 @@
-- execute:
+errors: []
+outputs:
+- verified: true
+  execute:
     test_branch.aleo/run_test:
-      outputs: []
-      finalize:
-      - 1u8
-      - 1u8
-    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"926198682557028632475726259465677949835311696419602405504254112942260401796field","checksum":"2908404110329916908421725235756072780246204398378111547629938002701399631577field","value":"record1qyqsq2plhrz437zq7sje3v5zhgedajmjvwvzp6nscqgwxg7g3gld8pgzqyxx66trwfhkxun9v35hguerqqpqzq9lgjg0eqpam24xa9tj2yt53kqu73xmyz7vt8h8sj5yu76dkgrmp5qghj3dyyzdy5d6tzpldm2q4samd48enc7rxu85ufvrcxa6mt9pz94k8u6"}'
-      finalize: []
+      - '{"type":"future","id":"4807227403819588684031853679423924290019569164203178974904495218971849247520field","value":"{\n  program_id: test_branch.aleo,\n  function_name: run_test,\n  arguments: [\n    1u8,\n    1u8\n  ]\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     test_branch.aleo/run_test:
-      outputs: []
-      finalize:
-      - 0u8
-      - 1u8
-    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"1446838502411045100587519496767710979255609386714868046137108569088520753350field","checksum":"6915999203480841602868979071413945303300962479277125505141245805171620849510field","value":"record1qyqsphnyzq982gc67uvpl2sn0dkyte3nk2lqw895u5syvt6xt7aqjssfqyxx66trwfhkxun9v35hguerqqpqzq80r9erspnlectrg5nkud29m29jsvjn08az7z9ccelytd8u6x5cpyadkmyhlgxq9vpylv0ve6wumvt576eq64auunr8yw3zlttcehpqj6w9asj"}'
-      finalize: []
+      - '{"type":"future","id":"6578563227874053328775488720373016284038873634029366303301076699226711812107field","value":"{\n  program_id: test_branch.aleo,\n  function_name: run_test,\n  arguments: [\n    0u8,\n    1u8\n  ]\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     test_branch.aleo/run_test:
-      outputs: []
-      finalize:
-      - 0u8
-      - 0u8
-    credits.aleo/fee_private:
       outputs:
-      - '{"type":"record","id":"1547189976549241455652124081286512345323124784608194669035156089402287038463field","checksum":"4447192543734607307544135119713476459647004177513677106414944146743579682619field","value":"record1qyqspc6vm20r6ekcj0x86kpn2hltvt2mlnkmcql58puqhrxa668waqgrqyxx66trwfhkxun9v35hguerqqpqzq9tp8pnesn73gjwvpt5w4umzhz3kamhax7cwnelh670dg7ue9p6qxlt8nlxhhfu2amg5uhek55ajh2k52098mhlmxlj3p9lz0wexjypz2vt5d5"}'
-      finalize: []
+      - '{"type":"future","id":"7508008554951635493629769098645178330945961002302110561994738513868095644109field","value":"{\n  program_id: test_branch.aleo,\n  function_name: run_test,\n  arguments: [\n    0u8,\n    0u8\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"1782447267261787640117100817969738486930461354738114303732645553711352543315field","checksum":"158345919059534476664282405883489312335884610509034857244125405704639610601field","value":"record1qyqsq2plhrz437zq7sje3v5zhgedajmjvwvzp6nscqgwxg7g3gld8pgzqyxx66trwfhkxun9v35hguerqqpqzq9lgjgqpqpam24xa9tj2yt53kqu73xmyz7vt8h8sj5yu76dkgrmp5qghj3dyyzdy5d6tzpldm2q4samd48enc7rxu85ufvrcxa6mt9pz0gs3eh"}'
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"6043732044816590873366831998814288920020792684963033781683403760004408011215field","checksum":"5803163271760507640727701945762186026114544933259206320036423900535555791316field","value":"record1qyqsphnyzq982gc67uvpl2sn0dkyte3nk2lqw895u5syvt6xt7aqjssfqyxx66trwfhkxun9v35hguerqqpqzq80r9ercptlectrg5nkud29m29jsvjn08az7z9ccelytd8u6x5cpyadkmyhlgxq9vpylv0ve6wumvt576eq64auunr8yw3zlttcehpqjwukyvm"}'
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"5519554419731773144217947471713959050190077062721610725764151708728339913630field","checksum":"4269711621937742091420138836831664082827733979527957101284413630088757411620field","value":"record1qyqspc6vm20r6ekcj0x86kpn2hltvt2mlnkmcql58puqhrxa668waqgrqyxx66trwfhkxun9v35hguerqqpqzq9tp8p5pst73gjwvpt5w4umzhz3kamhax7cwnelh670dg7ue9p6qxlt8nlxhhfu2amg5uhek55ajh2k52098mhlmxlj3p9lz0wexjypz0k5m6q"}'

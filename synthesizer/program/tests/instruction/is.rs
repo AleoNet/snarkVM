@@ -66,7 +66,8 @@ fn sample_stack(
                 input {r0} as {type_a}.{mode_a};
                 input {r1} as {type_b}.{mode_b};
                 {opcode} {r0} {r1} into {r2};
-                finalize {r0} {r1};
+                async {function_name} {r0} {r1} into r3;
+                output r3 as testing.aleo/{function_name}.future;
 
             finalize {function_name}:
                 input {r0} as {type_a}.public;

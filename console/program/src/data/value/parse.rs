@@ -18,7 +18,12 @@ impl<N: Network> Parser for Value<N> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        alt((map(Plaintext::parse, Value::Plaintext), map(Record::parse, Value::Record)))(string)
+        // Note that the order of the parsers matters.
+        alt((
+            map(Future::parse, Value::Future),
+            map(Plaintext::parse, Value::Plaintext),
+            map(Record::parse, Value::Record),
+        ))(string)
     }
 }
 
@@ -53,6 +58,7 @@ impl<N: Network> Display for Value<N> {
         match self {
             Value::Plaintext(plaintext) => Display::fmt(plaintext, f),
             Value::Record(record) => Display::fmt(record, f),
+            Value::Future(future) => Display::fmt(future, f),
         }
     }
 }
@@ -88,6 +94,23 @@ mod tests {
         // Construct a new record value.
         let expected = Value::<CurrentNetwork>::from_str(string).unwrap();
         assert!(matches!(expected, Value::Record(..)));
+        assert_eq!(string, format!("{expected}"));
+    }
+
+    #[test]
+    fn test_value_future_parse() {
+        // Prepare the future string.
+        let string = r"{
+  program_id: credits.aleo,
+  function_name: transfer_public_to_private,
+  arguments: [
+    aleo1g8qul5a44vk22u9uuvaewdcjw4v6xg8wx0llru39nnjn7eu08yrscxe4e2,
+    100000000u64
+  ]
+}";
+        // Construct a new future value.
+        let expected = Value::<CurrentNetwork>::from_str(string).unwrap();
+        assert!(matches!(expected, Value::Future(..)));
         assert_eq!(string, format!("{expected}"));
     }
 }

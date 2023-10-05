@@ -42,14 +42,14 @@ impl<N: Network> Parser for Input<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the plaintext type from the string.
-        let (string, (plaintext_type, _)) = pair(PlaintextType::parse, tag(".public"))(string)?;
+        // Parse the finalize type from the string.
+        let (string, finalize_type) = FinalizeType::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the input statement.
-        Ok((string, Self { register, plaintext_type }))
+        Ok((string, Self { register, finalize_type }))
     }
 }
 
@@ -81,13 +81,7 @@ impl<N: Network> Debug for Input<N> {
 impl<N: Network> Display for Input<N> {
     /// Prints the input statement as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{type_} {register} as {plaintext_type}.public;",
-            type_ = Self::type_name(),
-            register = self.register,
-            plaintext_type = self.plaintext_type
-        )
+        write!(f, "{} {} as {};", Self::type_name(), self.register, self.finalize_type)
     }
 }
 
@@ -103,17 +97,25 @@ mod tests {
         // Literal
         let input = Input::<CurrentNetwork>::parse("input r0 as field.public;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(0));
-        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("field")?);
+        assert_eq!(input.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("field.public")?);
 
         // Struct
         let input = Input::<CurrentNetwork>::parse("input r1 as signature.public;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(1));
-        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("signature")?);
+        assert_eq!(input.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("signature.public")?);
 
         // Record
         let input = Input::<CurrentNetwork>::parse("input r2 as token.public;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(2));
-        assert_eq!(input.plaintext_type(), &PlaintextType::<CurrentNetwork>::from_str("token")?);
+        assert_eq!(input.finalize_type(), &FinalizeType::<CurrentNetwork>::from_str("token.public")?);
+
+        // Future
+        let input = Input::<CurrentNetwork>::parse("input r3 as credits.aleo/mint_public.future;").unwrap().1;
+        assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(3));
+        assert_eq!(
+            input.finalize_type(),
+            &FinalizeType::<CurrentNetwork>::from_str("credits.aleo/mint_public.future")?
+        );
 
         Ok(())
     }

@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Transmission<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid transmission version"));
         }
 
@@ -40,7 +40,7 @@ impl<N: Network> ToBytes for Transmission<N> {
     /// Writes the transmission to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
         // Write the transmission.
         match self {
             Self::Ratification => 0u8.write_le(&mut writer),

@@ -164,7 +164,8 @@ fn test_insufficient_fees() {
 program dummy.aleo;
 function foo:
     input r0 as u8.private;
-    finalize r0;
+    async foo r0 into r1;
+    output r1 as dummy.aleo/foo.future;
 finalize foo:
     input r0 as u8.public;
     add r0 r0 into r1;",
@@ -202,7 +203,8 @@ fn test_insufficient_finalize_fees() {
 program dummy.aleo;
 function foo:
     input r0 as u8.private;
-    finalize r0;
+    async foo r0 into r1;
+    output r1 as dummy.aleo/foo.future;
 finalize foo:
     input r0 as u8.public;
     add r0 r0 into r1;",
@@ -303,7 +305,8 @@ fn test_rejected_execution() {
 program {program_id};
 
 function failed_assert:
-    finalize;
+    async failed_assert into r0;
+    output r0 as {program_id}/failed_assert.future;
 
 finalize failed_assert:
     assert.eq false true;"

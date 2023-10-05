@@ -33,6 +33,8 @@ pub enum ValueType<N: Network> {
     Record(Identifier<N>),
     /// An external record type inherits its visibility from its record definition.
     ExternalRecord(Locator<N>),
+    /// A publicly-visible future.
+    Future(Locator<N>),
 }
 
 impl<N: Network> From<EntryType<N>> for ValueType<N> {
