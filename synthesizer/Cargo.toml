@@ -58,6 +58,12 @@ wasm = [
 process = [ "synthesizer-process" ]
 program = [ "synthesizer-program" ]
 snark = [ "synthesizer-snark" ]
+cuda = [ "algorithms/cuda" ]
+
+[dependencies.algorithms]
+package = "snarkvm-algorithms"
+path = "../algorithms"
+version = "=0.15.1"
 
 [[bench]]
 name = "kary_merkle_tree"
