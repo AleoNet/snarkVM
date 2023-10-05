@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn test_deploy() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (directory, package) = crate::package::test_helpers::sample_token_package();
 
         // Deploy the package.
         let deployment = package.deploy::<CurrentAleo>(None).unwrap();
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_deploy_with_import() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (directory, package) = crate::package::test_helpers::sample_wallet_package();
 
         // Deploy the package.
         let deployment = package.deploy::<CurrentAleo>(None).unwrap();
