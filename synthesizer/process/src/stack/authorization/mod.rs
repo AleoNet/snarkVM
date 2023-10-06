@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod bytes;
+mod serialize;
+mod string;
+
 use console::{network::prelude::*, program::Request, types::Field};
 use ledger_block::{Transaction, Transition};
 
@@ -150,5 +154,49 @@ impl<N: Network> Authorization<N> {
             bail!("Cannot compute the execution ID for an empty authorization.");
         }
         Ok(*Transaction::transitions_tree(transitions.values(), &None)?.root())
+    }
+}
+
+impl<N: Network> PartialEq for Authorization<N> {
+    fn eq(&self, other: &Self) -> bool {
+        let self_requests = self.requests.read();
+        let other_requests = other.requests.read();
+
+        let self_transitions = self.transitions.read();
+        let other_transitions = other.transitions.read();
+
+        *self_requests == *other_requests && *self_transitions == *other_transitions
+    }
+}
+
+impl<N: Network> Eq for Authorization<N> {}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use crate::Process;
+    use console::account::PrivateKey;
+
+    type CurrentNetwork = console::network::Testnet3;
+    type CurrentAleo = circuit::AleoV0;
+
+    /// Returns a sample authorization.
+    pub fn sample_authorization(rng: &mut TestRng) -> Authorization<CurrentNetwork> {
+        // Initialize the process.
+        let process = Process::<CurrentNetwork>::load().unwrap();
+
+        // Sample a private key.
+        let private_key = PrivateKey::new(rng).unwrap();
+        // Sample a fee in microcredits.
+        let fee_in_microcredits = rng.gen();
+        // Sample a deployment or execution ID.
+        let deployment_or_execution_id = Field::rand(rng);
+
+        // Compute the authorization.
+        let authorization = process
+            .authorize_fee_public::<CurrentAleo, _>(&private_key, fee_in_microcredits, deployment_or_execution_id, rng)
+            .unwrap();
+        assert!(authorization.is_fee_public(), "Authorization must be for a call to 'credits.aleo/fee_public'");
+        authorization
     }
 }
