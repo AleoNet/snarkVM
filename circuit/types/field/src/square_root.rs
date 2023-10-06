@@ -18,13 +18,24 @@ impl<E: Environment> SquareRoot for Field<E> {
     type Output = Self;
 
     fn square_root(&self) -> Self::Output {
-        let square_root = witness!(|self| match self.square_root() {
+        let square_root: Field<E> = witness!(|self| match self.square_root() {
             Ok(square_root) => square_root,
             _ => console::Field::zero(),
         });
 
         // Ensure `square_root` * `square_root` == `self`.
         E::enforce(|| (&square_root, &square_root, self));
+
+        // Define the MODULUS_MINUS_ONE_DIV_TWO as a constant.
+        let modulus_minus_one_div_two = match E::BaseField::from_bigint(E::BaseField::modulus_minus_one_div_two()) {
+            Some(modulus_minus_one_div_two) => Field::constant(console::Field::new(modulus_minus_one_div_two)),
+            None => E::halt("Failed to initialize MODULUS_MINUS_ONE_DIV_TWO as a constant"),
+        };
+
+        // Ensure that `square_root` is less than (MODULUS - 1) / 2.
+        // This ensures that the resulting square root is unique.
+        let is_less_than = square_root.is_less_than(&modulus_minus_one_div_two);
+        E::assert(is_less_than);
 
         square_root
     }
