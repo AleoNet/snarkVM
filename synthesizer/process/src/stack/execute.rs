@@ -406,9 +406,16 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                 lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
-
+        // If the circuit is in `Authorize` mode, then save the transition.
+        if let CallStack::Authorize(_, _, authorization) = registers.call_stack() {
+            // Construct the transition.
+            let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
+            // Add the transition to the authorization.
+            authorization.insert_transition(transition);
+            lap!(timer, "Save the transition");
+        }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+        else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
             // Construct the call metrics.
             let metrics = CallMetrics {
                 program_id: *self.program_id(),

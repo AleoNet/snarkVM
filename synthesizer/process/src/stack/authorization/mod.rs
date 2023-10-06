@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use console::{network::prelude::*, program::Request};
+use console::{network::prelude::*, program::Request, types::Field};
+use ledger_block::{Transaction, Transition};
 
+use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::{collections::VecDeque, sync::Arc};
 
@@ -21,26 +23,34 @@ use std::{collections::VecDeque, sync::Arc};
 pub struct Authorization<N: Network> {
     /// The authorized requests.
     requests: Arc<RwLock<VecDeque<Request<N>>>>,
+    /// The authorized transitions.
+    transitions: Arc<RwLock<IndexMap<N::TransitionID, Transition<N>>>>,
 }
 
-impl<N: Network> From<Vec<Request<N>>> for Authorization<N> {
+impl<N: Network> Authorization<N> {
     /// Initialize a new `Authorization` instance, with the given request.
-    fn from(requests: Vec<Request<N>>) -> Self {
-        Self { requests: Arc::new(RwLock::new(VecDeque::from(requests))) }
+    pub fn new(request: Request<N>) -> Self {
+        Self { requests: Arc::new(RwLock::new(VecDeque::from(vec![request]))), transitions: Default::default() }
+    }
+
+    /// Returns a new and independent replica of the authorization.
+    pub fn replicate(&self) -> Self {
+        Self {
+            requests: Arc::new(RwLock::new(self.requests.read().clone())),
+            transitions: Arc::new(RwLock::new(self.transitions.read().clone())),
+        }
     }
 }
 
-impl<N: Network> From<Request<N>> for Authorization<N> {
-    /// Initialize a new `Authorization` instance, with the given request.
-    fn from(request: Request<N>) -> Self {
-        Self::from(vec![request])
-    }
-}
-
-impl<N: Network> From<&Request<N>> for Authorization<N> {
-    /// Initialize a new `Authorization` instance, with the given request.
-    fn from(request: &Request<N>) -> Self {
-        Self::from(request.clone())
+impl<N: Network> From<(Vec<Request<N>>, Vec<Transition<N>>)> for Authorization<N> {
+    /// Initialize an `Authorization` instance, with the given requests and transitions.
+    fn from((requests, transitions): (Vec<Request<N>>, Vec<Transition<N>>)) -> Self {
+        Self {
+            requests: Arc::new(RwLock::new(VecDeque::from(requests))),
+            transitions: Arc::new(RwLock::new(IndexMap::from_iter(
+                transitions.into_iter().map(|transition| (*transition.id(), transition)),
+            ))),
+        }
     }
 }
 
@@ -86,11 +96,6 @@ impl<N: Network> Authorization<N> {
 }
 
 impl<N: Network> Authorization<N> {
-    /// Returns a new and independent replica of the authorization.
-    pub fn replicate(&self) -> Self {
-        Self { requests: Arc::new(RwLock::new(self.requests.read().clone())) }
-    }
-
     /// Returns the next `Request` in the authorization.
     pub fn peek_next(&self) -> Result<Request<N>> {
         self.requests.read().get(0).cloned().ok_or_else(|| anyhow!("Failed to peek at the next request."))
@@ -124,5 +129,26 @@ impl<N: Network> Authorization<N> {
     /// Returns the requests in the authorization.
     pub fn to_vec_deque(&self) -> VecDeque<Request<N>> {
         self.requests.read().clone()
+    }
+}
+
+impl<N: Network> Authorization<N> {
+    /// Inserts the given transition into the authorization.
+    pub fn insert_transition(&self, transition: Transition<N>) {
+        self.transitions.write().insert(*transition.id(), transition);
+    }
+
+    /// Returns the transitions in the authorization.
+    pub fn transitions(&self) -> IndexMap<N::TransitionID, Transition<N>> {
+        self.transitions.read().clone()
+    }
+
+    /// Returns the execution ID for the authorization.
+    pub fn to_execution_id(&self) -> Result<Field<N>> {
+        let transitions = self.transitions.read();
+        if transitions.is_empty() {
+            bail!("Cannot compute the execution ID for an empty authorization.");
+        }
+        Ok(*Transaction::transitions_tree(transitions.values(), &None)?.root())
     }
 }

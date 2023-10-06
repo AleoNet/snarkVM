@@ -104,8 +104,10 @@ fn execute(c: &mut Criterion) {
 
     // Authorize the execution.
     let execute_authorization = vm.authorize(&private_key, "credits.aleo", "transfer_private", inputs, rng).unwrap();
+    // Retrieve the execution ID.
+    let execution_id = execute_authorization.to_execution_id().unwrap();
     // Authorize the fee.
-    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, Field::one(), rng).unwrap();
+    let fee_authorization = vm.authorize_fee_public(&private_key, 100000, execution_id, rng).unwrap();
 
     c.bench_function("Transaction::Execute(transfer)", |b| {
         b.iter(|| {
