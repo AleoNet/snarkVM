@@ -97,7 +97,9 @@ pub enum DuplexSpongeMode {
 }
 
 pub(crate) mod nonnative_params {
-    /// A macro for computing ceil(log2(x))+1 for a field element x
+    /// A macro for computing ceil(log2(x))+1 for a field element x. The num_bits
+    /// param is expected to be a vector to which the BE bits can be written; it is
+    /// not created here, as reusing it allows us to avoid a lot of allocations.
     #[macro_export]
     macro_rules! overhead {
         ($x:expr, $num_bits:expr) => {{

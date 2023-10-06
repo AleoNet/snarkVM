@@ -401,6 +401,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
                     .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(F::from_bigint(cur_mod_r).unwrap());
             cur.divn(params.bits_per_limb as u32);
+            // Clear the vector after every iteration so its allocation can be reused.
             cur_bits.clear();
         }
 
