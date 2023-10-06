@@ -138,16 +138,16 @@ mod tests {
 
     #[test]
     fn test_encode_constant() {
-        check_encode(Mode::Constant, 274, 0, 0, 0);
+        check_encode(Mode::Constant, 275, 0, 0, 0);
     }
 
     #[test]
     fn test_encode_public() {
-        check_encode(Mode::Public, 263, 0, 370, 373);
+        check_encode(Mode::Public, 264, 0, 1127, 1133);
     }
 
     #[test]
     fn test_encode_private() {
-        check_encode(Mode::Private, 263, 0, 370, 373);
+        check_encode(Mode::Private, 264, 0, 1127, 1133);
     }
 }

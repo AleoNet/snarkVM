@@ -46,8 +46,8 @@ impl<E: Environment> Metrics<dyn SquareRoot<Output = Field<E>>> for Field<E> {
 
     fn count(case: &Self::Case) -> Count {
         match case.is_constant() {
-            true => Count::is(1, 0, 0, 0),
-            false => Count::is(0, 0, 1, 1),
+            true => Count::is(2, 0, 0, 0),
+            false => Count::is(1, 0, 758, 761),
         }
     }
 }

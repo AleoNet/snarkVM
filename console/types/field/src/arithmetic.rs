@@ -240,7 +240,15 @@ impl<E: Environment> SquareRoot for Field<E> {
     #[inline]
     fn square_root(&self) -> Result<Self::Output> {
         match self.field.sqrt() {
-            Some(sqrt) => Ok(Field::new(sqrt)),
+            Some(sqrt) => {
+                // Return the smaller square root.
+                let sqrt = Field::new(sqrt);
+                let negative_sqrt: Field<E> = -sqrt;
+                match *(sqrt.is_less_than_or_equal(&negative_sqrt)) {
+                    true => Ok(sqrt),
+                    false => Ok(negative_sqrt),
+                }
+            }
             None => bail!("Failed to square root a field element: {self}"),
         }
     }
