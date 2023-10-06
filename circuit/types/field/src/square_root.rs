@@ -32,10 +32,10 @@ impl<E: Environment> SquareRoot for Field<E> {
             None => E::halt("Failed to initialize MODULUS_MINUS_ONE_DIV_TWO as a constant"),
         };
 
-        // Ensure that `square_root` is less than (MODULUS - 1) / 2.
+        // Ensure that `square_root` is less than or equal to (MODULUS - 1) / 2.
         // This ensures that the resulting square root is unique.
-        let is_less_than = square_root.is_less_than(&modulus_minus_one_div_two);
-        E::assert(is_less_than);
+        let is_less_than_or_equal = square_root.is_less_than_or_equal(&modulus_minus_one_div_two);
+        E::assert(is_less_than_or_equal);
 
         square_root
     }
