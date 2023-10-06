@@ -103,7 +103,7 @@ fn batch_prove(c: &mut Criterion) {
         let assignments =
             [(proving_key.clone(), (0..*num_assignments).map(|_| assignment.clone()).collect::<Vec<_>>())];
 
-        c.bench_function("KaryMerkleTree batch prove {num_assignments} assignments", |b| {
+        c.bench_function(&format!("KaryMerkleTree batch prove {num_assignments} assignments"), |b| {
             b.iter(|| {
                 let _proof = ProvingKey::prove_batch("ProveKaryMerkleTree", &assignments, &mut rng).unwrap();
             })
