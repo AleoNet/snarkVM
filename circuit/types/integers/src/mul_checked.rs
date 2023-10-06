@@ -139,13 +139,16 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         }
         // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
         else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
-            // Use Babbage multiplication to compute the product of `self` and `other`.
-            let (product, carry) = Self::babbage_multiply(this, that);
+            // Use Karatsuba multiplication to compute the product of `self` and `other`.
+            let (product, z_1_upper_bits, z2) = Self::karatsuba_multiply(this, that);
 
-            // Check that the carry bits are all zero.
-            for bit in carry.iter() {
+            // Check that the upper bits of z1 are zero.
+            for bit in z_1_upper_bits.iter() {
                 E::assert_eq(bit, E::zero());
             }
+
+            // Check that `z2` is zero.
+            E::assert_eq(&z2, E::zero());
 
             // Return the product of `self` and `other`.
             product
@@ -156,34 +159,17 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
-    /// Multiply the integer bits of `this` and `that`, returning flag bits indicating whether the product overflowed.
-    /// If any of the flag bits are set, then an overflow occurred.
+    /// Multiply the integer bits of `this` and `that`, using Karatsuba multiplication.
+    /// See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
+    /// We follow the naming convention given in the `Basic Step` section of the cited page.
+    /// The output is the product of `this` and `that`, the upper bits of `z1`, and `z2` as a field element.
     /// This function assumes that 1.5 * I::BITS fits in 1 field element.
     #[inline]
-    pub(super) fn babbage_multiply(this: &Integer<E, I>, that: &Integer<E, I>) -> (Integer<E, I>, Vec<Boolean<E>>) {
+    pub(super) fn karatsuba_multiply(
+        this: &Integer<E, I>,
+        that: &Integer<E, I>,
+    ) -> (Integer<E, I>, Vec<Boolean<E>>, Field<E>) {
         // Perform multiplication by decomposing it into operations on its upper and lower bits.
-        // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
-        // We follow the naming convention given in the `Basic Step` section of the cited page.
-        // Note that currently here we perform Babbage multiplication, not Karatsuba multiplication.
-        let x_1 = Field::from_bits_le(&this.bits_le[(I::BITS as usize / 2)..]);
-        let x_0 = Field::from_bits_le(&this.bits_le[..(I::BITS as usize / 2)]);
-        let y_1 = Field::from_bits_le(&that.bits_le[(I::BITS as usize / 2)..]);
-        let y_0 = Field::from_bits_le(&that.bits_le[..(I::BITS as usize / 2)]);
-
-        let z_0 = &x_0 * &y_0;
-        let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
-
-        let mut b_m_bits = vec![Boolean::constant(false); I::BITS as usize / 2];
-        b_m_bits.push(Boolean::constant(true));
-
-        let b_m = Field::from_bits_le(&b_m_bits);
-        let z_0_plus_z_1 = &z_0 + (&z_1 * &b_m);
-
-        let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
-
-        // Note that the bits of z2 are appended after the bits of z0_plus_z1.
-        // This means that the bits in bits_le[I::BITS..] are not quite the bits of the carry value of the product,
-        // which should be calculated by adding the bits of z2, suitably shifted, to the bits of z0_plus_z1.
         // Here is a picture of the bits involved, placed according to the power-of-two weights, in little endian order:
         //   x0: <--I::BITS/2-->
         //   x1:                <--I::BITS/2-->
@@ -193,20 +179,32 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         //   z1:                <-----------I::BITS+1--------->
         //   z2:                               <-----------I::BITS---------->
         //                                     |   overlap    |
-        // Note the overlap between the high (carry) bits of z1 and the (all carry) bits of z2;
-        // the bits for the total carry value should be calculated by adding at the overlap,
-        // but instead those bits are concatenated, as if they did not overlap, and returned by this function.
-        // This is actually adequate (and saves constraints),
-        // because currently the only purpose of the carry bits returned by this function
-        // is for the callers to check that they are all zero.
-        let z_2 = &x_1 * &y_1;
-        bits_le.append(&mut z_2.to_lower_bits_le(I::BITS as usize));
+        // The carry bits include:
+        //   - the overlapping bits of z1 and z2
+        //   - the upper bits of z2
 
-        // Split the integer bits into product bits and carry bits.
+        let x_1 = Field::from_bits_le(&this.bits_le[(I::BITS as usize / 2)..]);
+        let x_0 = Field::from_bits_le(&this.bits_le[..(I::BITS as usize / 2)]);
+        let y_1 = Field::from_bits_le(&that.bits_le[(I::BITS as usize / 2)..]);
+        let y_0 = Field::from_bits_le(&that.bits_le[..(I::BITS as usize / 2)]);
+
+        let z_0 = &x_0 * &y_0;
+        let z_2 = &x_1 * &y_1;
+        let z_1 = (&x_1 + &x_0) * (&y_1 + &y_0) - &z_2 - &z_0;
+
+        let mut b_m_bits = vec![Boolean::constant(false); I::BITS as usize / 2];
+        b_m_bits.push(Boolean::constant(true));
+
+        let b_m = Field::from_bits_le(&b_m_bits);
+        let z_0_concat_z_1 = &z_0 + (&z_1 * &b_m);
+
+        let bits_le = z_0_concat_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
+
+        // Split the integer bits into product bits and the upper bits of z1.
         let (bits_le, carry) = bits_le.split_at(I::BITS as usize);
 
         // Return the product of `self` and `other`, along with the carry bits.
-        (Integer::from_bits_le(bits_le), carry.to_vec())
+        (Integer::from_bits_le(bits_le), carry.to_vec(), z_2)
     }
 }
 
@@ -239,14 +237,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                 // Signed case
                 true => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(4 * I::BITS, 0, 965, 1164),
-                    (_, _) => Count::is(3 * I::BITS, 0, 1227, 1427),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(4 * I::BITS, 0, 837, 908),
+                    (_, _) => Count::is(3 * I::BITS, 0, 1098, 1170),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 321, 516),
-                    (_, _) => Count::is(0, 0, 325, 520),
+                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 193, 260),
+                    (_, _) => Count::is(0, 0, 196, 263),
                 },
             }
         } else {
