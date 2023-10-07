@@ -163,10 +163,6 @@ impl<N: Network> Authorization<N> {
             "Transition {} is already in the authorization.",
             transition.id()
         );
-        // Ensure the transition corresponds to the last request.
-        let last_request =
-            self.requests.read().back().ok_or_else(|| anyhow!("No requests in the authorization."))?.clone();
-        ensure_request_and_transition_matches(self.requests.read().len(), &last_request, &transition)?;
         // Insert the transition into the authorization.
         self.transitions.write().insert(*transition.id(), transition);
         Ok(())
