@@ -411,7 +411,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             // Construct the transition.
             let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
             // Add the transition to the authorization.
-            authorization.insert_transition(transition);
+            authorization.insert_transition(transition)?;
             lap!(timer, "Save the transition");
         }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.

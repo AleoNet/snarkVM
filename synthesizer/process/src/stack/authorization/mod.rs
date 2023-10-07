@@ -19,6 +19,7 @@ mod string;
 use console::{network::prelude::*, program::Request, types::Field};
 use ledger_block::{Transaction, Transition};
 
+use console::program::InputID;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::{collections::VecDeque, sync::Arc};
@@ -46,15 +47,33 @@ impl<N: Network> Authorization<N> {
     }
 }
 
-impl<N: Network> From<(Vec<Request<N>>, Vec<Transition<N>>)> for Authorization<N> {
+impl<N: Network> TryFrom<(Vec<Request<N>>, Vec<Transition<N>>)> for Authorization<N> {
+    type Error = Error;
+
     /// Initialize an `Authorization` instance, with the given requests and transitions.
-    fn from((requests, transitions): (Vec<Request<N>>, Vec<Transition<N>>)) -> Self {
-        Self {
+    ///
+    /// Note: This method is used primarily for serialization, and requires the
+    /// number of requests and transitions to match.
+    fn try_from((requests, transitions): (Vec<Request<N>>, Vec<Transition<N>>)) -> Result<Self> {
+        // Ensure the number of requests and transitions matches.
+        ensure!(
+            requests.len() == transitions.len(),
+            "The number of requests ({}) and transitions ({}) must match in the authorization.",
+            requests.len(),
+            transitions.len()
+        );
+        // Ensure the requests and transitions are in order.
+        for (index, (request, transition)) in requests.iter().zip_eq(&transitions).enumerate() {
+            // Ensure the request and transition correspond to one another.
+            ensure_request_and_transition_matches(index, request, transition)?;
+        }
+        // Return the new `Authorization` instance.
+        Ok(Self {
             requests: Arc::new(RwLock::new(VecDeque::from(requests))),
             transitions: Arc::new(RwLock::new(IndexMap::from_iter(
                 transitions.into_iter().map(|transition| (*transition.id(), transition)),
             ))),
-        }
+        })
     }
 }
 
@@ -138,8 +157,20 @@ impl<N: Network> Authorization<N> {
 
 impl<N: Network> Authorization<N> {
     /// Inserts the given transition into the authorization.
-    pub fn insert_transition(&self, transition: Transition<N>) {
+    pub fn insert_transition(&self, transition: Transition<N>) -> Result<()> {
+        // Ensure the transition is not already in the authorization.
+        ensure!(
+            !self.transitions.read().contains_key(transition.id()),
+            "Transition {} is already in the authorization.",
+            transition.id()
+        );
+        // Ensure the transition corresponds to the last request.
+        let last_request =
+            self.requests.read().back().ok_or_else(|| anyhow!("No requests in the authorization."))?.clone();
+        ensure_request_and_transition_matches(self.requests.read().len(), &last_request, &transition)?;
+        // Insert the transition into the authorization.
         self.transitions.write().insert(*transition.id(), transition);
+        Ok(())
     }
 
     /// Returns the transitions in the authorization.
@@ -170,6 +201,40 @@ impl<N: Network> PartialEq for Authorization<N> {
 }
 
 impl<N: Network> Eq for Authorization<N> {}
+
+/// Ensures the given request and transition correspond to one another.
+fn ensure_request_and_transition_matches<N: Network>(
+    index: usize,
+    request: &Request<N>,
+    transition: &Transition<N>,
+) -> Result<()> {
+    // Ensure the request and transition have the same program ID.
+    ensure!(
+        request.program_id() == transition.program_id(),
+        "The request and transition at index {index} must have the same ID in the authorization.",
+    );
+    // Ensure the request and transition have the same function name.
+    ensure!(
+        request.function_name() == transition.function_name(),
+        "The request and transition at index {index} must have the same function name in the authorization.",
+    );
+    // Ensure the request and transition have the same input IDs.
+    ensure!(
+        request.input_ids().iter().map(InputID::id).collect::<Vec<_>>() == transition.input_ids().collect::<Vec<_>>(),
+        "The request and transition at index {index} must have the same input IDs in the authorization.",
+    );
+    // Ensure the request and transition have the same 'tpk'.
+    ensure!(
+        request.to_tpk() == *transition.tpk(),
+        "The request and transition at index {index} must have the same 'tpk' in the authorization.",
+    );
+    // Ensure the request and transition have the same 'tcm'.
+    ensure!(
+        request.tcm() == transition.tcm(),
+        "The request and transition at index {index} must have the same 'tcm' in the authorization.",
+    );
+    Ok(())
+}
 
 #[cfg(test)]
 pub(crate) mod test_helpers {

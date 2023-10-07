@@ -44,7 +44,7 @@ impl<'de, N: Network> Deserialize<'de> for Authorization<N> {
                 // Retrieve the transitions.
                 let transitions: Vec<_> = DeserializeExt::take_from_value::<D>(&mut authorization, "transitions")?;
                 // Recover the authorization.
-                Ok(Self::from((requests, transitions)))
+                Self::try_from((requests, transitions)).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "authorization"),
         }
