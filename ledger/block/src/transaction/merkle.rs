@@ -208,6 +208,8 @@ impl<N: Network> Transaction<N> {
 
     /// Returns `true` if the execution is within the size bounds.
     pub fn check_execution_size(num_transitions: usize) -> Result<()> {
+        // Ensure there are transitions.
+        ensure!(num_transitions > 0, "Execution must contain at least one transition");
         // Ensure the number of functions is within the allowed range.
         ensure!(
             num_transitions < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the fee.

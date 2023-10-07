@@ -92,7 +92,7 @@ fn execute(c: &mut Criterion) {
     let address = Address::try_from(&private_key).unwrap();
 
     // Initialize the VM.
-    let (vm, records) = initialize_vm(&private_key, rng);
+    let (vm, _records) = initialize_vm(&private_key, rng);
 
     // Prepare the inputs.
     let inputs =
@@ -113,18 +113,19 @@ fn execute(c: &mut Criterion) {
         })
     });
 
+    let transaction = vm
+        .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
+        .unwrap();
+
     c.bench_function("Transaction::Execute(transfer_public) - verify", |b| {
-        let transaction = vm
-            .execute_authorization(execute_authorization.replicate(), Some(fee_authorization.replicate()), None, rng)
-            .unwrap();
-        b.iter(|| assert!(vm.verify_transaction(&transaction, None)))
+        b.iter(|| vm.check_transaction(&transaction, None).unwrap())
     });
 }
 
 criterion_group! {
     name = transaction;
     config = Criterion::default().sample_size(10);
-    targets = execute
+    targets = deploy, execute
 }
 
 criterion_main!(transaction);
