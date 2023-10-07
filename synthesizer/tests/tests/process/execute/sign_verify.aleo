@@ -1,42 +1,49 @@
 /*
 randomness: 810372
 cases:
-  - function: verify
+  - program: sign_verify.aleo
+    function: verify
     inputs: [
       sign169ju4e8s66unu25celqycvsv3k9chdyz4n4sy62tx6wxj0u25vqp58hgu9hwyqc63qzxvjwesf2wz0krcvvw9kd9x0rsk4lwqn2acqhp9v0pdkhx6gvkanuuwratqmxa3du7l43c05253hhed9eg6ppzzfnjt06fpzp6msekdjxd36smjltndmxjndvv9x2uecsgngcwsc2qkns4afd,
       aleo1c5xskmnp5sfq9h2aje6avntnmlkha9xwlefduhwahdxch04w8spshzdxny,
       0field
     ]
-  - function: verify_constant_signature
+  - program: sign_verify.aleo
+    function: verify_constant_signature
     inputs: [
       aleo1c5xskmnp5sfq9h2aje6avntnmlkha9xwlefduhwahdxch04w8spshzdxny,
       0field
     ]
-  - function: verify
+  - program: sign_verify.aleo
+    function: verify
     inputs: [
       sign169ju4e8s66unu25celqycvsv3k9chdyz4n4sy62tx6wxj0u25vqp58hgu9hwyqc63qzxvjwesf2wz0krcvvw9kd9x0rsk4lwqn2acqhp9v0pdkhx6gvkanuuwratqmxa3du7l43c05253hhed9eg6ppzzfnjt06fpzp6msekdjxd36smjltndmxjndvv9x2uecsgngcwsc2qkns4afd,
       aleo1c5xskmnp5sfq9h2aje6avntnmlkha9xwlefduhwahdxch04w8spshzdxny,
       1field
     ]
-  - function: verify
+  - program: sign_verify.aleo
+    function: verify
     inputs: [
       sign169ju4e8s66unu25celqycvsv3k9chdyz4n4sy62tx6wxj0u25vqp58hgu9hwyqc63qzxvjwesf2wz0krcvvw9kd9x0rsk4lwqn2acqhp9v0pdkhx6gvkanuuwratqmxa3du7l43c05253hhed9eg6ppzzfnjt06fpzp6msekdjxd36smjltndmxjndvv9x2uecsgngcwsc2qkns4afd,
       aleo1c3a0lw4ng87nn7h0srpcu4gxs8k3fhw3kn32wu5z9amkn25llvrse4y6yn,
       0field
     ]
-  - function: literal_ops_on_signatures
+  - program: sign_verify.aleo
+    function: literal_ops_on_signatures
     inputs: [
       false,
       sign169ju4e8s66unu25celqycvsv3k9chdyz4n4sy62tx6wxj0u25vqp58hgu9hwyqc63qzxvjwesf2wz0krcvvw9kd9x0rsk4lwqn2acqhp9v0pdkhx6gvkanuuwratqmxa3du7l43c05253hhed9eg6ppzzfnjt06fpzp6msekdjxd36smjltndmxjndvv9x2uecsgngcwsc2qkns4afd,
       sign1jwctd5pcnqwl5e0srptwu726yahjg83nsncyjz0w34nzgtaqxqpuy2wja6c5u0t69f4v64nx6l84f9zd6yu5thxvtqvwvknd8p0uqqgxxmnhttyyys9n466enf9e9jpy8nccuqeqsj7xvjzjyeafkmaaplqg5y7n3cwnxmm0zk9a59hkcgghgr0zkjjq85jr5d4dpmermxc3z9kqr43
     ]
-  - function: literal_ops_on_signatures
+  - program: sign_verify.aleo
+    function: literal_ops_on_signatures
     inputs: [
       false,
       sign169ju4e8s66unu25celqycvsv3k9chdyz4n4sy62tx6wxj0u25vqp58hgu9hwyqc63qzxvjwesf2wz0krcvvw9kd9x0rsk4lwqn2acqhp9v0pdkhx6gvkanuuwratqmxa3du7l43c05253hhed9eg6ppzzfnjt06fpzp6msekdjxd36smjltndmxjndvv9x2uecsgngcwsc2qkns4afd,
       sign169ju4e8s66unu25celqycvsv3k9chdyz4n4sy62tx6wxj0u25vqp58hgu9hwyqc63qzxvjwesf2wz0krcvvw9kd9x0rsk4lwqn2acqhp9v0pdkhx6gvkanuuwratqmxa3du7l43c05253hhed9eg6ppzzfnjt06fpzp6msekdjxd36smjltndmxjndvv9x2uecsgngcwsc2qkns4afd
     ]
-  - function: literal_ops_on_signatures
+  - program: sign_verify.aleo
+    function: literal_ops_on_signatures
     inputs: [
       true,
       sign169ju4e8s66unu25celqycvsv3k9chdyz4n4sy62tx6wxj0u25vqp58hgu9hwyqc63qzxvjwesf2wz0krcvvw9kd9x0rsk4lwqn2acqhp9v0pdkhx6gvkanuuwratqmxa3du7l43c05253hhed9eg6ppzzfnjt06fpzp6msekdjxd36smjltndmxjndvv9x2uecsgngcwsc2qkns4afd,

@@ -47,7 +47,7 @@ type Apoly<F> = LabeledPolynomial<F>;
 type Bpoly<F> = LabeledPolynomial<F>;
 type Gpoly<F> = LabeledPolynomial<F>;
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Output the number of oracles sent by the prover in the fourth round.
     pub const fn num_fourth_round_oracles(circuits: usize) -> usize {
         circuits * 3
@@ -77,9 +77,9 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     pub fn prover_fourth_round<'a, R: RngCore>(
         second_message: &verifier::SecondMessage<F>,
         third_message: &verifier::ThirdMessage<F>,
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F, SM>,
         _r: &mut R,
-    ) -> Result<(prover::FourthMessage<F>, prover::FourthOracles<F>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::FourthMessage<F>, prover::FourthOracles<F>, prover::State<'a, F, SM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FourthRound");
 
         let verifier::SecondMessage { alpha, .. } = second_message;

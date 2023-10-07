@@ -42,19 +42,19 @@ mod fourth;
 mod second;
 mod third;
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Initialize the AHP prover.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>, R: Rng + CryptoRng>(
-        circuits_to_constraints: &BTreeMap<&'a Circuit<F, MM>, &[C]>,
+        circuits_to_constraints: &BTreeMap<&'a Circuit<F, SM>, &[C]>,
         rng: &mut R,
-    ) -> Result<prover::State<'a, F, MM>, AHPError> {
+    ) -> Result<prover::State<'a, F, SM>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         let mut randomizing_assignments = Vec::with_capacity(circuits_to_constraints.len());
         for constraints in circuits_to_constraints.values() {
             let mut circuit_assignments = Vec::with_capacity(constraints.len());
             for _ in 0..constraints.len() {
-                if MM::ZK {
+                if SM::ZK {
                     let a = F::rand(rng);
                     let b = F::rand(rng);
                     let c = a * b;
@@ -89,7 +89,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                         let padding_time =
                             start_timer!(|| format!("Padding matrices for {:?} and index {_i}", circuit.id));
 
-                        MM::ZK.then(|| {
+                        SM::ZK.then(|| {
                             crate::snark::varuna::ahp::matrices::add_randomizing_variables::<_, _>(
                                 &mut pcs,
                                 rand_assignments,
@@ -158,10 +158,10 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                     .collect::<Result<Vec<prover::Assignments<F>>, AHPError>>()?;
                 Ok((*circuit, assignments))
             })
-            .collect::<Result<BTreeMap<&'a Circuit<F, MM>, Vec<prover::Assignments<F>>>, AHPError>>()?;
-        end_timer!(init_time);
+            .collect::<Result<BTreeMap<&'a Circuit<F, SM>, Vec<prover::Assignments<F>>>, AHPError>>()?;
 
         let state = prover::State::initialize(indices_and_assignments)?;
+        end_timer!(init_time);
 
         Ok(state)
     }

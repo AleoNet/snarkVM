@@ -21,6 +21,10 @@ impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Record<A, Private> {
     ///
     /// Note: This method does **not** check the `nonce` equality.
     fn is_equal(&self, other: &Self) -> Self::Output {
+        // Ensure the `data` are the same length.
+        if self.data.len() != other.data.len() {
+            return Boolean::constant(false);
+        }
         // Recursively check each entry for equality.
         let mut equal = Boolean::constant(true);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
@@ -35,6 +39,10 @@ impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Record<A, Private> {
     ///
     /// Note: This method does **not** check the `nonce` equality.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
+        // Check the `data` lengths.
+        if self.data.len() != other.data.len() {
+            return Boolean::constant(true);
+        }
         // Recursively check each entry for inequality.
         let mut not_equal = Boolean::constant(false);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {

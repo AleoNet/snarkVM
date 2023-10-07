@@ -63,7 +63,7 @@ use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Header, Metadata, Ratify, Transaction, Transactions};
 use ledger_coinbase::{CoinbasePuzzle, CoinbaseSolution, EpochChallenge, ProverSolution, PuzzleCommitment};
 use ledger_committee::Committee;
-use ledger_narwhal::{Subdag, Transmission, TransmissionID};
+use ledger_narwhal::{BatchCertificate, Subdag, Transmission, TransmissionID};
 use ledger_query::Query;
 use ledger_store::{ConsensusStorage, ConsensusStore};
 use synthesizer::{
@@ -130,14 +130,14 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             bail!("Incorrect genesis block (run 'snarkos clean' and try again)")
         }
 
+        // Spot check the integrity of `NUM_BLOCKS` random blocks upon bootup.
+        const NUM_BLOCKS: usize = 10;
         // Retrieve the latest height.
-        let latest_height =
-            *ledger.vm.block_store().heights().max().ok_or_else(|| anyhow!("Failed to load blocks from the ledger"))?;
-
-        // Safety check the existence of `NUM_BLOCKS` random blocks.
-        const NUM_BLOCKS: usize = 1000;
+        let latest_height = ledger.current_block.read().height();
+        debug_assert_eq!(latest_height, *ledger.vm.block_store().heights().max().unwrap(), "Mismatch in latest height");
+        // Sample random block heights.
         let block_heights: Vec<u32> =
-            (0..=latest_height).choose_multiple(&mut OsRng, core::cmp::min(NUM_BLOCKS, latest_height as usize));
+            (0..=latest_height).choose_multiple(&mut OsRng, (latest_height as usize).min(NUM_BLOCKS));
         cfg_into_iter!(block_heights).try_for_each(|height| {
             ledger.get_block(height)?;
             Ok::<_, Error>(())
@@ -153,9 +153,8 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let timer = timer!("Ledger::load_unchecked");
 
         // Initialize the consensus store.
-        let store = match ConsensusStore::<N, C>::open(dev) {
-            Ok(store) => store,
-            _ => bail!("Failed to load ledger (run 'snarkos clean' and try again)"),
+        let Ok(store) = ConsensusStore::<N, C>::open(dev) else {
+            bail!("Failed to load ledger (run 'snarkos clean' and try again)");
         };
         lap!(timer, "Load consensus store");
 

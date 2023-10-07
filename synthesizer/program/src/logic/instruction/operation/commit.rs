@@ -67,6 +67,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     pub fn new(operands: Vec<Operand<N>>, destination: Register<N>, destination_type: LiteralType) -> Result<Self> {
         // Sanity check that the operands is exactly two inputs.
         ensure!(operands.len() == 2, "Commit instructions must have two operands");
+        // Sanity check the destination type.
+        ensure!(is_valid_destination_type(destination_type), "Invalid destination type for 'commit' instruction");
         // Return the instruction.
         Ok(Self { operands, destination, destination_type })
     }
@@ -324,7 +326,7 @@ impl<N: Network, const VARIANT: u8> FromBytes for CommitInstruction<N, VARIANT> 
         let destination_type = LiteralType::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, destination, destination_type })
+        Self::new(operands, destination, destination_type).map_err(error)
     }
 }
 

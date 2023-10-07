@@ -36,7 +36,7 @@ use indexmap::IndexMap;
 type CurrentNetwork = Testnet3;
 type CurrentAleo = AleoV0;
 
-const NUM_BLOCKS_TO_UNLOCK: u32 = 720;
+const NUM_BLOCKS_TO_UNLOCK: u32 = 360;
 
 /// Samples a new finalize state.
 fn sample_finalize_state(block_height: u32) -> FinalizeGlobalState {
@@ -1491,17 +1491,18 @@ mod sanity_checks {
     ) -> Assignment<<N as Environment>::Field> {
         // Retrieve the program.
         let program = stack.program();
+        // Get the program ID.
+        let program_id = *program.id();
         // Retrieve the input types.
         let input_types = program.get_function(&function_name).unwrap().input_types();
         // Compute the request.
-        let request =
-            Request::sign(private_key, *program.id(), function_name, inputs.iter(), &input_types, rng).unwrap();
+        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng).unwrap();
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.
         let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
         // Synthesize the circuit.
-        let _response = stack.execute_function::<A>(call_stack).unwrap();
+        let _response = stack.execute_function::<A>(call_stack, None).unwrap();
         // Retrieve the assignment.
         let assignment = assignments.read().last().unwrap().0.clone();
         assignment
@@ -1534,10 +1535,10 @@ mod sanity_checks {
 
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
-        assert_eq!(12, assignment.num_public());
-        assert_eq!(54672, assignment.num_private());
-        assert_eq!(54730, assignment.num_constraints());
-        assert_eq!((88496, 130675, 83625), assignment.num_nonzeros());
+        assert_eq!(15, assignment.num_public());
+        assert_eq!(54688, assignment.num_private());
+        assert_eq!(54747, assignment.num_constraints());
+        assert_eq!((88514, 130701, 83646), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1562,10 +1563,10 @@ mod sanity_checks {
 
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
-        assert_eq!(7, assignment.num_public());
-        assert_eq!(17563, assignment.num_private());
-        assert_eq!(17581, assignment.num_constraints());
-        assert_eq!((29996, 43774, 25901), assignment.num_nonzeros());
+        assert_eq!(10, assignment.num_public());
+        assert_eq!(17060, assignment.num_private());
+        assert_eq!(17079, assignment.num_constraints());
+        assert_eq!((31415, 45962, 24042), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1595,10 +1596,10 @@ mod sanity_checks {
 
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1, r2], rng);
-        assert_eq!(10, assignment.num_public());
-        assert_eq!(41220, assignment.num_private());
-        assert_eq!(41269, assignment.num_constraints());
-        assert_eq!((64427, 92903, 62359), assignment.num_nonzeros());
+        assert_eq!(13, assignment.num_public());
+        assert_eq!(41236, assignment.num_private());
+        assert_eq!(41286, assignment.num_constraints());
+        assert_eq!((64445, 92929, 62380), assignment.num_nonzeros());
     }
 
     #[test]
@@ -1622,9 +1623,9 @@ mod sanity_checks {
 
         // Compute the assignment.
         let assignment = get_assignment::<_, CurrentAleo>(stack, &private_key, function_name, &[r0, r1], rng);
-        assert_eq!(7, assignment.num_public());
-        assert_eq!(17117, assignment.num_private());
-        assert_eq!(17139, assignment.num_constraints());
-        assert_eq!((29595, 42646, 24858), assignment.num_nonzeros());
+        assert_eq!(10, assignment.num_public());
+        assert_eq!(17051, assignment.num_private());
+        assert_eq!(17074, assignment.num_constraints());
+        assert_eq!((31285, 45446, 24030), assignment.num_nonzeros());
     }
 }

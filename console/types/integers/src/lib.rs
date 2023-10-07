@@ -32,6 +32,7 @@ mod size_in_bytes;
 mod to_bits;
 mod to_field;
 mod to_fields;
+mod to_scalar;
 mod zero;
 
 pub use snarkvm_console_network_environment::prelude::*;
@@ -39,6 +40,7 @@ pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 
 use snarkvm_console_network_environment::traits::types::{integer_magnitude::Magnitude, integer_type::IntegerType};
+use snarkvm_console_types_scalar::Scalar;
 
 use core::marker::PhantomData;
 

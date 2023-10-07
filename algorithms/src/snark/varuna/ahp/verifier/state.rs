@@ -40,7 +40,7 @@ pub struct CircuitSpecificState<F: PrimeField> {
 }
 /// State of the AHP verifier.
 #[derive(Debug)]
-pub struct State<F: PrimeField, MM: SNARKMode> {
+pub struct State<F: PrimeField, SM: SNARKMode> {
     /// The state for each circuit in the batch.
     pub(crate) circuit_specific_states: BTreeMap<CircuitId, CircuitSpecificState<F>>,
     /// The largest constraint domain of all circuits in the batch.
@@ -60,5 +60,5 @@ pub struct State<F: PrimeField, MM: SNARKMode> {
     pub(crate) fourth_round_message: Option<FourthMessage<F>>,
     /// The verifier's random challenge in the last round of the AHP
     pub(crate) gamma: Option<F>,
-    pub(crate) mode: PhantomData<MM>,
+    pub(crate) mode: PhantomData<SM>,
 }

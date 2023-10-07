@@ -87,7 +87,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     pub fn new() -> Self {
         Self {
             round_constants: Self::ROUND_CONSTANTS.into_iter().map(|e| U64::constant(console::U64::new(e))).collect(),
-            rotl: Self::rotl_offsets::<NUM_ROUNDS>(),
+            rotl: Self::rotl_offsets(),
         }
     }
 }
@@ -130,18 +130,18 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
     ///
     /// The offsets are defined as follows:
     /// ```text
-    /// for t = 0 to NUM_ROUNDS do
+    /// for t = 0 to 23 do
     ///   offset[t] = (t + 1)(t + 2)/2
     /// end for
     /// ```
     ///
     /// This method transposes the offsets to match the access pattern (i.e. for y, then for x).
-    fn rotl_offsets<const NUM_ROUNDS: usize>() -> [usize; MODULO * MODULO] {
+    fn rotl_offsets() -> [usize; MODULO * MODULO] {
         let mut rotl = [0; MODULO * MODULO];
         let mut x: usize = 1;
         let mut y: usize = 0;
 
-        for t in 0..NUM_ROUNDS {
+        for t in 0..=23 {
             let rotr = ((t + 1) * (t + 2) / 2) % 64;
             rotl[x + (y * MODULO)] = (64 - rotr) % 64;
 

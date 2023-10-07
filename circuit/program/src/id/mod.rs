@@ -77,3 +77,17 @@ impl<A: Aleo> Eject for ProgramID<A> {
         }
     }
 }
+
+impl<A: Aleo> Equal<Self> for ProgramID<A> {
+    type Output = Boolean<A>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        self.name.is_equal(&other.name) & (self.network.is_equal(&other.network))
+    }
+
+    /// Returns `true` if `self` and `other` are **not** equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        self.name.is_not_equal(&other.name) | (self.network.is_not_equal(&other.network))
+    }
+}

@@ -30,6 +30,8 @@ impl<N: Network> Parser for Plaintext<N> {
             let (string, _) = tag(":")(string)?;
             // Parse the plaintext from the string.
             let (string, plaintext) = Plaintext::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Return the identifier and plaintext.
             Ok((string, (identifier, plaintext)))
         }

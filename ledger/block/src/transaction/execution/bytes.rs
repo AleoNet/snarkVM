@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Execution<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid execution version"));
         }
         // Read the number of transitions.
@@ -51,7 +51,7 @@ impl<N: Network> ToBytes for Execution<N> {
     /// Writes the execution to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
         // Write the number of transitions.
         (u8::try_from(self.transitions.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
         // Write the transitions.
