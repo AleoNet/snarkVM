@@ -381,7 +381,7 @@ impl<N: Network> Transition<N> {
     /* Input */
 
     /// Returns the input IDs.
-    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn input_ids(&self) -> impl '_ + ExactSizeIterator<Item = &Field<N>> {
         self.inputs.iter().map(Input::id)
     }
 
@@ -398,7 +398,7 @@ impl<N: Network> Transition<N> {
     /* Output */
 
     /// Returns the output IDs.
-    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn output_ids(&self) -> impl '_ + ExactSizeIterator<Item = &Field<N>> {
         self.outputs.iter().map(Output::id)
     }
 

@@ -201,8 +201,9 @@ pub mod test_helpers {
         // Initialize the process.
         let process = Process::load().unwrap();
         // Authorize the fee.
-        let authorization =
-            process.authorize_fee_private(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+        let authorization = process
+            .authorize_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+            .unwrap();
         // Construct the fee trace.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
@@ -248,7 +249,8 @@ pub mod test_helpers {
         // Initialize the process.
         let process = Process::load().unwrap();
         // Authorize the fee.
-        let authorization = process.authorize_fee_public(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+        let authorization =
+            process.authorize_fee_public::<CurrentAleo, _>(&private_key, fee, deployment_or_execution_id, rng).unwrap();
         // Construct the fee trace.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 

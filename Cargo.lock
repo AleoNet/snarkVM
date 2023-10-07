@@ -3305,12 +3305,14 @@ name = "snarkvm-synthesizer-process"
 version = "0.15.1"
 dependencies = [
  "aleo-std",
+ "bincode",
  "colored",
  "indexmap 2.0.0",
  "once_cell",
  "parking_lot",
  "rand",
  "rayon",
+ "serde_json",
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-ledger-block",
