@@ -32,7 +32,7 @@ use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
 use std::collections::BTreeMap;
 
-impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
+impl<TargetField: PrimeField, SM: SNARKMode> AHPForR1CS<TargetField, SM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         batch_sizes: &BTreeMap<CircuitId, usize>,
@@ -41,7 +41,7 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
         max_variable_domain: EvaluationDomain<TargetField>,
         max_non_zero_domain: EvaluationDomain<TargetField>,
         fs_rng: &mut R,
-    ) -> Result<(FirstMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(FirstMessage<TargetField>, State<TargetField, SM>), AHPError> {
         let mut batch_combiners = BTreeMap::new();
         let mut circuit_specific_states = BTreeMap::new();
         let mut num_circuit_combiners = vec![1; batch_sizes.len()];
@@ -128,9 +128,9 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the second message and next round state.
     pub fn verifier_second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+        mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(SecondMessage<TargetField>, State<TargetField, SM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(3);
         let (first, _) = elems.split_at(3);
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
@@ -147,9 +147,9 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the third message and next round state.
     pub fn verifier_third_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+        mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, SM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
         assert!(!state.max_variable_domain.evaluate_vanishing_polynomial(beta).is_zero());
@@ -162,9 +162,9 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the fourth message and next round state.
     pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+        mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<(FourthMessage<TargetField>, State<TargetField, MM>), AHPError> {
+    ) -> Result<(FourthMessage<TargetField>, State<TargetField, SM>), AHPError> {
         let num_circuits = state.circuit_specific_states.len();
         let mut delta_a = Vec::with_capacity(num_circuits);
         let mut delta_b = Vec::with_capacity(num_circuits);
@@ -187,9 +187,9 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the next round state.
     pub fn verifier_fifth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
-        mut state: State<TargetField, MM>,
+        mut state: State<TargetField, SM>,
         fs_rng: &mut R,
-    ) -> Result<State<TargetField, MM>, AHPError> {
+    ) -> Result<State<TargetField, SM>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
         assert!(!state.max_non_zero_domain.evaluate_vanishing_polynomial(gamma).is_zero());
@@ -199,7 +199,7 @@ impl<TargetField: PrimeField, MM: SNARKMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the query state and next round state.
-    pub fn verifier_query_set(state: State<TargetField, MM>) -> (QuerySet<TargetField>, State<TargetField, MM>) {
+    pub fn verifier_query_set(state: State<TargetField, SM>) -> (QuerySet<TargetField>, State<TargetField, SM>) {
         (QuerySet::new(&state), state)
     }
 }

@@ -25,6 +25,7 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
+        signer: circuit::Address<A>,
         caller: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
@@ -44,6 +45,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition signer, as a circuit.
+        registers.set_signer_circuit(signer);
         // Set the transition caller, as a circuit.
         registers.set_caller_circuit(caller);
         // Set the transition view key, as a circuit.
@@ -100,6 +103,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                             circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
                         ))))
                     }
+                    // If the operand is the signer, retrieve the signer from the registers.
+                    Operand::Signer => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.signer_circuit()?),
+                    ))),
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
@@ -124,11 +131,12 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn execute_function<A: circuit::Aleo<Network = N>>(&self, mut call_stack: CallStack<N>) -> Result<Response<N>> {
+    fn execute_function<A: circuit::Aleo<Network = N>>(
+        &self,
+        mut call_stack: CallStack<N>,
+        console_caller: Option<ProgramID<N>>,
+    ) -> Result<Response<N>> {
         let timer = timer!("Stack::execute_function");
-
-        // Ensure the call stack is not `Evaluate`.
-        ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
 
         // Ensure the circuit environment is clean.
         A::reset();
@@ -143,6 +151,19 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             N::ID,
             console_request.network_id()
         );
+
+        // Determine if this is the top-level caller.
+        let console_is_root = console_caller.is_none();
+
+        // Determine the parent.
+        //  - If this execution is the top-level caller, then the parent is the program ID.
+        //  - If this execution is a child caller, then the parent is the caller.
+        let console_parent = match console_caller {
+            // If this execution is the top-level caller, then the parent is the program ID.
+            None => console_request.program_id().to_address()?,
+            // If this execution is a child caller, then the parent is the caller.
+            Some(console_caller) => console_caller.to_address()?,
+        };
 
         // Retrieve the function from the program.
         let function = self.get_function(console_request.function_name())?;
@@ -178,14 +199,27 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
+
+        // Inject `is_root` as `Mode::Public`.
+        let is_root = circuit::Boolean::new(circuit::Mode::Public, console_is_root);
+        // Inject the parent as `Mode::Public`.
+        let parent = circuit::Address::new(circuit::Mode::Public, console_parent);
+        // Determine the caller.
+        let caller = Ternary::ternary(&is_root, request.signer(), &parent);
+
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
         lap!(timer, "Verify the circuit request");
 
+        // Set the transition signer.
+        registers.set_signer(*console_request.signer());
+        // Set the transition signer, as a circuit.
+        registers.set_signer_circuit(request.signer().clone());
+
         // Set the transition caller.
-        registers.set_caller(*console_request.caller());
+        registers.set_caller(caller.eject_value());
         // Set the transition caller, as a circuit.
-        registers.set_caller_circuit(request.caller().clone());
+        registers.set_caller_circuit(caller);
 
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());
@@ -275,6 +309,10 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                             circuit::Address::new(circuit::Mode::Constant, program_id.to_address()?),
                         ))))
                     }
+                    // If the operand is the signer, retrieve the signer from the registers.
+                    Operand::Signer => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
+                        circuit::Literal::Address(registers.signer_circuit()?),
+                    ))),
                     // If the operand is the caller, retrieve the caller from the registers.
                     Operand::Caller => Ok(circuit::Value::Plaintext(circuit::Plaintext::from(
                         circuit::Literal::Address(registers.caller_circuit()?),
@@ -330,73 +368,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let num_response_constraints =
             A::num_constraints().saturating_sub(num_request_constraints).saturating_sub(num_function_constraints);
 
-        // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
-        let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
-            || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
-            || matches!(registers.call_stack(), CallStack::Execute(..))
-        {
-            // If this function has the finalize command, then construct the finalize inputs.
-            if let Some(command) = function.finalize_command() {
-                use circuit::traits::ToBits;
-
-                // Ensure the number of inputs is within bounds.
-                ensure!(
-                    command.operands().len() <= N::MAX_INPUTS,
-                    "The 'finalize' command contains too many operands. The maximum number of inputs is {}.",
-                    N::MAX_INPUTS
-                );
-
-                // Initialize a vector for the (console) finalize inputs.
-                let mut console_finalize_inputs = Vec::with_capacity(command.operands().len());
-                // Initialize a vector for the (circuit) finalize input bits.
-                let mut circuit_finalize_input_bits = Vec::with_capacity(command.operands().len());
-
-                // Retrieve the finalize inputs.
-                for operand in command.operands() {
-                    // Retrieve the finalize input.
-                    let value = registers.load_circuit(self, operand)?;
-                    // Ensure the value is a literal, struct, or array.
-                    // See `RegisterTypes::initialize_function_types()` for the same set of checks.
-                    match value {
-                        circuit::Value::Plaintext(circuit::Plaintext::Literal(..))
-                        | circuit::Value::Plaintext(circuit::Plaintext::Struct(..))
-                        | circuit::Value::Plaintext(circuit::Plaintext::Array(..)) => (),
-                        circuit::Value::Record(..) => {
-                            bail!(
-                                "'{}/{}' attempts to pass a 'record' into 'finalize'",
-                                self.program_id(),
-                                function.name()
-                            );
-                        }
-                    }
-
-                    // Store the (console) finalize input.
-                    console_finalize_inputs.push(value.eject_value());
-                    // Store the (circuit) finalize input bits.
-                    value.write_bits_le(&mut circuit_finalize_input_bits);
-                }
-
-                // Compute the finalize inputs checksum.
-                let finalize_checksum = A::hash_bhp1024(&circuit_finalize_input_bits);
-                // Inject the finalize inputs checksum as `Mode::Public`.
-                let circuit_checksum = circuit::Field::<A>::new(circuit::Mode::Public, finalize_checksum.eject_value());
-                // Enforce the injected checksum matches the original checksum.
-                A::assert_eq(circuit_checksum, finalize_checksum);
-
-                #[cfg(debug_assertions)]
-                Self::log_circuit::<A, _>("Finalize");
-
-                lap!(timer, "Construct the finalize inputs");
-
-                // Return the (console) finalize inputs.
-                Some(console_finalize_inputs)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Complete");
 
@@ -409,8 +380,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             self.matches_value_type(output, output_type)
         })?;
 
-        // If the circuit is in `Execute` mode, then ensure the circuit is satisfied.
-        if let CallStack::Execute(..) = registers.call_stack() {
+        // If the circuit is in `Execute` or `PackageRun` mode, then ensure the circuit is satisfied.
+        if matches!(registers.call_stack(), CallStack::Execute(..) | CallStack::PackageRun(..)) {
             // If the circuit is empty or not satisfied, then throw an error.
             ensure!(
                 A::num_constraints() > 0 && A::is_satisfied(),
@@ -435,9 +406,16 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                 lap!(timer, "Synthesize the {} circuit key", function.name());
             }
         }
-
+        // If the circuit is in `Authorize` mode, then save the transition.
+        if let CallStack::Authorize(_, _, authorization) = registers.call_stack() {
+            // Construct the transition.
+            let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
+            // Add the transition to the authorization.
+            authorization.insert_transition(transition)?;
+            lap!(timer, "Save the transition");
+        }
         // If the circuit is in `CheckDeployment` mode, then save the assignment.
-        if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+        else if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
             // Construct the call metrics.
             let metrics = CallMetrics {
                 program_id: *self.program_id(),
@@ -456,7 +434,8 @@ impl<N: Network> StackExecute<N> for Stack<N> {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Construct the transition.
-            let transition = Transition::from(&console_request, &response, finalize, &output_types, &output_registers)?;
+            let transition = Transition::from(&console_request, &response, &output_types, &output_registers)?;
+
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function.name())?;
             // Construct the call metrics.
@@ -476,6 +455,21 @@ impl<N: Network> StackExecute<N> for Stack<N> {
                 (proving_key, assignment),
                 metrics,
             )?;
+        }
+        // If the circuit is in `PackageRun` mode, then save the assignment.
+        else if let CallStack::PackageRun(_, _, ref assignments) = registers.call_stack() {
+            // Construct the call metrics.
+            let metrics = CallMetrics {
+                program_id: *self.program_id(),
+                function_name: *function.name(),
+                num_instructions: function.instructions().len(),
+                num_request_constraints,
+                num_function_constraints,
+                num_response_constraints,
+            };
+            // Add the assignment to the assignments.
+            assignments.write().push((assignment, metrics));
+            lap!(timer, "Save the circuit assignment");
         }
 
         finish!(timer);

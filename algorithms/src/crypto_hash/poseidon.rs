@@ -111,6 +111,8 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     state: State<F, RATE, CAPACITY>,
     /// Current mode (whether its absorbing or squeezing)
     pub mode: DuplexSpongeMode,
+    /// A persistent lookup table used when compressing elements.
+    adjustment_factor_lookup_table: Arc<[F]>,
 }
 
 impl<F: PrimeField, const RATE: usize> AlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
@@ -125,6 +127,18 @@ impl<F: PrimeField, const RATE: usize> AlgebraicSponge<F, RATE> for PoseidonSpon
             parameters: parameters.clone(),
             state: State::default(),
             mode: DuplexSpongeMode::Absorbing { next_absorb_index: 0 },
+            adjustment_factor_lookup_table: {
+                let capacity = F::size_in_bits() - 1;
+                let mut table = Vec::<F>::new();
+
+                let mut cur = F::one();
+                for _ in 0..capacity {
+                    table.push(cur);
+                    cur.double_in_place();
+                }
+
+                table.into()
+            },
         }
     }
 
@@ -318,23 +332,11 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
 
     /// Compress every two elements if possible.
     /// Provides a vector of (limb, num_of_additions), both of which are F.
-    pub fn compress_elements<TargetField: PrimeField>(src_limbs: &[(F, F)], ty: OptimizationType) -> Vec<F> {
+    pub fn compress_elements<TargetField: PrimeField>(&self, src_limbs: &[(F, F)], ty: OptimizationType) -> Vec<F> {
         let capacity = F::size_in_bits() - 1;
         let mut dest_limbs = Vec::<F>::new();
 
         let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), ty);
-
-        let adjustment_factor_lookup_table = {
-            let mut table = Vec::<F>::new();
-
-            let mut cur = F::one();
-            for _ in 1..=capacity {
-                table.push(cur);
-                cur.double_in_place();
-            }
-
-            table
-        };
 
         let mut i = 0;
         let src_len = src_limbs.len();
@@ -351,7 +353,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
 
             if let Some(second) = second {
                 if first_max_bits_per_limb + second_max_bits_per_limb <= capacity {
-                    let adjustment_factor = &adjustment_factor_lookup_table[second_max_bits_per_limb];
+                    let adjustment_factor = &self.adjustment_factor_lookup_table[second_max_bits_per_limb];
 
                     dest_limbs.push(first.0 * adjustment_factor + second.0);
                     i += 2;
@@ -418,7 +420,7 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
             }
         }
 
-        let dest_limbs = Self::compress_elements::<TargetField>(&src_limbs, ty);
+        let dest_limbs = self.compress_elements::<TargetField>(&src_limbs, ty);
         self.absorb_native_field_elements(&dest_limbs);
     }
 

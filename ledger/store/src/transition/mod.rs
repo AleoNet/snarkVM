@@ -26,7 +26,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record, Value},
+    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 use ledger_block::{Input, Output, Transition};
@@ -42,8 +42,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     type InputStorage: InputStorage<N>;
     /// The transition outputs.
     type OutputStorage: OutputStorage<N>;
-    /// The transition finalize inputs.
-    type FinalizeMap: for<'a> Map<'a, N::TransitionID, Option<Vec<Value<N>>>>;
     /// The transition public keys.
     type TPKMap: for<'a> Map<'a, N::TransitionID, Group<N>>;
     /// The mapping of `transition public key` to `transition ID`.
@@ -62,8 +60,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
     fn input_store(&self) -> &InputStore<N, Self::InputStorage>;
     /// Returns the transition output store.
     fn output_store(&self) -> &OutputStore<N, Self::OutputStorage>;
-    /// Returns the transition finalize inputs map.
-    fn finalize_map(&self) -> &Self::FinalizeMap;
     /// Returns the transition public keys map.
     fn tpk_map(&self) -> &Self::TPKMap;
     /// Returns the reverse `tpk` map.
@@ -84,7 +80,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.locator_map().start_atomic();
         self.input_store().start_atomic();
         self.output_store().start_atomic();
-        self.finalize_map().start_atomic();
         self.tpk_map().start_atomic();
         self.reverse_tpk_map().start_atomic();
         self.tcm_map().start_atomic();
@@ -96,7 +91,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.locator_map().is_atomic_in_progress()
             || self.input_store().is_atomic_in_progress()
             || self.output_store().is_atomic_in_progress()
-            || self.finalize_map().is_atomic_in_progress()
             || self.tpk_map().is_atomic_in_progress()
             || self.reverse_tpk_map().is_atomic_in_progress()
             || self.tcm_map().is_atomic_in_progress()
@@ -108,7 +102,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.locator_map().atomic_checkpoint();
         self.input_store().atomic_checkpoint();
         self.output_store().atomic_checkpoint();
-        self.finalize_map().atomic_checkpoint();
         self.tpk_map().atomic_checkpoint();
         self.reverse_tpk_map().atomic_checkpoint();
         self.tcm_map().atomic_checkpoint();
@@ -120,7 +113,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.locator_map().clear_latest_checkpoint();
         self.input_store().clear_latest_checkpoint();
         self.output_store().clear_latest_checkpoint();
-        self.finalize_map().clear_latest_checkpoint();
         self.tpk_map().clear_latest_checkpoint();
         self.reverse_tpk_map().clear_latest_checkpoint();
         self.tcm_map().clear_latest_checkpoint();
@@ -132,7 +124,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.locator_map().atomic_rewind();
         self.input_store().atomic_rewind();
         self.output_store().atomic_rewind();
-        self.finalize_map().atomic_rewind();
         self.tpk_map().atomic_rewind();
         self.reverse_tpk_map().atomic_rewind();
         self.tcm_map().atomic_rewind();
@@ -144,7 +135,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.locator_map().abort_atomic();
         self.input_store().abort_atomic();
         self.output_store().abort_atomic();
-        self.finalize_map().abort_atomic();
         self.tpk_map().abort_atomic();
         self.reverse_tpk_map().abort_atomic();
         self.tcm_map().abort_atomic();
@@ -156,7 +146,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         self.locator_map().finish_atomic()?;
         self.input_store().finish_atomic()?;
         self.output_store().finish_atomic()?;
-        self.finalize_map().finish_atomic()?;
         self.tpk_map().finish_atomic()?;
         self.reverse_tpk_map().finish_atomic()?;
         self.tcm_map().finish_atomic()?;
@@ -174,8 +163,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.input_store().insert(transition_id, transition.inputs())?;
             // Store the outputs.
             self.output_store().insert(transition_id, transition.outputs())?;
-            // Store the finalize inputs.
-            self.finalize_map().insert(transition_id, transition.finalize().cloned())?;
             // Store `tpk`.
             self.tpk_map().insert(transition_id, *transition.tpk())?;
             // Store the reverse `tpk` entry.
@@ -209,8 +196,6 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
             self.input_store().remove(transition_id)?;
             // Remove the outputs.
             self.output_store().remove(transition_id)?;
-            // Remove the finalize inputs.
-            self.finalize_map().remove(transition_id)?;
             // Remove `tpk`.
             self.tpk_map().remove(transition_id)?;
             // Remove the reverse `tpk` entry.
@@ -235,22 +220,19 @@ pub trait TransitionStorage<N: Network>: Clone + Send + Sync {
         let inputs = self.input_store().get_inputs(transition_id)?;
         // Retrieve the outputs.
         let outputs = self.output_store().get_outputs(transition_id)?;
-        // Retrieve the finalize inputs.
-        let finalize = self.finalize_map().get_confirmed(transition_id)?;
         // Retrieve `tpk`.
         let tpk = self.tpk_map().get_confirmed(transition_id)?;
         // Retrieve `tcm`.
         let tcm = self.tcm_map().get_confirmed(transition_id)?;
 
-        match (finalize, tpk, tcm) {
-            (Some(finalize), Some(tpk), Some(tcm)) => {
+        match (tpk, tcm) {
+            (Some(tpk), Some(tcm)) => {
                 // Construct the transition.
                 let transition = Transition::new(
                     program_id,
                     function_name,
                     inputs,
                     outputs,
-                    cow_to_cloned!(finalize),
                     cow_to_cloned!(tpk),
                     cow_to_cloned!(tcm),
                 )?;
@@ -274,8 +256,6 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     inputs: InputStore<N, T::InputStorage>,
     /// The map of transition outputs.
     outputs: OutputStore<N, T::OutputStorage>,
-    /// The map of transition finalize inputs.
-    finalize: T::FinalizeMap,
     /// The map of transition public keys.
     tpk: T::TPKMap,
     /// The reverse `tpk` map.
@@ -298,7 +278,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             locator: storage.locator_map().clone(),
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
-            finalize: storage.finalize_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
@@ -313,7 +292,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             locator: storage.locator_map().clone(),
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
-            finalize: storage.finalize_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
@@ -429,14 +407,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns the outputs for the given `transition ID`.
     pub fn get_outputs(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
         self.outputs.get_outputs(transition_id)
-    }
-
-    /// Returns the finalize inputs for the given `transition ID`.
-    pub fn get_finalize(&self, transition_id: &N::TransitionID) -> Result<Option<Vec<Value<N>>>> {
-        match self.finalize.get_confirmed(transition_id)? {
-            Some(finalize) => Ok(cow_to_cloned!(finalize)),
-            None => bail!("Missing transition '{transition_id}' - cannot get finalize inputs"),
-        }
     }
 
     /// Returns the record for the given `commitment`.

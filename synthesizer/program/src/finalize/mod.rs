@@ -21,7 +21,7 @@ mod parse;
 use crate::traits::CommandTrait;
 use console::{
     network::prelude::*,
-    program::{Identifier, PlaintextType, Register},
+    program::{FinalizeType, Identifier, Register},
 };
 
 use indexmap::IndexSet;
@@ -59,8 +59,8 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
     }
 
     /// Returns the finalize input types.
-    pub fn input_types(&self) -> Vec<PlaintextType<N>> {
-        self.inputs.iter().map(|input| input.plaintext_type()).cloned().collect()
+    pub fn input_types(&self) -> Vec<FinalizeType<N>> {
+        self.inputs.iter().map(|input| input.finalize_type()).cloned().collect()
     }
 
     /// Returns the finalize commands.

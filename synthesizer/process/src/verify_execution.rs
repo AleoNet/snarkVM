@@ -44,6 +44,9 @@ impl<N: Network> Process<N> {
 
         // Construct the call graph of the execution.
         let call_graph = self.construct_call_graph(execution)?;
+        // Construct the reverse call graph of the execution.
+        // Note: This is a mapping of the child transition ID to the parent transition ID.
+        let reverse_call_graph = Self::reverse_call_graph(&call_graph);
 
         // Initialize a map of verifying keys to public inputs.
         let mut verifier_inputs = HashMap::new();
@@ -109,8 +112,12 @@ impl<N: Network> Process<N> {
             // Retrieve the function from the stack.
             let function = stack.get_function(transition.function_name())?;
 
+            // Retrieve the parent program ID.
+            // Note: The last transition in the execution does not have a parent, by definition.
+            let parent = reverse_call_graph.get(transition.id()).and_then(|tid| execution.get_program_id(tid));
+
             // Construct the verifier inputs for the transition.
-            let inputs = self.to_transition_verifier_inputs(transition, &function, &call_graph, &mut transition_map)?;
+            let inputs = self.to_transition_verifier_inputs(transition, parent, &call_graph, &mut transition_map)?;
             lap!(timer, "Constructed the verifier inputs for a transition of {}", function.name());
 
             // Save the verifying key and its inputs.
@@ -132,9 +139,10 @@ impl<N: Network> Process<N> {
         ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
 
         // Construct the list of verifier inputs.
-        let verifier_inputs = verifier_inputs.values().cloned().collect();
+        let verifier_inputs: Vec<_> = verifier_inputs.values().cloned().collect();
         // Verify the execution proof.
         Trace::verify_execution_proof(&locator, verifier_inputs, execution)?;
+
         lap!(timer, "Verify the proof");
 
         finish!(timer);
@@ -147,21 +155,34 @@ impl<N: Network> Process<N> {
     fn to_transition_verifier_inputs(
         &self,
         transition: &Transition<N>,
-        function: &Function<N>,
+        parent: Option<&ProgramID<N>>,
         call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
         transition_map: &mut HashMap<N::TransitionID, &Transition<N>>,
     ) -> Result<Vec<N::Field>> {
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinates();
 
+        // Determine the value of `is_root` and `parent`.
+        let (is_root, parent) = match parent {
+            // If there is a parent, then `is_root` is `0` and `parent` is the parent program ID.
+            Some(program_id) => (Field::<N>::zero(), *program_id),
+            // If there is no parent, then `is_root` is `1` and `parent` is the root program ID.
+            None => (Field::one(), *transition.program_id()),
+        };
+        // Compute the x- and y-coordinate of `parent`.
+        let (parent_x, parent_y) = parent.to_address()?.to_xy_coordinates();
+
         // [Inputs] Construct the verifier inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
         // [Inputs] Extend the verifier inputs with the input IDs.
         inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
+        // [Inputs] Extend the verifier inputs with the public inputs for 'self.caller'.
+        inputs.extend([*is_root, *parent_x, *parent_y]);
 
         // If there are function calls, append their inputs and outputs.
         for transition_id in call_graph.get(transition.id()).unwrap() {
-            // Note that this unwrap is safe, since we are processing transitions in post-order, which implies that all callees have been added to `transition_map`.
+            // Note: This unwrap is safe, as we are processing transitions in post-order,
+            // which implies that all child transition IDs have been added to `transition_map`.
             let transition: &&Transition<N> = transition_map.get(transition_id).unwrap();
             // [Inputs] Extend the verifier inputs with the input IDs of the external call.
             inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
@@ -172,42 +193,6 @@ impl<N: Network> Process<N> {
         // [Inputs] Extend the verifier inputs with the output IDs.
         inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
 
-        // Ensure the transition contains finalize inputs, if the function has a finalize scope.
-        if let Some((command, logic)) = function.finalize() {
-            // Ensure the transition contains finalize inputs.
-            match transition.finalize() {
-                Some(finalize) => {
-                    // Retrieve the number of operands.
-                    let num_operands = command.operands().len();
-                    // Retrieve the number of inputs.
-                    let num_inputs = logic.inputs().len();
-
-                    // Ensure the number of inputs for finalize is within the allowed range.
-                    ensure!(finalize.len() <= N::MAX_INPUTS, "Transition exceeds maximum inputs for finalize");
-                    // Ensure the number of inputs for finalize matches in the finalize command.
-                    ensure!(finalize.len() == num_operands, "The number of inputs for finalize is incorrect");
-                    // Ensure the number of inputs for finalize matches in the finalize logic.
-                    ensure!(finalize.len() == num_inputs, "The number of inputs for finalize is incorrect");
-
-                    // Convert the finalize inputs into concatenated bits.
-                    let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
-                    // Compute the checksum of the finalize inputs.
-                    let checksum = N::hash_bhp1024(&finalize_bits)?;
-
-                    // [Inputs] Extend the verifier inputs with the inputs for finalize.
-                    inputs.push(*checksum);
-                }
-                None => bail!("The transition is missing inputs for 'finalize'"),
-            }
-        } else {
-            // Ensure the transition does not contain inputs for finalize.
-            if transition.finalize().is_some() {
-                bail!(
-                    "The transition contains inputs for 'finalize', but the function does not have a 'finalize' scope"
-                )
-            }
-        }
-
         #[cfg(debug_assertions)]
         println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
         Ok(inputs)
@@ -216,7 +201,9 @@ impl<N: Network> Process<N> {
 
 impl<N: Network> Process<N> {
     // A helper function to construct a call graph from an execution.
-    // The call graph is represented as a mapping from the transition ID of a parent transition to the transition IDs of its children, in the order in which they were called.
+    //
+    // The call graph represents a mapping of parent transition IDs to child transition IDs,
+    // in the order that they were called.
     //
     // Suppose we have the following call structure.
     // The functions are invoked in the following order:
@@ -235,7 +222,10 @@ impl<N: Network> Process<N> {
     // In order to reconstruct the call graph, we:
     // - Iterate over the call structure in reverse post-order. The ordering is maintained by the `traversal_stack`.
     // - Process each transition in the `Execution` in reverse, assigning its transition ID to the corresponding function call.
-    fn construct_call_graph(&self, execution: &Execution<N>) -> Result<HashMap<N::TransitionID, Vec<N::TransitionID>>> {
+    pub fn construct_call_graph(
+        &self,
+        execution: &Execution<N>,
+    ) -> Result<HashMap<N::TransitionID, Vec<N::TransitionID>>> {
         // Metadata for each transition the execution.
         struct TransitionMetadata<N: Network> {
             uid: usize,
@@ -372,5 +362,27 @@ impl<N: Network> Process<N> {
         );
 
         Ok(call_graph)
+    }
+
+    /// A helper function to reverse the call graph.
+    ///
+    /// The call graph is a mapping of parent transition IDs to child transition IDs,
+    /// in the order that they were called.
+    ///
+    /// The reverse call graph is a mapping of child transition IDs to parent transition IDs.
+    /// Note: Each child transition only has one parent transition, by definition.
+    fn reverse_call_graph(
+        call_graph: &HashMap<N::TransitionID, Vec<N::TransitionID>>,
+    ) -> HashMap<N::TransitionID, N::TransitionID> {
+        // Initialize a map for the reverse call graph.
+        let mut reverse_call_graph = HashMap::new();
+        // Iterate over the (forward) call graph.
+        for (parent, children) in call_graph {
+            for child in children {
+                let result = reverse_call_graph.insert(*child, *parent);
+                debug_assert!(result.is_none(), "Found a child with multiple parents");
+            }
+        }
+        reverse_call_graph
     }
 }

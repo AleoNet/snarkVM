@@ -15,6 +15,9 @@
 mod assert;
 pub use assert::*;
 
+mod async_;
+pub use async_::*;
+
 mod call;
 pub use call::*;
 
@@ -23,9 +26,6 @@ pub use cast::*;
 
 mod commit;
 pub use commit::*;
-
-mod finalize;
-pub use finalize::*;
 
 mod hash;
 pub use hash::*;

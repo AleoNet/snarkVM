@@ -360,8 +360,8 @@ struct message:
     amount as u128;
 
 mapping account:
-    key owner as address.public;
-    value amount as u64.public;
+    key as address.public;
+    value as u64.public;
 
 record token:
     owner as address.private;
@@ -591,6 +591,7 @@ function compute:
             transactions.to_finalize_root().unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
+            Field::zero(),
             metadata,
         )?;
 
@@ -680,28 +681,32 @@ function compute:
         let first_program = r"
 program test_program_1.aleo;
 mapping map_0:
-    key left as field.public;
-    value right as field.public;
+    key as field.public;
+    value as field.public;
 function init:
-    finalize;
+    async init into r0;
+    output r0 as test_program_1.aleo/init.future;
 finalize init:
     set 0field into map_0[0field];
 function getter:
-    finalize;
+    async getter into r0;
+    output r0 as test_program_1.aleo/getter.future;
 finalize getter:
     get map_0[0field] into r0;
         ";
         let second_program = r"
 program test_program_2.aleo;
 mapping map_0:
-    key left as field.public;
-    value right as field.public;
+    key as field.public;
+    value as field.public;
 function init:
-    finalize;
+    async init into r0;
+    output r0 as test_program_2.aleo/init.future;
 finalize init:
     set 0field into map_0[0field];
 function getter:
-    finalize;
+    async getter into r0;
+    output r0 as test_program_2.aleo/getter.future;
 finalize getter:
     get map_0[0field] into r0;
         ";

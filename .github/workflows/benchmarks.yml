@@ -52,7 +52,8 @@ jobs:
       - name: Benchmark console/algorithms
         run: |
           cd console/algorithms
-          cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench poseidon -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench elligator2 -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
       - name: Benchmark console/collections

@@ -16,22 +16,9 @@
 #![allow(clippy::too_many_arguments)]
 #![warn(clippy::cast_possible_truncation)]
 
-#[cfg(feature = "default")]
-pub mod cast;
-#[cfg(feature = "default")]
-pub use cast::*;
-
-#[cfg(feature = "default")]
-pub mod cast_lossy;
-#[cfg(feature = "default")]
-pub use cast_lossy::*;
-
 pub use modules::*;
 
 pub mod prelude {
-    #[cfg(feature = "default")]
-    pub use crate::{cast::*, cast_lossy::*};
-
     pub use crate::modules::*;
     pub use snarkvm_console_network_environment::prelude::*;
 }

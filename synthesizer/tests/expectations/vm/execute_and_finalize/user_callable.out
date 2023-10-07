@@ -1,0 +1,17 @@
+errors: []
+outputs:
+- verified: true
+  execute:
+    child.aleo/foo:
+      outputs:
+      - '{"type":"public","id":"4279509780486643035080626777023973066084837379094817161797996960689084569794field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+      - '{"type":"public","id":"4408001848080504344165436121252640202617322612254005793329268580869751931263field","value":"aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx"}'
+  speculate: the execution was accepted
+  add_next_block: succeeded.
+- execute: 'Failed to evaluate instruction (call child.aleo/foo into r0 r1;): Failed to evaluate instruction (assert.eq self.caller self.signer ;): ''assert.eq'' failed: ''aleo18ruz9g9e0h5elul8a6j6c7fq68tey2u0jj4nwwza60xdgz5pgsysphw7zg'' is not equal to ''aleo1qr2ha4pfs5l28aze88yn6fhleeythklkczrule2v838uwj65n5gqxt9djx'' (should be equal)'
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"3016941229901441056588651080908607801693155798837344578888431259782128238411field","checksum":"5879080894131074121533453004863838821405536569870396241404140229889576450255field","value":"record1qyqsp3agqhrv6lrugrgu9sc32rh2h486s7adwpdht6w8yj53j94f0tgwqyxx66trwfhkxun9v35hguerqqpqzqxrcnjq9znfycp8td8tz4q4wmx67xd9k0mzldeecqxtzc5uxtl4qv3cn759q932fq05jk0a7hr63lxpfmy7je3anzmerqhkswu0yteq27t3m7r"}'
+- {}
