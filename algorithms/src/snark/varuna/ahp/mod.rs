@@ -25,6 +25,7 @@ pub mod indexer;
 pub(crate) use indexer::*;
 
 pub(crate) mod matrices;
+pub(crate) mod selectors;
 
 /// Describes data structures and the algorithms used by the AHP prover.
 pub mod prover;

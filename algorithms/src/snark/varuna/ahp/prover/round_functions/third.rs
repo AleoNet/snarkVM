@@ -25,6 +25,7 @@ use crate::{
         ahp::{indexer::CircuitId, verifier, AHPForR1CS},
         matrices::transpose,
         prover::{self, MatrixSums, ThirdMessage},
+        selectors::apply_randomized_selector,
         AHPError,
         Matrix,
         SNARKMode,
@@ -316,7 +317,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         end_timer!(z_m_at_alpha_time);
 
         let (h_1_i, xg_1_i) =
-            Self::apply_randomized_selector(&mut z_m_at_alpha, combiner, max_variable_domain, variable_domain, true)?;
+            apply_randomized_selector(&mut z_m_at_alpha, combiner, max_variable_domain, variable_domain, true)?;
         let xg_1_i = xg_1_i.ok_or(anyhow::anyhow!("Expected remainder when applying selector"))?;
 
         end_timer!(sumcheck_time);

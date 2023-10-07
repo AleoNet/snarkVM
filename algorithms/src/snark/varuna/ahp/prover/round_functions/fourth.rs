@@ -25,6 +25,7 @@ use crate::{
         ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS, CircuitId},
         matrices::MatrixEvals,
         prover,
+        selectors::apply_randomized_selector,
         witness_label,
         SNARKMode,
     },
@@ -229,7 +230,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
         let combiner = F::one(); // We are applying combiners in the fifth round when summing the witnesses
         let (lhs, remainder) =
-            Self::apply_randomized_selector(&mut h, combiner, &max_non_zero_domain, &non_zero_domain, false)?;
+            apply_randomized_selector(&mut h, combiner, &max_non_zero_domain, &non_zero_domain, false)?;
         assert!(remainder.is_none());
 
         let g_label = format!("g_{label}");
