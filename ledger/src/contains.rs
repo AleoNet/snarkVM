@@ -30,6 +30,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().contains_block_hash(block_hash)
     }
 
+    /// Returns `true` if the given batch certificate ID exists.
+    pub fn contains_certificate(&self, certificate_id: &Field<N>) -> Result<bool> {
+        self.vm.block_store().contains_certificate(certificate_id)
+    }
+
     /// Returns `true` if the given program ID exists.
     pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
         self.vm.transaction_store().contains_program_id(program_id)

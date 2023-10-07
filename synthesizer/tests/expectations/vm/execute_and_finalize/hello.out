@@ -1,48 +1,49 @@
-- execute:
+errors: []
+outputs:
+- verified: true
+  execute:
     hello.aleo/hello:
       outputs:
-      - '{"type":"private","id":"5459874949540656339896424601837550318790266188426988935724859367920207931028field","value":"ciphertext1qyqxp56yz9fx2hc8qd9dmss6npcd5h8r582ccfmakh2jcf0pvujdwrqq83wxy"}'
-      finalize: []
-    credits.aleo/fee_private:
-      outputs:
-      - '{"type":"record","id":"7791353003394394118641879083394349638390172842410188049547657559236944788631field","checksum":"2131495033973867989393784363608568032568195425013734862036701493589755037702field","value":"record1qyqspnrul0jw2u0a7jgxh8ftaequacdjhldqhdr8e8yc8uhg0q2ppxc2qyxx66trwfhkxun9v35hguerqqpqzqq5wftj0jmg0wudaj09t3nu8snvxtqrr84edf7k43gg0xn400muqky26l0cv6k8l7lxapusheeham2ufvcrr2uj07qrh9cjkqt8qkrs2s6zess"}'
-      finalize: []
+      - '{"type":"private","id":"8125348741943322686009907907811782653304283628858249042666480861925372544888field","value":"ciphertext1qyqzh0ww4d529sp24xw2c0ek9p3mlh5amc8rlzhudhw6u4e6h9ffuzc4xu63n"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     hello.aleo/hello:
       outputs:
       - '{"type":"private","id":"4190523942746941151788535679482167833023294290248250731893857652327309412596field","value":"ciphertext1qyqg0dpeew6mjk7zgcw423k99k74k5nnqpshnjsjvjezfqsfel7q6pq9k0ny2"}'
-      finalize: []
-    credits.aleo/fee_private:
-      outputs:
-      - '{"type":"record","id":"4191198613729680952611824740459035306739472570630958374911956816307655241786field","checksum":"4946561893144535184225125000190846294429186134636334975807905728162736154280field","value":"record1qyqsprjmrxemlnkjn5v5tvsxjtdnwndqc40jv2g9ks4dnknu6ucu4mcxqyxx66trwfhkxun9v35hguerqqpqzqyjern5gguzywy658yjenl6r4a68pxtxm3mdgw2kur3zl8kkx8aqwczwm99vr3qxfd7cvv2263tg8yuuxanc0ppupg582cel0e5hjfqqral3uk"}'
-      finalize: []
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     hello.aleo/goodbye:
       outputs:
-      - '{"type":"public","id":"4422606574863156036341614972238442892823066996724079227085638046305964917879field","value":"1u32"}'
-      finalize:
-      - 1u32
-      - 1u32
-    credits.aleo/fee_private:
-      outputs:
-      - '{"type":"record","id":"6668886706894714013313860607473481824533547991772788157276830799512707935582field","checksum":"2901589187633951402527250258610323611689439122872738485414884973359309068311field","value":"record1qyqsq52hsee66mw23znlfmc88tdgjnh7a0uuxeqrh56zysyr9t4ky8stqyxx66trwfhkxun9v35hguerqqpqzq9z2pq4vxpv43den6kktrc8ufm5kjrm84f4eprczc3su95w5tvzpd8s2e60s2ra7myyru67tnfh86wtr2vrr8f84xw5ux8k7xfg3ahpz6pesvk"}'
-      finalize: []
+      - '{"type":"public","id":"6479967549102698786501355579286201653159194507767944415639092049192937228124field","value":"1u32"}'
+      - '{"type":"future","id":"3413333273447015937668991532824129740236214843152627847347248311711336145614field","value":"{\n  program_id: hello.aleo,\n  function_name: goodbye,\n  arguments: [\n    1u32,\n    1u32\n  ]\n}"}'
   speculate: the execution was accepted
   add_next_block: succeeded.
-- execute:
+- verified: true
+  execute:
     hello.aleo/goodbye:
       outputs:
       - '{"type":"public","id":"626299501033028507774181248923989773544577830656010087029558433445349806993field","value":"1u32"}'
-      finalize:
-      - 0u32
-      - 1u32
-    credits.aleo/fee_private:
-      outputs:
-      - '{"type":"record","id":"6464844260854015147296612989521509745308934803774183371183084153503795251789field","checksum":"2486059173640159754955350817838107946088153031071282949747691382202100184469field","value":"record1qyqspga64uulzny350adkf3l886mcjdcx70lru5hpl8z6y95l90ga3qrqyxx66trwfhkxun9v35hguerqqpqzqqhxexg0fny2r7kqvye0j9r6jmc5sypyt0r59nvt2cavq548stkqk6lh8he0vr9jwx3c5nlxua7k3w26tz225pryza82dxnyev8udysqwvakj9"}'
-      finalize: []
+      - '{"type":"future","id":"3565307659242500881563819123626548100763518079205528385426399960688796421686field","value":"{\n  program_id: hello.aleo,\n  function_name: goodbye,\n  arguments: [\n    0u32,\n    1u32\n  ]\n}"}'
   speculate: the execution was rejected
   add_next_block: succeeded.
+additional:
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"1198772209040896904563398531012125171083367490751449145866614459672450939890field","checksum":"3882855698837453319385325304890223953708776695472304705244303737247314246882field","value":"record1qyqsqmyecu624xxmkn0y2s2c63gg0ngz60r9w6zwf4h498unzqnn33q9qyxx66trwfhkxun9v35hguerqqpqzqx66jpudc06vr0kzuknalcrkvdmupsyjdffmk349kk6zwht44vpqgrahdnmlxfrp2j8u2fuxqaf9zuhq3qxu3pkhfnxm0akafsef5pqxuw2mwp"}'
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"2529193049209846367978166260544993258864021860087053986076733690018151270960field","checksum":"8247928885152423568050727406132621019643075541932768251859178692368144092402field","value":"record1qyqsplw0ug04zyn9qje0660qcr2udednqaf9lg6yevvlwmjymevdtuqdqyxx66trwfhkxun9v35hguerqqpqzqpaw8d2jg9kua9wlf6ha6ttp8cjkhewq9qhtvgclk7k8h2asl2nqqw5uf6agr3dg5xmu3u6mag7rp46ql4patxc68fw2s3ht2yzzxmsqr7tlqs"}'
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"7287112878295690992521567744030412033150717793151843926409452078487376146124field","checksum":"5993041325382159770059828349119204216475544914654488851940922814293615901313field","value":"record1qyqsqw4eutps3xwvdtx0se6kpjsamjymcz0jgtwy2ntkhp7ztxgt2qsxqyxx66trwfhkxun9v35hguerqqpqzq87q856y8ddlx0dyhzjf8w8cwmvqalfntzg4hh6xrv5vfh3u4agqyut9nru439eqpz3jpdlax396aysmz5j7zgfl49r3s72s9qdx6dpy5q0qpn"}'
+- child_outputs:
+    credits.aleo/fee_private:
+      outputs:
+      - '{"type":"record","id":"3276525620596491704910422767629359784791621182330506835714531473667751021673field","checksum":"3977005922602739734086654659125385124878533733910145576787629183311570513598field","value":"record1qyqspm9z8aghcdgk8fpgrjfdsgzkkxw6r9vzey2atu5hjqlrzlp4pvg3qyxx66trwfhkxun9v35hguerqqpqzqpgaehx73vt8jg9nzn6tgqfyhlv8dtm3g4uxkqweuxe0vhlesphp9xz6daslf8rvds3stgdczpfm0c3pnuzxfyuh4pwnqltwv6gca6qwscu9yq"}'

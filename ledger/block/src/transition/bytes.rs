@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Transition<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid transition version"));
         }
 
@@ -49,33 +49,14 @@ impl<N: Network> FromBytes for Transition<N> {
             outputs.push(FromBytes::read_le(&mut reader)?);
         }
 
-        // Read the finalize variant.
-        let finalize_variant = u8::read_le(&mut reader)?;
-        // Read the finalize inputs.
-        let finalize = match finalize_variant {
-            0 => None,
-            1 => {
-                // Read the number of inputs for finalize.
-                let num_finalize_inputs = u8::read_le(&mut reader)?;
-                // Read the inputs for finalize.
-                let mut finalize = Vec::with_capacity(num_finalize_inputs as usize);
-                for _ in 0..num_finalize_inputs {
-                    // Read the input for finalize.
-                    finalize.push(FromBytes::read_le(&mut reader)?);
-                }
-                Some(finalize)
-            }
-            2.. => return Err(error(format!("Invalid transition finalize variant ({finalize_variant})"))),
-        };
-
         // Read the transition public key.
         let tpk = FromBytes::read_le(&mut reader)?;
         // Read the transition commitment.
         let tcm = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
-        let transition = Self::new(program_id, function_name, inputs, outputs, finalize, tpk, tcm)
-            .map_err(|e| error(e.to_string()))?;
+        let transition =
+            Self::new(program_id, function_name, inputs, outputs, tpk, tcm).map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
             true => Ok(transition),
@@ -88,7 +69,7 @@ impl<N: Network> ToBytes for Transition<N> {
     /// Writes the literal to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         // Write the transition ID.
         self.id.write_le(&mut writer)?;
@@ -106,22 +87,6 @@ impl<N: Network> ToBytes for Transition<N> {
         (u8::try_from(self.outputs.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
         // Write the outputs.
         self.outputs.write_le(&mut writer)?;
-
-        // Write the finalize inputs.
-        match &self.finalize {
-            None => {
-                // Write the finalize variant.
-                0u8.write_le(&mut writer)?;
-            }
-            Some(finalize) => {
-                // Write the finalize variant.
-                1u8.write_le(&mut writer)?;
-                // Write the number of inputs to finalize.
-                (u8::try_from(finalize.len()).map_err(|e| error(e.to_string()))?).write_le(&mut writer)?;
-                // Write the inputs to finalize.
-                finalize.write_le(&mut writer)?;
-            }
-        }
 
         // Write the transition public key.
         self.tpk.write_le(&mut writer)?;

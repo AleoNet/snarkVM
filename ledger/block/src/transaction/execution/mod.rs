@@ -17,7 +17,7 @@ mod serialize;
 mod string;
 
 use crate::{Transaction, Transition};
-use console::{account::Field, network::prelude::*};
+use console::{account::Field, network::prelude::*, program::ProgramID};
 use synthesizer_snark::Proof;
 
 use indexmap::IndexMap;
@@ -80,8 +80,13 @@ impl<N: Network> Execution<N> {
     }
 
     /// Returns the `Transition` corresponding to the given transition ID. This method is `O(1)`.
-    pub fn find_transition(&self, id: &N::TransitionID) -> Option<&Transition<N>> {
-        self.transitions.get(id)
+    pub fn get_transition(&self, transition_id: &N::TransitionID) -> Option<&Transition<N>> {
+        self.transitions.get(transition_id)
+    }
+
+    /// Returns the program ID corresponding to the given transition ID. This method is `O(1)`.
+    pub fn get_program_id(&self, transition_id: &N::TransitionID) -> Option<&ProgramID<N>> {
+        self.transitions.get(transition_id).map(|t| t.program_id())
     }
 
     /// Returns the `Transition` at the given index.

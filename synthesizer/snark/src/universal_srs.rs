@@ -17,7 +17,7 @@ use super::*;
 #[derive(Clone)]
 pub struct UniversalSRS<N: Network> {
     /// The universal SRS parameter.
-    srs: Arc<OnceCell<marlin::UniversalSRS<N::PairingCurve>>>,
+    srs: Arc<OnceCell<varuna::UniversalSRS<N::PairingCurve>>>,
 }
 
 impl<N: Network> UniversalSRS<N> {
@@ -35,7 +35,7 @@ impl<N: Network> UniversalSRS<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
+        let (proving_key, verifying_key) = Varuna::<N>::circuit_setup(self, assignment)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -59,7 +59,7 @@ impl<N: Network> ToBytes for UniversalSRS<N> {
 }
 
 impl<N: Network> Deref for UniversalSRS<N> {
-    type Target = marlin::UniversalSRS<N::PairingCurve>;
+    type Target = varuna::UniversalSRS<N::PairingCurve>;
 
     #[allow(clippy::let_and_return)]
     fn deref(&self) -> &Self::Target {
@@ -68,7 +68,7 @@ impl<N: Network> Deref for UniversalSRS<N> {
             let timer = std::time::Instant::now();
 
             // Load the universal SRS.
-            let universal_srs = marlin::UniversalSRS::load().expect("Failed to load the universal SRS");
+            let universal_srs = varuna::UniversalSRS::load().expect("Failed to load the universal SRS");
 
             #[cfg(feature = "aleo-cli")]
             println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());

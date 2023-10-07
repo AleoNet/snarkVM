@@ -17,6 +17,7 @@
 #![warn(clippy::cast_possible_truncation)]
 
 pub use modules::*;
+
 pub mod prelude {
     pub use crate::modules::*;
     pub use snarkvm_console_network_environment::prelude::*;

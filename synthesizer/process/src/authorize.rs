@@ -32,7 +32,7 @@ impl<N: Network> Process<N> {
     /// Authorizes the fee given the credits record, the fee amount (in microcredits),
     /// and the deployment or execution ID.
     #[inline]
-    pub fn authorize_fee_private<R: Rng + CryptoRng>(
+    pub fn authorize_fee_private<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         credits: Record<N, Plaintext<N>>,
@@ -46,8 +46,6 @@ impl<N: Network> Process<N> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
         let function_name = Identifier::from_str("fee_private")?;
-        // Retrieve the input types.
-        let input_types = self.get_program(program_id)?.get_function(&function_name)?.input_types();
 
         // Ensure the record contains a sufficient balance to pay the fee.
         ensure_record_balance(&credits, fee_in_microcredits)?;
@@ -57,20 +55,21 @@ impl<N: Network> Process<N> {
             Value::Record(credits),
             Value::from(Literal::U64(U64::<N>::new(fee_in_microcredits))),
             Value::from(Literal::Field(deployment_or_execution_id)),
-        ];
+        ]
+        .into_iter();
         lap!(timer, "Construct the inputs");
 
-        // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
-        finish!(timer, "Compute the request");
+        // Authorize the call.
+        let authorization = self.get_stack(program_id)?.authorize::<A, R>(private_key, function_name, inputs, rng)?;
+        finish!(timer, "Compute the authorization");
 
         // Return the authorization.
-        Ok(Authorization::from(request))
+        Ok(authorization)
     }
 
     /// Authorizes the fee given the the fee amount (in microcredits) and the deployment or execution ID.
     #[inline]
-    pub fn authorize_fee_public<R: Rng + CryptoRng>(
+    pub fn authorize_fee_public<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         fee_in_microcredits: u64,
@@ -83,21 +82,21 @@ impl<N: Network> Process<N> {
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Ensure the fee has the correct function.
         let function_name = Identifier::from_str("fee_public")?;
-        // Construct the input types.
-        let input_types = [ValueType::Public(LiteralType::U64.into()), ValueType::Public(LiteralType::Field.into())];
+
         // Construct the inputs.
         let inputs = [
             Value::from(Literal::U64(U64::<N>::new(fee_in_microcredits))),
             Value::from(Literal::Field(deployment_or_execution_id)),
-        ];
+        ]
+        .into_iter();
         lap!(timer, "Construct the inputs");
 
-        // Compute the request.
-        let request = Request::sign(private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
-        finish!(timer, "Compute the request");
+        // Authorize the call.
+        let authorization = self.get_stack(program_id)?.authorize::<A, R>(private_key, function_name, inputs, rng)?;
+        finish!(timer, "Compute the authorization");
 
         // Return the authorization.
-        Ok(Authorization::from(request))
+        Ok(authorization)
     }
 }
 

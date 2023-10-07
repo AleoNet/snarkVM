@@ -19,7 +19,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
     ///
     /// # Errors
     /// This method will halt if the register locator is not found.
-    /// In the case of register members, this method will halt if the member is not found.
+    /// In the case of register accesses, this method will halt if the access is not found.
     #[inline]
     fn load(&self, stack: &(impl StackMatches<N> + StackProgram<N>), operand: &Operand<N>) -> Result<Value<N>> {
         // Retrieve the register.
@@ -32,6 +32,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
             Operand::ProgramID(program_id) => {
                 return Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))));
             }
+            // If the operand is the signer, load the value of the signer.
+            Operand::Signer => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(self.signer()?)))),
             // If the operand is the caller, load the value of the caller.
             Operand::Caller => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(self.caller()?)))),
             // If the operand is the block height, throw an error.
@@ -42,12 +44,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
         let stack_value =
             self.console_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
 
-        // Return the value for the given register or register member.
+        // Return the value for the given register or register access.
         let stack_value = match register {
             // If the register is a locator, then return the stack value.
             Register::Locator(..) => stack_value.clone(),
-            // If the register is a register member, then load the specific stack value.
-            Register::Member(_, ref path) => {
+            // If the register is a register access, then load the specific stack value.
+            Register::Access(_, ref path) => {
                 match stack_value {
                     // Retrieve the plaintext member from the path.
                     Value::Plaintext(plaintext) => Value::Plaintext(plaintext.find(path)?),
@@ -57,6 +59,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoad<N> for Registers<N
                             Value::Plaintext(plaintext)
                         }
                     },
+                    // Retrieve the argument from the future.
+                    Value::Future(future) => future.find(path)?,
                 }
             }
         };
@@ -78,7 +82,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
     ///
     /// # Errors
     /// This method will halt if the register locator is not found.
-    /// In the case of register members, this method will halt if the member is not found.
+    /// In the case of register accesses, this method will halt if the access is not found.
     #[inline]
     fn load_circuit(
         &self,
@@ -103,6 +107,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
                     Literal::Address(program_id.to_address()?),
                 ))));
             }
+            // If the operand is the signer, load the value of the signer.
+            Operand::Signer => {
+                return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
+                    self.signer_circuit()?,
+                ))));
+            }
             // If the operand is the caller, load the value of the caller.
             Operand::Caller => {
                 return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
@@ -117,14 +127,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
         let circuit_value =
             self.circuit_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
 
-        // Return the value for the given register or register member.
+        // Return the value for the given register or register access.
         let circuit_value = match register {
             // If the register is a locator, then return the stack value.
             Register::Locator(..) => circuit_value.clone(),
-            // If the register is a register member, then load the specific stack value.
-            Register::Member(_, ref path) => {
+            // If the register is a register access, then load the specific stack value.
+            Register::Access(_, ref path) => {
                 // Inject the path.
-                let path = path.iter().map(|member| circuit::Identifier::constant(*member)).collect::<Vec<_>>();
+                let path = path.iter().map(|access| circuit::Access::constant(*access)).collect::<Vec<_>>();
 
                 match circuit_value {
                     // Retrieve the plaintext member from the path.
@@ -135,6 +145,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegistersLoadCircuit<N, A> for R
                         | circuit::Entry::Public(plaintext)
                         | circuit::Entry::Private(plaintext) => circuit::Value::Plaintext(plaintext),
                     },
+                    // Retrieve the argument from the future.
+                    circuit::Value::Future(future) => future.find(&path)?,
                 }
             }
         };

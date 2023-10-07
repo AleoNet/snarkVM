@@ -89,6 +89,13 @@ impl<E: Environment> Field<E> {
     }
 }
 
+impl<E: Environment> Default for Field<E> {
+    /// Returns the default field element.
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
 impl<E: Environment> TypeName for Field<E> {
     /// Returns the type name as a string.
     #[inline]

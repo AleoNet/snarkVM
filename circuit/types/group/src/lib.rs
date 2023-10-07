@@ -45,6 +45,13 @@ pub struct Group<E: Environment> {
 
 impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
+impl<E: Environment> Group<E> {
+    /// Returns the generator of the prime-order subgroup.
+    pub fn generator() -> Self {
+        Group::constant(console::Group::generator())
+    }
+}
+
 #[cfg(console)]
 impl<E: Environment> Inject for Group<E> {
     type Primitive = console::Group<E::Network>;

@@ -189,6 +189,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         self.vm.block_store().get_block_coinbase(&block_hash)
     }
 
+    /// Returns the solution for the given solution ID.
+    pub fn get_solution(&self, solution_id: &PuzzleCommitment<N>) -> Result<ProverSolution<N>> {
+        self.vm.block_store().get_solution(solution_id)
+    }
+
     /// Returns the block authority for the given block height.
     pub fn get_authority(&self, height: u32) -> Result<Authority<N>> {
         // If the height is 0, return the genesis block authority.
@@ -205,6 +210,11 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             Some(authority) => Ok(authority),
             None => bail!("Missing authority for block {height}"),
         }
+    }
+
+    /// Returns the batch certificate for the given `certificate ID`.
+    pub fn get_batch_certificate(&self, certificate_id: &Field<N>) -> Result<Option<BatchCertificate<N>>> {
+        self.vm.block_store().get_batch_certificate(certificate_id)
     }
 }
 

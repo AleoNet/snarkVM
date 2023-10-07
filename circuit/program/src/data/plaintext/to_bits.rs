@@ -49,6 +49,21 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                 // Extend the vector with the bits of the struct.
                 vec.extend_from_slice(bits);
             }
+            Self::Array(elements, bits_le) => {
+                // Compute the bits of the array.
+                let bits = bits_le.get_or_init(|| {
+                    let mut bits_le = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
+                    U32::constant(console::U32::new(elements.len() as u32)).write_bits_le(&mut bits_le);
+                    for value in elements {
+                        let value_bits = value.to_bits_le();
+                        U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_le(&mut bits_le);
+                        bits_le.extend(value_bits);
+                    }
+                    bits_le
+                });
+                // Extend the vector with the bits of the array.
+                vec.extend_from_slice(bits);
+            }
         }
     }
 
@@ -82,6 +97,21 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                     bits_be
                 });
                 // Extend the vector with the bits of the struct.
+                vec.extend_from_slice(bits)
+            }
+            Self::Array(elements, bits_be) => {
+                // Compute the bits of the array.
+                let bits = bits_be.get_or_init(|| {
+                    let mut bits_be = vec![Boolean::constant(true), Boolean::constant(false)]; // Variant bit.
+                    U32::constant(console::U32::new(elements.len() as u32)).write_bits_be(&mut bits_be);
+                    for value in elements {
+                        let value_bits = value.to_bits_be();
+                        U16::constant(console::U16::new(value_bits.len() as u16)).write_bits_be(&mut bits_be);
+                        bits_be.extend(value_bits);
+                    }
+                    bits_be
+                });
+                // Extend the vector with the bits of the array.
                 vec.extend_from_slice(bits)
             }
         }

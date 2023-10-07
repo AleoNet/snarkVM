@@ -15,7 +15,7 @@
 use console::prelude::{ensure, Result};
 
 /// A safety bound (sanity-check) for the coinbase reward.
-pub const MAX_COINBASE_REWARD: u64 = 237_823_432; // Coinbase reward at block 1.
+pub const MAX_COINBASE_REWARD: u64 = 190_258_739; // Coinbase reward at block 1.
 
 /// Calculate the block reward, given the total supply, block time, and coinbase reward.
 ///     R_staking = floor((0.05 * S) / H_Y1) + CR / 2
@@ -226,7 +226,7 @@ mod tests {
     const ITERATIONS: u32 = 1000;
 
     const EXPECTED_ANCHOR_BLOCK_REWARD_AT_BLOCK_1: u128 = MAX_COINBASE_REWARD as u128;
-    const EXPECTED_STAKING_REWARD: u64 = 11_891_171;
+    const EXPECTED_STAKING_REWARD: u64 = 23_782_343;
     const EXPECTED_COINBASE_REWARD_AT_BLOCK_1: u64 = MAX_COINBASE_REWARD;
 
     #[test]
@@ -475,16 +475,16 @@ mod tests {
 
             if !hit_500m && total_reward > 500_000_000_000_000 {
                 println!("500M credits block height is {block_height}");
-                assert_eq!(block_height, 11_573_925, "Update me if my parameters have changed");
+                assert_eq!(block_height, 5_786_964, "Update me if my parameters have changed");
                 hit_500m = true;
             } else if !hit_1b && total_reward > 1_000_000_000_000_000 {
                 println!("1B credits block height is {block_height}");
-                assert_eq!(block_height, 26_657_360, "Update me if my parameters have changed");
+                assert_eq!(block_height, 13_328_683, "Update me if my parameters have changed");
                 hit_1b = true;
             }
         }
 
-        assert_eq!(total_reward, 1_500_000_111_158_059, "Update me if my parameters have changed");
+        assert_eq!(total_reward, 1_499_999_984_232_003, "Update me if my parameters have changed");
     }
 
     #[test]
@@ -657,7 +657,7 @@ mod tests {
         // The custom block height drift that is faster than the anchor time.
         const ANCHOR_TIME_DELTA: i64 = 15;
         // The expected number of blocks before the coinbase target is doubled.
-        const EXPECTED_NUM_BLOCKS_TO_DOUBLE: u32 = 909;
+        const EXPECTED_NUM_BLOCKS_TO_DOUBLE: u32 = 451;
 
         let minimum_coinbase_target: u64 = 2u64.pow(10) - 1;
 

@@ -20,12 +20,12 @@ impl<N: Network> FromBytes for Request<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid request version"));
         }
 
-        // Read the caller.
-        let caller = FromBytes::read_le(&mut reader)?;
+        // Read the signer.
+        let signer = FromBytes::read_le(&mut reader)?;
         // Read the network ID.
         let network_id = FromBytes::read_le(&mut reader)?;
         // Read the program ID.
@@ -52,7 +52,7 @@ impl<N: Network> FromBytes for Request<N> {
         let tcm = FromBytes::read_le(&mut reader)?;
 
         Ok(Self::from((
-            caller,
+            signer,
             network_id,
             program_id,
             function_name,
@@ -71,10 +71,10 @@ impl<N: Network> ToBytes for Request<N> {
     /// Writes the request to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
-        // Write the caller.
-        self.caller.write_le(&mut writer)?;
+        // Write the signer.
+        self.signer.write_le(&mut writer)?;
         // Write the network ID.
         self.network_id.write_le(&mut writer)?;
         // Write the program ID.
