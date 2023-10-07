@@ -125,12 +125,12 @@ impl<N: Network> CallStack<N> {
     /// Pushes the request to the stack.
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
-            CallStack::Authorize(requests, ..) => requests.push(request),
-            CallStack::Synthesize(requests, ..) => requests.push(request),
-            CallStack::CheckDeployment(requests, ..) => requests.push(request),
+            CallStack::Authorize(requests, ..)
+            | CallStack::Synthesize(requests, ..)
+            | CallStack::CheckDeployment(requests, ..)
+            | CallStack::PackageRun(requests, ..) => requests.push(request),
             CallStack::Evaluate(authorization) => authorization.push(request),
             CallStack::Execute(authorization, ..) => authorization.push(request),
-            CallStack::PackageRun(requests, ..) => requests.push(request),
         }
         Ok(())
     }
