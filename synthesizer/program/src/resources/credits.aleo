@@ -1,15 +1,16 @@
-// Disclosure: This program is experimental and not intended for production use.
-// This program is provided "as is" without warranties of any kind.
-// The author disclaims liability for damages of any kind arising from the use of this program.
+// Copyright (C) 2019-2023 Aleo Systems Inc.
+// This file is part of the snarkVM library.
 
-/**********************************************************************************************************************/
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+// http://www.apache.org/licenses/LICENSE-2.0
 
-// Open Questions:
-// - Should the 360 be more?
-// fn bond
-// - if the bond is now 33% or more, close the validator. (determine how hard to impl this)
-// fn unbond
-//  - can only be triggered after the validator has unbonded all of their delegators.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 /**********************************************************************************************************************/
 
@@ -98,6 +99,7 @@ function bond_public:
 
     // Bond the specified amount of microcredits to the specified validator.
     async bond_public self.caller r0 r1 into r3;
+    // Output the finalize future.
     output r3 as credits.aleo/bond_public.future;
 
 finalize bond_public:
@@ -246,6 +248,7 @@ function unbond_public:
 
     // Unbond the specified amount of microcredits to the caller.
     async unbond_public self.caller r0 into r1;
+    // Output the finalize future.
     output r1 as credits.aleo/unbond_public.future;
 
 finalize unbond_public:
@@ -461,6 +464,7 @@ function unbond_delegator_as_validator:
 
     // Unbond the delegator as the validator.
     async unbond_delegator_as_validator self.caller r0 into r1;
+    // Output the finalize future.
     output r1 as credits.aleo/unbond_delegator_as_validator.future;
 
 finalize unbond_delegator_as_validator:
@@ -537,6 +541,7 @@ finalize unbond_delegator_as_validator:
 function claim_unbond_public:
     // Claim the unbonded microcredits.
     async claim_unbond_public self.caller into r0;
+    // Output the finalize future.
     output r0 as credits.aleo/claim_unbond_public.future;
 
 finalize claim_unbond_public:
@@ -575,6 +580,7 @@ function set_validator_state:
     input r0 as boolean.public;
     // Set the validator to be either open or closed to stakers.
     async set_validator_state self.caller r0 into r1;
+    // Output the finalize future.
     output r1 as credits.aleo/set_validator_state.future;
 
 finalize set_validator_state:
@@ -603,6 +609,7 @@ function transfer_public:
     input r1 as u64.public;
     // Transfer the credits publicly.
     async transfer_public self.caller r0 r1 into r2;
+    // Output the finalize future.
     output r2 as credits.aleo/transfer_public.future;
 
 finalize transfer_public:
@@ -675,6 +682,7 @@ function transfer_private_to_public:
     async transfer_private_to_public r1 r2 into r5;
     // Output the sender's change record.
     output r4 as credits.record;
+    // Output the finalize future.
     output r5 as credits.aleo/transfer_private_to_public.future;
 
 finalize transfer_private_to_public:
@@ -709,6 +717,7 @@ function transfer_public_to_private:
     async transfer_public_to_private self.caller r1 into r3;
     // Output the record of the receiver.
     output r2 as credits.record;
+    // Output the finalize future.
     output r3 as credits.aleo/transfer_public_to_private.future;
 
 finalize transfer_public_to_private:
@@ -809,6 +818,7 @@ function fee_public:
     assert.neq r1 0field;
     // Decrement the balance of the sender publicly.
     async fee_public self.caller r0 into r2;
+    // Output the finalize future.
     output r2 as credits.aleo/fee_public.future;
 
 finalize fee_public:
@@ -824,5 +834,11 @@ finalize fee_public:
     sub r2 r1 into r3;
     // Updates the balance of the sender.
     set r3 into account[r0];
+
+/**********************************************************************************************************************/
+
+// Open Questions:
+// fn bond
+// - if the bond is now 33% or more, close the validator. (determine how hard to impl this)
 
 /**********************************************************************************************************************/
