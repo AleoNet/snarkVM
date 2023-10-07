@@ -68,7 +68,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         // Sanity check that the operands is exactly two inputs.
         ensure!(operands.len() == 2, "Commit instructions must have two operands");
         // Sanity check the destination type.
-        ensure!(is_valid_destination_type(destination_type), "Invalid destination type for `commit' instruction");
+        ensure!(is_valid_destination_type(destination_type), "Invalid destination type for 'commit' instruction");
         // Return the instruction.
         Ok(Self { operands, destination, destination_type })
     }
