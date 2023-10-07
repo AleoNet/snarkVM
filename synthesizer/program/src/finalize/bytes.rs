@@ -23,6 +23,9 @@ impl<N: Network, Command: CommandTrait<N>> FromBytes for FinalizeCore<N, Command
 
         // Read the inputs.
         let num_inputs = u16::read_le(&mut reader)?;
+        if num_inputs > u16::try_from(N::MAX_INPUTS).map_err(error)? {
+            return Err(error(format!("Failed to deserialize finalize: too many inputs ({num_inputs})")));
+        }
         let mut inputs = Vec::with_capacity(num_inputs as usize);
         for _ in 0..num_inputs {
             inputs.push(Input::read_le(&mut reader)?);
@@ -30,7 +33,7 @@ impl<N: Network, Command: CommandTrait<N>> FromBytes for FinalizeCore<N, Command
 
         // Read the commands.
         let num_commands = u16::read_le(&mut reader)?;
-        if num_commands > u16::try_from(N::MAX_COMMANDS).map_err(|e| error(e.to_string()))? {
+        if num_commands > u16::try_from(N::MAX_COMMANDS).map_err(error)? {
             return Err(error(format!("Failed to deserialize finalize: too many commands ({num_commands})")));
         }
         let mut commands = Vec::with_capacity(num_commands as usize);
@@ -40,8 +43,8 @@ impl<N: Network, Command: CommandTrait<N>> FromBytes for FinalizeCore<N, Command
 
         // Initialize a new finalize.
         let mut finalize = Self::new(name);
-        inputs.into_iter().try_for_each(|input| finalize.add_input(input)).map_err(|e| error(e.to_string()))?;
-        commands.into_iter().try_for_each(|command| finalize.add_command(command)).map_err(|e| error(e.to_string()))?;
+        inputs.into_iter().try_for_each(|input| finalize.add_input(input)).map_err(error)?;
+        commands.into_iter().try_for_each(|command| finalize.add_command(command)).map_err(error)?;
 
         Ok(finalize)
     }
@@ -57,7 +60,7 @@ impl<N: Network, Command: CommandTrait<N>> ToBytes for FinalizeCore<N, Command> 
         // Write the number of inputs for the finalize.
         let num_inputs = self.inputs.len();
         match num_inputs <= N::MAX_INPUTS {
-            true => u16::try_from(num_inputs).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
+            true => u16::try_from(num_inputs).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
         }
 
@@ -69,7 +72,7 @@ impl<N: Network, Command: CommandTrait<N>> ToBytes for FinalizeCore<N, Command> 
         // Write the number of commands for the finalize.
         let num_commands = self.commands.len();
         match num_commands <= N::MAX_COMMANDS {
-            true => u16::try_from(num_commands).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?,
+            true => u16::try_from(num_commands).map_err(error)?.write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_commands} commands as bytes"))),
         }
 
