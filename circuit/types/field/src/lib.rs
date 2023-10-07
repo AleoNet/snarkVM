@@ -52,6 +52,13 @@ pub struct Field<E: Environment> {
 
 impl<E: Environment> FieldTrait for Field<E> {}
 
+impl<E: Environment> Default for Field<E> {
+    /// Returns the default field element.
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
 #[cfg(console)]
 impl<E: Environment> Inject for Field<E> {
     type Primitive = console::Field<E::Network>;

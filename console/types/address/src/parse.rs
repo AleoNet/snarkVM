@@ -94,7 +94,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let address = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let address = Address::<CurrentEnvironment>::rand(&mut rng);
 
             let expected = format!("{address}");
             let (remainder, candidate) = Address::<CurrentEnvironment>::parse(&expected).unwrap();
@@ -111,7 +111,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let expected = Address::<CurrentEnvironment>::rand(&mut rng);
 
             // Check the string representation.
             let candidate = format!("{expected}");
@@ -127,7 +127,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut rng));
+            let expected = Address::<CurrentEnvironment>::rand(&mut rng);
 
             let candidate = expected.to_string();
             assert_eq!(format!("{expected}"), candidate);

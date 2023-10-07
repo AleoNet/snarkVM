@@ -25,7 +25,7 @@ use crate::{
     TransactionStore,
     TransitionStore,
 };
-use console::prelude::*;
+use console::{prelude::*, types::Field};
 use ledger_authority::Authority;
 use ledger_block::{Header, Ratify};
 use ledger_coinbase::{CoinbaseSolution, PuzzleCommitment};
@@ -45,6 +45,8 @@ pub struct BlockDB<N: Network> {
     header_map: DataMap<N::BlockHash, Header<N>>,
     /// The authority map.
     authority_map: DataMap<N::BlockHash, Authority<N>>,
+    /// The certificate map.
+    certificate_map: DataMap<Field<N>, (u32, u64)>,
     /// The transactions map.
     transactions_map: DataMap<N::BlockHash, Vec<N::TransactionID>>,
     /// The confirmed transactions map.
@@ -67,6 +69,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     type ReverseIDMap = DataMap<N::BlockHash, u32>;
     type HeaderMap = DataMap<N::BlockHash, Header<N>>;
     type AuthorityMap = DataMap<N::BlockHash, Authority<N>>;
+    type CertificateMap = DataMap<Field<N>, (u32, u64)>;
     type TransactionsMap = DataMap<N::BlockHash, Vec<N::TransactionID>>;
     type ConfirmedTransactionsMap = DataMap<N::TransactionID, (N::BlockHash, ConfirmedTxType, Vec<u8>)>;
     type TransactionStorage = TransactionDB<N>;
@@ -89,6 +92,7 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
             reverse_id_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ReverseID))?,
             header_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Header))?,
             authority_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Authority))?,
+            certificate_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Certificate))?,
             transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::Transactions))?,
             confirmed_transactions_map: internal::RocksDB::open_map(N::ID, dev, MapID::Block(BlockMap::ConfirmedTransactions))?,
             transaction_store,
@@ -126,6 +130,11 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
     /// Returns the authority map.
     fn authority_map(&self) -> &Self::AuthorityMap {
         &self.authority_map
+    }
+
+    /// Returns the certificate map.
+    fn certificate_map(&self) -> &Self::CertificateMap {
+        &self.certificate_map
     }
 
     /// Returns the transactions map.

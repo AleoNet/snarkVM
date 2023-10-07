@@ -62,6 +62,15 @@ impl<N: Network> Serialize for Output<N> {
                     output.serialize_field("id", &id)?;
                     output.end()
                 }
+                Self::Future(id, value) => {
+                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    output.serialize_field("type", "future")?;
+                    output.serialize_field("id", &id)?;
+                    if let Some(value) = value {
+                        output.serialize_field("value", &value)?;
+                    }
+                    output.end()
+                }
             },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
@@ -104,6 +113,10 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
                         })
                     }
                     Some("external_record") => Output::ExternalRecord(id),
+                    Some("future") => Output::Future(id, match output.get("value").and_then(|v| v.as_str()) {
+                        Some(value) => Some(Future::<N>::from_str(value).map_err(de::Error::custom)?),
+                        None => None,
+                    }),
                     _ => return Err(de::Error::custom("Invalid output type")),
                 };
 

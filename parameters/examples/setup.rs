@@ -44,12 +44,12 @@ fn write_remote(filename: &str, version: &str, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-// /// Writes the given bytes to the given filename.
-// fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
-//     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
-//     file.write_all(bytes)?;
-//     Ok(())
-// }
+/// Writes the given bytes to the given filename.
+fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
+    let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
+    file.write_all(bytes)?;
+    Ok(())
+}
 
 /// Writes the given metadata as JSON to the given filename.
 fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
@@ -120,22 +120,16 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&metadata)?);
         write_metadata(&format!("{function_name}.metadata"), &metadata)?;
         write_remote(&format!("{function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
-        write_remote(&format!("{function_name}.verifier"), &verifying_key_checksum, &verifying_key_bytes)?;
+        write_local(&format!("{function_name}.verifier"), &verifying_key_bytes)?;
 
         commands.push(format!(
-            "snarkup upload \"{}\"",
+            "upload \"{}\"",
             versioned_filename(&format!("{function_name}.prover"), &proving_key_checksum)
-        ));
-        commands.push(format!(
-            "snarkup upload \"{}\"",
-            versioned_filename(&format!("{function_name}.verifier"), &verifying_key_checksum)
         ));
     }
 
     // Print the commands.
-    println!("\nNow, run the following commands:\n");
-    println!("snarkup remove provers");
-    println!("snarkup remove verifiers\n");
+    println!("\nNow, perform the following operations:\n");
     for command in commands {
         println!("{command}");
     }
@@ -148,8 +142,8 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 /// `cargo run --example setup [variant]`
 pub fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Invalid number of arguments. Given: {} - Required: 2", args.len() - 1);
+    if args.len() < 2 {
+        eprintln!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
         return Ok(());
     }
 

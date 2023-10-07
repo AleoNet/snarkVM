@@ -62,7 +62,16 @@ impl<N: Network> FromBytes for Output<N> {
                 let commitment = FromBytes::read_le(&mut reader)?;
                 Self::ExternalRecord(commitment)
             }
-            5.. => return Err(error(format!("Failed to decode output variant {index}"))),
+            5 => {
+                let future_hash: Field<N> = FromBytes::read_le(&mut reader)?;
+                let future_exists: bool = FromBytes::read_le(&mut reader)?;
+                let future = match future_exists {
+                    true => Some(FromBytes::read_le(&mut reader)?),
+                    false => None,
+                };
+                Self::Future(future_hash, future)
+            }
+            6.. => return Err(error(format!("Failed to decode output variant {index}"))),
         };
         Ok(literal)
     }
@@ -120,6 +129,17 @@ impl<N: Network> ToBytes for Output<N> {
             Self::ExternalRecord(commitment) => {
                 (4 as Variant).write_le(&mut writer)?;
                 commitment.write_le(&mut writer)
+            }
+            Self::Future(future_hash, future) => {
+                (5 as Variant).write_le(&mut writer)?;
+                future_hash.write_le(&mut writer)?;
+                match future {
+                    Some(future) => {
+                        true.write_le(&mut writer)?;
+                        future.write_le(&mut writer)
+                    }
+                    None => false.write_le(&mut writer),
+                }
             }
         }
     }

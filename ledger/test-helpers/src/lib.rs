@@ -133,8 +133,8 @@ pub fn sample_deployment(rng: &mut TestRng) -> Deployment<CurrentNetwork> {
 program testing.aleo;
 
 mapping store:
-    key item as u32.public;
-    value object as u32.public;
+    key as u32.public;
+    value as u32.public;
 
 function compute:
     input r0 as u32.private;
@@ -196,8 +196,9 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
     // Initialize the process.
     let process = Process::load().unwrap();
     // Authorize the fee.
-    let authorization =
-        process.authorize_fee_private(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+    let authorization = process
+        .authorize_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+        .unwrap();
     // Construct the fee trace.
     let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
@@ -240,7 +241,8 @@ pub fn sample_fee_public(deployment_or_execution_id: Field<CurrentNetwork>, rng:
     // Initialize the process.
     let process = Process::load().unwrap();
     // Authorize the fee.
-    let authorization = process.authorize_fee_public(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+    let authorization =
+        process.authorize_fee_public::<CurrentAleo, _>(&private_key, fee, deployment_or_execution_id, rng).unwrap();
     // Construct the fee trace.
     let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 

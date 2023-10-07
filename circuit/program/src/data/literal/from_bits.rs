@@ -97,10 +97,7 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Address
-            check_serialization(Literal::<Circuit>::Address(Address::new(
-                mode,
-                console::Address::new(Uniform::rand(rng)),
-            )));
+            check_serialization(Literal::<Circuit>::Address(Address::new(mode, console::Address::rand(rng))));
             // Boolean
             check_serialization(Literal::<Circuit>::Boolean(Boolean::new(mode, Uniform::rand(rng))));
             // Field

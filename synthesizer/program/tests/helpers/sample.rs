@@ -35,7 +35,7 @@ pub fn sample_registers(
 ) -> Result<Registers<CurrentNetwork, CurrentAleo>> {
     // Initialize the registers.
     let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(
-        CallStack::evaluate(Authorization::from(vec![]))?,
+        CallStack::evaluate(Authorization::try_from((vec![], vec![]))?)?,
         stack.get_register_types(function_name)?.clone(),
     );
 

@@ -21,7 +21,7 @@ mod to_fields;
 
 use crate::Identifier;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Address, Field};
+use snarkvm_console_types::{Address, Boolean, Field};
 
 /// Returns `true` if the string consists of lowercase alphanumeric characters.
 fn is_lowercase_alphanumeric(s: &str) -> bool {
@@ -131,6 +131,20 @@ impl<N: Network> PartialOrd for ProgramID<N> {
     /// Ordering is determined by the network first, then the program name second.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl<N: Network> Equal<Self> for ProgramID<N> {
+    type Output = Boolean<N>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self == other)
+    }
+
+    /// Returns `true` if `self` and `other` are **not** equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self != other)
     }
 }
 

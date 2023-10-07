@@ -31,6 +31,9 @@ pub enum Operand<N: Network> {
     Register(Register<N>),
     /// The operand is the program ID.
     ProgramID(ProgramID<N>),
+    /// The operand is the signer address.
+    /// Note: This variant is only accessible in the `function` scope.
+    Signer,
     /// The operand is the caller address.
     /// Note: This variant is only accessible in the `function` scope.
     Caller,
