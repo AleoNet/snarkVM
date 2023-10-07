@@ -44,7 +44,7 @@ pub struct FinalizeRegisters<N: Network> {
     /// The mapping of all registers to their defined types.
     finalize_types: FinalizeTypes<N>,
     /// The mapping of assigned registers to their values.
-    registers: IndexMap<u64, Plaintext<N>>,
+    registers: IndexMap<u64, Value<N>>,
     /// The tracker for the last register locator.
     last_register: Option<u64>,
 }

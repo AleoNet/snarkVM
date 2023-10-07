@@ -15,6 +15,9 @@
 mod assert;
 pub use assert::*;
 
+mod async_;
+pub use async_::*;
+
 mod call;
 pub use call::*;
 
@@ -23,9 +26,6 @@ pub use cast::*;
 
 mod commit;
 pub use commit::*;
-
-mod finalize;
-pub use finalize::*;
 
 mod hash;
 pub use hash::*;
@@ -43,6 +43,9 @@ pub use sign_verify::*;
 
 use crate::Opcode;
 use console::network::prelude::*;
+
+#[allow(unused)]
+use console::account::Signature;
 
 pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
     /// The opcode of the operation.
@@ -155,11 +158,11 @@ crate::operation!(
         (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),
         (I64, I64) => I64 ("ensure overflows halt", "ensure divide by zero halts"),
         (I128, I128) => I128 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U8, U8) => U8 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U16, U16) => U16 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U8, U8) => U8 ("ensure divide by zero halts"),
+        (U16, U16) => U16 ("ensure divide by zero halts"),
+        (U32, U32) => U32 ("ensure divide by zero halts"),
+        (U64, U64) => U64 ("ensure divide by zero halts"),
+        (U128, U128) => U128 ("ensure divide by zero halts"),
         // (Scalar, Scalar) => Scalar,
     }
 );
@@ -496,11 +499,11 @@ crate::operation!(
         (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),
         (I64, I64) => I64 ("ensure overflows halt", "ensure divide by zero halts"),
         (I128, I128) => I128 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U8, U8) => U8 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U16, U16) => U16 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U8, U8) => U8 ("ensure divide by zero halts"),
+        (U16, U16) => U16 ("ensure divide by zero halts"),
+        (U32, U32) => U32 ("ensure divide by zero halts"),
+        (U64, U64) => U64 ("ensure divide by zero halts"),
+        (U128, U128) => U128 ("ensure divide by zero halts"),
     }
 );
 
@@ -751,7 +754,7 @@ crate::operation!(
         (Boolean, U64, U64) => U64,
         (Boolean, U128, U128) => U128,
         (Boolean, Scalar, Scalar) => Scalar,
-        // (Boolean, Signature, Signature) => Signature,
+        (Boolean, Signature, Signature) => Signature,
         // (Boolean, StringType, StringType) => StringType,
     }
 );

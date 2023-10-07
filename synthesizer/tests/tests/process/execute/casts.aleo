@@ -1,11 +1,14 @@
 /*
 randomness: 808
 cases:
-  - function: test_cast
+  - program: casts.aleo
+    function: test_cast
     inputs: [0group]
-  - function: test_cast
+  - program: casts.aleo
+    function: test_cast
     inputs: [2group]
-  - function: test_cast
+  - program: casts.aleo
+    function: test_cast
     inputs: [89363714989903307245735717098563574705733591463163614225748337416674727625843187853442697973404985688481508350822group]
 */
 

@@ -26,7 +26,7 @@ pub(super) const BHP_LOOKUP_SIZE: usize = 1 << BHP_CHUNK_SIZE;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hasher is used to process one internal iteration of the BHP hash function.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BHPHasher<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
     /// The bases for the BHP hash.
     bases: Arc<Vec<Vec<Group<E>>>>,

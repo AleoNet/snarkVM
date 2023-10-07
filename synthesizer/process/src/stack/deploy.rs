@@ -119,7 +119,7 @@ impl<N: Network> Stack<N> {
         cfg_iter!(call_stacks).zip_eq(deployment.verifying_keys()).try_for_each(
             |((function_name, call_stack, assignments), (_, (verifying_key, certificate)))| {
                 // Synthesize the circuit.
-                if let Err(err) = self.execute_function::<A>(call_stack.clone()) {
+                if let Err(err) = self.execute_function::<A>(call_stack.clone(), None) {
                     bail!("Failed to synthesize the circuit for '{function_name}': {err}")
                 }
                 // Check the certificate.

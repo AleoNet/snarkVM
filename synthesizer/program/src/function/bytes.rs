@@ -57,7 +57,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
         let variant = u8::read_le(&mut reader)?;
         let finalize = match variant {
             0 => None,
-            1 => Some((Command::FinalizeCommand::read_le(&mut reader)?, FinalizeCore::read_le(&mut reader)?)),
+            1 => Some(FinalizeCore::read_le(&mut reader)?),
             _ => return Err(error(format!("Failed to deserialize a function: invalid finalize variant ({variant})"))),
         };
 
@@ -69,7 +69,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
             .try_for_each(|instruction| function.add_instruction(instruction))
             .map_err(|e| error(e.to_string()))?;
         outputs.into_iter().try_for_each(|output| function.add_output(output)).map_err(|e| error(e.to_string()))?;
-        finalize.map(|(command, finalize)| function.add_finalize(command, finalize));
+        finalize.map(|finalize| function.add_finalize(finalize));
 
         Ok(function)
     }
@@ -121,12 +121,10 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ToB
         }
 
         // If the finalize scope exists, write it.
-        match &self.finalize {
+        match &self.finalize_logic {
             None => 0u8.write_le(&mut writer)?,
-            Some((command, logic)) => {
+            Some(logic) => {
                 1u8.write_le(&mut writer)?;
-                // Write the finalize scope command.
-                command.write_le(&mut writer)?;
                 // Write the finalize scope logic.
                 logic.write_le(&mut writer)?;
             }

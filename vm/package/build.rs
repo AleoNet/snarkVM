@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn test_build() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package();
+        let (directory, package) = crate::package::test_helpers::sample_token_package();
 
         // Ensure the build directory does *not* exist.
         assert!(!package.build_directory().exists());
@@ -306,7 +306,7 @@ mod tests {
     #[test]
     fn test_build_with_import() {
         // Samples a new package at a temporary directory.
-        let (directory, package) = crate::package::test_helpers::sample_package_with_import();
+        let (directory, package) = crate::package::test_helpers::sample_wallet_package();
 
         // Ensure the build directory does *not* exist.
         assert!(!package.build_directory().exists());

@@ -25,9 +25,9 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Ciphertext, Identifier, Literal, Visibility};
+use crate::{Access, Ciphertext, Identifier, Literal, Visibility};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar, U16, U8};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Scalar, U16, U32, U8};
 
 #[derive(Clone)]
 pub enum Plaintext<A: Aleo> {
@@ -35,6 +35,8 @@ pub enum Plaintext<A: Aleo> {
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
     /// A plaintext struct.
     Struct(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
+    /// A plaintext array.
+    Array(Vec<Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
 }
 
 #[cfg(console)]
@@ -46,6 +48,7 @@ impl<A: Aleo> Inject for Plaintext<A> {
         match plaintext {
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
             Self::Primitive::Struct(struct_, _) => Self::Struct(Inject::new(mode, struct_), Default::default()),
+            Self::Primitive::Array(array, _) => Self::Array(Inject::new(mode, array), Default::default()),
         }
     }
 }
@@ -63,6 +66,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
                 .map(|(identifier, value)| (identifier, value).eject_mode())
                 .collect::<Vec<_>>()
                 .eject_mode(),
+            Self::Array(array, _) => array.iter().map(Eject::eject_mode).collect::<Vec<_>>().eject_mode(),
         }
     }
 
@@ -72,6 +76,9 @@ impl<A: Aleo> Eject for Plaintext<A> {
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
             Self::Struct(struct_, _) => {
                 console::Plaintext::Struct(struct_.iter().map(|pair| pair.eject_value()).collect(), Default::default())
+            }
+            Self::Array(array, _) => {
+                console::Plaintext::Array(array.iter().map(Eject::eject_value).collect(), Default::default())
             }
         }
     }
@@ -101,24 +108,30 @@ mod tests {
 
     #[test]
     fn test_plaintext() -> Result<()> {
+        let run_test = |value: Plaintext<Circuit>| {
+            assert_eq!(
+                value.to_bits_le().eject(),
+                Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+            );
+            assert_eq!(value.eject(), Plaintext::<Circuit>::from_fields(&value.to_fields()).eject());
+            assert!(value.is_equal(&value).eject_value());
+            assert!(!value.is_not_equal(&value).eject_value());
+        };
+
         let mut rng = TestRng::default();
 
-        let value = Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new());
-        assert_eq!(
-            value.to_bits_le().eject(),
-            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
-        );
+        // Test booleans.
+        run_test(Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new()));
+        run_test(Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, false)), OnceCell::new()));
 
-        let value = Plaintext::<Circuit>::Literal(
+        // Test a random field element.
+        run_test(Plaintext::<Circuit>::Literal(
             Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
             OnceCell::new(),
-        );
-        assert_eq!(
-            value.to_bits_le().eject(),
-            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
-        );
+        ));
 
-        let value = Plaintext::<Circuit>::Struct(
+        // Test a random struct with literal members.
+        run_test(Plaintext::<Circuit>::Struct(
             IndexMap::from_iter(
                 vec![
                     (
@@ -139,13 +152,43 @@ mod tests {
                 .into_iter(),
             ),
             OnceCell::new(),
-        );
-        assert_eq!(
-            value.to_bits_le().eject(),
-            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
-        );
+        ));
 
-        let value = Plaintext::<Circuit>::Struct(
+        // Test a random struct with array members.
+        run_test(Plaintext::<Circuit>::Struct(
+            IndexMap::from_iter(
+                vec![
+                    (
+                        Identifier::new(Mode::Private, "a".try_into()?),
+                        Plaintext::<Circuit>::Literal(
+                            Literal::Boolean(Boolean::new(Mode::Private, true)),
+                            OnceCell::new(),
+                        ),
+                    ),
+                    (
+                        Identifier::new(Mode::Private, "b".try_into()?),
+                        Plaintext::<Circuit>::Array(
+                            vec![
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Boolean(Boolean::new(Mode::Private, true)),
+                                    OnceCell::new(),
+                                ),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Boolean(Boolean::new(Mode::Private, false)),
+                                    OnceCell::new(),
+                                ),
+                            ],
+                            OnceCell::new(),
+                        ),
+                    ),
+                ]
+                .into_iter(),
+            ),
+            OnceCell::new(),
+        ));
+
+        // Test random deeply-nested struct.
+        run_test(Plaintext::<Circuit>::Struct(
             IndexMap::from_iter(
                 vec![
                     (
@@ -197,8 +240,17 @@ mod tests {
                                     ),
                                     (
                                         Identifier::new(Mode::Private, "g".try_into()?),
-                                        Plaintext::<Circuit>::Literal(
-                                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                        Plaintext::<Circuit>::Array(
+                                            vec![
+                                                Plaintext::<Circuit>::Literal(
+                                                    Literal::Boolean(Boolean::new(Mode::Private, true)),
+                                                    OnceCell::new(),
+                                                ),
+                                                Plaintext::<Circuit>::Literal(
+                                                    Literal::Boolean(Boolean::new(Mode::Private, false)),
+                                                    OnceCell::new(),
+                                                ),
+                                            ],
                                             OnceCell::new(),
                                         ),
                                     ),
@@ -219,11 +271,142 @@ mod tests {
                 .into_iter(),
             ),
             OnceCell::new(),
-        );
-        assert_eq!(
-            value.to_bits_le().eject(),
-            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
-        );
+        ));
+
+        // Test an array of literals.
+        run_test(Plaintext::<Circuit>::Array(
+            vec![
+                Plaintext::<Circuit>::Literal(
+                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                    OnceCell::new(),
+                ),
+                Plaintext::<Circuit>::Literal(
+                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                    OnceCell::new(),
+                ),
+                Plaintext::<Circuit>::Literal(
+                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                    OnceCell::new(),
+                ),
+                Plaintext::<Circuit>::Literal(
+                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                    OnceCell::new(),
+                ),
+                Plaintext::<Circuit>::Literal(
+                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                    OnceCell::new(),
+                ),
+            ],
+            OnceCell::new(),
+        ));
+
+        // Test an array of structs.
+        run_test(Plaintext::<Circuit>::Array(
+            vec![
+                Plaintext::<Circuit>::Struct(
+                    IndexMap::from_iter(
+                        vec![
+                            (
+                                Identifier::new(Mode::Private, "x".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                            (
+                                Identifier::new(Mode::Private, "y".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                        ]
+                        .into_iter(),
+                    ),
+                    OnceCell::new(),
+                ),
+                Plaintext::<Circuit>::Struct(
+                    IndexMap::from_iter(
+                        vec![
+                            (
+                                Identifier::new(Mode::Private, "x".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                            (
+                                Identifier::new(Mode::Private, "y".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                        ]
+                        .into_iter(),
+                    ),
+                    OnceCell::new(),
+                ),
+                Plaintext::<Circuit>::Struct(
+                    IndexMap::from_iter(
+                        vec![
+                            (
+                                Identifier::new(Mode::Private, "x".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                            (
+                                Identifier::new(Mode::Private, "y".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                        ]
+                        .into_iter(),
+                    ),
+                    OnceCell::new(),
+                ),
+            ],
+            OnceCell::new(),
+        ));
+
+        // Test a non-uniform array.
+        run_test(Plaintext::<Circuit>::Array(
+            vec![
+                Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new()),
+                Plaintext::<Circuit>::Literal(
+                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                    OnceCell::new(),
+                ),
+                Plaintext::<Circuit>::Struct(
+                    IndexMap::from_iter(
+                        vec![
+                            (
+                                Identifier::new(Mode::Private, "x".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                            (
+                                Identifier::new(Mode::Private, "y".try_into()?),
+                                Plaintext::<Circuit>::Literal(
+                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut rng))),
+                                    OnceCell::new(),
+                                ),
+                            ),
+                        ]
+                        .into_iter(),
+                    ),
+                    OnceCell::new(),
+                ),
+            ],
+            OnceCell::new(),
+        ));
+
         Ok(())
     }
 }

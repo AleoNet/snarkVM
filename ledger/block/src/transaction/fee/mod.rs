@@ -16,10 +16,10 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::{Input, Transition};
+use crate::{Input, Output, Transition};
 use console::{
     network::prelude::*,
-    program::{Literal, Plaintext, Value},
+    program::{Argument, Literal, Plaintext},
     types::{Address, Field, U64},
 };
 use synthesizer_snark::Proof;
@@ -77,8 +77,11 @@ impl<N: Network> Fee<N> {
     /// Returns the payer, if the fee is public.
     pub fn payer(&self) -> Option<Address<N>> {
         // Retrieve the payer.
-        match self.transition.finalize().and_then(|f| f.get(0)) {
-            Some(Value::Plaintext(Plaintext::Literal(Literal::Address(address), _))) => Some(*address),
+        match self.transition.outputs().last() {
+            Some(Output::Future(_, Some(future))) => match future.arguments().get(0) {
+                Some(Argument::Plaintext(Plaintext::Literal(Literal::Address(address), _))) => Some(*address),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -86,8 +89,15 @@ impl<N: Network> Fee<N> {
     /// Returns the amount (in microcredits).
     pub fn amount(&self) -> Result<U64<N>> {
         // Determine the input index for the amount.
-        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
-        let input_index = if self.transition.finalize().is_none() { 1 } else { 0 };
+        // Note: Checking whether the `output` is a `Record` or `Future` is a faster way to determine if the fee is private or public respectively.
+        let input_index = match self.transition.outputs().last() {
+            Some(output) => match output {
+                Output::Record(..) => 1,
+                Output::Future(..) => 0,
+                _ => bail!("Unexpected output in fee transition"),
+            },
+            None => bail!("Missing output in fee transition"),
+        };
         // Retrieve the amount (in microcredits) as a plaintext value.
         match self.transition.inputs().get(input_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::U64(microcredits), _)))) => Ok(*microcredits),
@@ -98,8 +108,15 @@ impl<N: Network> Fee<N> {
     /// Returns the deployment or execution ID.
     pub fn deployment_or_execution_id(&self) -> Result<Field<N>> {
         // Determine the input index for the deployment or execution ID.
-        // Note: Checking whether 'finalize' is 'None' is a faster way to determine if the fee is public or private.
-        let input_index = if self.transition.finalize().is_none() { 2 } else { 1 };
+        // Note: Checking whether the `output` is a `Record` or `Future` is a faster way to determine if the fee is private or public respectively.
+        let input_index = match self.transition.outputs().last() {
+            Some(output) => match output {
+                Output::Record(..) => 2,
+                Output::Future(..) => 1,
+                _ => bail!("Unexpected output in fee transition"),
+            },
+            None => bail!("Missing output in fee transition"),
+        };
         // Retrieve the deployment or execution ID as a plaintext value.
         match self.transition.inputs().get(input_index) {
             Some(Input::Public(_, Some(Plaintext::Literal(Literal::Field(id), _)))) => Ok(*id),
@@ -184,8 +201,9 @@ pub mod test_helpers {
         // Initialize the process.
         let process = Process::load().unwrap();
         // Authorize the fee.
-        let authorization =
-            process.authorize_fee_private(&private_key, credits, fee, deployment_or_execution_id, rng).unwrap();
+        let authorization = process
+            .authorize_fee_private::<CurrentAleo, _>(&private_key, credits, fee, deployment_or_execution_id, rng)
+            .unwrap();
         // Construct the fee trace.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 
@@ -231,7 +249,8 @@ pub mod test_helpers {
         // Initialize the process.
         let process = Process::load().unwrap();
         // Authorize the fee.
-        let authorization = process.authorize_fee_public(&private_key, fee, deployment_or_execution_id, rng).unwrap();
+        let authorization =
+            process.authorize_fee_public::<CurrentAleo, _>(&private_key, fee, deployment_or_execution_id, rng).unwrap();
         // Construct the fee trace.
         let (_, mut trace) = process.execute::<CurrentAleo>(authorization).unwrap();
 

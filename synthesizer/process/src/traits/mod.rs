@@ -17,7 +17,7 @@ use console::{
     account::Address,
     network::Network,
     prelude::Result,
-    program::{Identifier, Response, Value},
+    program::{Identifier, ProgramID, Response, Value},
     types::Field,
 };
 
@@ -31,6 +31,7 @@ pub trait StackEvaluate<N: Network>: Clone {
         closure: &Closure<N>,
         inputs: &[Value<N>],
         call_stack: CallStack<N>,
+        signer: Address<N>,
         caller: Address<N>,
         tvk: Field<N>,
     ) -> Result<Vec<Value<N>>>;
@@ -39,7 +40,11 @@ pub trait StackEvaluate<N: Network>: Clone {
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
-    fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
+    fn evaluate_function<A: circuit::Aleo<Network = N>>(
+        &self,
+        call_stack: CallStack<N>,
+        caller: Option<ProgramID<N>>,
+    ) -> Result<Response<N>>;
 }
 
 pub trait StackExecute<N: Network> {
@@ -52,6 +57,7 @@ pub trait StackExecute<N: Network> {
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
+        signer: circuit::Address<A>,
         caller: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>>;
@@ -62,7 +68,11 @@ pub trait StackExecute<N: Network> {
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
-    fn execute_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>>;
+    fn execute_function<A: circuit::Aleo<Network = N>>(
+        &self,
+        call_stack: CallStack<N>,
+        console_caller: Option<ProgramID<N>>,
+    ) -> Result<Response<N>>;
 }
 
 pub trait StackProgramTypes<N: Network> {
