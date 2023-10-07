@@ -152,7 +152,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
                             .collect();
                         end_timer!(eval_z_c_time);
 
-                        end_timer!(init_time);
                         Ok(prover::Assignments::<F>(padded_public_variables, private_variables, z_a, z_b, z_c))
                     })
                     .collect::<Result<Vec<prover::Assignments<F>>, AHPError>>()?;
@@ -161,6 +160,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             .collect::<Result<BTreeMap<&'a Circuit<F, SM>, Vec<prover::Assignments<F>>>, AHPError>>()?;
 
         let state = prover::State::initialize(indices_and_assignments)?;
+        end_timer!(init_time);
 
         Ok(state)
     }
