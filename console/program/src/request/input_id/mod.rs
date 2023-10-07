@@ -32,3 +32,16 @@ pub enum InputID<N: Network> {
     /// The hash of the external record input.
     ExternalRecord(Field<N>),
 }
+
+impl<N: Network> InputID<N> {
+    /// Returns the (primary) input ID.
+    pub const fn id(&self) -> &Field<N> {
+        match self {
+            InputID::Constant(id) => id,
+            InputID::Public(id) => id,
+            InputID::Private(id) => id,
+            InputID::Record(id, ..) => id,
+            InputID::ExternalRecord(id) => id,
+        }
+    }
+}

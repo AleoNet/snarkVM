@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod array_type;
+pub use array_type::ArrayType;
+
+mod finalize_type;
+pub use finalize_type::FinalizeType;
+
 mod literal_type;
 pub use literal_type::LiteralType;
 
@@ -24,8 +30,8 @@ pub use record_type::{EntryType, RecordType};
 mod register_type;
 pub use register_type::RegisterType;
 
-mod struct_;
-pub use struct_::Struct;
+mod struct_type;
+pub use struct_type::StructType;
 
 mod value_type;
 pub use value_type::ValueType;

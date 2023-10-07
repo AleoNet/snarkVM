@@ -171,7 +171,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     ///
     /// If for some `i`, `polynomials[i].degree_bound().is_some()`, then that
     /// polynomial will have the corresponding degree bound enforced.
-    #[allow(clippy::type_complexity)]
     #[allow(clippy::format_push_string)]
     pub fn commit<'b>(
         universal_prover: &UniversalProver<E>,
@@ -211,7 +210,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                     hiding_bound,
                 ));
 
-                #[allow(clippy::or_fun_call)]
                 let (comm, rand) = p
                     .sum()
                     .map(move |p| {
@@ -292,7 +290,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
         labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
         query_set: &QuerySet<E::Fr>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
         fs_rng: &mut S,
@@ -301,16 +298,12 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
-        let poly_rand_comm: HashMap<_, _> = labeled_polynomials
-            .into_iter()
-            .zip_eq(rands)
-            .zip_eq(commitments.into_iter())
-            .map(|((poly, r), comm)| (poly.label(), (poly, r, comm)))
-            .collect();
+        let poly_rand: HashMap<_, _> =
+            labeled_polynomials.into_iter().zip_eq(rands).map(|(poly, r)| (poly.label(), (poly, r))).collect();
 
         let open_time = start_timer!(|| format!(
             "Opening {} polynomials at query set of size {}",
-            poly_rand_comm.len(),
+            poly_rand.len(),
             query_set.len(),
         ));
 
@@ -325,15 +318,13 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         for (_point_name, (&query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys = Vec::with_capacity(labels.len());
             let mut query_rands = Vec::with_capacity(labels.len());
-            let mut query_comms = Vec::with_capacity(labels.len());
 
             for label in labels {
-                let (polynomial, rand, comm) =
-                    poly_rand_comm.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                let (polynomial, rand) =
+                    poly_rand.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 query_polys.push(*polynomial);
                 query_rands.push(*rand);
-                query_comms.push(*comm);
             }
             let (polynomial, rand) = Self::combine_for_open(universal_prover, ck, query_polys, query_rands, fs_rng)?;
             let _randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
@@ -423,80 +414,62 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         universal_prover: &UniversalProver<E>,
         ck: &CommitterUnionKey<E>,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        query_set: &QuerySet<E::Fr>,
+        polynomials: impl IntoIterator<Item = LabeledPolynomial<E::Fr>>,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
+        query_set: &QuerySet<E::Fr>,
         fs_rng: &mut S,
     ) -> Result<BatchLCProof<E>, PCError>
     where
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
-        let label_map = polynomials
-            .into_iter()
-            .zip_eq(rands)
-            .zip_eq(commitments)
-            .map(|((p, r), c)| (p.label(), (p, r, c)))
-            .collect::<BTreeMap<_, _>>();
+        let label_map =
+            polynomials.into_iter().zip_eq(rands).map(|(p, r)| (p.to_label(), (p, r))).collect::<BTreeMap<_, _>>();
 
         let mut lc_polynomials = Vec::new();
         let mut lc_randomness = Vec::new();
-        let mut lc_commitments = Vec::new();
         let mut lc_info = Vec::new();
 
         for lc in linear_combinations {
             let lc_label = lc.label().to_string();
             let mut poly = DensePolynomial::zero();
+            let mut randomness = Randomness::empty();
             let mut degree_bound = None;
             let mut hiding_bound = None;
 
-            let mut randomness = Randomness::empty();
-            let mut coeffs_and_comms = Vec::new();
-
             let num_polys = lc.len();
+            // We filter out l.is_one() entries because those constants are not committed to and used directly by the verifier.
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
-                let &(cur_poly, cur_rand, cur_comm) =
+                let (cur_poly, cur_rand) =
                     label_map.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
-                if num_polys == 1 && cur_poly.degree_bound().is_some() {
+                if let Some(cur_degree_bound) = cur_poly.degree_bound() {
+                    if num_polys != 1 {
+                        return Err(PCError::EquationHasDegreeBounds(lc_label));
+                    }
                     assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
-                    degree_bound = cur_poly.degree_bound();
-                } else if cur_poly.degree_bound().is_some() {
-                    return Err(PCError::EquationHasDegreeBounds(lc_label));
+                    if let Some(old_degree_bound) = degree_bound {
+                        assert_eq!(old_degree_bound, cur_degree_bound)
+                    } else {
+                        degree_bound = cur_poly.degree_bound();
+                    }
                 }
                 // Some(_) > None, always.
                 hiding_bound = core::cmp::max(hiding_bound, cur_poly.hiding_bound());
                 poly += (*coeff, cur_poly.polynomial());
-                randomness += (*coeff, cur_rand);
-                coeffs_and_comms.push((*coeff, cur_comm.commitment()));
+                randomness += (*coeff, *cur_rand);
             }
 
             let lc_poly = LabeledPolynomial::new(lc_label.clone(), poly, degree_bound, hiding_bound);
             lc_polynomials.push(lc_poly);
             lc_randomness.push(randomness);
-            lc_commitments.push(Self::combine_commitments(coeffs_and_comms));
             lc_info.push((lc_label, degree_bound));
         }
 
-        let comms = Self::normalize_commitments(lc_commitments);
-        let lc_commitments = lc_info
-            .into_iter()
-            .zip_eq(comms)
-            .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
-            .collect::<Vec<_>>();
+        let proof =
+            Self::batch_open(universal_prover, ck, lc_polynomials.iter(), query_set, lc_randomness.iter(), fs_rng)?;
 
-        let proof = Self::batch_open(
-            universal_prover,
-            ck,
-            lc_polynomials.iter(),
-            lc_commitments.iter(),
-            query_set,
-            lc_randomness.iter(),
-            fs_rng,
-        )?;
-
-        Ok(BatchLCProof { proof, evaluations: None })
+        Ok(BatchLCProof { proof })
     }
 
     /// Checks that `values` are the true evaluations at `query_set` of the polynomials
@@ -513,7 +486,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     where
         Commitment<E>: 'a,
     {
-        let BatchLCProof { proof, .. } = proof;
+        let BatchLCProof { proof } = proof;
         let label_comm_map = commitments.into_iter().map(|c| (c.label(), c)).collect::<BTreeMap<_, _>>();
 
         let mut lc_commitments = Vec::new();
@@ -541,11 +514,12 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                         .get(label as &str)
                         .ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
-                    if num_polys == 1 && cur_comm.degree_bound().is_some() {
+                    if cur_comm.degree_bound().is_some() {
+                        if num_polys != 1 {
+                            return Err(PCError::EquationHasDegreeBounds(lc_label));
+                        }
                         assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                         degree_bound = cur_comm.degree_bound();
-                    } else if cur_comm.degree_bound().is_some() {
-                        return Err(PCError::EquationHasDegreeBounds(lc_label));
                     }
                     coeffs_and_comms.push((*coeff, cur_comm.commitment()));
                 }
@@ -658,7 +632,6 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         end_timer!(acc_time);
     }
 
-    #[allow(clippy::type_complexity)]
     fn check_elems(
         vk: &UniversalVerifier<E>,
         combined_comms: BTreeMap<Option<usize>, E::G1Projective>,

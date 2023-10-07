@@ -239,7 +239,7 @@ impl<N: Network> Transaction<N> {
                 false => None,
             },
             // Check the execution and fee.
-            Self::Execute(_, execution, fee) => execution.find_transition(transition_id).or_else(|| {
+            Self::Execute(_, execution, fee) => execution.get_transition(transition_id).or_else(|| {
                 fee.as_ref().and_then(|fee| match fee.id() == transition_id {
                     true => Some(fee.transition()),
                     false => None,

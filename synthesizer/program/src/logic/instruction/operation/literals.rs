@@ -171,14 +171,13 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         // Convert all input types into `LiteralType`s. If any are not a `LiteralType`, return an error.
         let input_types = input_types
             .iter()
-            .copied()
             .map(|input_type| match input_type {
-                RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(literal_type),
-                RegisterType::Plaintext(PlaintextType::Struct(..)) => {
-                    bail!("Expected literal type, found '{input_type}'")
-                }
-                RegisterType::Record(..) => bail!("Expected literal type, found '{input_type}'"),
-                RegisterType::ExternalRecord(..) => bail!("Expected literal type, found '{input_type}'"),
+                RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(*literal_type),
+                RegisterType::Plaintext(PlaintextType::Struct(..))
+                | RegisterType::Plaintext(PlaintextType::Array(..))
+                | RegisterType::Record(..)
+                | RegisterType::ExternalRecord(..)
+                | RegisterType::Future(..) => bail!("Expected literal type, found '{input_type}'"),
             })
             .collect::<Result<Vec<_>>>()?;
 

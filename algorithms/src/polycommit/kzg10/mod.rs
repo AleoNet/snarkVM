@@ -44,7 +44,7 @@ use super::sonic_pc::LabeledPolynomialWithBasis;
 #[derive(Debug, PartialEq, Eq)]
 pub enum KZGDegreeBounds {
     All,
-    Marlin,
+    Varuna,
     List(Vec<usize>),
     None,
 }
@@ -53,8 +53,8 @@ impl KZGDegreeBounds {
     pub fn get_list<F: PrimeField>(&self, max_degree: usize) -> Vec<usize> {
         match self {
             KZGDegreeBounds::All => (0..max_degree).collect(),
-            KZGDegreeBounds::Marlin => {
-                // In Marlin, the degree bounds are all of the forms `domain_size - 2`.
+            KZGDegreeBounds::Varuna => {
+                // In Varuna, the degree bounds are all of the forms `domain_size - 2`.
                 // Consider that we are using radix-2 FFT,
                 // there are only a few possible domain sizes and therefore degree bounds.
                 //
@@ -209,7 +209,6 @@ impl<E: PairingEngine> KZG10<E> {
     /// The witness polynomial w(x) the quotient of the division (p(x) - p(z)) / (x - z)
     /// Observe that this quotient does not change with z because
     /// p(z) is the remainder term. We can therefore omit p(z) when computing the quotient.
-    #[allow(clippy::type_complexity)]
     pub fn compute_witness_polynomial(
         polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,

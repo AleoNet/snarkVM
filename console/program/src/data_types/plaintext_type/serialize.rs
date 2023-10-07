@@ -101,14 +101,14 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        for case in TEST_CASES.iter() {
+        for case in TEST_CASES.iter().chain(crate::data_types::array_type::serialize::tests::TEST_CASES) {
             check_serde_json(PlaintextType::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 
     #[test]
     fn test_bincode() {
-        for case in TEST_CASES.iter() {
+        for case in TEST_CASES.iter().chain(crate::data_types::array_type::serialize::tests::TEST_CASES) {
             check_bincode(PlaintextType::<CurrentNetwork>::from_str(case).unwrap());
         }
     }

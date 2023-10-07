@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network> Entry<N, Plaintext<N>> {
     /// Returns the entry from the given path.
-    pub fn find(&self, path: &[Identifier<N>]) -> Result<Entry<N, Plaintext<N>>> {
+    pub fn find<A: Into<Access<N>> + Copy + Debug>(&self, path: &[A]) -> Result<Entry<N, Plaintext<N>>> {
         match self {
             Self::Constant(plaintext) => Ok(Self::Constant(plaintext.find(path)?)),
             Self::Public(plaintext) => Ok(Self::Public(plaintext.find(path)?)),

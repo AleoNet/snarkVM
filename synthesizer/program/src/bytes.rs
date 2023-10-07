@@ -21,7 +21,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid program version"));
         }
 
@@ -48,7 +48,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> Fro
                 // Read the mapping.
                 0 => program.add_mapping(Mapping::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the struct.
-                1 => program.add_struct(Struct::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
+                1 => program.add_struct(StructType::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the record.
                 2 => program.add_record(RecordType::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?,
                 // Read the closure.
@@ -69,7 +69,7 @@ impl<N: Network, Instruction: InstructionTrait<N>, Command: CommandTrait<N>> ToB
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         // Write the program ID.
         self.id.write_le(&mut writer)?;

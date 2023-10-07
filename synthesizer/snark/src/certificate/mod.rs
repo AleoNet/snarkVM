@@ -21,12 +21,12 @@ mod serialize;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Certificate<N: Network> {
     /// The certificate.
-    certificate: marlin::Certificate<N::PairingCurve>,
+    certificate: varuna::Certificate<N::PairingCurve>,
 }
 
 impl<N: Network> Certificate<N> {
     /// Initializes a new certificate.
-    pub(super) const fn new(certificate: marlin::Certificate<N::PairingCurve>) -> Self {
+    pub(super) const fn new(certificate: varuna::Certificate<N::PairingCurve>) -> Self {
         Self { certificate }
     }
 
@@ -40,11 +40,11 @@ impl<N: Network> Certificate<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the proving parameters.
-        let universal_prover = N::marlin_universal_prover();
-        let fiat_shamir = N::marlin_fs_parameters();
+        let universal_prover = N::varuna_universal_prover();
+        let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the certificate.
-        let certificate = Marlin::<N>::prove_vk(universal_prover, fiat_shamir, verifying_key, proving_key)?;
+        let certificate = Varuna::<N>::prove_vk(universal_prover, fiat_shamir, verifying_key, proving_key)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Certified '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());
@@ -63,11 +63,11 @@ impl<N: Network> Certificate<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the verification parameters.
-        let universal_verifier = N::marlin_universal_verifier();
-        let fiat_shamir = N::marlin_fs_parameters();
+        let universal_verifier = N::varuna_universal_verifier();
+        let fiat_shamir = N::varuna_fs_parameters();
 
         // Verify the certificate.
-        match Marlin::<N>::verify_vk(universal_verifier, fiat_shamir, assignment, verifying_key, self) {
+        match Varuna::<N>::verify_vk(universal_verifier, fiat_shamir, assignment, verifying_key, self) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
                 {
@@ -87,7 +87,7 @@ impl<N: Network> Certificate<N> {
 }
 
 impl<N: Network> Deref for Certificate<N> {
-    type Target = marlin::Certificate<N::PairingCurve>;
+    type Target = varuna::Certificate<N::PairingCurve>;
 
     fn deref(&self) -> &Self::Target {
         &self.certificate

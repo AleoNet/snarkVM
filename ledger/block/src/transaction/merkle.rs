@@ -136,10 +136,20 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the Merkle tree for the given execution.
     pub fn execution_tree(execution: &Execution<N>, fee: &Option<Fee<N>>) -> Result<TransactionTree<N>> {
+        Self::transitions_tree(execution.transitions(), fee)
+    }
+
+    /// Returns the Merkle tree for the given transitions.
+    pub fn transitions_tree<'a>(
+        transitions: impl ExactSizeIterator<Item = &'a Transition<N>>,
+        fee: &Option<Fee<N>>,
+    ) -> Result<TransactionTree<N>> {
+        // Retrieve the number of transitions.
+        let num_transitions = transitions.len();
         // Ensure the number of leaves is within the Merkle tree size.
-        Self::check_execution_size(execution.len())?;
+        Self::check_execution_size(num_transitions)?;
         // Prepare the leaves.
-        let leaves = execution.transitions().enumerate().map(|(index, transition)| {
+        let leaves = transitions.enumerate().map(|(index, transition)| {
             // Construct the transaction leaf.
             Ok::<_, Error>(TransactionLeaf::new_execution(u16::try_from(index)?, **transition.id()).to_bits_le())
         });
@@ -148,7 +158,7 @@ impl<N: Network> Transaction<N> {
             Some(fee) => {
                 // Construct the transaction leaf.
                 let leaf = TransactionLeaf::new_fee(
-                    u16::try_from(execution.len())?, // The last index.
+                    u16::try_from(num_transitions)?, // The last index.
                     **fee.transition_id(),
                 )
                 .to_bits_le();
@@ -198,6 +208,8 @@ impl<N: Network> Transaction<N> {
 
     /// Returns `true` if the execution is within the size bounds.
     pub fn check_execution_size(num_transitions: usize) -> Result<()> {
+        // Ensure there are transitions.
+        ensure!(num_transitions > 0, "Execution must contain at least one transition");
         // Ensure the number of functions is within the allowed range.
         ensure!(
             num_transitions < Self::MAX_TRANSITIONS, // Note: Observe we hold back 1 for the fee.

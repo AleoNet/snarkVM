@@ -20,7 +20,7 @@ impl<N: Network> RegisterTypes<N> {
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
         operands: &[Operand<N>],
-        struct_: &Struct<N>,
+        struct_: &StructType<N>,
     ) -> Result<()> {
         // Retrieve the struct name.
         let struct_name = struct_.name();
@@ -49,49 +49,119 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the literal type matches the member type.
                 Operand::Literal(literal) => {
                     ensure!(
-                        PlaintextType::Literal(literal.to_type()) == *member_type,
+                        &PlaintextType::Literal(literal.to_type()) == member_type,
                         "Struct member '{struct_name}.{member_name}' expects a {member_type}, but found '{operand}' in the operand.",
                     )
                 }
                 // Ensure the register type matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the register type.
-                    let register_type = self.get_type(stack, register)?;
-                    // Ensure the register type is not a record.
-                    ensure!(
-                        !matches!(register_type, RegisterType::Record(..)),
-                        "Casting a record into a struct is illegal"
-                    );
-                    // Ensure the register type matches the member type.
-                    ensure!(
-                        register_type == RegisterType::Plaintext(*member_type),
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{register_type}' in the operand '{operand}'.",
-                    )
+                    match self.get_type(stack, register)? {
+                        // Ensure the register type is not a record.
+                        RegisterType::ExternalRecord(..) | RegisterType::Record(..) => {
+                            bail!("Casting a record into a struct entry is illegal")
+                        }
+                        // Ensure the register type is not a future.
+                        RegisterType::Future(..) => {
+                            bail!("Casting a future into a struct entry is illegal")
+                        }
+                        // Ensure the register type matches the member type.
+                        RegisterType::Plaintext(type_) => {
+                            ensure!(
+                                &type_ == member_type,
+                                "Struct entry '{struct_name}.{member_name}' expects a '{member_type}', but found '{type_}' in the operand '{operand}'.",
+                            )
+                        }
+                    }
                 }
-                // Ensure the program ID type (address) matches the member type.
-                Operand::ProgramID(..) => {
-                    // Retrieve the program ID type.
-                    let program_ref_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                    // Ensure the program ID type matches the member type.
+                // Ensure the program ID, signer, and caller types (address) match the member type.
+                Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
+                    // Retrieve the operand type.
+                    let operand_type = PlaintextType::Literal(LiteralType::Address);
+                    // Ensure the operand type matches the member type.
                     ensure!(
-                        program_ref_type == RegisterType::Plaintext(*member_type),
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{program_ref_type}' in the operand '{operand}'.",
-                    )
-                }
-                // Ensure the caller type (address) matches the member type.
-                Operand::Caller => {
-                    // Retrieve the caller type.
-                    let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                    // Ensure the caller type matches the member type.
-                    ensure!(
-                        caller_type == RegisterType::Plaintext(*member_type),
-                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{caller_type}' in the operand '{operand}'.",
+                        &operand_type == member_type,
+                        "Struct member '{struct_name}.{member_name}' expects {member_type}, but found '{operand_type}' in the operand '{operand}'.",
                     )
                 }
                 // If the operand is a block height type, throw an error.
                 Operand::BlockHeight => bail!(
                     "Struct member '{struct_name}.{member_name}' cannot be from a block height in a non-finalize scope"
                 ),
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that the given operands matches the layout of the array.
+    pub fn matches_array(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        operands: &[Operand<N>],
+        array_type: &ArrayType<N>,
+    ) -> Result<()> {
+        // Ensure the operands length is at least the minimum required.
+        if operands.len() < N::MIN_ARRAY_ELEMENTS {
+            bail!("'{array_type}' must have at least {} operand(s)", N::MIN_ARRAY_ELEMENTS)
+        }
+        // Ensure the number of elements not exceed the maximum.
+        if operands.len() > N::MAX_ARRAY_ELEMENTS {
+            bail!("'{array_type}' cannot exceed {} elements", N::MAX_ARRAY_ELEMENTS)
+        }
+
+        // Ensure the number of operands matches the length of the array.
+        let num_elements = operands.len();
+        let expected_num_elements = **array_type.length() as usize;
+        if expected_num_elements != num_elements {
+            bail!("'{array_type}' expected {expected_num_elements} elements, found {num_elements} elements")
+        }
+
+        // Ensure the operand types match the element type.
+        for operand in operands.iter() {
+            match operand {
+                // Ensure the literal type matches the element type.
+                Operand::Literal(literal) => {
+                    ensure!(
+                        &PlaintextType::Literal(literal.to_type()) == array_type.next_element_type(),
+                        "Array element expects a {}, but found '{operand}' in the operand.",
+                        array_type.next_element_type(),
+                    )
+                }
+                // Ensure the register type matches the element type.
+                Operand::Register(register) => {
+                    // Retrieve the register type.
+                    match self.get_type(stack, register)? {
+                        // Ensure the register type is not a record.
+                        RegisterType::ExternalRecord(..) | RegisterType::Record(..) => {
+                            bail!("Casting a record into an array element is illegal")
+                        }
+                        // Ensure the register type is not a future.
+                        RegisterType::Future(..) => {
+                            bail!("Casting a future into an array element is illegal")
+                        }
+                        // Ensure the register type matches the element type.
+                        RegisterType::Plaintext(type_) => {
+                            ensure!(
+                                &type_ == array_type.next_element_type(),
+                                "Array element expects a '{}', but found '{type_}' in the operand '{operand}'.",
+                                array_type.next_element_type()
+                            )
+                        }
+                    }
+                }
+                // Ensure the program ID type, signer type, and caller types (address) match the element type.
+                Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
+                    // Retrieve the operand type.
+                    let operand_type = PlaintextType::Literal(LiteralType::Address);
+                    // Ensure the operand type matches the element type.
+                    ensure!(
+                        &operand_type == array_type.next_element_type(),
+                        "Array element expects {}, but found '{operand_type}' in the operand '{operand}'.",
+                        array_type.next_element_type()
+                    )
+                }
+                // If the operand is a block height type, throw an error.
+                Operand::BlockHeight => bail!("Array element cannot be from a block height in a non-finalize scope"),
             }
         }
         Ok(())
@@ -150,7 +220,9 @@ impl<N: Network> RegisterTypes<N> {
                 // They must hold all necessary state in storage instead.
                 bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
             }
-            Operand::Caller => {}
+            Operand::Signer | Operand::Caller => {
+                // No-op.
+            }
             Operand::BlockHeight => {
                 bail!("Forbidden operation: Cannot cast a block height as a record owner")
             }
@@ -168,44 +240,39 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the literal type matches the entry type.
                         Operand::Literal(literal) => {
                             ensure!(
-                                PlaintextType::Literal(literal.to_type()) == *plaintext_type,
+                                &PlaintextType::Literal(literal.to_type()) == plaintext_type,
                                 "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{literal}' in the operand.",
                             )
                         }
                         // Ensure the register type matches the entry type.
                         Operand::Register(register) => {
                             // Retrieve the register type.
-                            let register_type = self.get_type(stack, register)?;
-                            // Ensure the register type is not a record.
-                            ensure!(
-                                !matches!(register_type, RegisterType::Record(..)),
-                                "Casting a record into a record entry is illegal"
-                            );
-                            // Ensure the register type matches the entry type.
-                            ensure!(
-                                register_type == RegisterType::Plaintext(*plaintext_type),
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{register_type}' in the operand '{operand}'.",
-                            )
+                            match self.get_type(stack, register)? {
+                                // Ensure the register type is not a record.
+                                RegisterType::ExternalRecord(..) | RegisterType::Record(..) => {
+                                    bail!("Casting a record into a record entry is illegal")
+                                }
+                                // Ensure the register type is not a future.
+                                RegisterType::Future(..) => {
+                                    bail!("Casting a future into a record entry is illegal")
+                                }
+                                // Ensure the register type matches the entry type.
+                                RegisterType::Plaintext(type_) => {
+                                    ensure!(
+                                        &type_ == plaintext_type,
+                                        "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{type_}' in the operand '{operand}'.",
+                                    )
+                                }
+                            }
                         }
-                        // Ensure the program ID type (address) matches the entry type.
-                        Operand::ProgramID(..) => {
-                            // Retrieve the program ID type.
-                            let program_ref_type =
-                                RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                            // Ensure the program ID type matches the entry type.
+                        // Ensure the program ID, signer, and caller types (address) match the entry type.
+                        Operand::ProgramID(..) | Operand::Signer | Operand::Caller => {
+                            // Retrieve the operand type.
+                            let operand_type = &PlaintextType::Literal(LiteralType::Address);
+                            // Ensure the operand type matches the entry type.
                             ensure!(
-                                program_ref_type == RegisterType::Plaintext(*plaintext_type),
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{program_ref_type}' in the operand '{operand}'.",
-                            )
-                        }
-                        // Ensure the caller type (address) matches the entry type.
-                        Operand::Caller => {
-                            // Retrieve the caller type.
-                            let caller_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                            // Ensure the caller type matches the entry type.
-                            ensure!(
-                                caller_type == RegisterType::Plaintext(*plaintext_type),
-                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{caller_type}' in the operand '{operand}'.",
+                                operand_type == plaintext_type,
+                                "Record entry '{record_name}.{entry_name}' expects a '{plaintext_type}', but found '{operand_type}' in the operand '{operand}'.",
                             )
                         }
                         // Fail if the operand is a block height.

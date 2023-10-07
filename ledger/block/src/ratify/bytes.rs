@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Ratify<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid ratify version"));
         }
 
@@ -66,7 +66,7 @@ impl<N: Network> ToBytes for Ratify<N> {
     /// Writes the ratify object to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
 
         match self {
             Self::Genesis(committee, public_balances) => {

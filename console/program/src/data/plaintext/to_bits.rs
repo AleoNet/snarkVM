@@ -58,6 +58,33 @@ impl<N: Network> ToBits for Plaintext<N> {
                 // Extend the vector with the bits.
                 vec.extend_from_slice(bits)
             }
+            Self::Array(array, bits_le) => {
+                // Compute the bits.
+                let bits = bits_le.get_or_init(|| {
+                    let mut bits_le = vec![true, false]; // Variant bits.
+
+                    // Write the length of the array.
+                    u32::try_from(array.len())
+                        .or_halt_with::<N>("Plaintext array length exceeds u32::MAX")
+                        .write_bits_le(&mut bits_le);
+
+                    // Write each element of the array.
+                    for element in array {
+                        let element_bits = element.to_bits_le();
+
+                        // Write the size of the element.
+                        u16::try_from(element_bits.len())
+                            .or_halt_with::<N>("Plaintext element exceeds u16::MAX bits")
+                            .write_bits_le(&mut bits_le);
+
+                        // Write the element.
+                        bits_le.extend(element_bits);
+                    }
+                    bits_le
+                });
+                // Extend the vector with the bits.
+                vec.extend_from_slice(bits)
+            }
         }
     }
 
@@ -100,6 +127,33 @@ impl<N: Network> ToBits for Plaintext<N> {
                         bits_be.extend_from_slice(&value_bits);
                     }
 
+                    bits_be
+                });
+                // Extend the vector with the bits.
+                vec.extend_from_slice(bits)
+            }
+            Self::Array(array, bits_be) => {
+                // Compute the bits.
+                let bits = bits_be.get_or_init(|| {
+                    let mut bits_be = vec![true, false]; // Variant bits.
+
+                    // Write the length of the array.
+                    u32::try_from(array.len())
+                        .or_halt_with::<N>("Plaintext array length exceeds u32::MAX")
+                        .write_bits_be(&mut bits_be);
+
+                    // Write each element of the array.
+                    for element in array {
+                        let element_bits = element.to_bits_be();
+
+                        // Write the size of the element.
+                        u16::try_from(element_bits.len())
+                            .or_halt_with::<N>("Plaintext element exceeds u16::MAX bits")
+                            .write_bits_be(&mut bits_be);
+
+                        // Write the element.
+                        bits_be.extend(element_bits);
+                    }
                     bits_be
                 });
                 // Extend the vector with the bits.

@@ -20,14 +20,14 @@ impl<N: Network> FromBytes for Committee<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid committee version"));
         }
 
         // Read the starting round.
         let starting_round = u64::read_le(&mut reader)?;
         // Read the number of members.
-        let num_members = u32::read_le(&mut reader)?;
+        let num_members = u16::read_le(&mut reader)?;
         // Read the members.
         let mut members = IndexMap::with_capacity(num_members as usize);
         for _ in 0..num_members {
@@ -56,11 +56,11 @@ impl<N: Network> ToBytes for Committee<N> {
     /// Writes the committee to the buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
         // Write the starting round.
         self.starting_round.write_le(&mut writer)?;
         // Write the number of members.
-        u32::try_from(self.members.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
+        u16::try_from(self.members.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the members.
         for (address, (stake, is_open)) in &self.members {
             // Write the address.

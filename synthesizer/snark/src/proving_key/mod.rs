@@ -23,12 +23,12 @@ use std::collections::BTreeMap;
 #[derive(Clone)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
-    proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>,
+    proving_key: Arc<varuna::CircuitProvingKey<N::PairingCurve, varuna::VarunaHidingMode>>,
 }
 
 impl<N: Network> ProvingKey<N> {
     /// Initializes a new proving key.
-    pub const fn new(proving_key: Arc<marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>>) -> Self {
+    pub const fn new(proving_key: Arc<varuna::CircuitProvingKey<N::PairingCurve, varuna::VarunaHidingMode>>) -> Self {
         Self { proving_key }
     }
 
@@ -43,11 +43,11 @@ impl<N: Network> ProvingKey<N> {
         let timer = std::time::Instant::now();
 
         // Retrieve the proving parameters.
-        let universal_prover = N::marlin_universal_prover();
-        let fiat_shamir = N::marlin_fs_parameters();
+        let universal_prover = N::varuna_universal_prover();
+        let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the proof.
-        let proof = Proof::new(Marlin::<N>::prove(universal_prover, fiat_shamir, self, assignment, rng)?);
+        let proof = Proof::new(Varuna::<N>::prove(universal_prover, fiat_shamir, self, assignment, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -71,11 +71,11 @@ impl<N: Network> ProvingKey<N> {
             .collect();
 
         // Retrieve the proving parameters.
-        let universal_prover = N::marlin_universal_prover();
-        let fiat_shamir = N::marlin_fs_parameters();
+        let universal_prover = N::varuna_universal_prover();
+        let fiat_shamir = N::varuna_fs_parameters();
 
         // Compute the proof.
-        let batch_proof = Proof::new(Marlin::<N>::prove_batch(universal_prover, fiat_shamir, &instances, rng)?);
+        let batch_proof = Proof::new(Varuna::<N>::prove_batch(universal_prover, fiat_shamir, &instances, rng)?);
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{locator}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
@@ -85,7 +85,7 @@ impl<N: Network> ProvingKey<N> {
 }
 
 impl<N: Network> Deref for ProvingKey<N> {
-    type Target = marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>;
+    type Target = varuna::CircuitProvingKey<N::PairingCurve, varuna::VarunaHidingMode>;
 
     fn deref(&self) -> &Self::Target {
         &self.proving_key

@@ -73,6 +73,7 @@ use snarkvm_utilities::{TestRng, Uniform};
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
+use snarkvm_circuit_types_scalar::Scalar;
 
 use core::marker::PhantomData;
 

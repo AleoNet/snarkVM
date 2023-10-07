@@ -54,11 +54,11 @@ impl<N: Network> Stack<N> {
         let request =
             Request::sign(&burner_private_key, *program_id, *function_name, inputs.into_iter(), &input_types, rng)?;
         // Initialize the authorization.
-        let authorization = Authorization::from(request.clone());
+        let authorization = Authorization::new(request.clone());
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
-        let _response = self.execute_function::<A>(call_stack)?;
+        let _response = self.execute_function::<A>(call_stack, None)?;
 
         // Ensure the proving key exists.
         ensure!(self.contains_proving_key(function_name), "Function '{function_name}' is missing a proving key.");
