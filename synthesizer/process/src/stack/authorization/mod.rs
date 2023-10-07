@@ -19,7 +19,6 @@ mod string;
 use console::{network::prelude::*, program::Request, types::Field};
 use ledger_block::{Transaction, Transition};
 
-use console::program::InputID;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::{collections::VecDeque, sync::Arc};
@@ -218,10 +217,10 @@ fn ensure_request_and_transition_matches<N: Network>(
         request.function_name() == transition.function_name(),
         "The request and transition at index {index} must have the same function name in the authorization.",
     );
-    // Ensure the request and transition have the same input IDs.
+    // Ensure the request and transition have the same number of inputs.
     ensure!(
-        request.input_ids().iter().map(InputID::id).collect::<Vec<_>>() == transition.input_ids().collect::<Vec<_>>(),
-        "The request and transition at index {index} must have the same input IDs in the authorization.",
+        request.input_ids().len() == transition.input_ids().len(),
+        "The request and transition at index {index} must have the same number of inputs in the authorization.",
     );
     // Ensure the request and transition have the same 'tpk'.
     ensure!(
