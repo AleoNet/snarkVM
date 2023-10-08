@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::type_complexity)]
+
 use crate::{
     helpers::rocksdb::{self, CommitteeMap, DataMap, Database, MapID, ProgramMap},
     CommitteeStorage,
@@ -34,10 +36,8 @@ pub struct FinalizeDB<N: Network> {
     committee_store: CommitteeStore<N, CommitteeDB<N>>,
     /// The program ID map.
     program_id_map: DataMap<ProgramID<N>, IndexSet<Identifier<N>>>,
-    /// The mapping ID map.
-    mapping_id_map: DataMap<(ProgramID<N>, Identifier<N>), Field<N>>,
     /// The key-value ID map.
-    key_value_id_map: DataMap<Field<N>, IndexMap<Field<N>, Field<N>>>,
+    key_value_id_map: DataMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>,
     /// The key map.
     key_map: DataMap<Field<N>, Plaintext<N>>,
     /// The value map.
@@ -50,8 +50,7 @@ pub struct FinalizeDB<N: Network> {
 impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     type CommitteeStorage = CommitteeDB<N>;
     type ProgramIDMap = DataMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type MappingIDMap = DataMap<(ProgramID<N>, Identifier<N>), Field<N>>;
-    type KeyValueIDMap = DataMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
+    type KeyValueIDMap = DataMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>;
     type KeyMap = DataMap<Field<N>, Plaintext<N>>;
     type ValueMap = DataMap<Field<N>, Value<N>>;
 
@@ -63,7 +62,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         Ok(Self {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::ProgramID))?,
-            mapping_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::MappingID))?,
             key_value_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
             key_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Key))?,
             value_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Value))?,
@@ -80,7 +78,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         Ok(Self {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::ProgramID))?,
-            mapping_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::MappingID))?,
             key_value_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::KeyValueID))?,
             key_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::Key))?,
             value_map: rocksdb::RocksDB::open_map_testing(temp_dir, dev, MapID::Program(ProgramMap::Value))?,
@@ -96,11 +93,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map
-    }
-
-    /// Returns the mapping ID map.
-    fn mapping_id_map(&self) -> &Self::MappingIDMap {
-        &self.mapping_id_map
     }
 
     /// Returns the key-value ID map.

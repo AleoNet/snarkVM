@@ -44,8 +44,8 @@ pub trait FinalizeStoreTrait<N: Network> {
     /// If the `key` already exists, the method returns an error.
     fn insert_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>>;
@@ -56,8 +56,8 @@ pub trait FinalizeStoreTrait<N: Network> {
     /// If the `key` already exists, the `value` is overwritten.
     fn update_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>>;
@@ -66,8 +66,8 @@ pub trait FinalizeStoreTrait<N: Network> {
     /// If the `key` does not exist, the method returns `None`.
     fn remove_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<FinalizeOperation<N>>>;
 }

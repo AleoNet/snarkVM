@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::type_complexity)]
+
 use crate::{helpers::memory::MemoryMap, CommitteeStorage, CommitteeStore, FinalizeStorage};
 use console::{
     prelude::*,
@@ -29,10 +31,8 @@ pub struct FinalizeMemory<N: Network> {
     committee_store: CommitteeStore<N, CommitteeMemory<N>>,
     /// The program ID map.
     program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
-    /// The mapping ID map.
-    mapping_id_map: MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>,
     /// The key-value ID map.
-    key_value_id_map: MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>,
+    key_value_id_map: MemoryMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>,
     /// The key map.
     key_map: MemoryMap<Field<N>, Plaintext<N>>,
     /// The value map.
@@ -45,8 +45,7 @@ pub struct FinalizeMemory<N: Network> {
 impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type CommitteeStorage = CommitteeMemory<N>;
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type MappingIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>;
-    type KeyValueIDMap = MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
+    type KeyValueIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>;
     type KeyMap = MemoryMap<Field<N>, Plaintext<N>>;
     type ValueMap = MemoryMap<Field<N>, Value<N>>;
 
@@ -58,7 +57,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
         Ok(Self {
             committee_store,
             program_id_map: MemoryMap::default(),
-            mapping_id_map: MemoryMap::default(),
             key_value_id_map: MemoryMap::default(),
             key_map: MemoryMap::default(),
             value_map: MemoryMap::default(),
@@ -80,11 +78,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap {
         &self.program_id_map
-    }
-
-    /// Returns the mapping ID map.
-    fn mapping_id_map(&self) -> &Self::MappingIDMap {
-        &self.mapping_id_map
     }
 
     /// Returns the key-value ID map.

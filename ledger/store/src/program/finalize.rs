@@ -30,10 +30,38 @@ use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
 
+/// TODO (howardwu): Remove this.
+/// Returns the mapping ID for the given `program ID` and `mapping name`.
+fn to_mapping_id<N: Network>(program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<Field<N>> {
+    // Construct the preimage.
+    let mut preimage = Vec::new();
+    program_id.write_bits_le(&mut preimage);
+    false.write_bits_le(&mut preimage); // Separator
+    mapping_name.write_bits_le(&mut preimage);
+    // Compute the mapping ID.
+    N::hash_bhp1024(&preimage)
+}
+
+/// Returns the key ID for the given `program ID`, `mapping name`, and `key`.
+fn to_key_id<N: Network>(
+    program_id: &ProgramID<N>,
+    mapping_name: &Identifier<N>,
+    key: &Plaintext<N>,
+) -> Result<Field<N>> {
+    // Construct the preimage.
+    let mut preimage = Vec::new();
+    program_id.write_bits_le(&mut preimage);
+    false.write_bits_le(&mut preimage); // Separator
+    mapping_name.write_bits_le(&mut preimage);
+    false.write_bits_le(&mut preimage); // Separator
+    key.write_bits_le(&mut preimage);
+    // Compute the key ID.
+    N::hash_bhp1024(&preimage)
+}
+
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
 ///
-/// We define the `mapping ID := Hash( program ID || mapping name )`,
-/// and the `key ID := Hash ( mapping ID || Hash(key) )`,
+/// We define the `key ID := Hash ( program ID || mapping name || Hash(key) )`
 /// and the `value ID := Hash ( key ID || Hash(value) )`.
 ///
 /// `FinalizeStorage` emulates the following data structure:
@@ -46,10 +74,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     type CommitteeStorage: CommitteeStorage<N>;
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
-    /// The mapping of `(program ID, mapping name)` to `mapping ID`.
-    type MappingIDMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>), Field<N>>;
-    /// The mapping of `mapping ID` to `[(key ID, value ID)]`.
-    type KeyValueIDMap: for<'a> Map<'a, Field<N>, IndexMap<Field<N>, Field<N>>>;
+    /// The mapping of `(program ID, mapping name)` to `[(key ID, value ID)]`.
+    type KeyValueIDMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>;
     /// The mapping of `key ID` to `key`.
     type KeyMap: for<'a> Map<'a, Field<N>, Plaintext<N>>;
     /// The mapping of `key ID` to `value`.
@@ -66,8 +92,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage>;
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap;
-    /// Returns the mapping ID map.
-    fn mapping_id_map(&self) -> &Self::MappingIDMap;
     /// Returns the key-value ID map.
     fn key_value_id_map(&self) -> &Self::KeyValueIDMap;
     /// Returns the key map.
@@ -82,7 +106,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn start_atomic(&self) {
         self.committee_store().start_atomic();
         self.program_id_map().start_atomic();
-        self.mapping_id_map().start_atomic();
         self.key_value_id_map().start_atomic();
         self.key_map().start_atomic();
         self.value_map().start_atomic();
@@ -92,7 +115,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn is_atomic_in_progress(&self) -> bool {
         self.committee_store().is_atomic_in_progress()
             || self.program_id_map().is_atomic_in_progress()
-            || self.mapping_id_map().is_atomic_in_progress()
             || self.key_value_id_map().is_atomic_in_progress()
             || self.key_map().is_atomic_in_progress()
             || self.value_map().is_atomic_in_progress()
@@ -102,7 +124,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn atomic_checkpoint(&self) {
         self.committee_store().atomic_checkpoint();
         self.program_id_map().atomic_checkpoint();
-        self.mapping_id_map().atomic_checkpoint();
         self.key_value_id_map().atomic_checkpoint();
         self.key_map().atomic_checkpoint();
         self.value_map().atomic_checkpoint();
@@ -112,7 +133,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn clear_latest_checkpoint(&self) {
         self.committee_store().clear_latest_checkpoint();
         self.program_id_map().clear_latest_checkpoint();
-        self.mapping_id_map().clear_latest_checkpoint();
         self.key_value_id_map().clear_latest_checkpoint();
         self.key_map().clear_latest_checkpoint();
         self.value_map().clear_latest_checkpoint();
@@ -122,7 +142,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn atomic_rewind(&self) {
         self.committee_store().atomic_rewind();
         self.program_id_map().atomic_rewind();
-        self.mapping_id_map().atomic_rewind();
         self.key_value_id_map().atomic_rewind();
         self.key_map().atomic_rewind();
         self.value_map().atomic_rewind();
@@ -132,7 +151,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn abort_atomic(&self) {
         self.committee_store().abort_atomic();
         self.program_id_map().abort_atomic();
-        self.mapping_id_map().abort_atomic();
         self.key_value_id_map().abort_atomic();
         self.key_map().abort_atomic();
         self.value_map().abort_atomic();
@@ -142,7 +160,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn finish_atomic(&self) -> Result<()> {
         self.committee_store().finish_atomic()?;
         self.program_id_map().finish_atomic()?;
-        self.mapping_id_map().finish_atomic()?;
         self.key_value_id_map().finish_atomic()?;
         self.key_map().finish_atomic()?;
         self.value_map().finish_atomic()
@@ -152,23 +169,26 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// If the `mapping name` is already initialized, an error is returned.
     fn initialize_mapping(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) -> Result<FinalizeOperation<N>> {
         // Ensure the mapping name does not already exist.
-        if self.mapping_id_map().contains_key_speculative(&(*program_id, *mapping_name))? {
-            bail!("Illegal operation: mapping '{mapping_name}' already exists in storage - cannot initialize again.")
+        if let Some(mapping_names) = self.program_id_map().get_speculative(&program_id)? {
+            // Ensure the mapping name does not already exist.
+            if mapping_names.contains(&mapping_name) {
+                bail!("Illegal operation: mapping '{mapping_name}' already exists in storage - cannot re-initialize.")
+            }
         }
 
-        // Compute the mapping ID.
-        let mapping_id = N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())?;
         // Ensure the mapping ID does not already exist.
-        if self.key_value_id_map().contains_key_speculative(&mapping_id)? {
-            bail!("Illegal operation: mapping ID '{mapping_id}' already exists in storage - cannot initialize again.")
+        if self.key_value_id_map().contains_key_speculative(&(program_id, mapping_name))? {
+            bail!(
+                "Illegal operation: '{program_id}/{mapping_name}' already exists in storage - cannot initialize again."
+            )
         }
 
         // Retrieve the mapping names for the program ID.
-        let mut mapping_names = match self.program_id_map().get_speculative(program_id)? {
+        let mut mapping_names = match self.program_id_map().get_speculative(&program_id)? {
             // If the program ID already exists, retrieve the mapping names.
             Some(mapping_names) => cow_to_cloned!(mapping_names),
             // If the program ID does not exist, initialize the mapping names.
@@ -176,26 +196,24 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         };
 
         // Ensure the mapping name does not already exist.
-        if mapping_names.contains(mapping_name) {
+        if mapping_names.contains(&mapping_name) {
             bail!("Illegal operation: mapping name '{mapping_name}' already exists in storage - cannot re-initialize.")
         }
 
         // Insert the new mapping name.
-        mapping_names.insert(*mapping_name);
+        mapping_names.insert(mapping_name);
 
         atomic_batch_scope!(self, {
             // Update the program ID map with the new mapping name.
-            self.program_id_map().insert(*program_id, mapping_names)?;
-            // Initialize the mapping ID map.
-            self.mapping_id_map().insert((*program_id, *mapping_name), mapping_id)?;
+            self.program_id_map().insert(program_id, mapping_names)?;
             // Initialize the key-value ID map.
-            self.key_value_id_map().insert(mapping_id, IndexMap::new())?;
+            self.key_value_id_map().insert((program_id, mapping_name), IndexMap::new())?;
 
             Ok(())
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::InitializeMapping(mapping_id))
+        Ok(FinalizeOperation::InitializeMapping(to_mapping_id(&program_id, &mapping_name)?))
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -203,17 +221,13 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// If the `key` already exists, the method returns an error.
     fn insert_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot insert key-value.")
-        };
         // Compute the key ID.
-        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        let key_id = to_key_id(&program_id, &mapping_name, &key)?;
         // Compute the value ID.
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
@@ -222,9 +236,11 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot insert again.")
         }
         // Retrieve the key-value IDs for the mapping ID.
-        let mut key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
+        let mut key_value_ids = match self.key_value_id_map().get_speculative(&(program_id, mapping_name))? {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
-            None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot insert key-value."),
+            None => {
+                bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot insert key-value.")
+            }
         };
         // Ensure the key ID does not already exist.
         if key_value_ids.contains_key(&key_id) {
@@ -235,7 +251,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_batch_scope!(self, {
             // Update the key-value ID map with the new key-value ID.
-            self.key_value_id_map().insert(mapping_id, key_value_ids)?;
+            self.key_value_id_map().insert((program_id, mapping_name), key_value_ids)?;
             // Insert the key.
             self.key_map().insert(key_id, key)?;
             // Insert the value.
@@ -245,7 +261,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::InsertKeyValue(mapping_id, key_id, value_id))
+        Ok(FinalizeOperation::InsertKeyValue(to_mapping_id(&program_id, &mapping_name)?, key_id, value_id))
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -254,25 +270,21 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// If the `key` already exists, the `value` is overwritten.
     fn update_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot update key-value.")
-        };
         // Compute the key ID.
-        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        let key_id = to_key_id(&program_id, &mapping_name, &key)?;
         // Compute the value ID.
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
         // Retrieve the key-value IDs for the mapping ID.
-        let mut key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
+        let mut key_value_ids = match self.key_value_id_map().get_speculative(&(program_id, mapping_name))? {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
             None => {
-                bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot update key-value.")
+                bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot update key-value.")
             }
         };
         // If the key ID does not exist, insert it in the key-value ID map.
@@ -294,7 +306,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_batch_scope!(self, {
             // Update the key-value ID map with the new key-value ID.
-            self.key_value_id_map().insert(mapping_id, key_value_ids)?;
+            self.key_value_id_map().insert((program_id, mapping_name), key_value_ids)?;
             // Insert the key.
             self.key_map().insert(key_id, key)?;
             // Insert the value.
@@ -304,27 +316,25 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::UpdateKeyValue(mapping_id, index, key_id, value_id))
+        Ok(FinalizeOperation::UpdateKeyValue(to_mapping_id(&program_id, &mapping_name)?, index, key_id, value_id))
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
     /// If the `key` does not exist, `None` is returned.
     fn remove_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<FinalizeOperation<N>>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove key-value.")
-        };
         // Compute the key ID.
-        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        let key_id = to_key_id(&program_id, &mapping_name, key)?;
         // Retrieve the key-value IDs for the mapping ID.
-        let mut key_value_ids = match self.key_value_id_map().get_speculative(&mapping_id)? {
+        let mut key_value_ids = match self.key_value_id_map().get_speculative(&(program_id, mapping_name))? {
             Some(key_value_ids) => cow_to_cloned!(key_value_ids),
-            None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove key-value."),
+            None => {
+                bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot remove key-value.")
+            }
         };
         // If the key ID does not exist, return `None`.
         if !key_value_ids.contains_key(&key_id) {
@@ -342,7 +352,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_batch_scope!(self, {
             // Update the key-value ID map with the new key ID.
-            self.key_value_id_map().insert(mapping_id, key_value_ids)?;
+            self.key_value_id_map().insert((program_id, mapping_name), key_value_ids)?;
             // Remove the key.
             self.key_map().remove(&key_id)?;
             // Remove the value.
@@ -352,24 +362,20 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(Some(FinalizeOperation::RemoveKeyValue(mapping_id, index)))
+        Ok(Some(FinalizeOperation::RemoveKeyValue(to_mapping_id(&program_id, &mapping_name)?, index)))
     }
 
     /// Replaces the mapping for the given `program ID` and `mapping name` from storage,
     /// with the given `key-value` pairs.
     fn replace_mapping(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         entries: Vec<(Plaintext<N>, Value<N>)>,
     ) -> Result<FinalizeOperation<N>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping.")
-        };
         // Retrieve the key-value IDs for the mapping ID.
-        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&mapping_id)? else {
-            bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping.")
+        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&(program_id, mapping_name))? else {
+            bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot remove mapping.")
         };
 
         // Initialize a vector for the key-value IDs.
@@ -380,7 +386,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         // Iterate through the key-value pairs.
         for (key, value) in entries {
             // Compute the key ID.
-            let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+            let key_id = to_key_id(&program_id, &mapping_name, &key)?;
             // Compute the value ID.
             let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
             // Insert the key-value ID.
@@ -391,7 +397,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_batch_scope!(self, {
             // Remove the key IDs.
-            self.key_value_id_map().remove(&mapping_id)?;
+            self.key_value_id_map().remove(&(program_id, mapping_name))?;
             // Remove the keys.
             for key_id in key_value_ids.keys() {
                 self.key_map().remove(key_id)?;
@@ -399,7 +405,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             }
 
             // Insert the new key-value ID map.
-            self.key_value_id_map().insert(mapping_id, next_key_value_ids)?;
+            self.key_value_id_map().insert((program_id, mapping_name), next_key_value_ids)?;
             // Insert the new keys and values.
             for (key_id, key, value) in next_keys_values {
                 self.key_map().insert(key_id, key)?;
@@ -410,40 +416,34 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::ReplaceMapping(mapping_id))
+        Ok(FinalizeOperation::ReplaceMapping(to_mapping_id(&program_id, &mapping_name)?))
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
     /// along with all associated key-value pairs in storage.
-    fn remove_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<FinalizeOperation<N>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping.")
-        };
+    fn remove_mapping(&self, program_id: ProgramID<N>, mapping_name: Identifier<N>) -> Result<FinalizeOperation<N>> {
         // Retrieve the key-value IDs for the mapping ID.
-        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&mapping_id)? else {
-            bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping.")
+        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&(program_id, mapping_name))? else {
+            bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot remove mapping.")
         };
 
         // Retrieve the mapping names.
-        let mut mapping_names = match self.program_id_map().get_speculative(program_id)? {
+        let mut mapping_names = match self.program_id_map().get_speculative(&program_id)? {
             Some(mapping_names) => cow_to_cloned!(mapping_names),
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
         // Ensure the mapping name exists.
-        if !mapping_names.contains(mapping_name) {
+        if !mapping_names.contains(&mapping_name) {
             bail!("Illegal operation: mapping '{mapping_name}' does not exist in storage - cannot remove mapping.");
         }
         // Remove the mapping name.
-        mapping_names.remove(mapping_name);
+        mapping_names.remove(&mapping_name);
 
         atomic_batch_scope!(self, {
             // Update the mapping names.
-            self.program_id_map().insert(*program_id, mapping_names)?;
-            // Remove the mapping ID.
-            self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
+            self.program_id_map().insert(program_id, mapping_names)?;
             // Remove the key IDs.
-            self.key_value_id_map().remove(&mapping_id)?;
+            self.key_value_id_map().remove(&(program_id, mapping_name))?;
             // Remove the keys.
             for key_id in key_value_ids.keys() {
                 self.key_map().remove(key_id)?;
@@ -454,7 +454,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         })?;
 
         // Return the finalize operation.
-        Ok(FinalizeOperation::RemoveMapping(mapping_id))
+        Ok(FinalizeOperation::RemoveMapping(to_mapping_id(&program_id, &mapping_name)?))
     }
 
     /// Removes the program for the given `program ID` from storage,
@@ -471,26 +471,22 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
             // Remove each mapping.
             for mapping_name in mapping_names.iter() {
-                // Retrieve the mapping ID.
-                let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-                    bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping.")
-                };
                 // Retrieve the key-value IDs for the mapping ID.
-                let Some(key_value_ids) = self.key_value_id_map().get_speculative(&mapping_id)? else {
-                    bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping.")
+                let Some(key_value_ids) = self.key_value_id_map().get_speculative(&(*program_id, *mapping_name))?
+                else {
+                    bail!(
+                        "Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot remove mapping."
+                    )
                 };
 
-                // Remove the mapping ID.
-                self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
                 // Remove the key IDs.
-                self.key_value_id_map().remove(&mapping_id)?;
+                self.key_value_id_map().remove(&(*program_id, *mapping_name))?;
                 // Remove the keys.
                 for key_id in key_value_ids.keys() {
                     self.key_map().remove(key_id)?;
                     self.value_map().remove(key_id)?;
                 }
             }
-
             Ok(())
         })
     }
@@ -502,7 +498,10 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Returns `true` if the given `program ID` and `mapping name` exist.
     fn contains_mapping_confirmed(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<bool> {
-        self.mapping_id_map().contains_key_confirmed(&(*program_id, *mapping_name))
+        match self.program_id_map().get_speculative(program_id)? {
+            Some(mapping_names) => Ok(mapping_names.contains(mapping_name)),
+            None => Ok(false),
+        }
     }
 
     /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
@@ -512,12 +511,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<bool> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            return Ok(false);
-        };
         // Compute the key ID.
-        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        let key_id = to_key_id(program_id, mapping_name, key)?;
         // Return whether the key ID exists.
         self.key_map().contains_key_confirmed(&key_id)
     }
@@ -529,12 +524,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<bool> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            return Ok(false);
-        };
         // Compute the key ID.
-        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        let key_id = to_key_id(program_id, mapping_name, key)?;
         // Return whether the key ID exists.
         self.key_map().contains_key_speculative(&key_id)
     }
@@ -557,43 +548,15 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         }
     }
 
-    /// Returns the confirmed mapping ID for the given `program ID` and `mapping name`.
-    fn get_mapping_id_confirmed(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-    ) -> Result<Option<Field<N>>> {
-        match self.mapping_id_map().get_confirmed(&(*program_id, *mapping_name))? {
-            Some(mapping_id) => Ok(Some(cow_to_copied!(mapping_id))),
-            None => Ok(None),
-        }
-    }
-
-    /// Returns the speculative mapping ID for the given `program ID` and `mapping name`.
-    fn get_mapping_id_speculative(
-        &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
-    ) -> Result<Option<Field<N>>> {
-        match self.mapping_id_map().get_speculative(&(*program_id, *mapping_name))? {
-            Some(mapping_id) => Ok(Some(cow_to_copied!(mapping_id))),
-            None => Ok(None),
-        }
-    }
-
     /// Returns the confirmed mapping entries for the given `program ID` and `mapping name`.
     fn get_mapping_confirmed(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_confirmed(program_id, mapping_name)? else {
-            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot update key-value.")
-        };
         // Retrieve the key-value IDs for the mapping ID.
-        let Some(key_value_ids) = self.key_value_id_map().get_confirmed(&mapping_id)? else {
-            bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot update key-value.")
+        let Some(key_value_ids) = self.key_value_id_map().get_confirmed(&(program_id, mapping_name))? else {
+            bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot update key-value.")
         };
         // Initialize the entries vector.
         let mut entries = Vec::with_capacity(key_value_ids.len());
@@ -617,16 +580,12 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Returns the speculative mapping entries for the given `program ID` and `mapping name`.
     fn get_mapping_speculative(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot update key-value.")
-        };
         // Retrieve the key-value IDs for the mapping ID.
-        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&mapping_id)? else {
-            bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot update key-value.")
+        let Some(key_value_ids) = self.key_value_id_map().get_speculative(&(program_id, mapping_name))? else {
+            bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot update key-value.")
         };
         // Initialize the entries vector.
         let mut entries = Vec::with_capacity(key_value_ids.len());
@@ -654,12 +613,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<Field<N>>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_confirmed(program_id, mapping_name)? else {
-            return Ok(None);
-        };
         // Compute the key ID.
-        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        let key_id = to_key_id(program_id, mapping_name, key)?;
         // Ensure the key ID exists.
         match self.key_map().contains_key_confirmed(&key_id)? {
             true => Ok(Some(key_id)),
@@ -674,12 +629,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: &Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<Field<N>>> {
-        // Retrieve the mapping ID.
-        let Some(mapping_id) = self.get_mapping_id_speculative(program_id, mapping_name)? else {
-            return Ok(None);
-        };
         // Compute the key ID.
-        let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
+        let key_id = to_key_id(program_id, mapping_name, key)?;
         // Ensure the key ID exists.
         match self.key_map().contains_key_speculative(&key_id)? {
             true => Ok(Some(key_id)),
@@ -755,16 +706,20 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         let preimage: std::collections::BTreeMap<_, _> = self
             .key_value_id_map()
             .iter_confirmed()
-            .map(|(mapping_id, key_value_ids)| {
-                // Convert the mapping ID and all value IDs to concatenated bits.
+            .map(|(program_id_and_mapping_name, key_value_ids)| {
+                let (program_id, mapping_name) = cow_to_copied!(program_id_and_mapping_name);
+                // Convert the program ID, mapping name, and all value IDs to concatenated bits.
                 let mut preimage = Vec::new();
-                mapping_id.write_bits_le(&mut preimage);
+                program_id.write_bits_le(&mut preimage);
+                false.write_bits_le(&mut preimage); // Separator.
+                mapping_name.write_bits_le(&mut preimage);
+                false.write_bits_le(&mut preimage); // Separator.
                 Field::<N>::from_u64(key_value_ids.len() as u64).write_bits_le(&mut preimage);
                 key_value_ids.values().for_each(|value_id| value_id.write_bits_le(&mut preimage));
-                // Compute the mapping checksum as `Hash( mapping_id || all value IDs )`.
+                // Compute the mapping checksum as `Hash( program_id || mapping_name || all value IDs )`.
                 let mapping_checksum = N::hash_bhp1024(&preimage)?;
-                // Return the mapping ID and mapping checksum.
-                Ok::<_, Error>((mapping_id, mapping_checksum.to_bits_le()))
+                // Return the (program_id, mapping_name) and mapping checksum.
+                Ok::<_, Error>(((program_id, mapping_name.to_string()), mapping_checksum.to_bits_le()))
             })
             .try_collect()?;
         // Compute the checksum as `Hash( all mapping checksums )`.
@@ -777,10 +732,14 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         let preimage: std::collections::BTreeMap<_, _> = self
             .key_value_id_map()
             .iter_pending()
-            .map(|(mapping_id, key_value_ids)| {
-                // Convert the mapping ID and all value IDs to concatenated bits.
+            .map(|(program_id_and_mapping_name, key_value_ids)| {
+                let (program_id, mapping_name) = cow_to_copied!(program_id_and_mapping_name);
+                // Convert the program ID, mapping name, and all value IDs to concatenated bits.
                 let mut preimage = Vec::new();
-                mapping_id.write_bits_le(&mut preimage);
+                program_id.write_bits_le(&mut preimage);
+                false.write_bits_le(&mut preimage); // Separator.
+                mapping_name.write_bits_le(&mut preimage);
+                false.write_bits_le(&mut preimage); // Separator.
                 match key_value_ids {
                     Some(key_value_ids) => {
                         Field::<N>::from_u64(key_value_ids.len() as u64).write_bits_le(&mut preimage);
@@ -788,10 +747,10 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
                     }
                     None => Field::<N>::zero().write_bits_le(&mut preimage),
                 }
-                // Compute the mapping checksum as `Hash( mapping_id || all value IDs )`.
+                // Compute the mapping checksum as `Hash( program_id || mapping_name || all value IDs )`.
                 let mapping_checksum = N::hash_bhp1024(&preimage)?;
-                // Return the mapping ID and mapping checksum.
-                Ok::<_, Error>((mapping_id, mapping_checksum.to_bits_le()))
+                // Return the (program_id, mapping_name) and mapping checksum.
+                Ok::<_, Error>(((program_id, mapping_name.to_string()), mapping_checksum.to_bits_le()))
             })
             .try_collect()?;
         // Compute the checksum as `Hash( all mapping checksums )`.
@@ -905,8 +864,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
     /// If the `key` already exists, the method returns an error.
     fn insert_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>> {
@@ -919,8 +878,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
     /// If the `key` already exists, the `value` is overwritten.
     fn update_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: Plaintext<N>,
         value: Value<N>,
     ) -> Result<FinalizeOperation<N>> {
@@ -930,8 +889,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStoreTrait<N> for FinalizeStore<
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
     fn remove_key_value(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<FinalizeOperation<N>>> {
         self.storage.remove_key_value(program_id, mapping_name, key)
@@ -943,8 +902,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// If the `mapping name` is already initialized, an error is returned.
     pub fn initialize_mapping(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) -> Result<FinalizeOperation<N>> {
         self.storage.initialize_mapping(program_id, mapping_name)
     }
@@ -953,8 +912,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// with the given `key-value` pairs.
     pub fn replace_mapping(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
         entries: Vec<(Plaintext<N>, Value<N>)>,
     ) -> Result<FinalizeOperation<N>> {
         self.storage.replace_mapping(program_id, mapping_name, entries)
@@ -964,8 +923,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// along with all associated key-value pairs in storage.
     pub fn remove_mapping(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) -> Result<FinalizeOperation<N>> {
         self.storage.remove_mapping(program_id, mapping_name)
     }
@@ -1003,8 +962,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Returns the confirmed mapping entries for the given `program ID` and `mapping name`.
     pub fn get_mapping_confirmed(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
         self.storage.get_mapping_confirmed(program_id, mapping_name)
     }
@@ -1012,8 +971,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Returns the speculative mapping entries for the given `program ID` and `mapping name`.
     pub fn get_mapping_speculative(
         &self,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) -> Result<Vec<(Plaintext<N>, Value<N>)>> {
         self.storage.get_mapping_speculative(program_id, mapping_name)
     }
@@ -1067,10 +1026,10 @@ mod tests {
         // Ensure the mapping name does not exist.
         assert!(!finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
 
         // Now, initialize the mapping.
-        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID got initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name got initialized.
@@ -1081,7 +1040,7 @@ mod tests {
         assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
         // Insert a (key, value) pair.
-        finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
@@ -1092,7 +1051,7 @@ mod tests {
         assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
         // Ensure removing the key succeeds.
-        finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+        finalize_store.remove_key_value(program_id, mapping_name, &key).unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
@@ -1103,7 +1062,7 @@ mod tests {
         assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
         // Ensure removing the mapping succeeds.
-        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.remove_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
@@ -1140,10 +1099,10 @@ mod tests {
         // Ensure the mapping name does not exist.
         assert!(!finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
 
         // Now, initialize the mapping.
-        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID got initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name got initialized.
@@ -1154,7 +1113,7 @@ mod tests {
         assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
         // Update a (key, value) pair.
-        finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.update_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
@@ -1165,14 +1124,14 @@ mod tests {
         assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
         // Ensure calling `insert_key_value` with the same key and value fails.
-        assert!(finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).is_err());
+        assert!(finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).is_err());
         // Ensure the key is still initialized.
         assert!(finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns Some(value).
         assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
         // Ensure calling `update_key_value` with the same key and value succeeds.
-        finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.update_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
         // Ensure the key is still initialized.
         assert!(finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
         // Ensure the value still returns Some(value).
@@ -1183,16 +1142,14 @@ mod tests {
             let new_value = Value::from_str("123456789u128").unwrap();
 
             // Ensure calling `insert_key_value` with a different key and value fails.
-            assert!(
-                finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), new_value.clone()).is_err()
-            );
+            assert!(finalize_store.insert_key_value(program_id, mapping_name, key.clone(), new_value.clone()).is_err());
             // Ensure the key is still initialized.
             assert!(finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value still returns Some(value).
             assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
             // Ensure calling `update_key_value` with a different key and value succeeds.
-            finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), new_value.clone()).unwrap();
+            finalize_store.update_key_value(program_id, mapping_name, key.clone(), new_value.clone()).unwrap();
             // Ensure the key is still initialized.
             assert!(finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(new_value).
@@ -1202,7 +1159,7 @@ mod tests {
             );
 
             // Ensure calling `update_key_value` with the same key and original value succeeds.
-            finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.update_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the key is still initialized.
             assert!(finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
             // Ensure the value returns Some(value).
@@ -1210,7 +1167,7 @@ mod tests {
         }
 
         // Ensure removing the key succeeds.
-        finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap();
+        finalize_store.remove_key_value(program_id, mapping_name, &key).unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is still initialized.
@@ -1221,7 +1178,7 @@ mod tests {
         assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
         // Ensure removing the mapping succeeds.
-        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.remove_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
@@ -1283,10 +1240,10 @@ mod tests {
         // Ensure the mapping name does not exist.
         assert!(!finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
 
         // Now, initialize the mapping.
-        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID got initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name got initialized.
@@ -1302,7 +1259,7 @@ mod tests {
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
             // Remove the key-value pair.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_none());
+            assert!(finalize_store.remove_key_value(program_id, mapping_name, &key).unwrap().is_none());
             // Ensure the program ID is still initialized.
             assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
@@ -1324,7 +1281,7 @@ mod tests {
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
             // Insert the key and value.
-            finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the program ID is still initialized.
             assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
@@ -1346,7 +1303,7 @@ mod tests {
             assert_eq!(value, finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap());
 
             // Remove the key-value pair.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_some());
+            assert!(finalize_store.remove_key_value(program_id, mapping_name, &key).unwrap().is_some());
             // Ensure the program ID is still initialized.
             assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
@@ -1372,10 +1329,10 @@ mod tests {
         // Ensure the mapping name does not exist.
         assert!(!finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
 
         // Now, initialize the mapping.
-        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID got initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name got initialized.
@@ -1392,7 +1349,7 @@ mod tests {
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
             // Insert the key and value.
-            finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the program ID is still initialized.
             assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
@@ -1404,7 +1361,7 @@ mod tests {
         }
 
         // Remove the mapping.
-        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.remove_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID is still initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name is no longer initialized.
@@ -1436,10 +1393,10 @@ mod tests {
         // Ensure the mapping name does not exist.
         assert!(!finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
 
         // Now, initialize the mapping.
-        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(program_id, mapping_name).unwrap();
         // Ensure the program ID got initialized.
         assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
         // Ensure the mapping name got initialized.
@@ -1456,7 +1413,7 @@ mod tests {
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
 
             // Insert the key and value.
-            finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+            finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
             // Ensure the program ID is still initialized.
             assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
             // Ensure the mapping name is still initialized.
@@ -1500,13 +1457,13 @@ mod tests {
         // Ensure the mapping name does not exist.
         assert!(!finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
         // Ensure removing an un-initialized mapping fails.
-        assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+        assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
 
         {
             // Ensure inserting a (key, value) before initializing the mapping fails.
             let key = Plaintext::from_str("123456789field").unwrap();
             let value = Value::from_str("987654321u128").unwrap();
-            assert!(finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
+            assert!(finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value).is_err());
 
             // Ensure the program ID did not get initialized.
             assert!(!finalize_store.contains_program_confirmed(&program_id).unwrap());
@@ -1517,15 +1474,15 @@ mod tests {
             // Ensure the value returns None.
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
             // Ensure removing an un-initialized key fails.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
+            assert!(finalize_store.remove_key_value(program_id, mapping_name, &key).is_err());
             // Ensure removing an un-initialized mapping fails.
-            assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+            assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
         }
         {
             // Ensure updating a (key, value) before initializing the mapping fails.
             let key = Plaintext::from_str("987654321field").unwrap();
             let value = Value::from_str("123456789u128").unwrap();
-            assert!(finalize_store.update_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
+            assert!(finalize_store.update_key_value(program_id, mapping_name, key.clone(), value).is_err());
 
             // Ensure the program ID did not get initialized.
             assert!(!finalize_store.contains_program_confirmed(&program_id).unwrap());
@@ -1536,9 +1493,9 @@ mod tests {
             // Ensure the value returns None.
             assert!(finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().is_none());
             // Ensure removing an un-initialized key fails.
-            assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).is_err());
+            assert!(finalize_store.remove_key_value(program_id, mapping_name, &key).is_err());
             // Ensure removing an un-initialized mapping fails.
-            assert!(finalize_store.remove_mapping(&program_id, &mapping_name).is_err());
+            assert!(finalize_store.remove_mapping(program_id, mapping_name).is_err());
         }
 
         // Ensure finalize storage still behaves correctly after the above operations.
@@ -1585,7 +1542,7 @@ mod tests {
 
         // Now, initialize the mapping.
         let timer = std::time::Instant::now();
-        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.initialize_mapping(program_id, mapping_name).unwrap();
         println!("FinalizeStore::initialize_mapping - {} μs", timer.elapsed().as_micros());
 
         // Prepare the key and value.
@@ -1595,7 +1552,7 @@ mod tests {
 
         // Insert the key and value.
         let timer = std::time::Instant::now();
-        finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
         println!("FinalizeStore::insert_key_value - {} μs", timer.elapsed().as_micros());
 
         // Insert the list of keys and values.
@@ -1620,7 +1577,7 @@ mod tests {
 
             // Insert the key and value.
             let timer = std::time::Instant::now();
-            finalize_store.insert_key_value(&program_id, &mapping_name, key, value).unwrap();
+            finalize_store.insert_key_value(program_id, mapping_name, key, value).unwrap();
             elapsed = elapsed.checked_add(timer.elapsed().as_micros()).unwrap();
         }
         // Finish the atomic transaction.
@@ -1656,12 +1613,12 @@ mod tests {
 
         // Remove the key-value pair.
         let timer = std::time::Instant::now();
-        assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_some());
+        assert!(finalize_store.remove_key_value(program_id, mapping_name, &key).unwrap().is_some());
         println!("FinalizeStore::remove_key_value - {} μs", timer.elapsed().as_micros());
 
         // Ensure removing the mapping succeeds.
         let timer = std::time::Instant::now();
-        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        finalize_store.remove_mapping(program_id, mapping_name).unwrap();
         println!("FinalizeStore::remove_mapping - {} μs", timer.elapsed().as_micros());
 
         // Ensure removing the program succeeds.

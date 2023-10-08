@@ -482,9 +482,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), committee.clone())?;
                     // Replace the committee mapping in storage.
-                    store.replace_mapping(&program_id, &committee_mapping, next_committee_map)?;
+                    store.replace_mapping(program_id, committee_mapping, next_committee_map)?;
                     // Replace the bonded mapping in storage.
-                    store.replace_mapping(&program_id, &bonded_mapping, next_bonded_map)?;
+                    store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?;
 
                     // Iterate over the public balances.
                     for (address, amount) in public_balances {
@@ -501,7 +501,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             v => bail!("Critical bug in pre-ratify - Invalid public balance type ({v:?})"),
                         })));
                         // Update the public balance in finalize storage.
-                        store.update_key_value(&program_id, &account_mapping, key, next_value)?;
+                        store.update_key_value(program_id, account_mapping, key, next_value)?;
                     }
                 }
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => continue,
@@ -533,11 +533,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ratify::Genesis(..) => continue,
                 Ratify::BlockReward(block_reward) => {
                     // Retrieve the committee mapping from storage.
-                    let current_committee_map = store.get_mapping_speculative(&program_id, &committee_mapping)?;
+                    let current_committee_map = store.get_mapping_speculative(program_id, committee_mapping)?;
                     // Convert the committee mapping into a committee.
                     let current_committee = committee_map_into_committee(state.block_round(), current_committee_map)?;
                     // Retrieve the bonded mapping from storage.
-                    let current_bonded_map = store.get_mapping_speculative(&program_id, &bonded_mapping)?;
+                    let current_bonded_map = store.get_mapping_speculative(program_id, bonded_mapping)?;
                     // Convert the bonded map into stakers.
                     let current_stakers = bonded_map_into_stakers(current_bonded_map)?;
 
@@ -555,9 +555,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), next_committee)?;
                     // Replace the committee mapping in storage.
-                    store.replace_mapping(&program_id, &committee_mapping, next_committee_map)?;
+                    store.replace_mapping(program_id, committee_mapping, next_committee_map)?;
                     // Replace the bonded mapping in storage.
-                    store.replace_mapping(&program_id, &bonded_mapping, next_bonded_map)?;
+                    store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?;
                 }
                 Ratify::PuzzleReward(puzzle_reward) => {
                     // If the puzzle reward is zero, skip.
@@ -588,7 +588,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             v => bail!("Critical bug in post-ratify puzzle reward- Invalid amount ({v:?})"),
                         })));
                         // Update the public balance in finalize storage.
-                        store.update_key_value(&program_id, &account_mapping, key, next_value)?;
+                        store.update_key_value(program_id, account_mapping, key, next_value)?;
                     }
                 }
             }

@@ -71,7 +71,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Ensure that all mappings are initialized.
             if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
                 // Initialize the mappings for 'credits.aleo'.
-                store.finalize_store().initialize_mapping(credits.id(), mapping.name())?;
+                store.finalize_store().initialize_mapping(*credits.id(), *mapping.name())?;
             }
         }
 

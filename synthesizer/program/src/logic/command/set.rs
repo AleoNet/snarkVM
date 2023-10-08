@@ -87,7 +87,7 @@ impl<N: Network> Set<N> {
         let value = Value::Plaintext(registers.load_plaintext(stack, &self.value)?);
 
         // Update the value in storage, and return the finalize operation.
-        store.update_key_value(stack.program_id(), &self.mapping, key, value)
+        store.update_key_value(*stack.program_id(), self.mapping, key, value)
     }
 }
 
