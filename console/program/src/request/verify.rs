@@ -88,7 +88,8 @@ impl<N: Network> Request<N> {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
@@ -108,7 +109,8 @@ impl<N: Network> Request<N> {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(input.to_fields()?);
                         preimage.push(self.tcm);
                         preimage.push(index);
@@ -194,7 +196,8 @@ impl<N: Network> Request<N> {
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                         // Construct the preimage as `(function ID || input || tvk || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(input.to_fields()?);
                         preimage.push(self.tvk);
                         preimage.push(index);

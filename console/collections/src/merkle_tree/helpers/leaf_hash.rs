@@ -57,8 +57,9 @@ impl<E: Environment, const RATE: usize> LeafHash for Poseidon<E, RATE> {
 
     /// Returns the hash of the given leaf node.
     fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<Self::Hash> {
+        let mut input = Vec::with_capacity(1 + leaf.len());
         // Prepend the leaf with a `0field` element.
-        let mut input = vec![Self::Hash::zero(); 1];
+        input.push(Self::Hash::zero());
         input.extend(leaf);
         // Hash the input.
         Hash::hash(self, &input)

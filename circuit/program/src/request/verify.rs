@@ -144,7 +144,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(input.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(input_index);
@@ -167,7 +168,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tcm || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(input.to_fields());
                         preimage.push(tcm.clone());
                         preimage.push(input_index);
@@ -276,7 +278,8 @@ impl<A: Aleo> Request<A> {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Construct the preimage as `(function ID || input || tvk || index)`.
-                        let mut preimage = vec![function_id.clone()];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id.clone());
                         preimage.extend(record.to_fields());
                         preimage.push(tvk.clone());
                         preimage.push(input_index);
