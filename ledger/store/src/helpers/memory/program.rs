@@ -66,6 +66,12 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
         })
     }
 
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Self::open(dev)
+    }
+
     /// Returns the committee store.
     fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage> {
         &self.committee_store
@@ -129,6 +135,12 @@ impl<N: Network> CommitteeStorage<N> for CommitteeMemory<N> {
             committee_map: MemoryMap::default(),
             dev,
         })
+    }
+
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Self::open(dev)
     }
 
     /// Returns the current round map.

@@ -58,6 +58,10 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the program state storage.
     fn open(dev: Option<u16>) -> Result<Self>;
 
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self>;
+
     /// Returns the committee storage.
     fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage>;
     /// Returns the program ID map.
@@ -744,6 +748,55 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             None => Ok(None),
         }
     }
+
+    /// Returns the confirmed checksum of the finalize storage.
+    fn get_checksum_confirmed(&self) -> Result<Field<N>> {
+        // Compute all mapping checksums.
+        let preimage: std::collections::BTreeMap<_, _> = self
+            .key_value_id_map()
+            .iter_confirmed()
+            .map(|(mapping_id, key_value_ids)| {
+                // Convert the mapping ID and all value IDs to concatenated bits.
+                let mut preimage = Vec::new();
+                mapping_id.write_bits_le(&mut preimage);
+                Field::<N>::from_u64(key_value_ids.len() as u64).write_bits_le(&mut preimage);
+                key_value_ids.values().for_each(|value_id| value_id.write_bits_le(&mut preimage));
+                // Compute the mapping checksum as `Hash( mapping_id || all value IDs )`.
+                let mapping_checksum = N::hash_bhp1024(&preimage)?;
+                // Return the mapping ID and mapping checksum.
+                Ok::<_, Error>((mapping_id, mapping_checksum.to_bits_le()))
+            })
+            .try_collect()?;
+        // Compute the checksum as `Hash( all mapping checksums )`.
+        N::hash_bhp1024(&preimage.into_values().flatten().collect::<Vec<_>>())
+    }
+
+    /// Returns the pending checksum of the finalize storage.
+    fn get_checksum_pending(&self) -> Result<Field<N>> {
+        // Compute all mapping checksums.
+        let preimage: std::collections::BTreeMap<_, _> = self
+            .key_value_id_map()
+            .iter_pending()
+            .map(|(mapping_id, key_value_ids)| {
+                // Convert the mapping ID and all value IDs to concatenated bits.
+                let mut preimage = Vec::new();
+                mapping_id.write_bits_le(&mut preimage);
+                match key_value_ids {
+                    Some(key_value_ids) => {
+                        Field::<N>::from_u64(key_value_ids.len() as u64).write_bits_le(&mut preimage);
+                        key_value_ids.values().for_each(|value_id| value_id.write_bits_le(&mut preimage));
+                    }
+                    None => Field::<N>::zero().write_bits_le(&mut preimage),
+                }
+                // Compute the mapping checksum as `Hash( mapping_id || all value IDs )`.
+                let mapping_checksum = N::hash_bhp1024(&preimage)?;
+                // Return the mapping ID and mapping checksum.
+                Ok::<_, Error>((mapping_id, mapping_checksum.to_bits_le()))
+            })
+            .try_collect()?;
+        // Compute the checksum as `Hash( all mapping checksums )`.
+        N::hash_bhp1024(&preimage.into_values().flatten().collect::<Vec<_>>())
+    }
 }
 
 /// The finalize store.
@@ -759,6 +812,12 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Initializes the finalize store.
     pub fn open(dev: Option<u16>) -> Result<Self> {
         Self::from(P::open(dev)?)
+    }
+
+    /// Initializes the test-variant of the storage.
+    #[cfg(any(test, feature = "test"))]
+    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        Self::from(P::open_testing(temp_dir, dev)?)
     }
 
     /// Initializes a finalize store from storage.
@@ -977,6 +1036,11 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
         key: &Plaintext<N>,
     ) -> Result<Option<Value<N>>> {
         self.storage.get_value_speculative(program_id, mapping_name, key)
+    }
+
+    /// Returns the confirmed checksum of the finalize store.
+    pub fn get_checksum_confirmed(&self) -> Result<Field<N>> {
+        self.storage.get_checksum_confirmed()
     }
 }
 
@@ -1486,6 +1550,10 @@ mod tests {
     /// ```ignore
     /// NUM_ITEMS=100000 cargo test test_finalize_timings -- --nocapture
     /// ```
+    /// If you want to run the test with RocksDB, run:
+    /// ```ignore
+    /// NUM_ITEMS=100000 cargo test test_finalize_timings --features rocks -- --nocapture
+    /// ```
     #[test]
     fn test_finalize_timings() {
         let rng = &mut TestRng::default();
@@ -1501,8 +1569,19 @@ mod tests {
         let mapping_name = Identifier::from_str("account").unwrap();
 
         // Initialize a new finalize store.
-        let program_memory = FinalizeMemory::open(None).unwrap();
-        let finalize_store = FinalizeStore::from(program_memory).unwrap();
+        #[cfg(not(feature = "rocks"))]
+        let finalize_store = {
+            let program_memory = FinalizeMemory::open(None).unwrap();
+            FinalizeStore::from(program_memory).unwrap()
+        };
+
+        // Initialize a new finalize store.
+        #[cfg(feature = "rocks")]
+        let finalize_store = {
+            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
+            let program_rocksdb = crate::helpers::rocksdb::FinalizeDB::open_testing(temp_dir, None).unwrap();
+            FinalizeStore::from(program_rocksdb).unwrap()
+        };
 
         // Now, initialize the mapping.
         let timer = std::time::Instant::now();
@@ -1521,9 +1600,17 @@ mod tests {
 
         // Insert the list of keys and values.
         let mut elapsed = 0u128;
+        // Start an atomic transaction.
+        finalize_store.start_atomic();
         for i in 0..num_items {
             if i != 0 && i % 10_000 == 0 {
+                // Finish the atomic transaction.
+                if finalize_store.is_atomic_in_progress() {
+                    finalize_store.finish_atomic().unwrap();
+                }
                 println!("FinalizeStore::insert_key_value - {} μs (average over {i} items)", elapsed / i);
+                // Start a new atomic transaction.
+                finalize_store.start_atomic();
             }
 
             // Prepare the key and value.
@@ -1536,7 +1623,16 @@ mod tests {
             finalize_store.insert_key_value(&program_id, &mapping_name, key, value).unwrap();
             elapsed = elapsed.checked_add(timer.elapsed().as_micros()).unwrap();
         }
+        // Finish the atomic transaction.
+        if finalize_store.is_atomic_in_progress() {
+            finalize_store.finish_atomic().unwrap();
+        }
         println!("FinalizeStore::insert_key_value - {} μs (average over {num_items} items)", elapsed / num_items);
+
+        // Retrieve the checksum.
+        let timer = std::time::Instant::now();
+        finalize_store.get_checksum_confirmed().unwrap();
+        println!("FinalizeStore::get_checksum_confirmed - {} μs", timer.elapsed().as_micros());
 
         // Ensure the program ID is still initialized.
         let timer = std::time::Instant::now();

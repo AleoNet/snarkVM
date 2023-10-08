@@ -27,6 +27,7 @@ serial = [
   "synthesizer-program/serial",
   "synthesizer-snark/serial"
 ]
+test = [ "rand" ]
 
 [dependencies.console]
 package = "snarkvm-console"
@@ -90,6 +91,10 @@ optional = true
 [dependencies.parking_lot]
 version = "0.12"
 
+[dependencies.rand]
+version = "0.8"
+optional = true
+
 [dependencies.rayon]
 version = "1"
 optional = true
@@ -115,6 +120,9 @@ features = [ "test-helpers" ]
 [dev-dependencies.ledger-test-helpers]
 package = "snarkvm-ledger-test-helpers"
 path = "../../ledger/test-helpers"
+
+[dev-dependencies.rand]
+version = "0.8"
 
 [dev-dependencies.serial_test]
 version = "2"

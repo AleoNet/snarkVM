@@ -102,6 +102,7 @@ impl Database for RocksDB {
                 let primary = aleo_std::aleo_ledger_dir(network_id, dev);
                 let rocksdb = {
                     options.increase_parallelism(2);
+                    options.set_max_background_jobs(4);
                     options.create_if_missing(true);
 
                     Arc::new(rocksdb::DB::open(&options, primary)?)
@@ -150,8 +151,8 @@ impl Database for RocksDB {
 
 impl RocksDB {
     /// Opens the test database.
-    #[cfg(test)]
-    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+    #[cfg(any(test, feature = "test"))]
+    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
         let database = {
             // Customize database options.
             let mut options = rocksdb::Options::default();
@@ -161,6 +162,9 @@ impl RocksDB {
             let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
             options.set_prefix_extractor(prefix_extractor);
 
+            // Ensure the `temp_dir` is unique.
+            let temp_dir = temp_dir.join(rand::Rng::gen::<u64>(&mut rand::thread_rng()).to_string());
+
             // Construct the directory for the test database.
             let primary = match dev {
                 Some(dev) => temp_dir.join(dev.to_string()),
@@ -169,7 +173,21 @@ impl RocksDB {
 
             let rocksdb = {
                 options.increase_parallelism(2);
+                options.set_max_background_jobs(4);
                 options.create_if_missing(true);
+
+                // Keep these around as options for configuration testing.
+
+                // options.set_max_subcompactions(4);
+                // options.set_use_direct_io_for_flush_and_compaction(true);
+                // options.set_bytes_per_sync(1 << 28);
+                // options.set_compaction_readahead_size(1 << 28);
+                // options.set_max_write_buffer_number(16);
+                // options.set_min_write_buffer_number_to_merge(8);
+                // options.set_compression_type(rocksdb::DBCompressionType::None);
+                // options.set_bottommost_compression_type(rocksdb::DBCompressionType::None);
+                // options.set_write_buffer_size(1 << 28);
+
                 Arc::new(rocksdb::DB::open(&options, primary)?)
             };
 
@@ -190,8 +208,8 @@ impl RocksDB {
     }
 
     /// Opens the test map.
-    #[cfg(test)]
-    fn open_map_testing<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+    #[cfg(any(test, feature = "test"))]
+    pub fn open_map_testing<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
         temp_dir: std::path::PathBuf,
         dev: Option<u16>,
         map_id: T,
