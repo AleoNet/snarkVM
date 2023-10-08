@@ -458,6 +458,7 @@ finalize unbond_public:
 
 /**********************************************************************************************************************/
 
+// This function allows a validator to unbond any delegator that is bonded to them.
 function unbond_delegator_as_validator:
     // Input the delegator's address.
     input r0 as address.public;
@@ -704,8 +705,8 @@ finalize transfer_private_to_public:
 // The `transfer_public_to_private` function turns a specified amount
 // from the mapping `account` into a record for the specified receiver.
 //
-// This function preserves privacy for the receiver's record, however
-// it publicly reveals the sender and the specified amount.
+// This function publicly reveals the sender, the receiver, and the specified amount.
+// However, subsequent methods using the receiver's record can preserve the receiver's privacy.
 function transfer_public_to_private:
     // Input the receiver.
     input r0 as address.private;
