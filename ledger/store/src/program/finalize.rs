@@ -984,7 +984,7 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 mod tests {
     use super::*;
     use crate::helpers::memory::FinalizeMemory;
-    use console::network::Testnet3;
+    use console::{network::Testnet3, program::Literal, types::U64};
 
     type CurrentNetwork = Testnet3;
 
@@ -1480,5 +1480,97 @@ mod tests {
         // Ensure finalize storage still behaves correctly after the above operations.
         check_initialize_insert_remove(&finalize_store, program_id, mapping_name);
         check_initialize_update_remove(&finalize_store, program_id, mapping_name);
+    }
+
+    /// If you want to customize the DB size, run:
+    /// ```ignore
+    /// NUM_ITEMS=100000 cargo test test_finalize_timings -- --nocapture
+    /// ```
+    #[test]
+    fn test_finalize_timings() {
+        let rng = &mut TestRng::default();
+
+        // Default to "100000" if the environment variable doesn't exist or is invalid.
+        let num_items: u128 = std::env::var("NUM_ITEMS")
+            .unwrap_or_else(|_| "100000".to_string())
+            .parse()
+            .expect("Failed to parse NUM_ITEMS as u128");
+
+        // Initialize a program ID and mapping name.
+        let program_id = ProgramID::<CurrentNetwork>::from_str("hello.aleo").unwrap();
+        let mapping_name = Identifier::from_str("account").unwrap();
+
+        // Initialize a new finalize store.
+        let program_memory = FinalizeMemory::open(None).unwrap();
+        let finalize_store = FinalizeStore::from(program_memory).unwrap();
+
+        // Now, initialize the mapping.
+        let timer = std::time::Instant::now();
+        finalize_store.initialize_mapping(&program_id, &mapping_name).unwrap();
+        println!("FinalizeStore::initialize_mapping - {} μs", timer.elapsed().as_micros());
+
+        // Prepare the key and value.
+        let item: u64 = 100u64;
+        let key = Plaintext::from(Literal::Field(Field::from_u64(item)));
+        let value = Value::from(Literal::U64(U64::new(item)));
+
+        // Insert the key and value.
+        let timer = std::time::Instant::now();
+        finalize_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).unwrap();
+        println!("FinalizeStore::insert_key_value - {} μs", timer.elapsed().as_micros());
+
+        // Insert the list of keys and values.
+        let mut elapsed = 0u128;
+        for i in 0..num_items {
+            if i != 0 && i % 10_000 == 0 {
+                println!("FinalizeStore::insert_key_value - {} μs (average over {i} items)", elapsed / i);
+            }
+
+            // Prepare the key and value.
+            let item: u64 = rng.gen();
+            let key = Plaintext::from(Literal::Field(Field::from_u64(item)));
+            let value = Value::from(Literal::U64(U64::new(item)));
+
+            // Insert the key and value.
+            let timer = std::time::Instant::now();
+            finalize_store.insert_key_value(&program_id, &mapping_name, key, value).unwrap();
+            elapsed = elapsed.checked_add(timer.elapsed().as_micros()).unwrap();
+        }
+        println!("FinalizeStore::insert_key_value - {} μs (average over {num_items} items)", elapsed / num_items);
+
+        // Ensure the program ID is still initialized.
+        let timer = std::time::Instant::now();
+        assert!(finalize_store.contains_program_confirmed(&program_id).unwrap());
+        println!("FinalizeStore::contains_program_confirmed - {} μs", timer.elapsed().as_micros());
+
+        // Ensure the mapping name is still initialized.
+        let timer = std::time::Instant::now();
+        assert!(finalize_store.contains_mapping_confirmed(&program_id, &mapping_name).unwrap());
+        println!("FinalizeStore::contains_mapping_confirmed - {} μs", timer.elapsed().as_micros());
+
+        // Ensure the key got initialized.
+        let timer = std::time::Instant::now();
+        assert!(finalize_store.contains_key_confirmed(&program_id, &mapping_name, &key).unwrap());
+        println!("FinalizeStore::contains_key_confirmed - {} μs", timer.elapsed().as_micros());
+
+        // Retrieve the value.
+        let timer = std::time::Instant::now();
+        finalize_store.get_value_speculative(&program_id, &mapping_name, &key).unwrap().unwrap();
+        println!("FinalizeStore::get_value_speculative - {} μs", timer.elapsed().as_micros());
+
+        // Remove the key-value pair.
+        let timer = std::time::Instant::now();
+        assert!(finalize_store.remove_key_value(&program_id, &mapping_name, &key).unwrap().is_some());
+        println!("FinalizeStore::remove_key_value - {} μs", timer.elapsed().as_micros());
+
+        // Ensure removing the mapping succeeds.
+        let timer = std::time::Instant::now();
+        finalize_store.remove_mapping(&program_id, &mapping_name).unwrap();
+        println!("FinalizeStore::remove_mapping - {} μs", timer.elapsed().as_micros());
+
+        // Ensure removing the program succeeds.
+        let timer = std::time::Instant::now();
+        finalize_store.remove_program(&program_id).unwrap();
+        println!("FinalizeStore::remove_program - {} μs", timer.elapsed().as_micros());
     }
 }
