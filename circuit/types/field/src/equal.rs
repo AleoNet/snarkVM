@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::*;
+use snarkvm_circuit_environment::Private;
 
 impl<E: Environment> Equal<Self> for Field<E> {
     type Output = Boolean<E>;
@@ -20,7 +21,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 2 constraints.
     ///
     fn is_equal(&self, other: &Self) -> Self::Output {
         !self.is_not_equal(other)
@@ -32,24 +33,41 @@ impl<E: Environment> Equal<Self> for Field<E> {
     /// This method constructs a boolean that indicates if
     /// `self` and `other ` are *not* equal to each other.
     ///
-    /// This method costs 3 constraints.
+    /// This method costs 2 constraints.
     ///
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        match (self.is_constant(), other.is_constant()) {
-            (true, true) => witness!(|self, other| self != other),
-            _ => {
-                // Compute a boolean that is `true` if `this` and `that` are not equivalent.
-                let is_neq: Boolean<E> = witness!(|self, other| self != other);
+        // In all cases, the witness ("ejected") value is calculated from the ejected values.
+        let is_neq_ejected = self.eject_value() != other.eject_value();
 
-                // Assign the expected multiplier.
-                let multiplier: Field<E> = witness!(|self, other| {
-                    match (self - other).inverse() {
+        match (self.is_constant(), other.is_constant()) {
+            // If both operands are constant, the result is also constant.
+            (true, true) => Boolean::new(Mode::Constant, is_neq_ejected),
+
+            // Otherwise, we introduce a private field variable is_neq for the result,
+            // along with an auxiliary variable multiplier for the inverse of the difference between the operands,
+            // and enforce the following constraints:
+            //   (self - other) (multiplier) = (is_neq)
+            //   (self - other) (1 - is_neq) = (0)
+            // These constraints imply that is_neq is boolean, i.e. either 0 or 1;
+            // so we avoid creating is_neq as a Boolean, which would generate an unneeded boolean constraint.
+            // See the comments just after the code for more detailed explanations.
+            _ => {
+                let is_neq = Boolean::from_variable(E::new_variable(Mode::Private, match is_neq_ejected {
+                    true => E::BaseField::one(),
+                    false => E::BaseField::zero(),
+                }));
+                let delta = self - other;
+                let multiplier: Field<E> = witness!(|delta| {
+                    match delta.inverse() {
                         Ok(inverse) => inverse,
-                        _ => console::Field::one(),
+                        _ => console::Field::one(), // exact value is irrelevant, because (0) (anything) = (0)
                     }
                 });
+                let is_eq = !is_neq.clone(); // 1 - is_neq
+                E::enforce(|| (&delta, &multiplier, &is_neq)); // 1st constraint
+                E::enforce(|| (delta, is_eq, E::zero())); // 2nd constraint
+                is_neq
 
-                //
                 // Inequality Enforcement
                 // ----------------------------------------------------------------
                 // Check 1:  (a - b) * multiplier = is_neq
@@ -110,21 +128,6 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 // Check 2:  (a - b) * not(1) = 0
                 //                          0 = 0
                 // => is_neq is trivially correct.
-                //
-
-                // Compute `self` - `other`.
-                let delta = self - other;
-
-                // Negate `is_neq`.
-                let is_eq = !is_neq.clone();
-
-                // Check 1: (a - b) * multiplier = is_neq
-                E::enforce(|| (&delta, &multiplier, &is_neq));
-
-                // Check 2: (a - b) * not(is_neq) = 0
-                E::enforce(|| (delta, is_eq, E::zero()));
-
-                is_neq
             }
         }
     }
@@ -137,7 +140,7 @@ impl<E: Environment> Metrics<dyn Equal<Field<E>, Output = Boolean<E>>> for Field
     fn count(case: &Self::Case) -> Count {
         match case {
             (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
-            _ => Count::is(0, 0, 2, 3),
+            _ => Count::is(0, 0, 2, 2),
         }
     }
 }

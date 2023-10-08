@@ -39,6 +39,13 @@ pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
+impl<E: Environment> Boolean<E> {
+    /// Initializes a boolean from a variable.
+    pub fn from_variable(var: Variable<E::BaseField>) -> Self {
+        Boolean(var.into())
+    }
+}
+
 #[cfg(console)]
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;
