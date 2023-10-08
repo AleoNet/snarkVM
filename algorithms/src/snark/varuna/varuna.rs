@@ -618,6 +618,7 @@ where
             prover_fourth_message,
             pc_proof,
         )?;
+        proof.check_batch_sizes()?;
         assert_eq!(proof.pc_proof.is_hiding(), SM::ZK);
 
         end_timer!(prover_time);
@@ -637,7 +638,8 @@ where
             return Err(SNARKError::EmptyBatch);
         }
 
-        let batch_sizes_vec = proof.batch_sizes()?;
+        proof.check_batch_sizes()?;
+        let batch_sizes_vec = proof.batch_sizes();
         let mut batch_sizes = BTreeMap::new();
         for (i, (vk, public_inputs_i)) in keys_to_inputs.iter().enumerate() {
             batch_sizes.insert(vk.id, batch_sizes_vec[i]);

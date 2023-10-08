@@ -252,19 +252,44 @@ impl<E: PairingEngine> Proof<E> {
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         let batch_sizes: Vec<usize> = batch_sizes.into_values().collect();
-        let total_instances = batch_sizes.iter().sum::<usize>();
-        if commitments.witness_commitments.len() != total_instances {
-            return Err(SNARKError::BatchSizeMismatch);
-        }
         Ok(Self { batch_sizes, commitments, evaluations, third_msg, fourth_msg, pc_proof })
     }
 
-    pub fn batch_sizes(&self) -> Result<&[usize], SNARKError> {
+    pub fn batch_sizes(&self) -> &[usize] {
+        &self.batch_sizes
+    }
+
+    /// Check that the number of messages is consistent with our batch size
+    pub fn check_batch_sizes(&self) -> Result<(), SNARKError> {
         let total_instances = self.batch_sizes.iter().sum::<usize>();
         if self.commitments.witness_commitments.len() != total_instances {
             return Err(SNARKError::BatchSizeMismatch);
         }
-        Ok(&self.batch_sizes)
+        let g_comms =
+            [&self.commitments.g_a_commitments, &self.commitments.g_b_commitments, &self.commitments.g_c_commitments];
+        for comms in g_comms {
+            if comms.len() != self.batch_sizes.len() {
+                return Err(SNARKError::BatchSizeMismatch);
+            }
+        }
+        let g_evals = [&self.evaluations.g_a_evals, &self.evaluations.g_b_evals, &self.evaluations.g_c_evals];
+        for evals in g_evals {
+            if evals.len() != self.batch_sizes.len() {
+                return Err(SNARKError::BatchSizeMismatch);
+            }
+        }
+        if self.third_msg.sums.len() != self.batch_sizes.len() {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        for (msg, &batch_size) in self.third_msg.sums.iter().zip(self.batch_sizes.iter()) {
+            if msg.len() != batch_size {
+                return Err(SNARKError::BatchSizeMismatch);
+            }
+        }
+        if self.fourth_msg.sums.len() != self.batch_sizes.len() {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        Ok(())
     }
 }
 
