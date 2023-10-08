@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod id;
+mod id;
 pub use id::*;
 
-pub mod map;
+mod map;
 pub use map::*;
 
 #[cfg(test)]
