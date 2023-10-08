@@ -33,6 +33,7 @@ hash.ped128 r0 into r1 as u32;
 hash.psd2 r0 into r1 as scalar;
 hash.psd4 r0 into r1 as group;
 hash.psd8 r0 into r1 as address;
+hash_many.psd2 r1 r2 into r3 as field;
 inv r0 into r1;
 is.eq r0 r1 into r2;
 is.neq r0 r1 into r2;
