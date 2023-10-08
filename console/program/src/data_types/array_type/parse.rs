@@ -42,8 +42,6 @@ impl<N: Network> Parser for ArrayType<N> {
             Ok((string, length))
         }
 
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
         // Parse the opening brackets and validate the number of dimensions.
         let (string, dimensions) = map_res(many0_count(pair(tag("["), Sanitizer::parse_whitespaces)), |dimensions| {
             if dimensions.is_zero() {
