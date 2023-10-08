@@ -15,9 +15,6 @@
 pub mod id;
 pub use id::*;
 
-pub mod iterator;
-use iterator::*;
-
 pub mod map;
 pub use map::*;
 
@@ -25,7 +22,6 @@ pub use map::*;
 mod tests;
 
 use anyhow::{bail, Result};
-use core::{fmt::Debug, hash::Hash};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::{de::DeserializeOwned, Serialize};
