@@ -230,7 +230,6 @@ impl<N: Network> Request<N> {
             signature: Signature::from((challenge, response, compute_key)),
             sk_tag,
             tvk,
-            tsk: r,
             tcm,
         })
     }
