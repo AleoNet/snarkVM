@@ -148,12 +148,7 @@ impl<N: Network> Block<N> {
         // Ensure that the subdag root matches the authority.
         let subdag_root = match &authority {
             Authority::Beacon(_) => Field::<N>::zero(),
-            Authority::Quorum(subdag) => {
-                // Construct the subdag root preimage.
-                let subdag_root_preimage = subdag.certificate_ids().flat_map(|id| id.to_bits_le()).collect::<Vec<_>>();
-                // Compute the subdag root.
-                N::hash_bhp1024(&subdag_root_preimage)?
-            }
+            Authority::Quorum(subdag) => subdag.to_subdag_root()?,
         };
         if header.subdag_root() != subdag_root {
             bail!("The subdag root in the block does not correspond to the authority");
