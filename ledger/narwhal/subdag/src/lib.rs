@@ -26,6 +26,9 @@ use narwhal_transmission_id::TransmissionID;
 use indexmap::IndexSet;
 use std::collections::BTreeMap;
 
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
+
 /// Returns `true` if the rounds are sequential.
 fn is_sequential<T>(map: &BTreeMap<u64, T>) -> bool {
     let mut previous_round = None;
@@ -140,9 +143,17 @@ impl<N: Network> Subdag<N> {
     /// Returns the subdag root of the transactions.
     pub fn to_subdag_root(&self) -> Result<Field<N>> {
         // Prepare the leaves.
-        let leaves = self.certificate_ids().map(|id| id.to_bits_le());
+        let leaves = cfg_iter!(self.subdag)
+            .map(|(_, certificates)| {
+                certificates
+                    .iter()
+                    .flat_map(|certificate| certificate.certificate_id().to_bits_le())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
         // Compute the subdag tree.
-        let tree = N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves.collect::<Vec<_>>())?;
+        let tree = N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves)?;
         // Return the subdag root.
         Ok(*tree.root())
     }
