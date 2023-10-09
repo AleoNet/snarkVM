@@ -278,4 +278,5 @@ enum DataID {
     Test3,
     #[cfg(test)]
     Test4,
+    // NOTE: the last variant MUST NOT EXIST (at index = 255).
 }

@@ -18,6 +18,9 @@ pub use id::*;
 mod map;
 pub use map::*;
 
+mod nested_map;
+pub use nested_map::*;
+
 #[cfg(test)]
 mod tests;
 
@@ -49,6 +52,18 @@ pub trait Database {
         dev: Option<u16>,
         map_id: T,
     ) -> Result<DataMap<K, V>>;
+
+    /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    fn open_nested_map<
+        M: Serialize + DeserializeOwned,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
+        network_id: u16,
+        dev: Option<u16>,
+        map_id: T,
+    ) -> Result<NestedDataMap<M, K, V>>;
 }
 
 /// An instance of a RocksDB database.
@@ -143,6 +158,34 @@ impl Database for RocksDB {
             checkpoints: Default::default(),
         })))
     }
+
+    /// Opens the nested map with the given `network_id`, `(optional) development ID`, and `map_id` from storage.
+    fn open_nested_map<
+        M: Serialize + DeserializeOwned,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
+        network_id: u16,
+        dev: Option<u16>,
+        map_id: T,
+    ) -> Result<NestedDataMap<M, K, V>> {
+        // Open the RocksDB database.
+        let database = Self::open(network_id, dev)?;
+
+        // Combine contexts to create a new scope.
+        let mut context = database.network_id.to_le_bytes().to_vec();
+        context.extend_from_slice(&(map_id.into()).to_le_bytes());
+
+        // Return the DataMap.
+        Ok(NestedDataMap {
+            database,
+            context,
+            batch_in_progress: Default::default(),
+            atomic_batch: Default::default(),
+            checkpoints: Default::default(),
+        })
+    }
 }
 
 impl RocksDB {
@@ -225,6 +268,35 @@ impl RocksDB {
             atomic_batch: Default::default(),
             checkpoints: Default::default(),
         })))
+    }
+
+    /// Opens the test nested map.
+    #[cfg(any(test, feature = "test"))]
+    pub fn open_nested_map_testing<
+        M: Serialize + DeserializeOwned,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
+        temp_dir: std::path::PathBuf,
+        dev: Option<u16>,
+        map_id: T,
+    ) -> Result<NestedDataMap<M, K, V>> {
+        // Open the RocksDB test database.
+        let database = Self::open_testing(temp_dir, dev)?;
+
+        // Combine contexts to create a new scope.
+        let mut context = database.network_id.to_le_bytes().to_vec();
+        context.extend_from_slice(&(map_id.into()).to_le_bytes());
+
+        // Return the DataMap.
+        Ok(NestedDataMap {
+            database,
+            context,
+            batch_in_progress: Default::default(),
+            atomic_batch: Default::default(),
+            checkpoints: Default::default(),
+        })
     }
 }
 
