@@ -59,6 +59,10 @@ features = [ "derive" ]
 [dependencies.thiserror]
 version = "1.0"
 
+[dependencies.zeroize]
+version = "1"
+features = [ "derive" ]
+
 [features]
 default = [ "snarkvm-utilities/default" ]
 profiler = [ "aleo-std/profiler" ]
