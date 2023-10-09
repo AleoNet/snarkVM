@@ -270,4 +270,33 @@ mod tests {
         println!("// cast of field (witness 3) to group");
         println!("{}", output);
     }
+
+    #[test]
+    fn formal_sample_field_op_then_cast_to_group() {
+        // do some operation on the field before casting to group, to see whether the initial field is connected to the input to cast
+        let a = Field::<FormalCircuit>::new(Mode::Private, ConsoleField::from_str("2field").unwrap());
+        let c = Field::<FormalCircuit>::new(Mode::Constant, ConsoleField::one());
+        let b = &a * &a + &c;
+        let _candidate: Group<FormalCircuit> = b.cast();
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// field x^2 + 1 then cast to group");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_public_field_op_then_cast_to_group() {
+        // do some operation on the field before casting to group, to see whether the initial field is connected to the input to cast
+        let a = Field::<FormalCircuit>::new(Mode::Public, ConsoleField::from_str("2field").unwrap());
+        let c = Field::<FormalCircuit>::new(Mode::Constant, ConsoleField::one());
+        let b = &a * &a + &c;
+        let _candidate: Group<FormalCircuit> = b.cast();
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+        println!("// public field x^2 + 1 then cast to group");
+        println!("{}", output);
+    }
+
 }

@@ -168,7 +168,7 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
         let mut a = input.chunks(64).map(U64::from_bits_le).collect::<Vec<_>>();
         // Permute the input.
         for round_constant in round_constants.iter().take(NUM_ROUNDS) {
-            a = Self::round(a, round_constant, rotl);
+            a = Self::round_alt(a, round_constant, rotl);
         }
         // Return the permuted input.
         let mut bits = Vec::with_capacity(input.len());
@@ -262,6 +262,126 @@ impl<E: Environment, const TYPE: u8, const VARIANT: usize> Keccak<E, TYPE, VARIA
                 a_3.push(a ^ ((!b) & c));
             }
         }
+
+        /* ι:
+         *
+         * A[0, 0] = A[0, 0] ⊕ RC
+         */
+        a_3[0] = &a_3[0] ^ round_constant;
+        a_3
+    }
+
+    fn round_theta_1(a: &Vec<U64<E>>) -> Vec<U64<E>> {
+
+        /* The first part of Algorithm 1, θ:
+         *
+         * for x = 0 to 4 do
+         *   C[x] = a[x, 0]
+         *   for y = 1 to 4 do
+         *     C[x] = C[x] ⊕ a[x, y]
+         *   end for
+         * end for
+         */
+        let mut c = Vec::with_capacity(MODULO);
+        for x in 0..MODULO {
+            c.push(&a[x] ^ &a[x + MODULO] ^ &a[x + (2 * MODULO)] ^ &a[x + (3 * MODULO)] ^ &a[x + (4 * MODULO)]);
+        }
+        return c;
+    }
+
+    fn round_theta_2a(c: &Vec<U64<E>>) -> Vec<U64<E>> {
+
+        /* for x = 0 to 4 do
+         *   D[x] = C[x−1] ⊕ ROT(C[x+1],1)
+         * end for
+         */
+        let mut d = Vec::with_capacity(MODULO);
+        for x in 0..MODULO {
+            d.push(&c[(x + 4) % MODULO] ^ Self::rotate_left(&c[(x + 1) % MODULO], 63));
+        }
+        return d;
+    }
+
+    fn round_theta_2b(a: &Vec<U64<E>>, d: &Vec<U64<E>>) -> Vec<U64<E>> {
+
+        /* for y = 0 to 4 do
+         *   for x = 0 to 4 do
+         *     A[x, y] = a[x, y] ⊕ D[x]
+         *   end for
+         * end for
+         */
+        let mut a_1 = Vec::with_capacity(MODULO * MODULO);
+        for y in 0..MODULO {
+            for x in 0..MODULO {
+                a_1.push(&a[x + (y * MODULO)] ^ &d[x]);
+            }
+        }
+        return a_1;
+    }
+
+    fn round_pi_and_rho(a_1: &Vec<U64<E>>, rotl: &[usize]) -> Vec<U64<E>> {
+
+        /* Algorithm 3, π:
+         *
+         * for x = 0 to 4 do
+         *   for y = 0 to 4 do
+         *     (X, Y) = (y, (2*x + 3*y) mod 5)
+         *     A[X, Y] = a[x, y]
+         *   end for
+         * end for
+         *
+         * Algorithm 2, ρ:
+         *
+         * A[0, 0] = a[0, 0]
+         * (x, y) = (1, 0)
+         * for t = 0 to 23 do
+         *   A[x, y] = ROT(a[x, y], (t + 1)(t + 2)/2)
+         *   (x, y) = (y, (2*x + 3*y) mod 5)
+         * end for
+         */
+
+        let mut a_2 = a_1.clone();
+        for y in 0..MODULO {
+            for x in 0..MODULO {
+                // This step combines the π and ρ steps into one.
+                a_2[y + ((((2 * x) + (3 * y)) % MODULO) * MODULO)] =
+                    Self::rotate_left(&a_1[x + (y * MODULO)], rotl[x + (y * MODULO)]);
+            }
+        }
+        return a_2;
+    }
+
+    fn round_chi(a_2: &Vec<U64<E>>) -> Vec<U64<E>> {
+
+        /* Algorithm 4, χ:
+         *
+         * for y = 0 to 4 do
+         *   for x = 0 to 4 do
+         *     A[x, y] = a[x, y] ⊕ ((¬a[x+1, y]) ∧ a[x+2, y])
+         *   end for
+         * end for
+         */
+        let mut a_3 = Vec::with_capacity(MODULO * MODULO);
+        for y in 0..MODULO {
+            for x in 0..MODULO {
+                let a = &a_2[x + (y * MODULO)];
+                let b = &a_2[((x + 1) % MODULO) + (y * MODULO)];
+                let c = &a_2[((x + 2) % MODULO) + (y * MODULO)];
+                a_3.push(a ^ ((!b) & c));
+            }
+        }
+        return a_3;
+    }
+
+    // Factor round() into its components.
+    fn round_alt(a: Vec<U64<E>>, round_constant: &U64<E>, rotl: &[usize]) -> Vec<U64<E>> {
+        debug_assert_eq!(a.len(), MODULO * MODULO, "The input vector 'a' must have {} elements", MODULO * MODULO);
+
+        let c = Self::round_theta_1(&a);
+        let d = Self::round_theta_2a(&c);
+        let a_1 = Self::round_theta_2b(&a, &d);
+        let a_2 = Self::round_pi_and_rho(&a_1, rotl);
+        let mut a_3 = Self::round_chi(&a_2);
 
         /* ι:
          *
@@ -467,7 +587,7 @@ mod tests {
         let k = Keccak::<Circuit, { KeccakType::Keccak as u8 }, 256>::new();
 
         // print the entries of rotl
-        println!("// rotl: {:?}", k.rotl);
+        //println!("// rotl: {:?}", k.rotl);
 
         // Push the vector of U64::<FormalCircuit> through the round() function
         let _candidate = Keccak256::round(v, round_constant, &k.rotl);
@@ -476,6 +596,70 @@ mod tests {
         let output = serde_json::to_string_pretty(&transcript).unwrap();
 
         println!("// keccak256::round");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_round_theta_1() {
+        let v = (0..MODULO * MODULO).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
+        let _candidate = Keccak256::round_theta_1(&v);
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+
+        println!("// keccak256::round_theta_1");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_round_theta_2a() {
+        let v = (0..MODULO * MODULO).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
+        let _candidate = Keccak256::round_theta_2a(&v);
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+
+        println!("// keccak256::round_theta_2a");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_round_theta_2b() {
+        let v1 = (0..MODULO * MODULO).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
+        let v2 = (0..MODULO * MODULO).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
+        let _candidate = Keccak256::round_theta_2b(&v1, &v2);
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+
+        println!("// keccak256::round_theta_2b");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_round_pi_and_rho() {
+        let v = (0..MODULO * MODULO).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
+        // initialize a Keccak Circuit with new() in order to generate the rotl
+        let k = Keccak::<Circuit, { KeccakType::Keccak as u8 }, 256>::new();
+
+        let _candidate = Keccak256::round_pi_and_rho(&v, &k.rotl);
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+
+        println!("// keccak256::round_pi_and_rho");
+        println!("{}", output);
+    }
+
+    #[test]
+    fn formal_sample_round_chi() {
+        let v = (0..MODULO * MODULO).map(|_| U64::<FormalCircuit>::new(Mode::Private, console::U64::zero())).collect::<Vec<_>>();
+        let _candidate = Keccak256::round_chi(&v);
+
+        let transcript = FormalCircuit::clear();
+        let output = serde_json::to_string_pretty(&transcript).unwrap();
+
+        println!("// keccak256::round_chi");
         println!("{}", output);
     }
 }
