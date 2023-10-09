@@ -61,15 +61,15 @@ wasm = [
   "synthesizer-snark/wasm"
 ]
 
-[dependencies.algorithms]
-package = "snarkvm-algorithms"
-path = "../algorithms"
-version = "=0.15.1"
-
 [[bench]]
 name = "kary_merkle_tree"
 path = "benches/kary_merkle_tree.rs"
 harness = false
+
+[dependencies.algorithms]
+package = "snarkvm-algorithms"
+path = "../algorithms"
+version = "=0.15.1"
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
