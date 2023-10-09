@@ -204,7 +204,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Construct the subdag root.
         let subdag_root = match subdag {
-            Some(subdag) => subdag.leader_certificate().certificate_id(),
+            Some(subdag) => {
+                // Construct the subdag root preimage.
+                let subdag_root_preimage = subdag.certificate_ids().flat_map(|id| id.to_bits_le()).collect::<Vec<_>>();
+                // Compute the subdag root.
+                N::hash_bhp1024(&subdag_root_preimage)?
+            }
             None => Field::zero(),
         };
 
