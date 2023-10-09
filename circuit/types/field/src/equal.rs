@@ -46,11 +46,35 @@ impl<E: Environment> Equal<Self> for Field<E> {
             // Otherwise, we introduce a private field variable is_neq for the result,
             // along with an auxiliary variable multiplier for the inverse of the difference between the operands,
             // and enforce the following constraints:
-            //   (self - other) (multiplier) = (is_neq)
-            //   (self - other) (1 - is_neq) = (0)
-            // These constraints imply that is_neq is boolean, i.e. either 0 or 1;
+            // 1.  (self - other) (multiplier) = (is_neq)
+            // 2.  (self - other) (1 - is_neq) = (0)
+            // These constraints imply that is_neq is boolean, i.e. either 0 or 1 (see below);
             // so we avoid creating is_neq as a Boolean, which would generate an unneeded boolean constraint.
-            // See the comments just after the code for more detailed explanations.
+            //
+            // The specification of this circuit is the calculation of field inequality:
+            //   is_neq = [IF self = other THEN 0 ELSE 1]
+            // i.e. the result is_neq is 0 if the two operands are equal, 1 if they are not equal.
+            //
+            // The correctness of the circuit, i.e. its equivalence to the specification, is proved as follows.
+            //
+            // Soundness: the constraints imply the specification,
+            // i.e. every solution of the constraints corresponds to a correct computation of field inequality.
+            // - If self = other, constraint 1 implies is_neq = 0, consistently with the specification,
+            // - If self != other, constraint 2 implies (1 - is_neq) = 0, i.e. is_neq = 1, consistently with the specification.
+            //
+            // Completeness: the specification implies the constraints,
+            // i.e. the constraints are satisfiable for every correct computation of field inequality.
+            // - If self = other, constraint 2 reduces to 0 = 0.
+            //   The specification implies is_neq = 0, and constraint 1 reduces to 0 = 0,
+            //   regardless of the choice of multiplier.
+            // - If self != other, the specification implies is_neq = 1,
+            //   which reduces constraint 2 to 0 = 0 and constraint 1 to (self - other) (multiplier) = 1,
+            //   which is satisfied by choosing multiplier = 1 / (self - other),
+            //   which is well-defined because (self - other) != 0.
+            //
+            // Thus the circuit is equivalent to the specification.
+            // Since the specification implies that is_neq is either 0 or 1,
+            // the circuit does not need a boolean constraint for is_neq, as mentioned above.
             _ => {
                 let is_neq = Boolean::from_variable(E::new_variable(Mode::Private, match is_neq_ejected {
                     true => E::BaseField::one(),
@@ -67,67 +91,6 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 E::enforce(|| (&delta, &multiplier, &is_neq)); // 1st constraint
                 E::enforce(|| (delta, is_eq, E::zero())); // 2nd constraint
                 is_neq
-
-                // Inequality Enforcement
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * multiplier = is_neq
-                // Check 2:  (a - b) * not(is_neq) = 0
-                //
-                //
-                // Case 1: a == b AND is_neq == 0 (honest)
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 0
-                //                 a - b = 0
-                // => As a == b, is_neq is correct.
-                //
-                // Check 2:  (a - b) * not(0) = 0
-                //                      a - b = 0
-                // => As a == b, is_neq is correct.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier := n,
-                //         for n as any field element, also holds.
-                //
-                //
-                // Case 2: a == b AND is_neq == 1 (dishonest)
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 1
-                //                 a - b = 1
-                // => As a == b, the is_neq is incorrect.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier := n,
-                //         for n as any field element, also holds.
-                //
-                //
-                // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
-                // ----------------------------------------------------------------
-                // Check 2:  (a - b) * not(0) = 0
-                //                      a - b = 0
-                // => As a != b, is_neq is incorrect.
-                //
-                // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 0
-                //                 a - b = 0
-                // => As a != b, is_neq is incorrect.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier = n,
-                //         for n as any field element (n != 0), also holds.
-                //
-                //
-                // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
-                // ---------------------------------------------------------------------------------
-                // Check 1:  (a - b) * n = 1
-                // => As n != (a - b)^(-1), is_neq is incorrect.
-                //
-                // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
-                // ---------------------------------------------------------------------------------
-                // Check 1:  (a - b) * (a - b)^(-1) = 1
-                //                                1 = 1
-                // => is_neq is trivially correct.
-                //
-                // Check 2:  (a - b) * not(1) = 0
-                //                          0 = 0
-                // => is_neq is trivially correct.
             }
         }
     }
