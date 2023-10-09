@@ -148,7 +148,7 @@ impl<N: Network> Block<N> {
         // Ensure that the subdag root matches the authority.
         let subdag_root = match &authority {
             Authority::Beacon(_) => Field::<N>::zero(),
-            Authority::Quorum(subdag) => subdag.leader_certificate().certificate_id(),
+            Authority::Quorum(subdag) => subdag.to_subdag_root()?,
         };
         if header.subdag_root() != subdag_root {
             bail!("The subdag root in the block does not correspond to the authority");

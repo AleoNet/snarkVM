@@ -3160,6 +3160,7 @@ version = "0.15.4"
 dependencies = [
  "bincode",
  "indexmap 2.0.0",
+ "rayon",
  "serde_json",
  "snarkvm-console",
  "snarkvm-ledger-narwhal-batch-certificate",

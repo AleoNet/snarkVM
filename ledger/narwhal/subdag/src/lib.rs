@@ -19,12 +19,15 @@ mod bytes;
 mod serialize;
 mod string;
 
-use console::{account::Address, prelude::*};
+use console::{account::Address, prelude::*, program::SUBDAG_CERTIFICATES_DEPTH, types::Field};
 use narwhal_batch_certificate::BatchCertificate;
 use narwhal_transmission_id::TransmissionID;
 
 use indexmap::IndexSet;
 use std::collections::BTreeMap;
+
+#[cfg(not(feature = "serial"))]
+use rayon::prelude::*;
 
 /// Returns `true` if the rounds are sequential.
 fn is_sequential<T>(map: &BTreeMap<u64, T>) -> bool {
@@ -103,6 +106,11 @@ impl<N: Network> Subdag<N> {
         self.subdag.iter().next_back().map_or(0, |(round, _)| *round)
     }
 
+    /// Returns the certificate IDs of the subdag (from earliest round to latest round).
+    pub fn certificate_ids(&self) -> impl Iterator<Item = Field<N>> + '_ {
+        self.values().flatten().map(BatchCertificate::certificate_id)
+    }
+
     /// Returns the leader certificate.
     pub fn leader_certificate(&self) -> &BatchCertificate<N> {
         // Retrieve entry for the anchor round.
@@ -130,6 +138,24 @@ impl<N: Network> Subdag<N> {
     pub fn timestamp(&self) -> i64 {
         // Retrieve the median timestamp from the leader certificate.
         self.leader_certificate().median_timestamp()
+    }
+
+    /// Returns the subdag root of the transactions.
+    pub fn to_subdag_root(&self) -> Result<Field<N>> {
+        // Prepare the leaves.
+        let leaves = cfg_iter!(self.subdag)
+            .map(|(_, certificates)| {
+                certificates
+                    .iter()
+                    .flat_map(|certificate| certificate.certificate_id().to_bits_le())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        // Compute the subdag tree.
+        let tree = N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves)?;
+        // Return the subdag root.
+        Ok(*tree.root())
     }
 }
 

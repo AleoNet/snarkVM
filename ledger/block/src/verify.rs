@@ -65,6 +65,8 @@ impl<N: Network> Block<N> {
         let expected_ratifications_root = self.compute_ratifications_root()?;
         // Compute the expected solutions root.
         let expected_solutions_root = self.compute_solutions_root()?;
+        // Compute the expected subdag root.
+        let expected_subdag_root = self.compute_subdag_root()?;
 
         // Ensure the block header is correct.
         self.header.verify(
@@ -73,6 +75,7 @@ impl<N: Network> Block<N> {
             expected_finalize_root,
             expected_ratifications_root,
             expected_solutions_root,
+            expected_subdag_root,
             expected_round,
             expected_height,
             expected_cumulative_weight,
@@ -458,6 +461,14 @@ impl<N: Network> Block<N> {
         match self.coinbase {
             Some(ref coinbase) => coinbase.to_accumulator_point(),
             None => Ok(Field::zero()),
+        }
+    }
+
+    /// Computes the subdag root for the block.
+    fn compute_subdag_root(&self) -> Result<Field<N>> {
+        match self.authority {
+            Authority::Quorum(ref subdag) => subdag.to_subdag_root(),
+            Authority::Beacon(_) => Ok(Field::zero()),
         }
     }
 
