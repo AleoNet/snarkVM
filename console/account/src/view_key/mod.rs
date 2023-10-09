@@ -25,6 +25,7 @@ use crate::PrivateKey;
 
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Scalar};
+
 use zeroize::Zeroize;
 
 /// The account view key used to decrypt records and ciphertext.
