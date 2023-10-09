@@ -15,6 +15,8 @@
 use snarkvm_console_collections::merkle_tree::MerklePath;
 use snarkvm_console_network::BHPMerkleTree;
 
+/// The depth the Merkle tree for the subdag certificates in a block.
+pub const CERTIFICATES_DEPTH: u8 = 16;
 /// The depth of the Merkle tree for the blocks.
 pub const BLOCKS_DEPTH: u8 = 32;
 /// The depth of the Merkle tree for the block header.
