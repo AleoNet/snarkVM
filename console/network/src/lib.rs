@@ -88,7 +88,7 @@ pub trait Network:
     const INCLUSION_FUNCTION_NAME: &'static str;
 
     /// The fixed timestamp of the genesis block.
-    const GENESIS_TIMESTAMP: i64 = 1680307200; // 2023-04-01 00:00:00 UTC
+    const GENESIS_TIMESTAMP: i64 = 1696118400; // 2023-10-01 00:00:00 UTC
     /// The genesis block coinbase target.
     const GENESIS_COINBASE_TARGET: u64 = (1u64 << 32).saturating_sub(1);
     /// The genesis block proof target.
