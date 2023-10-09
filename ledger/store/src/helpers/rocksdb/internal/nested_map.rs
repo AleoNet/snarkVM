@@ -21,7 +21,7 @@ use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
 use tracing::error;
 
-pub const SEPARATOR: u8 = 0xFF;
+pub const SEPARATOR: [u8; 5] = [0xFF, 0x00, 0xFF, 0x00, 0xFF];
 
 #[derive(Clone)]
 pub struct NestedDataMap<
@@ -125,7 +125,7 @@ impl<
             false => {
                 let map = self.create_prefixed_map(map)?;
                 let mut map_with_separator = map.clone();
-                map_with_separator.push(SEPARATOR);
+                map_with_separator.extend(SEPARATOR);
 
                 // Iterate over the keys with the specified map prefix.
                 let entries_to_delete: Vec<_> = self
@@ -258,7 +258,7 @@ impl<
                     (None, None) => {
                         let map = self.create_prefixed_map(&map)?;
                         let mut map_with_separator = map.clone();
-                        map_with_separator.push(SEPARATOR);
+                        map_with_separator.extend(SEPARATOR);
 
                         // Iterate over the keys with the specified map prefix.
                         let entries_to_delete: Vec<_> = self
@@ -489,12 +489,15 @@ impl<
             })
             .ok()?;
         // Find the position of the separator.
-        let separator_pos = map_key.iter().position(|&b| b == SEPARATOR)?;
+        let separator_pos = map_key
+            .windows(SEPARATOR.len())
+            .position(|window| window == SEPARATOR)
+            .expect("Separator not found in map_key");
         // Split the map-key into the map and key.
         let (map, key) = map_key.split_at(separator_pos);
         // Deserialize the map and key.
         let map = bincode::deserialize(&map[PREFIX_LEN..]).ok()?;
-        let key = bincode::deserialize(&key[1..]).ok()?;
+        let key = bincode::deserialize(&key[SEPARATOR.len()..]).ok()?;
         // Deserialize the value.
         let value = bincode::deserialize(&value).ok()?;
 
@@ -526,7 +529,10 @@ impl<'a, M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + Deserialize
             })
             .ok()?;
         // Find the position of the separator.
-        let separator_pos = map_key.iter().position(|&b| b == SEPARATOR)?;
+        let separator_pos = map_key
+            .windows(SEPARATOR.len())
+            .position(|window| window == SEPARATOR)
+            .expect("Separator not found in map_key");
         // Split the map-key into the map and key.
         let (map, _) = map_key.split_at(separator_pos);
         // Deserialize the map.
@@ -574,12 +580,15 @@ impl<
             })
             .ok()?;
         // Find the position of the separator.
-        let separator_pos = map_key.iter().position(|&b| b == SEPARATOR)?;
+        let separator_pos = map_key
+            .windows(SEPARATOR.len())
+            .position(|window| window == SEPARATOR)
+            .expect("Separator not found in map_key");
         // Split the map-key into the map and key.
         let (map, key) = map_key.split_at(separator_pos);
         // Deserialize the map and key.
         let map = bincode::deserialize(&map[PREFIX_LEN..]).ok()?;
-        let key = bincode::deserialize(&key[1..]).ok()?;
+        let key = bincode::deserialize(&key[SEPARATOR.len()..]).ok()?;
 
         Some((Cow::Owned(map), Cow::Owned(key)))
     }
