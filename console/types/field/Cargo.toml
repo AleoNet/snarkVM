@@ -14,6 +14,10 @@ version = "=0.15.3"
 path = "../boolean"
 version = "=0.15.3"
 
+[dependencies.zeroize]
+version = "1"
+features = [ "derive" ]
+
 [dev-dependencies.bincode]
 version = "1.3"
 

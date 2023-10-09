@@ -43,10 +43,11 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     str::FromStr,
 };
+use zeroize::Zeroize;
 
 pub trait Fp256Parameters: FieldParameters<BigInteger = BigInteger> {}
 
-#[derive(Derivative)]
+#[derive(Derivative, Zeroize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),

@@ -29,8 +29,9 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+use zeroize::Zeroize;
 
-#[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Zeroize)]
 pub struct BigInteger256(pub [u64; 4]);
 
 impl BigInteger256 {

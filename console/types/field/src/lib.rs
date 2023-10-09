@@ -32,7 +32,9 @@ mod zero;
 pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_boolean::Boolean;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+use zeroize::Zeroize;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Zeroize)]
 pub struct Field<E: Environment> {
     /// The underlying field element.
     field: E::Field,

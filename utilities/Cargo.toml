@@ -72,6 +72,10 @@ version = "1.0"
 version = "0.3"
 default-features = false
 
+[dependencies.zeroize]
+version = "1"
+features = [ "derive" ]
+
 [features]
 default = [ "aleo-std/cpu", "derive", "num_cpus", "std" ]
 derive = [ "snarkvm-utilities-derives" ]
