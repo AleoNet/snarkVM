@@ -35,6 +35,7 @@ mod zero;
 pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
+
 use zeroize::Zeroize;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Zeroize)]
