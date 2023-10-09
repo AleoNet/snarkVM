@@ -3416,7 +3416,8 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "sppark"
 version = "0.1.5"
-source = "git+https://github.com/supranational/sppark#34809bf33e567fc0d34cd7f1bcb3d616ca857515"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba7a6d98937866ea8917015cd4a72d56d6e7feee8979dbccf83fc0c870053c46"
 dependencies = [
  "cc",
  "which",
