@@ -24,6 +24,10 @@ features = [ "address", "boolean", "field", "group", "scalar" ]
 [dependencies.bs58]
 version = "0.5"
 
+[dependencies.zeroize]
+version = "1"
+features = [ "derive" ]
+
 [dev-dependencies.bincode]
 version = "1.3"
 
