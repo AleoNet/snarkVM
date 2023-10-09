@@ -140,7 +140,7 @@ impl<N: Network> Subdag<N> {
     /// Returns the subdag root of the transactions.
     pub fn to_subdag_root(&self) -> Result<Field<N>> {
         // Prepare the leaves.
-        let leaves = self.certificate_ids().map(|op| op.to_bits_le());
+        let leaves = self.certificate_ids().map(|id| id.to_bits_le());
         // Compute the subdag tree.
         let tree = N::merkle_tree_bhp::<CERTIFICATES_DEPTH>(&leaves.collect::<Vec<_>>())?;
         // Return the subdag root.
