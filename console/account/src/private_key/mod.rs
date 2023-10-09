@@ -22,6 +22,7 @@ mod sign;
 
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
+
 use zeroize::Zeroize;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Zeroize)]
