@@ -25,8 +25,13 @@ edition = "2021"
 
 [features]
 default = [ "process", "program", "rayon", "snark" ]
+process = [ "synthesizer-process" ]
+program = [ "synthesizer-program" ]
+snark = [ "synthesizer-snark" ]
+
 aleo-cli = [ ]
 async = [ "ledger-query/async", "synthesizer-process/async" ]
+cuda = [ "algorithms/cuda" ]
 serial = [
   "console/serial",
   "ledger-block/serial",
@@ -55,10 +60,6 @@ wasm = [
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm"
 ]
-process = [ "synthesizer-process" ]
-program = [ "synthesizer-program" ]
-snark = [ "synthesizer-snark" ]
-cuda = [ "algorithms/cuda" ]
 
 [dependencies.algorithms]
 package = "snarkvm-algorithms"
