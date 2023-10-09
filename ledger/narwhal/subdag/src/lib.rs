@@ -19,7 +19,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use console::{account::Address, prelude::*, program::CERTIFICATES_DEPTH, types::Field};
+use console::{account::Address, prelude::*, program::SUBDAG_CERTIFICATES_DEPTH, types::Field};
 use narwhal_batch_certificate::BatchCertificate;
 use narwhal_transmission_id::TransmissionID;
 
@@ -142,7 +142,7 @@ impl<N: Network> Subdag<N> {
         // Prepare the leaves.
         let leaves = self.certificate_ids().map(|id| id.to_bits_le());
         // Compute the subdag tree.
-        let tree = N::merkle_tree_bhp::<CERTIFICATES_DEPTH>(&leaves.collect::<Vec<_>>())?;
+        let tree = N::merkle_tree_bhp::<SUBDAG_CERTIFICATES_DEPTH>(&leaves.collect::<Vec<_>>())?;
         // Return the subdag root.
         Ok(*tree.root())
     }
