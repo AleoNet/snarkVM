@@ -19,7 +19,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use console::{account::Address, prelude::*};
+use console::{account::Address, prelude::*, types::Field};
 use narwhal_batch_certificate::BatchCertificate;
 use narwhal_transmission_id::TransmissionID;
 
@@ -101,6 +101,11 @@ impl<N: Network> Subdag<N> {
     /// Returns the anchor round.
     pub fn anchor_round(&self) -> u64 {
         self.subdag.iter().next_back().map_or(0, |(round, _)| *round)
+    }
+
+    /// Returns the certificate IDs of the subdag (from earliest round to latest round).
+    pub fn certificate_ids(&self) -> impl Iterator<Item = Field<N>> + '_ {
+        self.values().flatten().map(BatchCertificate::certificate_id)
     }
 
     /// Returns the leader certificate.
