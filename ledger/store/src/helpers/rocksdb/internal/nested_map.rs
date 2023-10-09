@@ -124,19 +124,19 @@ impl<
             // Otherwise, remove the map directly from the map.
             false => {
                 let map = self.create_prefixed_map(map)?;
-                let mut map_with_separator = map.clone();
-                map_with_separator.extend(SEPARATOR);
 
                 // Iterate over the keys with the specified map prefix.
-                let entries_to_delete: Vec<_> = self
+                let entries_to_delete = self
                     .database
                     .iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward))
                     .filter_map(|entry| {
                         let (map_key, _) = entry.ok()?;
-                        let map_key = map_key.to_vec();
-                        if map_key.starts_with(&map) && map_key != map_with_separator { Some(map_key) } else { None }
-                    })
-                    .collect();
+                        if map_key.starts_with(&map) && &map_key[map.len()..] != SEPARATOR {
+                            Some(map_key)
+                        } else {
+                            None
+                        }
+                    });
 
                 // Now delete all the identified keys.
                 for map_key in entries_to_delete {
