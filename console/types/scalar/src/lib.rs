@@ -36,7 +36,9 @@ pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+use zeroize::Zeroize;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Zeroize)]
 pub struct Scalar<E: Environment> {
     /// The underlying scalar element.
     scalar: E::Scalar,
