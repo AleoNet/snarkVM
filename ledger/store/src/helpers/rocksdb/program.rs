@@ -15,7 +15,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-    helpers::rocksdb::{self, CommitteeMap, DataMap, Database, MapID, ProgramMap},
+    helpers::rocksdb::{self, CommitteeMap, DataMap, Database, MapID, NestedDataMap, ProgramMap},
     CommitteeStorage,
     CommitteeStore,
     FinalizeStorage,
@@ -23,11 +23,10 @@ use crate::{
 use console::{
     prelude::*,
     program::{Identifier, Plaintext, ProgramID, Value},
-    types::Field,
 };
 use ledger_committee::Committee;
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 
 /// A RocksDB finalize storage.
 #[derive(Clone)]
@@ -36,12 +35,8 @@ pub struct FinalizeDB<N: Network> {
     committee_store: CommitteeStore<N, CommitteeDB<N>>,
     /// The program ID map.
     program_id_map: DataMap<ProgramID<N>, IndexSet<Identifier<N>>>,
-    /// The key-value ID map.
-    key_value_id_map: DataMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>,
-    /// The key map.
-    key_map: DataMap<Field<N>, Plaintext<N>>,
-    /// The value map.
-    value_map: DataMap<Field<N>, Value<N>>,
+    /// The key-value map.
+    key_value_id_map: NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -50,9 +45,7 @@ pub struct FinalizeDB<N: Network> {
 impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     type CommitteeStorage = CommitteeDB<N>;
     type ProgramIDMap = DataMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type KeyValueIDMap = DataMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>;
-    type KeyMap = DataMap<Field<N>, Plaintext<N>>;
-    type ValueMap = DataMap<Field<N>, Value<N>>;
+    type KeyValueIDMap = NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -62,9 +55,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         Ok(Self {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::ProgramID))?,
-            key_value_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
-            key_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Key))?,
-            value_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::Value))?,
+            key_value_id_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
             dev,
         })
     }
@@ -78,9 +69,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         Ok(Self {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::ProgramID))?,
-            key_value_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::KeyValueID))?,
-            key_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::Key))?,
-            value_map: rocksdb::RocksDB::open_map_testing(temp_dir, dev, MapID::Program(ProgramMap::Value))?,
+            key_value_id_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::KeyValueID))?,
             dev,
         })
     }
@@ -98,16 +87,6 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     /// Returns the key-value ID map.
     fn key_value_id_map(&self) -> &Self::KeyValueIDMap {
         &self.key_value_id_map
-    }
-
-    /// Returns the key map.
-    fn key_map(&self) -> &Self::KeyMap {
-        &self.key_map
-    }
-
-    /// Returns the value map.
-    fn value_map(&self) -> &Self::ValueMap {
-        &self.value_map
     }
 
     /// Returns the optional development ID.

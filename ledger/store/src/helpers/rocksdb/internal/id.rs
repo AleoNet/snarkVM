@@ -180,8 +180,6 @@ pub enum TransitionMap {
 pub enum ProgramMap {
     ProgramID = DataID::ProgramIDMap as u16,
     KeyValueID = DataID::KeyValueIDMap as u16,
-    Key = DataID::KeyMap as u16,
-    Value = DataID::ValueMap as u16,
 }
 
 /// The RocksDB map prefix for test-related entries.
@@ -266,8 +264,6 @@ enum DataID {
     // Program
     ProgramIDMap,
     KeyValueIDMap,
-    KeyMap,
-    ValueMap,
 
     // Testing
     #[cfg(test)]

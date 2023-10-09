@@ -1291,7 +1291,7 @@ finalize compute:
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("8u64").unwrap());
@@ -1404,7 +1404,7 @@ finalize compute:
 
     // Check that the account balance is now 0.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("0u64").unwrap());
@@ -1535,7 +1535,7 @@ finalize mint_public:
 
     // Check the account balance.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("3u64").unwrap());
@@ -1703,7 +1703,7 @@ finalize init:
 
     // Check the account balance.
     let candidate = finalize_store
-        .get_value_speculative(program0.id(), &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program0.id(), mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("100u64").unwrap());
@@ -1818,7 +1818,7 @@ finalize compute:
 
     // Check that the account balance is now 8.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("16u64").unwrap());
@@ -2246,7 +2246,7 @@ finalize compute:
 
     // Check that the struct is stored as expected.
     let candidate = finalize_store
-        .get_value_speculative(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller)))
+        .get_value_speculative(*program_id, mapping_name, &Plaintext::from(Literal::Address(caller)))
         .unwrap()
         .unwrap();
     assert_eq!(candidate, Value::from_str("{ count: 3u8, data: 6u8 }").unwrap());

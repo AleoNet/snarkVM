@@ -21,7 +21,7 @@ use std::borrow::Cow;
 pub trait NestedMap<
     'a,
     M: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Send + Sync,
-    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Send + Sync,
+    K: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Send + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Send + Sync,
 >: Clone + NestedMapRead<'a, M, K, V> + Send + Sync
 {
@@ -85,7 +85,7 @@ pub trait NestedMap<
 pub trait NestedMapRead<
     'a,
     M: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Sync,
-    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Sync,
+    K: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
 >
 {
@@ -96,20 +96,41 @@ pub trait NestedMapRead<
     type Values: Iterator<Item = Cow<'a, V>>;
 
     ///
+    /// Returns `true` if the given map exists.
+    ///
+    fn contains_map_confirmed(&self, map: &M) -> Result<bool>;
+
+    ///
+    /// Returns `true` if the given map exists.
+    /// This method first checks the atomic batch, and if it does not exist, then checks the confirmed.
+    ///
+    fn contains_map_speculative(&self, map: &M) -> Result<bool>;
+
+    ///
     /// Returns `true` if the given key exists in the map.
     ///
     fn contains_key_confirmed(&self, map: &M, key: &K) -> Result<bool>;
 
     ///
     /// Returns `true` if the given key exists in the map.
-    /// This method first checks the atomic batch, and if it does not exist, then checks the map.
+    /// This method first checks the atomic batch, and if it does not exist, then checks the confirmed.
     ///
     fn contains_key_speculative(&self, map: &M, key: &K) -> Result<bool>;
 
     ///
+    /// Returns the confirmed key-value pairs for the given map, if it exists.
+    ///
+    fn get_map_confirmed(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>>;
+
+    ///
+    /// Returns the speculative key-value pairs for the given map, if it exists.
+    ///
+    fn get_map_speculative(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>>;
+
+    ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get_key_confirmed(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>>;
+    fn get_value_confirmed(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>>;
 
     ///
     /// Returns the current value for the given key if it is scheduled
@@ -119,18 +140,18 @@ pub trait NestedMapRead<
     /// If the key is removed in the batch, returns `Some(None)`.
     /// If the key is inserted in the batch, returns `Some(Some(value))`.
     ///
-    fn get_key_pending(&self, map: &M, key: &K) -> Option<Option<V>>;
+    fn get_value_pending(&self, map: &M, key: &K) -> Option<Option<V>>;
 
     ///
     /// Returns the value for the given key from the atomic batch first, if it exists,
     /// or return from the map, otherwise.
     ///
-    fn get_key_speculative(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>> {
+    fn get_value_speculative(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>> {
         // Return early in case of errors in order to not conceal them.
-        let map_value = self.get_key_confirmed(map, key)?;
+        let map_value = self.get_value_confirmed(map, key)?;
 
         // Retrieve the atomic batch value, if it exists.
-        let atomic_batch_value = self.get_key_pending(map, key);
+        let atomic_batch_value = self.get_value_pending(map, key);
 
         // Return the atomic batch value, if it exists, or the map value, otherwise.
         match atomic_batch_value {

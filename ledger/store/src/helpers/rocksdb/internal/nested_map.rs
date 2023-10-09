@@ -90,7 +90,7 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
 impl<
     'a,
     M: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
-    K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
 > NestedMap<'a, M, K, V> for NestedDataMap<M, K, V>
 {
@@ -154,7 +154,7 @@ impl<
         // Determine if an atomic batch is in progress.
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key to the batch.
-            true => self.atomic_batch.lock().push((*map, Some(*key), None)),
+            true => self.atomic_batch.lock().push((*map, Some(key.clone()), None)),
             // Otherwise, remove the key-value pair directly from the map.
             false => {
                 // Prepare the prefixed map-key.
@@ -315,7 +315,7 @@ impl<
 impl<
     'a,
     M: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
-    K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
 > NestedMapRead<'a, M, K, V> for NestedDataMap<M, K, V>
 {
@@ -327,6 +327,38 @@ impl<
         fn((M, Option<K>, Option<V>)) -> (Cow<'a, M>, Option<Cow<'a, K>>, Option<Cow<'a, V>>),
     >;
     type Values = NestedValues<'a, V>;
+
+    ///
+    /// Returns `true` if the given map exists.
+    ///
+    fn contains_map_confirmed(&self, map: &M) -> Result<bool> {
+        // Prepare the prefixed map.
+        let raw_map = self.create_prefixed_map(map)?;
+        // Check if the map exists.
+        match self.database.get_pinned(&raw_map)? {
+            Some(_) => Ok(true),
+            None => Ok(false),
+        }
+    }
+
+    ///
+    /// Returns `true` if the given map exists.
+    /// This method first checks the atomic batch, and if it does not exist, then checks the confirmed.
+    ///
+    fn contains_map_speculative(&self, map: &M) -> Result<bool> {
+        // If a batch is in progress, check the atomic batch first.
+        if self.is_atomic_in_progress() {
+            // We iterate from the back of the `atomic_batch` to find the latest value.
+            for (m, k, _) in self.atomic_batch.lock().iter().rev() {
+                // If the map matches the given map, then return whether the key is 'Some(K)'.
+                if m == map {
+                    return Ok(k.is_some());
+                }
+            }
+        }
+        // Otherwise, check the map for the map.
+        self.contains_map_confirmed(map)
+    }
 
     ///
     /// Returns `true` if the given map and key exists.
@@ -353,7 +385,7 @@ impl<
                     return Ok(false);
                 }
                 // If the key matches the given key, then return whether the value is 'Some(V)'.
-                if &k.unwrap() == key {
+                if k.as_ref().unwrap() == key {
                     // If the value is 'Some(V)', then the key exists.
                     // If the value is 'None', then the key is scheduled to be removed.
                     return Ok(v.is_some());
@@ -365,9 +397,95 @@ impl<
     }
 
     ///
+    /// Returns the key-value pairs for the given map, if it exists.
+    ///
+    fn get_map_confirmed(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>> {
+        // Prepare the prefixed map.
+        let raw_map = self.create_prefixed_map(map)?;
+        // Iterate over the keys with the specified map prefix.
+        let entries: Vec<_> = self
+            .database
+            .iterator(rocksdb::IteratorMode::From(&raw_map, rocksdb::Direction::Forward))
+            .filter_map(|entry| {
+                let (map_key, value) = entry.ok()?;
+                let map_key = map_key.to_vec();
+                let value = value.to_vec();
+                if map_key.starts_with(&raw_map) {
+                    // Find the position of the separator.
+                    let separator_pos = map_key
+                        .windows(SEPARATOR.len())
+                        .position(|window| window == SEPARATOR)
+                        .expect("Separator not found in map_key");
+                    // Split the map-key into the map and key.
+                    let (_, key) = map_key.split_at(separator_pos);
+                    // Deserialize the key.
+                    let key = bincode::deserialize(&key[SEPARATOR.len()..]).ok()?;
+                    // Deserialize the value.
+                    let value = bincode::deserialize(&value).ok()?;
+                    Some((key, value))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(if entries.is_empty() { None } else { Some(entries) })
+    }
+
+    ///
+    /// Returns the speculative key-value pairs for the given map, if it exists.
+    ///
+    fn get_map_speculative(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>> {
+        // If there is no atomic batch in progress, then return the confirmed key-value pairs.
+        if !self.is_atomic_in_progress() {
+            return self.get_map_confirmed(map);
+        }
+
+        // Retrieve the confirmed key-value pairs for the given map.
+        let mut key_values = self.get_map_confirmed(map)?.unwrap_or(Vec::new());
+
+        // Retrieve the atomic batch.
+        let operations = self.atomic_batch.lock().clone();
+
+        if !operations.is_empty() {
+            // Perform all the queued operations.
+            for (m, k, v) in operations {
+                // If the map does not match the given map, then continue.
+                if &m != map {
+                    continue;
+                }
+
+                // Perform the operation.
+                match (k, v) {
+                    // Insert or update the key-value pair for the key.
+                    (Some(k), Some(v)) => {
+                        // If the key exists, then update the value.
+                        // Otherwise, insert the key-value pair.
+                        match key_values.iter_mut().find(|(key, _)| key == &k) {
+                            Some((_, value)) => *value = v,
+                            None => key_values.push((k, v)),
+                        }
+                    }
+                    // Clear the key-value pairs for the map.
+                    (None, None) => key_values.clear(),
+                    // Remove the key-value pair for the key.
+                    (Some(k), None) => key_values.retain(|(key, _)| key != &k),
+                    (None, Some(_)) => unreachable!("Cannot remove a key-value pair from a map without a key."),
+                }
+            }
+        }
+
+        // Return the key-value pairs for the map.
+        match key_values.is_empty() {
+            true => Ok(None),
+            false => Ok(Some(key_values)),
+        }
+    }
+
+    ///
     /// Returns the value for the given map and key, if it exists.
     ///
-    fn get_key_confirmed(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>> {
+    fn get_value_confirmed(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>> {
         match self.get_map_key_raw(map, key) {
             Ok(Some(bytes)) => Ok(Some(Cow::Owned(bincode::deserialize(&bytes)?))),
             Ok(None) => Ok(None),
@@ -383,7 +501,7 @@ impl<
     /// If the key is removed in the batch, returns `Some(None)`.
     /// If the key is inserted in the batch, returns `Some(Some(value))`.
     ///
-    fn get_key_pending(&self, map: &M, key: &K) -> Option<Option<V>> {
+    fn get_value_pending(&self, map: &M, key: &K) -> Option<Option<V>> {
         // Return early if there is no atomic batch in progress.
         if self.is_atomic_in_progress() {
             // We iterate from the back of the `atomic_batch` to find the latest value.
@@ -397,7 +515,7 @@ impl<
                     return Some(None);
                 }
                 // If the key matches the given key, then return whether the value is 'Some(V)'.
-                if &k.unwrap() == key {
+                if k.as_ref().unwrap() == key {
                     // If the value is 'Some(V)', then the key exists.
                     // If the value is 'Some(None)', then the key is scheduled to be removed.
                     return Some(v.clone());
@@ -452,7 +570,7 @@ impl<
 pub struct NestedIter<
     'a,
     M: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
     V: 'a + PartialEq + Eq + Serialize + DeserializeOwned,
 > {
     db_iter: rocksdb::DBIterator<'a>,
@@ -462,7 +580,7 @@ pub struct NestedIter<
 impl<
     'a,
     M: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
     V: 'a + PartialEq + Eq + Serialize + DeserializeOwned,
 > NestedIter<'a, M, K, V>
 {
@@ -474,7 +592,7 @@ impl<
 impl<
     'a,
     M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    K: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
     V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned,
 > Iterator for NestedIter<'a, M, K, V>
 {
@@ -546,7 +664,7 @@ impl<'a, M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + Deserialize
 pub struct NestedKeys<
     'a,
     M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 > {
     db_iter: rocksdb::DBIterator<'a>,
     _phantom: PhantomData<(M, K)>,
@@ -555,7 +673,7 @@ pub struct NestedKeys<
 impl<
     'a,
     M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 > NestedKeys<'a, M, K>
 {
     pub(crate) fn new(db_iter: rocksdb::DBIterator<'a>) -> Self {
@@ -566,7 +684,7 @@ impl<
 impl<
     'a,
     M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    K: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
 > Iterator for NestedKeys<'a, M, K>
 {
     type Item = (Cow<'a, M>, Cow<'a, K>);
@@ -830,7 +948,7 @@ mod tests {
     #[test]
     #[serial]
     #[traced_test]
-    fn test_insert_and_get_speculative() {
+    fn test_insert_and_get_value_speculative() {
         // Initialize a map.
         let map: NestedDataMap<usize, usize, String> =
             RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
@@ -848,11 +966,11 @@ mod tests {
         map.insert(0, 0, "0".to_string()).unwrap();
 
         // Check that the item is not yet in the map.
-        assert!(map.get_key_confirmed(&0, &0).unwrap().is_none());
+        assert!(map.get_value_confirmed(&0, &0).unwrap().is_none());
         // Check that the item is in the batch.
-        assert_eq!(map.get_key_pending(&0, &0), Some(Some("0".to_string())));
+        assert_eq!(map.get_value_pending(&0, &0), Some(Some("0".to_string())));
         // Check that the item can be speculatively retrieved.
-        assert_eq!(map.get_key_speculative(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
 
         // Queue (since a batch is in progress) NUM_ITEMS insertions.
         for i in 1..10 {
@@ -860,11 +978,11 @@ mod tests {
             map.insert(0, 0, i.to_string()).unwrap();
 
             // Check that the item is not yet in the map.
-            assert!(map.get_key_confirmed(&0, &0).unwrap().is_none());
+            assert!(map.get_value_confirmed(&0, &0).unwrap().is_none());
             // Check that the updated item is in the batch.
-            assert_eq!(map.get_key_pending(&0, &0), Some(Some(i.to_string())));
+            assert_eq!(map.get_value_pending(&0, &0), Some(Some(i.to_string())));
             // Check that the updated item can be speculatively retrieved.
-            assert_eq!(map.get_key_speculative(&0, &0).unwrap(), Some(Cow::Owned(i.to_string())));
+            assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned(i.to_string())));
         }
 
         // The map should still contain no items.
@@ -874,17 +992,17 @@ mod tests {
         map.finish_atomic().unwrap();
 
         // Check that the item is present in the map now.
-        assert_eq!(map.get_key_confirmed(&0, &0).unwrap(), Some(Cow::Owned("9".to_string())));
+        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("9".to_string())));
         // Check that the item is not in the batch.
-        assert_eq!(map.get_key_pending(&0, &0), None);
+        assert_eq!(map.get_value_pending(&0, &0), None);
         // Check that the item can be speculatively retrieved.
-        assert_eq!(map.get_key_speculative(&0, &0).unwrap(), Some(Cow::Owned("9".to_string())));
+        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned("9".to_string())));
     }
 
     #[test]
     #[serial]
     #[traced_test]
-    fn test_remove_key_and_get_key_speculative() {
+    fn test_remove_key_and_get_value_speculative() {
         // Initialize a map.
         let map: NestedDataMap<usize, usize, String> =
             RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
@@ -897,11 +1015,11 @@ mod tests {
         map.insert(0, 0, "0".to_string()).unwrap();
 
         // Check that the item is present in the map .
-        assert_eq!(map.get_key_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
         // Check that the item is not in the batch.
-        assert_eq!(map.get_key_pending(&0, &0), None);
+        assert_eq!(map.get_value_pending(&0, &0), None);
         // Check that the item can be speculatively retrieved.
-        assert_eq!(map.get_key_speculative(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
 
         /* test atomic removals */
 
@@ -912,31 +1030,31 @@ mod tests {
         map.remove_key(&0, &0).unwrap();
 
         // Check that the item still exists in the map.
-        assert_eq!(map.get_key_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
         // Check that the item is removed in the batch.
-        assert_eq!(map.get_key_pending(&0, &0), Some(None));
+        assert_eq!(map.get_value_pending(&0, &0), Some(None));
         // Check that the item is removed when speculatively retrieved.
-        assert_eq!(map.get_key_speculative(&0, &0).unwrap(), None);
+        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), None);
 
         // Try removing the item again.
         map.remove_key(&0, &0).unwrap();
 
         // Check that the item still exists in the map.
-        assert_eq!(map.get_key_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
+        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
         // Check that the item is removed in the batch.
-        assert_eq!(map.get_key_pending(&0, &0), Some(None));
+        assert_eq!(map.get_value_pending(&0, &0), Some(None));
         // Check that the item is removed when speculatively retrieved.
-        assert_eq!(map.get_key_speculative(&0, &0).unwrap(), None);
+        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), None);
 
         // Finish the current atomic write batch.
         map.finish_atomic().unwrap();
 
         // Check that the item is not present in the map now.
-        assert!(map.get_key_confirmed(&0, &0).unwrap().is_none());
+        assert!(map.get_value_confirmed(&0, &0).unwrap().is_none());
         // Check that the item is not in the batch.
-        assert_eq!(map.get_key_pending(&0, &0), None);
+        assert_eq!(map.get_value_pending(&0, &0), None);
         // Check that the item is removed when speculatively retrieved.
-        assert_eq!(map.get_key_speculative(&0, &0).unwrap(), None);
+        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), None);
 
         // Check that the map is empty now.
         assert!(map.iter_confirmed().next().is_none());
@@ -966,9 +1084,9 @@ mod tests {
         for i in 0..NUM_ITEMS {
             map.insert(i, i, i.to_string()).unwrap();
             // Ensure that the item is queued for insertion.
-            assert_eq!(map.get_key_pending(&i, &i), Some(Some(i.to_string())));
+            assert_eq!(map.get_value_pending(&i, &i), Some(Some(i.to_string())));
             // Ensure that the item can be found with a speculative get.
-            assert_eq!(map.get_key_speculative(&i, &i).unwrap(), Some(Cow::Owned(i.to_string())));
+            assert_eq!(map.get_value_speculative(&i, &i).unwrap(), Some(Cow::Owned(i.to_string())));
         }
 
         // The map should still contain no items.
@@ -979,7 +1097,7 @@ mod tests {
 
         // Check that the items are present in the map now.
         for i in 0..NUM_ITEMS {
-            assert_eq!(map.get_key_confirmed(&i, &i).unwrap(), Some(Cow::Borrowed(&i.to_string())));
+            assert_eq!(map.get_value_confirmed(&i, &i).unwrap(), Some(Cow::Borrowed(&i.to_string())));
         }
 
         /* test atomic removals */
@@ -991,7 +1109,7 @@ mod tests {
         for i in 0..NUM_ITEMS {
             map.remove_key(&i, &i).unwrap();
             // Ensure that the item is NOT queued for insertion.
-            assert_eq!(map.get_key_pending(&i, &i), Some(None));
+            assert_eq!(map.get_value_pending(&i, &i), Some(None));
         }
 
         // The map should still contains all the items.
@@ -1479,7 +1597,7 @@ mod tests {
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
             // Ensure the pending operations still has the initial insertion.
-            assert_eq!(map.get_key_pending(&0, &0), Some(Some("1".to_string())));
+            assert_eq!(map.get_value_pending(&0, &0), Some(Some("1".to_string())));
             // Ensure the confirmed value has not changed.
             assert_eq!(
                 map.iter_confirmed().next().unwrap(),
@@ -1540,7 +1658,7 @@ mod tests {
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
             // Make sure the pending operations is correct.
-            assert_eq!(map.get_key_pending(&0, &0), Some(Some("1".to_string())));
+            assert_eq!(map.get_value_pending(&0, &0), Some(Some("1".to_string())));
 
             // Create a failing atomic batch scope that will reset the checkpoint.
             // Simulates a rejected transaction.
@@ -1591,7 +1709,7 @@ mod tests {
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
             // Make sure the pending operations still has the initial insertion.
-            assert_eq!(map.get_key_pending(&0, &0), Some(Some("1".to_string())));
+            assert_eq!(map.get_value_pending(&0, &0), Some(Some("1".to_string())));
             // Make sure the checkpoint index is None.
             assert_eq!(map.checkpoints.lock().last(), None);
             // Ensure that the atomic batch length is 1.

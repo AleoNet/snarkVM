@@ -491,7 +491,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Construct the key.
                         let key = Plaintext::from(Literal::Address(*address));
                         // Retrieve the current public balance.
-                        let value = store.get_value_speculative(&program_id, &account_mapping, &key)?;
+                        let value = store.get_value_speculative(program_id, account_mapping, &key)?;
                         // Compute the next public balance.
                         let next_value = Value::from(Literal::U64(U64::new(match value {
                             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
@@ -578,7 +578,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         // Construct the key.
                         let key = Plaintext::from(Literal::Address(address));
                         // Retrieve the current public balance.
-                        let value = store.get_value_speculative(&program_id, &account_mapping, &key)?;
+                        let value = store.get_value_speculative(program_id, account_mapping, &key)?;
                         // Compute the next public balance.
                         let next_value = Value::from(Literal::U64(U64::new(match value {
                             Some(Value::Plaintext(Plaintext::Literal(Literal::U64(value), _))) => {
@@ -1245,12 +1245,12 @@ finalize compute:
         let mapping_name = Identifier::from_str("entries").unwrap();
         let value = vm
             .finalize_store()
-            .get_value_speculative(&program_id, &mapping_name, &Plaintext::from(Literal::Address(address)))
+            .get_value_speculative(program_id, mapping_name, &Plaintext::from(Literal::Address(address)))
             .unwrap();
         println!("{:?}", value);
         assert!(
             !vm.finalize_store()
-                .contains_key_confirmed(&program_id, &mapping_name, &Plaintext::from(Literal::Address(address)))
+                .contains_key_confirmed(program_id, mapping_name, &Plaintext::from(Literal::Address(address)))
                 .unwrap()
         );
 
@@ -1275,7 +1275,7 @@ finalize compute:
         // Check that the storage was updated correctly.
         let value = vm
             .finalize_store()
-            .get_value_speculative(&program_id, &mapping_name, &Plaintext::from(Literal::Address(address)))
+            .get_value_speculative(program_id, mapping_name, &Plaintext::from(Literal::Address(address)))
             .unwrap()
             .unwrap();
         let expected = Value::<CurrentNetwork>::from_str("3u8").unwrap();

@@ -227,8 +227,8 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             // Retrieve the account balance of the payer.
             let Some(Value::Plaintext(Plaintext::Literal(Literal::U64(balance), _))) =
                 self.finalize_store().get_value_speculative(
-                    &ProgramID::from_str("credits.aleo")?,
-                    &Identifier::from_str("account")?,
+                    ProgramID::from_str("credits.aleo")?,
+                    Identifier::from_str("account")?,
                     &Plaintext::from(Literal::Address(payer)),
                 )?
             else {

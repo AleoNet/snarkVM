@@ -55,7 +55,7 @@ fn get_mapping_value<N: Network>(
     let mapping = Identifier::from_str(mapping)?;
     let key = Plaintext::from(key);
     // Retrieve the value from the finalize store.
-    match store.get_value_speculative(&program_id, &mapping, &key) {
+    match store.get_value_speculative(program_id, mapping, &key) {
         Ok(result) => Ok(result),
         Err(err) => bail!("Error getting value for program_id: {program_id}, mapping: {mapping}, key: {key}: {err}"),
     }

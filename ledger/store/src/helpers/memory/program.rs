@@ -14,15 +14,19 @@
 
 #![allow(clippy::type_complexity)]
 
-use crate::{helpers::memory::MemoryMap, CommitteeStorage, CommitteeStore, FinalizeStorage};
+use crate::{
+    helpers::memory::{MemoryMap, NestedMemoryMap},
+    CommitteeStorage,
+    CommitteeStore,
+    FinalizeStorage,
+};
 use console::{
     prelude::*,
     program::{Identifier, Plaintext, ProgramID, Value},
-    types::Field,
 };
 use ledger_committee::Committee;
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 
 /// An in-memory finalize storage.
 #[derive(Clone)]
@@ -31,12 +35,8 @@ pub struct FinalizeMemory<N: Network> {
     committee_store: CommitteeStore<N, CommitteeMemory<N>>,
     /// The program ID map.
     program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
-    /// The key-value ID map.
-    key_value_id_map: MemoryMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>,
-    /// The key map.
-    key_map: MemoryMap<Field<N>, Plaintext<N>>,
-    /// The value map.
-    value_map: MemoryMap<Field<N>, Value<N>>,
+    /// The key-value map.
+    key_value_id_map: NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -45,9 +45,7 @@ pub struct FinalizeMemory<N: Network> {
 impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type CommitteeStorage = CommitteeMemory<N>;
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type KeyValueIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), IndexMap<Field<N>, Field<N>>>;
-    type KeyMap = MemoryMap<Field<N>, Plaintext<N>>;
-    type ValueMap = MemoryMap<Field<N>, Value<N>>;
+    type KeyValueIDMap = NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -57,9 +55,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
         Ok(Self {
             committee_store,
             program_id_map: MemoryMap::default(),
-            key_value_id_map: MemoryMap::default(),
-            key_map: MemoryMap::default(),
-            value_map: MemoryMap::default(),
+            key_value_id_map: NestedMemoryMap::default(),
             dev,
         })
     }
@@ -80,19 +76,9 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
         &self.program_id_map
     }
 
-    /// Returns the key-value ID map.
+    /// Returns the key-value map.
     fn key_value_id_map(&self) -> &Self::KeyValueIDMap {
         &self.key_value_id_map
-    }
-
-    /// Returns the key map.
-    fn key_map(&self) -> &Self::KeyMap {
-        &self.key_map
-    }
-
-    /// Returns the value map.
-    fn value_map(&self) -> &Self::ValueMap {
-        &self.value_map
     }
 
     /// Returns the optional development ID.
