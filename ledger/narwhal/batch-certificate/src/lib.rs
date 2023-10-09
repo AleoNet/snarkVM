@@ -230,11 +230,12 @@ pub mod test_helpers {
         rng: &mut TestRng,
     ) -> (BatchCertificate<CurrentNetwork>, Vec<BatchCertificate<CurrentNetwork>>) {
         assert!(round > 1, "Round must be greater than 1");
-        assert!(round % 2 == 0, "Round must be even");
 
         // Initialize the round parameters.
         let previous_round = round - 1; // <- This must be an even number, for `BFT::update_dag` to behave correctly below.
         let current_round = round;
+
+        assert_eq!(previous_round % 2, 0, "Previous round must be even");
 
         // Sample the previous certificates.
         let previous_certificates = vec![
