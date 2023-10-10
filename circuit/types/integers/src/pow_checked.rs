@@ -106,7 +106,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     fn mul_with_flags(this: &Integer<E, I>, that: &Integer<E, I>) -> (Integer<E, I>, Boolean<E>) {
         // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
         if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
-            // Instead of multiplying the bits of `self` and `other` directly, witness the integer product directly.
+            // Instead of multiplying the bits of `self` and `other`, witness the integer product.
             let product: Integer<E, I> = witness!(|this, that| this.mul_wrapped(&that));
 
             // Check that the computed product is not equal to witnessed product, in the base field.
