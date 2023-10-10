@@ -421,6 +421,7 @@ where
 
         let (second_oracles, prover_state) =
             AHPForR1CS::<_, SM>::prover_second_round(&verifier_first_message, prover_state, zk_rng)?;
+
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             universal_prover,

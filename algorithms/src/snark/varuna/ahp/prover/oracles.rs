@@ -112,17 +112,17 @@ impl<F: PrimeField> ThirdOracles<F> {
 /// The fourth set of prover oracles.
 #[derive(Debug)]
 pub struct FourthOracles<F: PrimeField> {
-    pub gs: BTreeMap<CircuitId, MatrixGs<F>>,
+    pub(in crate::snark::varuna) gs: BTreeMap<CircuitId, MatrixGs<F>>,
 }
 
 #[derive(Debug)]
-pub struct MatrixGs<F: PrimeField> {
+pub(in crate::snark::varuna) struct MatrixGs<F: PrimeField> {
     /// The polynomial `g_a` resulting from the second sumcheck.
-    pub(crate) g_a: LabeledPolynomial<F>,
+    pub(in crate::snark::varuna) g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
-    pub(crate) g_b: LabeledPolynomial<F>,
+    pub(in crate::snark::varuna) g_b: LabeledPolynomial<F>,
     /// The polynomial `g_c` resulting from the second sumcheck.
-    pub(crate) g_c: LabeledPolynomial<F>,
+    pub(in crate::snark::varuna) g_c: LabeledPolynomial<F>,
 }
 
 impl<F: PrimeField> MatrixGs<F> {
