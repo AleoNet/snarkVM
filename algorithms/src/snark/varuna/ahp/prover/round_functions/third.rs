@@ -16,7 +16,9 @@ use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         polynomial::PolyMultiplier,
-        DensePolynomial, EvaluationDomain, Evaluations,
+        DensePolynomial,
+        EvaluationDomain,
+        Evaluations,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::varuna::{
@@ -24,7 +26,9 @@ use crate::{
         matrices::transpose,
         prover::{self, MatrixSums, ThirdMessage},
         selectors::apply_randomized_selector,
-        AHPError, Matrix, SNARKMode,
+        AHPError,
+        Matrix,
+        SNARKMode,
     },
 };
 use snarkvm_fields::PrimeField;

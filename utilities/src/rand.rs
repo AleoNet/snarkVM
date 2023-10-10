@@ -19,7 +19,6 @@ use rand::{
     SeedableRng,
 };
 use rand_xorshift::XorShiftRng;
-use std::num::NonZeroU32;
 
 /// A trait for a uniform random number generator.
 pub trait Uniform: Sized {
@@ -141,39 +140,3 @@ impl rand::RngCore for TestRng {
 }
 
 impl rand::CryptoRng for TestRng {}
-
-/// A cache of numbers LARPing as an RNG used **solely** for testing and benchmarking, **not** for any real world purposes.
-pub struct TestMockRng {
-    state: Vec<u64>,
-}
-
-impl TestMockRng {
-    pub fn fixed(state: Vec<u64>) -> Self {
-        TestMockRng { state }
-    }
-}
-
-impl rand::RngCore for TestMockRng {
-    fn next_u32(&mut self) -> u32 {
-        self.state.pop().unwrap() as u32
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        self.state.pop().unwrap()
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for byte in dest.iter_mut() {
-            *byte = self.state.pop().unwrap() as u8;
-        }
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        for byte in dest.iter_mut() {
-            *byte = self.state.pop().ok_or(NonZeroU32::new(rand::Error::CUSTOM_START).unwrap())? as u8;
-        }
-        Ok(())
-    }
-}
-
-impl rand::CryptoRng for TestMockRng {}

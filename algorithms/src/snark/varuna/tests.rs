@@ -538,8 +538,8 @@ mod varuna_test_vectors {
         snark::varuna::{ahp::verifier, AHPForR1CS, TestCircuit, VarunaNonHidingMode, VarunaSNARK},
         traits::snark::SNARK,
     };
-    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr, FrParameters};
-    use snarkvm_fields::{Fp256, One};
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use snarkvm_fields::One;
     use std::{collections::BTreeMap, fs, ops::Deref, path::PathBuf, str::FromStr, sync::Arc};
 
     type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
@@ -623,13 +623,11 @@ mod varuna_test_vectors {
 
     // Test Varuna against test vectors for a specific circuit.
     fn test_circuit_with_test_vectors(create_test_vectors: bool, circuit: &str) {
-        // Get the circuit instance from the test vector.
+        // Initialize the parts of the witness used in the multiplicative constraints.
         let witness_path = format!("src/snark/varuna/resources/{}/witness.input", circuit);
         let instance_file = fs::read_to_string(witness_path).expect("Could not read the file");
-        let mut witness_vector = Vec::new();
-        for line in instance_file.lines() {
-            witness_vector.push(line.to_string())
-        }
+        let witness: Vec<u128> = serde_json::from_str(instance_file.lines().next().unwrap()).unwrap();
+        let (a, b) = (witness[0], witness[1]);
 
         // Initialize challenges from file.
         let challenges_path = format!("src/snark/varuna/resources/{}/challenges.input", circuit);
@@ -653,29 +651,19 @@ mod varuna_test_vectors {
         let circuit_combiner = Fr::one();
         let instance_combiners = vec![Fr::one()];
 
-        let mut rng_state = vec![0u64; 100];
-        let add_f_to_state = |s: &mut Vec<u64>, f: Fp256<FrParameters>| {
-            // Fp384 field elements sample 6 u64 values in total.
-            for i in 0..f.0.0.len() {
-                s.push(f.0.0[f.0.0.len() - 1 - i]);
-            }
-        };
-        for witness in witness_vector[0].split(',') {
-            if witness.trim() == "" {
-                continue;
-            }
-            add_f_to_state(&mut rng_state, Fr::from_str(witness.trim()).unwrap());
-        }
-
         // Create sample circuit which corresponds to instance.input file.
         let mul_depth = 3;
         let num_constraints = 7;
         let num_variables = 7;
-        let rng = &mut snarkvm_utilities::rand::TestMockRng::fixed(rng_state);
+
+        // Create a fixed seed rng that matches those the test vectors were generated with.
+        let rng = &mut snarkvm_utilities::rand::TestRng::fixed(4730);
         let max_degree =
             AHPForR1CS::<Fr, MM>::max_degree(num_constraints, num_variables, num_variables * num_constraints).unwrap();
         let universal_srs = VarunaSonicInst::universal_setup(max_degree).unwrap();
-        let (circ, _) = TestCircuit::gen_rand(mul_depth, num_constraints, num_variables, rng);
+        let (circ, _) =
+            TestCircuit::generate_circuit_with_fixed_witness(a, b, mul_depth, num_constraints, num_variables);
+        println!("Circuit: {:?}", circ);
         let (index_pk, _index_vk) = VarunaSonicInst::circuit_setup(&universal_srs, &circ).unwrap();
         let mut keys_to_constraints = BTreeMap::new();
         keys_to_constraints.insert(index_pk.circuit.deref(), std::slice::from_ref(&circ));

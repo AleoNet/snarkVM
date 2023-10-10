@@ -21,7 +21,10 @@ use crate::{
         ahp::{verifier, AHPForR1CS},
         prover,
         selectors::apply_randomized_selector,
-        witness_label, Circuit, CircuitId, SNARKMode,
+        witness_label,
+        Circuit,
+        CircuitId,
+        SNARKMode,
     },
 };
 use anyhow::Result;
