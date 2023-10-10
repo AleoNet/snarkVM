@@ -69,7 +69,7 @@ harness = false
 [dependencies.algorithms]
 package = "snarkvm-algorithms"
 path = "../algorithms"
-version = "=0.15.1"
+version = "=0.15.4"
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
