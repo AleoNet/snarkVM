@@ -120,7 +120,7 @@ impl<N: Network> Process<N> {
         let (parent_x, parent_y) = fee.program_id().to_address()?.to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm(), **fee.transition().scm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the verifier inputs with the public inputs for 'self.caller'.
@@ -190,7 +190,7 @@ impl<N: Network> Process<N> {
         let (parent_x, parent_y) = fee.program_id().to_address()?.to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm()];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **fee.tcm(), **fee.transition().scm()];
         // Extend the inputs with the input IDs.
         inputs.extend(fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the verifier inputs with the public inputs for 'self.caller'

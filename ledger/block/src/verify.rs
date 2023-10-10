@@ -458,6 +458,7 @@ impl<N: Network> Block<N> {
         if has_duplicates(self.transition_commitments()) {
             bail!("Found a duplicate transition commitment in block {height}");
         }
+
         Ok(())
     }
 }

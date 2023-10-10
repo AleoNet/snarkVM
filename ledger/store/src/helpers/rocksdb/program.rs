@@ -69,7 +69,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         Ok(Self {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::ProgramID))?,
-            key_value_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::KeyValueID))?,
+            key_value_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir, dev, MapID::Program(ProgramMap::KeyValueID))?,
             dev,
         })
     }

@@ -16,11 +16,16 @@ use super::*;
 
 impl<A: Aleo> Request<A> {
     /// Returns `true` if the input IDs are derived correctly, the input records all belong to the signer,
-    /// and the signature is valid. tpk is passed separately so it can have a Mode different from Self.
+    /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
-    pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
+    pub fn verify(
+        &self,
+        input_types: &[console::ValueType<A::Network>],
+        tpk: &Group<A>,
+        root_tvk: Option<Field<A>>,
+    ) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
             &(&self.network_id, self.program_id.name(), self.program_id.network(), &self.function_name).to_bits_le(),
@@ -52,15 +57,21 @@ impl<A: Aleo> Request<A> {
             None => A::halt("Missing input elements in request verification"),
         }
 
-        // Verify the transition public key and commitment are well-formed.
+        let root_tvk = root_tvk.unwrap_or(Field::<A>::new(Mode::Private, self.tvk.eject_value()));
+
+        // Verify the transition public key and commitments are well-formed.
         let tpk_checks = {
             // Compute the transition commitment as `Hash(tvk)`.
             let tcm = A::hash_psd2(&[self.tvk.clone()]);
+            // Compute the signer commitment as `Hash(signer || root_tvk)`.
+            let scm = A::hash_psd2(&[self.signer.to_x_coordinate(), root_tvk]);
 
             // Ensure the transition public key matches with the saved one from the signature.
             tpk.is_equal(&self.to_tpk())
             // Ensure the computed transition commitment matches.
             & tcm.is_equal(&self.tcm)
+            // Ensure the computed signer commitment matches.
+            & scm.is_equal(&self.scm)
         };
 
         // Verify the signature.
@@ -350,9 +361,19 @@ mod tests {
                 console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
+            // Sample root_tvk.
+            let root_tvk = None;
+
             // Compute the signed request.
-            let request =
-                console::Request::sign(&private_key, program_id, function_name, inputs.iter(), &input_types, rng)?;
+            let request = console::Request::sign(
+                &private_key,
+                program_id,
+                function_name,
+                inputs.iter(),
+                &input_types,
+                root_tvk,
+                rng,
+            )?;
             assert!(request.verify(&input_types));
 
             // Inject the request into a circuit.
@@ -360,7 +381,8 @@ mod tests {
             let request = Request::<Circuit>::new(mode, request);
 
             Circuit::scope(format!("Request {i}"), || {
-                let candidate = request.verify(&input_types, &tpk);
+                let root_tvk = None;
+                let candidate = request.verify(&input_types, &tpk, root_tvk);
                 assert!(candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),

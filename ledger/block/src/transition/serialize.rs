@@ -27,6 +27,7 @@ impl<N: Network> Serialize for Transition<N> {
                 transition.serialize_field("outputs", &self.outputs)?;
                 transition.serialize_field("tpk", &self.tpk)?;
                 transition.serialize_field("tcm", &self.tcm)?;
+                transition.serialize_field("scm", &self.scm)?;
                 transition.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -58,6 +59,8 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     DeserializeExt::take_from_value::<D>(&mut transition, "tpk")?,
                     // Retrieve the `tcm`.
                     DeserializeExt::take_from_value::<D>(&mut transition, "tcm")?,
+                    // Retrieve the `scm`.
+                    DeserializeExt::take_from_value::<D>(&mut transition, "scm")?,
                 )
                 .map_err(de::Error::custom)?;
 

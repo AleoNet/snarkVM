@@ -1313,7 +1313,7 @@ mod tests {
 
         // Insert the key and value.
         let timer = std::time::Instant::now();
-        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value.clone()).unwrap();
+        finalize_store.insert_key_value(program_id, mapping_name, key.clone(), value).unwrap();
         println!("FinalizeStore::insert_key_value - {} μs", timer.elapsed().as_micros());
 
         // Insert the list of keys and values.

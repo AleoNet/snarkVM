@@ -137,6 +137,14 @@ impl<N: Network> Process<N> {
         let num_instances = verifier_inputs.values().map(|(_, inputs)| inputs.len()).sum::<usize>();
         // Ensure the number of instances matches the number of transitions.
         ensure!(num_instances == execution.transitions().len(), "The number of verifier instances is incorrect");
+        // Ensure the same signer is used for all transitions.
+        if let Some(first_transition) = execution.transitions().next() {
+            let signer_commitment = first_transition.scm();
+            ensure!(
+                execution.transitions().all(|t| t.scm() == signer_commitment),
+                "The transitions did not use the same signer"
+            );
+        }
 
         // Construct the list of verifier inputs.
         let verifier_inputs: Vec<_> = verifier_inputs.values().cloned().collect();
@@ -173,7 +181,7 @@ impl<N: Network> Process<N> {
         let (parent_x, parent_y) = parent.to_address()?.to_xy_coordinates();
 
         // [Inputs] Construct the verifier inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm(), **transition.scm()];
         // [Inputs] Extend the verifier inputs with the input IDs.
         inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // [Inputs] Extend the verifier inputs with the public inputs for 'self.caller'.
