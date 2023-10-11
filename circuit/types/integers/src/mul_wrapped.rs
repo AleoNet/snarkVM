@@ -44,9 +44,9 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
             b_m_bits.push(Boolean::constant(true));
 
             let b_m = Field::from_bits_le(&b_m_bits);
-            let z_0_concat_z_1 = &z_0 + (&z_1 * &b_m);
+            let z_0_plus_scaled_z_1 = &z_0 + (&z_1 * &b_m);
 
-            let mut bits_le = z_0_concat_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
+            let mut bits_le = z_0_plus_scaled_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
 
             // Remove any carry bits.
             bits_le.truncate(I::BITS as usize);

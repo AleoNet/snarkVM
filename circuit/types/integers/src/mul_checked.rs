@@ -131,9 +131,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 
             // Check that the computed product is equal to witnessed product, in the base field.
             // Note: The multiplication is safe as the field twice as large as the maximum integer type supported.
-            let computed_product = this.to_field() * that.to_field();
-            let witnessed_product = product.to_field();
-            E::assert_eq(&computed_product, &witnessed_product);
+            E::enforce(|| (this.to_field(), that.to_field(), product.to_field()));
 
             product
         }
@@ -196,9 +194,9 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         b_m_bits.push(Boolean::constant(true));
 
         let b_m = Field::from_bits_le(&b_m_bits);
-        let z_0_concat_z_1 = &z_0 + (&z_1 * &b_m);
+        let z_0_plus_scaled_z_1 = &z_0 + (&z_1 * &b_m);
 
-        let bits_le = z_0_concat_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
+        let bits_le = z_0_plus_scaled_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
 
         // Split the integer bits into product bits and the upper bits of z1.
         let (bits_le, carry) = bits_le.split_at(I::BITS as usize);
@@ -221,13 +219,13 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                     (Mode::Constant, _) | (_, Mode::Constant) => {
                         Count::is(4 * I::BITS, 0, (6 * I::BITS) + 4, (6 * I::BITS) + 9)
                     }
-                    (_, _) => Count::is(3 * I::BITS, 0, (8 * I::BITS) + 7, (8 * I::BITS) + 13),
+                    (_, _) => Count::is(3 * I::BITS, 0, (8 * I::BITS) + 6, (8 * I::BITS) + 12),
                 },
                 // Unsigned case
                 false => match (case.0, case.1) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, I::BITS, I::BITS + 1),
-                    (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 2),
+                    (_, _) => Count::is(0, 0, I::BITS, I::BITS + 1),
                 },
             }
         }
