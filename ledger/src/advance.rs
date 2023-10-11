@@ -204,7 +204,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
 
         // Construct the subdag root.
         let subdag_root = match subdag {
-            Some(subdag) => subdag.leader_certificate().certificate_id(),
+            Some(subdag) => subdag.to_subdag_root()?,
             None => Field::zero(),
         };
 
