@@ -119,10 +119,6 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
 
                     // If `signed_factor` is I::MIN, then negate `self` in order to balance the sign of I::MIN.
                     let signed_factor_is_min = &signed_factor.is_equal(&Self::constant(console::Integer::MIN));
-                    // - If `signed_factor` is I::MIN,
-                    //     - and `self` is zero or I::MIN, then `lhs` is equal to `self`.
-                    //     - otherwise, `lhs` is equal to `-self`.
-                    // - Otherwise, `lhs` is equal to `self`.
                     let lhs = Self::ternary(signed_factor_is_min, &Self::zero().sub_wrapped(self), self);
 
                     // Compute `lhs` * `factor`, which is equivalent to `lhs` * 2 ^ `rhs`.
