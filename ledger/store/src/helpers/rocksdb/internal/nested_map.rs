@@ -426,7 +426,7 @@ impl<
         }
 
         // Retrieve the confirmed key-value pairs for the given map.
-        let mut key_values = self.get_map_confirmed(map)?.unwrap_or(Vec::new());
+        let mut key_values = self.get_map_confirmed(map)?.unwrap_or_default();
 
         // Retrieve the atomic batch.
         let operations = self.atomic_batch.lock().clone();
