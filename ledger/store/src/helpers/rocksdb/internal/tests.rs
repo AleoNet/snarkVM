@@ -24,9 +24,6 @@ use console::{
 };
 
 use serial_test::serial;
-use std::borrow::Cow;
-
-type TestMap = DataMap<u32, String>;
 
 pub(crate) fn temp_dir() -> std::path::PathBuf {
     tempfile::tempdir().expect("Failed to open temporary directory").into_path()
