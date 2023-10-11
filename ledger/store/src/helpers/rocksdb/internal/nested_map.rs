@@ -358,6 +358,9 @@ impl<
     fn get_map_confirmed(&'a self, map: &M) -> Result<Vec<(K, V)>> {
         // Prepare the prefixed map.
         let raw_map = self.create_prefixed_map(map)?;
+        // Serialize the map.
+        let serialized_map = bincode::serialize(map)?;
+
         // Iterate over the keys with the specified map prefix.
         let entries: Vec<_> = self
             .database
@@ -368,7 +371,7 @@ impl<
                 // Extract the bytes belonging to the map and the key.
                 let (entry_map, entry_key) = get_map_and_key(&map_key)?;
 
-                if entry_map == raw_map {
+                if entry_map == serialized_map {
                     // Deserialize the key.
                     let key = bincode::deserialize(entry_key).ok()?;
                     // Deserialize the value.
