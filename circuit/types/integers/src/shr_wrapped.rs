@@ -73,8 +73,13 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                         // Note that instantiating the field from a u128 is safe since it is larger than all eligible integer types.
                         let constant = Field::constant(console::Field::from_u128(2u128.pow(1 << i)));
                         let product = &result * &constant;
+
+                        // If `self` is negative, mask the value with 2^{1<<i} - 1.
+                        // For example, in the first, second, and third iterations, the mask is 0b1, 0b11, and 0b111, respectively.
+                        // This serves to appropriately sign-extend the result.
                         let mask = Field::constant(console::Field::from_u128(2u128.pow(1 << i) - 1));
                         let masked = product.add(mask * &msb_field);
+
                         result = Field::ternary(bit, &masked, &result);
                     }
                     // Extract the bits of the result, including the carry bits.
