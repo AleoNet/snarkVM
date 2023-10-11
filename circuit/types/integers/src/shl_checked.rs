@@ -106,7 +106,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
                     // Return the result.
                     result
                 } else {
-                    // Compute 2 ^ `lhs` as unsigned integer of the size I::BITS.
+                    // Compute 2 ^ `rhs` as unsigned integer of the size I::BITS.
                     // This is necessary to avoid a spurious overflow when `rhs` is I::BITS - 1.
                     // For example, 2i8 ^ 7i8 overflows, however -1i8 << 7i8 ==> -1i8 * 2i8 ^ 7i8 ==> -128i8, which is a valid i8 value.
                     let unsigned_two = two.cast_as_dual();
