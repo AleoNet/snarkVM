@@ -23,7 +23,7 @@ impl<E: Environment> Group<E> {
         // Note: We use the **unchecked** ('console::Group::from_xy_coordinates_unchecked') variant
         // here so that the recovery does not halt in witness mode, and subsequently, the point is
         // enforced to be on the curve by injecting with `circuit::Group::new`.
-        let point = witness!(|x, y| console::Group::from_xy_coordinates_unchecked(x, y));
+        let point: Group<E> = witness!(|x, y| console::Group::from_xy_coordinates_unchecked(x, y));
 
         // Note that `point` above, returned by `witness!`,
         // consists of new R1CS variables for the x and y components,
@@ -33,8 +33,8 @@ impl<E: Environment> Group<E> {
         // This is not the most efficient circuit,
         // because it has more variables and constraints than necessary,
         // but we will look into optimizing this later.
-        E::assert_eq(&x, point.x);
-        E::assert_eq(&y, point.y);
+        E::assert_eq(&x, &point.x);
+        E::assert_eq(&y, &point.y);
         point
     }
 
@@ -110,12 +110,12 @@ mod tests {
 
     #[test]
     fn test_from_xy_coordinates_public() {
-        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 13);
+        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 15);
     }
 
     #[test]
     fn test_from_xy_coordinates_private() {
-        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 13);
+        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 15);
     }
 
     #[test]
