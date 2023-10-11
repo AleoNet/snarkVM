@@ -110,12 +110,12 @@ mod tests {
 
     #[test]
     fn test_from_xy_coordinates_public() {
-        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 13);
+        check_from_xy_coordinates(Mode::Public, 4, 0, 14, 15);
     }
 
     #[test]
     fn test_from_xy_coordinates_private() {
-        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 13);
+        check_from_xy_coordinates(Mode::Private, 4, 0, 14, 15);
     }
 
     #[test]
