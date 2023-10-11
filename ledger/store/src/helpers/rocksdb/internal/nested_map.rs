@@ -262,20 +262,12 @@ impl<
                         let map = self.create_prefixed_map(&map)?;
 
                         // Iterate over the keys with the specified map prefix.
-                        let entries_to_delete = self
-                            .database
-                            .iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward))
-                            .filter_map(|entry| {
-                                let (map_key, _) = entry.ok()?;
-
-                                // Extract the bytes belonging to the map and the key.
-                                let (entry_map, entry_key) = get_map_and_key(&map_key)?;
-
-                                if entry_map == map && entry_key.is_empty() { Some(map_key) } else { None }
-                            });
+                        let entries_to_delete =
+                            self.database.iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward));
 
                         // Now delete all the identified keys.
-                        for map_key in entries_to_delete {
+                        for entry in entries_to_delete {
+                            let (map_key, _) = entry?;
                             atomic_batch.delete(map_key);
                         }
                     }
