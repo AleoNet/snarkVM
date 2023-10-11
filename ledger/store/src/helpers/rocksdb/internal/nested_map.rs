@@ -54,20 +54,18 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
     #[inline]
     fn create_prefixed_map(&self, map: &M) -> Result<Vec<u8>> {
         let mut raw_map = self.context.clone();
+
+        let map_size: u32 = bincode::serialized_size(&map)?.try_into()?;
+        raw_map.extend_from_slice(&map_size.to_le_bytes());
+
         bincode::serialize_into(&mut raw_map, map)?;
         Ok(raw_map)
     }
 
     #[inline]
     fn create_prefixed_map_key(&self, map: &M, key: &K) -> Result<Vec<u8>> {
-        let mut raw_map_key = self.context.clone();
-
-        let map_size: u32 = bincode::serialized_size(&map)?.try_into()?;
-        raw_map_key.extend_from_slice(&map_size.to_le_bytes());
-
-        bincode::serialize_into(&mut raw_map_key, map)?;
+        let mut raw_map_key = self.create_prefixed_map(map)?;
         bincode::serialize_into(&mut raw_map_key, key)?;
-
         Ok(raw_map_key)
     }
 
