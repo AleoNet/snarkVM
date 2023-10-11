@@ -83,7 +83,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     // Return the product of `self` and `other` with the appropriate sign.
                     Self::ternary(operands_same_sign, &product, &(!&product).add_wrapped(&Self::one()))
                 } else {
-                    let (product, overlow) = Self::mul_with_flags(&result, self);
+                    let (product, overflow) = Self::mul_with_flags(&result, self);
 
                     // For unsigned multiplication, check that the overflow flag is not set.
                     E::assert_eq(overlow & bit, E::zero());
