@@ -314,12 +314,10 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             Some(mapping_names) => cow_to_cloned!(mapping_names),
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
-        // Ensure the mapping name exists.
-        if !mapping_names.contains(&mapping_name) {
+        // Remove the mapping name.
+        if !mapping_names.remove(&mapping_name) {
             bail!("Illegal operation: mapping '{mapping_name}' does not exist in storage - cannot remove mapping.");
         }
-        // Remove the mapping name.
-        mapping_names.remove(&mapping_name);
 
         atomic_batch_scope!(self, {
             // Update the mapping names.
