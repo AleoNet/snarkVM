@@ -84,7 +84,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
 
                     // Calculate the result directly in the field.
                     // Since 2^{rhs} < Integer::MAX and 3 * I::BITS is less than E::BaseField::size in data bits,
-                    // we know that the operation will not overflow Integer::MAX or the field modulus.
+                    // we know that the operation will not overflow the field modulus.
                     let mut result = Field::from_bits_le(&bits_le);
                     for (i, bit) in rhs.bits_le[..first_upper_bit_index].iter().enumerate() {
                         // In each iteration, multiple the result by 2^(1<<i), if the bit is set.
