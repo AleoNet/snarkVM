@@ -26,6 +26,10 @@ use console::{
 };
 
 use indexmap::IndexMap;
+#[cfg(feature = "metrics")]
+use metrics::gauge;
+#[cfg(feature = "metrics")]
+use snarkvm_metrics::committee::TOTAL_STAKE;
 use std::collections::HashSet;
 
 /// The minimum amount of stake required for a validator to bond.
@@ -72,6 +76,8 @@ impl<N: Network> Committee<N> {
         );
         // Compute the total stake of the committee for this round.
         let total_stake = Self::compute_total_stake(&members)?;
+        #[cfg(feature = "metrics")]
+        gauge!(TOTAL_STAKE, total_stake as f64);
         // Return the new committee.
         Ok(Self { starting_round, members, total_stake })
     }
