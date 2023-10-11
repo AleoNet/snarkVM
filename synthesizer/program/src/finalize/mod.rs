@@ -92,7 +92,7 @@ impl<N: Network, Command: CommandTrait<N>> FinalizeCore<N, Command> {
         ensure!(self.commands.is_empty(), "Cannot add inputs after commands have been added");
 
         // Ensure the maximum number of inputs has not been exceeded.
-        ensure!(self.inputs.len() <= N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
+        ensure!(self.inputs.len() < N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
         // Ensure the input statement was not previously added.
         ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
 
@@ -159,5 +159,111 @@ impl<N: Network, Command: CommandTrait<N>> TypeName for FinalizeCore<N, Command>
     #[inline]
     fn type_name() -> &'static str {
         "finalize"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::{Command, Finalize};
+
+    type CurrentNetwork = console::network::Testnet3;
+
+    #[test]
+    fn test_add_input() {
+        // Initialize a new finalize instance.
+        let name = Identifier::from_str("finalize_core_test").unwrap();
+        let mut finalize = Finalize::<CurrentNetwork>::new(name);
+
+        // Ensure that an input can be added.
+        let input = Input::<CurrentNetwork>::from_str("input r0 as field.public;").unwrap();
+        assert!(finalize.add_input(input.clone()).is_ok());
+
+        // Ensure that adding a duplicate input will fail.
+        assert!(finalize.add_input(input).is_err());
+
+        // Ensure that adding more than the maximum number of inputs will fail.
+        for i in 1..CurrentNetwork::MAX_INPUTS * 2 {
+            let input = Input::<CurrentNetwork>::from_str(&format!("input r{i} as field.public;")).unwrap();
+
+            match finalize.inputs.len() < CurrentNetwork::MAX_INPUTS {
+                true => assert!(finalize.add_input(input).is_ok()),
+                false => assert!(finalize.add_input(input).is_err()),
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_command() {
+        // Initialize a new finalize instance.
+        let name = Identifier::from_str("finalize_core_test").unwrap();
+        let mut finalize = Finalize::<CurrentNetwork>::new(name);
+
+        // Ensure that a command can be added.
+        let command = Command::<CurrentNetwork>::from_str("add r0 r1 into r2;").unwrap();
+        assert!(finalize.add_command(command.clone()).is_ok());
+
+        // Ensure that adding more than the maximum number of commands will fail.
+        for i in 3..CurrentNetwork::MAX_COMMANDS * 2 {
+            let command = Command::<CurrentNetwork>::from_str(&format!("add r0 r1 into r{i};")).unwrap();
+
+            match finalize.commands.len() < CurrentNetwork::MAX_COMMANDS {
+                true => assert!(finalize.add_command(command).is_ok()),
+                false => assert!(finalize.add_command(command).is_err()),
+            }
+        }
+
+        // Ensure that adding more than the maximum number of writes will fail.
+
+        // Initialize a new finalize instance.
+        let name = Identifier::from_str("finalize_core_test").unwrap();
+        let mut finalize = Finalize::<CurrentNetwork>::new(name);
+
+        for _ in 0..CurrentNetwork::MAX_WRITES * 2 {
+            let command = Command::<CurrentNetwork>::from_str("remove object[r0];").unwrap();
+
+            match finalize.commands.len() < CurrentNetwork::MAX_WRITES as usize {
+                true => assert!(finalize.add_command(command).is_ok()),
+                false => assert!(finalize.add_command(command).is_err()),
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_command_duplicate_positions() {
+        // Initialize a new finalize instance.
+        let name = Identifier::from_str("finalize_core_test").unwrap();
+        let mut finalize = Finalize::<CurrentNetwork>::new(name);
+
+        // Ensure that a command can be added.
+        let command = Command::<CurrentNetwork>::from_str("position start;").unwrap();
+        assert!(finalize.add_command(command.clone()).is_ok());
+
+        // Ensure that adding a duplicate position will fail.
+        assert!(finalize.add_command(command).is_err());
+
+        // Helper method to convert a number to a unique string.
+        #[allow(clippy::cast_possible_truncation)]
+        fn to_unique_string(mut n: usize) -> String {
+            let mut s = String::new();
+            while n > 0 {
+                s.push((b'A' + (n % 26) as u8) as char);
+                n /= 26;
+            }
+            s.chars().rev().collect::<String>()
+        }
+
+        // Ensure that adding more than the maximum number of positions will fail.
+        for i in 1..u8::MAX as usize * 2 {
+            let position = to_unique_string(i);
+            println!("position: {}", position);
+            let command = Command::<CurrentNetwork>::from_str(&format!("position {position};")).unwrap();
+
+            match finalize.commands.len() < u8::MAX as usize {
+                true => assert!(finalize.add_command(command).is_ok()),
+                false => assert!(finalize.add_command(command).is_err()),
+            }
+        }
     }
 }

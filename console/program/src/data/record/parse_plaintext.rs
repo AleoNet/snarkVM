@@ -33,6 +33,8 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the entry from the string.
             let (string, entry) = Entry::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Return the identifier and entry.
             Ok((string, (identifier, entry)))
         }

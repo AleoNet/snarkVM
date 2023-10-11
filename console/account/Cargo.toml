@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-console-account"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Account operations for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -13,16 +13,20 @@ harness = false
 
 [dependencies.snarkvm-console-network]
 path = "../network"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "=0.14.6"
+version = "=0.15.4"
 default-features = false
 features = [ "address", "boolean", "field", "group", "scalar" ]
 
 [dependencies.bs58]
 version = "0.5"
+
+[dependencies.zeroize]
+version = "1"
+features = [ "derive" ]
 
 [dev-dependencies.bincode]
 version = "1.3"

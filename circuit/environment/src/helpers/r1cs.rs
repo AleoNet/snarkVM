@@ -27,7 +27,7 @@ pub struct R1CS<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
-    constraints: Vec<Constraint<F>>,
+    constraints: Vec<Rc<Constraint<F>>>,
     counter: Counter<F>,
     nonzeros: (u64, u64, u64),
 }
@@ -86,7 +86,8 @@ impl<F: PrimeField> R1CS<F> {
         self.nonzeros.1 += b_nonzeros;
         self.nonzeros.2 += c_nonzeros;
 
-        self.constraints.push(constraint.clone());
+        let constraint = Rc::new(constraint);
+        self.constraints.push(Rc::clone(&constraint));
         self.counter.add_constraint(constraint);
     }
 
@@ -166,7 +167,7 @@ impl<F: PrimeField> R1CS<F> {
     }
 
     /// Returns the constraints in the constraint system.
-    pub fn to_constraints(&self) -> &Vec<Constraint<F>> {
+    pub fn to_constraints(&self) -> &Vec<Rc<Constraint<F>>> {
         &self.constraints
     }
 }

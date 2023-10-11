@@ -19,18 +19,30 @@ use crate::helpers::{Map, MapRead};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
-use std::{borrow::Cow, sync::atomic::Ordering};
+use std::{borrow::Cow, ops::Deref, sync::atomic::Ordering};
 
 #[derive(Clone)]
-pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
+pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned>(
+    pub(super) Arc<InnerDataMap<K, V>>,
+);
+
+impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> Deref for DataMap<K, V> {
+    type Target = InnerDataMap<K, V>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub struct InnerDataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
     pub(super) database: RocksDB,
     pub(super) context: Vec<u8>,
     /// The tracker for whether a database transaction is in progress.
-    pub(super) batch_in_progress: Arc<AtomicBool>,
+    pub(super) batch_in_progress: AtomicBool,
     /// The database transaction.
-    pub(super) atomic_batch: Arc<Mutex<Vec<(K, Option<V>)>>>,
+    pub(super) atomic_batch: Mutex<Vec<(K, Option<V>)>>,
     /// The checkpoint stack for the batched operations within the map.
-    pub(super) checkpoints: Arc<Mutex<Vec<usize>>>,
+    pub(super) checkpoints: Mutex<Vec<usize>>,
 }
 
 impl<
@@ -395,13 +407,13 @@ mod tests {
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
         // Return the DataMap.
-        DataMap {
+        DataMap(Arc::new(InnerDataMap {
             database,
             context,
             atomic_batch: Default::default(),
             batch_in_progress: Default::default(),
             checkpoints: Default::default(),
-        }
+        }))
     }
 
     struct TestStorage {

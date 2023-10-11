@@ -82,7 +82,8 @@ impl<N: Network> Response<N> {
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(output.to_fields()?);
                         preimage.push(*tcm);
                         preimage.push(index);
@@ -102,7 +103,8 @@ impl<N: Network> Response<N> {
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(output.to_fields()?);
                         preimage.push(*tcm);
                         preimage.push(index);
@@ -176,7 +178,8 @@ impl<N: Network> Response<N> {
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
                         // Construct the preimage as `(function ID || output || tvk || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(output.to_fields()?);
                         preimage.push(*tvk);
                         preimage.push(index);
@@ -196,7 +199,8 @@ impl<N: Network> Response<N> {
                             u16::try_from(num_inputs + index).or_halt_with::<N>("Output index exceeds u16"),
                         );
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(output.to_fields()?);
                         preimage.push(*tcm);
                         preimage.push(index);

@@ -1,10 +1,15 @@
 [package]
 name = "snarkvm-console-collections"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Collections for a decentralized virtual machine"
 license = "Apache-2.0"
 edition = "2021"
+
+[[bench]]
+name = "kary_merkle_tree"
+path = "benches/kary_merkle_tree.rs"
+harness = false
 
 [[bench]]
 name = "merkle_tree"
@@ -13,11 +18,11 @@ harness = false
 
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-console-types]
 path = "../types"
-version = "=0.14.6"
+version = "=0.15.4"
 default-features = false
 features = [ "field", "integers" ]
 

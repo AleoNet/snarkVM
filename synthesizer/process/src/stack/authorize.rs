@@ -38,15 +38,11 @@ impl<N: Network> Stack<N> {
         let request = Request::sign(private_key, program_id, function_name, inputs, &input_types, rng)?;
         lap!(timer, "Compute the request");
         // Initialize the authorization.
-        let authorization = Authorization::from(request.clone());
-
-        // This logic is only executed if the program contains external calls.
-        if self.get_number_of_calls(&function_name)? > 1 {
-            // Construct the call stack.
-            let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
-            // Construct the authorization from the function.
-            let _response = self.execute_function::<A>(call_stack, Some(program_id))?;
-        }
+        let authorization = Authorization::new(request.clone());
+        // Construct the call stack.
+        let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
+        // Construct the authorization from the function.
+        let _response = self.execute_function::<A>(call_stack, None)?;
         finish!(timer, "Construct the authorization from the function");
 
         // Return the authorization.

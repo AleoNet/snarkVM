@@ -63,9 +63,6 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             index_info,
             id,
         } = Self::index_helper(c).map_err(|e| anyhow!("{e:?}"))?;
-        let joint_arithmetization_time = start_timer!(|| format!("Arithmetizing A,B,C {id}"));
-
-        end_timer!(joint_arithmetization_time);
 
         let fft_precomp_time = start_timer!(|| format!("Precomputing roots of unity {id}"));
 

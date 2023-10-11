@@ -20,6 +20,7 @@ use crate::{
     snark::varuna::{
         ahp::{verifier, AHPForR1CS},
         prover,
+        selectors::apply_randomized_selector,
         witness_label,
         Circuit,
         CircuitId,
@@ -111,7 +112,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
 
                     instance_lhs += &(&rowcheck * instance_combiner);
 
-                    let (h_0_i, remainder) = Self::apply_randomized_selector(
+                    let (h_0_i, remainder) = apply_randomized_selector(
                         &mut instance_lhs,
                         circuit_combiner,
                         &max_constraint_domain,

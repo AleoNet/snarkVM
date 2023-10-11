@@ -83,7 +83,13 @@ mod tests {
 
         // Initialize the authorization.
         let authorization = process
-            .authorize_fee_private(&private_key, credits, fee_in_microcredits, deployment_or_execution_id, rng)
+            .authorize_fee_private::<CurrentAleo, _>(
+                &private_key,
+                credits,
+                fee_in_microcredits,
+                deployment_or_execution_id,
+                rng,
+            )
             .unwrap();
         assert!(authorization.is_fee_private(), "Authorization must be for a call to 'credits.aleo/fee_private'");
 
@@ -116,8 +122,9 @@ mod tests {
         let deployment_or_execution_id = Field::rand(rng);
 
         // Compute the authorization.
-        let authorization =
-            process.authorize_fee_public(&private_key, fee_in_microcredits, deployment_or_execution_id, rng).unwrap();
+        let authorization = process
+            .authorize_fee_public::<CurrentAleo, _>(&private_key, fee_in_microcredits, deployment_or_execution_id, rng)
+            .unwrap();
         assert!(authorization.is_fee_public(), "Authorization must be for a call to 'credits.aleo/fee_public'");
 
         // Execute the authorization.

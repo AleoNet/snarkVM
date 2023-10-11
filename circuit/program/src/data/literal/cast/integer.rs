@@ -106,8 +106,7 @@ impl<E: Environment, I0: IntegerType, I1: IntegerType> Cast<Integer<E, I1>> for 
                 // If the source type is smaller than or equal to the destination type, sign extend the source integer.
                 // Then instantiate the new integer from the bits.
                 true => {
-                    bits_le
-                        .extend(std::iter::repeat(self.msb().clone()).take(I1::BITS.saturating_sub(I0::BITS) as usize));
+                    bits_le.resize(I1::BITS as usize, self.msb().clone());
                     Integer::<E, I1>::from_bits_le(&bits_le)
                 }
                 // If the source type is larger than the destination type, check that the upper bits match the most significant bit.

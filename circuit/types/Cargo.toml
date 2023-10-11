@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-circuit-types"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Primitive circuit for a decentralized virtual machine"
 license = "Apache-2.0"
@@ -8,37 +8,36 @@ edition = "2021"
 
 [dependencies.snarkvm-circuit-environment]
 path = "../environment"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-circuit-types-address]
 path = "./address"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-circuit-types-boolean]
 path = "./boolean"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-circuit-types-field]
 path = "./field"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-circuit-types-group]
 path = "./group"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-circuit-types-integers]
 path = "./integers"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-circuit-types-scalar]
 path = "./scalar"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.snarkvm-circuit-types-string]
 path = "./string"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dev-dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.14.6"

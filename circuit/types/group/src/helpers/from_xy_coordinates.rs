@@ -23,7 +23,19 @@ impl<E: Environment> Group<E> {
         // Note: We use the **unchecked** ('console::Group::from_xy_coordinates_unchecked') variant
         // here so that the recovery does not halt in witness mode, and subsequently, the point is
         // enforced to be on the curve by injecting with `circuit::Group::new`.
-        witness!(|x, y| console::Group::from_xy_coordinates_unchecked(x, y))
+        let point = witness!(|x, y| console::Group::from_xy_coordinates_unchecked(x, y));
+
+        // Note that `point` above, returned by `witness!`,
+        // consists of new R1CS variables for the x and y components,
+        // unrelated to the `x` and `y` inputs of this `from_xy_coordinates` function.
+        // So we add R1CS constraints to enforce that
+        // the coordinates of `point` are equal to `x` and `y`.
+        // This is not the most efficient circuit,
+        // because it has more variables and constraints than necessary,
+        // but we will look into optimizing this later.
+        E::assert_eq(&x, point.x);
+        E::assert_eq(&y, point.y);
+        point
     }
 
     /// Initializes an affine group element from a given x- and y-coordinate field element.
