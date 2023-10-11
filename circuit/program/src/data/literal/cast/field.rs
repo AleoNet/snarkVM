@@ -286,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn formal_sample_public_field_op_then_cast_to_group() {
+    fn formal_sample_field_public_op_then_cast_to_group() {
         // do some operation on the field before casting to group, to see whether the initial field is connected to the input to cast
         let a = Field::<FormalCircuit>::new(Mode::Public, ConsoleField::from_str("2field").unwrap());
         let c = Field::<FormalCircuit>::new(Mode::Constant, ConsoleField::one());
