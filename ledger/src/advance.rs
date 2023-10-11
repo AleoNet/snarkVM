@@ -180,9 +180,30 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         )?;
 
         // Compute the block reward.
-        let block_reward = ledger_block::block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
+        let mut block_reward = ledger_block::block_reward(N::STARTING_SUPPLY, N::BLOCK_TIME, coinbase_reward);
         // Compute the puzzle reward.
         let puzzle_reward = coinbase_reward.saturating_div(2);
+
+        // Add the validator fees to the block reward.
+        for transaction in candidate_transactions.iter() {
+            // Get the fee amount for the transaction.
+            let fee_amount = transaction.fee_amount()?;
+
+            // Get the base fee in microcredits.
+            let base_fee = match transaction {
+                Transaction::Deploy(_, _, deployment, _) => {
+                    deployment_storage_cost(deployment)?.saturating_add(deployment_namespace_cost(deployment)?)
+                }
+                Transaction::Execute(_, execution, _) => execution_storage_cost(execution)?,
+                Transaction::Fee(..) => bail!("There is no storage cost associated with a fee transaction"),
+            };
+
+            // Calculate the fee paid to the validator.
+            let validator_fee = fee_amount.saturating_sub(base_fee);
+
+            // Add the validator fees to the block reward.
+            block_reward = block_reward.saturating_add(validator_fee);
+        }
 
         // TODO (howardwu): We must first process the candidate ratifications to filter out invalid ratifications.
         //  We must ensure Ratify::Genesis is only present in the genesis block.

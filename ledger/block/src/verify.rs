@@ -45,9 +45,41 @@ impl<N: Network> Block<N> {
             expected_proof_target,
             expected_last_coinbase_target,
             expected_last_coinbase_timestamp,
-            expected_block_reward,
+            mut expected_block_reward,
             expected_puzzle_reward,
         ) = self.verify_solutions(previous_block, current_puzzle, current_epoch_challenge)?;
+
+        // Add the validator fees to the block reward.
+        for confirmed_transaction in self.transactions().iter() {
+            // Get the fee amount for the transaction.
+            let fee_amount = confirmed_transaction.transaction().fee_amount()?;
+
+            // Get the base fee in microcredits.
+            let base_fee = match confirmed_transaction {
+                ConfirmedTransaction::AcceptedDeploy(_, transaction, _) => {
+                    let deployment = transaction.deployment().ok_or_else(|| anyhow!("Invalid AcceptedDeploy"))?;
+                    // Calculate the deployment base fee.
+                    deployment_storage_cost(deployment)?.saturating_add(deployment_namespace_cost(deployment)?)
+                }
+                ConfirmedTransaction::AcceptedExecute(_, transaction, _) => {
+                    execution_storage_cost(transaction.execution().ok_or_else(|| anyhow!("Invalid AcceptedExecute"))?)?
+                }
+                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => {
+                    let deployment = rejected.deployment().ok_or_else(|| anyhow!("Invalid RejectedDeploy"))?;
+                    // Calculate the deployment base fee.
+                    deployment_storage_cost(deployment)?.saturating_add(deployment_namespace_cost(deployment)?)
+                }
+                ConfirmedTransaction::RejectedExecute(_, _, rejected) => {
+                    execution_storage_cost(rejected.execution().ok_or_else(|| anyhow!("Invalid RejectedExecute"))?)?
+                }
+            };
+
+            // Calculate the fee paid to the validator.
+            let validator_fee = fee_amount.saturating_sub(base_fee);
+
+            // Add the validator fees to the block reward.
+            expected_block_reward = expected_block_reward.saturating_add(validator_fee);
+        }
 
         // Ensure the block ratifications are correct.
         self.verify_ratifications(expected_block_reward, expected_puzzle_reward)?;
