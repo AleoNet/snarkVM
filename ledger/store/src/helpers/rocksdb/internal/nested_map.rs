@@ -310,44 +310,11 @@ impl<
 {
     type Iterator = NestedIter<'a, M, K, V>;
     type Keys = NestedKeys<'a, M, K>;
-    type Maps = NestedMaps<'a, M>;
     type PendingIterator = core::iter::Map<
         std::vec::IntoIter<(M, Option<K>, Option<V>)>,
         fn((M, Option<K>, Option<V>)) -> (Cow<'a, M>, Option<Cow<'a, K>>, Option<Cow<'a, V>>),
     >;
     type Values = NestedValues<'a, V>;
-
-    ///
-    /// Returns `true` if the given map exists.
-    ///
-    fn contains_map_confirmed(&self, map: &M) -> Result<bool> {
-        // Prepare the prefixed map.
-        let raw_map = self.create_prefixed_map(map)?;
-        // Check if the map exists.
-        match self.database.get_pinned(&raw_map)? {
-            Some(_) => Ok(true),
-            None => Ok(false),
-        }
-    }
-
-    ///
-    /// Returns `true` if the given map exists.
-    /// This method first checks the atomic batch, and if it does not exist, then checks the confirmed.
-    ///
-    fn contains_map_speculative(&self, map: &M) -> Result<bool> {
-        // If a batch is in progress, check the atomic batch first.
-        if self.is_atomic_in_progress() {
-            // We iterate from the back of the `atomic_batch` to find the latest value.
-            for (m, k, _) in self.atomic_batch.lock().iter().rev() {
-                // If the map matches the given map, then return whether the key is 'Some(K)'.
-                if m == map {
-                    return Ok(k.is_some());
-                }
-            }
-        }
-        // Otherwise, check the map for the map.
-        self.contains_map_confirmed(map)
-    }
 
     ///
     /// Returns `true` if the given map and key exists.
@@ -529,13 +496,6 @@ impl<
     }
 
     ///
-    /// Returns an iterator over each map.
-    ///
-    fn maps_confirmed(&'a self) -> Self::Maps {
-        NestedMaps::new(self.database.prefix_iterator(&self.context))
-    }
-
-    ///
     /// Returns an iterator over each key.
     ///
     fn keys_confirmed(&'a self) -> Self::Keys {
@@ -600,39 +560,6 @@ impl<
         let value = bincode::deserialize(&value).ok()?;
 
         Some((Cow::Owned(map), Cow::Owned(key), Cow::Owned(value)))
-    }
-}
-
-/// An iterator over all maps in a data map.
-pub struct NestedMaps<'a, M: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned> {
-    db_iter: rocksdb::DBIterator<'a>,
-    _phantom: PhantomData<M>,
-}
-
-impl<'a, M: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned> NestedMaps<'a, M> {
-    pub(super) fn new(db_iter: rocksdb::DBIterator<'a>) -> Self {
-        Self { db_iter, _phantom: PhantomData }
-    }
-}
-
-impl<'a, M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned> Iterator for NestedMaps<'a, M> {
-    type Item = Cow<'a, M>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (map_key, _) = self
-            .db_iter
-            .next()?
-            .map_err(|e| {
-                error!("RocksDB iterator error: {e}");
-            })
-            .ok()?;
-
-        // Extract the bytes belonging to the map and the key.
-        let (entry_map, _entry_key) = get_map_and_key(&map_key)?;
-        // Deserialize the map.
-        let map = bincode::deserialize(entry_map).ok()?;
-
-        Some(Cow::Owned(map))
     }
 }
 

@@ -91,20 +91,8 @@ pub trait NestedMapRead<
 {
     type PendingIterator: Iterator<Item = (Cow<'a, M>, Option<Cow<'a, K>>, Option<Cow<'a, V>>)>;
     type Iterator: Iterator<Item = (Cow<'a, M>, Cow<'a, K>, Cow<'a, V>)>;
-    type Maps: Iterator<Item = Cow<'a, M>>;
     type Keys: Iterator<Item = (Cow<'a, M>, Cow<'a, K>)>;
     type Values: Iterator<Item = Cow<'a, V>>;
-
-    ///
-    /// Returns `true` if the given map exists.
-    ///
-    fn contains_map_confirmed(&self, map: &M) -> Result<bool>;
-
-    ///
-    /// Returns `true` if the given map exists.
-    /// This method first checks the atomic batch, and if it does not exist, then checks the confirmed.
-    ///
-    fn contains_map_speculative(&self, map: &M) -> Result<bool>;
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -170,11 +158,6 @@ pub trait NestedMapRead<
     /// Returns an iterator visiting each confirmed map-key-value pair.
     ///
     fn iter_confirmed(&'a self) -> Self::Iterator;
-
-    ///
-    /// Returns an iterator over each confirmed map.
-    ///
-    fn maps_confirmed(&'a self) -> Self::Maps;
 
     ///
     /// Returns an iterator over each confirmed key.

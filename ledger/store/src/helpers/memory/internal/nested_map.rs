@@ -257,41 +257,11 @@ impl<
     //     core::iter::Map<btree_map::IntoIter<Vec<u8>, BTreeSet<Vec<u8>>>, fn((Vec<u8>, BTreeSet<Vec<u8>>)) -> core::iter::Map<btree_set::IntoIter<Vec<u8>>,
     //         fn(Vec<u8>) -> (Cow<'a, M>, Cow<'a, K>)>>
     // >;
-    type Maps = core::iter::Map<btree_map::IntoKeys<Vec<u8>, BTreeSet<Vec<u8>>>, fn(Vec<u8>) -> Cow<'a, M>>;
     type PendingIterator = core::iter::Map<
         std::vec::IntoIter<(M, Option<K>, Option<V>)>,
         fn((M, Option<K>, Option<V>)) -> (Cow<'a, M>, Option<Cow<'a, K>>, Option<Cow<'a, V>>),
     >;
     type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
-
-    ///
-    /// Returns `true` if the given map exists.
-    ///
-    fn contains_map_confirmed(&self, map: &M) -> Result<bool> {
-        // Serialize 'm'.
-        let m = bincode::serialize(map)?;
-        // Return whether the serialized map exists in the map.
-        Ok(self.map.read().contains_key(&m))
-    }
-
-    ///
-    /// Returns `true` if the given map exists.
-    /// This method first checks the atomic batch, and if it does not exist, then checks the confirmed.
-    ///
-    fn contains_map_speculative(&self, map: &M) -> Result<bool> {
-        // If a batch is in progress, check the atomic batch first.
-        if self.is_atomic_in_progress() {
-            // We iterate from the back of the `atomic_batch` to find the latest value.
-            for (m, k, _) in self.atomic_batch.lock().iter().rev() {
-                // If the map matches the given map, then return whether the key is 'Some(K)'.
-                if m == map {
-                    return Ok(k.is_some());
-                }
-            }
-        }
-        // Otherwise, check the map for the map.
-        self.contains_map_confirmed(map)
-    }
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -496,14 +466,6 @@ impl<
             })
             .collect::<Vec<_>>()
             .into_iter()
-    }
-
-    ///
-    /// Returns an iterator over each confirmed map.
-    ///
-    fn maps_confirmed(&'a self) -> Self::Maps {
-        // Note: The 'unwrap' is safe here, because the maps are defined by us.
-        self.map.read().clone().into_keys().map(|m| Cow::Owned(bincode::deserialize(&m).unwrap()))
     }
 
     ///
