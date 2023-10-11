@@ -554,7 +554,7 @@ fn insert<
     // Concatenate 'm' and 'k' with a 0-byte separator.
     let mk = [m.clone(), vec![0u8], k.clone()].concat();
 
-    map.entry(m).or_insert_with(BTreeSet::new).insert(k);
+    map.entry(m).or_default().insert(k);
     map_inner.insert(mk, v);
 }
 
