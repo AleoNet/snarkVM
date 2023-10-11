@@ -409,12 +409,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         if !self.contains_mapping_confirmed(&program_id, &mapping_name)? {
             bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot get mapping (C).")
         }
-
         // Retrieve the key-values for the mapping.
-        match self.key_value_id_map().get_map_confirmed(&(program_id, mapping_name))? {
-            Some(key_value_ids) => Ok(key_value_ids),
-            None => Ok(Vec::new()),
-        }
+        self.key_value_id_map().get_map_confirmed(&(program_id, mapping_name))
     }
 
     /// Returns the speculative mapping entries for the given `program ID` and `mapping name`.
@@ -427,12 +423,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         if !self.contains_mapping_speculative(&program_id, &mapping_name)? {
             bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot get mapping (S).")
         }
-
         // Retrieve the key-values for the mapping.
-        match self.key_value_id_map().get_map_speculative(&(program_id, mapping_name))? {
-            Some(key_value_ids) => Ok(key_value_ids),
-            None => Ok(Vec::new()),
-        }
+        self.key_value_id_map().get_map_speculative(&(program_id, mapping_name))
     }
 
     /// Returns the confirmed value for the given `program ID`, `mapping name`, and `key`.

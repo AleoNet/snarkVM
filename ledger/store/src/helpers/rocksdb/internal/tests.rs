@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::helpers::{
-    rocksdb::{DataMap, MapID, RocksDB, TestMap as TestMapID},
+    rocksdb::{MapID, RocksDB, TestMap as TestMapID},
     Map,
     MapRead,
 };

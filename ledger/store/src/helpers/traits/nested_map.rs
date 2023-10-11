@@ -108,12 +108,12 @@ pub trait NestedMapRead<
     ///
     /// Returns the confirmed key-value pairs for the given map, if it exists.
     ///
-    fn get_map_confirmed(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>>;
+    fn get_map_confirmed(&'a self, map: &M) -> Result<Vec<(K, V)>>;
 
     ///
     /// Returns the speculative key-value pairs for the given map, if it exists.
     ///
-    fn get_map_speculative(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>>;
+    fn get_map_speculative(&'a self, map: &M) -> Result<Vec<(K, V)>>;
 
     ///
     /// Returns the value for the given key from the map, if it exists.
