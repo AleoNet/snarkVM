@@ -67,7 +67,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
 
                     // Calculate the result directly in the field.
                     // Since 2^{rhs} < Integer::MAX and 2 * I::BITS is less than E::BaseField::size in data bits,
-                    // we know that the operation will not overflow Integer::MAX or the field modulus.
+                    // we know that the operation will not overflow the field modulus.
                     for (i, bit) in rhs.bits_le[..first_upper_bit_index].iter().enumerate() {
                         // In each iteration, multiply the result by 2^(1<<i), if the bit is set.
                         // Note that instantiating the field from a u128 is safe since it is larger than all eligible integer types.
