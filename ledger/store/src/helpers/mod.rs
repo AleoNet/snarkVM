@@ -16,6 +16,9 @@ pub mod memory;
 #[cfg(feature = "rocks")]
 pub mod rocksdb;
 
+#[cfg(test)]
+pub(crate) mod test_helpers;
+
 mod traits;
 pub use traits::*;
 

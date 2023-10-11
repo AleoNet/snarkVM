@@ -355,9 +355,12 @@ impl<
     ///
     /// Returns the key-value pairs for the given map, if it exists.
     ///
-    fn get_map_confirmed(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>> {
+    fn get_map_confirmed(&'a self, map: &M) -> Result<Vec<(K, V)>> {
         // Prepare the prefixed map.
         let raw_map = self.create_prefixed_map(map)?;
+        // Serialize the map.
+        let serialized_map = bincode::serialize(map)?;
+
         // Iterate over the keys with the specified map prefix.
         let entries: Vec<_> = self
             .database
@@ -368,7 +371,7 @@ impl<
                 // Extract the bytes belonging to the map and the key.
                 let (entry_map, entry_key) = get_map_and_key(&map_key)?;
 
-                if entry_map == raw_map {
+                if entry_map == serialized_map {
                     // Deserialize the key.
                     let key = bincode::deserialize(entry_key).ok()?;
                     // Deserialize the value.
@@ -380,20 +383,20 @@ impl<
             })
             .collect();
 
-        Ok(if entries.is_empty() { None } else { Some(entries) })
+        Ok(entries)
     }
 
     ///
     /// Returns the speculative key-value pairs for the given map, if it exists.
     ///
-    fn get_map_speculative(&'a self, map: &M) -> Result<Option<Vec<(K, V)>>> {
+    fn get_map_speculative(&'a self, map: &M) -> Result<Vec<(K, V)>> {
         // If there is no atomic batch in progress, then return the confirmed key-value pairs.
         if !self.is_atomic_in_progress() {
             return self.get_map_confirmed(map);
         }
 
         // Retrieve the confirmed key-value pairs for the given map.
-        let mut key_values = self.get_map_confirmed(map)?.unwrap_or_default();
+        let mut key_values = self.get_map_confirmed(map)?;
 
         // Retrieve the atomic batch.
         let operations = self.atomic_batch.lock().clone();
@@ -427,10 +430,7 @@ impl<
         }
 
         // Return the key-value pairs for the map.
-        match key_values.is_empty() {
-            true => Ok(None),
-            false => Ok(Some(key_values)),
-        }
+        Ok(key_values)
     }
 
     ///
@@ -828,7 +828,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_contains_key() {
+    fn test_contains_key_sanity_check() {
         // Initialize 'm'.
         let m = 0usize;
         // Initialize an address.
@@ -853,49 +853,7 @@ mod tests {
             RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
                 .expect("Failed to open data map");
 
-        // Sanity check.
-        assert!(map.iter_confirmed().next().is_none());
-
-        /* test atomic insertions */
-
-        // Start an atomic write batch.
-        map.start_atomic();
-
-        // Insert an item into the map.
-        map.insert(0, 0, "0".to_string()).unwrap();
-
-        // Check that the item is not yet in the map.
-        assert!(map.get_value_confirmed(&0, &0).unwrap().is_none());
-        // Check that the item is in the batch.
-        assert_eq!(map.get_value_pending(&0, &0), Some(Some("0".to_string())));
-        // Check that the item can be speculatively retrieved.
-        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
-
-        // Queue (since a batch is in progress) NUM_ITEMS insertions.
-        for i in 1..10 {
-            // Update the item in the map.
-            map.insert(0, 0, i.to_string()).unwrap();
-
-            // Check that the item is not yet in the map.
-            assert!(map.get_value_confirmed(&0, &0).unwrap().is_none());
-            // Check that the updated item is in the batch.
-            assert_eq!(map.get_value_pending(&0, &0), Some(Some(i.to_string())));
-            // Check that the updated item can be speculatively retrieved.
-            assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned(i.to_string())));
-        }
-
-        // The map should still contain no items.
-        assert!(map.iter_confirmed().next().is_none());
-
-        // Finish the current atomic write batch.
-        map.finish_atomic().unwrap();
-
-        // Check that the item is present in the map now.
-        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("9".to_string())));
-        // Check that the item is not in the batch.
-        assert_eq!(map.get_value_pending(&0, &0), None);
-        // Check that the item can be speculatively retrieved.
-        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned("9".to_string())));
+        crate::helpers::test_helpers::nested_map::check_insert_and_get_value_speculative(map);
     }
 
     #[test]
@@ -907,165 +865,67 @@ mod tests {
             RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
                 .expect("Failed to open data map");
 
-        // Sanity check.
-        assert!(map.iter_confirmed().next().is_none());
+        crate::helpers::test_helpers::nested_map::check_remove_and_get_value_speculative(map);
+    }
 
-        // Insert an item into the map.
-        map.insert(0, 0, "0".to_string()).unwrap();
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_contains_key() {
+        // Initialize a map.
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        // Check that the item is present in the map .
-        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
-        // Check that the item is not in the batch.
-        assert_eq!(map.get_value_pending(&0, &0), None);
-        // Check that the item can be speculatively retrieved.
-        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
+        crate::helpers::test_helpers::nested_map::check_contains_key(map);
+    }
 
-        /* test atomic removals */
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_get_map() {
+        // Initialize a map.
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        // Start an atomic write batch.
-        map.start_atomic();
+        crate::helpers::test_helpers::nested_map::check_get_map(map);
+    }
 
-        // Remove the item from the map.
-        map.remove_key(&0, &0).unwrap();
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_check_iterators_match() {
+        // Initialize a map.
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        // Check that the item still exists in the map.
-        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
-        // Check that the item is removed in the batch.
-        assert_eq!(map.get_value_pending(&0, &0), Some(None));
-        // Check that the item is removed when speculatively retrieved.
-        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), None);
-
-        // Try removing the item again.
-        map.remove_key(&0, &0).unwrap();
-
-        // Check that the item still exists in the map.
-        assert_eq!(map.get_value_confirmed(&0, &0).unwrap(), Some(Cow::Owned("0".to_string())));
-        // Check that the item is removed in the batch.
-        assert_eq!(map.get_value_pending(&0, &0), Some(None));
-        // Check that the item is removed when speculatively retrieved.
-        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), None);
-
-        // Finish the current atomic write batch.
-        map.finish_atomic().unwrap();
-
-        // Check that the item is not present in the map now.
-        assert!(map.get_value_confirmed(&0, &0).unwrap().is_none());
-        // Check that the item is not in the batch.
-        assert_eq!(map.get_value_pending(&0, &0), None);
-        // Check that the item is removed when speculatively retrieved.
-        assert_eq!(map.get_value_speculative(&0, &0).unwrap(), None);
-
-        // Check that the map is empty now.
-        assert!(map.iter_confirmed().next().is_none());
+        crate::helpers::test_helpers::nested_map::check_iterators_match(map);
     }
 
     #[test]
     #[serial]
     #[traced_test]
     fn test_atomic_writes_are_batched() {
-        // The number of items that will be inserted into the map.
-        const NUM_ITEMS: usize = 10;
-
         // Initialize a map.
         let map: NestedDataMap<usize, usize, String> =
             RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
                 .expect("Failed to open data map");
 
-        // Sanity check.
-        assert!(map.iter_confirmed().next().is_none());
-
-        /* test atomic insertions */
-
-        // Start an atomic write batch.
-        map.start_atomic();
-
-        // Queue (since a batch is in progress) NUM_ITEMS insertions.
-        for i in 0..NUM_ITEMS {
-            map.insert(i, i, i.to_string()).unwrap();
-            // Ensure that the item is queued for insertion.
-            assert_eq!(map.get_value_pending(&i, &i), Some(Some(i.to_string())));
-            // Ensure that the item can be found with a speculative get.
-            assert_eq!(map.get_value_speculative(&i, &i).unwrap(), Some(Cow::Owned(i.to_string())));
-        }
-
-        // The map should still contain no items.
-        assert!(map.iter_confirmed().next().is_none());
-
-        // Finish the current atomic write batch.
-        map.finish_atomic().unwrap();
-
-        // Check that the items are present in the map now.
-        for i in 0..NUM_ITEMS {
-            assert_eq!(map.get_value_confirmed(&i, &i).unwrap(), Some(Cow::Borrowed(&i.to_string())));
-        }
-
-        /* test atomic removals */
-
-        // Start an atomic write batch.
-        map.start_atomic();
-
-        // Queue (since a batch is in progress) NUM_ITEMS removals.
-        for i in 0..NUM_ITEMS {
-            map.remove_key(&i, &i).unwrap();
-            // Ensure that the item is NOT queued for insertion.
-            assert_eq!(map.get_value_pending(&i, &i), Some(None));
-        }
-
-        // The map should still contains all the items.
-        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
-
-        // Finish the current atomic write batch.
-        map.finish_atomic().unwrap();
-
-        // Check that the map is empty now.
-        assert!(map.iter_confirmed().next().is_none());
+        crate::helpers::test_helpers::nested_map::check_atomic_writes_are_batched(map);
     }
 
     #[test]
     #[serial]
     #[traced_test]
     fn test_atomic_writes_can_be_aborted() {
-        // The number of items that will be queued to be inserted into the map.
-        const NUM_ITEMS: usize = 10;
-
         // Initialize a map.
         let map: NestedDataMap<usize, usize, String> =
             RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
                 .expect("Failed to open data map");
 
-        // Sanity check.
-        assert!(map.iter_confirmed().next().is_none());
-
-        // Start an atomic write batch.
-        map.start_atomic();
-
-        // Queue (since a batch is in progress) NUM_ITEMS insertions.
-        for i in 0..NUM_ITEMS {
-            map.insert(i, i, i.to_string()).unwrap();
-        }
-
-        // The map should still contain no items.
-        assert!(map.iter_confirmed().next().is_none());
-
-        // Abort the current atomic write batch.
-        map.abort_atomic();
-
-        // The map should still contain no items.
-        assert!(map.iter_confirmed().next().is_none());
-
-        // Start another atomic write batch.
-        map.start_atomic();
-
-        // Queue (since a batch is in progress) NUM_ITEMS insertions.
-        for i in 0..NUM_ITEMS {
-            map.insert(i, i, i.to_string()).unwrap();
-        }
-
-        // Finish the current atomic write batch.
-        map.finish_atomic().unwrap();
-
-        // The map should contain NUM_ITEMS items now.
-        assert_eq!(map.iter_confirmed().count(), NUM_ITEMS);
+        crate::helpers::test_helpers::nested_map::check_atomic_writes_can_be_aborted(map);
     }
 
     #[test]
