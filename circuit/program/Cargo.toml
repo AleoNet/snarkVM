@@ -46,12 +46,12 @@ path = "../../console"
 [dev-dependencies.snarkvm_console_types_field]
 package = "snarkvm-console-types-field"
 path = "../../console/types/field"
-version = "0.14.6"
+version = "0.15.4"
 
 [dev-dependencies.snarkvm_console_types_group]
 package = "snarkvm-console-types-group"
 path = "../../console/types/group"
-version = "0.14.6"
+version = "0.15.4"
 
 [dev-dependencies.console]
 package = "snarkvm-console-program"
