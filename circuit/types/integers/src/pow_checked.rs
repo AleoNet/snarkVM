@@ -86,7 +86,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     let (product, overflow) = Self::mul_with_flags(&result, self);
 
                     // For unsigned multiplication, check that the overflow flag is not set.
-                    E::assert_eq(overlow & bit, E::zero());
+                    E::assert_eq(overflow & bit, E::zero());
 
                     // Return the product of `self` and `other`.
                     product
