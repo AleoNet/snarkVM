@@ -300,7 +300,7 @@ impl<
         // Serialize 'm'.
         let m = bincode::serialize(map)?;
         // Concatenate 'm' and 'k' with a 0-byte separator.
-        let mk = [m, vec![0u8], bincode::serialize(key)?].concat();
+        let mk = to_map_key(&m, &bincode::serialize(key)?);
         // Return whether the concatenated key exists in the map.
         Ok(self.map_inner.read().contains_key(&mk))
     }
@@ -354,7 +354,7 @@ impl<
                 // Deserialize 'k'.
                 let key: K = bincode::deserialize(&k).unwrap();
                 // Concatenate 'm' and 'k' with a 0-byte separator.
-                let mk = [m.clone(), vec![0u8], k].concat();
+                let mk = to_map_key(&m, &k);
                 // Return the key-value pair.
                 (key, map_inner.get(&mk).unwrap().clone())
             })
@@ -421,7 +421,7 @@ impl<
         // Serialize 'm'.
         let m = bincode::serialize(map)?;
         // Concatenate 'm' and 'k' with a 0-byte separator.
-        let mk = [m, vec![0u8], bincode::serialize(key)?].concat();
+        let mk = to_map_key(&m, &bincode::serialize(key)?);
         // Return the value for the concatenated key.
         Ok(self.map_inner.read().get(&mk).cloned().map(Cow::Owned))
     }
@@ -489,7 +489,7 @@ impl<
                     // Deserialize 'k'.
                     let key = bincode::deserialize(&k).unwrap();
                     // Concatenate 'm' and 'k' with a 0-byte separator.
-                    let mk = [map.clone(), vec![0u8], k].concat();
+                    let mk = to_map_key(&map, &k);
                     // Return the map-key-value triple.
                     (Cow::Owned(m), Cow::Owned(key), Cow::Owned(map_inner.get(&mk).unwrap().clone()))
                 })
@@ -552,7 +552,7 @@ fn insert<
     // Serialize 'k'.
     let k = bincode::serialize(k).unwrap();
     // Concatenate 'm' and 'k' with a 0-byte separator.
-    let mk = [m.clone(), vec![0u8], k.clone()].concat();
+    let mk = to_map_key(&m, &k);
 
     map.entry(m).or_insert_with(BTreeSet::new).insert(k);
     map_inner.insert(mk, v);
@@ -577,7 +577,7 @@ fn remove_map<
     if let Some(keys) = keys {
         for k in keys {
             // Concatenate 'm' and 'k' with a 0-byte separator.
-            let mk = [m.clone(), vec![0u8], k].concat();
+            let mk = to_map_key(&m, &k);
             map_inner.remove(&mk);
         }
     }
@@ -604,9 +604,20 @@ fn remove_key<
     map.entry(m.clone()).or_insert_with(BTreeSet::new).remove(&k);
 
     // Concatenate 'm' and 'k' with a 0-byte separator.
-    let mk = [m, vec![0u8], k].concat();
+    let mk = to_map_key(&m, &k);
 
     map_inner.remove(&mk);
+}
+
+/// Returns the concatenated map-key.
+fn to_map_key(m: &[u8], k: &[u8]) -> Vec<u8> {
+    // Concatenate 'm' and 'k' with a 0-byte separator.
+    let mut mk = Vec::with_capacity(m.len() + 1 + k.len());
+    mk.extend_from_slice(m);
+    mk.push(0u8);
+    mk.extend_from_slice(k);
+    // Return 'mk'.
+    mk
 }
 
 #[cfg(test)]
