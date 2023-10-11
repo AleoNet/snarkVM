@@ -678,7 +678,7 @@ where
                     .iter()
                     .map(|input| {
                         let input = input.borrow().to_field_elements().unwrap();
-                        let mut new_input = Vec::with_capacity(input.len().max(input_domain.size()));
+                        let mut new_input = Vec::with_capacity((1 + input.len()).max(input_domain.size()));
                         new_input.push(E::Fr::one());
                         new_input.extend_from_slice(&input);
                         new_input.resize(input.len().max(input_domain.size()), E::Fr::zero());
