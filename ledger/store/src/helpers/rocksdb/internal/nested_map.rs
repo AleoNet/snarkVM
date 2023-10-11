@@ -16,12 +16,11 @@
 
 use super::*;
 use crate::helpers::{NestedMap, NestedMapRead};
+use utilities::FromBytes;
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use std::{borrow::Cow, sync::atomic::Ordering};
 use tracing::error;
-
-pub const SEPARATOR: [u8; 5] = [0xFF, 0x00, 0xFF, 0x00, 0xFF];
 
 #[derive(Clone)]
 pub struct NestedDataMap<
@@ -62,9 +61,13 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
     #[inline]
     fn create_prefixed_map_key(&self, map: &M, key: &K) -> Result<Vec<u8>> {
         let mut raw_map_key = self.context.clone();
+
+        let map_size: u32 = bincode::serialized_size(&map)?.try_into()?;
+        raw_map_key.extend_from_slice(&map_size.to_le_bytes());
+
         bincode::serialize_into(&mut raw_map_key, map)?;
-        bincode::serialize_into(&mut raw_map_key, &SEPARATOR)?;
         bincode::serialize_into(&mut raw_map_key, key)?;
+
         Ok(raw_map_key)
     }
 
@@ -85,6 +88,14 @@ impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serial
             None => Ok(None),
         }
     }
+}
+
+fn get_map_and_key(map_key: &[u8]) -> Option<(&[u8], &[u8])> {
+    let map_len = u32::from_bytes_le(&map_key[PREFIX_LEN..][..4]).ok()? as usize;
+    let map = &map_key[PREFIX_LEN + 4..][..map_len];
+    let key = &map_key[PREFIX_LEN + 4 + map_len..];
+
+    Some((map, key))
 }
 
 impl<
@@ -131,11 +142,11 @@ impl<
                     .iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward))
                     .filter_map(|entry| {
                         let (map_key, _) = entry.ok()?;
-                        if map_key.starts_with(&map) && &map_key[map.len()..] != SEPARATOR {
-                            Some(map_key)
-                        } else {
-                            None
-                        }
+
+                        // Extract the bytes belonging to the map and the key.
+                        let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+
+                        if entry_map == map && entry_key.is_empty() { Some(map_key) } else { None }
                     });
 
                 // Now delete all the identified keys.
@@ -264,11 +275,11 @@ impl<
                             .iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward))
                             .filter_map(|entry| {
                                 let (map_key, _) = entry.ok()?;
-                                if map_key.starts_with(&map) && &map_key[map.len()..] != SEPARATOR {
-                                    Some(map_key)
-                                } else {
-                                    None
-                                }
+
+                                // Extract the bytes belonging to the map and the key.
+                                let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+
+                                if entry_map == map && entry_key.is_empty() { Some(map_key) } else { None }
                             });
 
                         // Now delete all the identified keys.
@@ -404,18 +415,13 @@ impl<
             .iterator(rocksdb::IteratorMode::From(&raw_map, rocksdb::Direction::Forward))
             .filter_map(|entry| {
                 let (map_key, value) = entry.ok()?;
-                let map_key = map_key.to_vec();
-                let value = value.to_vec();
-                if map_key.starts_with(&raw_map) {
-                    // Find the position of the separator.
-                    let separator_pos = map_key
-                        .windows(SEPARATOR.len())
-                        .position(|window| window == SEPARATOR)
-                        .expect("Separator not found in map_key");
-                    // Split the map-key into the map and key.
-                    let (_, key) = map_key.split_at(separator_pos);
+
+                // Extract the bytes belonging to the map and the key.
+                let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+
+                if entry_map == raw_map {
                     // Deserialize the key.
-                    let key = bincode::deserialize(&key[SEPARATOR.len()..]).ok()?;
+                    let key = bincode::deserialize(entry_key).ok()?;
                     // Deserialize the value.
                     let value = bincode::deserialize(&value).ok()?;
                     Some((key, value))
@@ -602,16 +608,12 @@ impl<
                 error!("RocksDB iterator error: {e}");
             })
             .ok()?;
-        // Find the position of the separator.
-        let separator_pos = map_key
-            .windows(SEPARATOR.len())
-            .position(|window| window == SEPARATOR)
-            .expect("Separator not found in map_key");
-        // Split the map-key into the map and key.
-        let (map, key) = map_key.split_at(separator_pos);
+
+        // Extract the bytes belonging to the map and the key.
+        let (entry_map, entry_key) = get_map_and_key(&map_key)?;
         // Deserialize the map and key.
-        let map = bincode::deserialize(&map[PREFIX_LEN..]).ok()?;
-        let key = bincode::deserialize(&key[SEPARATOR.len()..]).ok()?;
+        let map = bincode::deserialize(entry_map).ok()?;
+        let key = bincode::deserialize(entry_key).ok()?;
         // Deserialize the value.
         let value = bincode::deserialize(&value).ok()?;
 
@@ -642,15 +644,11 @@ impl<'a, M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + Deserialize
                 error!("RocksDB iterator error: {e}");
             })
             .ok()?;
-        // Find the position of the separator.
-        let separator_pos = map_key
-            .windows(SEPARATOR.len())
-            .position(|window| window == SEPARATOR)
-            .expect("Separator not found in map_key");
-        // Split the map-key into the map and key.
-        let (map, _) = map_key.split_at(separator_pos);
+
+        // Extract the bytes belonging to the map and the key.
+        let (entry_map, _entry_key) = get_map_and_key(&map_key)?;
         // Deserialize the map.
-        let map = bincode::deserialize(&map[PREFIX_LEN..]).ok()?;
+        let map = bincode::deserialize(entry_map).ok()?;
 
         Some(Cow::Owned(map))
     }
@@ -693,16 +691,12 @@ impl<
                 error!("RocksDB iterator error: {e}");
             })
             .ok()?;
-        // Find the position of the separator.
-        let separator_pos = map_key
-            .windows(SEPARATOR.len())
-            .position(|window| window == SEPARATOR)
-            .expect("Separator not found in map_key");
-        // Split the map-key into the map and key.
-        let (map, key) = map_key.split_at(separator_pos);
+
+        // Extract the bytes belonging to the map and the key.
+        let (entry_map, entry_key) = get_map_and_key(&map_key)?;
         // Deserialize the map and key.
-        let map = bincode::deserialize(&map[PREFIX_LEN..]).ok()?;
-        let key = bincode::deserialize(&key[SEPARATOR.len()..]).ok()?;
+        let map = bincode::deserialize(entry_map).ok()?;
+        let key = bincode::deserialize(entry_key).ok()?;
 
         Some((Cow::Owned(map), Cow::Owned(key)))
     }
