@@ -192,6 +192,8 @@ impl RocksDB {
     /// Opens the test database.
     #[cfg(any(test, feature = "test"))]
     pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+        use console::prelude::{Rng, TestRng};
+
         let database = {
             // Customize database options.
             let mut options = rocksdb::Options::default();
@@ -202,7 +204,7 @@ impl RocksDB {
             options.set_prefix_extractor(prefix_extractor);
 
             // Ensure the `temp_dir` is unique.
-            let temp_dir = temp_dir.join(rand::Rng::gen::<u64>(&mut rand::thread_rng()).to_string());
+            let temp_dir = temp_dir.join(Rng::gen::<u64>(&mut TestRng::default()).to_string());
 
             // Construct the directory for the test database.
             let primary = match dev {
