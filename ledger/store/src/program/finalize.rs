@@ -36,7 +36,8 @@ fn to_mapping_id<N: Network>(program_id: &ProgramID<N>, mapping_name: &Identifie
     // Construct the preimage.
     let mut preimage = Vec::new();
     program_id.write_bits_le(&mut preimage);
-    false.write_bits_le(&mut preimage); // Separator
+    // TODO (howardwu): Disabled for Phase 3 calibration compatibility.
+    // false.write_bits_le(&mut preimage); // Separator
     mapping_name.write_bits_le(&mut preimage);
     // Compute the mapping ID.
     N::hash_bhp1024(&preimage)
@@ -51,9 +52,11 @@ fn to_key_id<N: Network>(
     // Construct the preimage.
     let mut preimage = Vec::new();
     program_id.write_bits_le(&mut preimage);
-    false.write_bits_le(&mut preimage); // Separator
+    // TODO (howardwu): Disabled for Phase 3 calibration compatibility.
+    // false.write_bits_le(&mut preimage); // Separator
     mapping_name.write_bits_le(&mut preimage);
-    false.write_bits_le(&mut preimage); // Separator
+    // TODO (howardwu): Disabled for Phase 3 calibration compatibility.
+    // false.write_bits_le(&mut preimage); // Separator
     key.write_bits_le(&mut preimage);
     // Compute the key ID.
     N::hash_bhp1024(&preimage)
