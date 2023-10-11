@@ -600,12 +600,10 @@ fn remove_key<
     let m = bincode::serialize(m).unwrap();
     // Serialize 'k'.
     let k = bincode::serialize(k).unwrap();
-
-    map.entry(m.clone()).or_default().remove(&k);
-
     // Concatenate 'm' and 'k' with a 0-byte separator.
     let mk = to_map_key(&m, &k);
 
+    map.entry(m).or_default().remove(&k);
     map_inner.remove(&mk);
 }
 
