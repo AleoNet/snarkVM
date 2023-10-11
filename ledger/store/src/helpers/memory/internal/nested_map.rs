@@ -554,7 +554,7 @@ fn insert<
     // Concatenate 'm' and 'k' with a 0-byte separator.
     let mk = to_map_key(&m, &k);
 
-    map.entry(m).or_insert_with(BTreeSet::new).insert(k);
+    map.entry(m).or_default().insert(k);
     map_inner.insert(mk, v);
 }
 
@@ -601,7 +601,7 @@ fn remove_key<
     // Serialize 'k'.
     let k = bincode::serialize(k).unwrap();
 
-    map.entry(m.clone()).or_insert_with(BTreeSet::new).remove(&k);
+    map.entry(m.clone()).or_default().remove(&k);
 
     // Concatenate 'm' and 'k' with a 0-byte separator.
     let mk = to_map_key(&m, &k);
