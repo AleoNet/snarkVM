@@ -17,7 +17,7 @@ use console::{
     prelude::*,
     program::{LiteralType, PlaintextType},
 };
-use ledger_block::{Deployment, Execution};
+use ledger_block::{deployment_namespace_cost, deployment_storage_cost, execution_storage_cost, Deployment, Execution};
 use ledger_store::ConsensusStorage;
 use synthesizer_program::{Command, Finalize, Instruction};
 
@@ -25,23 +25,11 @@ use std::collections::HashMap;
 
 /// Returns the *minimum* cost in microcredits to publish the given deployment (total cost, (storage cost, namespace cost)).
 pub fn deployment_cost<N: Network>(deployment: &Deployment<N>) -> Result<(u64, (u64, u64))> {
-    // Determine the number of bytes in the deployment.
-    let size_in_bytes = deployment.size_in_bytes()?;
-    // Retrieve the program ID.
-    let program_id = deployment.program_id();
-    // Determine the number of characters in the program ID.
-    let num_characters = u32::try_from(program_id.name().to_string().len())?;
-
     // Compute the storage cost in microcredits.
-    let storage_cost = size_in_bytes
-        .checked_mul(N::DEPLOYMENT_FEE_MULTIPLIER)
-        .ok_or(anyhow!("The storage cost computation overflowed for a deployment"))?;
+    let storage_cost = deployment_storage_cost(deployment)?;
 
-    // Compute the namespace cost in credits: 10^(10 - num_characters).
-    let namespace_cost = 10u64
-        .checked_pow(10u32.saturating_sub(num_characters))
-        .ok_or(anyhow!("The namespace cost computation overflowed for a deployment"))?
-        .saturating_mul(1_000_000); // 1 microcredit = 1e-6 credits.
+    // Compute the namespace cost in microcredits: 10^(10 - num_characters).
+    let namespace_cost = deployment_namespace_cost(deployment)?;
 
     // Compute the total cost in microcredits.
     let total_cost = storage_cost
@@ -57,7 +45,7 @@ pub fn execution_cost<N: Network, C: ConsensusStorage<N>>(
     execution: &Execution<N>,
 ) -> Result<(u64, (u64, u64))> {
     // Compute the storage cost in microcredits.
-    let storage_cost = execution.size_in_bytes()?;
+    let storage_cost = execution_storage_cost(execution)?;
 
     // Prepare the program lookup.
     let lookup = execution
