@@ -44,6 +44,25 @@ impl<E: Environment> SquareRoot for Field<E> {
     }
 }
 
+impl<E: Environment> Field<E> {
+    /// Returns the square root of `self`, where the least significant bit of the square root is zero.
+    pub fn even_square_root(&self) -> Self {
+        let square_root: Field<E> = witness!(|self| match self.even_square_root() {
+            Ok(square_root) => square_root,
+            _ => console::Field::zero(),
+        });
+
+        // Ensure `square_root` * `square_root` == `self`.
+        E::enforce(|| (&square_root, &square_root, self));
+
+        // Ensure that the LSB of the square root is zero.
+        // Note that this unwrap is safe since the number of bits is always greater than zero.
+        E::assert(!square_root.to_bits_be().last().unwrap());
+
+        square_root
+    }
+}
+
 impl<E: Environment> Metrics<dyn SquareRoot<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
@@ -92,6 +111,32 @@ mod tests {
         }
     }
 
+    fn check_even_square_root(
+        name: &str,
+        rng: &mut TestRng,
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) {
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(rng);
+            // Compute it's square root, or skip this iteration if it does not natively exist.
+            if let Ok(expected) = given.even_square_root() {
+                let input = Field::<Circuit>::new(mode, given);
+
+                Circuit::scope(name, || {
+                    let candidate = input.even_square_root();
+                    assert_eq!(expected, candidate.eject_value());
+                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                });
+                Circuit::reset();
+            }
+        }
+    }
+
     #[test]
     fn test_square_root() {
         let mut rng = TestRng::default();
@@ -99,5 +144,14 @@ mod tests {
         check_square_root("Constant", Mode::Constant, &mut rng);
         check_square_root("Public", Mode::Public, &mut rng);
         check_square_root("Private", Mode::Private, &mut rng);
+    }
+
+    #[test]
+    fn test_even_square_root() {
+        let mut rng = TestRng::default();
+
+        check_even_square_root("Constant", &mut rng, Mode::Constant, 2, 0, 0, 0);
+        check_even_square_root("Public", &mut rng, Mode::Public, 1, 0, 758, 761);
+        check_even_square_root("Private", &mut rng, Mode::Private, 1, 0, 758, 761);
     }
 }
