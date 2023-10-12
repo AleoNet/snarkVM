@@ -36,7 +36,7 @@ pub struct FinalizeMemory<N: Network> {
     /// The program ID map.
     program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
     /// The key-value map.
-    key_value_id_map: NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>,
+    key_value_map: NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -45,7 +45,7 @@ pub struct FinalizeMemory<N: Network> {
 impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     type CommitteeStorage = CommitteeMemory<N>;
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type KeyValueIDMap = NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
+    type KeyValueMap = NestedMemoryMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -55,7 +55,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
         Ok(Self {
             committee_store,
             program_id_map: MemoryMap::default(),
-            key_value_id_map: NestedMemoryMap::default(),
+            key_value_map: NestedMemoryMap::default(),
             dev,
         })
     }
@@ -77,8 +77,8 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
     }
 
     /// Returns the key-value map.
-    fn key_value_id_map(&self) -> &Self::KeyValueIDMap {
-        &self.key_value_id_map
+    fn key_value_map(&self) -> &Self::KeyValueMap {
+        &self.key_value_map
     }
 
     /// Returns the optional development ID.
