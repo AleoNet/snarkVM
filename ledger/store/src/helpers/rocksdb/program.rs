@@ -36,7 +36,7 @@ pub struct FinalizeDB<N: Network> {
     /// The program ID map.
     program_id_map: DataMap<ProgramID<N>, IndexSet<Identifier<N>>>,
     /// The key-value map.
-    key_value_id_map: NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>,
+    key_value_map: NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>,
     /// The optional development ID.
     dev: Option<u16>,
 }
@@ -45,7 +45,7 @@ pub struct FinalizeDB<N: Network> {
 impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     type CommitteeStorage = CommitteeDB<N>;
     type ProgramIDMap = DataMap<ProgramID<N>, IndexSet<Identifier<N>>>;
-    type KeyValueIDMap = NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
+    type KeyValueMap = NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
     fn open(dev: Option<u16>) -> Result<Self> {
@@ -55,7 +55,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         Ok(Self {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map(N::ID, dev, MapID::Program(ProgramMap::ProgramID))?,
-            key_value_id_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
+            key_value_map: rocksdb::RocksDB::open_nested_map(N::ID, dev, MapID::Program(ProgramMap::KeyValueID))?,
             dev,
         })
     }
@@ -69,7 +69,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         Ok(Self {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::ProgramID))?,
-            key_value_id_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::KeyValueID))?,
+            key_value_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::KeyValueID))?,
             dev,
         })
     }
@@ -84,9 +84,9 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
         &self.program_id_map
     }
 
-    /// Returns the key-value ID map.
-    fn key_value_id_map(&self) -> &Self::KeyValueIDMap {
-        &self.key_value_id_map
+    /// Returns the key-value map.
+    fn key_value_map(&self) -> &Self::KeyValueMap {
+        &self.key_value_map
     }
 
     /// Returns the optional development ID.

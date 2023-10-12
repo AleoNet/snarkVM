@@ -75,7 +75,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// The mapping of `program ID` to `[mapping name]`.
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
     /// The mapping of `(program ID, mapping name)` to `[(key, value)]`.
-    type KeyValueIDMap: for<'a> NestedMap<'a, (ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
+    type KeyValueMap: for<'a> NestedMap<'a, (ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the program state storage.
     fn open(dev: Option<u16>) -> Result<Self>;
@@ -88,8 +88,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage>;
     /// Returns the program ID map.
     fn program_id_map(&self) -> &Self::ProgramIDMap;
-    /// Returns the key-value ID map.
-    fn key_value_id_map(&self) -> &Self::KeyValueIDMap;
+    /// Returns the key-value map.
+    fn key_value_map(&self) -> &Self::KeyValueMap;
 
     /// Returns the optional development ID.
     fn dev(&self) -> Option<u16>;
@@ -98,49 +98,49 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn start_atomic(&self) {
         self.committee_store().start_atomic();
         self.program_id_map().start_atomic();
-        self.key_value_id_map().start_atomic();
+        self.key_value_map().start_atomic();
     }
 
     /// Checks if an atomic batch is in progress.
     fn is_atomic_in_progress(&self) -> bool {
         self.committee_store().is_atomic_in_progress()
             || self.program_id_map().is_atomic_in_progress()
-            || self.key_value_id_map().is_atomic_in_progress()
+            || self.key_value_map().is_atomic_in_progress()
     }
 
     /// Checkpoints the atomic batch.
     fn atomic_checkpoint(&self) {
         self.committee_store().atomic_checkpoint();
         self.program_id_map().atomic_checkpoint();
-        self.key_value_id_map().atomic_checkpoint();
+        self.key_value_map().atomic_checkpoint();
     }
 
     /// Clears the latest atomic batch checkpoint.
     fn clear_latest_checkpoint(&self) {
         self.committee_store().clear_latest_checkpoint();
         self.program_id_map().clear_latest_checkpoint();
-        self.key_value_id_map().clear_latest_checkpoint();
+        self.key_value_map().clear_latest_checkpoint();
     }
 
     /// Rewinds the atomic batch to the previous checkpoint.
     fn atomic_rewind(&self) {
         self.committee_store().atomic_rewind();
         self.program_id_map().atomic_rewind();
-        self.key_value_id_map().atomic_rewind();
+        self.key_value_map().atomic_rewind();
     }
 
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.committee_store().abort_atomic();
         self.program_id_map().abort_atomic();
-        self.key_value_id_map().abort_atomic();
+        self.key_value_map().abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
     fn finish_atomic(&self) -> Result<()> {
         self.committee_store().finish_atomic()?;
         self.program_id_map().finish_atomic()?;
-        self.key_value_id_map().finish_atomic()
+        self.key_value_map().finish_atomic()
     }
 
     /// Initializes the given `program ID` and `mapping name` in storage.
@@ -204,8 +204,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
         atomic_batch_scope!(self, {
-            // Update the key-value ID map with the new key-value ID.
-            self.key_value_id_map().insert((program_id, mapping_name), key, value)?;
+            // Update the key-value map with the new key-value.
+            self.key_value_map().insert((program_id, mapping_name), key, value)?;
 
             Ok(())
         })?;
@@ -236,8 +236,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
         atomic_batch_scope!(self, {
-            // Update the key-value ID map with the new key-value ID.
-            self.key_value_id_map().insert((program_id, mapping_name), key, value)?;
+            // Update the key-value map with the new key-value.
+            self.key_value_map().insert((program_id, mapping_name), key, value)?;
 
             Ok(())
         })?;
@@ -264,8 +264,8 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         }
 
         atomic_batch_scope!(self, {
-            // Update the key-value ID map with the new key ID.
-            self.key_value_id_map().remove_key(&(program_id, mapping_name), key)?;
+            // Update the key-value map with the new key.
+            self.key_value_map().remove_key(&(program_id, mapping_name), key)?;
 
             Ok(())
         })?;
@@ -289,12 +289,12 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
         atomic_batch_scope!(self, {
             // Remove the existing key-value entries.
-            self.key_value_id_map().remove_map(&(program_id, mapping_name))?;
+            self.key_value_map().remove_map(&(program_id, mapping_name))?;
 
             // Insert the new key-value entries.
             for (key, value) in entries {
-                // Insert the key-value ID.
-                self.key_value_id_map().insert((program_id, mapping_name), key, value)?;
+                // Insert the key-value entry.
+                self.key_value_map().insert((program_id, mapping_name), key, value)?;
             }
 
             Ok(())
@@ -321,7 +321,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             // Update the mapping names.
             self.program_id_map().insert(program_id, mapping_names)?;
             // Remove the mapping.
-            self.key_value_id_map().remove_map(&(program_id, mapping_name))?;
+            self.key_value_map().remove_map(&(program_id, mapping_name))?;
 
             Ok(())
         })?;
@@ -345,7 +345,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             // Remove each mapping.
             for mapping_name in mapping_names.iter() {
                 // Remove the mapping.
-                self.key_value_id_map().remove_map(&(*program_id, *mapping_name))?;
+                self.key_value_map().remove_map(&(*program_id, *mapping_name))?;
             }
             Ok(())
         })
@@ -373,7 +373,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<bool> {
-        self.key_value_id_map().contains_key_confirmed(&(program_id, mapping_name), key)
+        self.key_value_map().contains_key_confirmed(&(program_id, mapping_name), key)
     }
 
     /// Returns `true` if the given `program ID`, `mapping name`, and `key` exist.
@@ -383,7 +383,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<bool> {
-        self.key_value_id_map().contains_key_speculative(&(program_id, mapping_name), key)
+        self.key_value_map().contains_key_speculative(&(program_id, mapping_name), key)
     }
 
     /// Returns the confirmed mapping names for the given `program ID`.
@@ -407,7 +407,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot get mapping (C).")
         }
         // Retrieve the key-values for the mapping.
-        self.key_value_id_map().get_map_confirmed(&(program_id, mapping_name))
+        self.key_value_map().get_map_confirmed(&(program_id, mapping_name))
     }
 
     /// Returns the speculative mapping entries for the given `program ID` and `mapping name`.
@@ -421,7 +421,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
             bail!("Illegal operation: '{program_id}/{mapping_name}' is not initialized - cannot get mapping (S).")
         }
         // Retrieve the key-values for the mapping.
-        self.key_value_id_map().get_map_speculative(&(program_id, mapping_name))
+        self.key_value_map().get_map_speculative(&(program_id, mapping_name))
     }
 
     /// Returns the confirmed value for the given `program ID`, `mapping name`, and `key`.
@@ -431,7 +431,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<Value<N>>> {
-        match self.key_value_id_map().get_value_confirmed(&(program_id, mapping_name), key)? {
+        match self.key_value_map().get_value_confirmed(&(program_id, mapping_name), key)? {
             Some(value) => Ok(Some(cow_to_cloned!(value))),
             None => Ok(None),
         }
@@ -444,7 +444,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
         mapping_name: Identifier<N>,
         key: &Plaintext<N>,
     ) -> Result<Option<Value<N>>> {
-        match self.key_value_id_map().get_value_speculative(&(program_id, mapping_name), key)? {
+        match self.key_value_map().get_value_speculative(&(program_id, mapping_name), key)? {
             Some(value) => Ok(Some(cow_to_cloned!(value))),
             None => Ok(None),
         }
@@ -454,7 +454,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn get_checksum_confirmed(&self) -> Result<Field<N>> {
         // Compute all mapping checksums.
         let preimage: std::collections::BTreeMap<_, _> = self
-            .key_value_id_map()
+            .key_value_map()
             .iter_confirmed()
             .map(|(m, k, v)| {
                 let m = cow_to_copied!(m);
@@ -487,7 +487,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     fn get_checksum_pending(&self) -> Result<Field<N>> {
         // Compute all mapping checksums.
         let preimage: std::collections::BTreeMap<_, _> = self
-            .key_value_id_map()
+            .key_value_map()
             .iter_pending()
             .map(|(m, k, v)| {
                 let m = cow_to_copied!(m);
