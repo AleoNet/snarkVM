@@ -84,7 +84,22 @@ impl<E: Environment> Elligator2<E> {
             // Let y = -e * sqrt(x^3 + Ax^2 + Bx).
             let x2 = x.square();
             let rhs = (x2 * x) + (a * x2) + (b * x);
-            let value = rhs.square_root().map_err(|_| anyhow!("Elligator2 failed: sqrt(x^3 + Ax^2 + Bx) failed"))?;
+
+            // Witness the even square root of `rhs`.
+            let value = match rhs.square_root() {
+                Ok(sqrt) => {
+                    // Get the least significant bit of the square root.
+                    // Note that the unwrap is safe since the number of bits is always greater than zero.
+                    match *sqrt.to_bits_be().last().unwrap() {
+                        // If the lsb is set, return the negated square root.
+                        true => -sqrt,
+                        // Otherwise, return the square root.
+                        false => sqrt,
+                    }
+                }
+                Err(_) => Field::zero(),
+            };
+
             let y = match e {
                 LegendreSymbol::Zero => Field::<E>::zero(),
                 LegendreSymbol::QuadraticResidue => -value,
