@@ -17,6 +17,9 @@ use super::*;
 impl<E: Environment> SquareRoot for Field<E> {
     type Output = Self;
 
+    /// Returns the square root of `self`.
+    /// If there are two square roots, the bitwise lesser one is returned.
+    /// If there are no square roots, zero is returned.
     fn square_root(&self) -> Self::Output {
         let square_root: Field<E> = witness!(|self| match self.square_root() {
             Ok(square_root) => square_root,
