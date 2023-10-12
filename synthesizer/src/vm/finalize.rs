@@ -509,15 +509,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                     // Ensure genesis has not been ratified yet.
                     ensure!(!is_genesis_ratified, "Ratify::Genesis(..) has already been ratified");
 
-                    // Initialize the store for 'credits.aleo'.
-                    let credits = Program::<N>::credits()?;
-                    for mapping in credits.mappings().values() {
-                        // Ensure that all mappings are initialized.
-                        if !store.contains_mapping_confirmed(credits.id(), mapping.name())? {
-                            // Initialize the mappings for 'credits.aleo'.
-                            finalize_operations.push(store.initialize_mapping(*credits.id(), *mapping.name())?);
-                        }
-                    }
+                    // // Initialize the store for 'credits.aleo'.
+                    // let credits = Program::<N>::credits()?;
+                    // for mapping in credits.mappings().values() {
+                    //     // Ensure that all mappings are initialized.
+                    //     if !store.contains_mapping_confirmed(credits.id(), mapping.name())? {
+                    //         // Initialize the mappings for 'credits.aleo'.
+                    //         finalize_operations.push(store.initialize_mapping(*credits.id(), *mapping.name())?);
+                    //     }
+                    // }
 
                     // Initialize the stakers.
                     let mut stakers = IndexMap::with_capacity(committee.members().len());

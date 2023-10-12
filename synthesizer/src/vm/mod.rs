@@ -65,6 +65,16 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Initialize a new process.
         let mut process = Process::load()?;
 
+        // Initialize the store for 'credits.aleo'.
+        let credits = Program::<N>::credits()?;
+        for mapping in credits.mappings().values() {
+            // Ensure that all mappings are initialized.
+            if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
+                // Initialize the mappings for 'credits.aleo'.
+                store.finalize_store().initialize_mapping(*credits.id(), *mapping.name())?;
+            }
+        }
+
         // A helper function to load the program into the process, and recursively load all imports.
         fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
             process: &mut Process<N>,

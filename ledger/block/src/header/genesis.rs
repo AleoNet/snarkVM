@@ -28,7 +28,7 @@ impl<N: Network> Header<N> {
         let transactions_root = transactions.to_transactions_root()?;
         let finalize_root = transactions.to_finalize_root(ratify_finalize_operations)?;
         let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root();
-        let coinbase_accumulator_point = Field::zero();
+        let solutions_root = Field::zero();
         let subdag_root = Field::zero();
         let metadata = Metadata::genesis()?;
 
@@ -38,7 +38,7 @@ impl<N: Network> Header<N> {
             transactions_root,
             finalize_root,
             ratifications_root,
-            coinbase_accumulator_point,
+            solutions_root,
             subdag_root,
             metadata,
         )
