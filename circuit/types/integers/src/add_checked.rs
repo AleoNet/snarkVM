@@ -74,6 +74,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on addition of two constants"),
             }
         } else {
+            // TODO: Optimize
             // Instead of adding the bits of `self` and `other` directly, the integers are
             // converted into a field elements, and summed, before converting back to integers.
             // Note: This is safe as the field is larger than the maximum integer type supported.
