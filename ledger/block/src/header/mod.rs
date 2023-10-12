@@ -28,6 +28,7 @@ use console::{
     program::{HeaderLeaf, HeaderPath, HeaderTree, HEADER_DEPTH, RATIFICATIONS_DEPTH},
     types::Field,
 };
+use synthesizer_program::FinalizeOperation;
 
 /// The header for the block contains metadata that uniquely identifies the block.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

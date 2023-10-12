@@ -590,7 +590,7 @@ pub mod test_helpers {
         let transactions = Transactions::from_iter([confirmed].into_iter());
 
         // Prepare the block header.
-        let header = Header::genesis(&transactions).unwrap();
+        let header = Header::genesis(&transactions, vec![]).unwrap();
         // Prepare the previous block hash.
         let previous_hash = <CurrentNetwork as Network>::BlockHash::default();
 

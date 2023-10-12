@@ -16,11 +16,17 @@ use super::*;
 
 impl<N: Network> Header<N> {
     /// Initializes the genesis block header.
-    pub fn genesis(transactions: &Transactions<N>) -> Result<Self> {
+    pub fn genesis(
+        transactions: &Transactions<N>,
+        ratify_finalize_operations: Vec<FinalizeOperation<N>>,
+    ) -> Result<Self> {
+        #[cfg(not(test))]
+        ensure!(!ratify_finalize_operations.is_empty(), "The genesis block must contain ratify-finalize operations");
+
         // Prepare a genesis block header.
         let previous_state_root = Into::<N::StateRoot>::into(Field::zero());
         let transactions_root = transactions.to_transactions_root()?;
-        let finalize_root = transactions.to_finalize_root()?;
+        let finalize_root = transactions.to_finalize_root(ratify_finalize_operations)?;
         let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root();
         let coinbase_accumulator_point = Field::zero();
         let subdag_root = Field::zero();

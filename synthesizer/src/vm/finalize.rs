@@ -15,10 +15,13 @@
 use super::*;
 use ledger_block::{ConfirmedTransaction, Rejected, Transactions};
 use ledger_coinbase::CoinbaseSolution;
+use synthesizer_program::FinalizeOperation;
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Speculates on the given list of transactions in the VM,
-    /// returning the confirmed and aborted transactions.
+    /// Speculates on the given list of transactions in the VM.
+    ///
+    /// Returns the confirmed transactions, aborted transactions,
+    /// and finalize operations from pre-ratify and post-ratify.
     #[inline]
     pub fn speculate<'a>(
         &self,
@@ -26,20 +29,22 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         ratifications: &[Ratify<N>],
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
-    ) -> Result<(Transactions<N>, Vec<Transaction<N>>)> {
+    ) -> Result<(Transactions<N>, Vec<Transaction<N>>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::speculate");
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
-        let (confirmed_transactions, aborted_transactions) =
+        let (confirmed_transactions, aborted_transactions, ratify_finalize_operations) =
             self.atomic_speculate(state, ratifications, solutions, transactions)?;
 
         finish!(timer, "Finished dry-run of the transactions");
 
         // Return the transactions.
-        Ok((confirmed_transactions.into_iter().collect(), aborted_transactions))
+        Ok((confirmed_transactions.into_iter().collect(), aborted_transactions, ratify_finalize_operations))
     }
 
     /// Finalizes the given transactions into the VM.
+    ///
+    /// Returns the finalize operations from pre-ratify and post-ratify.
     #[inline]
     pub fn finalize(
         &self,
@@ -47,27 +52,29 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         ratifications: &[Ratify<N>],
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
-    ) -> Result<()> {
+    ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::finalize");
 
         // Performs a **real-run** of finalize over the list of ratifications, solutions, and transactions.
-        self.atomic_finalize(state, ratifications, solutions, transactions)?;
+        let ratify_finalize_operations = self.atomic_finalize(state, ratifications, solutions, transactions)?;
 
         finish!(timer, "Finished real-run of finalize");
-        Ok(())
+        Ok(ratify_finalize_operations)
     }
 }
 
 impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Performs atomic speculation over a list of transactions,
-    /// and returns the confirmed and aborted transactions.
+    /// Performs atomic speculation over a list of transactions.
+    ///
+    /// Returns the confirmed transactions, aborted transactions,
+    /// and finalize operations from pre-ratify and post-ratify.
     fn atomic_speculate<'a>(
         &self,
         state: FinalizeGlobalState,
         ratifications: &[Ratify<N>],
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: impl ExactSizeIterator<Item = &'a Transaction<N>>,
-    ) -> Result<(Vec<ConfirmedTransaction<N>>, Vec<Transaction<N>>)> {
+    ) -> Result<(Vec<ConfirmedTransaction<N>>, Vec<Transaction<N>>, Vec<FinalizeOperation<N>>)> {
         let timer = timer!("VM::atomic_speculate");
 
         // Retrieve the number of transactions.
@@ -86,14 +93,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => true,
             });
 
+            // Initialize a list of finalize operations.
+            let mut finalize_operations = Vec::new();
+
             // Retrieve the finalize store.
             let store = self.finalize_store();
 
             /* Perform the ratifications before finalize. */
 
-            if let Err(e) = Self::atomic_pre_ratify(store, state, pre_ratifications) {
+            match Self::atomic_pre_ratify(store, state, pre_ratifications) {
+                // Store the finalize operations from the post-ratify.
+                Ok(operations) => finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
-                return Err(format!("Failed to pre-ratify - {e}"));
+                Err(e) => return Err(format!("Failed to pre-ratify - {e}")),
             }
 
             /* Perform the atomic finalize over the transactions. */
@@ -211,19 +223,24 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             /* Perform the ratifications after finalize. */
 
-            if let Err(e) = Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+            match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+                // Store the finalize operations from the post-ratify.
+                Ok(operations) => finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
-                return Err(format!("Failed to post-ratify - {e}"));
+                Err(e) => return Err(format!("Failed to post-ratify - {e}")),
             }
 
             finish!(timer);
 
-            // On return, 'atomic_finalize!' will abort the batch, and return the confirmed & aborted transactions.
-            Ok((confirmed, aborted))
+            // On return, 'atomic_finalize!' will abort the batch, and return the confirmed & aborted transactions,
+            // along with the finalize operations from pre-ratify and post-ratify.
+            Ok((confirmed, aborted, finalize_operations))
         })
     }
 
     /// Performs atomic finalization over a list of transactions.
+    ///
+    /// Returns the finalize operations from pre-ratify and post-ratify.
     #[inline]
     fn atomic_finalize(
         &self,
@@ -231,7 +248,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         ratifications: &[Ratify<N>],
         solutions: Option<&CoinbaseSolution<N>>,
         transactions: &Transactions<N>,
-    ) -> Result<()> {
+    ) -> Result<Vec<FinalizeOperation<N>>> {
         let timer = timer!("VM::atomic_finalize");
 
         // Perform the finalize operation on the preset finalize mode.
@@ -247,14 +264,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => true,
             });
 
+            // Initialize a list of finalize operations.
+            let mut finalize_operations = Vec::new();
+
             // Retrieve the finalize store.
             let store = self.finalize_store();
 
             /* Perform the ratifications before finalize. */
 
-            if let Err(e) = Self::atomic_pre_ratify(store, state, pre_ratifications) {
+            match Self::atomic_pre_ratify(store, state, pre_ratifications) {
+                // Store the finalize operations from the post-ratify.
+                Ok(operations) => finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
-                return Err(format!("Failed to pre-ratify - {e}"));
+                Err(e) => return Err(format!("Failed to pre-ratify - {e}")),
             }
 
             /* Perform the atomic finalize over the transactions. */
@@ -421,9 +443,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             /* Perform the ratifications after finalize. */
 
-            if let Err(e) = Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+            match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
+                // Store the finalize operations from the post-ratify.
+                Ok(operations) => finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
-                return Err(format!("Failed to post-ratify - {e}"));
+                Err(e) => return Err(format!("Failed to post-ratify - {e}")),
             }
 
             /* Start the commit process. */
@@ -435,7 +459,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             finish!(timer); // <- Note: This timer does **not** include the time to write batch to DB.
 
-            Ok(())
+            Ok(finalize_operations)
         })
     }
 
@@ -445,7 +469,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         store: &FinalizeStore<N, C::FinalizeStorage>,
         state: FinalizeGlobalState,
         pre_ratifications: impl Iterator<Item = &'a Ratify<N>>,
-    ) -> Result<()> {
+    ) -> Result<Vec<FinalizeOperation<N>>> {
         // Construct the program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
@@ -454,6 +478,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
+
+        // Initialize a list of finalize operations.
+        let mut finalize_operations = Vec::new();
+
+        // Initialize a flag for the genesis ratification.
+        let mut is_genesis_ratified = false;
 
         // Iterate over the ratifications.
         for ratify in pre_ratifications {
@@ -466,6 +496,18 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         committee.starting_round() == 0,
                         "Ratify::Genesis(..) expected a genesis committee round of 0"
                     );
+                    // Ensure genesis has not been ratified yet.
+                    ensure!(!is_genesis_ratified, "Ratify::Genesis(..) has already been ratified");
+
+                    // Initialize the store for 'credits.aleo'.
+                    let credits = Program::<N>::credits()?;
+                    for mapping in credits.mappings().values() {
+                        // Ensure that all mappings are initialized.
+                        if !store.contains_mapping_confirmed(credits.id(), mapping.name())? {
+                            // Initialize the mappings for 'credits.aleo'.
+                            finalize_operations.push(store.initialize_mapping(*credits.id(), *mapping.name())?);
+                        }
+                    }
 
                     // Initialize the stakers.
                     let mut stakers = IndexMap::with_capacity(committee.members().len());
@@ -481,10 +523,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), committee.clone())?;
-                    // Replace the committee mapping in storage.
-                    store.replace_mapping(program_id, committee_mapping, next_committee_map)?;
-                    // Replace the bonded mapping in storage.
-                    store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?;
+                    // Store the finalize operations for updating the committee and bonded mapping.
+                    finalize_operations.extend(&[
+                        // Replace the committee mapping in storage.
+                        store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
+                        // Replace the bonded mapping in storage.
+                        store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                    ]);
 
                     // Iterate over the public balances.
                     for (address, amount) in public_balances {
@@ -501,13 +546,19 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             v => bail!("Critical bug in pre-ratify - Invalid public balance type ({v:?})"),
                         })));
                         // Update the public balance in finalize storage.
-                        store.update_key_value(program_id, account_mapping, key, next_value)?;
+                        let operation = store.update_key_value(program_id, account_mapping, key, next_value)?;
+                        finalize_operations.push(operation);
                     }
+
+                    // Set the genesis ratification flag.
+                    is_genesis_ratified = true;
                 }
                 Ratify::BlockReward(..) | Ratify::PuzzleReward(..) => continue,
             }
         }
-        Ok(())
+
+        // Return the finalize operations.
+        Ok(finalize_operations)
     }
 
     /// Performs the post-ratifications after finalizing transactions.
@@ -517,7 +568,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         state: FinalizeGlobalState,
         post_ratifications: impl Iterator<Item = &'a Ratify<N>>,
         solutions: Option<&CoinbaseSolution<N>>,
-    ) -> Result<()> {
+    ) -> Result<Vec<FinalizeOperation<N>>> {
         // Construct the program ID.
         let program_id = ProgramID::from_str("credits.aleo")?;
         // Construct the committee mapping name.
@@ -526,6 +577,9 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let bonded_mapping = Identifier::from_str("bonded")?;
         // Construct the account mapping name.
         let account_mapping = Identifier::from_str("account")?;
+
+        // Initialize a list of finalize operations.
+        let mut finalize_operations = Vec::new();
 
         // Iterate over the ratifications.
         for ratify in post_ratifications {
@@ -554,10 +608,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
                     // Insert the next committee into storage.
                     store.committee_store().insert(state.block_height(), next_committee)?;
-                    // Replace the committee mapping in storage.
-                    store.replace_mapping(program_id, committee_mapping, next_committee_map)?;
-                    // Replace the bonded mapping in storage.
-                    store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?;
+                    // Store the finalize operations for updating the committee and bonded mapping.
+                    finalize_operations.extend(&[
+                        // Replace the committee mapping in storage.
+                        store.replace_mapping(program_id, committee_mapping, next_committee_map)?,
+                        // Replace the bonded mapping in storage.
+                        store.replace_mapping(program_id, bonded_mapping, next_bonded_map)?,
+                    ]);
                 }
                 Ratify::PuzzleReward(puzzle_reward) => {
                     // If the puzzle reward is zero, skip.
@@ -588,12 +645,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             v => bail!("Critical bug in post-ratify puzzle reward- Invalid amount ({v:?})"),
                         })));
                         // Update the public balance in finalize storage.
-                        store.update_key_value(program_id, account_mapping, key, next_value)?;
+                        let operation = store.update_key_value(program_id, account_mapping, key, next_value)?;
+                        finalize_operations.push(operation);
                     }
                 }
             }
         }
-        Ok(())
+
+        // Return the finalize operations.
+        Ok(finalize_operations)
     }
 }
 
@@ -692,7 +752,8 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Construct the new block header.
-        let (transactions, _) = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        let (transactions, aborted_transactions, ratify_finalize_operations) =
+            vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             CurrentNetwork::ID,
@@ -710,7 +771,7 @@ finalize transfer_public:
         let header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root().unwrap(),
+            transactions.to_finalize_root(ratify_finalize_operations).unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             Field::zero(),
@@ -859,7 +920,7 @@ finalize transfer_public:
         let program_id = ProgramID::from_str("testing.aleo").unwrap();
 
         // Prepare the confirmed transactions.
-        let (confirmed_transactions, _) =
+        let (confirmed_transactions, _, _) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction.clone()].iter()).unwrap();
 
         // Ensure the VM does not contain this program.
@@ -878,7 +939,7 @@ finalize transfer_public:
         assert!(vm.contains_program(&program_id));
 
         // Ensure the dry run of the redeployment will cause a reject transaction to be created.
-        let (candidate_transactions, _) =
+        let (candidate_transactions, _, _) =
             vm.atomic_speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
         assert_eq!(candidate_transactions.len(), 1);
         assert!(matches!(candidate_transactions[0], ConfirmedTransaction::RejectedDeploy(..)));
@@ -979,7 +1040,7 @@ finalize transfer_public:
         // Transfer_20 -> Balance = 20 - 20 = 0
         {
             let transactions = [mint_10.clone(), transfer_10.clone(), transfer_20.clone()];
-            let (confirmed_transactions, _) =
+            let (confirmed_transactions, _, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
@@ -998,7 +1059,7 @@ finalize transfer_public:
         // Transfer_30 -> Balance = 30 - 30 = 0
         {
             let transactions = [transfer_20.clone(), mint_10.clone(), mint_20.clone(), transfer_30.clone()];
-            let (confirmed_transactions, _) =
+            let (confirmed_transactions, _, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that all the transactions are accepted.
@@ -1017,7 +1078,7 @@ finalize transfer_public:
         // Transfer_10 -> Balance = 0 - 10 = -10 (should be rejected)
         {
             let transactions = [transfer_20.clone(), transfer_10.clone()];
-            let (confirmed_transactions, _) =
+            let (confirmed_transactions, _, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
@@ -1037,7 +1098,7 @@ finalize transfer_public:
         // Transfer_10 -> Balance = 10 - 10 = 0
         {
             let transactions = [mint_20.clone(), transfer_30.clone(), transfer_20.clone(), transfer_10.clone()];
-            let (confirmed_transactions, _) =
+            let (confirmed_transactions, _, _) =
                 vm.atomic_speculate(sample_finalize_state(1), &[], None, transactions.iter()).unwrap();
 
             // Assert that the accepted and rejected transactions are correct.
@@ -1132,7 +1193,7 @@ function ped_hash:
                 create_execution(&vm, caller_private_key, program_id, "ped_hash", inputs, &mut unspent_records, rng);
 
             // Speculatively execute the transaction. Ensure that this call does not panic and returns a rejected transaction.
-            let (confirmed_transactions, _) =
+            let (confirmed_transactions, _, _) =
                 vm.speculate(sample_finalize_state(1), &[], None, [transaction.clone()].iter()).unwrap();
 
             // Ensure that the transaction is rejected.

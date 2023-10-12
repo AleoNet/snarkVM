@@ -217,7 +217,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             previous_block.hash(),
         )?;
         // Select the transactions from the memory pool.
-        let (transactions, _aborted) =
+        let (transactions, aborted_transactions, ratify_finalize_operations) =
             self.vm.speculate(state, &ratifications, solutions.as_ref(), candidate_transactions.iter())?;
 
         // Construct the metadata.
@@ -238,7 +238,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let header = Header::from(
             latest_state_root,
             transactions.to_transactions_root()?,
-            transactions.to_finalize_root()?,
+            transactions.to_finalize_root(ratify_finalize_operations)?,
             ratifications_root,
             coinbase_accumulator_point,
             subdag_root,

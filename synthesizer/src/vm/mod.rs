@@ -65,16 +65,6 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Initialize a new process.
         let mut process = Process::load()?;
 
-        // Initialize the store for 'credits.aleo'.
-        let credits = Program::<N>::credits()?;
-        for mapping in credits.mappings().values() {
-            // Ensure that all mappings are initialized.
-            if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
-                // Initialize the mappings for 'credits.aleo'.
-                store.finalize_store().initialize_mapping(*credits.id(), *mapping.name())?;
-            }
-        }
-
         // A helper function to load the program into the process, and recursively load all imports.
         fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
             process: &mut Process<N>,
@@ -229,11 +219,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Construct the finalize state.
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate the transactions.
-        let (transactions, aborted) = self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
-        ensure!(aborted.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
+        let (transactions, aborted_transactions, ratify_finalize_operations) =
+            self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
+        ensure!(aborted_transactions.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
 
         // Prepare the block header.
-        let header = Header::genesis(&transactions)?;
+        let header = Header::genesis(&transactions, ratify_finalize_operations)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
@@ -265,7 +256,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
-            Ok(_) => {
+            Ok(ratify_finalize_operations) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
             }
@@ -570,7 +561,8 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let (transactions, _) = vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
+        let (transactions, aborted_transactions, ratify_finalize_operations) =
+            vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
             Testnet3::ID,
@@ -588,7 +580,7 @@ function compute:
         let header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root().unwrap(),
+            transactions.to_finalize_root(ratify_finalize_operations).unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             Field::zero(),
