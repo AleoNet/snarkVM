@@ -76,20 +76,38 @@ impl<E: Environment> Equal<Self> for Field<E> {
             // Since the specification implies that is_neq is either 0 or 1,
             // the circuit does not need a boolean constraint for is_neq, as mentioned above.
             _ => {
+
+                // Allocate a new R1CS field variable for the result.
+                // Its value is 1 if self and other are not equal, 0 if equal.
                 let is_neq = Boolean::from_variable(E::new_variable(Mode::Private, match is_neq_ejected {
                     true => E::BaseField::one(),
                     false => E::BaseField::zero(),
                 }));
+
+                // Calculate a linear combination that is the difference of self and other.
                 let delta = self - other;
+
+                // Introduce an internal variable multiplier (see constraints above).
+                // Its value is the inverse of self - other is they are not equal,
+                // otherwise its value is irrelevant to the satisfaction of the constraints,
+                // and we just pick 1 in that case.
                 let multiplier: Field<E> = witness!(|delta| {
                     match delta.inverse() {
                         Ok(inverse) => inverse,
-                        _ => console::Field::one(), // exact value is irrelevant, because (0) (anything) = (0)
+                        _ => console::Field::one(),
                     }
                 });
-                let is_eq = !is_neq.clone(); // 1 - is_neq
-                E::enforce(|| (&delta, &multiplier, &is_neq)); // 1st constraint
-                E::enforce(|| (delta, is_eq, E::zero())); // 2nd constraint
+
+                // Calculate is_eq = 1 - is_neq.
+                let is_eq = !is_neq.clone();
+
+                // Enforce 1st constraint (see above).
+                E::enforce(|| (&delta, &multiplier, &is_neq));
+
+                // Enforce 2nd constraint (see above).
+                E::enforce(|| (delta, is_eq, E::zero()));
+
+                // Return result.
                 is_neq
             }
         }
