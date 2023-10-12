@@ -49,21 +49,46 @@ impl<N: Network> ConfirmedTransaction<N> {
                 bail!("Transaction '{}' is not a deploy transaction", transaction.id())
             }
         };
-        // Ensure the number of program mappings matches the number of finalize operations.
-        if program.mappings().len() != finalize_operations.len() {
+
+        // Determine the number of finalize operations for the fee transition.
+        let num_fee_finalize_operations = match transaction
+            .fee_transition()
+            .ok_or_else(|| anyhow!("Missing fee for deploy transaction"))?
+            .is_fee_public()
+        {
+            true => 1,
+            false => 0,
+        };
+
+        // Count the number of initialize mapping and update key-value operations.
+        let (initialize_mapping_count, update_key_value_count) =
+            finalize_operations.iter().try_fold((0, 0), |(init, update), operation| match operation {
+                FinalizeOperation::InitializeMapping(..) => Ok((init + 1, update)),
+                FinalizeOperation::UpdateKeyValue(..) => Ok((init, update + 1)),
+                _ => bail!("Transaction '{}' (deploy) contains an invalid finalize operation type", transaction.id()),
+            })?;
+
+        // Ensure the number of finalize operations matches the number of initialize mapping and update key-value operations.
+        if update_key_value_count != num_fee_finalize_operations
+            || initialize_mapping_count + update_key_value_count != finalize_operations.len()
+        {
             bail!(
-                "The number of program mappings ({}) does not match the number of finalize operations ({})",
+                "Transaction '{}' (deploy) should contain exactly {} UpdateKeyValue operations and the rest ({}) should be InitializeMapping operations",
+                transaction.id(),
+                num_fee_finalize_operations,
+                initialize_mapping_count
+            );
+        }
+
+        // Ensure the number of program mappings matches the number of initialize mapping operations.
+        if program.mappings().len() != initialize_mapping_count {
+            bail!(
+                "The number of program mappings  ({}) does not match the number of InitializeMapping finalize operations ({})",
                 program.mappings().len(),
-                finalize_operations.len()
+                initialize_mapping_count
             )
         }
-        // Ensure the finalize operations contain the correct types.
-        for operation in finalize_operations.iter() {
-            // Ensure the finalize operation is an initialize mapping.
-            if !matches!(operation, FinalizeOperation::InitializeMapping(..)) {
-                bail!("Transaction '{}' (deploy) contains an invalid finalize operation type", transaction.id())
-            }
-        }
+
         // Return the accepted deploy transaction.
         Ok(Self::AcceptedDeploy(index, transaction, finalize_operations))
     }
