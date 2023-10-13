@@ -19,7 +19,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
     fn execute_closure<A: circuit::Aleo<Network = N>>(
         &self,
         closure: &Closure<N>,
@@ -130,7 +129,6 @@ impl<N: Network> StackExecute<N> for Stack<N> {
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
     fn execute_function<A: circuit::Aleo<Network = N>>(
         &self,
         mut call_stack: CallStack<N>,
