@@ -20,7 +20,14 @@ use crate::{
         EvaluationDomain,
     },
     polycommit::sonic_pc::LabeledPolynomial,
-    snark::varuna::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, Matrix, SNARKMode},
+    snark::varuna::{
+        ahp::matrices::MatrixEvals,
+        matrices::MatrixArithmetization,
+        AHPForR1CS,
+        CircuitInfo,
+        Matrix,
+        SNARKMode,
+    },
 };
 use blake2::Digest;
 use hex::FromHex;
@@ -55,7 +62,7 @@ impl CircuitId {
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_arith` are structs containing information about the arithmetized matrices
 #[derive(Clone, Debug)]
-pub struct Circuit<F: PrimeField, MM: SNARKMode> {
+pub struct Circuit<F: PrimeField, SM: SNARKMode> {
     /// Information about the indexed circuit.
     pub index_info: CircuitInfo,
 
@@ -67,36 +74,36 @@ pub struct Circuit<F: PrimeField, MM: SNARKMode> {
     pub c: Matrix<F>,
 
     /// Joint arithmetization of the A, B, and C matrices.
-    pub a_arith: MatrixArithmetization<F>,
-    pub b_arith: MatrixArithmetization<F>,
-    pub c_arith: MatrixArithmetization<F>,
+    pub a_arith: MatrixEvals<F>,
+    pub b_arith: MatrixEvals<F>,
+    pub c_arith: MatrixEvals<F>,
 
     pub fft_precomputation: FFTPrecomputation<F>,
     pub ifft_precomputation: IFFTPrecomputation<F>,
-    pub(crate) _mode: PhantomData<MM>,
+    pub(crate) _mode: PhantomData<SM>,
     pub(crate) id: CircuitId,
 }
 
-impl<F: PrimeField, MM: SNARKMode> Eq for Circuit<F, MM> {}
-impl<F: PrimeField, MM: SNARKMode> PartialEq for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> Eq for Circuit<F, SM> {}
+impl<F: PrimeField, SM: SNARKMode> PartialEq for Circuit<F, SM> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> Ord for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> Ord for Circuit<F, SM> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.id.cmp(&other.id)
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> PartialOrd for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> PartialOrd for Circuit<F, SM> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> Circuit<F, SM> {
     pub fn hash(
         index_info: &CircuitInfo,
         a: &Matrix<F>,
@@ -113,7 +120,7 @@ impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
 
     /// The maximum degree required to represent polynomials of this index.
     pub fn max_degree(&self) -> usize {
-        self.index_info.max_degree::<F, MM>()
+        self.index_info.max_degree::<F, SM>()
     }
 
     /// The size of the constraint domain in this R1CS instance.
@@ -126,36 +133,26 @@ impl<F: PrimeField, MM: SNARKMode> Circuit<F, MM> {
         crate::fft::EvaluationDomain::<F>::new(self.index_info.num_variables).unwrap().size()
     }
 
-    /// Iterate over the indexed polynomials.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        // Alphabetical order
-        [
-            &self.a_arith.col,
-            &self.b_arith.col,
-            &self.c_arith.col,
-            &self.a_arith.row,
-            &self.b_arith.row,
-            &self.c_arith.row,
-            &self.a_arith.row_col,
-            &self.b_arith.row_col,
-            &self.c_arith.row_col,
-            &self.a_arith.row_col_val,
-            &self.b_arith.row_col_val,
-            &self.c_arith.row_col_val,
-        ]
-        .into_iter()
+    pub fn interpolate_matrix_evals(&self) -> impl Iterator<Item = LabeledPolynomial<F>> {
+        let [a_arith, b_arith, c_arith]: [_; 3] = [("a", &self.a_arith), ("b", &self.b_arith), ("c", &self.c_arith)]
+            .into_iter()
+            .map(|(label, evals)| MatrixArithmetization::new(&self.id, label, evals))
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+            .try_into()
+            .unwrap();
+        a_arith.into_iter().chain(b_arith.into_iter()).chain(c_arith.into_iter())
     }
 
     /// After indexing, we drop these evaluations to save space in the ProvingKey.
     pub fn prune_row_col_evals(&mut self) {
-        self.a_arith.evals_on_K.row_col = None;
-        self.b_arith.evals_on_K.row_col = None;
-        self.c_arith.evals_on_K.row_col = None;
+        self.a_arith.row_col = None;
+        self.b_arith.row_col = None;
+        self.c_arith.row_col = None;
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> CanonicalSerialize for Circuit<F, MM> {
-    #[allow(unused_mut, unused_variables)]
+impl<F: PrimeField, SM: SNARKMode> CanonicalSerialize for Circuit<F, SM> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.index_info.serialize_with_mode(&mut writer, compress)?;
         self.a.serialize_with_mode(&mut writer, compress)?;
@@ -167,34 +164,29 @@ impl<F: PrimeField, MM: SNARKMode> CanonicalSerialize for Circuit<F, MM> {
         Ok(())
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn serialized_size(&self, mode: Compress) -> usize {
-        let mut size = 0;
-        size += self.index_info.serialized_size(mode);
-        size += self.a.serialized_size(mode);
-        size += self.b.serialized_size(mode);
-        size += self.c.serialized_size(mode);
-        size += self.a_arith.serialized_size(mode);
-        size += self.b_arith.serialized_size(mode);
-        size += self.c_arith.serialized_size(mode);
-        size
+        self.index_info
+            .serialized_size(mode)
+            .saturating_add(self.a.serialized_size(mode))
+            .saturating_add(self.b.serialized_size(mode))
+            .saturating_add(self.c.serialized_size(mode))
+            .saturating_add(self.a_arith.serialized_size(mode))
+            .saturating_add(self.b_arith.serialized_size(mode))
+            .saturating_add(self.c_arith.serialized_size(mode))
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> snarkvm_utilities::Valid for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> snarkvm_utilities::Valid for Circuit<F, SM> {
     fn check(&self) -> Result<(), SerializationError> {
         Ok(())
     }
 
-    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
-    where
-        Self: 'a,
-    {
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError> {
         Ok(())
     }
 }
 
-impl<F: PrimeField, MM: SNARKMode> CanonicalDeserialize for Circuit<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> CanonicalDeserialize for Circuit<F, SM> {
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
@@ -212,7 +204,7 @@ impl<F: PrimeField, MM: SNARKMode> CanonicalDeserialize for Circuit<F, MM> {
         let non_zero_c_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_c)
             .ok_or(SerializationError::InvalidData)?;
 
-        let (fft_precomputation, ifft_precomputation) = AHPForR1CS::<F, MM>::fft_precomputation(
+        let (fft_precomputation, ifft_precomputation) = AHPForR1CS::<F, SM>::fft_precomputation(
             variable_domain_size,
             constraint_domain_size,
             non_zero_a_domain_size,

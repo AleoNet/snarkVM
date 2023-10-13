@@ -21,6 +21,16 @@ use core::{
 };
 use indexmap::{map::Entry, IndexMap};
 
+// Before high level program operations are converted into constraints, they are first tracked as linear combinations.
+// Each linear combination corresponds to a portion or all of a single row of an R1CS matrix, and consists of:
+// \begin{itemize}
+//     \item constant and variable terms, representing the constraint system at 'compile time'.
+//           It can be seen as a multivariate polynomial, a sum of monomials.
+//     \item value term, representing the value of the assigned linear combination at 'proving time'.
+//           Which means it is the fully assigned subset of a row of a matrix.
+// \end{itemize}
+// The constant and variable terms directly refer to how often the R1CS variables are invoked in a row.
+// A full R1CS row is "completed" when we introduce a multiplication between three non-const linear combinations (a*b=c).
 #[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
     constant: F,

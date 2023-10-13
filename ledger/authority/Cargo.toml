@@ -1,23 +1,23 @@
 [package]
 name = "snarkvm-ledger-authority"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Data structures for a block authority in a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
-    "aleo",
-    "cryptography",
-    "blockchain",
-    "decentralized",
-    "zero-knowledge"
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
 ]
 categories = [
-    "compilers",
-    "cryptography",
-    "mathematics",
-    "wasm",
-    "web-programming"
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
@@ -32,12 +32,12 @@ test-helpers = [ "narwhal-subdag/test-helpers" ]
 [dependencies.console]
 package = "snarkvm-console"
 path = "../../console"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.narwhal-subdag]
 package = "snarkvm-ledger-narwhal-subdag"
 path = "../narwhal/subdag"
-version = "=0.14.6"
+version = "=0.15.4"
 
 [dependencies.anyhow]
 version = "1"

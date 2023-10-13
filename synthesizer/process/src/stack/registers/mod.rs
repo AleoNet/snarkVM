@@ -25,10 +25,10 @@ use console::{
 };
 use synthesizer_program::{
     Operand,
-    RegistersCaller,
-    RegistersCallerCircuit,
     RegistersLoad,
     RegistersLoadCircuit,
+    RegistersSigner,
+    RegistersSignerCircuit,
     RegistersStore,
     RegistersStoreCircuit,
     StackMatches,
@@ -47,6 +47,10 @@ pub struct Registers<N: Network, A: circuit::Aleo<Network = N>> {
     console_registers: IndexMap<u64, Value<N>>,
     /// The mapping of assigned circuit registers to their values.
     circuit_registers: IndexMap<u64, circuit::Value<A>>,
+    /// The transition signer.
+    signer: Option<Address<N>>,
+    /// The transition signer, as a circuit.
+    signer_circuit: Option<circuit::Address<A>>,
     /// The transition caller.
     caller: Option<Address<N>>,
     /// The transition caller, as a circuit.
@@ -66,6 +70,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             register_types,
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
+            signer: None,
+            signer_circuit: None,
             caller: None,
             caller_circuit: None,
             tvk: None,

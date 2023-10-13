@@ -13,48 +13,50 @@
 // limitations under the License.
 
 use crate::{
-    traits::{FinalizeCommandTrait, RegistersLoad, StackMatches, StackProgram},
+    traits::{RegistersLoad, StackMatches, StackProgram},
     Opcode,
     Operand,
+    RegistersLoadCircuit,
+    RegistersStore,
+    RegistersStoreCircuit,
+    Result,
 };
-use console::{network::prelude::*, program::Register};
 
-/// Finalizes the operands on-chain.
-pub type FinalizeCommand<N> = FinalizeInstruction<N, { Variant::FinalizeCommand as u8 }>;
+use circuit::{Inject, Mode};
+use console::{
+    network::prelude::*,
+    program::{Argument, FinalizeType, Future, Identifier, Locator, Register, RegisterType, Value},
+};
 
-enum Variant {
-    FinalizeCommand,
-}
-
-/// Finalizes an operation on the operands.
+/// Invokes the asynchronous call on the operands, producing a future.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct FinalizeInstruction<N: Network, const VARIANT: u8> {
+pub struct Async<N: Network> {
+    /// The function name.
+    function_name: Identifier<N>,
     /// The operands.
     operands: Vec<Operand<N>>,
+    /// The destination register.
+    destination: Register<N>,
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeCommandTrait for FinalizeInstruction<N, VARIANT> {
-    /// Returns the number of operands.
-    fn num_operands(&self) -> usize {
-        self.operands.len()
-    }
-}
-
-impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Async<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        match VARIANT {
-            0 => Opcode::Finalize("finalize"),
-            _ => panic!("Invalid 'finalize' instruction opcode"),
-        }
+        Opcode::Async
+    }
+
+    /// Returns the function name.
+    #[inline]
+    pub const fn function_name(&self) -> &Identifier<N> {
+        &self.function_name
     }
 
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
         // Sanity check that there is less than or equal to MAX_INPUTS operands.
-        debug_assert!(self.operands.len() <= N::MAX_INPUTS, "Finalize must have less than {} operands", N::MAX_INPUTS);
+        debug_assert!(self.operands.len() <= N::MAX_INPUTS, "`async` must have less than {} operands", N::MAX_INPUTS);
         // Return the operands.
         &self.operands
     }
@@ -62,36 +64,153 @@ impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
     /// Returns the destination register.
     #[inline]
     pub fn destinations(&self) -> Vec<Register<N>> {
-        vec![]
+        vec![self.destination.clone()]
     }
 }
 
-impl<N: Network, const VARIANT: u8> FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Async<N> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(
         &self,
         stack: &(impl StackMatches<N> + StackProgram<N>),
-        registers: &mut impl RegistersLoad<N>,
+        registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
     ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() > N::MAX_INPUTS {
             bail!("'{}' expects <= {} operands, found {} operands", Self::opcode(), N::MAX_INPUTS, self.operands.len())
         }
 
-        // Load the operands values.
-        let _inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
+        // Load the operand values and check that they are valid arguments.
+        let arguments: Vec<_> = self
+            .operands
+            .iter()
+            .map(|operand| match registers.load(stack, operand)? {
+                Value::Plaintext(plaintext) => Ok(Argument::Plaintext(plaintext)),
+                Value::Record(_) => bail!("Cannot pass a record into an `async` instruction"),
+                Value::Future(future) => Ok(Argument::Future(future)),
+            })
+            .try_collect()?;
 
-        // Finalize the inputs.
-        match VARIANT {
-            0 => {}
-            _ => bail!("Invalid 'finalize' variant: {VARIANT}"),
-        }
+        // Initialize a future.
+        let future = Value::Future(Future::new(*stack.program_id(), *self.function_name(), arguments));
+        // Store the future in the destination register.
+        registers.store(stack, &self.destination, future)?;
+
         Ok(())
+    }
+
+    /// Executes the instruction.
+    pub fn execute<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &(impl StackMatches<N> + StackProgram<N>),
+        registers: &mut (impl RegistersLoadCircuit<N, A> + RegistersStoreCircuit<N, A>),
+    ) -> Result<()> {
+        // Ensure the number of operands is correct.
+        if self.operands.len() > N::MAX_INPUTS {
+            bail!("'{}' expects <= {} operands, found {} operands", Self::opcode(), N::MAX_INPUTS, self.operands.len())
+        }
+
+        // Load the operand values and check that they are valid arguments.
+        let arguments: Vec<_> = self
+            .operands
+            .iter()
+            .map(|operand| match registers.load_circuit(stack, operand)? {
+                circuit::Value::Plaintext(plaintext) => Ok(circuit::Argument::Plaintext(plaintext)),
+                circuit::Value::Record(_) => bail!("Cannot pass a record into an `async` instruction"),
+                circuit::Value::Future(future) => Ok(circuit::Argument::Future(future)),
+            })
+            .try_collect()?;
+
+        // Initialize a future.
+        let future = circuit::Value::Future(circuit::Future::from(
+            circuit::ProgramID::new(Mode::Constant, *stack.program_id()),
+            circuit::Identifier::new(Mode::Constant, *self.function_name()),
+            arguments,
+        ));
+        // Store the future in the destination register.
+        registers.store_circuit(stack, &self.destination, future)?;
+
+        Ok(())
+    }
+
+    /// Finalizes the instruction.
+    #[inline]
+    pub fn finalize(
+        &self,
+        _stack: &(impl StackMatches<N> + StackProgram<N>),
+        _registers: &mut (impl RegistersLoad<N> + RegistersStore<N>),
+    ) -> Result<()> {
+        bail!("Forbidden operation: Finalize cannot invoke 'async'.")
+    }
+
+    /// Returns the output type from the given program and input types.
+    #[inline]
+    pub fn output_types(
+        &self,
+        stack: &impl StackProgram<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
+        // Ensure that an associated finalize block exists.
+        let function = stack.get_function(self.function_name())?;
+        let finalize = match function.finalize_logic() {
+            Some(finalize) => finalize,
+            None => bail!("'{}/{}' does not have a finalize block", stack.program_id(), self.function_name()),
+        };
+
+        // Check that the number of inputs matches the number of arguments.
+        if input_types.len() != finalize.input_types().len() {
+            bail!(
+                "'{}/{}' finalize expects {} arguments, found {} arguments",
+                stack.program_id(),
+                self.function_name(),
+                finalize.input_types().len(),
+                input_types.len()
+            );
+        }
+
+        // Check the type of each operand.
+        for (input_type, finalize_type) in input_types.iter().zip_eq(finalize.input_types()) {
+            match (input_type, finalize_type) {
+                (RegisterType::Plaintext(input_type), FinalizeType::Plaintext(finalize_type)) => {
+                    ensure!(
+                        input_type == &finalize_type,
+                        "'{}/{}' finalize expects a '{}' argument, found a '{}' argument",
+                        stack.program_id(),
+                        self.function_name(),
+                        finalize_type,
+                        input_type
+                    );
+                }
+                (RegisterType::Record(..), _) => bail!("Attempted to pass a 'record' into 'async'"),
+                (RegisterType::ExternalRecord(..), _) => {
+                    bail!("Attempted to pass an 'external record' into 'async'")
+                }
+                (RegisterType::Future(input_locator), FinalizeType::Future(expected_locator)) => {
+                    ensure!(
+                        input_locator == &expected_locator,
+                        "'{}/{}' async expects a '{}.future' argument, found a '{}.future' argument",
+                        stack.program_id(),
+                        self.function_name(),
+                        expected_locator,
+                        input_locator
+                    );
+                }
+                (input_type, finalize_type) => bail!(
+                    "'{}/{}' async expects a '{}' argument, found a '{}' argument",
+                    stack.program_id(),
+                    self.function_name(),
+                    finalize_type,
+                    input_type
+                ),
+            }
+        }
+
+        Ok(vec![RegisterType::Future(Locator::new(*stack.program_id(), *self.function_name()))])
     }
 }
 
-impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Parser for Async<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -109,16 +228,26 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the function name from the string.
+        let (string, function_name) = Identifier::parse(string)?;
         // Parse the operands from the string.
         let (string, operands) = many0(parse_operand)(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the ';' from the string.
-        let (string, _) = tag(";")(string)?;
+        // Parse the 'into' from the string.
+        let (string, _) = tag("into")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the destination register from the string.
+        let (string, destination) = Register::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
         match operands.len() <= N::MAX_INPUTS {
-            true => Ok((string, Self { operands })),
+            true => Ok((string, Self { function_name, operands, destination })),
             false => map_res(fail, |_: ParserResult<Self>| {
                 Err(error(format!("The number of operands must be <= {}, found {}", N::MAX_INPUTS, operands.len())))
             })(string),
@@ -126,7 +255,7 @@ impl<N: Network, const VARIANT: u8> Parser for FinalizeInstruction<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromStr for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> FromStr for Async<N> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -144,14 +273,14 @@ impl<N: Network, const VARIANT: u8> FromStr for FinalizeInstruction<N, VARIANT> 
     }
 }
 
-impl<N: Network, const VARIANT: u8> Debug for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Debug for Async<N> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, const VARIANT: u8> Display for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> Display for Async<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
@@ -159,15 +288,18 @@ impl<N: Network, const VARIANT: u8> Display for FinalizeInstruction<N, VARIANT> 
             return Err(fmt::Error);
         }
         // Print the operation.
-        write!(f, "{}", Self::opcode())?;
+        write!(f, "{} {}", Self::opcode(), self.function_name)?;
         self.operands.iter().try_for_each(|operand| write!(f, " {operand}"))?;
-        write!(f, ";")
+        write!(f, " into {}", self.destination)
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromBytes for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> FromBytes for Async<N> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the function name.
+        let function_name = Identifier::read_le(&mut reader)?;
+
         // Read the number of operands.
         let num_operands = u8::read_le(&mut reader)?;
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
@@ -182,12 +314,15 @@ impl<N: Network, const VARIANT: u8> FromBytes for FinalizeInstruction<N, VARIANT
             operands.push(Operand::read_le(&mut reader)?);
         }
 
+        // Read the destination register.
+        let destination = Register::read_le(&mut reader)?;
+
         // Return the operation.
-        Ok(Self { operands })
+        Ok(Self { function_name, operands, destination })
     }
 }
 
-impl<N: Network, const VARIANT: u8> ToBytes for FinalizeInstruction<N, VARIANT> {
+impl<N: Network> ToBytes for Async<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is less than or equal to MAX_INPUTS.
@@ -198,10 +333,14 @@ impl<N: Network, const VARIANT: u8> ToBytes for FinalizeInstruction<N, VARIANT> 
                 self.operands.len()
             )));
         }
+        // Write the function name.
+        self.function_name.write_le(&mut writer)?;
         // Write the number of operands.
         u8::try_from(self.operands.len()).map_err(|e| error(e.to_string()))?.write_le(&mut writer)?;
         // Write the operands.
-        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))
+        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
+        // Write the destination register.
+        self.destination.write_le(&mut writer)
     }
 }
 
@@ -289,7 +428,7 @@ mod tests {
     //     Ok(registers)
     // }
     //
-    // fn check_finalize<const VARIANT: u8>(
+    // fn check_finalize(
     //     operation: impl FnOnce(Vec<Operand<CurrentNetwork>>) -> FinalizeOperation<CurrentNetwork, VARIANT>,
     //     opcode: Opcode,
     //     literal_a: &Literal<CurrentNetwork>,
@@ -359,9 +498,9 @@ mod tests {
     // #[test]
     // fn test_finalize_eq_succeeds() {
     //     // Initialize the operation.
-    //     let operation = |operands| FinalizeCommand::<CurrentNetwork> { operands };
+    //     let operation = |operands| Async::<CurrentNetwork> { operands };
     //     // Initialize the opcode.
-    //     let opcode = FinalizeCommand::<CurrentNetwork>::opcode();
+    //     let opcode = Async::<CurrentNetwork>::opcode();
     //
     //     let mut rng = TestRng::default();
     //
@@ -386,7 +525,7 @@ mod tests {
     //     use rayon::prelude::*;
     //
     //     // Initialize the opcode.
-    //     let opcode = FinalizeCommand::<CurrentNetwork>::opcode();
+    //     let opcode = Async::<CurrentNetwork>::opcode();
     //
     //     let mut rng = TestRng::default();
     //
@@ -412,12 +551,13 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let expected = "finalize r0 r1;";
-        let (string, finalize) = FinalizeCommand::<CurrentNetwork>::parse(expected).unwrap();
+        let expected = "async foo r0 r1 into r3";
+        let (string, async_) = Async::<CurrentNetwork>::parse(expected).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(expected, finalize.to_string(), "Display.fmt() did not match expected: '{string}'");
-        assert_eq!(finalize.operands.len(), 2, "The number of operands is incorrect");
-        assert_eq!(finalize.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(finalize.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(expected, async_.to_string(), "Display.fmt() did not match expected: '{string}'");
+        assert_eq!(async_.operands.len(), 2, "The number of operands is incorrect");
+        assert_eq!(async_.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(async_.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(async_.destination, Register::Locator(3), "The destination is incorrect");
     }
 }

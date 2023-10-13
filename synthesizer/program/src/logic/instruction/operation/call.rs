@@ -313,7 +313,7 @@ impl<N: Network> Parser for Call<N> {
                 let (string, _) = Sanitizer::parse_whitespaces(string)?;
                 // Parse the destinations from the string.
                 let (string, destinations) =
-                    map_res(many0(complete(parse_destination)), |destinations: Vec<Register<N>>| {
+                    map_res(many1(complete(parse_destination)), |destinations: Vec<Register<N>>| {
                         // Ensure the number of destinations is within the bounds.
                         match destinations.len() <= N::MAX_OPERANDS {
                             true => Ok(destinations),

@@ -1,53 +1,59 @@
 [package]
 name = "snarkvm-ledger-narwhal"
-version = "0.14.6"
+version = "0.15.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Data structures for a Narwhal-style memory pool in a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
-    "aleo",
-    "cryptography",
-    "blockchain",
-    "decentralized",
-    "zero-knowledge"
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
 ]
 categories = [
-    "compilers",
-    "cryptography",
-    "mathematics",
-    "wasm",
-    "web-programming"
+  "compilers",
+  "cryptography",
+  "mathematics",
+  "wasm",
+  "web-programming"
 ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "Apache-2.0"
 edition = "2021"
 
 [features]
-default = [ "batch-certificate", "batch-header", "data", "subdag", "transmission", "transmission-id" ]
+default = [
+  "batch-certificate",
+  "batch-header",
+  "data",
+  "subdag",
+  "transmission",
+  "transmission-id"
+]
 async = [ "narwhal-data/async" ]
 serial = [
-    "narwhal-batch-certificate/serial",
-    "narwhal-batch-header/serial",
-    "narwhal-subdag/serial",
-    "narwhal-transmission/serial",
-    "narwhal-transmission-id/serial",
+  "narwhal-batch-certificate/serial",
+  "narwhal-batch-header/serial",
+  "narwhal-subdag/serial",
+  "narwhal-transmission/serial",
+  "narwhal-transmission-id/serial"
 ]
 wasm = [
-    "narwhal-batch-certificate/wasm",
-    "narwhal-batch-header/wasm",
-    "narwhal-subdag/wasm",
-    "narwhal-transmission/wasm",
-    "narwhal-transmission-id/wasm",
+  "narwhal-batch-certificate/wasm",
+  "narwhal-batch-header/wasm",
+  "narwhal-subdag/wasm",
+  "narwhal-transmission/wasm",
+  "narwhal-transmission-id/wasm"
 ]
 test-helpers = [
-    "narwhal-batch-certificate/test-helpers",
-    "narwhal-batch-header/test-helpers",
-    "narwhal-subdag/test-helpers",
-    "narwhal-transmission/test-helpers",
-    "narwhal-transmission-id/test-helpers",
+  "narwhal-batch-certificate/test-helpers",
+  "narwhal-batch-header/test-helpers",
+  "narwhal-subdag/test-helpers",
+  "narwhal-transmission/test-helpers",
+  "narwhal-transmission-id/test-helpers"
 ]
-
 batch-certificate = [ "narwhal-batch-certificate" ]
 batch-header = [ "narwhal-batch-header" ]
 data = [ "narwhal-data" ]
@@ -58,37 +64,37 @@ transmission-id = [ "narwhal-transmission-id" ]
 [dependencies.narwhal-batch-certificate]
 package = "snarkvm-ledger-narwhal-batch-certificate"
 path = "./batch-certificate"
-version = "=0.14.6"
+version = "=0.15.4"
 optional = true
 
 [dependencies.narwhal-batch-header]
 package = "snarkvm-ledger-narwhal-batch-header"
 path = "./batch-header"
-version = "=0.14.6"
+version = "=0.15.4"
 optional = true
 
 [dependencies.narwhal-data]
 package = "snarkvm-ledger-narwhal-data"
 path = "./data"
-version = "=0.14.6"
+version = "=0.15.4"
 optional = true
 
 [dependencies.narwhal-subdag]
 package = "snarkvm-ledger-narwhal-subdag"
 path = "./subdag"
-version = "=0.14.6"
+version = "=0.15.4"
 optional = true
 
 [dependencies.narwhal-transmission]
 package = "snarkvm-ledger-narwhal-transmission"
 path = "./transmission"
-version = "=0.14.6"
+version = "=0.15.4"
 optional = true
 
 [dependencies.narwhal-transmission-id]
 package = "snarkvm-ledger-narwhal-transmission-id"
 path = "./transmission-id"
-version = "=0.14.6"
+version = "=0.15.4"
 optional = true
 
 [dev-dependencies.snarkvm-ledger-narwhal]

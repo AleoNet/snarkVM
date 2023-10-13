@@ -25,6 +25,7 @@ use crate::{
         ahp::{indexer::CircuitId, verifier, AHPForR1CS},
         matrices::transpose,
         prover::{self, MatrixSums, ThirdMessage},
+        selectors::apply_randomized_selector,
         AHPError,
         Matrix,
         SNARKMode,
@@ -47,7 +48,7 @@ struct LinevalInstance<F: PrimeField> {
     sum: F,
 }
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// Output the number of oracles sent by the prover in the third round.
     pub const fn num_third_round_oracles() -> usize {
         2
@@ -68,9 +69,9 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &verifier::FirstMessage<F>,
         verifier_second_message: &verifier::SecondMessage<F>,
-        mut state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F, SM>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<F>, prover::ThirdOracles<F>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<F>, prover::ThirdOracles<F>, prover::State<'a, F, SM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let zk_bound = Self::zk_bound();
@@ -122,7 +123,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_lineval_sumcheck_witness(
-        state: &mut prover::State<F, MM>,
+        state: &mut prover::State<F, SM>,
         batch_combiners: &BTreeMap<CircuitId, verifier::BatchCombiners<F>>,
         assignments: BTreeMap<CircuitId, Vec<DensePolynomial<F>>>,
         matrix_transposes: BTreeMap<CircuitId, BTreeMap<String, Matrix<F>>>,
@@ -205,8 +206,8 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         }
 
         let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
-        assert_eq!(MM::ZK, mask_poly.is_some());
-        assert_eq!(!MM::ZK, mask_poly.is_none());
+        assert_eq!(SM::ZK, mask_poly.is_some());
+        assert_eq!(!SM::ZK, mask_poly.is_none());
         let mask_poly = &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense());
         let (mut h_1_mask, mut xg_1_mask) = mask_poly.divide_by_vanishing_poly(*max_variable_domain).unwrap();
         h_1_sum += &core::mem::take(&mut h_1_mask);
@@ -217,7 +218,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         Ok((h_1_sum, xg_1_sum, msg))
     }
 
-    fn calculate_assignments(state: &mut prover::State<F, MM>) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
+    fn calculate_assignments(state: &mut prover::State<F, SM>) -> Result<BTreeMap<CircuitId, Vec<DensePolynomial<F>>>> {
         let assignments_time = start_timer!(|| "Calculate assignments");
         let assignments: BTreeMap<_, _> = state
             .circuit_specific_states
@@ -247,7 +248,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_matrix_transpose(
-        state: &mut prover::State<F, MM>,
+        state: &mut prover::State<F, SM>,
     ) -> Result<BTreeMap<CircuitId, BTreeMap<String, Matrix<F>>>> {
         let transpose_time = start_timer!(|| "Transpose of matrices");
         let mut job_pool = ExecutionPool::with_capacity(state.circuit_specific_states.len() * 3);
@@ -316,7 +317,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         end_timer!(z_m_at_alpha_time);
 
         let (h_1_i, xg_1_i) =
-            Self::apply_randomized_selector(&mut z_m_at_alpha, combiner, max_variable_domain, variable_domain, true)?;
+            apply_randomized_selector(&mut z_m_at_alpha, combiner, max_variable_domain, variable_domain, true)?;
         let xg_1_i = xg_1_i.ok_or(anyhow::anyhow!("Expected remainder when applying selector"))?;
 
         end_timer!(sumcheck_time);

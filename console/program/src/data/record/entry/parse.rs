@@ -47,6 +47,8 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
                 // Parse an array.
                 parse_array,
             ))(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Return the identifier, plaintext, and visibility.
             Ok((string, (identifier, plaintext, mode)))
         }

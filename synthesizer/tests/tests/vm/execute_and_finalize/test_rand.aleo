@@ -1,13 +1,17 @@
 /*
 randomness: 479283
 cases:
-  - function: rand_chacha_with_literals
+  - program: test_rand.aleo
+    function: rand_chacha_with_literals
     inputs: [0scalar, 0group, 0u8, 2i16, 4u32, 7i64, 8u128, 10field]
-  - function: rand_chacha_with_struct
+  - program: test_rand.aleo
+    function: rand_chacha_with_struct
     inputs: ["{ first: 0field, second: 0field, third: 0field, fourth: 0field, fifth: 0field }"]
-  - function: rand_chacha_check
+  - program: test_rand.aleo
+    function: rand_chacha_check
     inputs: [0field, false]
-  - function: rand_chacha_check
+  - program: test_rand.aleo
+    function: rand_chacha_check
     inputs: [1field, true]
 */
 
@@ -22,7 +26,8 @@ struct bundle:
 
 function rand_chacha_with_struct:
     input r0 as bundle.public;
-    finalize r0;
+    async rand_chacha_with_struct r0 into r1;
+    output r1 as test_rand.aleo/rand_chacha_with_struct.future;
 
 finalize rand_chacha_with_struct:
     input r0 as bundle.public;
@@ -31,7 +36,8 @@ finalize rand_chacha_with_struct:
 function rand_chacha_check:
     input r0 as field.public;
     input r1 as boolean.public;
-    finalize r0 r1;
+    async rand_chacha_check r0 r1 into r2;
+    output r2 as test_rand.aleo/rand_chacha_check.future;
 
 finalize rand_chacha_check:
     input r0 as field.public;
@@ -48,7 +54,8 @@ function rand_chacha_with_literals:
     input r5 as i64.public;
     input r6 as u128.public;
     input r7 as field.public;
-    finalize r0 r1 r2 r3 r4 r5 r6 r7;
+    async rand_chacha_with_literals r0 r1 r2 r3 r4 r5 r6 r7 into r8;
+    output r8 as test_rand.aleo/rand_chacha_with_literals.future;
 
 finalize rand_chacha_with_literals:
     input r0 as scalar.public;

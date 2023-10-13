@@ -15,27 +15,16 @@
 mod bytes;
 mod parse;
 
-use console::{
-    network::prelude::*,
-    program::{Identifier, PlaintextType},
-};
+use console::{network::prelude::*, program::PlaintextType};
 
-/// A key statement is of the form `key {name} as {plaintext_type}.public`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+/// A key statement is of the form `key as {plaintext_type}.public`.
+#[derive(Clone, PartialEq, Eq)]
 pub struct MapKey<N: Network> {
-    /// The key name.
-    name: Identifier<N>,
     /// The key plaintext type.
     plaintext_type: PlaintextType<N>,
 }
 
 impl<N: Network> MapKey<N> {
-    /// Returns the key name.
-    #[inline]
-    pub const fn name(&self) -> &Identifier<N> {
-        &self.name
-    }
-
     /// Returns the key plaintext type.
     #[inline]
     pub const fn plaintext_type(&self) -> &PlaintextType<N> {

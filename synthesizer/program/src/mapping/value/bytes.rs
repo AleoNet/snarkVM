@@ -17,19 +17,15 @@ use super::*;
 impl<N: Network> FromBytes for MapValue<N> {
     /// Reads the value statement from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the value name.
-        let name = FromBytes::read_le(&mut reader)?;
         // Read the value type.
         let plaintext_type = FromBytes::read_le(&mut reader)?;
-        Ok(Self { name, plaintext_type })
+        Ok(Self { plaintext_type })
     }
 }
 
 impl<N: Network> ToBytes for MapValue<N> {
     /// Writes the value statement to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the value name.
-        self.name.write_le(&mut writer)?;
         // Write the value type.
         self.plaintext_type.write_le(&mut writer)
     }

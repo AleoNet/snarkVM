@@ -16,7 +16,7 @@ use super::*;
 
 impl<N: Network> Request<N> {
     /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
-    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
+    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, signer, \[tvk, tcm, function ID, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
@@ -57,10 +57,10 @@ impl<N: Network> Request<N> {
         // Compute `g_r` as `r * G`. Note: This is the transition public key `tpk`.
         let g_r = N::g_scalar_multiply(&r);
 
-        // Derive the caller from the compute key.
-        let caller = Address::try_from(compute_key)?;
-        // Compute the transition view key `tvk` as `r * caller`.
-        let tvk = (*caller * r).to_x_coordinate();
+        // Derive the signer from the compute key.
+        let signer = Address::try_from(compute_key)?;
+        // Compute the transition view key `tvk` as `r * signer`.
+        let tvk = (*signer * r).to_x_coordinate();
         // Compute the transition commitment `tcm` as `Hash(tvk)`.
         let tcm = N::hash_psd2(&[tvk])?;
 
@@ -69,9 +69,9 @@ impl<N: Network> Request<N> {
             &(U16::<N>::new(N::ID), program_id.name(), program_id.network(), function_name).to_bits_le(),
         )?;
 
-        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
-        let mut message = Vec::with_capacity(5 + 2 * inputs.len());
-        message.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
+        // Construct the hash input as `(r * G, pk_sig, pr_sig, signer, [tvk, tcm, function ID, input IDs])`.
+        let mut message = Vec::with_capacity(9 + 2 * inputs.len());
+        message.extend([g_r, pk_sig, pr_sig, *signer].map(|point| point.to_x_coordinate()));
         message.extend([tvk, tcm, function_id]);
 
         // Initialize a vector to store the prepared inputs.
@@ -97,7 +97,8 @@ impl<N: Network> Request<N> {
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                     // Construct the preimage as `(function ID || input || tcm || index)`.
-                    let mut preimage = vec![function_id];
+                    let mut preimage = Vec::new();
+                    preimage.push(function_id);
                     preimage.extend(input.to_fields()?);
                     preimage.push(tcm);
                     preimage.push(index);
@@ -117,7 +118,8 @@ impl<N: Network> Request<N> {
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                     // Construct the preimage as `(function ID || input || tcm || index)`.
-                    let mut preimage = vec![function_id];
+                    let mut preimage = Vec::new();
+                    preimage.push(function_id);
                     preimage.extend(input.to_fields()?);
                     preimage.push(tcm);
                     preimage.push(index);
@@ -143,6 +145,7 @@ impl<N: Network> Request<N> {
                         Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
                         // Ensure the input is a plaintext.
                         Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                        Value::Future(..) => bail!("Expected a plaintext input, found a future input"),
                     };
                     // Hash the ciphertext to a field element.
                     let input_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
@@ -159,9 +162,10 @@ impl<N: Network> Request<N> {
                         Value::Record(record) => record,
                         // Ensure the input is a record.
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                        Value::Future(..) => bail!("Expected a record input, found a future input"),
                     };
-                    // Ensure the record belongs to the caller.
-                    ensure!(**record.owner() == caller, "Input record for '{program_id}' must belong to the signer");
+                    // Ensure the record belongs to the signer.
+                    ensure!(**record.owner() == signer, "Input record for '{program_id}' must belong to the signer");
 
                     // Compute the record commitment.
                     let commitment = record.to_commitment(&program_id, record_name)?;
@@ -193,7 +197,8 @@ impl<N: Network> Request<N> {
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(u16::try_from(index).or_halt_with::<N>("Input index exceeds u16"));
                     // Construct the preimage as `(function ID || input || tvk || index)`.
-                    let mut preimage = vec![function_id];
+                    let mut preimage = Vec::new();
+                    preimage.push(function_id);
                     preimage.extend(input.to_fields()?);
                     preimage.push(tvk);
                     preimage.push(index);
@@ -205,16 +210,18 @@ impl<N: Network> Request<N> {
                     // Add the input hash to the inputs.
                     input_ids.push(InputID::ExternalRecord(input_hash));
                 }
+                // A future is not a valid input.
+                ValueType::Future(..) => bail!("A future is not a valid input"),
             }
         }
 
-        // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
+        // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, signer, [tvk, tcm, function ID, input IDs])`.
         let challenge = N::hash_to_scalar_psd8(&message)?;
         // Compute `response` as `r - challenge * sk_sig`.
         let response = r - challenge * sk_sig;
 
         Ok(Self {
-            caller,
+            signer,
             network_id: U16::new(N::ID),
             program_id,
             function_name,

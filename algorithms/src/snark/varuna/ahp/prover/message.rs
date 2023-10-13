@@ -25,6 +25,13 @@ pub struct MatrixSums<F: PrimeField> {
     pub sum_c: F,
 }
 
+impl<F: PrimeField> MatrixSums<F> {
+    /// Iterate over the sums
+    pub fn iter(&self) -> impl Iterator<Item = F> {
+        [self.sum_a, self.sum_b, self.sum_c].into_iter()
+    }
+}
+
 /// The prover message in the third round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ThirdMessage<F: PrimeField> {

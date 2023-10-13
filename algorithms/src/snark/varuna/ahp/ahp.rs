@@ -22,9 +22,12 @@ use crate::{
     snark::varuna::{
         ahp::{verifier, AHPError, CircuitId, CircuitInfo},
         prover,
+        selectors::precompute_selectors,
+        verifier::QueryPoints,
         SNARKMode,
     },
 };
+use anyhow::anyhow;
 use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};
@@ -34,16 +37,9 @@ use std::collections::BTreeMap;
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
 /// less than a power of 2 (i.e., of the form 2^n - 1).
-pub struct AHPForR1CS<F: Field, MM: SNARKMode> {
+pub struct AHPForR1CS<F: Field, SM: SNARKMode> {
     field: PhantomData<F>,
-    mode: PhantomData<MM>,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct VerifierChallenges<F: Field> {
-    alpha: F,
-    beta: F,
-    gamma: F,
+    mode: PhantomData<SM>,
 }
 
 pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
@@ -57,13 +53,13 @@ pub(crate) struct NonZeroDomains<F: PrimeField> {
     pub(crate) domain_c: EvaluationDomain<F>,
 }
 
-impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
+impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
     /// The linear combinations that are statically known to evaluate to zero.
     /// These correspond to the virtual commitments as noted in the Aleo varuna protocol docs
     pub const LC_WITH_ZERO_EVAL: [&'static str; 3] = ["matrix_sumcheck", "lineval_sumcheck", "rowcheck_zerocheck"];
 
     pub fn zk_bound() -> Option<usize> {
-        MM::ZK.then_some(1)
+        SM::ZK.then_some(1)
     }
 
     /// Check that the (formatted) public input is of the form 2^n for some integer n.
@@ -96,7 +92,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         Ok(*[
             2 * constraint_domain_size + 2 * zk_bound - 2,
             2 * variable_domain_size + 2 * zk_bound - 2,
-            if MM::ZK { variable_domain_size + 3 } else { 0 }, // mask_poly
+            if SM::ZK { variable_domain_size + 3 } else { 0 }, // mask_poly
             variable_domain_size,
             constraint_domain_size,
             non_zero_domain_size - 1, // non-zero polynomials
@@ -170,7 +166,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         prover_fourth_message: &prover::FourthMessage<F>,
-        state: &verifier::State<F, MM>,
+        state: &verifier::State<F, SM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
         let max_constraint_domain = state.max_constraint_domain;
@@ -193,23 +189,29 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let first_round_msg = state.first_round_message.as_ref().unwrap();
-        let second_round_msg = state.second_round_message.as_ref().unwrap();
-        let alpha = second_round_msg.alpha;
-        let eta_b = second_round_msg.eta_b;
-        let eta_c = second_round_msg.eta_c;
-        let batch_combiners = &first_round_msg.batch_combiners;
-        let sums_fourth_msg = &prover_fourth_message.sums;
-
+        let verifier::FirstMessage { batch_combiners } = state.first_round_message.as_ref().unwrap();
+        let verifier::SecondMessage { alpha, eta_b, eta_c } = state.second_round_message.unwrap();
+        let verifier::ThirdMessage { beta } = state.third_round_message.unwrap();
         let batch_lineval_sum =
             prover_third_message.sum(batch_combiners, eta_b, eta_c) * state.max_variable_domain.size_inv;
-
         let verifier::FourthMessage { delta_a, delta_b, delta_c } = state.fourth_round_message.as_ref().unwrap();
-        let beta = state.third_round_message.unwrap().beta;
+        let sums_fourth_msg = &prover_fourth_message.sums;
         let gamma = state.gamma.unwrap();
+        let challenges = QueryPoints::new(alpha, beta, gamma);
 
         let mut linear_combinations = BTreeMap::new();
-        let mut selectors = BTreeMap::new();
+        let constraint_domains = state.constraint_domains();
+        let variable_domains = state.variable_domains();
+        let non_zero_domains = state.non_zero_domains();
+        let selectors = precompute_selectors(
+            max_constraint_domain,
+            constraint_domains,
+            max_variable_domain,
+            variable_domains,
+            max_non_zero_domain,
+            non_zero_domains,
+            challenges,
+        );
 
         // We're now going to calculate the rowcheck_zerocheck
         let rowcheck_time = start_timer!(|| "Rowcheck");
@@ -236,8 +238,10 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                     circuit_term += (*instance_combiner, &rowcheck);
                 }
                 let constraint_domain = circuit_state.constraint_domain;
-                let selector = selector_evals(&mut selectors, &max_constraint_domain, &constraint_domain, alpha);
-                circuit_term *= selector;
+                let selector = selectors
+                    .get(&(max_constraint_domain.size, constraint_domain.size, alpha))
+                    .ok_or(anyhow!("Could not find selector at alpha"))?;
+                circuit_term *= *selector;
                 rowcheck_zerocheck += (c.circuit_combiner, &circuit_term);
             }
             rowcheck_zerocheck.add(-v_R_at_alpha, "h_0");
@@ -286,7 +290,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         // We're now going to calculate the lineval_sumcheck
         let lineval_sumcheck = {
             let mut lineval_sumcheck = LinearCombination::empty("lineval_sumcheck");
-            if MM::ZK {
+            if SM::ZK {
                 lineval_sumcheck.add(F::one(), "mask_poly");
             }
             for (i, (id, c)) in batch_combiners.iter().enumerate() {
@@ -313,8 +317,10 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
                     circuit_term += (*instance_combiner, &lineval);
                 }
                 let variable_domain = circuit_state.variable_domain;
-                let selector = selector_evals(&mut selectors, &max_variable_domain, &variable_domain, beta);
-                circuit_term *= selector;
+                let selector = selectors
+                    .get(&(max_variable_domain.size, variable_domain.size, beta))
+                    .ok_or(anyhow!("Could not find selector at beta"))?;
+                circuit_term *= *selector;
 
                 lineval_sumcheck += (c.circuit_combiner, &circuit_term);
             }
@@ -333,50 +339,35 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
-        for (i, (&id, circuit_state)) in state.circuit_specific_states.iter().enumerate() {
-            let v_R_i_at_alpha_time = start_timer!(|| format!("v_R_i_at_alpha {id}"));
-            let v_R_i_at_alpha = circuit_state.constraint_domain.evaluate_vanishing_polynomial(alpha);
-            end_timer!(v_R_i_at_alpha_time);
-
-            let v_C_i_at_beta_time = start_timer!(|| format!("v_C_i_at_beta {id}"));
-            let v_C_i_at_beta = circuit_state.variable_domain.evaluate_vanishing_polynomial(beta);
-            end_timer!(v_C_i_at_beta_time);
-
+        for (i, (&id, state_i)) in state.circuit_specific_states.iter().enumerate() {
+            let v_R_i_at_alpha = state_i.constraint_domain.evaluate_vanishing_polynomial(alpha);
+            let v_C_i_at_beta = state_i.variable_domain.evaluate_vanishing_polynomial(beta);
             let v_rc = v_R_i_at_alpha * v_C_i_at_beta;
-            let RC = circuit_state.constraint_domain.size_as_field_element
-                * circuit_state.variable_domain.size_as_field_element;
+            let rc = state_i.constraint_domain.size_as_field_element * state_i.variable_domain.size_as_field_element;
 
-            let s_a = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_a_domain, gamma);
-            let s_b = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_b_domain, gamma);
-            let s_c = selector_evals(&mut selectors, &max_non_zero_domain, &circuit_state.non_zero_c_domain, gamma);
+            let matrices = ["a", "b", "c"];
+            let deltas = [delta_a[i], delta_b[i], delta_c[i]];
+            let non_zero_domains = [&state_i.non_zero_a_domain, &state_i.non_zero_b_domain, &state_i.non_zero_c_domain];
+            let sums = sums_fourth_msg[i].iter();
 
-            let challenges = VerifierChallenges { alpha, beta, gamma };
+            for (((m, sum), delta), non_zero_domain) in
+                matrices.into_iter().zip_eq(sums).zip_eq(deltas).zip_eq(non_zero_domains)
+            {
+                let selector = selectors
+                    .get(&(max_non_zero_domain.size, non_zero_domain.size, gamma))
+                    .ok_or(anyhow!("Could not find selector at gamma"))?;
+                let label = "g_".to_string() + m;
+                let g_m_label = witness_label(id, &label, 0);
+                let g_m = LinearCombination::new(g_m_label.clone(), [(F::one(), g_m_label)]);
+                let g_m_at_gamma = evals.get_lc_eval(&g_m, gamma)?;
 
-            let d_a = delta_a[i];
-            let d_b = delta_b[i];
-            let d_c = delta_c[i];
+                let (a_poly, b_poly) = Self::construct_matrix_linear_combinations(evals, id, m, v_rc, challenges, rc);
+                let g_m_term = Self::construct_g_m_term(gamma, g_m_at_gamma, sum, *selector, a_poly, b_poly);
 
-            let g_a_label = witness_label(id, "g_a", 0);
-            let g_a = LinearCombination::new(g_a_label.clone(), [(F::one(), g_a_label)]);
-            let g_a_at_gamma = evals.get_lc_eval(&g_a, challenges.gamma)?;
-            let g_b_label = witness_label(id, "g_b", 0);
-            let g_b = LinearCombination::new(g_b_label.clone(), [(F::one(), g_b_label)]);
-            let g_b_at_gamma = evals.get_lc_eval(&g_b, challenges.gamma)?;
-            let g_c_label = witness_label(id, "g_c", 0);
-            let g_c = LinearCombination::new(g_c_label.clone(), [(F::one(), g_c_label)]);
-            let g_c_at_gamma = evals.get_lc_eval(&g_c, challenges.gamma)?;
+                matrix_sumcheck += (delta, &g_m_term);
 
-            let sum_a = sums_fourth_msg[i].sum_a;
-            let sum_b = sums_fourth_msg[i].sum_b;
-            let sum_c = sums_fourth_msg[i].sum_c;
-
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "a", challenges, g_a_at_gamma, v_rc, d_a, sum_a, s_a, RC)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "b", challenges, g_b_at_gamma, v_rc, d_b, sum_b, s_b, RC)?;
-            Self::add_g_m_term(&mut matrix_sumcheck, id, "c", challenges, g_c_at_gamma, v_rc, d_c, sum_c, s_c, RC)?;
-
-            linear_combinations.insert(g_a.label.clone(), g_a);
-            linear_combinations.insert(g_b.label.clone(), g_b);
-            linear_combinations.insert(g_c.label.clone(), g_c);
+                linear_combinations.insert(g_m.label.clone(), g_m);
+            }
         }
 
         matrix_sumcheck -= &LinearCombination::new("h_2", [(v_K_at_gamma, "h_2")]);
@@ -387,73 +378,61 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         Ok(linear_combinations)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn add_g_m_term(
-        matrix_sumcheck: &mut LinearCombination<F>,
-        id: CircuitId,
-        m: &str,
-        challenges: VerifierChallenges<F>,
-        g_at_gamma: F,
-        v_rc_at_alpha_beta: F,
-        delta: F,
+    fn construct_g_m_term(
+        gamma: F,
+        g_m_at_gamma: F,
         sum: F,
         selector_at_gamma: F,
-        rc_size: F,
-    ) -> Result<(), AHPError> {
-        let b_term = challenges.gamma * g_at_gamma + sum; // Xg_m(\gamma) + sum_m/|K_M|
-
-        let lhs = Self::construct_lhs(id, m, challenges, v_rc_at_alpha_beta, b_term, selector_at_gamma, rc_size);
-        *matrix_sumcheck += (delta, &lhs);
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn construct_lhs(
-        id: CircuitId,
-        m: &str,
-        challenges: VerifierChallenges<F>,
-        v_rc_at_alpha_beta: F,
-        b_term: F,
-        selector_at_gamma: F,
-        rc_size: F,
+        a_poly: LinearCombination<F>,
+        mut b_poly: LinearCombination<F>,
     ) -> LinearCombination<F> {
-        let label_row = format!("circuit_{id}_row_{m}");
-        let label_col = format!("circuit_{id}_col_{m}");
-        let label_row_col_val = format!("circuit_{id}_row_col_val_{m}");
-        let label_row_col = format!("circuit_{id}_row_col_{m}");
-        let label_a_poly = format!("circuit_{id}_a_poly_{m}");
-        let label_denom = format!("circuit_{id}_denom_{m}");
+        let b_term = gamma * g_m_at_gamma + sum; // Xg_m(\gamma) + sum_m/|K_M|
+        b_poly *= b_term;
 
-        // recall that row_col_val(X) is M_{i,j}*rowcol(X)
-        let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
-
-        let alpha_beta = challenges.alpha * challenges.beta;
-        let mut b = LinearCombination::new(label_denom, [
-            (alpha_beta, LCTerm::One),
-            (-challenges.alpha, (label_col).into()),
-            (-challenges.beta, (label_row).into()),
-            (F::one(), (label_row_col).into()),
-        ]);
-
-        b *= rc_size;
-        b *= b_term; // Xg_m(X) + sum_m
-
-        let mut lhs = a;
-        lhs -= &b;
+        let mut lhs = a_poly;
+        lhs -= &b_poly;
         lhs *= selector_at_gamma;
         lhs
     }
-}
 
-fn selector_evals<F: PrimeField>(
-    cached_selector_evaluations: &mut BTreeMap<(u64, u64, F), F>,
-    largest_domain: &EvaluationDomain<F>,
-    target_domain: &EvaluationDomain<F>,
-    challenge: F,
-) -> F {
-    *cached_selector_evaluations
-        .entry((target_domain.size, largest_domain.size, challenge))
-        .or_insert_with(|| largest_domain.evaluate_selector_polynomial(*target_domain, challenge))
+    fn construct_matrix_linear_combinations<E: EvaluationsProvider<F>>(
+        evals: &E,
+        id: CircuitId,
+        matrix: &str,
+        v_rc_at_alpha_beta: F,
+        challenges: QueryPoints<F>,
+        rc_size: F,
+    ) -> (LinearCombination<F>, LinearCombination<F>) {
+        let label_a_poly = format!("circuit_{id}_a_poly_{matrix}");
+        let label_b_poly = format!("circuit_{id}_b_poly_{matrix}");
+        let QueryPoints { alpha, beta, gamma } = challenges;
+
+        // When running as the prover, who has access to a(X) and b(X), we directly return those
+        let a_poly = LinearCombination::new(label_a_poly.clone(), [(F::one(), label_a_poly.clone())]);
+        let a_poly_eval_available = evals.get_lc_eval(&a_poly, gamma).is_ok();
+        let b_poly = LinearCombination::new(label_b_poly.clone(), [(F::one(), label_b_poly.clone())]);
+        let b_poly_eval_available = evals.get_lc_eval(&b_poly, gamma).is_ok();
+        assert_eq!(a_poly_eval_available, b_poly_eval_available);
+        if a_poly_eval_available && b_poly_eval_available {
+            return (a_poly, b_poly);
+        };
+
+        // When running as the verifier, we need to construct a(X) and b(X) from the indexing polynomials
+        let label_col = format!("circuit_{id}_col_{matrix}");
+        let label_row = format!("circuit_{id}_row_{matrix}");
+        let label_row_col = format!("circuit_{id}_row_col_{matrix}");
+        // recall that row_col_val(X) is M_{i,j}*rowcol(X)
+        let label_row_col_val = format!("circuit_{id}_row_col_val_{matrix}");
+        let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
+        let mut b = LinearCombination::new(label_b_poly, [
+            (alpha * beta, LCTerm::One),
+            (-alpha, (label_col).into()),
+            (-beta, (label_row).into()),
+            (F::one(), (label_row_col).into()),
+        ]);
+        b *= rc_size;
+        (a, b)
+    }
 }
 
 /// Abstraction that provides evaluations of (linear combinations of) polynomials
@@ -498,26 +477,12 @@ where
     }
 }
 
-/// Given two domains H and K such that H \subseteq K,
-/// construct polynomial that outputs 0 on all elements in K \ H, but 1 on all elements of H.
-pub trait SelectorPolynomial<F: PrimeField> {
-    fn evaluate_selector_polynomial(&self, other: EvaluationDomain<F>, point: F) -> F;
-}
-
-impl<F: PrimeField> SelectorPolynomial<F> for EvaluationDomain<F> {
-    fn evaluate_selector_polynomial(&self, other: EvaluationDomain<F>, point: F) -> F {
-        let numerator = self.evaluate_vanishing_polynomial(point) * other.size_as_field_element;
-        let denominator = other.evaluate_vanishing_polynomial(point) * self.size_as_field_element;
-        numerator / denominator
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fft::{DensePolynomial, Evaluations};
+    use crate::fft::DensePolynomial;
     use snarkvm_curves::bls12_377::fr::Fr;
-    use snarkvm_fields::{One, Zero};
+    use snarkvm_fields::Zero;
     use snarkvm_utilities::rand::TestRng;
 
     #[test]
@@ -535,35 +500,5 @@ mod tests {
         let first = poly.coeffs[0] * size_as_fe;
         let last = *poly.coeffs.last().unwrap() * size_as_fe;
         assert_eq!(sum, first + last);
-    }
-
-    #[test]
-    fn test_alternator_polynomial() {
-        let mut rng = TestRng::default();
-
-        for i in 1..10 {
-            for j in 1..i {
-                let domain_i = EvaluationDomain::<Fr>::new(1 << i).unwrap();
-                let domain_j = EvaluationDomain::<Fr>::new(1 << j).unwrap();
-                let point = domain_j.sample_element_outside_domain(&mut rng);
-                let j_elements = domain_j.elements().collect::<Vec<_>>();
-                let slow_selector = {
-                    let evals = domain_i
-                        .elements()
-                        .map(|e| if j_elements.contains(&e) { Fr::one() } else { Fr::zero() })
-                        .collect();
-                    Evaluations::from_vec_and_domain(evals, domain_i).interpolate()
-                };
-                assert_eq!(slow_selector.evaluate(point), domain_i.evaluate_selector_polynomial(domain_j, point));
-
-                for element in domain_i.elements() {
-                    if j_elements.contains(&element) {
-                        assert_eq!(slow_selector.evaluate(element), Fr::one(), "failed for {i} vs {j}");
-                    } else {
-                        assert_eq!(slow_selector.evaluate(element), Fr::zero());
-                    }
-                }
-            }
-        }
     }
 }

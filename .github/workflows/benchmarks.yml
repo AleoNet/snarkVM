@@ -52,13 +52,15 @@ jobs:
       - name: Benchmark console/algorithms
         run: |
           cd console/algorithms
-          cargo bench --bench poseidon_sponge -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench poseidon -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench elligator2 -- --output-format bencher | tee -a ../../output.txt
           cd ../..
 
       - name: Benchmark console/collections
         run: |
           cd console/collections
           cargo bench --bench merkle_tree -- --output-format bencher | tee -a ../../output.txt
+          cargo bench --bench kary_merkle_tree -- --output-format bencher | tee -a ../../output.txt
           cd ../..
           
       - name: Benchmark curves

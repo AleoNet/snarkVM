@@ -18,7 +18,7 @@ impl<N: Network> Literal<N> {
     /// Returns a randomly-sampled literal of the given literal type.
     pub fn sample<R: Rng + CryptoRng>(literal_type: LiteralType, rng: &mut R) -> Self {
         match literal_type {
-            LiteralType::Address => Literal::Address(Address::new(Group::rand(rng))),
+            LiteralType::Address => Literal::Address(Address::rand(rng)),
             LiteralType::Boolean => Literal::Boolean(Boolean::rand(rng)),
             LiteralType::Field => Literal::Field(Field::rand(rng)),
             LiteralType::Group => Literal::Group(Group::rand(rng)),

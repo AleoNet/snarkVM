@@ -18,11 +18,14 @@ pub use access::Access;
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
+mod future;
+pub use future::{Argument, Future};
+
 pub(super) mod identifier;
 pub use identifier::Identifier;
 
 mod literal;
-pub use literal::Literal;
+pub use literal::{Cast, CastLossy, Literal};
 
 mod plaintext;
 pub use plaintext::Plaintext;

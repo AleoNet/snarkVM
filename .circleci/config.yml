@@ -151,6 +151,16 @@ jobs:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
 
+  algorithms-profiler:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: xlarge
+    steps:
+      - run_serial: # This runs a single test with profiler enabled
+          workspace_member: algorithms
+          cache_key: snarkvm-algorithms-cache
+          flags: varuna::prove_and_verify_with_square_matrix --features profiler
+
   circuit:
     docker:
       - image: cimg/rust:1.71.1
@@ -645,13 +655,43 @@ jobs:
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
-  synthesizer-program-integration:
+  synthesizer-program-integration-keccak:
     docker:
       - image: cimg/rust:1.71.1
     resource_class: 2xlarge
     steps:
       - run_serial:
-          flags: --test '*'
+          flags: keccak --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-psd:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: psd --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-sha:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: sha --test '*'
+          workspace_member: synthesizer/program
+          cache_key: snarkvm-synthesizer-program-cache
+
+  synthesizer-program-integration-rest:
+    docker:
+      - image: cimg/rust:1.71.1
+    resource_class: 2xlarge
+    steps:
+      - run_serial:
+          flags: --test '*' -- --skip keccak --skip psd --skip sha
           workspace_member: synthesizer/program
           cache_key: snarkvm-synthesizer-program-cache
 
@@ -768,6 +808,7 @@ workflows:
     jobs:
       - snarkvm
       - algorithms
+      - algorithms-profiler
       - circuit
       - circuit-account
       - circuit-account-noconsole
@@ -822,7 +863,10 @@ workflows:
       - synthesizer-integration
       - synthesizer-process
       - synthesizer-program
-      - synthesizer-program-integration
+      - synthesizer-program-integration-keccak
+      - synthesizer-program-integration-psd
+      - synthesizer-program-integration-sha
+      - synthesizer-program-integration-rest
       - synthesizer-snark
       - utilities
       - utilities-derives

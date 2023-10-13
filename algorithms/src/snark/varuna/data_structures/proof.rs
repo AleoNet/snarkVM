@@ -71,17 +71,15 @@ impl<E: PairingEngine> Commitments<E> {
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        let mut size = 0;
-        size += serialized_vec_size_without_len(&self.witness_commitments, compress);
-        size += CanonicalSerialize::serialized_size(&self.mask_poly, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_0, compress);
-        size += CanonicalSerialize::serialized_size(&self.g_1, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_1, compress);
-        size += serialized_vec_size_without_len(&self.g_a_commitments, compress);
-        size += serialized_vec_size_without_len(&self.g_b_commitments, compress);
-        size += serialized_vec_size_without_len(&self.g_c_commitments, compress);
-        size += CanonicalSerialize::serialized_size(&self.h_2, compress);
-        size
+        serialized_vec_size_without_len(&self.witness_commitments, compress)
+            .saturating_add(CanonicalSerialize::serialized_size(&self.mask_poly, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_0, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.g_1, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_1, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_a_commitments, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_b_commitments, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_c_commitments, compress))
+            .saturating_add(CanonicalSerialize::serialized_size(&self.h_2, compress))
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
@@ -140,12 +138,10 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     fn serialized_size(&self, compress: Compress) -> usize {
-        let mut size = 0;
-        size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
-        size += serialized_vec_size_without_len(&self.g_a_evals, compress);
-        size += serialized_vec_size_without_len(&self.g_b_evals, compress);
-        size += serialized_vec_size_without_len(&self.g_c_evals, compress);
-        size
+        CanonicalSerialize::serialized_size(&self.g_1_eval, compress)
+            .saturating_add(serialized_vec_size_without_len(&self.g_a_evals, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_b_evals, compress))
+            .saturating_add(serialized_vec_size_without_len(&self.g_c_evals, compress))
     }
 
     fn deserialize_with_mode<R: snarkvm_utilities::Read>(
@@ -205,7 +201,8 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     pub fn to_field_elements(&self) -> Vec<F> {
-        let mut result = vec![self.g_1_eval];
+        let mut result = Vec::with_capacity(1 + self.g_a_evals.len() + self.g_b_evals.len() + self.g_c_evals.len());
+        result.push(self.g_1_eval);
         result.extend_from_slice(&self.g_a_evals);
         result.extend_from_slice(&self.g_b_evals);
         result.extend_from_slice(&self.g_c_evals);
@@ -255,19 +252,44 @@ impl<E: PairingEngine> Proof<E> {
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Result<Self, SNARKError> {
         let batch_sizes: Vec<usize> = batch_sizes.into_values().collect();
-        let total_instances = batch_sizes.iter().sum::<usize>();
-        if commitments.witness_commitments.len() != total_instances {
-            return Err(SNARKError::BatchSizeMismatch);
-        }
         Ok(Self { batch_sizes, commitments, evaluations, third_msg, fourth_msg, pc_proof })
     }
 
-    pub fn batch_sizes(&self) -> Result<&[usize], SNARKError> {
+    pub fn batch_sizes(&self) -> &[usize] {
+        &self.batch_sizes
+    }
+
+    /// Check that the number of messages is consistent with our batch size
+    pub fn check_batch_sizes(&self) -> Result<(), SNARKError> {
         let total_instances = self.batch_sizes.iter().sum::<usize>();
         if self.commitments.witness_commitments.len() != total_instances {
             return Err(SNARKError::BatchSizeMismatch);
         }
-        Ok(&self.batch_sizes)
+        let g_comms =
+            [&self.commitments.g_a_commitments, &self.commitments.g_b_commitments, &self.commitments.g_c_commitments];
+        for comms in g_comms {
+            if comms.len() != self.batch_sizes.len() {
+                return Err(SNARKError::BatchSizeMismatch);
+            }
+        }
+        let g_evals = [&self.evaluations.g_a_evals, &self.evaluations.g_b_evals, &self.evaluations.g_c_evals];
+        for evals in g_evals {
+            if evals.len() != self.batch_sizes.len() {
+                return Err(SNARKError::BatchSizeMismatch);
+            }
+        }
+        if self.third_msg.sums.len() != self.batch_sizes.len() {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        for (msg, &batch_size) in self.third_msg.sums.iter().zip(self.batch_sizes.iter()) {
+            if msg.len() != batch_size {
+                return Err(SNARKError::BatchSizeMismatch);
+            }
+        }
+        if self.fourth_msg.sums.len() != self.batch_sizes.len() {
+            return Err(SNARKError::BatchSizeMismatch);
+        }
+        Ok(())
     }
 }
 
@@ -470,14 +492,8 @@ mod test {
                 let evaluations: Evaluations<Fr> = rand_evaluations(rng, i);
                 let third_msg = ThirdMessage::<Fr> { sums: vec![vec![rand_sums(rng); j]; i] };
                 let fourth_msg = FourthMessage::<Fr> { sums: vec![rand_sums(rng); i] };
-                let mut proof_evaluations = None;
-                if !test_with_none {
-                    proof_evaluations = Some(vec![Fr::rand(rng); i]);
-                }
-                let pc_proof = sonic_pc::BatchLCProof {
-                    proof: BatchProof(vec![rand_kzg_proof(rng, test_with_none); j]),
-                    evaluations: proof_evaluations,
-                };
+                let pc_proof =
+                    sonic_pc::BatchLCProof { proof: BatchProof(vec![rand_kzg_proof(rng, test_with_none); j]) };
                 let proof = Proof { batch_sizes, commitments, evaluations, third_msg, fourth_msg, pc_proof };
                 let combinations = modes();
                 for (compress, validate) in combinations {

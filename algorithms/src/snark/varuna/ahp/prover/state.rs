@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    polycommit::sonic_pc::LabeledPolynomial,
     r1cs::{SynthesisError, SynthesisResult},
     snark::varuna::{AHPError, AHPForR1CS, Circuit, SNARKMode},
 };
@@ -57,17 +58,23 @@ pub struct CircuitSpecificState<F: PrimeField> {
     /// The length of this list must be equal to the batch size.
     pub(super) x_polys: Vec<DensePolynomial<F>>,
 
-    /// Polynomials involved in the holographic sumcheck.
+    /// Intermediary polynomials of the matrix sumcheck.
+    pub(in crate::snark) a_polys: Option<[LabeledPolynomial<F>; 3]>,
+
+    /// Intermediary polynomials of the matrix sumcheck.
+    pub(in crate::snark) b_polys: Option<[LabeledPolynomial<F>; 3]>,
+
+    /// Intermediary polynomials of the matrix sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
 }
 
 /// State for the AHP prover.
-pub struct State<'a, F: PrimeField, MM: SNARKMode> {
+pub struct State<'a, F: PrimeField, SM: SNARKMode> {
     /// The state for each circuit in the batch.
-    pub(super) circuit_specific_states: BTreeMap<&'a Circuit<F, MM>, CircuitSpecificState<F>>,
+    pub(in crate::snark) circuit_specific_states: BTreeMap<&'a Circuit<F, SM>, CircuitSpecificState<F>>,
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<F>>>,
+    pub(in crate::snark) first_round_oracles: Option<super::FirstOracles<F>>,
     /// The largest non_zero domain of all circuits in the batch.
     pub(in crate::snark) max_non_zero_domain: EvaluationDomain<F>,
     /// The largest constraint domain of all circuits in the batch.
@@ -97,14 +104,14 @@ pub(super) struct Assignments<F>(
     pub(super) Zc<F>,
 );
 
-impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
+impl<'a, F: PrimeField, SM: SNARKMode> State<'a, F, SM> {
     pub(super) fn initialize(
-        indices_and_assignments: BTreeMap<&'a Circuit<F, MM>, Vec<Assignments<F>>>,
+        indices_and_assignments: BTreeMap<&'a Circuit<F, SM>, Vec<Assignments<F>>>,
     ) -> Result<Self, AHPError> {
         let mut max_non_zero_domain: Option<EvaluationDomain<F>> = None;
         let mut max_num_constraints = 0;
         let mut max_num_variables = 0;
-        let mut total_instances = 0;
+        let mut total_instances = 0usize;
         let circuit_specific_states = indices_and_assignments
             .into_iter()
             .map(|(circuit, variable_assignments)| {
@@ -118,13 +125,14 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                     EvaluationDomain::new(index_info.num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
                 max_num_variables = max_num_variables.max(index_info.num_variables);
 
-                let non_zero_domains = AHPForR1CS::<_, MM>::cmp_non_zero_domains(index_info, max_non_zero_domain)?;
+                let non_zero_domains = AHPForR1CS::<_, SM>::cmp_non_zero_domains(index_info, max_non_zero_domain)?;
                 max_non_zero_domain = non_zero_domains.max_non_zero_domain;
 
                 let first_padded_public_inputs = &variable_assignments[0].0;
                 let input_domain = EvaluationDomain::new(first_padded_public_inputs.len()).unwrap();
                 let batch_size = variable_assignments.len();
-                total_instances += batch_size;
+                total_instances =
+                    total_instances.checked_add(batch_size).ok_or_else(|| anyhow::anyhow!("Batch size too large"))?;
                 let mut z_as = Vec::with_capacity(batch_size);
                 let mut z_bs = Vec::with_capacity(batch_size);
                 let mut z_cs = Vec::with_capacity(batch_size);
@@ -157,6 +165,8 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                     z_a: Some(z_as),
                     z_b: Some(z_bs),
                     z_c: Some(z_cs),
+                    a_polys: None,
+                    b_polys: None,
                     lhs_polynomials: None,
                 };
                 Ok((circuit, state))
@@ -180,12 +190,12 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
     }
 
     /// Get the batch size for a given circuit.
-    pub fn batch_size(&self, circuit: &Circuit<F, MM>) -> Option<usize> {
+    pub fn batch_size(&self, circuit: &Circuit<F, SM>) -> Option<usize> {
         self.circuit_specific_states.get(circuit).map(|s| s.batch_size)
     }
 
     /// Get the public inputs for the entire batch.
-    pub fn public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<Vec<Vec<F>>> {
+    pub fn public_inputs(&self, circuit: &Circuit<F, SM>) -> Option<Vec<Vec<F>>> {
         // We need to export inputs as they live longer than prover_state
         self.circuit_specific_states.get(circuit).map(|s| {
             s.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect()
@@ -193,7 +203,7 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
     }
 
     /// Get the padded public inputs for the entire batch.
-    pub fn padded_public_inputs(&self, circuit: &Circuit<F, MM>) -> Option<&[Vec<F>]> {
+    pub fn padded_public_inputs(&self, circuit: &Circuit<F, SM>) -> Option<&[Vec<F>]> {
         self.circuit_specific_states.get(circuit).map(|s| s.padded_public_variables.as_slice())
     }
 

@@ -18,7 +18,7 @@ mod string;
 
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Plaintext, Record, TransitionLeaf},
+    program::{Ciphertext, Future, Plaintext, Record, TransitionLeaf},
     types::{Field, Group},
 };
 
@@ -37,6 +37,8 @@ pub enum Output<N: Network> {
     Record(Field<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
     /// The output commitment of the external record. Note: This is **not** the record commitment.
     ExternalRecord(Field<N>),
+    /// The future hash and (optional) future.
+    Future(Field<N>, Option<Future<N>>),
 }
 
 impl<N: Network> Output<N> {
@@ -48,6 +50,7 @@ impl<N: Network> Output<N> {
             Output::Private(_, _) => 2,
             Output::Record(_, _, _) => 3,
             Output::ExternalRecord(_) => 4,
+            Output::Future(_, _) => 5,
         }
     }
 
@@ -59,6 +62,7 @@ impl<N: Network> Output<N> {
             Output::Private(id, ..) => id,
             Output::Record(commitment, ..) => commitment,
             Output::ExternalRecord(id) => id,
+            Output::Future(id, ..) => id,
         }
     }
 
@@ -133,6 +137,14 @@ impl<N: Network> Output<N> {
         }
     }
 
+    /// Returns the future, if the output is a future.
+    pub const fn future(&self) -> Option<&Future<N>> {
+        match self {
+            Output::Future(_, Some(future)) => Some(future),
+            _ => None,
+        }
+    }
+
     /// Returns the public verifier inputs for the proof.
     pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
         // Append the output ID.
@@ -152,7 +164,8 @@ impl<N: Network> Output<N> {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(index as u16);
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
@@ -171,7 +184,8 @@ impl<N: Network> Output<N> {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16(index as u16);
                         // Construct the preimage as `(function ID || output || tcm || index)`.
-                        let mut preimage = vec![function_id];
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
                         preimage.extend(fields);
                         preimage.push(*tcm);
                         preimage.push(index);
@@ -198,10 +212,31 @@ impl<N: Network> Output<N> {
                 Ok(candidate_hash) => Ok(checksum == &candidate_hash),
                 Err(error) => Err(error),
             },
+            Output::Future(hash, Some(output)) => {
+                match output.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (future) output index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(function ID || output || tcm || index)`.
+                        let mut preimage = Vec::new();
+                        preimage.push(function_id);
+                        preimage.extend(fields);
+                        preimage.push(*tcm);
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
             Output::Constant(_, None)
             | Output::Public(_, None)
             | Output::Private(_, None)
-            | Output::Record(_, _, None) => {
+            | Output::Record(_, _, None)
+            | Output::Future(_, None) => {
                 // This enforces that the transition *must* contain the value for this transition output.
                 // A similar rule is enforced for the transition input.
                 bail!("A transition output value is missing")

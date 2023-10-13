@@ -16,7 +16,7 @@
 macro_rules! sample_literals {
     ($network:ident, $rng:expr) => {
         [
-            console::program::Literal::<$network>::Address(console::types::Address::new(Uniform::rand($rng))),
+            console::program::Literal::<$network>::Address(console::types::Address::rand($rng)),
             console::program::Literal::Boolean(console::types::Boolean::rand($rng)),
             console::program::Literal::Field(console::types::Field::rand($rng)),
             console::program::Literal::Group(console::types::Group::rand($rng)),

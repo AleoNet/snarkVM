@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Deployment<N> {
         // Read the version.
         let version = u8::read_le(&mut reader)?;
         // Ensure the version is valid.
-        if version != 0 {
+        if version != 1 {
             return Err(error("Invalid deployment version"));
         }
 
@@ -53,7 +53,7 @@ impl<N: Network> ToBytes for Deployment<N> {
     /// Writes the deployment to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
-        0u8.write_le(&mut writer)?;
+        1u8.write_le(&mut writer)?;
         // Write the edition.
         self.edition.write_le(&mut writer)?;
         // Write the program.

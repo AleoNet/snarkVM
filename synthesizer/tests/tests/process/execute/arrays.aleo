@@ -1,7 +1,8 @@
 /*
 randomness: 2937849
 cases:
-  - function: test_arrays
+  - program: arrays.aleo
+    function: test_arrays
     inputs:
     - "[[true, false, true, false]]"
     - "[[false, true, false, true]]"
@@ -22,11 +23,11 @@ function test_arrays:
     and r2.left[0u32][1u32] r2.right[0u32][1u32] into r4;
     and r2.left[0u32][2u32] r2.right[0u32][2u32] into r5;
     and r2.left[0u32][3u32] r2.right[0u32][3u32] into r6;
+    cast r3 r4 r5 r6 into r7 as [boolean; 4u32];
+    cast r7 into r8 as [[boolean; 4u32]; 1u32];
     output r0 as [[boolean; 4u32]; 1u32].private;
     output r1 as [[boolean; 4u32]; 1u32].private;
+    output r8 as [[boolean; 4u32]; 1u32].private;
     output r2 as tree.private;
-    output r3 as boolean.private;
-    output r4 as boolean.private;
-    output r5 as boolean.private;
-    output r6 as boolean.private;
+
 
