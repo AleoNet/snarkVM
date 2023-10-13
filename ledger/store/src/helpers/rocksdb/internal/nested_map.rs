@@ -15,83 +15,154 @@
 #![allow(clippy::type_complexity)]
 
 use super::*;
-use crate::helpers::{Map, MapRead};
+use crate::helpers::{NestedMap, NestedMapRead};
+use console::prelude::FromBytes;
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
-use indexmap::IndexMap;
-use std::{borrow::Cow, ops::Deref, sync::atomic::Ordering};
+use std::{borrow::Cow, sync::atomic::Ordering};
 use tracing::error;
 
 #[derive(Clone)]
-pub struct DataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned>(
-    pub(super) Arc<InnerDataMap<K, V>>,
-);
+pub struct NestedDataMap<
+    M: Serialize + DeserializeOwned,
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
+> {
+    /// The rocksDB instance.
+    pub(super) database: RocksDB,
+    /// The context for the map.
+    pub(super) context: Vec<u8>,
+    /// The tracker for whether a database transaction is in progress.
+    pub(super) batch_in_progress: Arc<AtomicBool>,
+    /// The database transaction.
+    pub(super) atomic_batch: Arc<Mutex<Vec<(M, Option<K>, Option<V>)>>>,
+    /// The checkpoint stack for the batched operations within the map.
+    pub(super) checkpoints: Arc<Mutex<Vec<usize>>>,
+}
 
-impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> Deref for DataMap<K, V> {
-    type Target = InnerDataMap<K, V>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> Debug
+    for NestedDataMap<M, K, V>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NestedDataMap").field("context", &self.context).finish()
     }
 }
 
-pub struct InnerDataMap<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
-    pub(super) database: RocksDB,
-    pub(super) context: Vec<u8>,
-    /// The tracker for whether a database transaction is in progress.
-    pub(super) batch_in_progress: AtomicBool,
-    /// The database transaction.
-    pub(super) atomic_batch: Mutex<Vec<(K, Option<V>)>>,
-    /// The checkpoint stack for the batched operations within the map.
-    pub(super) checkpoints: Mutex<Vec<usize>>,
+impl<M: Serialize + DeserializeOwned, K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned>
+    NestedDataMap<M, K, V>
+{
+    #[inline]
+    fn create_prefixed_map(&self, map: &M) -> Result<Vec<u8>> {
+        let mut raw_map = self.context.clone();
+
+        let map_size: u32 = bincode::serialized_size(&map)?.try_into()?;
+        raw_map.extend_from_slice(&map_size.to_le_bytes());
+
+        bincode::serialize_into(&mut raw_map, map)?;
+        Ok(raw_map)
+    }
+
+    #[inline]
+    fn create_prefixed_map_key(&self, map: &M, key: &K) -> Result<Vec<u8>> {
+        let mut raw_map_key = self.create_prefixed_map(map)?;
+        bincode::serialize_into(&mut raw_map_key, key)?;
+        Ok(raw_map_key)
+    }
+
+    // #[inline]
+    // fn get_map_raw(&self, map: &M) -> Result<Option<rocksdb::DBPinnableSlice>> {
+    //     let raw_map = self.create_prefixed_map(map)?;
+    //     match self.database.get_pinned(&raw_map)? {
+    //         Some(data) => Ok(Some(data)),
+    //         None => Ok(None),
+    //     }
+    // }
+
+    #[inline]
+    fn get_map_key_raw(&self, map: &M, key: &K) -> Result<Option<rocksdb::DBPinnableSlice>> {
+        let raw_map_key = self.create_prefixed_map_key(map, key)?;
+        match self.database.get_pinned(&raw_map_key)? {
+            Some(data) => Ok(Some(data)),
+            None => Ok(None),
+        }
+    }
+}
+#[inline]
+fn get_map_and_key(map_key: &[u8]) -> Option<(&[u8], &[u8])> {
+    let map_len = u32::from_bytes_le(&map_key[PREFIX_LEN..][..4]).ok()? as usize;
+    let map = &map_key[PREFIX_LEN + 4..][..map_len];
+    let key = &map_key[PREFIX_LEN + 4 + map_len..];
+
+    Some((map, key))
 }
 
 impl<
     'a,
-    K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    M: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
-> Map<'a, K, V> for DataMap<K, V>
+> NestedMap<'a, M, K, V> for NestedDataMap<M, K, V>
 {
     ///
-    /// Inserts the given key-value pair into the map.
+    /// Inserts the given map-key-value pair.
     ///
-    fn insert(&self, key: K, value: V) -> Result<()> {
+    fn insert(&self, map: M, key: K, value: V) -> Result<()> {
         // Determine if an atomic batch is in progress.
         match self.is_atomic_in_progress() {
-            // If a batch is in progress, add the key-value pair to the batch.
-            true => {
-                self.atomic_batch.lock().push((key, Some(value)));
-            }
+            // If a batch is in progress, add the map-key-value pair to the batch.
+            true => self.atomic_batch.lock().push((map, Some(key), Some(value))),
             // Otherwise, insert the key-value pair directly into the map.
             false => {
-                // Prepare the prefixed key and serialized value.
-                let raw_key = self.create_prefixed_key(&key)?;
+                // Prepare the prefixed map-key and serialized value.
+                let raw_key = self.create_prefixed_map_key(&map, &key)?;
                 let raw_value = bincode::serialize(&value)?;
                 self.database.put(raw_key, raw_value)?;
             }
         }
-
         Ok(())
     }
 
     ///
-    /// Removes the key-value pair for the given key from the map.
+    /// Removes the given map.
     ///
-    fn remove(&self, key: &K) -> Result<()> {
+    fn remove_map(&self, map: &M) -> Result<()> {
+        // Determine if an atomic batch is in progress.
+        match self.is_atomic_in_progress() {
+            // If a batch is in progress, add the map-None pair to the batch.
+            true => self.atomic_batch.lock().push((*map, None, None)),
+            // Otherwise, remove the map directly from the map.
+            false => {
+                let map = self.create_prefixed_map(map)?;
+
+                // Iterate over the keys with the specified map prefix.
+                let entries_to_delete =
+                    self.database.iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward));
+
+                // Now delete all the identified keys.
+                for entry in entries_to_delete {
+                    let (map_key, _) = entry?;
+                    self.database.delete(&map_key).unwrap();
+                }
+            }
+        }
+        Ok(())
+    }
+
+    ///
+    /// Removes the key-value pair for the given map and key.
+    ///
+    fn remove_key(&self, map: &M, key: &K) -> Result<()> {
         // Determine if an atomic batch is in progress.
         match self.is_atomic_in_progress() {
             // If a batch is in progress, add the key to the batch.
-            true => {
-                self.atomic_batch.lock().push((*key, None));
-            }
+            true => self.atomic_batch.lock().push((*map, Some(key.clone()), None)),
             // Otherwise, remove the key-value pair directly from the map.
             false => {
-                // Prepare the prefixed key.
-                let raw_key = self.create_prefixed_key(key)?;
+                // Prepare the prefixed map-key.
+                let raw_key = self.create_prefixed_map_key(map, key)?;
                 self.database.delete(raw_key)?;
             }
         }
-
         Ok(())
     }
 
@@ -176,31 +247,30 @@ impl<
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
         if !operations.is_empty() {
-            // Insert the operations into an index map to remove any operations that would have been overwritten anyways.
-            let operations: IndexMap<_, _> = IndexMap::from_iter(operations.into_iter());
-
-            // Prepare the key and value for each queued operation.
-            //
-            // Note: This step is taken to ensure (with 100% certainty) that there will be
-            // no chance to fail partway through committing the queued operations.
-            //
-            // The expected behavior is that either all the operations will be committed
-            // or none of them will be.
-            let prepared_operations = operations
-                .into_iter()
-                .map(|(key, value)| match value {
-                    Some(value) => Ok((self.create_prefixed_key(&key)?, Some(bincode::serialize(&value)?))),
-                    None => Ok((self.create_prefixed_key(&key)?, None)),
-                })
-                .collect::<Result<Vec<_>>>()?;
-
             // Enqueue all the operations from the map in the database-wide batch.
             let mut atomic_batch = self.database.atomic_batch.lock();
-            for (raw_key, raw_value) in prepared_operations {
-                match raw_value {
-                    Some(raw_value) => atomic_batch.put(raw_key, raw_value),
-                    None => atomic_batch.delete(raw_key),
-                };
+
+            for (map, key, value) in operations {
+                match (key, value) {
+                    (Some(key), Some(value)) => {
+                        atomic_batch.put(self.create_prefixed_map_key(&map, &key)?, bincode::serialize(&value)?)
+                    }
+                    (Some(key), None) => atomic_batch.delete(self.create_prefixed_map_key(&map, &key)?),
+                    (None, None) => {
+                        let map = self.create_prefixed_map(&map)?;
+
+                        // Iterate over the keys with the specified map prefix.
+                        let entries_to_delete =
+                            self.database.iterator(rocksdb::IteratorMode::From(&map, rocksdb::Direction::Forward));
+
+                        // Now delete all the identified keys.
+                        for entry in entries_to_delete {
+                            let (map_key, _) = entry?;
+                            atomic_batch.delete(map_key);
+                        }
+                    }
+                    (None, Some(_)) => unreachable!("Cannot insert a value without a key"),
+                }
             }
         }
 
@@ -233,60 +303,141 @@ impl<
 
 impl<
     'a,
-    K: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    M: 'a + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned + Send + Sync,
-> MapRead<'a, K, V> for DataMap<K, V>
+> NestedMapRead<'a, M, K, V> for NestedDataMap<M, K, V>
 {
-    type Iterator = Iter<'a, K, V>;
-    type Keys = Keys<'a, K>;
-    type PendingIterator =
-        core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
-    type Values = Values<'a, V>;
+    type Iterator = NestedIter<'a, M, K, V>;
+    type Keys = NestedKeys<'a, M, K>;
+    type PendingIterator = core::iter::Map<
+        std::vec::IntoIter<(M, Option<K>, Option<V>)>,
+        fn((M, Option<K>, Option<V>)) -> (Cow<'a, M>, Option<Cow<'a, K>>, Option<Cow<'a, V>>),
+    >;
+    type Values = NestedValues<'a, V>;
 
     ///
-    /// Returns `true` if the given key exists in the map.
+    /// Returns `true` if the given map and key exists.
     ///
-    fn contains_key_confirmed<Q>(&self, key: &Q) -> Result<bool>
-    where
-        K: Borrow<Q>,
-        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
-    {
-        self.get_raw(key).map(|v| v.is_some())
+    fn contains_key_confirmed(&self, map: &M, key: &K) -> Result<bool> {
+        self.get_map_key_raw(map, key).map(|v| v.is_some())
     }
 
     ///
-    /// Returns `true` if the given key exists in the map.
+    /// Returns `true` if the given map and key exists.
     /// This method first checks the atomic batch, and if it does not exist, then checks the map.
     ///
-    fn contains_key_speculative<Q>(&self, key: &Q) -> Result<bool>
-    where
-        K: Borrow<Q>,
-        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
-    {
+    fn contains_key_speculative(&self, map: &M, key: &K) -> Result<bool> {
         // If a batch is in progress, check the atomic batch first.
         if self.is_atomic_in_progress() {
-            // If the key is present in the atomic batch, then check if the value is 'Some(V)'.
             // We iterate from the back of the `atomic_batch` to find the latest value.
-            if let Some((_, value)) = self.atomic_batch.lock().iter().rev().find(|&(k, _)| k.borrow() == key) {
-                // If the value is 'Some(V)', then the key exists.
-                // If the value is 'Some(None)', then the key is scheduled to be removed.
-                return Ok(value.is_some());
+            for (m, k, v) in self.atomic_batch.lock().iter().rev() {
+                // If the map does not match the given map, then continue.
+                if m != map {
+                    continue;
+                }
+                // If the key is 'None', then the map is scheduled to be removed.
+                if k.is_none() {
+                    return Ok(false);
+                }
+                // If the key matches the given key, then return whether the value is 'Some(V)'.
+                if k.as_ref().unwrap() == key {
+                    // If the value is 'Some(V)', then the key exists.
+                    // If the value is 'None', then the key is scheduled to be removed.
+                    return Ok(v.is_some());
+                }
+            }
+        }
+        // Otherwise, check the map for the key.
+        self.contains_key_confirmed(map, key)
+    }
+
+    ///
+    /// Returns the key-value pairs for the given map, if it exists.
+    ///
+    fn get_map_confirmed(&'a self, map: &M) -> Result<Vec<(K, V)>> {
+        // Prepare the prefixed map.
+        let raw_map = self.create_prefixed_map(map)?;
+        // Serialize the map.
+        let serialized_map = bincode::serialize(map)?;
+
+        // Iterate over the keys with the specified map prefix.
+        let entries: Vec<_> = self
+            .database
+            .iterator(rocksdb::IteratorMode::From(&raw_map, rocksdb::Direction::Forward))
+            .filter_map(|entry| {
+                let (map_key, value) = entry.ok()?;
+
+                // Extract the bytes belonging to the map and the key.
+                let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+
+                if entry_map == serialized_map {
+                    // Deserialize the key.
+                    let key = bincode::deserialize(entry_key).ok()?;
+                    // Deserialize the value.
+                    let value = bincode::deserialize(&value).ok()?;
+                    Some((key, value))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(entries)
+    }
+
+    ///
+    /// Returns the speculative key-value pairs for the given map, if it exists.
+    ///
+    fn get_map_speculative(&'a self, map: &M) -> Result<Vec<(K, V)>> {
+        // If there is no atomic batch in progress, then return the confirmed key-value pairs.
+        if !self.is_atomic_in_progress() {
+            return self.get_map_confirmed(map);
+        }
+
+        // Retrieve the confirmed key-value pairs for the given map.
+        let mut key_values = self.get_map_confirmed(map)?;
+
+        // Retrieve the atomic batch.
+        let operations = self.atomic_batch.lock().clone();
+
+        if !operations.is_empty() {
+            // Perform all the queued operations.
+            for (m, k, v) in operations {
+                // If the map does not match the given map, then continue.
+                if &m != map {
+                    continue;
+                }
+
+                // Perform the operation.
+                match (k, v) {
+                    // Insert or update the key-value pair for the key.
+                    (Some(k), Some(v)) => {
+                        // If the key exists, then update the value.
+                        // Otherwise, insert the key-value pair.
+                        match key_values.iter_mut().find(|(key, _)| key == &k) {
+                            Some((_, value)) => *value = v,
+                            None => key_values.push((k, v)),
+                        }
+                    }
+                    // Clear the key-value pairs for the map.
+                    (None, None) => key_values.clear(),
+                    // Remove the key-value pair for the key.
+                    (Some(k), None) => key_values.retain(|(key, _)| key != &k),
+                    (None, Some(_)) => unreachable!("Cannot remove a key-value pair from a map without a key."),
+                }
             }
         }
 
-        // Otherwise, check the map for the key.
-        self.contains_key_confirmed(key)
+        // Return the key-value pairs for the map.
+        Ok(key_values)
     }
 
     ///
-    /// Returns the value for the given key from the map, if it exists.
+    /// Returns the value for the given map and key, if it exists.
     ///
-    fn get_confirmed<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
-    where
-        K: Borrow<Q>,
-        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
-    {
-        match self.get_raw(key) {
+    fn get_value_confirmed(&'a self, map: &M, key: &K) -> Result<Option<Cow<'a, V>>> {
+        match self.get_map_key_raw(map, key) {
             Ok(Some(bytes)) => Ok(Some(Cow::Owned(bincode::deserialize(&bytes)?))),
             Ok(None) => Ok(None),
             Err(e) => Err(e),
@@ -301,15 +452,27 @@ impl<
     /// If the key is removed in the batch, returns `Some(None)`.
     /// If the key is inserted in the batch, returns `Some(Some(value))`.
     ///
-    fn get_pending<Q>(&self, key: &Q) -> Option<Option<V>>
-    where
-        K: Borrow<Q>,
-        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
-    {
+    fn get_value_pending(&self, map: &M, key: &K) -> Option<Option<V>> {
         // Return early if there is no atomic batch in progress.
         if self.is_atomic_in_progress() {
             // We iterate from the back of the `atomic_batch` to find the latest value.
-            self.atomic_batch.lock().iter().rev().find(|&(k, _)| k.borrow() == key).map(|(_, value)| value).cloned()
+            for (m, k, v) in self.atomic_batch.lock().iter().rev() {
+                // If the map does not match the given map, then continue.
+                if m != map {
+                    continue;
+                }
+                // If the key is 'None', then the map is scheduled to be removed.
+                if k.is_none() {
+                    return Some(None);
+                }
+                // If the key matches the given key, then return whether the value is 'Some(V)'.
+                if k.as_ref().unwrap() == key {
+                    // If the value is 'Some(V)', then the key exists.
+                    // If the value is 'Some(None)', then the key is scheduled to be removed.
+                    return Some(v.clone());
+                }
+            }
+            None
         } else {
             None
         }
@@ -319,47 +482,51 @@ impl<
     /// Returns an iterator visiting each key-value pair in the atomic batch.
     ///
     fn iter_pending(&'a self) -> Self::PendingIterator {
-        let filtered_atomic_batch: IndexMap<_, _> = IndexMap::from_iter(self.atomic_batch.lock().clone().into_iter());
-        filtered_atomic_batch.into_iter().map(|(k, v)| (Cow::Owned(k), v.map(|v| Cow::Owned(v))))
+        self.atomic_batch.lock().clone().into_iter().map(|(m, k, v)| {
+            // Return the map-key-value triple.
+            (Cow::Owned(m), k.map(Cow::Owned), v.map(Cow::Owned))
+        })
     }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter_confirmed(&'a self) -> Self::Iterator {
-        Iter::new(self.database.prefix_iterator(&self.context))
+        NestedIter::new(self.database.prefix_iterator(&self.context))
     }
 
     ///
-    /// Returns an iterator over each key in the map.
+    /// Returns an iterator over each key.
     ///
     fn keys_confirmed(&'a self) -> Self::Keys {
-        Keys::new(self.database.prefix_iterator(&self.context))
+        NestedKeys::new(self.database.prefix_iterator(&self.context))
     }
 
     ///
-    /// Returns an iterator over each value in the map.
+    /// Returns an iterator over each value.
     ///
     fn values_confirmed(&'a self) -> Self::Values {
-        Values::new(self.database.prefix_iterator(&self.context))
+        NestedValues::new(self.database.prefix_iterator(&self.context))
     }
 }
 
-/// An iterator over all key-value pairs in a data map.
-pub struct Iter<
+/// An iterator over all map-key-value pairs in a data map.
+pub struct NestedIter<
     'a,
-    K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    M: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
     V: 'a + PartialEq + Eq + Serialize + DeserializeOwned,
 > {
     db_iter: rocksdb::DBIterator<'a>,
-    _phantom: PhantomData<(K, V)>,
+    _phantom: PhantomData<(M, K, V)>,
 }
 
 impl<
     'a,
-    K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    M: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
     V: 'a + PartialEq + Eq + Serialize + DeserializeOwned,
-> Iter<'a, K, V>
+> NestedIter<'a, M, K, V>
 {
     pub(super) fn new(db_iter: rocksdb::DBIterator<'a>) -> Self {
         Self { db_iter, _phantom: PhantomData }
@@ -368,69 +535,95 @@ impl<
 
 impl<
     'a,
-    K: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
     V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned,
-> Iterator for Iter<'a, K, V>
+> Iterator for NestedIter<'a, M, K, V>
 {
-    type Item = (Cow<'a, K>, Cow<'a, V>);
+    type Item = (Cow<'a, M>, Cow<'a, K>, Cow<'a, V>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (key, value) = self
+        let (map_key, value) = self
             .db_iter
             .next()?
             .map_err(|e| {
                 error!("RocksDB iterator error: {e}");
             })
             .ok()?;
-        let key = bincode::deserialize(&key[PREFIX_LEN..]).ok()?;
+
+        // Extract the bytes belonging to the map and the key.
+        let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+        // Deserialize the map and key.
+        let map = bincode::deserialize(entry_map).ok()?;
+        let key = bincode::deserialize(entry_key).ok()?;
+        // Deserialize the value.
         let value = bincode::deserialize(&value).ok()?;
 
-        Some((Cow::Owned(key), Cow::Owned(value)))
+        Some((Cow::Owned(map), Cow::Owned(key), Cow::Owned(value)))
     }
 }
 
 /// An iterator over the keys of a prefix.
-pub struct Keys<'a, K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned> {
+pub struct NestedKeys<
+    'a,
+    M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
+> {
     db_iter: rocksdb::DBIterator<'a>,
-    _phantom: PhantomData<K>,
+    _phantom: PhantomData<(M, K)>,
 }
 
-impl<'a, K: 'a + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned> Keys<'a, K> {
+impl<
+    'a,
+    M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
+> NestedKeys<'a, M, K>
+{
     pub(crate) fn new(db_iter: rocksdb::DBIterator<'a>) -> Self {
         Self { db_iter, _phantom: PhantomData }
     }
 }
 
-impl<'a, K: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned> Iterator for Keys<'a, K> {
-    type Item = Cow<'a, K>;
+impl<
+    'a,
+    M: 'a + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned,
+    K: 'a + Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned,
+> Iterator for NestedKeys<'a, M, K>
+{
+    type Item = (Cow<'a, M>, Cow<'a, K>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (key, _) = self
+        let (map_key, _) = self
             .db_iter
             .next()?
             .map_err(|e| {
                 error!("RocksDB iterator error: {e}");
             })
             .ok()?;
-        let key = bincode::deserialize(&key[PREFIX_LEN..]).ok()?;
 
-        Some(Cow::Owned(key))
+        // Extract the bytes belonging to the map and the key.
+        let (entry_map, entry_key) = get_map_and_key(&map_key)?;
+        // Deserialize the map and key.
+        let map = bincode::deserialize(entry_map).ok()?;
+        let key = bincode::deserialize(entry_key).ok()?;
+
+        Some((Cow::Owned(map), Cow::Owned(key)))
     }
 }
 
 /// An iterator over the values of a prefix.
-pub struct Values<'a, V: 'a + PartialEq + Eq + Serialize + DeserializeOwned> {
+pub struct NestedValues<'a, V: 'a + PartialEq + Eq + Serialize + DeserializeOwned> {
     db_iter: rocksdb::DBIterator<'a>,
     _phantom: PhantomData<V>,
 }
 
-impl<'a, V: 'a + PartialEq + Eq + Serialize + DeserializeOwned> Values<'a, V> {
+impl<'a, V: 'a + PartialEq + Eq + Serialize + DeserializeOwned> NestedValues<'a, V> {
     pub(crate) fn new(db_iter: rocksdb::DBIterator<'a>) -> Self {
         Self { db_iter, _phantom: PhantomData }
     }
 }
 
-impl<'a, V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned> Iterator for Values<'a, V> {
+impl<'a, V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned> Iterator for NestedValues<'a, V> {
     type Item = Cow<'a, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -444,37 +637,6 @@ impl<'a, V: 'a + Clone + PartialEq + Eq + Serialize + DeserializeOwned> Iterator
         let value = bincode::deserialize(&value).ok()?;
 
         Some(Cow::Owned(value))
-    }
-}
-
-impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> DataMap<K, V> {
-    #[inline]
-    fn create_prefixed_key<Q>(&self, key: &Q) -> Result<Vec<u8>>
-    where
-        K: Borrow<Q>,
-        Q: Serialize + ?Sized,
-    {
-        let mut raw_key = self.context.clone();
-        bincode::serialize_into(&mut raw_key, &key)?;
-        Ok(raw_key)
-    }
-
-    fn get_raw<Q>(&self, key: &Q) -> Result<Option<rocksdb::DBPinnableSlice>>
-    where
-        K: Borrow<Q>,
-        Q: Serialize + ?Sized,
-    {
-        let raw_key = self.create_prefixed_key(key)?;
-        match self.database.get_pinned(&raw_key)? {
-            Some(data) => Ok(Some(data)),
-            None => Ok(None),
-        }
-    }
-}
-
-impl<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> fmt::Debug for DataMap<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DataMap").field("context", &self.context).finish()
     }
 }
 
@@ -498,29 +660,34 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    // Below are a few objects that mimic the way our DataMaps are organized,
+    // Below are a few objects that mimic the way our NestedDataMaps are organized,
     // in order to provide a more accurate test setup for some scenarios.
 
-    fn open_map_testing_from_db<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
+    fn open_map_testing_from_db<
+        M: Serialize + DeserializeOwned,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        T: Into<u16>,
+    >(
         database: RocksDB,
         map_id: T,
-    ) -> DataMap<K, V> {
+    ) -> NestedDataMap<M, K, V> {
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();
         context.extend_from_slice(&(map_id.into()).to_le_bytes());
 
-        // Return the DataMap.
-        DataMap(Arc::new(InnerDataMap {
+        // Return the NestedDataMap.
+        NestedDataMap {
             database,
             context,
             atomic_batch: Default::default(),
             batch_in_progress: Default::default(),
             checkpoints: Default::default(),
-        }))
+        }
     }
 
     struct TestStorage {
-        own_map: DataMap<usize, String>,
+        own_map: NestedDataMap<usize, usize, String>,
         extra_maps: TestStorage2,
     }
 
@@ -574,8 +741,8 @@ mod tests {
     }
 
     struct TestStorage2 {
-        own_map1: DataMap<usize, String>,
-        own_map2: DataMap<usize, String>,
+        own_map1: NestedDataMap<usize, usize, String>,
+        own_map2: NestedDataMap<usize, usize, String>,
         extra_maps: TestStorage3,
     }
 
@@ -626,7 +793,7 @@ mod tests {
     }
 
     struct TestStorage3 {
-        own_map: DataMap<usize, String>,
+        own_map: NestedDataMap<usize, usize, String>,
     }
 
     impl TestStorage3 {
@@ -662,38 +829,43 @@ mod tests {
     #[test]
     #[serial]
     fn test_contains_key_sanity_check() {
+        // Initialize 'm'.
+        let m = 0usize;
         // Initialize an address.
         let address =
             Address::<CurrentNetwork>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")
                 .unwrap();
 
         // Initialize a map.
-        let map: DataMap<Address<CurrentNetwork>, ()> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
-        map.insert(address, ()).expect("Failed to insert into data map");
-        assert!(map.contains_key_confirmed(&address).unwrap());
+        let map: NestedDataMap<usize, Address<CurrentNetwork>, ()> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
+        map.insert(m, address, ()).expect("Failed to insert into data map");
+        assert!(map.contains_key_confirmed(&m, &address).unwrap());
     }
 
     #[test]
     #[serial]
     #[traced_test]
-    fn test_insert_and_get_speculative() {
+    fn test_insert_and_get_value_speculative() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        crate::helpers::test_helpers::map::check_insert_and_get_speculative(map);
+        crate::helpers::test_helpers::nested_map::check_insert_and_get_value_speculative(map);
     }
 
     #[test]
     #[serial]
     #[traced_test]
-    fn test_remove_and_get_speculative() {
+    fn test_remove_key_and_get_value_speculative() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        crate::helpers::test_helpers::map::check_remove_and_get_speculative(map);
+        crate::helpers::test_helpers::nested_map::check_remove_and_get_value_speculative(map);
     }
 
     #[test]
@@ -701,10 +873,23 @@ mod tests {
     #[traced_test]
     fn test_contains_key() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        crate::helpers::test_helpers::map::check_contains_key(map);
+        crate::helpers::test_helpers::nested_map::check_contains_key(map);
+    }
+
+    #[test]
+    #[serial]
+    #[traced_test]
+    fn test_get_map() {
+        // Initialize a map.
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
+
+        crate::helpers::test_helpers::nested_map::check_get_map(map);
     }
 
     #[test]
@@ -712,10 +897,11 @@ mod tests {
     #[traced_test]
     fn test_check_iterators_match() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        crate::helpers::test_helpers::map::check_iterators_match(map);
+        crate::helpers::test_helpers::nested_map::check_iterators_match(map);
     }
 
     #[test]
@@ -723,10 +909,11 @@ mod tests {
     #[traced_test]
     fn test_atomic_writes_are_batched() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        crate::helpers::test_helpers::map::check_atomic_writes_are_batched(map);
+        crate::helpers::test_helpers::nested_map::check_atomic_writes_are_batched(map);
     }
 
     #[test]
@@ -734,10 +921,11 @@ mod tests {
     #[traced_test]
     fn test_atomic_writes_can_be_aborted() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
 
-        crate::helpers::test_helpers::map::check_atomic_writes_can_be_aborted(map);
+        crate::helpers::test_helpers::nested_map::check_atomic_writes_can_be_aborted(map);
     }
 
     #[test]
@@ -746,8 +934,9 @@ mod tests {
         const NUM_ITEMS: usize = 10;
 
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
@@ -759,7 +948,7 @@ mod tests {
         {
             // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
             for i in 0..NUM_ITEMS / 2 {
-                map.insert(i, i.to_string()).unwrap();
+                map.insert(i, i, i.to_string()).unwrap();
             }
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -779,7 +968,7 @@ mod tests {
             {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
                 for i in (NUM_ITEMS / 2)..NUM_ITEMS {
-                    map.insert(i, i.to_string()).unwrap();
+                    map.insert(i, i, i.to_string()).unwrap();
                 }
                 // The map should still contain no items.
                 assert!(map.iter_confirmed().next().is_none());
@@ -820,8 +1009,9 @@ mod tests {
         const NUM_ITEMS: usize = 10;
 
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
@@ -831,7 +1021,7 @@ mod tests {
         atomic_batch_scope!(map, {
             // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
             for i in 0..NUM_ITEMS / 2 {
-                map.insert(i, i.to_string()).unwrap();
+                map.insert(i, i, i.to_string()).unwrap();
             }
             // The map should still contain no items.
             assert!(map.iter_confirmed().next().is_none());
@@ -844,7 +1034,7 @@ mod tests {
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
                 for i in (NUM_ITEMS / 2)..NUM_ITEMS {
-                    map.insert(i, i.to_string()).unwrap();
+                    map.insert(i, i, i.to_string()).unwrap();
                 }
                 // The map should still contain no items.
                 assert!(map.iter_confirmed().next().is_none());
@@ -882,8 +1072,9 @@ mod tests {
         const NUM_ITEMS: usize = 10;
 
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
@@ -895,7 +1086,7 @@ mod tests {
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
-                    map.insert(i, i.to_string()).unwrap();
+                    map.insert(i, i, i.to_string()).unwrap();
                 }
                 // The map should still contain no items.
                 assert!(map.iter_confirmed().next().is_none());
@@ -908,7 +1099,7 @@ mod tests {
                 atomic_batch_scope!(map, {
                     // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
                     for i in (NUM_ITEMS / 2)..NUM_ITEMS {
-                        map.insert(i, i.to_string()).unwrap();
+                        map.insert(i, i, i.to_string()).unwrap();
                     }
                     // The map should still contain no items.
                     assert!(map.iter_confirmed().next().is_none());
@@ -936,8 +1127,9 @@ mod tests {
         const NUM_ITEMS: usize = 10;
 
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
@@ -949,7 +1141,7 @@ mod tests {
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
-                    map.insert(i, i.to_string()).unwrap();
+                    map.insert(i, i, i.to_string()).unwrap();
                 }
                 // The map should still contain no items.
                 assert!(map.iter_confirmed().next().is_none());
@@ -973,7 +1165,7 @@ mod tests {
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
                 for i in (NUM_ITEMS / 2)..NUM_ITEMS {
-                    map.insert(i, i.to_string()).unwrap();
+                    map.insert(i, i, i.to_string()).unwrap();
                 }
                 // The map should still contain no items.
                 assert!(map.iter_confirmed().next().is_none());
@@ -1015,8 +1207,9 @@ mod tests {
         const NUM_ITEMS: usize = 10;
 
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
@@ -1028,7 +1221,7 @@ mod tests {
             atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) NUM_ITEMS / 2 insertions.
                 for i in 0..NUM_ITEMS / 2 {
-                    map.insert(i, i.to_string()).unwrap();
+                    map.insert(i, i, i.to_string()).unwrap();
                 }
                 // The map should still contain no items.
                 assert!(map.iter_confirmed().next().is_none());
@@ -1052,7 +1245,7 @@ mod tests {
             let result: Result<()> = atomic_batch_scope!(map, {
                 // Queue (since a batch is in progress) another NUM_ITEMS / 2 insertions.
                 for i in (NUM_ITEMS / 2)..NUM_ITEMS {
-                    map.insert(i, i.to_string()).unwrap();
+                    map.insert(i, i, i.to_string()).unwrap();
                 }
                 // The map should still contain no items.
                 assert!(map.iter_confirmed().next().is_none());
@@ -1093,8 +1286,9 @@ mod tests {
     #[test]
     fn test_atomic_finalize_fails_to_start() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
@@ -1126,20 +1320,21 @@ mod tests {
     #[test]
     fn test_atomic_checkpoint_truncation() {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoints.lock().last(), None);
 
         // Insert the key.
-        map.insert(0, "0".to_string()).unwrap();
+        map.insert(0, 0, "0".to_string()).unwrap();
 
         // Start an atomic finalize.
         let outcome = atomic_batch_scope!(map, {
             // Insert the key.
-            map.insert(0, "1".to_string()).unwrap();
+            map.insert(0, 0, "1".to_string()).unwrap();
 
             assert_eq!(map.checkpoints.lock().last(), None);
 
@@ -1149,7 +1344,7 @@ mod tests {
                 assert_eq!(map.checkpoints.lock().last(), Some(&1));
 
                 // Update the key.
-                map.insert(0, "2".to_string()).unwrap();
+                map.insert(0, 0, "2".to_string()).unwrap();
 
                 bail!("This batch scope should fail.")
             });
@@ -1161,9 +1356,12 @@ mod tests {
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
             // Ensure the pending operations still has the initial insertion.
-            assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+            assert_eq!(map.get_value_pending(&0, &0), Some(Some("1".to_string())));
             // Ensure the confirmed value has not changed.
-            assert_eq!(*map.iter_confirmed().next().unwrap().1, "0");
+            assert_eq!(
+                map.iter_confirmed().next().unwrap(),
+                (Cow::Owned(0), Cow::Owned(0), Cow::Owned("0".to_string()))
+            );
             assert_eq!(map.checkpoints.lock().last(), None);
 
             Ok(())
@@ -1178,21 +1376,22 @@ mod tests {
         assert_eq!(map.checkpoints.lock().last(), None);
 
         // Ensure that the map value is correct.
-        assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
+        assert_eq!(map.iter_confirmed().next().unwrap(), (Cow::Owned(0), Cow::Owned(0), Cow::Owned("1".to_string())));
     }
 
     #[test]
     fn test_atomic_finalize_with_nested_batch_scope() -> Result<()> {
         // Initialize a map.
-        let map: DataMap<usize, String> =
-            RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMap::Test)).expect("Failed to open data map");
+        let map: NestedDataMap<usize, usize, String> =
+            RocksDB::open_nested_map_testing(temp_dir(), None, MapID::Test(TestMap::Test))
+                .expect("Failed to open data map");
         // Sanity check.
         assert!(map.iter_confirmed().next().is_none());
         // Make sure the checkpoint index is None.
         assert_eq!(map.checkpoints.lock().last(), None);
 
         // Insert the key.
-        map.insert(0, "0".to_string()).unwrap();
+        map.insert(0, 0, "0".to_string()).unwrap();
 
         // Start an atomic finalize.
         let outcome = atomic_finalize!(map, FinalizeMode::RealRun, {
@@ -1203,7 +1402,7 @@ mod tests {
                 assert_eq!(map.checkpoints.lock().last(), Some(&0));
 
                 // Insert the key.
-                map.insert(0, "1".to_string()).unwrap();
+                map.insert(0, 0, "1".to_string()).unwrap();
 
                 Ok(())
             });
@@ -1218,7 +1417,7 @@ mod tests {
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
             // Make sure the pending operations is correct.
-            assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+            assert_eq!(map.get_value_pending(&0, &0), Some(Some("1".to_string())));
 
             // Create a failing atomic batch scope that will reset the checkpoint.
             // Simulates a rejected transaction.
@@ -1232,7 +1431,7 @@ mod tests {
                     assert_eq!(map.checkpoints.lock().last(), Some(&1));
 
                     // Update the key.
-                    map.insert(0, "2".to_string()).unwrap();
+                    map.insert(0, 0, "2".to_string()).unwrap();
 
                     Ok(())
                 });
@@ -1253,7 +1452,7 @@ mod tests {
                     assert_eq!(map.checkpoints.lock().last(), Some(&2));
 
                     // Update the key.
-                    map.insert(0, "3".to_string()).unwrap();
+                    map.insert(0, 0, "3".to_string()).unwrap();
 
                     Ok(())
                 });
@@ -1269,7 +1468,7 @@ mod tests {
             // The pending batch should contain 1 item.
             assert_eq!(map.iter_pending().count(), 1);
             // Make sure the pending operations still has the initial insertion.
-            assert_eq!(map.get_pending(&0), Some(Some("1".to_string())));
+            assert_eq!(map.get_value_pending(&0, &0), Some(Some("1".to_string())));
             // Make sure the checkpoint index is None.
             assert_eq!(map.checkpoints.lock().last(), None);
             // Ensure that the atomic batch length is 1.
@@ -1297,7 +1496,7 @@ mod tests {
         assert_eq!(map.database.atomic_depth.load(Ordering::SeqCst), 0);
 
         // Ensure that the map value is correct.
-        assert_eq!(*map.iter_confirmed().next().unwrap().1, "1");
+        assert_eq!(map.iter_confirmed().next().unwrap(), (Cow::Owned(0), Cow::Owned(0), Cow::Owned("1".to_string())));
 
         Ok(())
     }
@@ -1329,24 +1528,24 @@ mod tests {
             assert_eq!(test_storage.own_map.checkpoints.lock().last(), None);
 
             // Write an item into the first map.
-            test_storage.own_map.insert(0, 0.to_string()).unwrap();
+            test_storage.own_map.insert(0, 0, 0.to_string()).unwrap();
 
             // Start another atomic write batch.
             atomic_batch_scope!(test_storage.extra_maps.own_map1, {
                 assert!(test_storage.is_atomic_in_progress_everywhere());
 
                 // Write an item into the second map.
-                test_storage.extra_maps.own_map1.insert(1, 1.to_string()).unwrap();
+                test_storage.extra_maps.own_map1.insert(1, 1, 1.to_string()).unwrap();
 
                 // Write an item into the third map.
-                test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
+                test_storage.extra_maps.own_map2.insert(2, 2, 2.to_string()).unwrap();
 
                 // Start another atomic write batch.
                 atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
                     assert!(test_storage.extra_maps.extra_maps.own_map.is_atomic_in_progress());
 
                     // Write an item into the fourth map.
-                    test_storage.extra_maps.extra_maps.own_map.insert(3, 3.to_string()).unwrap();
+                    test_storage.extra_maps.extra_maps.own_map.insert(3, 3, 3.to_string()).unwrap();
 
                     Ok(())
                 })?;
@@ -1385,24 +1584,24 @@ mod tests {
                 assert!(test_storage.is_atomic_in_progress_everywhere());
 
                 // Write an item into the first map.
-                test_storage.own_map.insert(0, 0.to_string()).unwrap();
+                test_storage.own_map.insert(0, 0, 0.to_string()).unwrap();
 
                 // Start another atomic write batch.
                 atomic_batch_scope!(test_storage.extra_maps.own_map1, {
                     assert!(test_storage.is_atomic_in_progress_everywhere());
 
                     // Write an item into the second map.
-                    test_storage.extra_maps.own_map1.insert(1, 1.to_string()).unwrap();
+                    test_storage.extra_maps.own_map1.insert(1, 1, 1.to_string()).unwrap();
 
                     // Write an item into the third map.
-                    test_storage.extra_maps.own_map2.insert(2, 2.to_string()).unwrap();
+                    test_storage.extra_maps.own_map2.insert(2, 2, 2.to_string()).unwrap();
 
                     // Start another atomic write batch.
                     let result: Result<()> = atomic_batch_scope!(test_storage.extra_maps.extra_maps.own_map, {
                         assert!(test_storage.is_atomic_in_progress_everywhere());
 
                         // Write an item into the fourth map.
-                        test_storage.extra_maps.extra_maps.own_map.insert(3, 3.to_string()).unwrap();
+                        test_storage.extra_maps.extra_maps.own_map.insert(3, 3, 3.to_string()).unwrap();
 
                         // Rewind the atomic batch via a simulated error.
                         bail!("An error that will trigger a single rewind.");

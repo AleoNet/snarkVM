@@ -179,10 +179,7 @@ pub enum TransitionMap {
 #[repr(u16)]
 pub enum ProgramMap {
     ProgramID = DataID::ProgramIDMap as u16,
-    MappingID = DataID::MappingIDMap as u16,
-    KeyValueID = DataID::KeyValueIDMap as u16,
-    Key = DataID::KeyMap as u16,
-    Value = DataID::ValueMap as u16,
+    KeyValueID = DataID::KeyValueMap as u16,
 }
 
 /// The RocksDB map prefix for test-related entries.
@@ -266,10 +263,7 @@ enum DataID {
     TransitionReverseTCMMap,
     // Program
     ProgramIDMap,
-    MappingIDMap,
-    KeyValueIDMap,
-    KeyMap,
-    ValueMap,
+    KeyValueMap,
 
     // Testing
     #[cfg(test)]

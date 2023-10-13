@@ -12,8 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod map;
-pub use map::*;
+mod check_atomic_writes_are_batched;
+pub use check_atomic_writes_are_batched::*;
 
-mod nested_map;
-pub use nested_map::*;
+mod check_atomic_writes_can_be_aborted;
+pub use check_atomic_writes_can_be_aborted::*;
+
+mod check_contains_key;
+pub use check_contains_key::*;
+
+mod check_insert_and_get_speculative;
+pub use check_insert_and_get_speculative::*;
+
+mod check_iterators_match;
+pub use check_iterators_match::*;
+
+mod check_remove_and_get_speculative;
+pub use check_remove_and_get_speculative::*;

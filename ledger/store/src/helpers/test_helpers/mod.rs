@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod map;
-pub use map::*;
+pub mod map;
 
-mod nested_map;
-pub use nested_map::*;
+pub mod nested_map;

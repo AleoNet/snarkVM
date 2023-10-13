@@ -173,14 +173,10 @@ impl<N: Network> Block<N> {
             Authority::Beacon(signature) => {
                 // Retrieve the signer.
                 let signer = signature.to_address();
-                // Retrieve the first committee member.
-                let Some((first_member, _)) = current_committee.members().first() else {
-                    bail!("Failed to retrieve the first committee member");
-                };
-                // Ensure the block is signed by the first committee member.
+                // Ensure the block is signed by a committee member.
                 ensure!(
-                    signer == *first_member,
-                    "Beacon block {expected_height} has an invalid signer (found '{signer}', expected '{first_member}')",
+                    current_committee.members().contains_key(&signer),
+                    "Beacon block {expected_height} has a signer not in the committee (found '{signer}')",
                 );
                 // Ensure the signature is valid.
                 ensure!(
