@@ -112,7 +112,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Initializes a new block from the given previous block hash, block header,
-    /// authority, transactions, ratifications, coinbase, and aborted transactions.
+    /// authority, ratifications, solutions, transactions, and aborted transactions.
     pub fn from(
         previous_hash: N::BlockHash,
         header: Header<N>,
@@ -179,7 +179,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Initializes a new block from the given block hash, previous block hash, block header,
-    /// authority, transactions, ratifications, coinbase, and aborted transactions.
+    /// authority, ratifications, solutions, transactions, and aborted transactions.
     pub fn from_unchecked(
         block_hash: N::BlockHash,
         previous_hash: N::BlockHash,
