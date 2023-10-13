@@ -23,11 +23,11 @@ use crate::{
         VarunaHidingMode,
     },
 };
-use itertools::Itertools;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
 use anyhow::{ensure, Result};
+use itertools::Itertools;
 use std::collections::BTreeMap;
 
 #[cfg(not(feature = "serial"))]

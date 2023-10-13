@@ -16,9 +16,10 @@ use crate::{
     r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable},
     snark::varuna::ahp::matrices::to_matrix_helper,
 };
-use anyhow::Result;
 use snarkvm_fields::Field;
 use snarkvm_utilities::serialize::*;
+
+use anyhow::Result;
 
 /// Stores constraints during index generation.
 pub(crate) struct ConstraintSystem<F: Field> {
