@@ -30,3 +30,4 @@ path = "../../console/types"
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]
+wasm = [ "console/wasm"]
