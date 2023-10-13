@@ -290,10 +290,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.solutions(), block.transactions()) {
-            Ok(_ratified_finalize_operations) => {
-                // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
-                Ok(())
-            }
+            Ok(_ratified_finalize_operations) => Ok(()),
             Err(error) => {
                 // Rollback the block.
                 self.block_store().remove_last_n(1)?;
