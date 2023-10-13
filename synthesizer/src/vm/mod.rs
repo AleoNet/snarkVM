@@ -229,12 +229,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Construct the finalize state.
         let state = FinalizeGlobalState::new_genesis::<N>()?;
         // Speculate the transactions.
-        let (transactions, aborted_transactions, ratify_finalize_operations) =
+        let (transactions, aborted_transactions, ratified_finalize_operations) =
             self.speculate(state, &ratifications, solutions.as_ref(), transactions.iter())?;
         ensure!(aborted_transactions.is_empty(), "Failed to initialize a genesis block - found aborted transactions");
 
         // Prepare the block header.
-        let header = Header::genesis(&transactions, ratify_finalize_operations)?;
+        let header = Header::genesis(&transactions, ratified_finalize_operations)?;
         // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
@@ -266,7 +266,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         self.block_store().insert(block)?;
         // Next, finalize the transactions.
         match self.finalize(state, block.ratifications(), block.coinbase(), block.transactions()) {
-            Ok(ratify_finalize_operations) => {
+            Ok(ratified_finalize_operations) => {
                 // TODO (howardwu): Check the accepted, rejected, and finalize operations match the block.
                 Ok(())
             }
@@ -571,7 +571,7 @@ function compute:
         let previous_block = vm.block_store().get_block(&block_hash).unwrap().unwrap();
 
         // Construct the new block header.
-        let (transactions, aborted_transactions, ratify_finalize_operations) =
+        let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -590,7 +590,7 @@ function compute:
         let header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root(ratify_finalize_operations).unwrap(),
+            transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             Field::zero(),

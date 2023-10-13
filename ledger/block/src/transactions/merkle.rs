@@ -16,9 +16,9 @@ use super::*;
 
 impl<N: Network> Transactions<N> {
     /// Returns the finalize root of the transactions.
-    pub fn to_finalize_root(&self, ratify_finalize_operations: Vec<FinalizeOperation<N>>) -> Result<Field<N>> {
+    pub fn to_finalize_root(&self, ratified_finalize_operations: Vec<FinalizeOperation<N>>) -> Result<Field<N>> {
         // Prepare the leaves.
-        let leaves = self.finalize_operations().chain(&ratify_finalize_operations).map(ToBits::to_bits_le);
+        let leaves = self.finalize_operations().chain(&ratified_finalize_operations).map(ToBits::to_bits_le);
         // Compute the finalize tree.
         let tree = N::merkle_tree_bhp::<FINALIZE_OPERATIONS_DEPTH>(&leaves.collect::<Vec<_>>())?;
         // Return the finalize root.

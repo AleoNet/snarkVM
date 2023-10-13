@@ -33,13 +33,13 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::speculate");
 
         // Performs a **dry-run** over the list of ratifications, solutions, and transactions.
-        let (confirmed_transactions, aborted_transactions, ratify_finalize_operations) =
+        let (confirmed_transactions, aborted_transactions, ratified_finalize_operations) =
             self.atomic_speculate(state, ratifications, solutions, transactions)?;
 
         finish!(timer, "Finished dry-run of the transactions");
 
         // Return the transactions.
-        Ok((confirmed_transactions.into_iter().collect(), aborted_transactions, ratify_finalize_operations))
+        Ok((confirmed_transactions.into_iter().collect(), aborted_transactions, ratified_finalize_operations))
     }
 
     /// Finalizes the given transactions into the VM.
@@ -56,10 +56,10 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         let timer = timer!("VM::finalize");
 
         // Performs a **real-run** of finalize over the list of ratifications, solutions, and transactions.
-        let ratify_finalize_operations = self.atomic_finalize(state, ratifications, solutions, transactions)?;
+        let ratified_finalize_operations = self.atomic_finalize(state, ratifications, solutions, transactions)?;
 
         finish!(timer, "Finished real-run of finalize");
-        Ok(ratify_finalize_operations)
+        Ok(ratified_finalize_operations)
     }
 }
 
@@ -762,7 +762,7 @@ finalize transfer_public:
         rng: &mut R,
     ) -> Result<Block<CurrentNetwork>> {
         // Construct the new block header.
-        let (transactions, aborted_transactions, ratify_finalize_operations) =
+        let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, transactions.iter())?;
         // Construct the metadata associated with the block.
         let metadata = Metadata::new(
@@ -781,7 +781,7 @@ finalize transfer_public:
         let header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root(ratify_finalize_operations).unwrap(),
+            transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             Field::zero(),

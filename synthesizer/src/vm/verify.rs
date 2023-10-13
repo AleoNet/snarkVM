@@ -432,7 +432,7 @@ mod tests {
         let deployment_transaction = vm.deploy(&caller_private_key, &program, Some(credits), 10, None, rng).unwrap();
 
         // Construct the new block header.
-        let (transactions, aborted_transactions, ratify_finalize_operations) =
+        let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(sample_finalize_state(1), &[], None, [deployment_transaction].iter()).unwrap();
 
         // Construct the metadata associated with the block.
@@ -453,7 +453,7 @@ mod tests {
         let deployment_header = Header::from(
             vm.block_store().current_state_root(),
             transactions.to_transactions_root().unwrap(),
-            transactions.to_finalize_root(ratify_finalize_operations).unwrap(),
+            transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
             crate::vm::test_helpers::sample_ratifications_root(),
             Field::zero(),
             Field::zero(),

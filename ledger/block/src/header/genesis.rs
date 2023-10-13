@@ -18,15 +18,15 @@ impl<N: Network> Header<N> {
     /// Initializes the genesis block header.
     pub fn genesis(
         transactions: &Transactions<N>,
-        ratify_finalize_operations: Vec<FinalizeOperation<N>>,
+        ratified_finalize_operations: Vec<FinalizeOperation<N>>,
     ) -> Result<Self> {
         #[cfg(not(debug_assertions))]
-        ensure!(!ratify_finalize_operations.is_empty(), "The genesis block must contain ratify-finalize operations");
+        ensure!(!ratified_finalize_operations.is_empty(), "The genesis block must contain ratify-finalize operations");
 
         // Prepare a genesis block header.
         let previous_state_root = Into::<N::StateRoot>::into(Field::zero());
         let transactions_root = transactions.to_transactions_root()?;
-        let finalize_root = transactions.to_finalize_root(ratify_finalize_operations)?;
+        let finalize_root = transactions.to_finalize_root(ratified_finalize_operations)?;
         let ratifications_root = *N::merkle_tree_bhp::<RATIFICATIONS_DEPTH>(&[])?.root();
         let solutions_root = Field::zero();
         let subdag_root = Field::zero();

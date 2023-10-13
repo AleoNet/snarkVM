@@ -88,10 +88,10 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                     return output;
                 }
             };
-        let (transactions, aborted_transactions, ratify_finalize_operations) =
+        let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()).unwrap();
         let block =
-            construct_next_block(&vm, &genesis_private_key, transactions, ratify_finalize_operations, rng).unwrap();
+            construct_next_block(&vm, &genesis_private_key, transactions, ratified_finalize_operations, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
 
@@ -223,9 +223,9 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
             );
 
             // Speculate on the transaction.
-            let (transactions, aborted_transactions, ratify_finalize_operations) =
+            let (transactions, aborted_transactions, ratified_finalize_operations) =
                 match vm.speculate(construct_finalize_global_state(&vm), &[], None, [transaction].iter()) {
-                    Ok((transactions, aborted_transactions, ratify_finalize_operations)) => {
+                    Ok((transactions, aborted_transactions, ratified_finalize_operations)) => {
                         result.insert(
                             serde_yaml::Value::String("speculate".to_string()),
                             serde_yaml::Value::String(match transactions.iter().next().unwrap() {
@@ -241,7 +241,7 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                                 }
                             }),
                         );
-                        (transactions, aborted_transactions, ratify_finalize_operations)
+                        (transactions, aborted_transactions, ratified_finalize_operations)
                     }
                     Err(err) => {
                         result.insert(
@@ -252,7 +252,8 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                     }
                 };
             // Construct the next block.
-            let block = construct_next_block(&vm, &private_key, transactions, ratify_finalize_operations, rng).unwrap();
+            let block =
+                construct_next_block(&vm, &private_key, transactions, ratified_finalize_operations, rng).unwrap();
             // Add the next block.
             result.insert(
                 serde_yaml::Value::String("add_next_block".to_string()),
@@ -348,9 +349,9 @@ fn construct_fee_records<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng
             }
         }
         // Create a block for the fee transactions and add them to the VM.
-        let (transactions, aborted_transactions, ratify_finalize_operations) =
+        let (transactions, aborted_transactions, ratified_finalize_operations) =
             vm.speculate(construct_finalize_global_state(vm), &[], None, transactions.iter()).unwrap();
-        let block = construct_next_block(vm, private_key, transactions, ratify_finalize_operations, rng).unwrap();
+        let block = construct_next_block(vm, private_key, transactions, ratified_finalize_operations, rng).unwrap();
         vm.add_next_block(&block).unwrap();
     }
 
@@ -364,7 +365,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     vm: &VM<CurrentNetwork, C>,
     private_key: &PrivateKey<CurrentNetwork>,
     transactions: Transactions<CurrentNetwork>,
-    ratify_finalize_operations: Vec<FinalizeOperation<CurrentNetwork>>,
+    ratified_finalize_operations: Vec<FinalizeOperation<CurrentNetwork>>,
     rng: &mut R,
 ) -> Result<Block<CurrentNetwork>> {
     // Get the most recent block.
@@ -389,7 +390,7 @@ fn construct_next_block<C: ConsensusStorage<CurrentNetwork>, R: Rng + CryptoRng>
     let header = Header::from(
         vm.block_store().current_state_root(),
         transactions.to_transactions_root().unwrap(),
-        transactions.to_finalize_root(ratify_finalize_operations).unwrap(),
+        transactions.to_finalize_root(ratified_finalize_operations).unwrap(),
         *<CurrentNetwork as Network>::merkle_tree_bhp::<{ RATIFICATIONS_DEPTH }>(&[]).unwrap().root(),
         Field::zero(),
         Field::zero(),
