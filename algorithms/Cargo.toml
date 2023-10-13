@@ -43,6 +43,7 @@ bench = false
 name = "varuna"
 path = "benches/snark/varuna.rs"
 harness = false
+required-features = [ "test" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
