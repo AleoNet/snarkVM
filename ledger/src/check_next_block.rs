@@ -42,14 +42,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         // TODO: this intermediate allocation shouldn't be necessary; this is most likely https://github.com/rust-lang/rust/issues/89418.
         let transactions = block.transactions().iter().collect::<Vec<_>>();
         cfg_iter!(transactions).try_for_each(|transaction| {
-            // Construct the rejected ID.
-            let rejected_id = match transaction {
-                ConfirmedTransaction::AcceptedDeploy(..) | ConfirmedTransaction::AcceptedExecute(..) => None,
-                ConfirmedTransaction::RejectedDeploy(_, _, rejected) => Some(rejected.to_id()?),
-                ConfirmedTransaction::RejectedExecute(_, _, rejected) => Some(rejected.to_id()?),
-            };
-
-            self.check_transaction_basic(*transaction, rejected_id)
+            self.check_transaction_basic(*transaction, transaction.to_rejected_id()?)
                 .map_err(|e| anyhow!("Invalid transaction found in the transactions list: {e}"))
         })?;
 
@@ -89,23 +82,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let unconfirmed_transactions = block
             .transactions()
             .iter()
-            .map(|tx| match tx {
-                // Pass through the accepted deployment and execution transactions.
-                ConfirmedTransaction::AcceptedDeploy(_, tx, _) | ConfirmedTransaction::AcceptedExecute(_, tx, _) => {
-                    Ok(tx.clone())
-                }
-                // Reconstruct the unconfirmed deployment transaction.
-                ConfirmedTransaction::RejectedDeploy(_, fee_transaction, rejected) => Transaction::from_deployment(
-                    rejected.program_owner().copied().ok_or(anyhow!("Missing the program owner"))?,
-                    rejected.deployment().cloned().ok_or(anyhow!("Missing the deployment"))?,
-                    fee_transaction.fee_transition().ok_or(anyhow!("Missing the fee transition"))?,
-                ),
-                // Reconstruct the unconfirmed execution transaction.
-                ConfirmedTransaction::RejectedExecute(_, fee_transaction, rejected) => Transaction::from_execution(
-                    rejected.execution().cloned().ok_or(anyhow!("Missing the execution"))?,
-                    fee_transaction.fee_transition(),
-                ),
-            })
+            .map(|confirmed| confirmed.to_unconfirmed_transaction())
             .collect::<Result<Vec<_>>>()?;
 
         // Speculate over the unconfirmed transactions.

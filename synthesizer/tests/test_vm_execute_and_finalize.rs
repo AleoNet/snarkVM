@@ -242,11 +242,11 @@ fn run_test(test: &ProgramTest) -> serde_yaml::Mapping {
                                 ConfirmedTransaction::AcceptedExecute(_, _, _) => {
                                     "the execution was accepted".to_string()
                                 }
-                                ConfirmedTransaction::RejectedExecute(_, _, _) => {
+                                ConfirmedTransaction::RejectedExecute(_, _, _, _) => {
                                     "the execution was rejected".to_string()
                                 }
                                 ConfirmedTransaction::AcceptedDeploy(_, _, _)
-                                | ConfirmedTransaction::RejectedDeploy(_, _, _) => {
+                                | ConfirmedTransaction::RejectedDeploy(_, _, _, _) => {
                                     unreachable!("unexpected deployment transaction")
                                 }
                             }),

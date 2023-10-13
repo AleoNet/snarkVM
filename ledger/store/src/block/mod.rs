@@ -28,7 +28,7 @@ use console::{
     types::Field,
 };
 use ledger_authority::Authority;
-use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Transaction, Transactions};
+use ledger_block::{Block, ConfirmedTransaction, Header, NumFinalizeSize, Ratify, Rejected, Transaction, Transactions};
 use ledger_coinbase::{CoinbaseSolution, ProverSolution, PuzzleCommitment};
 use ledger_narwhal_batch_certificate::BatchCertificate;
 use synthesizer_program::Program;
@@ -69,13 +69,37 @@ fn to_confirmed_tuple<N: Network>(
             // Return the confirmed tuple.
             Ok((ConfirmedTxType::AcceptedExecute(index), tx, (num_finalize, finalize).to_bytes_le()?))
         }
-        ConfirmedTransaction::RejectedDeploy(index, tx, rejected) => {
+        ConfirmedTransaction::RejectedDeploy(index, tx, rejected, finalize) => {
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+
+            // Initialize a vector for the serialized blob.
+            let mut blob = Vec::new();
+            // Serialize the rejected deployment.
+            rejected.write_le(&mut blob)?;
+            // Serialize the number of finalize operations.
+            num_finalize.write_le(&mut blob)?;
+            // Serialize the finalize operations.
+            finalize.write_le(&mut blob)?;
+
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::RejectedDeploy(index), tx, rejected.to_bytes_le()?))
+            Ok((ConfirmedTxType::RejectedDeploy(index), tx, blob))
         }
-        ConfirmedTransaction::RejectedExecute(index, tx, rejected) => {
+        ConfirmedTransaction::RejectedExecute(index, tx, rejected, finalize) => {
+            // Retrieve the number of finalize operations.
+            let num_finalize = NumFinalizeSize::try_from(finalize.len())?;
+
+            // Initialize a vector for the serialized blob.
+            let mut blob = Vec::new();
+            // Serialize the rejected deployment.
+            rejected.write_le(&mut blob)?;
+            // Serialize the number of finalize operations.
+            num_finalize.write_le(&mut blob)?;
+            // Serialize the finalize operations.
+            finalize.write_le(&mut blob)?;
+
             // Return the confirmed tuple.
-            Ok((ConfirmedTxType::RejectedExecute(index), tx, rejected.to_bytes_le()?))
+            Ok((ConfirmedTxType::RejectedExecute(index), tx, blob))
         }
     }
 }
@@ -107,10 +131,28 @@ fn to_confirmed_transaction<N: Network>(
             ConfirmedTransaction::accepted_execute(index, transaction, finalize)
         }
         ConfirmedTxType::RejectedDeploy(index) => {
-            ConfirmedTransaction::rejected_deploy(index, transaction, FromBytes::read_le(&*blob)?)
+            // Initialize a cursor.
+            let mut cursor = Cursor::new(blob);
+            // Read the rejected deployment.
+            let rejected = Rejected::read_le(&mut cursor)?;
+            // Read the number of finalize operations.
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
+            // Read the finalize operations.
+            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+            // Return the confirmed transaction.
+            ConfirmedTransaction::rejected_deploy(index, transaction, rejected, finalize)
         }
         ConfirmedTxType::RejectedExecute(index) => {
-            ConfirmedTransaction::rejected_execute(index, transaction, FromBytes::read_le(&*blob)?)
+            // Initialize a cursor.
+            let mut cursor = Cursor::new(blob);
+            // Read the rejected deployment.
+            let rejected = Rejected::read_le(&mut cursor)?;
+            // Read the number of finalize operations.
+            let num_finalize = NumFinalizeSize::read_le(&mut cursor)?;
+            // Read the finalize operations.
+            let finalize = (0..num_finalize).map(|_| FromBytes::read_le(&mut cursor)).collect::<Result<Vec<_>, _>>()?;
+            // Return the confirmed transaction.
+            ConfirmedTransaction::rejected_execute(index, transaction, rejected, finalize)
         }
     }
 }

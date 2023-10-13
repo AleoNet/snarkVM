@@ -109,7 +109,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             });
 
             // Initialize a list of finalize operations.
-            let mut finalize_operations = Vec::new();
+            let mut ratified_finalize_operations = Vec::new();
 
             // Retrieve the finalize store.
             let store = self.finalize_store();
@@ -118,7 +118,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             match Self::atomic_pre_ratify(store, state, pre_ratifications) {
                 // Store the finalize operations from the post-ratify.
-                Ok(operations) => finalize_operations.extend(operations),
+                Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
                 Err(e) => return Err(format!("Failed to pre-ratify - {e}")),
             }
@@ -157,17 +157,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             // Construct the rejected deploy transaction.
                             Err(_error) => {
                                 // Finalize the fee, to ensure it is valid.
-                                match process.finalize_fee(state, store, fee).and_then(|finalize_operations| {
-                                    Transaction::from_fee(fee.clone()).map(|fee_tx| (fee_tx, finalize_operations))
+                                match process.finalize_fee(state, store, fee).and_then(|finalize| {
+                                    Transaction::from_fee(fee.clone()).map(|fee_tx| (fee_tx, finalize))
                                 }) {
-                                    Ok((fee_tx, operations)) => {
-                                        // Store the finalize operations for the fee.
-                                        finalize_operations.extend(operations);
-
+                                    Ok((fee_tx, finalize)) => {
                                         // Construct the rejected deployment.
                                         let rejected = Rejected::new_deployment(*program_owner, *deployment.clone());
                                         // Construct the rejected deploy transaction.
-                                        ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected)
+                                        ConfirmedTransaction::rejected_deploy(index, fee_tx, rejected, finalize)
                                             .map_err(|e| e.to_string())
                                     }
                                     Err(error) => {
@@ -196,17 +193,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                             Err(_error) => match fee {
                                 // Finalize the fee, to ensure it is valid.
                                 Some(fee) => {
-                                    match process.finalize_fee(state, store, fee).and_then(|finalize_operations| {
-                                        Transaction::from_fee(fee.clone()).map(|fee_tx| (fee_tx, finalize_operations))
+                                    match process.finalize_fee(state, store, fee).and_then(|finalize| {
+                                        Transaction::from_fee(fee.clone()).map(|fee_tx| (fee_tx, finalize))
                                     }) {
-                                        Ok((fee_tx, operations)) => {
-                                            // Store the finalize operations for the fee.
-                                            finalize_operations.extend(operations);
-
+                                        Ok((fee_tx, finalize)) => {
                                             // Construct the rejected execution.
                                             let rejected = Rejected::new_execution(execution.clone());
                                             // Construct the rejected execute transaction.
-                                            ConfirmedTransaction::rejected_execute(index, fee_tx, rejected)
+                                            ConfirmedTransaction::rejected_execute(index, fee_tx, rejected, finalize)
                                                 .map_err(|e| e.to_string())
                                         }
                                         Err(error) => {
@@ -254,7 +248,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
                 // Store the finalize operations from the post-ratify.
-                Ok(operations) => finalize_operations.extend(operations),
+                Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
                 Err(e) => return Err(format!("Failed to post-ratify - {e}")),
             }
@@ -263,7 +257,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             // On return, 'atomic_finalize!' will abort the batch, and return the confirmed & aborted transactions,
             // along with the finalize operations from pre-ratify and post-ratify.
-            Ok((confirmed, aborted, finalize_operations))
+            Ok((confirmed, aborted, ratified_finalize_operations))
         })
     }
 
@@ -294,7 +288,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             });
 
             // Initialize a list of finalize operations.
-            let mut finalize_operations = Vec::new();
+            let mut ratified_finalize_operations = Vec::new();
 
             // Retrieve the finalize store.
             let store = self.finalize_store();
@@ -303,7 +297,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             match Self::atomic_pre_ratify(store, state, pre_ratifications) {
                 // Store the finalize operations from the post-ratify.
-                Ok(operations) => finalize_operations.extend(operations),
+                Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
                 Err(e) => return Err(format!("Failed to pre-ratify - {e}")),
             }
@@ -385,7 +379,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedDeploy(_, Transaction::Fee(_, fee), rejected) => {
+                    ConfirmedTransaction::RejectedDeploy(_, Transaction::Fee(_, fee), rejected, finalize) => {
                         // Extract the rejected deployment.
                         let Some(deployment) = rejected.deployment() else {
                             // Note: This will abort the entire atomic batch.
@@ -408,8 +402,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         // Lastly, finalize the fee.
                         match process.finalize_fee(state, store, fee) {
-                            // Store the finalize operations for the fee.
-                            Ok(operations) => finalize_operations.extend(operations),
+                            // Ensure the finalize operations match the expected.
+                            Ok(finalize_operations) => {
+                                if finalize != &finalize_operations {
+                                    // Note: This will abort the entire atomic batch.
+                                    return Err(format!(
+                                        "Mismatch in finalize operations for a rejected deploy - (found: {finalize_operations:?}, expected: {finalize:?})"
+                                    ));
+                                }
+                            }
                             // Note: This will abort the entire atomic batch.
                             Err(_e) => {
                                 return Err("Failed to finalize the fee in a rejected deploy transaction".to_string());
@@ -417,7 +418,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         Ok(())
                     }
-                    ConfirmedTransaction::RejectedExecute(_, Transaction::Fee(_, fee), rejected) => {
+                    ConfirmedTransaction::RejectedExecute(_, Transaction::Fee(_, fee), rejected, finalize) => {
                         // Extract the rejected execution.
                         let Some(execution) = rejected.execution() else {
                             // Note: This will abort the entire atomic batch.
@@ -440,8 +441,15 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
                         }
                         // Lastly, finalize the fee.
                         match process.finalize_fee(state, store, fee) {
-                            // Store the finalize operations for the fee.
-                            Ok(operations) => finalize_operations.extend(operations),
+                            // Ensure the finalize operations match the expected.
+                            Ok(finalize_operations) => {
+                                if finalize != &finalize_operations {
+                                    // Note: This will abort the entire atomic batch.
+                                    return Err(format!(
+                                        "Mismatch in finalize operations for a rejected execute - (found: {finalize_operations:?}, expected: {finalize:?})"
+                                    ));
+                                }
+                            }
                             // Note: This will abort the entire atomic batch.
                             Err(_e) => {
                                 return Err("Failed to finalize the fee in a rejected execute transaction".to_string());
@@ -470,7 +478,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             match Self::atomic_post_ratify(store, state, post_ratifications, solutions) {
                 // Store the finalize operations from the post-ratify.
-                Ok(operations) => finalize_operations.extend(operations),
+                Ok(operations) => ratified_finalize_operations.extend(operations),
                 // Note: This will abort the entire atomic batch.
                 Err(e) => return Err(format!("Failed to post-ratify - {e}")),
             }
@@ -484,7 +492,7 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
             finish!(timer); // <- Note: This timer does **not** include the time to write batch to DB.
 
-            Ok(finalize_operations)
+            Ok(ratified_finalize_operations)
         })
     }
 
@@ -932,12 +940,17 @@ finalize transfer_public:
     }
 
     /// A helper method to construct the rejected transaction format for `atomic_finalize`.
-    fn reject(index: u32, transaction: &Transaction<CurrentNetwork>) -> ConfirmedTransaction<CurrentNetwork> {
+    fn reject(
+        index: u32,
+        transaction: &Transaction<CurrentNetwork>,
+        finalize: &[FinalizeOperation<CurrentNetwork>],
+    ) -> ConfirmedTransaction<CurrentNetwork> {
         match transaction {
             Transaction::Execute(_, execution, fee) => ConfirmedTransaction::RejectedExecute(
                 index,
                 Transaction::from_fee(fee.clone().unwrap()).unwrap(),
                 Rejected::new_execution(execution.clone()),
+                finalize.to_vec(),
             ),
             _ => panic!("only reject execution transactions"),
         }
@@ -985,7 +998,7 @@ finalize transfer_public:
         assert!(aborted_transactions.is_empty());
 
         // Check that the unconfirmed transaction id of the rejected deployment is correct.
-        assert_eq!(candidate_transactions[0].unconfirmed_id().unwrap(), deployment_transaction_id);
+        assert_eq!(candidate_transactions[0].to_unconfirmed_transaction_id().unwrap(), deployment_transaction_id);
     }
 
     #[test]
@@ -1131,7 +1144,10 @@ finalize transfer_public:
             assert!(confirmed_transactions[1].is_rejected());
 
             assert_eq!(confirmed_transactions[0].transaction(), &transfer_20);
-            assert_eq!(confirmed_transactions[1], reject(1, &transfer_10));
+            assert_eq!(
+                confirmed_transactions[1],
+                reject(1, &transfer_10, confirmed_transactions[1].finalize_operations())
+            );
         }
 
         // Starting Balance = 20
@@ -1155,7 +1171,10 @@ finalize transfer_public:
 
             assert_eq!(confirmed_transactions[0].transaction(), &mint_20);
             assert_eq!(confirmed_transactions[1].transaction(), &transfer_30);
-            assert_eq!(confirmed_transactions[2], reject(2, &transfer_20));
+            assert_eq!(
+                confirmed_transactions[2],
+                reject(2, &transfer_20, confirmed_transactions[2].finalize_operations())
+            );
             assert_eq!(confirmed_transactions[3].transaction(), &transfer_10);
         }
     }
@@ -1246,8 +1265,12 @@ function ped_hash:
             assert!(transaction.is_execute());
             if let Transaction::Execute(_, execution, fee) = transaction {
                 let fee_transaction = Transaction::from_fee(fee.unwrap()).unwrap();
-                let expected_confirmed_transaction =
-                    ConfirmedTransaction::RejectedExecute(0, fee_transaction, Rejected::new_execution(execution));
+                let expected_confirmed_transaction = ConfirmedTransaction::RejectedExecute(
+                    0,
+                    fee_transaction,
+                    Rejected::new_execution(execution),
+                    vec![],
+                );
 
                 let confirmed_transaction = confirmed_transactions.iter().next().unwrap();
                 assert_eq!(confirmed_transaction, &expected_confirmed_transaction);
