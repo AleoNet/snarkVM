@@ -31,6 +31,31 @@ path = "../console"
 version = "=0.15.4"
 features = [ "wasm" ]
 optional = true
+default-features = false
+
+[dependencies.snarkvm-ledger-block]
+path = "../ledger/block"
+version = "=0.15.4"
+features = [ "wasm" ]
+optional = true
+
+[dependencies.snarkvm-ledger-query]
+path = "../ledger/query"
+version = "=0.15.4"
+features = [ "async", "wasm" ]
+optional = true
+
+[dependencies.snarkvm-ledger-store]
+path = "../ledger/store"
+version = "=0.15.4"
+features = [ "wasm" ]
+optional = true
+
+[dependencies.snarkvm-circuit-network]
+path = "../circuit/network"
+version = "=0.15.4"
+features = [ "wasm" ]
+optional = true
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -46,7 +71,7 @@ optional = true
 path = "../synthesizer"
 version = "=0.15.4"
 default-features = false
-features = [ "wasm" ]
+features = [ "async", "wasm" ]
 optional = true
 
 [dependencies.snarkvm-utilities]
@@ -77,9 +102,11 @@ version = "0.3.37"
 
 [features]
 default = [ "full" ]
-full = [ "console", "curves", "fields", "synthesizer", "utilities" ]
-console = [ "snarkvm-console" ]
+full = [ "console", "curves", "fields", "ledger", "synthesizer", "utilities" ]
+console = [ "snarkvm-console/default" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
+ledger = [ "snarkvm-ledger-block", "snarkvm-ledger-query", "snarkvm-ledger-store" ]
+network = [ "snarkvm-circuit-network", "snarkvm-console/network" ]
 synthesizer = [ "snarkvm-synthesizer" ]
 utilities = [ "snarkvm-utilities" ]
